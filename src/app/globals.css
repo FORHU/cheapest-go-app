@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Inter Tight', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-obsidian: #020617;
+  --color-obsidian-surface: rgba(255, 255, 255, 0.05);
+  --color-obsidian-border: rgba(255, 255, 255, 0.1);
+  --color-obsidian-accent: #22d3ee;
+
+  --color-alabaster: #f8fafc;
+  --color-alabaster-surface: rgba(0, 0, 0, 0.05);
+  --color-alabaster-border: rgba(0, 0, 0, 0.1);
+  --color-alabaster-accent: #2563eb;
+  
+  --animate-blur-transition: backdrop-filter 800ms ease;
+  --transition-duration-800: 800ms;
+}
+
+/* Custom Utilities for Grid Backgrounds (simulating standard utility behavior) */
+@utility bg-grid-obsidian {
+  background-image: linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+}
+
+@utility bg-grid-alabaster {
+  background-image: linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
+}
+
+/* Enable class-based dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Smooth Theme Transition */
+body {
+  transition-property: background-color, color, border-color;
+  transition-duration: 800ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.blur-transition {
+  transition: backdrop-filter 800ms ease;
+}
+
+/* Hide scrollbar for cleaner UI */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 3px;
+}
