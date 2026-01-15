@@ -28,7 +28,7 @@ const DestinationsGrid = () => {
             className={i === 0 ? "lg:col-span-2 lg:row-span-2" : ""}
           >
             <TiltCard className="h-full">
-              <div className="relative h-full w-full rounded-xl overflow-hidden group shadow-lg dark:shadow-black/50 border border-slate-200/50 dark:border-white/10">
+              <div className={`relative w-full rounded-xl overflow-hidden group shadow-lg dark:shadow-black/50 border border-slate-200/50 dark:border-white/10 ${i === 0 ? 'min-h-[400px] lg:min-h-[500px]' : 'min-h-[200px]'}`}>
                 <div 
                   className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
                   style={{ backgroundImage: `url(${dest.image})` }}
