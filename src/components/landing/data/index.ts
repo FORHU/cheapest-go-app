@@ -1,36 +1,10 @@
 import type {
-  Category,
   RecentSearch,
   WeekendDeal,
   TravelStyle,
   VacationPackage,
   UniqueStay,
 } from "@/types/landing";
-
-// Categories for Discover section
-export const categories: Category[] = [
-  {
-    id: 1,
-    title: "Apart-hotels",
-    image: "https://picsum.photos/seed/apart/300/200",
-  },
-  {
-    id: 2,
-    title: "Family friendly",
-    image: "https://picsum.photos/seed/family/300/200",
-  },
-  {
-    id: 3,
-    title: "Beachfront",
-    image: "https://picsum.photos/seed/beach/300/200",
-  },
-  { id: 4, title: "Spa", image: "https://picsum.photos/seed/spa/300/200" },
-  {
-    id: 5,
-    title: "Romantic",
-    image: "https://picsum.photos/seed/romantic/300/200",
-  },
-];
 
 // Recent searches
 export const recentSearches: RecentSearch[] = [
