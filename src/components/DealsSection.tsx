@@ -95,7 +95,7 @@ const DealsSection = () => {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-500/20 dark:to-orange-500/20 border border-amber-500/20 rounded-full"
             >
               <Sparkles size={14} className="text-amber-500" />
@@ -104,7 +104,7 @@ const DealsSection = () => {
             <motion.h2
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               transition={{ delay: 0.1 }}
               className="text-2xl md:text-3xl font-display font-bold text-slate-900 dark:text-white"
             >
@@ -144,7 +144,7 @@ const DealsSection = () => {
               key={deal.id}
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               transition={{ delay: i * 0.1 }}
               className="flex-shrink-0 w-[300px] snap-start"
             >

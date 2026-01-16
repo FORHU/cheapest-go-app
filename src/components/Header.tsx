@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { PlaneTakeoff, Moon, Sun, Download, Globe, Building2, HelpCircle, Briefcase, MessageSquare, User } from 'lucide-react';
+import { PlaneTakeoff, Moon, Sun, Download } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 
 const Header = () => {
@@ -20,8 +20,8 @@ const Header = () => {
           </h1>
         </div>
 
-        {/* Right Side Navigation - Expedia Style */}
-        <nav className="hidden md:flex items-center gap-1">
+        {/* Right Side Navigation */}
+        <nav className="hidden md:flex items-center gap-3">
           {/* Open App Button */}
           <a href="#" className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
             <Download size={14} />
@@ -36,26 +36,18 @@ const Header = () => {
 
           {/* List your property */}
           <a href="#" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
-            <Building2 size={16} />
             List your property
           </a>
 
           {/* Support */}
           <a href="#" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
-            <HelpCircle size={16} />
             Support
           </a>
 
           {/* Trips */}
           <a href="#" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
-            <Briefcase size={16} />
             Trips
           </a>
-
-          {/* Message Icon */}
-          <button className="p-2 text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
-            <MessageSquare size={18} />
-          </button>
 
           {/* Theme Toggle */}
           <button 
@@ -67,7 +59,6 @@ const Header = () => {
 
           {/* Sign in */}
           <a href="#" className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-full transition-colors">
-            <User size={16} />
             Sign in
           </a>
         </nav>

@@ -51,13 +51,13 @@ const recentItems: RecentItem[] = [
 
 const RecentlyViewed = () => {
   return (
-    <section className="w-full py-16">
+    <section className="w-full pt-16 pb-4">
       <div className="max-w-[1400px] mx-auto px-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          viewport={{ once: false }}
           className="flex items-center justify-between mb-8"
         >
           <div className="flex items-center gap-3">
@@ -91,7 +91,7 @@ const RecentlyViewed = () => {
               key={item.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              viewport={{ once: false }}
               transition={{ delay: i * 0.08 }}
             >
               <TiltCard>
