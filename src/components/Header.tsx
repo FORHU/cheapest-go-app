@@ -3,6 +3,7 @@
 import React from 'react';
 import { PlaneTakeoff, Moon, Sun, Download } from 'lucide-react';
 import { useTheme } from './ThemeContext';
+import { SignInDropdown } from './auth';
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();
@@ -50,17 +51,15 @@ const Header = () => {
           </a>
 
           {/* Theme Toggle */}
-          <button 
+          <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
           >
             {theme === 'dark' ? <Sun className="w-5 h-5 text-white" /> : <Moon className="w-5 h-5 text-slate-700" />}
           </button>
 
-          {/* Sign in */}
-          <a href="#" className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-full transition-colors">
-            Sign in
-          </a>
+          {/* Sign in Dropdown */}
+          <SignInDropdown />
         </nav>
       </div>
     </header>
