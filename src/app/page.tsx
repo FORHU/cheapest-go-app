@@ -1,17 +1,17 @@
 import React from 'react';
-import Header from '@/components/Header';
-import Hero from '@/components/Hero';
-import RecentlyViewed from '@/components/RecentlyViewed';
-import DealsSection from '@/components/DealsSection';
 import {
+  Header,
+  Hero,
+  RecentlyViewed,
+  DealsSection,
   YourRecentSearches,
   LastMinuteWeekendDeals,
   StaysForEveryStyle,
   ExploreVacationPackages,
   ExploreUniqueStays,
+  AppBanner,
+  Footer
 } from '@/components/landing';
-import AppBanner from '@/components/AppBanner';
-import Footer from '@/components/Footer';
 
 export default function Home() {
   return (

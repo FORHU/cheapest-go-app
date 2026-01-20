@@ -1,4 +1,4 @@
-import { Destination, TelemetryData } from "./types";
+import { Destination, TelemetryData } from "./types/api";
 
 export const TELEMETRY_DATA: TelemetryData[] = [
   {

@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { TiltCard } from './TiltCard';
+import { TiltCard } from '../ui/TiltCard';
 
 interface Deal {
   id: string;
@@ -111,7 +111,7 @@ const DealsSection = () => {
               Exclusive Deals & Offers
             </motion.h2>
           </div>
-          
+
           {/* Navigation Arrows */}
           <div className="hidden md:flex items-center gap-2">
             <motion.button
@@ -157,12 +157,12 @@ const DealsSection = () => {
                       style={{ backgroundImage: `url(${deal.image})` }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    
+
                     {/* Discount Badge */}
                     <div className="absolute top-3 left-3 px-2.5 py-1 bg-gradient-to-r from-red-500 to-orange-500 rounded-full">
                       <span className="text-xs font-mono font-bold text-white">{deal.discount}</span>
                     </div>
-                    
+
                     {/* Tag */}
                     {deal.tag && (
                       <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/30">
@@ -175,13 +175,13 @@ const DealsSection = () => {
                   <div className="p-4">
                     <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white mb-1">{deal.title}</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{deal.subtitle}</p>
-                    
+
                     <div className="flex items-end justify-between">
                       <div>
                         <span className="text-sm text-slate-400 line-through">${deal.originalPrice}</span>
                         <div className="text-xl font-mono font-bold text-slate-900 dark:text-white">${deal.salePrice}</div>
                       </div>
-                      
+
                       <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
                         <Clock size={12} className="text-slate-500" />
                         <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{deal.endsIn}</span>

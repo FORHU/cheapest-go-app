@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { Inter, Inter_Tight, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import { ThemeProvider } from '@/components/ThemeContext';
+import { ThemeProvider } from '@/components/context/ThemeContext';
 import { AuthProvider, AuthModal } from '@/components/auth';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });

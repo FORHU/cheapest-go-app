@@ -15,8 +15,7 @@ import {
     ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '@/components/auth';
-import Header from '@/components/Header';
-import { AccountSidebar, AccountMainContent } from '@/components/landing';
+import { Header, AccountSidebar, AccountMainContent } from '@/components/landing';
 
 export default function AccountSettingsPage() {
     const router = useRouter();

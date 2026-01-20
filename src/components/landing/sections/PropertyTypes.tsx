@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Building2, Home, Palmtree, Sparkles, ArrowRight } from 'lucide-react';
-import { TiltCard } from './TiltCard';
+import { TiltCard } from '../ui/TiltCard';
 
 interface PropertyType {
   id: string;
@@ -85,7 +85,7 @@ const PropertyTypes = () => {
                 >
                   {/* Background Glow */}
                   <div className={`absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br ${property.gradient} opacity-10 blur-3xl rounded-full transition-opacity duration-500 group-hover:opacity-20`} />
-                  
+
                   {/* Icon */}
                   <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${property.gradient} text-white mb-4 shadow-lg`}>
                     {property.icon}
@@ -98,7 +98,7 @@ const PropertyTypes = () => {
                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
                     {property.description}
                   </p>
-                  
+
                   {/* Count & Arrow */}
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-mono text-slate-400">

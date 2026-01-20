@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Smartphone, Star, Download, ChevronRight } from 'lucide-react';
+import { AppBannerProps } from '../../types';
 
 const AppBanner = () => {
   return (
@@ -52,7 +53,7 @@ const AppBanner = () => {
                 {/* Notch */}
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 w-16 h-4 bg-black rounded-full" />
               </div>
-              
+
               {/* Floating Badge */}
               <motion.div
                 animate={{ y: [0, -5, 0] }}
@@ -76,7 +77,7 @@ const AppBanner = () => {
                   <Smartphone size={14} className="text-white" />
                   <span className="text-xs font-medium text-white">Mobile App</span>
                 </div>
-                
+
                 <h3 className="text-2xl md:text-3xl font-display font-bold text-white mb-3">
                   Travel smarter with our app
                 </h3>

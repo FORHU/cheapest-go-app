@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { BaseProps } from '../types';
+import { BaseProps } from '../../../types';
 
 interface TiltCardProps extends BaseProps {
   image?: string;

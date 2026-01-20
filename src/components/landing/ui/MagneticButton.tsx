@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import { BaseProps } from '../types';
+import { BaseProps } from '../../../types';
 
 interface MagneticButtonProps extends BaseProps {
   onClick?: () => void;
@@ -16,10 +16,10 @@ export const MagneticButton: React.FC<MagneticButtonProps> = ({ onClick, classNa
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     const { clientX, clientY } = e;
     const { left, top, width, height } = ref.current?.getBoundingClientRect() || { left: 0, top: 0, width: 0, height: 0 };
-    
+
     const centerX = left + width / 2;
     const centerY = top + height / 2;
-    
+
     const distanceX = clientX - centerX;
     const distanceY = clientY - centerY;
 

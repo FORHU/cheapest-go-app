@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { TelemetryCard } from './Components';
-import { TELEMETRY_DATA } from '../constants';
+import { TELEMETRY_DATA } from '../../../constants';
 
 const Dashboard = () => {
   return (

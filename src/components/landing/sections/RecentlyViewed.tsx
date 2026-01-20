@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { History, Clock, ArrowRight } from 'lucide-react';
-import { TiltCard } from './TiltCard';
+import { TiltCard } from '../ui/TiltCard';
 
 interface RecentItem {
   id: string;
@@ -73,7 +73,7 @@ const RecentlyViewed = () => {
               </p>
             </div>
           </div>
-          
+
           <motion.a
             whileHover={{ x: 5 }}
             href="#"
