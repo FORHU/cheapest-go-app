@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plane } from 'lucide-react';
 import { TabList, PropertyCard } from '@/components/ui';
-import { packages, packageTabs } from '../data';
+import { packages, packageTabs } from '@/data';
 
 export const ExploreVacationPackages: React.FC = () => {
   const [activeTab, setActiveTab] = useState(packageTabs[0]);
@@ -25,9 +25,9 @@ export const ExploreVacationPackages: React.FC = () => {
           Flight + Hotel combos with maximum savings. Free baggage included.
         </p>
 
-        <TabList 
-          tabs={packageTabs} 
-          activeTab={activeTab} 
+        <TabList
+          tabs={packageTabs}
+          activeTab={activeTab}
           onTabChange={setActiveTab}
           className="mb-6"
         />

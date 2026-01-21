@@ -3,7 +3,7 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
 import { PropertyCard, SectionHeader } from '@/components/ui';
-import { weekendDeals } from '../data';
+import { weekendDeals } from '@/data';
 
 export const LastMinuteWeekendDeals: React.FC = () => {
   return (
