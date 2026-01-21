@@ -35,7 +35,7 @@ export default function CheckoutPage() {
         return (
             <>
                 <Header />
-                <main className="min-h-screen bg-slate-50 dark:bg-[#020617] pt-24 pb-20 px-4 flex items-center justify-center">
+                <main className="min-h-screen pt-6 pb-20 px-4 flex items-center justify-center">
                     <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-slate-200 dark:border-white/10">
                         <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-6">
                             <CheckCircle size={32} />
@@ -69,9 +69,9 @@ export default function CheckoutPage() {
     return (
         <>
             <Header />
-            <main className="min-h-screen bg-slate-50 dark:bg-[#020617] pt-24 pb-20 px-4 md:px-6">
+            <main className="min-h-screen pt-6 pb-20 px-4 md:px-6">
                 <div className="max-w-6xl mx-auto">
-                    <div className="mb-6">
+                    <div className="mb-2">
                         <BackButton label="Modify booking" />
                     </div>
 

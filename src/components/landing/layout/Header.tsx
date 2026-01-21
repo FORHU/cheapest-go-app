@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { PlaneTakeoff, Moon, Sun, Download } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import SignInDropdown from '../../auth/SignInDropdown';
@@ -12,14 +13,14 @@ const Header = () => {
     <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl transition-colors duration-800">
       <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <div className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="size-8 flex items-center justify-center bg-slate-900 dark:bg-white/5 rounded-md shadow-sm border border-transparent dark:border-white/10">
             <PlaneTakeoff className="text-white dark:text-obsidian-accent w-5 h-5" />
           </div>
           <h1 className="text-slate-900 dark:text-white font-display font-bold text-xl tracking-tight">
             AeroVantage<span className="text-alabaster-accent dark:text-obsidian-accent">.Pro</span>
           </h1>
-        </div>
+        </Link>
 
         {/* Right Side Navigation */}
         <nav className="hidden md:flex items-center gap-3">

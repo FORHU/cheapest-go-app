@@ -1,15 +1,22 @@
 "use client";
 
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Search, Map } from 'lucide-react';
 
-const FilterSection = ({ title, children, defaultExpanded = true }: { title: string, children: React.ReactNode, defaultExpanded?: boolean }) => (
-    <div className="border-b border-slate-200 dark:border-white/5 py-4 last:border-0">
+const FilterSection = ({ title, children, defaultExpanded = true, index = 0 }: { title: string, children: React.ReactNode, defaultExpanded?: boolean, index?: number }) => (
+    <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: false, amount: 0.3 }}
+        transition={{ delay: index * 0.05, duration: 0.4 }}
+        className="border-b border-slate-200 dark:border-white/5 py-4 last:border-0"
+    >
         <h4 className="font-semibold text-sm text-slate-900 dark:text-white mb-3">{title}</h4>
         <div className="space-y-2">
             {children}
         </div>
-    </div>
+    </motion.div>
 );
 
 const CheckboxItem = ({ label, count }: { label: string, count?: number }) => (
@@ -32,7 +39,13 @@ const SearchFilters = () => {
     return (
         <div className="w-full flex-shrink-0 lg:w-[280px] space-y-4">
             {/* Map Preview */}
-            <div className="relative h-32 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 group cursor-pointer mb-6">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: false, amount: 0.3 }}
+                transition={{ duration: 0.5 }}
+                className="relative h-32 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 group cursor-pointer mb-6"
+            >
                 <div className="absolute inset-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
                     <Map className="text-slate-400" />
                 </div>
@@ -40,12 +53,18 @@ const SearchFilters = () => {
                 <button className="absolute inset-0 m-auto w-max h-max bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg border border-slate-200 dark:border-white/10 opacity-90 hover:opacity-100 hover:scale-105 transition-all">
                     View on map
                 </button>
-            </div>
+            </motion.div>
 
             {/* Helper Text */}
-            <div className="pb-4 border-b border-slate-200 dark:border-slate-800">
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: false, amount: 0.5 }}
+                transition={{ duration: 0.4 }}
+                className="pb-4 border-b border-slate-200 dark:border-slate-800"
+            >
                 <h3 className="font-display font-bold text-slate-900 dark:text-white mb-1">Filter by</h3>
-            </div>
+            </motion.div>
 
             {/* Search by Property Name */}
             <div className="py-4 border-b border-slate-200 dark:border-slate-800">
@@ -163,7 +182,7 @@ const SearchFilters = () => {
                 <CheckboxItem label="Family friendly" count={412} />
                 <CheckboxItem label="LGBTQ+ welcoming" count={16} />
             </FilterSection>
-        </div>
+        </div >
     );
 };
 
