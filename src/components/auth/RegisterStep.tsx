@@ -53,20 +53,22 @@ const RegisterStep: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            {/* Back Button & Header */}
+            {/* Back Button */}
+            <button
+                onClick={() => setAuthStep('email')}
+                className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+            </button>
+
+            {/* Header */}
             <div>
-                <button
-                    onClick={() => setAuthStep('email')}
-                    className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors mb-4"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
-                </button>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
                     Create your account
                 </h2>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    for <span className="font-medium text-slate-700 dark:text-slate-300">{email}</span>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    for <span className="text-blue-600 dark:text-blue-400">{email}</span>
                 </p>
             </div>
 
@@ -98,8 +100,8 @@ const RegisterStep: React.FC = () => {
                                 }}
                                 placeholder="First"
                                 className={`w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.firstName
-                                        ? 'border-red-500 focus:ring-red-500'
-                                        : 'border-slate-200 dark:border-white/10'
+                                    ? 'border-red-500 focus:ring-red-500'
+                                    : 'border-slate-200 dark:border-white/10'
                                     }`}
                                 disabled={isLoading}
                             />
@@ -123,8 +125,8 @@ const RegisterStep: React.FC = () => {
                             }}
                             placeholder="Last"
                             className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.lastName
-                                    ? 'border-red-500 focus:ring-red-500'
-                                    : 'border-slate-200 dark:border-white/10'
+                                ? 'border-red-500 focus:ring-red-500'
+                                : 'border-slate-200 dark:border-white/10'
                                 }`}
                             disabled={isLoading}
                         />
@@ -153,8 +155,8 @@ const RegisterStep: React.FC = () => {
                             }}
                             placeholder="Create a password"
                             className={`w-full pl-10 pr-12 py-3 border rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.password
-                                    ? 'border-red-500 focus:ring-red-500'
-                                    : 'border-slate-200 dark:border-white/10'
+                                ? 'border-red-500 focus:ring-red-500'
+                                : 'border-slate-200 dark:border-white/10'
                                 }`}
                             disabled={isLoading}
                         />
@@ -236,6 +238,15 @@ const RegisterStep: React.FC = () => {
                     Sign in
                 </button>
             </p>
+
+            {/* Partner Logos */}
+            <div className="pt-4 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
+                <span>AeroVantage</span>
+                <span>•</span>
+                <span>Hotels.com</span>
+                <span>•</span>
+                <span>Vrbo</span>
+            </div>
         </div>
     );
 };

@@ -3,7 +3,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { History, Clock, ArrowRight } from 'lucide-react';
-import { TiltCard } from '../ui/TiltCard';
 
 interface RecentItem {
   id: string;
@@ -94,39 +93,38 @@ const RecentlyViewed = () => {
               viewport={{ once: false }}
               transition={{ delay: i * 0.08 }}
             >
-              <TiltCard>
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  className="flex gap-3 p-3 bg-white dark:bg-slate-900/80 rounded-xl border border-alabaster-border dark:border-obsidian-border shadow-md dark:shadow-black/20 cursor-pointer group"
-                >
-                  {/* Thumbnail */}
-                  <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                    <div
-                      className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                      style={{ backgroundImage: `url(${item.image})` }}
-                    />
-                  </div>
+              <motion.div
+                whileHover={{ scale: 1.02, y: -2 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className="flex gap-3 p-3 bg-white dark:bg-slate-900/80 rounded-xl border border-alabaster-border dark:border-obsidian-border shadow-md dark:shadow-black/20 cursor-pointer group"
+              >
+                {/* Thumbnail */}
+                <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                  <div
+                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
+                    style={{ backgroundImage: `url(${item.image})` }}
+                  />
+                </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-display font-bold text-slate-900 dark:text-white truncate">
-                      {item.destination}
-                    </h3>
-                    <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      <Clock size={11} />
-                      <span>{item.dates}</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-600 dark:text-slate-400">
-                        {item.type}
-                      </span>
-                      <span className="text-sm font-mono font-bold text-slate-900 dark:text-white">
-                        ${item.price}
-                      </span>
-                    </div>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-display font-bold text-slate-900 dark:text-white truncate">
+                    {item.destination}
+                  </h3>
+                  <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    <Clock size={11} />
+                    <span>{item.dates}</span>
                   </div>
-                </motion.div>
-              </TiltCard>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-600 dark:text-slate-400">
+                      {item.type}
+                    </span>
+                    <span className="text-sm font-mono font-bold text-slate-900 dark:text-white">
+                      ${item.price}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
           ))}
         </div>

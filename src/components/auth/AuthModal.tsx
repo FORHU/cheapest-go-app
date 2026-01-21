@@ -72,7 +72,7 @@ const AuthModal: React.FC = () => {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         transition={{ duration: 0.2, ease: 'easeOut' }}
-                        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden"
+                        className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
                     >
                         {/* Close Button */}
                         <button
@@ -84,7 +84,7 @@ const AuthModal: React.FC = () => {
                         </button>
 
                         {/* Logo Header */}
-                        <div className="pt-8 pb-4 px-8 flex justify-center">
+                        <div className="pt-6 pb-3 px-6 flex justify-center flex-shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="size-10 flex items-center justify-center bg-slate-900 dark:bg-white/5 rounded-lg shadow-sm border border-transparent dark:border-white/10">
                                     <PlaneTakeoff className="text-white dark:text-obsidian-accent w-6 h-6" />
@@ -96,7 +96,7 @@ const AuthModal: React.FC = () => {
                         </div>
 
                         {/* Content */}
-                        <div className="px-8 pb-8">
+                        <div className="px-6 pb-6 overflow-y-auto flex-1">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={authStep}
@@ -111,7 +111,7 @@ const AuthModal: React.FC = () => {
                         </div>
 
                         {/* Partner Logos Footer */}
-                        <div className="border-t border-slate-100 dark:border-white/5 py-4 px-8">
+                        <div className="border-t border-slate-100 dark:border-white/5 py-3 px-6 flex-shrink-0">
                             <p className="text-xs text-center text-slate-400 dark:text-slate-500">
                                 Your account works across all our partner sites
                             </p>

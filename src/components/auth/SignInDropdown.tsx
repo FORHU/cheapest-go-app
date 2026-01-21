@@ -7,7 +7,7 @@ import { useAuth } from './AuthContext';
 import Link from 'next/link';
 
 const SignInDropdown: React.FC = () => {
-    const { user, openAuthModal, logout } = useAuth();
+    const { user, logout } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -34,10 +34,7 @@ const SignInDropdown: React.FC = () => {
         return () => document.removeEventListener('keydown', handleEscape);
     }, []);
 
-    const handleSignInClick = () => {
-        setIsOpen(false);
-        openAuthModal();
-    };
+    // No longer need handleSignInClick since we navigate to /login page
 
     if (user) {
         // Logged in state
@@ -158,18 +155,20 @@ const SignInDropdown: React.FC = () => {
 
                         {/* Actions */}
                         <div className="p-4 space-y-3">
-                            <button
-                                onClick={handleSignInClick}
-                                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors"
+                            <Link
+                                href="/login"
+                                onClick={() => setIsOpen(false)}
+                                className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors text-center"
                             >
                                 Sign in
-                            </button>
-                            <button
-                                onClick={handleSignInClick}
-                                className="w-full py-3 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white font-medium rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                            </Link>
+                            <Link
+                                href="/login?mode=signup"
+                                onClick={() => setIsOpen(false)}
+                                className="block w-full py-3 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white font-medium rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
                             >
                                 Create an account
-                            </button>
+                            </Link>
                         </div>
 
                         {/* Links */}

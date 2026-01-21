@@ -3,7 +3,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Smartphone, Star, Download, ChevronRight } from 'lucide-react';
-import { AppBannerProps } from '../../types';
 
 const AppBanner = () => {
   return (

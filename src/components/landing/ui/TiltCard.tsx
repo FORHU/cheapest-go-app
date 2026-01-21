@@ -18,9 +18,9 @@ export const TiltCard: React.FC<TiltCardProps> = ({ children, className }) => {
   const mouseX = useSpring(x, { stiffness: 300, damping: 30 });
   const mouseY = useSpring(y, { stiffness: 300, damping: 30 });
 
-  // Convert mouse position to rotation degrees (Max 8 degrees)
-  const rotateX = useTransform(mouseY, [-0.5, 0.5], [8, -8]);
-  const rotateY = useTransform(mouseX, [-0.5, 0.5], [-8, 8]);
+  // Convert mouse position to rotation degrees (Max 4 degrees - reduced for subtlety)
+  const rotateX = useTransform(mouseY, [-0.5, 0.5], [4, -4]);
+  const rotateY = useTransform(mouseX, [-0.5, 0.5], [-4, 4]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!ref.current) return;
