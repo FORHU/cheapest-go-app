@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useAuth } from './AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 
 interface SocialLoginButtonsProps {
     showLabels?: boolean;
@@ -33,7 +33,7 @@ const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
     showLabels = true,
     compact = false
 }) => {
-    const { socialLogin, isLoading } = useAuth();
+    const { socialLogin, isLoading } = useAuthStore();
 
     const handleSocialLogin = (provider: 'google' | 'apple' | 'facebook') => {
         socialLogin(provider);

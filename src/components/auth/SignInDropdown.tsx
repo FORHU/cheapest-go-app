@@ -3,11 +3,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, ChevronDown, LogOut, Briefcase, Settings, Star } from 'lucide-react';
-import { useAuth } from './AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import Link from 'next/link';
 
 const SignInDropdown: React.FC = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, openAuthModal } = useAuthStore();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +34,16 @@ const SignInDropdown: React.FC = () => {
         return () => document.removeEventListener('keydown', handleEscape);
     }, []);
 
-    // No longer need handleSignInClick since we navigate to /login page
+    const handleSignInClick = () => {
+        setIsOpen(false);
+        // We can either navigate to /login OR open modal.
+        // The original code navigated to /login (Step 1679 lines 159).
+        // BUT the logout logic (line 129) had a button "Sign in" which just opened dropdown.
+        // Inside dropdown (line 159), it links to /login.
+        // But I see `onClick={() => setIsOpen(!isOpen)}` on the main button.
+        // I will keep the Links to /login if that was the design, OR use openAuthModal if requested.
+        // The previous file had `Link href="/login"`. I will keep it.
+    };
 
     if (user) {
         // Logged in state

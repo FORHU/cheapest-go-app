@@ -3,13 +3,13 @@
 import React, { useState } from 'react';
 import { ArrowLeft, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from './AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import { Input, Button } from '@/components/ui';
 import { PasswordRequirements } from './PasswordRequirements';
 import { registerSchema } from '@/lib/schemas/auth';
 
 const RegisterStep: React.FC = () => {
-    const { email, setAuthStep, register, isLoading } = useAuth();
+    const { email, setAuthStep, register, isLoading, login } = useAuthStore();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [password, setPassword] = useState('');
@@ -43,15 +43,37 @@ const RegisterStep: React.FC = () => {
         try {
             await register({ email, password, firstName, lastName });
             toast.success("Account created successfully!");
-        } catch {
-            toast.error("Registration failed. Please try again.");
-            setErrors({ general: 'Registration failed. Please try again.' });
+        } catch (error: any) {
+            if (error?.code === 'over_email_send_rate_limit' || error?.message?.includes('rate limit')) {
+                toast.warning("Please check your email. Verification link already sent.");
+                setAuthStep('verify-email');
+                return;
+            }
+
+            if (error?.message?.includes('already registered')) {
+                try {
+                    toast.info("Account already exists. Attempting to sign in...");
+                    await login(email, password);
+                    toast.success("Welcome back!");
+                    return;
+                } catch (loginError: any) {
+                    if (loginError?.message?.toLowerCase().includes('email not confirmed')) {
+                        setAuthStep('verify-email');
+                        return;
+                    }
+                    toast.error("Account exists. Please sign in.");
+                    setAuthStep('password');
+                    return;
+                }
+            }
+
+            toast.error(error?.message || "Registration failed. Please try again.");
+            setErrors({ general: error?.message || 'Registration failed. Please try again.' });
         }
     };
 
     return (
         <div className="space-y-6">
-            {/* Back Button */}
             <button
                 onClick={() => setAuthStep('email')}
                 className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
@@ -61,7 +83,6 @@ const RegisterStep: React.FC = () => {
                 Back
             </button>
 
-            {/* Header */}
             <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
                     Create your account
@@ -71,9 +92,13 @@ const RegisterStep: React.FC = () => {
                 </p>
             </div>
 
-            {/* Registration Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Name Fields */}
+                {errors.general && (
+                    <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        {errors.general}
+                    </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                     <Input
                         id="firstName"
@@ -102,7 +127,6 @@ const RegisterStep: React.FC = () => {
                     />
                 </div>
 
-                {/* Password Field */}
                 <div>
                     <Input
                         id="registerPassword"
@@ -121,7 +145,6 @@ const RegisterStep: React.FC = () => {
                     <PasswordRequirements password={password} />
                 </div>
 
-                {/* Keep Signed In */}
                 <label className="flex items-center gap-2 cursor-pointer">
                     <input
                         type="checkbox"
@@ -168,4 +191,3 @@ const RegisterStep: React.FC = () => {
 };
 
 export default RegisterStep;
-

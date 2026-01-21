@@ -3,36 +3,26 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar, ArrowRight } from 'lucide-react';
-
-interface DatePickerProps {
-    isOpen: boolean;
-    checkIn: Date | null;
-    checkOut: Date | null;
-    flexibility: string;
-    onCheckInChange: (date: Date | null) => void;
-    onCheckOutChange: (date: Date | null) => void;
-    onFlexibilityChange: (flex: string) => void;
-    onClose: () => void;
-}
+import { useSearchStore, useDates, useActiveDropdown } from '@/stores/searchStore';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-export const DatePicker: React.FC<DatePickerProps> = ({
-    isOpen,
-    checkIn,
-    checkOut,
-    flexibility,
-    onCheckInChange,
-    onCheckOutChange,
-    onFlexibilityChange,
-    onClose,
-}) => {
+export const DatePicker: React.FC = () => {
     const ref = useRef<HTMLDivElement>(null);
     const [activeTab, setActiveTab] = useState<'calendar' | 'flexible'>('calendar');
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectingCheckOut, setSelectingCheckOut] = useState(false);
 
+    // Store
+    const activeDropdown = useActiveDropdown();
+    const { checkIn, checkOut, flexibility } = useDates();
+    const { setDates, setActiveDropdown } = useSearchStore();
+
+    const isOpen = activeDropdown === 'dates';
+    const onClose = () => setActiveDropdown(null);
+
+    // Close logic
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -43,7 +33,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isOpen, onClose]);
+    }, [isOpen]);
 
     const getNextMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 1);
 
@@ -52,12 +42,24 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
     const handleDateClick = (date: Date) => {
         if (!selectingCheckOut || !checkIn || date < checkIn) {
-            onCheckInChange(date);
-            onCheckOutChange(null);
+            setDates({ checkIn: date, checkOut: null });
             setSelectingCheckOut(true);
         } else {
-            onCheckOutChange(date);
+            setDates({ checkOut: date });
             setSelectingCheckOut(false);
+            // Optional: Close on checkout selection? Usually user might want to review. 
+            // We'll keep it open until "Done" is clicked or outside click.
+        }
+    };
+
+    const flexOptions = ['Exact dates', '± 1 day', '± 2 days', '± 3 days', '± 7 days'];
+
+    const onFlexibilityChange = (flex: string) => {
+        // We need updates to store flexibility type
+        type FlexType = 'exact' | '1day' | '2days' | '3days' | '7days';
+        // Validate if it's one of the allowed types, usually we assume it is but strict typing is good
+        if (['exact', '1day', '2days', '3days', '7days'].includes(flex)) {
+            setDates({ flexibility: flex as FlexType });
         }
     };
 
@@ -71,12 +73,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
         const days = [];
 
-        // Padding for start of month
+        // Padding
         for (let i = 0; i < firstDay; i++) {
             days.push(<div key={`pad-${i}`} className="size-9" />);
         }
 
-        // Actual days
+        // Days
         for (let day = 1; day <= daysInMonth; day++) {
             const date = new Date(year, month, day);
             const isToday = date.toDateString() === today.toDateString();
@@ -111,8 +113,6 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
-    const flexOptions = ['Exact dates', '± 1 day', '± 2 days', '± 3 days', '± 7 days'];
-
     return (
         <AnimatePresence>
             {isOpen && (
@@ -130,8 +130,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                         <button
                             onClick={() => setActiveTab('calendar')}
                             className={`flex-1 py-4 text-xs font-bold font-display transition-all ${activeTab === 'calendar'
-                                    ? 'text-alabaster-accent dark:text-obsidian-accent border-b-2 border-alabaster-accent dark:border-obsidian-accent'
-                                    : 'text-slate-400 hover:text-slate-600'
+                                ? 'text-alabaster-accent dark:text-obsidian-accent border-b-2 border-alabaster-accent dark:border-obsidian-accent'
+                                : 'text-slate-400 hover:text-slate-600'
                                 }`}
                         >
                             Calendar
@@ -139,8 +139,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                         <button
                             onClick={() => setActiveTab('flexible')}
                             className={`flex-1 py-4 text-xs font-bold font-display transition-all ${activeTab === 'flexible'
-                                    ? 'text-alabaster-accent dark:text-obsidian-accent border-b-2 border-alabaster-accent dark:border-obsidian-accent'
-                                    : 'text-slate-400 hover:text-slate-600'
+                                ? 'text-alabaster-accent dark:text-obsidian-accent border-b-2 border-alabaster-accent dark:border-obsidian-accent'
+                                : 'text-slate-400 hover:text-slate-600'
                                 }`}
                         >
                             Flexible dates
@@ -221,8 +221,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                                             key={opt}
                                             onClick={() => onFlexibilityChange(opt)}
                                             className={`px-4 py-2 rounded-full border text-xs font-medium transition-all ${flexibility === opt
-                                                    ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-obsidian'
-                                                    : 'border-slate-200 dark:border-white/10 hover:border-slate-400 text-slate-600 dark:text-slate-400'
+                                                ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-obsidian'
+                                                : 'border-slate-200 dark:border-white/10 hover:border-slate-400 text-slate-600 dark:text-slate-400'
                                                 }`}
                                         >
                                             {opt}

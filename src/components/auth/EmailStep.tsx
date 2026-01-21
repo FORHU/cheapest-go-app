@@ -3,15 +3,14 @@
 import React, { useState } from 'react';
 import { Mail, ArrowRight, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from './AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import SocialLoginButtons from './SocialLoginButtons';
 import { Input, Button } from '@/components/ui';
 import { PasswordRequirements } from './PasswordRequirements';
 import { emailSchema, registerSchema } from '@/lib/schemas/auth';
-import { z } from 'zod';
 
 const EmailStep: React.FC = () => {
-    const { email, setEmail, setAuthStep, isLoading, register } = useAuth();
+    const { email, setEmail, setAuthStep, isLoading, register } = useAuthStore();
     const [localEmail, setLocalEmail] = useState(email);
     const [error, setError] = useState('');
 
@@ -63,8 +62,6 @@ const EmailStep: React.FC = () => {
                 lastName: fieldErrors.lastName?.[0] || '',
                 password: fieldErrors.password?.[0] || '',
             });
-            // Optional: Toast for general form error
-            // toast.error("Please fix the errors in the form");
             return;
         }
 
@@ -72,8 +69,15 @@ const EmailStep: React.FC = () => {
             setEmail(localEmail);
             await register({ email: localEmail, password, firstName, lastName });
             toast.success("Account created successfully!");
-        } catch {
-            toast.error("Registration failed. Please try again.");
+        } catch (error: any) {
+            // Handle rate limit specifically
+            if (error?.code === 'over_email_send_rate_limit' || error?.message?.includes('rate limit')) {
+                toast.warning("Please check your email. Verification link already sent.");
+                setAuthStep('verify-email');
+                return;
+            }
+            toast.error(error?.message || "Registration failed. Please try again.");
+            setErrors({ general: error?.message || 'Registration failed. Please try again.' });
         }
     };
 
@@ -225,4 +229,3 @@ const EmailStep: React.FC = () => {
 };
 
 export default EmailStep;
-

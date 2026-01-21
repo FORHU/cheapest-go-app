@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, History, Plane, Building2, X } from 'lucide-react';
-import { Destination } from '@/stores/searchStore';
+import { Destination, useSearchStore, useDestinationQuery, useRecentSearches, useActiveDropdown } from '@/stores/searchStore';
 
 // Mock popular destinations
 const popularDestinations: Destination[] = [
@@ -16,27 +16,25 @@ const popularDestinations: Destination[] = [
     { type: 'airport', title: 'Angeles City (CRK - Clark Intl.)', subtitle: 'Philippines', code: 'CRK' },
 ];
 
-interface DestinationPickerProps {
-    isOpen: boolean;
-    query: string;
-    recentSearches: Destination[];
-    onQueryChange: (query: string) => void;
-    onSelect: (destination: Destination) => void;
-    onClose: () => void;
-    onClearRecent?: (title: string) => void;
-}
-
-export const DestinationPicker: React.FC<DestinationPickerProps> = ({
-    isOpen,
-    query,
-    recentSearches,
-    onQueryChange,
-    onSelect,
-    onClose,
-    onClearRecent,
-}) => {
+export const DestinationPicker: React.FC = () => {
     const ref = useRef<HTMLDivElement>(null);
 
+    // Store
+    const query = useDestinationQuery();
+    const recentSearches = useRecentSearches();
+    const activeDropdown = useActiveDropdown();
+    const {
+        setDestination,
+        setDestinationQuery,
+        addRecentSearch,
+        setActiveDropdown,
+        removeRecentSearch
+    } = useSearchStore();
+
+    const isOpen = activeDropdown === 'destination';
+    const onClose = () => setActiveDropdown(null);
+
+    // Close logic
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -47,7 +45,15 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isOpen, onClose]);
+    }, [isOpen]);
+
+    // Handlers
+    const handleSelect = (destination: Destination) => {
+        setDestination(destination);
+        setDestinationQuery(destination.title);
+        addRecentSearch(destination);
+        onClose();
+    };
 
     // Filter destinations based on query
     const filteredDestinations = query.length > 0
@@ -74,7 +80,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-0 left-0 w-[400px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                    className="absolute top-full left-0 mt-4 w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Search Header */}
@@ -88,13 +94,13 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({
                                 autoFocus
                                 type="text"
                                 value={query}
-                                onChange={(e) => onQueryChange(e.target.value)}
+                                onChange={(e) => setDestinationQuery(e.target.value)}
                                 placeholder="Search destinations..."
                                 className="bg-transparent border-none p-0 text-xl font-bold focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400"
                             />
                             {query && (
                                 <button
-                                    onClick={() => onQueryChange('')}
+                                    onClick={() => setDestinationQuery('')}
                                     className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full"
                                 >
                                     <X size={16} className="text-slate-400" />
@@ -114,7 +120,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({
                                 {recentSearches.map((item, i) => (
                                     <div
                                         key={`recent-${i}`}
-                                        onClick={() => onSelect(item)}
+                                        onClick={() => handleSelect(item)}
                                         className="px-6 py-3 hover:bg-slate-50 dark:hover:bg-white/5 flex items-start gap-4 cursor-pointer group transition-colors"
                                     >
                                         <div className="mt-0.5 text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors">
@@ -124,21 +130,19 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({
                                             <h5 className="text-sm font-bold group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors text-slate-900 dark:text-white">
                                                 {item.title}
                                             </h5>
-                                            <p className="text-xs text-slate-400 truncate max-w-[280px]">
+                                            <p className="text-xs text-slate-400 truncate max-w-[320px]">
                                                 {item.subtitle}
                                             </p>
                                         </div>
-                                        {onClearRecent && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onClearRecent(item.title);
-                                                }}
-                                                className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (removeRecentSearch) removeRecentSearch(item.title);
+                                            }}
+                                            className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <X size={14} />
+                                        </button>
                                     </div>
                                 ))}
                                 <div className="h-px bg-slate-100 dark:bg-white/5 my-2" />
@@ -153,7 +157,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({
                             filteredDestinations.map((item, i) => (
                                 <div
                                     key={i}
-                                    onClick={() => onSelect(item)}
+                                    onClick={() => handleSelect(item)}
                                     className="px-6 py-3 hover:bg-slate-50 dark:hover:bg-white/5 flex items-start gap-4 cursor-pointer group transition-colors"
                                 >
                                     <div className="mt-0.5 text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors">

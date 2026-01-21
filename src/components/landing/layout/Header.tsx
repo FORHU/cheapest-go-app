@@ -3,7 +3,7 @@
 import React from 'react';
 import { PlaneTakeoff, Moon, Sun, Download } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import { SignInDropdown } from '../../auth';
+import SignInDropdown from '../../auth/SignInDropdown';
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();

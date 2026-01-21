@@ -14,12 +14,12 @@ import {
     HelpCircle,
     ArrowLeft
 } from 'lucide-react';
-import { useAuth } from '@/components/auth';
+import { useAuthStore } from '@/stores/authStore';
 import { Header, AccountSidebar, AccountMainContent } from '@/components/landing';
 
 export default function AccountSettingsPage() {
     const router = useRouter();
-    const { user, logout } = useAuth();
+    const { user, logout } = useAuthStore();
     const [activeSection, setActiveSection] = useState('profile');
 
     // Redirect if not logged in
@@ -61,7 +61,7 @@ export default function AccountSettingsPage() {
     ];
 
     return (
-        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-obsidian">
+        <div className="min-h-screen flex flex-col">
             <Header />
 
             <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">

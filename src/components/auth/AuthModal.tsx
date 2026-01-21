@@ -3,13 +3,14 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, PlaneTakeoff } from 'lucide-react';
-import { useAuth } from './AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import EmailStep from './EmailStep';
 import PasswordStep from './PasswordStep';
 import RegisterStep from './RegisterStep';
+import VerifyEmailStep from './VerifyEmailStep';
 
 const AuthModal: React.FC = () => {
-    const { isAuthModalOpen, closeAuthModal, authStep } = useAuth();
+    const { isAuthModalOpen, closeAuthModal, authStep } = useAuthStore();
 
     // Close modal on Escape key
     useEffect(() => {
@@ -30,12 +31,15 @@ const AuthModal: React.FC = () => {
         };
     }, [isAuthModalOpen, closeAuthModal]);
 
+
     const renderStep = () => {
         switch (authStep) {
             case 'password':
                 return <PasswordStep />;
             case 'register':
                 return <RegisterStep />;
+            case 'verify-email':
+                return <VerifyEmailStep />;
             case 'forgot-password':
                 return (
                     <div className="text-center py-8">

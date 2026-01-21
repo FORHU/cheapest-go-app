@@ -3,7 +3,9 @@ import type { Metadata } from 'next';
 import { Inter, Inter_Tight, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/context/ThemeContext';
-import { AuthProvider, AuthModal } from '@/components/auth';
+import { AuthListener } from '@/components/auth/AuthListener';
+import AuthModal from '@/components/auth/AuthModal';
+import Script from 'next/script';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' });
@@ -22,13 +24,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} font-sans`}>
+        <Script src="https://cdn.jsdelivr.net/npm/react-scan/dist/auto.global.js" />
         <ThemeProvider>
-          <AuthProvider>
-            <div className="min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px]">
-              {children}
-            </div>
-            <AuthModal />
-          </AuthProvider>
+          <AuthListener />
+          <div className="min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px]">
+            {children}
+          </div>
+          <AuthModal />
         </ThemeProvider>
       </body>
     </html>

@@ -34,12 +34,17 @@ interface SearchState {
     // Recent searches (persisted)
     recentSearches: Destination[];
 
+    // UI Actions
+    activeDropdown: 'destination' | 'dates' | 'travelers' | null;
+    setActiveDropdown: (dropdown: 'destination' | 'dates' | 'travelers' | null) => void;
+
     // Actions
     setDestination: (destination: Destination | null) => void;
     setDestinationQuery: (query: string) => void;
     setDates: (dates: Partial<DateRange>) => void;
     setTravelers: (travelers: Partial<TravelersConfig>) => void;
     addRecentSearch: (destination: Destination) => void;
+    removeRecentSearch: (title: string) => void;
     clearRecentSearches: () => void;
     reset: () => void;
 }
@@ -64,6 +69,7 @@ export const useSearchStore = create<SearchState>()(
             dates: initialDates,
             travelers: initialTravelers,
             recentSearches: [],
+            activeDropdown: null,
 
             setDestination: (destination) => set({ destination }),
 
@@ -86,6 +92,12 @@ export const useSearchStore = create<SearchState>()(
                 };
             }),
 
+            removeRecentSearch: (title) => set((state) => ({
+                recentSearches: state.recentSearches.filter((d) => d.title !== title),
+            })),
+
+            setActiveDropdown: (activeDropdown) => set({ activeDropdown }),
+
             clearRecentSearches: () => set({ recentSearches: [] }),
 
             reset: () => set({
@@ -93,6 +105,7 @@ export const useSearchStore = create<SearchState>()(
                 destinationQuery: '',
                 dates: initialDates,
                 travelers: initialTravelers,
+                activeDropdown: null,
             }),
         }),
         {
@@ -108,3 +121,4 @@ export const useDestinationQuery = () => useSearchStore((state) => state.destina
 export const useDates = () => useSearchStore((state) => state.dates);
 export const useTravelers = () => useSearchStore((state) => state.travelers);
 export const useRecentSearches = () => useSearchStore((state) => state.recentSearches);
+export const useActiveDropdown = () => useSearchStore((state) => state.activeDropdown);

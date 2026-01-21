@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Shield, FileText, Settings, Star, Users } from 'lucide-react';
-import { User } from '@/components/auth';
+import type { User } from '@/types/auth';
 import { AccountSectionHeader } from './AccountSectionHeader';
 import { AccountInfoRow } from './AccountInfoRow';
 import { AccountDetailCard } from './AccountDetailCard';

@@ -3,17 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus } from 'lucide-react';
-
-interface TravelersPickerProps {
-    isOpen: boolean;
-    adults: number;
-    children: number;
-    rooms: number;
-    onAdultsChange: (count: number) => void;
-    onChildrenChange: (count: number) => void;
-    onRoomsChange: (count: number) => void;
-    onClose: () => void;
-}
+import { useSearchStore, useTravelers, useActiveDropdown } from '@/stores/searchStore';
 
 interface CounterProps {
     label: string;
@@ -52,17 +42,16 @@ const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onC
     </div>
 );
 
-export const TravelersPicker: React.FC<TravelersPickerProps> = ({
-    isOpen,
-    adults,
-    children,
-    rooms,
-    onAdultsChange,
-    onChildrenChange,
-    onRoomsChange,
-    onClose,
-}) => {
+export const TravelersPicker: React.FC = () => {
     const ref = useRef<HTMLDivElement>(null);
+
+    // Store
+    const activeDropdown = useActiveDropdown();
+    const { adults, children, rooms } = useTravelers();
+    const { setTravelers, setActiveDropdown } = useSearchStore();
+
+    const isOpen = activeDropdown === 'travelers';
+    const onClose = () => setActiveDropdown(null);
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -74,7 +63,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isOpen, onClose]);
+    }, [isOpen]);
 
     return (
         <AnimatePresence>
@@ -99,7 +88,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({
                                 value={adults}
                                 min={1}
                                 max={10}
-                                onChange={onAdultsChange}
+                                onChange={(val) => setTravelers({ adults: val })}
                             />
                             <Counter
                                 label="Children"
@@ -107,14 +96,14 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({
                                 value={children}
                                 min={0}
                                 max={6}
-                                onChange={onChildrenChange}
+                                onChange={(val) => setTravelers({ children: val })}
                             />
                             <Counter
                                 label="Rooms"
                                 value={rooms}
                                 min={1}
                                 max={8}
-                                onChange={onRoomsChange}
+                                onChange={(val) => setTravelers({ rooms: val })}
                             />
                         </div>
 

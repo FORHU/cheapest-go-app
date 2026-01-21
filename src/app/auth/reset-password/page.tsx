@@ -3,11 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { PlaneTakeoff, ArrowLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
-import { useAuth } from '@/components/auth/AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import { useSearchParams } from 'next/navigation';
 
 export default function ResetPasswordPage() {
-    const { isLoading } = useAuth();
+    const { isLoading } = useAuthStore();
     const searchParams = useSearchParams();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -50,7 +50,7 @@ export default function ResetPasswordPage() {
 
     if (success) {
         return (
-            <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-obsidian">
+            <div className="min-h-screen flex flex-col">
                 <main className="flex-1 flex items-center justify-center p-4">
                     <div className="w-full max-w-md text-center">
                         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-white/10 p-8">
@@ -77,7 +77,7 @@ export default function ResetPasswordPage() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-obsidian">
+        <div className="min-h-screen flex flex-col">
             {/* Header */}
             <header className="w-full py-6 px-8">
                 <Link

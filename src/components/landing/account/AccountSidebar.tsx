@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ChevronRight, HelpCircle, Mail } from 'lucide-react';
-import { User } from '@/components/auth';
+import type { User } from '@/types/auth';
 
 interface AccountSidebarProps {
     user: User;

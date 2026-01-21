@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from './AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import { Input, Button } from '@/components/ui';
 import { loginSchema } from '@/lib/schemas/auth';
 
 const PasswordStep: React.FC = () => {
-    const { email, setAuthStep, login, isLoading } = useAuth();
+    const { email, setAuthStep, login, isLoading } = useAuthStore();
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
@@ -20,8 +20,6 @@ const PasswordStep: React.FC = () => {
         const result = loginSchema.safeParse({ email, password });
 
         if (!result.success) {
-            // For login, we primarily care about password field errors here
-            // distinct from generic invalid credentials
             const pwError = result.error.flatten().fieldErrors.password?.[0];
             if (pwError) {
                 setError(pwError);
@@ -32,7 +30,10 @@ const PasswordStep: React.FC = () => {
         try {
             await login(email, password);
             toast.success("Welcome back!");
-        } catch {
+        } catch (err: any) {
+            if (err.message && (err.message.includes('Email not confirmed') || err.message.includes('email not confirmed'))) {
+                return;
+            }
             toast.error("Invalid email or password.");
             setError("Invalid email or password.");
         }
@@ -120,4 +121,3 @@ const PasswordStep: React.FC = () => {
 };
 
 export default PasswordStep;
-
