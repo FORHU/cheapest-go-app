@@ -8,3 +8,4 @@ export { default as DestinationsGrid } from "./DestinationsGrid";
 export * from "./ExpediaSections";
 export { default as PropertyTypes } from "./PropertyTypes";
 export { default as RecentlyViewed } from "./RecentlyViewed";
+export { default as Dashboard } from "./Dashboard";

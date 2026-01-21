@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Theme, ThemeContextType, BaseProps } from '../../types';
+import { Toaster } from 'sonner';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -21,6 +22,7 @@ export const ThemeProvider: React.FC<BaseProps> = ({ children }) => {
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
+      <Toaster theme={theme} richColors closeButton position="top-center" />
     </ThemeContext.Provider>
   );
 };

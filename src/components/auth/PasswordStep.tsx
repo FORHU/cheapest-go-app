@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState } from 'react';
-import { ArrowLeft, Eye, EyeOff, Lock } from 'lucide-react';
+import { ArrowLeft, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
+import { Input, Button } from '@/components/ui';
+import { loginSchema } from '@/lib/schemas/auth';
 
 const PasswordStep: React.FC = () => {
     const { email, setAuthStep, login, isLoading } = useAuth();
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
 
@@ -15,35 +17,38 @@ const PasswordStep: React.FC = () => {
         e.preventDefault();
         setError('');
 
-        if (!password) {
-            setError('Please enter your password');
-            return;
-        }
+        const result = loginSchema.safeParse({ email, password });
 
-        if (password.length < 6) {
-            setError('Password must be at least 6 characters');
-            return;
+        if (!result.success) {
+            // For login, we primarily care about password field errors here
+            // distinct from generic invalid credentials
+            const pwError = result.error.flatten().fieldErrors.password?.[0];
+            if (pwError) {
+                setError(pwError);
+                return;
+            }
         }
 
         try {
             await login(email, password);
+            toast.success("Welcome back!");
         } catch {
-            setError('Invalid email or password. Please try again.');
+            toast.error("Invalid email or password.");
+            setError("Invalid email or password.");
         }
     };
 
     return (
         <div className="space-y-6">
-            {/* Back Button */}
             <button
                 onClick={() => setAuthStep('email')}
                 className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                type="button"
             >
                 <ArrowLeft className="h-4 w-4" />
                 Back
             </button>
 
-            {/* Header */}
             <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
                     Enter your password
@@ -53,49 +58,22 @@ const PasswordStep: React.FC = () => {
                 </p>
             </div>
 
-            {/* Password Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Password
-                    </label>
-                    <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Lock className="h-5 w-5 text-slate-400" />
-                        </div>
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            id="password"
-                            value={password}
-                            onChange={(e) => {
-                                setPassword(e.target.value);
-                                setError('');
-                            }}
-                            placeholder="Enter your password"
-                            className={`w-full pl-10 pr-12 py-3 border rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${error
-                                ? 'border-red-500 focus:ring-red-500'
-                                : 'border-slate-200 dark:border-white/10'
-                                }`}
-                            disabled={isLoading}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                        >
-                            {showPassword ? (
-                                <EyeOff className="h-5 w-5 text-slate-400 hover:text-slate-600" />
-                            ) : (
-                                <Eye className="h-5 w-5 text-slate-400 hover:text-slate-600" />
-                            )}
-                        </button>
-                    </div>
-                    {error && (
-                        <p className="mt-2 text-sm text-red-500">{error}</p>
-                    )}
-                </div>
+                <Input
+                    id="password"
+                    type="password"
+                    label="Password"
+                    value={password}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        setPassword(e.target.value);
+                        setError('');
+                    }}
+                    placeholder="Enter your password"
+                    icon={Lock}
+                    error={error}
+                    disabled={isLoading}
+                />
 
-                {/* Remember Me & Forgot Password */}
                 <div className="flex items-center justify-between">
                     <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -115,20 +93,11 @@ const PasswordStep: React.FC = () => {
                     </button>
                 </div>
 
-                <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isLoading ? (
-                        <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                        'Sign in'
-                    )}
-                </button>
+                <Button type="submit" fullWidth isLoading={isLoading}>
+                    Sign in
+                </Button>
             </form>
 
-            {/* Create Account Link */}
             <p className="text-center text-sm text-slate-500 dark:text-slate-400">
                 Don&apos;t have an account?{' '}
                 <button
@@ -139,7 +108,6 @@ const PasswordStep: React.FC = () => {
                 </button>
             </p>
 
-            {/* Partner Logos */}
             <div className="pt-4 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
                 <span>AeroVantage</span>
                 <span>•</span>
@@ -152,3 +120,4 @@ const PasswordStep: React.FC = () => {
 };
 
 export default PasswordStep;
+

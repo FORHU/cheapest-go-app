@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Building2, Home, Palmtree, Sparkles, ArrowRight } from 'lucide-react';
-import { TiltCard } from '../ui/TiltCard';
+import { TiltCard } from '@/components/ui';
 
 interface PropertyType {
   id: string;

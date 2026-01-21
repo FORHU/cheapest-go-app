@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Map as MapIcon } from 'lucide-react';
-import { TiltCard } from '../ui/TiltCard';
+import { TiltCard } from '@/components/ui';
 import { DESTINATIONS } from '../../../constants';
 
 const DestinationsGrid = () => {

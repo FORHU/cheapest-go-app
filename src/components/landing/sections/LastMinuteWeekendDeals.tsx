@@ -1,29 +1,22 @@
 "use client";
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { PropertyCard } from '@/components/ui';
+import { Sparkles } from 'lucide-react';
+import { PropertyCard, SectionHeader } from '@/components/ui';
 import { weekendDeals } from '../data';
 
 export const LastMinuteWeekendDeals: React.FC = () => {
   return (
     <section className="w-full py-12">
       <div className="max-w-[1400px] mx-auto px-6">
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <motion.h2
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false }}
-              className="text-2xl md:text-3xl font-display font-bold text-slate-900 dark:text-white"
-            >
-              Flash Getaways
-            </motion.h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-              Limited-time offers on premium stays
-            </p>
-          </div>
-        </div>
+        <SectionHeader
+          title="Flash Getaways"
+          subtitle="Limited-time offers on premium stays"
+          badge={{ icon: <Sparkles size={14} />, text: 'Hot Deals', variant: 'amber' }}
+          actionLabel="See all deals"
+          actionHref="/deals"
+        />
+
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
           {weekendDeals.map((deal, i) => (
@@ -42,10 +35,6 @@ export const LastMinuteWeekendDeals: React.FC = () => {
             />
           ))}
         </div>
-
-        <button className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
-          See all deals
-        </button>
       </div>
     </section>
   );

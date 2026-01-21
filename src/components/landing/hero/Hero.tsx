@@ -2,10 +2,9 @@
 
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
-import { PlaneTakeoff, Calendar, User } from 'lucide-react';
-import { MagneticButton } from '../ui/MagneticButton';
-import { TiltCard } from '../ui/TiltCard';
-import { VersionBadge } from '../ui/Components';
+import { SearchModule } from './SearchModule';
+import { TiltCard } from '@/components/ui';
+import { VersionBadge } from '../sections/TelemetryComponents';
 
 const Hero = () => {
   // Staggered text animation variants
@@ -70,47 +69,7 @@ const Hero = () => {
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
         >
           <TiltCard className="w-full">
-            <div className="relative bg-white/60 dark:bg-[#0f172a]/80 backdrop-blur-3xl rounded-xl shadow-2xl dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border border-white/20 dark:border-white/10 p-2 flex flex-col md:flex-row gap-2">
-
-              {/* Inputs Container */}
-              <div className="flex-1 flex flex-col sm:flex-row bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-white/5 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5">
-                <div className="flex-1 relative flex items-center px-4 h-16 group">
-                  <PlaneTakeoff className="text-slate-400 group-focus-within:text-alabaster-accent dark:group-focus-within:text-obsidian-accent transition-colors" />
-                  <div className="ml-3 flex flex-col justify-center w-full text-left">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">Origin</label>
-                    <input className="bg-transparent border-none p-0 h-6 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-0 text-sm font-medium w-full font-body outline-none" type="text" defaultValue="New York (JFK)" />
-                  </div>
-                </div>
-                <div className="flex-1 relative flex items-center px-4 h-16 group">
-                  <div className="ml-3 flex flex-col justify-center w-full text-left">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">Destination</label>
-                    <input className="bg-transparent border-none p-0 h-6 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-0 text-sm font-medium w-full font-body outline-none" placeholder="City or Airport" type="text" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1 flex flex-col sm:flex-row bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-white/5 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5">
-                <div className="flex-[1.5] relative flex items-center px-4 h-16 group">
-                  <Calendar className="text-slate-400 group-focus-within:text-alabaster-accent dark:group-focus-within:text-obsidian-accent transition-colors" />
-                  <div className="ml-3 flex flex-col justify-center w-full text-left">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">Dates</label>
-                    <input className="bg-transparent border-none p-0 h-6 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-0 text-sm font-medium w-full font-body outline-none" type="text" defaultValue="Oct 24 - Nov 02" />
-                  </div>
-                </div>
-                <div className="flex-1 relative flex items-center px-4 h-16 group">
-                  <User className="text-slate-400 group-focus-within:text-alabaster-accent dark:group-focus-within:text-obsidian-accent transition-colors" />
-                  <div className="ml-3 flex flex-col justify-center w-full text-left">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">Travelers</label>
-                    <select className="bg-transparent border-none p-0 h-6 text-slate-900 dark:text-white focus:ring-0 text-sm font-medium w-full font-body outline-none cursor-pointer">
-                      <option>1 Passenger</option>
-                      <option>2 Passengers</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <MagneticButton />
-            </div>
+            <SearchModule />
           </TiltCard>
         </motion.div>
       </motion.div>
@@ -119,3 +78,4 @@ const Hero = () => {
 };
 
 export default Hero;
+
