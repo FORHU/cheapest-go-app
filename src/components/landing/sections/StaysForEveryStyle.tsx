@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { TabList, GradientBackground } from '@/components/ui';
-import { travelStyles, styleTabs } from '../data';
+import { travelStyles, styleTabs } from '@/data';
 
 export const StaysForEveryStyle: React.FC = () => {
   const [activeTab, setActiveTab] = useState(styleTabs[0]);
@@ -20,7 +20,7 @@ export const StaysForEveryStyle: React.FC = () => {
         >
           Curated Collections
         </motion.h2>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false }}
@@ -30,9 +30,9 @@ export const StaysForEveryStyle: React.FC = () => {
           Handpicked accommodations for every journey
         </motion.p>
 
-        <TabList 
-          tabs={styleTabs} 
-          activeTab={activeTab} 
+        <TabList
+          tabs={styleTabs}
+          activeTab={activeTab}
           onTabChange={setActiveTab}
           className="mb-8"
         />
@@ -44,7 +44,7 @@ export const StaysForEveryStyle: React.FC = () => {
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: false }}
-              transition={{ 
+              transition={{
                 delay: i * 0.1,
                 type: 'spring',
                 stiffness: 100,
@@ -55,7 +55,7 @@ export const StaysForEveryStyle: React.FC = () => {
             >
               {/* Glow effect */}
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-60 blur-xl transition-all duration-500" />
-              
+
               <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
                 <div className="relative aspect-4/3 overflow-hidden">
                   <motion.div
@@ -65,9 +65,9 @@ export const StaysForEveryStyle: React.FC = () => {
                     transition={{ duration: 0.6 }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                  
+
                   {/* Price tag floating */}
-                  <motion.div 
+                  <motion.div
                     className="absolute bottom-3 left-3 px-3 py-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded-lg shadow-lg"
                     initial={{ y: 10, opacity: 0 }}
                     whileInView={{ y: 0, opacity: 1 }}
@@ -78,7 +78,7 @@ export const StaysForEveryStyle: React.FC = () => {
                     </span>
                   </motion.div>
                 </div>
-                
+
                 <div className="p-4">
                   <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {style.title}

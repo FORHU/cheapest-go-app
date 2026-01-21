@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { recentSearches } from '../data';
+import { recentSearches } from '@/data';
 
 export const YourRecentSearches: React.FC = () => {
   return (
@@ -16,7 +16,7 @@ export const YourRecentSearches: React.FC = () => {
         >
           Quick Access
         </motion.h3>
-        
+
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
           {recentSearches.map((search, i) => (
             <motion.div

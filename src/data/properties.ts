@@ -1,5 +1,6 @@
 // Types for properties and stays
-export interface Property {
+// Using SimpleProperty to avoid conflict with the more detailed Property in mockProperties.ts
+export interface SimpleProperty {
     id: number;
     name: string;
     location: string;
@@ -39,7 +40,7 @@ export const propertyTypes: PropertyType[] = [
 ];
 
 // Unique stays
-export const uniqueStays: Property[] = [
+export const uniqueStays: SimpleProperty[] = [
     {
         id: 1,
         name: 'Floating Cottage',
@@ -89,7 +90,7 @@ export const uniqueStays: Property[] = [
 export const uniqueTabs = ['Tents', 'Boats', 'Tree House', 'Resorts'];
 
 // Vacation packages
-export const vacationPackages: Property[] = [
+export const vacationPackages: SimpleProperty[] = [
     {
         id: 1,
         name: 'Boracay Beach Escape',

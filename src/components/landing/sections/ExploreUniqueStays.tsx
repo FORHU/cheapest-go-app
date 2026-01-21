@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Star } from 'lucide-react';
 import { TabList, SparkleEffect } from '@/components/ui';
-import { uniqueStays, uniqueTabs } from '../data';
+import { uniqueStays, uniqueTabs } from '@/data';
 
 export const ExploreUniqueStays: React.FC = () => {
   const [activeTab, setActiveTab] = useState(uniqueTabs[0]);
@@ -13,7 +13,7 @@ export const ExploreUniqueStays: React.FC = () => {
     <section className="relative w-full py-16 overflow-hidden">
       {/* Background sparkle effect */}
       <SparkleEffect count={30} className="opacity-30 dark:opacity-50" />
-      
+
       <div className="relative max-w-[1400px] mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -31,7 +31,7 @@ export const ExploreUniqueStays: React.FC = () => {
             Extraordinary Escapes
           </h2>
         </motion.div>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false }}
@@ -41,9 +41,9 @@ export const ExploreUniqueStays: React.FC = () => {
           One-of-a-kind places from glamping to floating villas
         </motion.p>
 
-        <TabList 
-          tabs={uniqueTabs} 
-          activeTab={activeTab} 
+        <TabList
+          tabs={uniqueTabs}
+          activeTab={activeTab}
           onTabChange={setActiveTab}
           className="mb-8"
         />
@@ -55,7 +55,7 @@ export const ExploreUniqueStays: React.FC = () => {
               initial={{ opacity: 0, y: 30, scale: 0.95 }}
               whileInView={{ opacity: 1, y: 0, scale: 1 }}
               viewport={{ once: false }}
-              transition={{ 
+              transition={{
                 delay: i * 0.08,
                 type: 'spring',
                 stiffness: 100
@@ -65,7 +65,7 @@ export const ExploreUniqueStays: React.FC = () => {
             >
               {/* Glow effect */}
               <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-70 blur-xl transition-all duration-500" />
-              
+
               <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
                 <div className="relative aspect-4/3 overflow-hidden">
                   <motion.div
@@ -75,9 +75,9 @@ export const ExploreUniqueStays: React.FC = () => {
                     transition={{ duration: 0.6 }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                  
+
                   {/* Animated badge */}
-                  <motion.div 
+                  <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: i * 0.08 + 0.3, type: 'spring' }}
@@ -87,7 +87,7 @@ export const ExploreUniqueStays: React.FC = () => {
                     {stay.badge}
                   </motion.div>
                 </div>
-                
+
                 <div className="p-3">
                   <h3 className="font-semibold text-slate-900 dark:text-white text-sm truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {stay.name}

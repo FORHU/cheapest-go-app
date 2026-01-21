@@ -64,7 +64,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
                             <hr className="border-slate-200 dark:border-white/10" />
 
-                            <RoomList />
+                            <RoomList property={property} />
 
                             <LocationSection />
 
