@@ -13,8 +13,14 @@ export const SearchModule: React.FC = () => {
     // Store actions
     const { setDestination, setDestinationQuery, setDates, setTravelers } = useSearchStore();
 
+    // Loading state
+    const [isSearching, setIsSearching] = React.useState(false);
+
     // Sync URL params to Store on mount (for page reloads/sharing)
     useEffect(() => {
+        // Reset loading state when params change (navigation complete)
+        setIsSearching(false);
+
         const destParam = searchParams.get('destination');
         const checkInParam = searchParams.get('checkIn');
         const checkOutParam = searchParams.get('checkOut');
@@ -22,13 +28,19 @@ export const SearchModule: React.FC = () => {
         const childrenParam = searchParams.get('children');
         const roomsParam = searchParams.get('rooms');
 
+        const countryCodeParam = searchParams.get('countryCode');
+        const placeIdParam = searchParams.get('placeId');
+
         if (destParam) {
             setDestinationQuery(destParam);
             // We reconstruct a partial destination object so it displays nicer
+            // IMPORTANT: Also preserve placeId and countryCode for subsequent searches
             setDestination({
                 type: 'city',
                 title: destParam,
-                subtitle: 'Selected destination'
+                subtitle: 'Selected destination',
+                id: placeIdParam || undefined,
+                countryCode: countryCodeParam || undefined
             });
         }
 
@@ -49,6 +61,7 @@ export const SearchModule: React.FC = () => {
     }, [searchParams, setDestination, setDestinationQuery, setDates, setTravelers]);
 
     const handleSearch = () => {
+        setIsSearching(true);
         const state = useSearchStore.getState();
         state.setActiveDropdown(null);
 
@@ -58,6 +71,14 @@ export const SearchModule: React.FC = () => {
 
         if (destValue) {
             params.set('destination', destValue);
+            // Append countryCode if available in the selected destination object
+            if (state.destination?.countryCode) {
+                params.set('countryCode', state.destination.countryCode);
+            }
+            // Append placeId if available to fix "Gangnam-gu" zero results issue
+            if (state.destination?.id) {
+                params.set('placeId', state.destination.id);
+            }
         }
         if (state.dates.checkIn) {
             params.set('checkIn', state.dates.checkIn.toISOString());
@@ -82,7 +103,7 @@ export const SearchModule: React.FC = () => {
             </div>
 
             {/* Search Button */}
-            <MagneticButton onClick={handleSearch} />
+            <MagneticButton onClick={handleSearch} isLoading={isSearching} />
         </div>
     );
 };

@@ -4,7 +4,29 @@ import React from 'react';
 import { Property } from '@/data/mockProperties';
 import { MapPin } from 'lucide-react';
 
-const BookingWidget: React.FC<{ property: Property }> = ({ property }) => {
+interface BookingWidgetProps {
+    property: Property;
+    preBookData?: any;
+    searchParams?: {
+        checkIn?: string;
+        checkOut?: string;
+        adults?: number;
+        children?: number;
+    };
+}
+
+const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, searchParams }) => {
+    // Format dates if available
+    const checkInDate = searchParams?.checkIn ? new Date(searchParams.checkIn) : new Date();
+    const checkOutDate = searchParams?.checkOut ? new Date(searchParams.checkOut) : new Date(new Date().setDate(new Date().getDate() + 2));
+
+    // Calculate nights
+    const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    const formatDate = (date: Date) => {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
     return (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-lg sticky top-24 overflow-hidden">
             {/* Map Preview */}
@@ -17,6 +39,12 @@ const BookingWidget: React.FC<{ property: Property }> = ({ property }) => {
             </div>
 
             <div className="p-6">
+                {preBookData && (
+                    <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-sm text-green-700 dark:text-green-300">
+                        <p className="font-bold mb-1">Pre-Check Successful</p>
+                        <p className="text-xs opacity-80">Rate Key: {preBookData?.rate?.rate_key || 'Verified'}</p>
+                    </div>
+                )}
                 <div className="mb-6">
                     <div className="flex items-baseline gap-2">
                         <span className="text-3xl font-bold text-slate-900 dark:text-white">₱{property.price.toLocaleString()}</span>
@@ -32,11 +60,16 @@ const BookingWidget: React.FC<{ property: Property }> = ({ property }) => {
                 <div className="space-y-3">
                     <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
                         <div className="text-xs text-slate-400 uppercase font-bold mb-1">Dates</div>
-                        <div className="text-sm font-medium">Jan 23 — Jan 25 (2 nights)</div>
+                        <div className="text-sm font-medium">
+                            {formatDate(checkInDate)} — {formatDate(checkOutDate)} ({nights} nights)
+                        </div>
                     </div>
                     <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
                         <div className="text-xs text-slate-400 uppercase font-bold mb-1">Travelers</div>
-                        <div className="text-sm font-medium">2 Adults</div>
+                        <div className="text-sm font-medium">
+                            {searchParams?.adults || 2} Adults
+                            {searchParams?.children ? `, ${searchParams.children} Children` : ''}
+                        </div>
                     </div>
                 </div>
 

@@ -12,8 +12,8 @@ const containerVariants = {
     visible: {
         opacity: 1,
         transition: {
-            staggerChildren: 0.1,
-            delayChildren: 0.1,
+            staggerChildren: 0.05,
+            delayChildren: 0,
         }
     }
 };
@@ -36,7 +36,7 @@ export const AnimatedPropertyContent: React.FC<AnimatedPropertyContentProps> = (
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: false, amount: 0.2 }}
+            viewport={{ once: true, amount: 0.1 }}
         >
             {children}
         </motion.div>
@@ -60,7 +60,7 @@ export const FadeInUp: React.FC<{ children: React.ReactNode; delay?: number; cla
         <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: false, amount: 0.2, margin: "-50px" }}
+            viewport={{ once: true, amount: 0.1 }}
             transition={{
                 duration: 0.6,
                 delay,
@@ -82,7 +82,7 @@ export const FadeIn: React.FC<{ children: React.ReactNode; delay?: number; class
         <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
-            viewport={{ once: false, amount: 0.2 }}
+            viewport={{ once: true, amount: 0.1 }}
             transition={{
                 duration: 0.5,
                 delay,
@@ -104,7 +104,7 @@ export const SlideInFromRight: React.FC<{ children: React.ReactNode; delay?: num
         <motion.div
             initial={{ opacity: 0, x: 50 }}
             whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: false, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.1 }}
             transition={{
                 duration: 0.5,
                 delay,

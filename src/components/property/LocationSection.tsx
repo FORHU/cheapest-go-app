@@ -1,9 +1,23 @@
 "use client";
 
 import React from 'react';
-import { MapPin, Train, Plane } from 'lucide-react';
+import { MapPin, Building } from 'lucide-react';
 
-const LocationSection = () => {
+interface LocationSectionProps {
+    hotelDetails?: {
+        address?: string;
+        city?: string;
+        country?: string;
+        coordinates?: { lat: number; lng: number };
+    };
+}
+
+const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails }) => {
+    const address = hotelDetails?.address || "Address not available";
+    const city = hotelDetails?.city || "";
+    const country = hotelDetails?.country || "";
+    const fullLocation = [city, country].filter(Boolean).join(', ');
+
     return (
         <div className="py-8 border-t border-slate-200 dark:border-white/10" id="location">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Explore the area</h2>
@@ -13,7 +27,6 @@ const LocationSection = () => {
                     <div className="absolute inset-0 flex items-center justify-center bg-slate-200 dark:bg-slate-700">
                         <span className="text-slate-400">Map View Mockup</span>
                     </div>
-                    {/* Placeholder for map image */}
                     <img
                         src="https://via.placeholder.com/600x400?text=Map+View"
                         alt="Map view"
@@ -24,44 +37,33 @@ const LocationSection = () => {
                     </button>
                 </div>
 
-                {/* Nearby Places */}
+                {/* Location Info */}
                 <div className="flex-1 space-y-6">
                     <div>
                         <div className="flex items-center gap-2 mb-3">
                             <MapPin size={18} className="text-slate-900 dark:text-white" />
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">What's nearby</h3>
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Hotel Location</h3>
                         </div>
-                        <ul className="space-y-2">
-                            {[
-                                { name: 'Burnham Park', dist: '6 min walk' },
-                                { name: 'Session Road', dist: '10 min walk' },
-                                { name: 'SM City Baguio', dist: '15 min walk' },
-                                { name: 'Baguio Cathedral', dist: '12 min walk' },
-                            ].map((place, i) => (
-                                <li key={i} className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
-                                    <span>{place.name}</span>
-                                    <span className="text-slate-400">{place.dist}</span>
-                                </li>
-                            ))}
-                        </ul>
+                        <div className="space-y-2">
+                            <p className="text-sm text-slate-600 dark:text-slate-300">
+                                {address}
+                            </p>
+                            {fullLocation && (
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                    {fullLocation}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     <div>
                         <div className="flex items-center gap-2 mb-3">
-                            <Train size={18} className="text-slate-900 dark:text-white" />
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Public transportation</h3>
+                            <Building size={18} className="text-slate-900 dark:text-white" />
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Getting Around</h3>
                         </div>
-                        <ul className="space-y-2">
-                            {[
-                                { name: 'Baguio Bus Terminal', dist: '8 min drive' },
-                                { name: 'Victory Liner Terminal', dist: '10 min drive' },
-                            ].map((place, i) => (
-                                <li key={i} className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
-                                    <span>{place.name}</span>
-                                    <span className="text-slate-400">{place.dist}</span>
-                                </li>
-                            ))}
-                        </ul>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                            Contact the property for transportation options and directions from nearby landmarks.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -70,3 +72,4 @@ const LocationSection = () => {
 };
 
 export default LocationSection;
+

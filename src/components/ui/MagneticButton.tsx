@@ -7,13 +7,15 @@ import { BaseProps } from '../../types';
 
 interface MagneticButtonProps extends BaseProps {
     onClick?: () => void;
+    isLoading?: boolean;
 }
 
-export const MagneticButton: React.FC<MagneticButtonProps> = ({ onClick, className }) => {
+export const MagneticButton: React.FC<MagneticButtonProps> = ({ onClick, className, isLoading = false }) => {
     const ref = useRef<HTMLButtonElement>(null);
     const [position, setPosition] = useState({ x: 0, y: 0 });
 
     const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+        if (isLoading) return; // Disable effect when loading
         const { clientX, clientY } = e;
         const { left, top, width, height } = ref.current?.getBoundingClientRect() || { left: 0, top: 0, width: 0, height: 0 };
 
@@ -37,7 +39,8 @@ export const MagneticButton: React.FC<MagneticButtonProps> = ({ onClick, classNa
             ref={ref}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
-            onClick={onClick}
+            onClick={isLoading ? undefined : onClick}
+            disabled={isLoading}
             animate={{ x: position.x, y: position.y }}
             transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.1 }}
             className={`
@@ -45,11 +48,18 @@ export const MagneticButton: React.FC<MagneticButtonProps> = ({ onClick, classNa
         font-display font-bold text-sm tracking-wide transition-all duration-300
         dark:bg-obsidian-accent dark:text-obsidian dark:hover:bg-cyan-300 dark:shadow-[0_0_20px_rgba(34,211,238,0.4)]
         bg-alabaster-accent text-white hover:bg-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.3)]
+        disabled:opacity-70 disabled:cursor-not-allowed
         ${className}
       `}
         >
-            <span>Search</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            {isLoading ? (
+                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+                <>
+                    <span>Search</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </>
+            )}
         </motion.button>
     );
 };

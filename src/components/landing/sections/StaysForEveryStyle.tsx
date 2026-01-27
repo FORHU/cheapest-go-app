@@ -3,7 +3,16 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { TabList, GradientBackground } from '@/components/ui';
-import { travelStyles, styleTabs } from '@/data';
+
+// Travel styles data
+const travelStyles = [
+  { id: 1, title: 'Beachfront Villa', location: 'Boracay, Philippines', price: 25899, image: 'https://picsum.photos/seed/villa/400/300' },
+  { id: 2, title: 'Mountain Retreat', location: 'Batanes, Philippines', price: 18499, image: 'https://picsum.photos/seed/mountain/400/300' },
+  { id: 3, title: 'City View Suite', location: 'Makati, Philippines', price: 32450, image: 'https://picsum.photos/seed/city/400/300' },
+  { id: 4, title: 'Lux Hotels', location: 'Cebu, Philippines', price: 51709, image: 'https://picsum.photos/seed/luxury/400/300' },
+];
+
+const styleTabs = ['Beach', 'Kid-Friendly', 'Ski', 'Romantic', 'Wellness and Relaxation'];
 
 export const StaysForEveryStyle: React.FC = () => {
   const [activeTab, setActiveTab] = useState(styleTabs[0]);

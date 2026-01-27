@@ -6,24 +6,24 @@ import { Property, baguioProperties } from '@/data/mockProperties';
 import PropertyCard from './PropertyCard';
 import { ChevronDown, ArrowUpDown } from 'lucide-react';
 
-const SearchResults = () => {
+interface SearchResultsProps {
+    initialProperties?: Property[];
+}
+
+const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
     const searchParams = useSearchParams();
     const destination = searchParams.get('destination') || '';
     const [sortBy, setSortBy] = useState('recommended');
 
-    // Filter properties based on search params (Mock implementation)
+    // Filter properties based on search params
     const filteredProperties = useMemo(() => {
-        if (!destination) return baguioProperties;
-
-        // For now, if destination contains "Baguio" (case insensitive), show our mock data.
-        // Otherwise, maybe show empty or all for demo purposes.
-        if (destination.toLowerCase().includes('baguio')) {
-            return baguioProperties;
+        // If we have initialProperties passed from server, use them
+        if (initialProperties && initialProperties.length > 0) {
+            return initialProperties;
         }
 
-        // Return empty or filtered list for other locations if we had data
         return [];
-    }, [destination]);
+    }, [initialProperties]);
 
     return (
         <div className="flex-1 min-w-0">

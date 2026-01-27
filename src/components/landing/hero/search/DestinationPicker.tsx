@@ -5,16 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, History, Plane, Building2, X } from 'lucide-react';
 import { Destination, useSearchStore, useDestinationQuery, useRecentSearches, useActiveDropdown } from '@/stores/searchStore';
 
-// Mock popular destinations
-const popularDestinations: Destination[] = [
-    { type: 'city', title: 'Manila', subtitle: 'National Capital Region, Philippines' },
-    { type: 'airport', title: 'Manila (MNL - Ninoy Aquino Intl.)', subtitle: 'Philippines', code: 'MNL' },
-    { type: 'city', title: 'Baguio City', subtitle: 'Summer Capital, Philippines' },
-    { type: 'city', title: 'Boracay Island', subtitle: 'Western Visayas, Philippines' },
-    { type: 'airport', title: 'Cebu (CEB - Mactan-Cebu Intl.)', subtitle: 'Philippines', code: 'CEB' },
-    { type: 'city', title: 'Makati', subtitle: 'National Capital Region, Philippines' },
-    { type: 'airport', title: 'Angeles City (CRK - Clark Intl.)', subtitle: 'Philippines', code: 'CRK' },
-];
+
 
 export const DestinationPicker: React.FC = () => {
     const ref = useRef<HTMLDivElement>(null);
@@ -48,6 +39,11 @@ export const DestinationPicker: React.FC = () => {
     }, [isOpen]);
 
     // Handlers
+    // State
+    const [suggestions, setSuggestions] = React.useState<Destination[]>([]);
+    const [loading, setLoading] = React.useState(false);
+
+    // Handlers
     const handleSelect = (destination: Destination) => {
         setDestination(destination);
         setDestinationQuery(destination.title);
@@ -55,13 +51,69 @@ export const DestinationPicker: React.FC = () => {
         onClose();
     };
 
+    // Debounced Autocomplete
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (!query || query.length < 2) {
+                setSuggestions([]);
+                return;
+            }
+
+            setLoading(true);
+            try {
+                // Use client-side safe functions helper
+                const { invokeEdgeFunction } = await import('@/utils/supabase/client-functions');
+
+                const res = await invokeEdgeFunction('liteapi-autocomplete', { keyword: query });
+
+                if (res && res.data) {
+                    // Map LiteAPI results to Destination objects
+                    // Response format: { placeId, displayName, formattedAddress, ... }
+                    const mapped = res.data.map((item: any) => {
+                        const address = item.formattedAddress || '';
+                        // Simple heuristic for country code since API doesn't return it directly
+                        let cc = 'PH';
+                        if (address.includes('South Korea') || address.includes('Korea')) cc = 'KR';
+                        else if (address.includes('Japan')) cc = 'JP';
+                        else if (address.includes('United States') || address.includes('USA')) cc = 'US';
+                        // Southeast Asia
+                        else if (address.includes('Singapore')) cc = 'SG';
+                        else if (address.includes('Malaysia')) cc = 'MY';
+                        else if (address.includes('Thailand')) cc = 'TH';
+                        else if (address.includes('Indonesia')) cc = 'ID';
+                        else if (address.includes('Vietnam') || address.includes('Viet Nam')) cc = 'VN';
+                        else if (address.includes('Cambodia')) cc = 'KH';
+                        else if (address.includes('Laos') || address.includes('Lao PDR')) cc = 'LA';
+                        else if (address.includes('Myanmar') || address.includes('Burma')) cc = 'MM';
+                        else if (address.includes('Brunei')) cc = 'BN';
+                        else if (address.includes('Philippines')) cc = 'PH';
+                        // Add more if needed, default to PH for now
+
+                        return {
+                            type: 'city',
+                            title: item.displayName || item.name,
+                            subtitle: address,
+                            countryCode: cc,
+                            id: item.placeId || item.id
+                        };
+                    });
+                    setSuggestions(mapped);
+                }
+            } catch (error) {
+                console.error("Autocomplete failed:", error);
+                setSuggestions([]);
+            } finally {
+                setLoading(false);
+            }
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(timer);
+    }, [query]);
+
+
     // Filter destinations based on query
-    const filteredDestinations = query.length > 0
-        ? popularDestinations.filter(d =>
-            d.title.toLowerCase().includes(query.toLowerCase()) ||
-            d.subtitle.toLowerCase().includes(query.toLowerCase())
-        )
-        : popularDestinations;
+    // Since we removed hardcoded list, this is empty. We rely on Custom Search.
+    const filteredDestinations: Destination[] = [];
 
     const getIcon = (type: Destination['type']) => {
         switch (type) {
@@ -98,6 +150,7 @@ export const DestinationPicker: React.FC = () => {
                                 placeholder="Search destinations..."
                                 className="bg-transparent border-none p-0 text-xl font-bold focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400"
                             />
+                            {loading && <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />}
                             {query && (
                                 <button
                                     onClick={() => setDestinationQuery('')}
@@ -110,73 +163,76 @@ export const DestinationPicker: React.FC = () => {
                     </div>
 
                     {/* Results List */}
-                    <div className="max-h-[400px] overflow-y-auto py-2">
-                        {/* Recent Searches */}
-                        {recentSearches.length > 0 && !query && (
+                    <div className="max-h-[300px] overflow-y-auto py-2">
+                        {/* 1. Recent Searches (only if no query) */}
+                        {!query && recentSearches.length > 0 && (
                             <>
                                 <div className="px-6 py-2 text-[10px] font-mono uppercase text-slate-400 tracking-widest">
-                                    Recent
+                                    Recent Searches
                                 </div>
                                 {recentSearches.map((item, i) => (
                                     <div
-                                        key={`recent-${i}`}
+                                        key={i}
                                         onClick={() => handleSelect(item)}
-                                        className="px-6 py-3 hover:bg-slate-50 dark:hover:bg-white/5 flex items-start gap-4 cursor-pointer group transition-colors"
+                                        className="px-6 py-3 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center justify-between cursor-pointer group transition-colors"
                                     >
-                                        <div className="mt-0.5 text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors">
-                                            <History size={18} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h5 className="text-sm font-bold group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors text-slate-900 dark:text-white">
-                                                {item.title}
-                                            </h5>
-                                            <p className="text-xs text-slate-400 truncate max-w-[320px]">
-                                                {item.subtitle}
-                                            </p>
+                                        <div className="flex items-center gap-4">
+                                            <div className="mt-0.5 text-slate-400 group-hover:text-amber-500 transition-colors">
+                                                <History size={18} />
+                                            </div>
+                                            <div>
+                                                <h5 className="text-sm font-bold group-hover:text-amber-500 transition-colors text-slate-900 dark:text-white">
+                                                    {item.title}
+                                                </h5>
+                                                <p className="text-xs text-slate-400">{item.subtitle}</p>
+                                            </div>
                                         </div>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                if (removeRecentSearch) removeRecentSearch(item.title);
+                                                removeRecentSearch(item.title);
                                             }}
-                                            className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-all"
                                         >
-                                            <X size={14} />
+                                            <X size={14} className="text-slate-400" />
                                         </button>
                                     </div>
                                 ))}
-                                <div className="h-px bg-slate-100 dark:bg-white/5 my-2" />
                             </>
                         )}
 
-                        {/* Popular / Filtered Destinations */}
-                        <div className="px-6 py-2 text-[10px] font-mono uppercase text-slate-400 tracking-widest">
-                            {query ? 'Results' : 'Popular'}
-                        </div>
-                        {filteredDestinations.length > 0 ? (
-                            filteredDestinations.map((item, i) => (
-                                <div
-                                    key={i}
-                                    onClick={() => handleSelect(item)}
-                                    className="px-6 py-3 hover:bg-slate-50 dark:hover:bg-white/5 flex items-start gap-4 cursor-pointer group transition-colors"
-                                >
-                                    <div className="mt-0.5 text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors">
-                                        {getIcon(item.type)}
-                                    </div>
-                                    <div className="flex-1">
-                                        <h5 className="text-sm font-bold group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors text-slate-900 dark:text-white">
-                                            {item.title}
-                                        </h5>
-                                        <p className="text-xs text-slate-400 truncate max-w-[280px]">
-                                            {item.subtitle}
-                                        </p>
-                                    </div>
+                        {/* 2. Autocomplete Suggestions */}
+                        {query && (
+                            <>
+                                <div className="px-6 py-2 text-[10px] font-mono uppercase text-slate-400 tracking-widest">
+                                    LiteAPI Results
                                 </div>
-                            ))
-                        ) : (
-                            <div className="px-6 py-8 text-center text-slate-400">
-                                No destinations found for "{query}"
-                            </div>
+                                {suggestions.length > 0 ? (
+                                    suggestions.map((item, i) => (
+                                        <div
+                                            key={i}
+                                            onClick={() => handleSelect(item)}
+                                            className="px-6 py-3 hover:bg-slate-50 dark:hover:bg-white/5 flex items-start gap-4 cursor-pointer group transition-colors"
+                                        >
+                                            <div className="mt-0.5 text-slate-400 group-hover:text-blue-500 transition-colors">
+                                                {getIcon(item.type)}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h5 className="text-sm font-bold group-hover:text-blue-500 transition-colors text-slate-900 dark:text-white">
+                                                    {item.title}
+                                                </h5>
+                                                <p className="text-xs text-slate-400 truncate max-w-[280px]">
+                                                    {item.subtitle}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="px-6 py-4 text-center text-slate-400 text-sm">
+                                        {loading ? "Searching..." : "No results found"}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </motion.div>

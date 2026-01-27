@@ -6,6 +6,8 @@ export interface Destination {
     title: string;
     subtitle: string;
     code?: string;
+    countryCode?: string;
+    id?: string;
 }
 
 export interface DateRange {
@@ -110,7 +112,12 @@ export const useSearchStore = create<SearchState>()(
         }),
         {
             name: 'aerovantage-search',
-            partialize: (state) => ({ recentSearches: state.recentSearches }),
+            // Persist destination info so placeId survives page navigation
+            partialize: (state) => ({
+                recentSearches: state.recentSearches,
+                destination: state.destination,
+                destinationQuery: state.destinationQuery
+            }),
         }
     )
 );
