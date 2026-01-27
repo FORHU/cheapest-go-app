@@ -40,6 +40,10 @@ interface SearchState {
     activeDropdown: 'destination' | 'dates' | 'travelers' | null;
     setActiveDropdown: (dropdown: 'destination' | 'dates' | 'travelers' | null) => void;
 
+    // Loading state (reusable across components)
+    isSearching: boolean;
+    setIsSearching: (isSearching: boolean) => void;
+
     // Actions
     setDestination: (destination: Destination | null) => void;
     setDestinationQuery: (query: string) => void;
@@ -72,6 +76,7 @@ export const useSearchStore = create<SearchState>()(
             travelers: initialTravelers,
             recentSearches: [],
             activeDropdown: null,
+            isSearching: false,
 
             setDestination: (destination) => set({ destination }),
 
@@ -99,6 +104,8 @@ export const useSearchStore = create<SearchState>()(
             })),
 
             setActiveDropdown: (activeDropdown) => set({ activeDropdown }),
+
+            setIsSearching: (isSearching) => set({ isSearching }),
 
             clearRecentSearches: () => set({ recentSearches: [] }),
 
@@ -129,3 +136,4 @@ export const useDates = () => useSearchStore((state) => state.dates);
 export const useTravelers = () => useSearchStore((state) => state.travelers);
 export const useRecentSearches = () => useSearchStore((state) => state.recentSearches);
 export const useActiveDropdown = () => useSearchStore((state) => state.activeDropdown);
+export const useIsSearching = () => useSearchStore((state) => state.isSearching);

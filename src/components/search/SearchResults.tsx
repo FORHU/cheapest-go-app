@@ -14,6 +14,7 @@ const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
     const searchParams = useSearchParams();
     const destination = searchParams.get('destination') || '';
     const [sortBy, setSortBy] = useState('recommended');
+    const [visibleCount, setVisibleCount] = useState(12);
 
     // Filter properties based on search params
     const filteredProperties = useMemo(() => {
@@ -24,6 +25,19 @@ const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
 
         return [];
     }, [initialProperties]);
+
+    // Reset visible count when filters/destination change
+    React.useEffect(() => {
+        setVisibleCount(12);
+    }, [destination, searchParams]);
+
+    // Show only visible properties
+    const visibleProperties = filteredProperties.slice(0, visibleCount);
+    const hasMore = visibleCount < filteredProperties.length;
+
+    const handleLoadMore = () => {
+        setVisibleCount(prev => prev + 12);
+    };
 
     return (
         <div className="flex-1 min-w-0">
@@ -48,9 +62,9 @@ const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
             </div>
 
             {/* Property List */}
-            {filteredProperties.length > 0 ? (
+            {visibleProperties.length > 0 ? (
                 <div className="space-y-4">
-                    {filteredProperties.map((property, index) => (
+                    {visibleProperties.map((property, index) => (
                         <PropertyCard key={property.id} property={property} index={index} />
                     ))}
                 </div>
@@ -64,9 +78,18 @@ const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
             {/* Pagination / Load More */}
             {filteredProperties.length > 0 && (
                 <div className="mt-8 flex justify-center">
-                    <button className="px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium rounded-full cursor-not-allowed opacity-50">
-                        End of results
-                    </button>
+                    {hasMore ? (
+                        <button
+                            onClick={handleLoadMore}
+                            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors shadow-lg shadow-blue-600/20"
+                        >
+                            Load More Results
+                        </button>
+                    ) : (
+                        <button className="px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-500 font-medium rounded-full cursor-not-allowed opacity-50">
+                            End of results
+                        </button>
+                    )}
                 </div>
             )}
         </div>

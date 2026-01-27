@@ -1,97 +1,13 @@
 "use client";
 
-import React, { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useSearchStore } from '@/stores/searchStore';
+import React from 'react';
 import { MagneticButton } from '@/components/ui';
 import { DestinationSection, DateSection, TravelersSection } from './search/SearchSections';
+import { useSearchModule } from '@/hooks/useSearchModule';
 
 export const SearchModule: React.FC = () => {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-
-    // Store actions
-    const { setDestination, setDestinationQuery, setDates, setTravelers } = useSearchStore();
-
-    // Loading state
-    const [isSearching, setIsSearching] = React.useState(false);
-
-    // Sync URL params to Store on mount (for page reloads/sharing)
-    useEffect(() => {
-        // Reset loading state when params change (navigation complete)
-        setIsSearching(false);
-
-        const destParam = searchParams.get('destination');
-        const checkInParam = searchParams.get('checkIn');
-        const checkOutParam = searchParams.get('checkOut');
-        const adultsParam = searchParams.get('adults');
-        const childrenParam = searchParams.get('children');
-        const roomsParam = searchParams.get('rooms');
-
-        const countryCodeParam = searchParams.get('countryCode');
-        const placeIdParam = searchParams.get('placeId');
-
-        if (destParam) {
-            setDestinationQuery(destParam);
-            // We reconstruct a partial destination object so it displays nicer
-            // IMPORTANT: Also preserve placeId and countryCode for subsequent searches
-            setDestination({
-                type: 'city',
-                title: destParam,
-                subtitle: 'Selected destination',
-                id: placeIdParam || undefined,
-                countryCode: countryCodeParam || undefined
-            });
-        }
-
-        if (checkInParam || checkOutParam) {
-            setDates({
-                checkIn: checkInParam ? new Date(checkInParam) : null,
-                checkOut: checkOutParam ? new Date(checkOutParam) : null
-            });
-        }
-
-        if (adultsParam || childrenParam || roomsParam) {
-            setTravelers({
-                adults: adultsParam ? parseInt(adultsParam) : 2,
-                children: childrenParam ? parseInt(childrenParam) : 0,
-                rooms: roomsParam ? parseInt(roomsParam) : 1
-            });
-        }
-    }, [searchParams, setDestination, setDestinationQuery, setDates, setTravelers]);
-
-    const handleSearch = () => {
-        setIsSearching(true);
-        const state = useSearchStore.getState();
-        state.setActiveDropdown(null);
-
-        const params = new URLSearchParams();
-        // Use query if destination object is missing but user typed something
-        const destValue = state.destination?.title || state.destinationQuery;
-
-        if (destValue) {
-            params.set('destination', destValue);
-            // Append countryCode if available in the selected destination object
-            if (state.destination?.countryCode) {
-                params.set('countryCode', state.destination.countryCode);
-            }
-            // Append placeId if available to fix "Gangnam-gu" zero results issue
-            if (state.destination?.id) {
-                params.set('placeId', state.destination.id);
-            }
-        }
-        if (state.dates.checkIn) {
-            params.set('checkIn', state.dates.checkIn.toISOString());
-        }
-        if (state.dates.checkOut) {
-            params.set('checkOut', state.dates.checkOut.toISOString());
-        }
-        params.set('adults', state.travelers.adults.toString());
-        params.set('children', state.travelers.children.toString());
-        params.set('rooms', state.travelers.rooms.toString());
-
-        router.push(`/search?${params.toString()}`);
-    };
+    // All logic is extracted to the custom hook
+    const { handleSearch, isSearching } = useSearchModule();
 
     return (
         <div className="relative bg-white/60 dark:bg-[#0f172a]/80 backdrop-blur-3xl rounded-xl shadow-2xl dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border border-white/20 dark:border-white/10 p-2 flex flex-col lg:flex-row gap-2">

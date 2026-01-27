@@ -56,8 +56,6 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, index }) => {
                             <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
                                 <MapPin size={14} className="mr-1" />
                                 {property.location}
-                                <span className="mx-2 text-slate-300 dark:text-slate-600">|</span>
-                                <span className="text-blue-600 hover:underline z-10" onClick={(e) => e.stopPropagation()}>View on map</span>
                             </div>
                         </div>
                     </div>
@@ -122,6 +120,13 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, index }) => {
                     <div className="mt-2 text-center">
                         <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                             Free Cancellation
+                        </span>
+                    </div>
+
+                    <div className="mt-2 text-center" onClick={(e) => e.stopPropagation()}>
+                        <span className="text-xs text-blue-600 hover:underline cursor-pointer flex items-center justify-center gap-1">
+                            <MapPin size={12} />
+                            View on map
                         </span>
                     </div>
                 </div>
