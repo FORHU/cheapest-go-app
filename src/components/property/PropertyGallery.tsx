@@ -9,19 +9,17 @@ interface PropertyGalleryProps {
 }
 
 const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
-    // Ensure we have at least some images to display
-    const displayImages = images.length > 0 ? images : ['https://via.placeholder.com/800x600'];
-    const mainImage = displayImages[0];
-    const subImages = displayImages.slice(1, 5); // Take up to 4 more images
+    // Use available images only - no placeholders or duplicates
+    const displayImages = images.filter(img => img && img.length > 0);
+    const hasImages = displayImages.length > 0;
+    const mainImage = displayImages[0] || '';
+    const subImages = displayImages.slice(1, 5); // Take up to 4 more images for sub-gallery
 
     // Lightbox State
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-    // If not enough sub images, fill with placeholders or duplicates for layout
-    const gallerySubImages = [...subImages];
-    while (gallerySubImages.length < 4) {
-        gallerySubImages.push(mainImage);
-    }
+    // Use only the available sub-images, no duplicates
+    const gallerySubImages = subImages;
 
     const handleOpen = (index: number) => setSelectedIndex(index);
     const handleClose = () => setSelectedIndex(null);
@@ -52,45 +50,79 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
 
     return (
         <>
-            {/* Grid Gallery */}
-            <div className="grid grid-cols-4 grid-rows-2 h-[300px] md:h-[400px] gap-2 rounded-xl overflow-hidden relative group">
+            {/* Grid Gallery - adapts based on available images */}
+            {!hasImages ? (
+                // No images available
+                <div className="h-[300px] md:h-[400px] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <div className="text-center text-slate-400">
+                        <ImageIcon size={48} className="mx-auto mb-2 opacity-50" />
+                        <p>No images available</p>
+                    </div>
+                </div>
+            ) : displayImages.length === 1 ? (
+                // Single image - full width
                 <div
-                    className="col-span-2 row-span-2 relative cursor-pointer overflow-hidden"
+                    className="h-[300px] md:h-[400px] rounded-xl overflow-hidden relative cursor-pointer group"
                     onClick={() => handleOpen(0)}
                 >
                     <img
                         src={mainImage}
-                        alt="Main property view"
+                        alt="Property view"
                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                     />
+                    <button
+                        onClick={(e) => { e.stopPropagation(); handleOpen(0); }}
+                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
+                    >
+                        <ImageIcon size={14} />
+                        View photo
+                    </button>
                 </div>
-                {gallerySubImages.map((img, i) => (
+            ) : (
+                // Multiple images - grid layout
+                <div className={`grid gap-2 h-[300px] md:h-[400px] rounded-xl overflow-hidden relative group ${gallerySubImages.length === 0 ? 'grid-cols-1' :
+                        gallerySubImages.length === 1 ? 'grid-cols-2' :
+                            'grid-cols-4 grid-rows-2'
+                    }`}>
                     <div
-                        key={i}
-                        className="relative cursor-pointer overflow-hidden"
-                        onClick={() => handleOpen(i + 1)}
+                        className={`relative cursor-pointer overflow-hidden ${gallerySubImages.length >= 2 ? 'col-span-2 row-span-2' : ''
+                            }`}
+                        onClick={() => handleOpen(0)}
                     >
                         <img
-                            src={img}
-                            alt={`View ${i + 1}`}
+                            src={mainImage}
+                            alt="Main property view"
                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                         />
-                        {i === 3 && images.length > 5 && (
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-sm backdrop-blur-sm">
-                                +{images.length - 5} photos
-                            </div>
-                        )}
                     </div>
-                ))}
+                    {gallerySubImages.map((img, i) => (
+                        <div
+                            key={i}
+                            className="relative cursor-pointer overflow-hidden"
+                            onClick={() => handleOpen(i + 1)}
+                        >
+                            <img
+                                src={img}
+                                alt={`View ${i + 1}`}
+                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                            />
+                            {i === gallerySubImages.length - 1 && displayImages.length > 5 && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-sm backdrop-blur-sm">
+                                    +{displayImages.length - 5} photos
+                                </div>
+                            )}
+                        </div>
+                    ))}
 
-                <button
-                    onClick={() => handleOpen(0)}
-                    className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
-                >
-                    <ImageIcon size={14} />
-                    Show all photos
-                </button>
-            </div>
+                    <button
+                        onClick={() => handleOpen(0)}
+                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
+                    >
+                        <ImageIcon size={14} />
+                        Show all photos
+                    </button>
+                </div>
+            )}
 
             {/* Lightbox Modal */}
             <AnimatePresence>

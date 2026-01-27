@@ -88,10 +88,30 @@ export default async function PropertyPage({
     // Simulate slow data fetching
     await new Promise(resolve => setTimeout(resolve, 1500));
 
+
     let property = getProperty(id);
+
+    // Collect room images from roomTypes to supplement hotel images
+    const roomImages: string[] = [];
+    if (fetchedPropertyDetails?.roomTypes) {
+        fetchedPropertyDetails.roomTypes.forEach((room: any) => {
+            if (room.roomPhotos && Array.isArray(room.roomPhotos)) {
+                roomImages.push(...room.roomPhotos);
+            }
+        });
+    }
 
     // fallback: use fetched details if available
     if (!property && fetchedPropertyDetails) {
+        // Combine hotel images with room images, removing duplicates
+        const hotelImages = fetchedPropertyDetails.images || [];
+        const thumbnailUrl = fetchedPropertyDetails.thumbnailUrl;
+        const allImages = [
+            ...(thumbnailUrl ? [thumbnailUrl] : []),
+            ...hotelImages,
+            ...roomImages
+        ].filter((img, index, arr) => img && arr.indexOf(img) === index); // Remove duplicates
+
         property = {
             id: fetchedPropertyDetails.hotelId || id,
             name: fetchedPropertyDetails.name || "Unknown Property",
@@ -99,27 +119,30 @@ export default async function PropertyPage({
             description: fetchedPropertyDetails.description || "No description available",
             rating: fetchedPropertyDetails.reviewRating || fetchedPropertyDetails.starRating || 0,
             reviews: fetchedPropertyDetails.reviewCount || 0,
-            price: preBookResult?.price?.amount || fetchedPropertyDetails.rates?.[0]?.price?.amount || 0, // Use pre-book price if available
+            price: preBookResult?.price?.amount || fetchedPropertyDetails.rates?.[0]?.price?.amount || 0,
             originalPrice: undefined,
-            image: fetchedPropertyDetails.thumbnailUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
-            images: fetchedPropertyDetails.details?.images || [fetchedPropertyDetails.thumbnailUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800'],
-            amenities: fetchedPropertyDetails.details?.amenities || [],
+            image: allImages[0] || '',
+            images: allImages.length > 0 ? allImages : [],
+            amenities: fetchedPropertyDetails.hotelFacilities || fetchedPropertyDetails.details?.amenities || [],
             badges: [],
             type: 'hotel',
-            coordinates: { lat: 0, lng: 0 }
+            coordinates: {
+                lat: fetchedPropertyDetails.latitude || 0,
+                lng: fetchedPropertyDetails.longitude || 0
+            }
         };
     } else if (!property && (preBookResult || offerId)) {
         // Fallback for when even fetch fails but we have pre-book
         property = {
             id: id,
-            name: preBookResult?.data?.name || "Test Property (Details Failed)",
+            name: preBookResult?.data?.name || "Property Details Unavailable",
             location: preBookResult?.data?.address || "Unknown Location",
-            description: "Property details could not be fetched. Displaying pre-book context.",
+            description: "Property details could not be fetched.",
             rating: 0,
             reviews: 0,
             price: preBookResult?.price?.amount || 0,
-            image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
-            images: ['https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800'],
+            image: '',
+            images: [],
             amenities: [],
             badges: [],
             type: 'hotel',
@@ -155,9 +178,9 @@ export default async function PropertyPage({
                         <PropertyGallery images={property.images} />
                     </FadeInUp>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-                        {/* Main Content */}
-                        <div className="lg:col-span-2 space-y-8">
+                    <div className="mt-8">
+                        {/* Main Content - Full Width */}
+                        <div className="space-y-8">
                             {/* Navigation Tabs (Sticky) */}
                             <FadeInUp delay={0.2}>
                                 <div className="sticky top-[80px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg z-30 py-3 border-b border-slate-200 dark:border-white/10 -mx-4 px-4 md:-mx-6 md:px-6">
@@ -189,6 +212,7 @@ export default async function PropertyPage({
                                 <RoomList
                                     property={property}
                                     roomTypes={fetchedPropertyDetails?.roomTypes}
+                                    hotelImages={property.images}
                                     searchParams={{
                                         checkIn: searchParamsResult.checkIn as string,
                                         checkOut: searchParamsResult.checkOut as string,
@@ -202,37 +226,35 @@ export default async function PropertyPage({
                                 <LocationSection
                                     hotelDetails={{
                                         address: fetchedPropertyDetails?.address || property.location,
-                                        city: fetchedPropertyDetails?.details?.city,
-                                        country: fetchedPropertyDetails?.details?.country
+                                        city: fetchedPropertyDetails?.city || fetchedPropertyDetails?.details?.city,
+                                        country: fetchedPropertyDetails?.country || fetchedPropertyDetails?.details?.country
                                     }}
+                                    coordinates={property.coordinates}
                                 />
                             </FadeInUp>
 
                             <FadeInUp delay={0.45}>
-                                <PoliciesSection />
+                                <PoliciesSection
+                                    checkInTime={fetchedPropertyDetails?.checkInTime}
+                                    checkOutTime={fetchedPropertyDetails?.checkOutTime}
+                                    petPolicy={fetchedPropertyDetails?.details?.petPolicy}
+                                    childPolicy={fetchedPropertyDetails?.details?.childPolicy}
+                                />
                             </FadeInUp>
 
                             <FadeInUp delay={0.5}>
-                                <FAQSection propertyName={property.name} />
+                                <FAQSection
+                                    propertyName={property.name}
+                                    checkInTime={fetchedPropertyDetails?.checkInTime}
+                                    checkOutTime={fetchedPropertyDetails?.checkOutTime}
+                                    petPolicy={fetchedPropertyDetails?.details?.petPolicy}
+                                />
                             </FadeInUp>
                         </div>
-
-                        {/* Sidebar */}
-                        <div className="hidden lg:block">
-                            <SlideInFromRight delay={0.3}>
-                                <BookingWidget
-                                    property={property}
-                                    preBookData={preBookResult}
-                                    searchParams={{
-                                        checkIn: searchParamsResult.checkIn as string,
-                                        checkOut: searchParamsResult.checkOut as string,
-                                        adults: Number(searchParamsResult.adults || 2),
-                                        children: Number(searchParamsResult.children || 0)
-                                    }}
-                                />
-                            </SlideInFromRight>
-                        </div>
                     </div>
+
+
+
                 </div>
             </main>
             <Footer />

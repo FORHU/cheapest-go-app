@@ -16,9 +16,11 @@ export interface BookingState {
     checkOut: Date | null;
     adults: number;
     children: number;
+    viewingRoom: any | null;
 
     // Actions
     setBookingDetails: (details: Partial<BookingState>) => void;
+    setViewingRoom: (room: any | null) => void;
     resetBooking: () => void;
 }
 
@@ -31,15 +33,18 @@ export const useBookingStore = create<BookingState>()(
             checkOut: null,
             adults: 2,
             children: 0,
+            viewingRoom: null,
 
             setBookingDetails: (details) => set((state) => ({ ...state, ...details })),
+            setViewingRoom: (room) => set({ viewingRoom: room }),
             resetBooking: () => set({
                 property: null,
                 selectedRoom: null,
                 checkIn: null,
                 checkOut: null,
                 adults: 2,
-                children: 0
+                children: 0,
+                viewingRoom: null
             }),
         }),
         {

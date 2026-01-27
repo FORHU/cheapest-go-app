@@ -1,7 +1,14 @@
-import { useState, useCallback } from 'react';
-import { useSearchStore, Destination } from '@/stores/searchStore';
-import { useRouter } from 'next/navigation';
+"use client";
 
+import { useEffect, useCallback } from 'react';
+import { useSearchStore, Destination } from '@/stores/searchStore';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+/**
+ * Custom hook for search module logic
+ * Provides all state and actions needed for search functionality
+ * Follows React best practices with proper memoization
+ */
 export interface UseSearchModuleReturn {
     // State
     destinationQuery: string;
@@ -14,11 +21,10 @@ export interface UseSearchModuleReturn {
     rooms: number;
     totalTravelers: number;
     recentSearches: Destination[];
+    isSearching: boolean;
 
-    // UI State
-    isDestinationOpen: boolean;
-    isDatePickerOpen: boolean;
-    isTravelersOpen: boolean;
+    // Derived
+    activeDropdown: 'destination' | 'dates' | 'travelers' | null;
 
     // Actions
     setDestinationQuery: (query: string) => void;
@@ -29,147 +35,192 @@ export interface UseSearchModuleReturn {
     setAdults: (count: number) => void;
     setChildren: (count: number) => void;
     setRooms: (count: number) => void;
-
-    // UI Actions
-    openDestination: () => void;
-    closeDestination: () => void;
-    openDatePicker: () => void;
-    closeDatePicker: () => void;
-    openTravelers: () => void;
-    closeTravelers: () => void;
-    closeAll: () => void;
+    setActiveDropdown: (dropdown: 'destination' | 'dates' | 'travelers' | null) => void;
 
     // Search Action
     handleSearch: () => void;
     clearRecentSearch: (title: string) => void;
 }
 
+/**
+ * useSearchModule - Centralized search logic hook
+ * 
+ * Features:
+ * - Syncs URL params to Zustand store on mount
+ * - Properly preserves placeId and countryCode for LiteAPI
+ * - Manages loading state across components
+ * - Provides memoized actions for performance
+ */
 export const useSearchModule = (): UseSearchModuleReturn => {
     const router = useRouter();
+    const searchParams = useSearchParams();
 
-    // Zustand store
-    const store = useSearchStore();
-
-    // Local UI state for dropdowns
-    const [isDestinationOpen, setIsDestinationOpen] = useState(false);
-    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-    const [isTravelersOpen, setIsTravelersOpen] = useState(false);
+    // Zustand store - single source of truth
+    const {
+        destination,
+        destinationQuery,
+        dates,
+        travelers,
+        recentSearches,
+        activeDropdown,
+        isSearching,
+        setDestination,
+        setDestinationQuery,
+        setDates,
+        setTravelers,
+        setActiveDropdown,
+        setIsSearching,
+        addRecentSearch,
+        removeRecentSearch,
+    } = useSearchStore();
 
     // Derived values
-    const totalTravelers = store.travelers.adults + store.travelers.children;
+    const totalTravelers = travelers.adults + travelers.children;
+
+    /**
+     * Sync URL params to Store on mount
+     * This handles page reloads and shared URLs
+     */
+    useEffect(() => {
+        // Reset loading state when navigation completes
+        setIsSearching(false);
+
+        const destParam = searchParams.get('destination');
+        const checkInParam = searchParams.get('checkIn');
+        const checkOutParam = searchParams.get('checkOut');
+        const adultsParam = searchParams.get('adults');
+        const childrenParam = searchParams.get('children');
+        const roomsParam = searchParams.get('rooms');
+        const countryCodeParam = searchParams.get('countryCode');
+        const placeIdParam = searchParams.get('placeId');
+
+        if (destParam) {
+            setDestinationQuery(destParam);
+            // IMPORTANT: Preserve placeId and countryCode for LiteAPI searches
+            setDestination({
+                type: 'city',
+                title: destParam,
+                subtitle: 'Selected destination',
+                id: placeIdParam || undefined,
+                countryCode: countryCodeParam || undefined
+            });
+        }
+
+        if (checkInParam || checkOutParam) {
+            setDates({
+                checkIn: checkInParam ? new Date(checkInParam) : null,
+                checkOut: checkOutParam ? new Date(checkOutParam) : null
+            });
+        }
+
+        if (adultsParam || childrenParam || roomsParam) {
+            setTravelers({
+                adults: adultsParam ? parseInt(adultsParam) : 2,
+                children: childrenParam ? parseInt(childrenParam) : 0,
+                rooms: roomsParam ? parseInt(roomsParam) : 1
+            });
+        }
+    }, [searchParams, setDestination, setDestinationQuery, setDates, setTravelers, setIsSearching]);
 
     // Destination actions
-    const selectDestination = useCallback((destination: Destination) => {
-        store.setDestination(destination);
-        store.setDestinationQuery(destination.title);
-        store.addRecentSearch(destination);
-        setIsDestinationOpen(false);
-    }, [store]);
+    const selectDestination = useCallback((dest: Destination) => {
+        setDestination(dest);
+        setDestinationQuery(dest.title);
+        addRecentSearch(dest);
+        setActiveDropdown(null);
+    }, [setDestination, setDestinationQuery, addRecentSearch, setActiveDropdown]);
 
     // Date actions
     const setCheckIn = useCallback((date: Date | null) => {
-        store.setDates({ checkIn: date });
-    }, [store]);
+        setDates({ checkIn: date });
+    }, [setDates]);
 
     const setCheckOut = useCallback((date: Date | null) => {
-        store.setDates({ checkOut: date });
-    }, [store]);
+        setDates({ checkOut: date });
+    }, [setDates]);
 
     const setFlexibility = useCallback((flexibility: string) => {
-        store.setDates({ flexibility: flexibility as 'exact' | '1day' | '2days' | '3days' | '7days' });
-    }, [store]);
+        setDates({ flexibility: flexibility as 'exact' | '1day' | '2days' | '3days' | '7days' });
+    }, [setDates]);
 
     // Traveler actions
     const setAdults = useCallback((count: number) => {
-        store.setTravelers({ adults: Math.max(1, count) });
-    }, [store]);
+        setTravelers({ adults: Math.max(1, count) });
+    }, [setTravelers]);
 
     const setChildren = useCallback((count: number) => {
-        store.setTravelers({ children: Math.max(0, count) });
-    }, [store]);
+        setTravelers({ children: Math.max(0, count) });
+    }, [setTravelers]);
 
     const setRooms = useCallback((count: number) => {
-        store.setTravelers({ rooms: Math.max(1, count) });
-    }, [store]);
+        setTravelers({ rooms: Math.max(1, count) });
+    }, [setTravelers]);
 
-    // UI toggle actions
-    const openDestination = useCallback(() => {
-        setIsDestinationOpen(true);
-        setIsDatePickerOpen(false);
-        setIsTravelersOpen(false);
-    }, []);
-
-    const closeDestination = useCallback(() => setIsDestinationOpen(false), []);
-
-    const openDatePicker = useCallback(() => {
-        setIsDatePickerOpen(true);
-        setIsDestinationOpen(false);
-        setIsTravelersOpen(false);
-    }, []);
-
-    const closeDatePicker = useCallback(() => setIsDatePickerOpen(false), []);
-
-    const openTravelers = useCallback(() => {
-        setIsTravelersOpen(true);
-        setIsDestinationOpen(false);
-        setIsDatePickerOpen(false);
-    }, []);
-
-    const closeTravelers = useCallback(() => setIsTravelersOpen(false), []);
-
-    const closeAll = useCallback(() => {
-        setIsDestinationOpen(false);
-        setIsDatePickerOpen(false);
-        setIsTravelersOpen(false);
-    }, []);
-
-    // Search action
+    /**
+     * handleSearch - Navigate to search results
+     * Builds URL params with all necessary data including placeId
+     */
     const handleSearch = useCallback(() => {
-        closeAll();
-        // Build search params and navigate
+        setIsSearching(true);
+        setActiveDropdown(null);
+
+        // Get fresh state for building params
+        const state = useSearchStore.getState();
         const params = new URLSearchParams();
-        if (store.destination) {
-            params.set('destination', store.destination.title);
+
+        // Destination - use query if object is missing
+        const destValue = state.destination?.title || state.destinationQuery;
+        if (destValue) {
+            params.set('destination', destValue);
+            // Include placeId and countryCode for accurate API results
+            if (state.destination?.countryCode) {
+                params.set('countryCode', state.destination.countryCode);
+            }
+            if (state.destination?.id) {
+                params.set('placeId', state.destination.id);
+            }
         }
-        if (store.dates.checkIn) {
-            params.set('checkIn', store.dates.checkIn.toISOString());
+
+        // Dates
+        if (state.dates.checkIn) {
+            params.set('checkIn', state.dates.checkIn.toISOString());
         }
-        if (store.dates.checkOut) {
-            params.set('checkOut', store.dates.checkOut.toISOString());
+        if (state.dates.checkOut) {
+            params.set('checkOut', state.dates.checkOut.toISOString());
         }
-        params.set('adults', store.travelers.adults.toString());
-        params.set('children', store.travelers.children.toString());
-        params.set('rooms', store.travelers.rooms.toString());
+
+        // Travelers
+        params.set('adults', state.travelers.adults.toString());
+        params.set('children', state.travelers.children.toString());
+        params.set('rooms', state.travelers.rooms.toString());
 
         router.push(`/search?${params.toString()}`);
-    }, [store, closeAll, router]);
+    }, [router, setIsSearching, setActiveDropdown]);
 
+    // Clear specific recent search
     const clearRecentSearch = useCallback((title: string) => {
-        // Filter out the specific search from recent
-        const filtered = store.recentSearches.filter(s => s.title !== title);
-        // This would need a custom action - for now just clear all if needed
-    }, [store.recentSearches]);
+        removeRecentSearch(title);
+    }, [removeRecentSearch]);
 
     return {
         // State
-        destinationQuery: store.destinationQuery,
-        destination: store.destination,
-        checkIn: store.dates.checkIn,
-        checkOut: store.dates.checkOut,
-        flexibility: store.dates.flexibility,
-        adults: store.travelers.adults,
-        children: store.travelers.children,
-        rooms: store.travelers.rooms,
+        destinationQuery,
+        destination,
+        checkIn: dates.checkIn,
+        checkOut: dates.checkOut,
+        flexibility: dates.flexibility,
+        adults: travelers.adults,
+        children: travelers.children,
+        rooms: travelers.rooms,
         totalTravelers,
-        recentSearches: store.recentSearches,
+        recentSearches,
+        isSearching,
 
-        // UI State
-        isDestinationOpen,
-        isDatePickerOpen,
-        isTravelersOpen,
+        // Derived
+        activeDropdown,
 
         // Actions
-        setDestinationQuery: store.setDestinationQuery,
+        setDestinationQuery,
         selectDestination,
         setCheckIn,
         setCheckOut,
@@ -177,18 +228,12 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         setAdults,
         setChildren,
         setRooms,
-
-        // UI Actions
-        openDestination,
-        closeDestination,
-        openDatePicker,
-        closeDatePicker,
-        openTravelers,
-        closeTravelers,
-        closeAll,
+        setActiveDropdown,
 
         // Search
         handleSearch,
         clearRecentSearch,
     };
 };
+
+export default useSearchModule;

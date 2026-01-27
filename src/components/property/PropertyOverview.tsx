@@ -43,24 +43,18 @@ const PropertyOverview: React.FC<{ property: Property }> = ({ property }) => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="md:col-span-2">
+            <div className="flex flex-col gap-8">
+                <div className="w-full">
                     <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">About this property</h2>
                     <div className="text-sm text-slate-700 dark:text-slate-300 space-y-4 leading-relaxed">
                         <p>{property.description}</p>
-                        <p>
-                            This property features a full-service spa, a restaurant, and an outdoor pool. Free WiFi in public areas and free valet parking are also provided. Additionally, a fitness center, a bar/lounge, and a poolside bar are onsite.
-                            All rooms offer comforts like premium bedding and down comforters, plus free WiFi and flat-screen TVs with cable channels. Guests will also find 24-hour room service, minibars, and rainfall showerheads.
-                        </p>
-                        <h4 className="font-bold text-slate-900 dark:text-white mt-4">Languages</h4>
-                        <p>English, Filipino, Korean</p>
                     </div>
                 </div>
 
-                {/* Popular amenities side list */}
-                <div>
+                {/* Popular amenities - Full width grid */}
+                <div className="w-full">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Popular amenities</h3>
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {property.amenities.map((amenity, i) => (
                             <div key={i} className="flex items-center text-sm text-slate-700 dark:text-slate-300">
                                 {amenity === 'Free WiFi' && <Wifi size={18} className="mr-3 shrink-0" />}
@@ -71,8 +65,8 @@ const PropertyOverview: React.FC<{ property: Property }> = ({ property }) => {
                                 {amenity}
                             </div>
                         ))}
-                        <button className="text-blue-600 text-sm font-medium hover:underline mt-2">See all</button>
                     </div>
+                    <button className="text-blue-600 text-sm font-medium hover:underline mt-4">See all amenities</button>
                 </div>
             </div>
 

@@ -47,7 +47,41 @@ const FAQItem = ({ question, answer, index }: { question: string, answer: string
     );
 };
 
-const FAQSection = ({ propertyName }: { propertyName: string }) => {
+interface FAQSectionProps {
+    propertyName: string;
+    checkInTime?: string;
+    checkOutTime?: string;
+    petPolicy?: string;
+}
+
+const FAQSection: React.FC<FAQSectionProps> = ({ propertyName, checkInTime, checkOutTime, petPolicy }) => {
+    // Build FAQs dynamically from real data
+    const faqs: { question: string; answer: string }[] = [];
+
+    if (checkInTime) {
+        faqs.push({
+            question: "What time is check-in at this property?",
+            answer: checkInTime
+        });
+    }
+    if (checkOutTime) {
+        faqs.push({
+            question: "What are the check-out times?",
+            answer: checkOutTime
+        });
+    }
+    if (petPolicy) {
+        faqs.push({
+            question: `Is ${propertyName} pet-friendly?`,
+            answer: petPolicy
+        });
+    }
+
+    // If no FAQs can be generated, hide the section
+    if (faqs.length === 0) {
+        return null;
+    }
+
     return (
         <div className="py-8 border-t border-slate-200 dark:border-white/10" id="faqs">
             <motion.h2
@@ -61,31 +95,14 @@ const FAQSection = ({ propertyName }: { propertyName: string }) => {
             </motion.h2>
 
             <div className="space-y-1">
-                <FAQItem
-                    index={0}
-                    question={`Is ${propertyName} pet-friendly?`}
-                    answer="Yes, pets are generally allowed, but it's best to call ahead to confirm specific restrictions and fees."
-                />
-                <FAQItem
-                    index={1}
-                    question={`How much does it cost to stay at ${propertyName}?`}
-                    answer="Prices vary depending on dates and room type. You can see the current prices by entering your dates in the search bar."
-                />
-                <FAQItem
-                    index={2}
-                    question="What time is check-in at this property?"
-                    answer="The check-in time typically starts from 2:00 PM. Early check-in might be available upon request."
-                />
-                <FAQItem
-                    index={3}
-                    question="What are the check-out times?"
-                    answer="Check-out is until 12:00 PM."
-                />
-                <FAQItem
-                    index={4}
-                    question="Is parking available?"
-                    answer="Yes, free self-parking is available to guests."
-                />
+                {faqs.map((faq, index) => (
+                    <FAQItem
+                        key={index}
+                        index={index}
+                        question={faq.question}
+                        answer={faq.answer}
+                    />
+                ))}
             </div>
         </div>
     );
