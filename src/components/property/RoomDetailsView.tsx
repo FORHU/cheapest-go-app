@@ -22,9 +22,9 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
     const amenities = room.amenities || [];
 
     return (
-        <div className="min-h-screen bg-white dark:bg-slate-950 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="min-h-screen bg-alabaster bg-grid-alabaster bg-[length:40px_40px] pb-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
             {/* Sticky Header */}
-            <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10">
+            <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
                 <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
                     <button
                         onClick={onBack}
@@ -152,7 +152,7 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
 
                     {/* Right Column: Booking Card (Sticky) */}
                     <div className="lg:col-span-1">
-                        <div className="sticky top-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-xl p-6">
+                        <div className="sticky top-24 bg-white rounded-2xl border border-slate-200 shadow-lg p-6">
                             <div className="mb-6">
                                 <span className="text-3xl font-bold text-slate-900 dark:text-white">Price Varies</span>
                                 <span className="text-sm text-slate-500 block">Check dates for specific rates</span>

@@ -55,7 +55,7 @@ export default async function SearchPage(props: {
     let initialProperties: Property[] = [];
 
     try {
-
+        console.log("[SearchPage] Calling searchLiteApi with params:", queryParams);
         const data = await searchLiteApi(queryParams);
 
         if (data && data.data && Array.isArray(data.data)) {

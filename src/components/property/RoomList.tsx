@@ -233,7 +233,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
     // Full Page Room Details Overlay
     if (viewingRoom) {
         return (
-            <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-950 overflow-y-auto animate-in fade-in duration-200">
+            <div className="fixed inset-0 z-[100] bg-alabaster bg-grid-alabaster bg-[length:40px_40px] overflow-y-auto animate-in fade-in duration-200">
                 <RoomDetailsView
                     property={property}
                     room={viewingRoom}
