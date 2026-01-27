@@ -67,9 +67,11 @@ export const DestinationPicker: React.FC = () => {
                 const res = await invokeEdgeFunction('liteapi-autocomplete', { keyword: query });
 
                 if (res && res.data) {
+                    console.log("[DestinationPicker] Raw LiteAPI response:", res);
                     // Map LiteAPI results to Destination objects
                     // Response format: { placeId, displayName, formattedAddress, ... }
                     const mapped = res.data.map((item: any) => {
+                        console.log("[DestinationPicker] Mapping item:", item);
                         const address = item.formattedAddress || '';
                         // Simple heuristic for country code since API doesn't return it directly
                         let cc = 'PH';
@@ -89,13 +91,15 @@ export const DestinationPicker: React.FC = () => {
                         else if (address.includes('Philippines')) cc = 'PH';
                         // Add more if needed, default to PH for now
 
-                        return {
+                        const mappedItem = {
                             type: 'city',
                             title: item.displayName || item.name,
                             subtitle: address,
                             countryCode: cc,
                             id: item.placeId || item.id
                         };
+                        console.log("[DestinationPicker] Mapped to:", mappedItem);
+                        return mappedItem;
                     });
                     setSuggestions(mapped);
                 }

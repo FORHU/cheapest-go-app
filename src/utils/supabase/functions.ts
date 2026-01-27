@@ -3,45 +3,39 @@ export async function invokeEdgeFunction<T = any>(
     body?: any,
     options?: { headers?: Record<string, string>; method?: 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH' }
 ) {
-    let supabase;
+    // Use direct HTTP fetch to bypass Supabase client auth issues on server side
+    // Edge functions can be called directly with the anon key in the Authorization header
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
 
-    if (typeof window === 'undefined') {
-        // Server-side
-        const { createClient } = await import('./server');
-        supabase = await createClient();
-    } else {
-        // Client-side
-        const { createClient } = await import('./client');
-        supabase = createClient();
-    }
+    const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
+    const method = options?.method || 'POST';
 
-    const { data, error } = await supabase.functions.invoke<T>(functionName, {
-        body,
-        headers: options?.headers,
-        method: options?.method || 'POST',
+    console.log(`[invokeEdgeFunction] Calling ${functionUrl}`);
+
+    const response = await fetch(functionUrl, {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey,
+            ...options?.headers
+        },
+        body: body ? JSON.stringify(body) : undefined
     });
 
-    if (error) {
-        let responseBody = '';
+    if (!response.ok) {
+        let errorText = '';
         try {
-            // Check if we can read the response body from the error context or if we need to do it differently
-            // The Supabase client might wrap the error.
-            // If error is just an object, we serialize it.
-            responseBody = JSON.stringify(error);
-
-            // Attempt to inspect if it's a specific HTTP error structure
-            if ('context' in error && error.context && 'json' in error.context && typeof error.context.json === 'function') {
-                const json = await error.context.json();
-                responseBody = JSON.stringify(json);
-            }
+            errorText = await response.text();
         } catch (e) {
-            responseBody = 'Could not read response body';
+            errorText = 'Could not read error response';
         }
-
-        throw new Error(`Error invoking ${functionName}: ${error.message || 'Unknown error'} (Status: ${error.code || 'Unknown'}). details: ${responseBody}`);
+        throw new Error(`Error invoking ${functionName}: ${response.statusText || 'Unknown error'} (Status: ${response.status}). details: ${errorText}`);
     }
 
-    return data;
+    const data = await response.json();
+    return data as T;
 }
 
 // Specific helper for liteapi-search
@@ -103,21 +97,38 @@ export async function getHotelDetails(hotelId: string, options: any = {}) {
                 }
 
                 // 3. Try Name Match (Strict Substring)
+                // 3. Try Name Match (Strict Substring)
+
+                // 3. Try Name Match (Strict Substring)
                 if (!matchedRoom) {
-                    const roomTypeName = (roomType.name || '').toLowerCase();
-                    matchedRoom = detailRooms.find((dr: any) => {
-                        const detailName = (dr.roomName || dr.name || '').toLowerCase();
-                        return (roomTypeName.includes(detailName) || detailName.includes(roomTypeName)) &&
-                            Math.abs(roomTypeName.length - detailName.length) < 15;
-                    });
+                    // Robustly resolve the room name from various potential properties
+                    const roomTypeName = (
+                        roomType.name ||
+                        roomType.roomName ||
+                        (roomType.rates && roomType.rates[0] && roomType.rates[0].name) ||
+                        ''
+                    ).toLowerCase();
+
+                    if (roomTypeName) {
+                        matchedRoom = detailRooms.find((dr: any) => {
+                            const detailName = (dr.roomName || dr.name || '').toLowerCase();
+                            // Only match if names are very similar
+                            const isMatch = (roomTypeName.includes(detailName) || detailName.includes(roomTypeName)) &&
+                                Math.abs(roomTypeName.length - detailName.length) < 10;
+
+                            if (isMatch) console.log(`[PhotoFix] Name match found: '${roomTypeName}' ~= '${detailName}'`);
+                            return isMatch;
+                        });
+                    }
                 }
 
-                // 4. Fallback to Index Match
-                if (!matchedRoom && detailRooms[index]) {
-                    matchedRoom = detailRooms[index];
+                if (!matchedRoom) {
+                    console.log(`[PhotoFix] No match for room: '${roomType.name}' (ID: ${roomType.room_id}, MappedID: ${roomType.mappedRoomId})`);
+                    // Log available detail rooms for debugging
+                    // console.log("Available detail rooms:", detailRooms.map((dr: any) => `${dr.roomName || dr.name} (${dr.id})`).join(", "));
                 }
 
-                // 5. Apply Match or Fallback to Room Photo Pool
+                // 4. Apply Match
                 if (matchedRoom && matchedRoom.photos && matchedRoom.photos.length > 0) {
                     roomType.roomPhotos = matchedRoom.photos.map((p: any) => p.url || p.hd_url || p.urlHd || p).filter(Boolean);
                     if (matchedRoom.description) roomType.roomDescription = matchedRoom.description;
@@ -125,15 +136,12 @@ export async function getHotelDetails(hotelId: string, options: any = {}) {
                     if (matchedRoom.amenities) roomType.amenities = matchedRoom.amenities;
                     if (matchedRoom.roomAmenities) roomType.amenities = matchedRoom.roomAmenities; // Handle API variations
                 } else {
-                    // Fallback: Assign a distinct image from the ROOM pool based on index
-                    if (distinctImages.length > 0) {
-                        roomType.roomPhotos = [distinctImages[index % distinctImages.length]];
-                    } else {
-                        roomType.roomPhotos = [];
-                    }
+                    // Fallback: If no specific room match, use the HOTEL'S main images 
+                    // Do NOT guess by index or pool, as this causes duplicate/wrong images for different room types
+                    roomType.roomPhotos = hotel.images || [];
                 }
             });
-            console.log("Client-side room photo correction applied (MappedRoomID Strategy).");
+            console.log("Client-side room photo correction applied (Strict MappedRoomID Strategy).");
         } catch (err) {
             console.error("Error applying room photo fix:", err);
         }

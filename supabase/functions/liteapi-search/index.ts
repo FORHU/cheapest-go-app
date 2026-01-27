@@ -41,7 +41,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     const rawData = await req.text();
+    console.log("===== INCOMING REQUEST =====");
+    console.log("Raw request body:", rawData);
     const body = JSON.parse(rawData || "{}");
+    console.log("Parsed body:", JSON.stringify(body));
 
     // Mapping inputs
     const checkin = body.checkin || body.startDate;
@@ -51,21 +54,44 @@ Deno.serve(async (req: Request) => {
     const guestNationality = body.guestNationality || countryCode;
     const placeId = body.placeId;
 
+    console.log("Extracted values - checkin:", checkin, "checkout:", checkout, "placeId:", placeId, "countryCode:", countryCode, "cityName:", body.cityName);
+
     // ... probe code ...
 
     // 1. Fetch Rates
     console.log("Fetching rates...");
 
     // Construct location parameters:
-    // Priority: hotelIds > placeId > (cityName + countryCode)
+    // Priority: hotelIds > placeId > cityName
+    // NOTE: placeId from autocomplete is the recommended approach for LiteAPI
     let locationParams = {};
+
+    // Normalize city name for better LiteAPI matching
+    // LiteAPI often uses shorter names without "City" suffix
+    let normalizedCityName = body.cityName || "";
+    if (normalizedCityName) {
+      // Try without "City" suffix first (e.g., "Baguio City" -> "Baguio")
+      normalizedCityName = normalizedCityName.replace(/\s+City$/i, '').trim();
+    }
+
     if (body.hotelIds) {
       locationParams = { hotelIds: body.hotelIds };
+      console.log("Using hotelIds:", body.hotelIds);
     } else if (placeId) {
+      // Use placeId from autocomplete - this is the recommended approach
       locationParams = { placeId: placeId };
+      console.log("Using placeId:", placeId);
+    } else if (normalizedCityName) {
+      // Fallback to cityName if no placeId
+      locationParams = { cityName: normalizedCityName, countryCode: countryCode };
+      console.log("Using cityName:", normalizedCityName, "(original:", body.cityName, ") countryCode:", countryCode);
     } else {
-      locationParams = { cityName: body.cityName || "Manila", countryCode: countryCode };
+      // Default fallback
+      locationParams = { cityName: "Manila", countryCode: countryCode };
+      console.log("Using default cityName: Manila, countryCode:", countryCode);
     }
+
+    console.log("Full location params:", JSON.stringify(locationParams));
 
     const ratesPayload = JSON.stringify({
       checkin,
@@ -79,22 +105,64 @@ Deno.serve(async (req: Request) => {
       timeout: 15
     });
 
+    console.log("Rates payload:", ratesPayload);
+
     const ratesResponse = await fetch(`https://api.liteapi.travel/v3.0/hotels/rates`, {
       method: "POST",
       headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' },
       body: ratesPayload
     });
 
+    console.log("LiteAPI Response status:", ratesResponse.status);
+
     if (!ratesResponse.ok) {
       const errorText = await ratesResponse.text();
+      console.error("LiteAPI Error Response:", errorText);
       throw new Error(`LiteAPI Rates ${ratesResponse.status}: ${errorText}`);
     }
 
-    const ratesData = await ratesResponse.json() as { data: Hotel[], rooms?: any[] };
+    let ratesData = await ratesResponse.json() as { data: Hotel[], rooms?: any[] };
+    console.log("LiteAPI Response data count:", ratesData.data?.length || 0);
+    console.log("LiteAPI Full Response:", JSON.stringify(ratesData).substring(0, 500));
 
-    const hotels = ratesData.data || [];
+    let hotels = ratesData.data || [];
+
+    // FALLBACK: If placeId returned 0 results and we have a cityName, retry with cityName
+    if (hotels.length === 0 && placeId && normalizedCityName) {
+      console.log("PlaceId returned 0 results - trying cityName fallback:", normalizedCityName);
+
+      const fallbackPayload = JSON.stringify({
+        checkin,
+        checkout,
+        currency,
+        guestNationality,
+        cityName: normalizedCityName,
+        countryCode: countryCode,
+        occupancies: [{ adults: body.adults || 2, children: body.children || [] }],
+        roomMapping: true,
+        includeHotelData: true,
+        timeout: 15
+      });
+
+      console.log("Fallback payload:", fallbackPayload);
+
+      const fallbackResponse = await fetch(`https://api.liteapi.travel/v3.0/hotels/rates`, {
+        method: "POST",
+        headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' },
+        body: fallbackPayload
+      });
+
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json() as { data: Hotel[], rooms?: any[] };
+        console.log("Fallback response data count:", fallbackData.data?.length || 0);
+        hotels = fallbackData.data || [];
+      } else {
+        console.log("Fallback request failed:", fallbackResponse.status);
+      }
+    }
 
     if (hotels.length === 0) {
+      console.log("No hotels found - returning empty result");
       return new Response(JSON.stringify({ data: [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
@@ -125,19 +193,47 @@ Deno.serve(async (req: Request) => {
       }
     } else {
       // Multiple hotels - use /data/hotels for batch fetch
-      const idsStr = hotelIds.join(',');
+      // We need to fetch details for ALL hotels, but the API URL has length limits
+      // Chunk the IDs into batches of 50
+      const CHUNK_SIZE = 50;
+      const allHotelIds = hotels.map((h) => h.hotelId);
+      const chunks = [];
 
-      const detailsResponse = await fetch(`https://api.liteapi.travel/v3.0/data/hotels?hotelIds=${idsStr}`, {
-        method: "GET",
-        headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' }
+      for (let i = 0; i < allHotelIds.length; i += CHUNK_SIZE) {
+        chunks.push(allHotelIds.slice(i, i + CHUNK_SIZE));
+      }
+
+      console.log(`Fetching batch details for ${allHotelIds.length} hotels in ${chunks.length} chunks`);
+
+      // Fetch all chunks in parallel
+      const chunkPromises = chunks.map(async (chunkIds) => {
+        const idsStr = chunkIds.join(',');
+        try {
+          const detailsResponse = await fetch(`https://api.liteapi.travel/v3.0/data/hotels?hotelIds=${idsStr}`, {
+            method: "GET",
+            headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' }
+          });
+
+          if (detailsResponse.ok) {
+            const json = await detailsResponse.json();
+            return json.data || [];
+          } else {
+            const errText = await detailsResponse.text();
+            console.error(`Batch details chunk fetch failed: ${detailsResponse.status} ${errText}`);
+            return [];
+          }
+        } catch (e) {
+          console.error("Batch details chunk error:", e);
+          return [];
+        }
       });
 
-      if (detailsResponse.ok) {
-        const json = await detailsResponse.json();
-        detailsData = json as { data: HotelDetails[] };
-      } else {
-        const errText = await detailsResponse.text();
-      }
+      const allDetailsArrays = await Promise.all(chunkPromises);
+      // Flatten arrays
+      const allDetails = allDetailsArrays.flat();
+      console.log(`Total details fetched: ${allDetails.length}`);
+
+      detailsData = { data: allDetails };
     }
 
     // Process the details data (whether from single or batch fetch)
