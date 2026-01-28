@@ -4,6 +4,7 @@ import { Property } from '@/data/mockProperties';
 
 export interface Room {
     id: string; // Add ID for better management
+    offerId?: string; // LiteAPI Offer ID for booking
     title: string;
     price: number;
     description?: string;
@@ -12,6 +13,9 @@ export interface Room {
 export interface BookingState {
     property: Property | null;
     selectedRoom: Room | null;
+    prebookId?: string | null; // Store Prebook ID
+    transactionId?: string | null; // Store Transaction ID from prebook
+    bookingId?: string | null; // Store Confirmed Booking ID
     checkIn: Date | null;
     checkOut: Date | null;
     adults: number;

@@ -62,33 +62,36 @@ Deno.serve(async (req: Request) => {
     console.log("Fetching rates...");
 
     // Construct location parameters:
-    // Priority: hotelIds > placeId > cityName
-    // NOTE: placeId from autocomplete is the recommended approach for LiteAPI
+    // Priority: hotelIds > cityName + countryCode > placeId
+    // NOTE: cityName + countryCode provides most accurate city-specific results
+    // placeId is for Google Place IDs which may not match LiteAPI's place IDs
     let locationParams = {};
 
     // Normalize city name for better LiteAPI matching
-    // LiteAPI often uses shorter names without "City" suffix
+    // LiteAPI requires exact cityName match (case-sensitive)
     let normalizedCityName = body.cityName || "";
     if (normalizedCityName) {
-      // Try without "City" suffix first (e.g., "Baguio City" -> "Baguio")
+      // Remove "City" suffix for cleaner matching (e.g., "Baguio City" -> "Baguio")
       normalizedCityName = normalizedCityName.replace(/\s+City$/i, '').trim();
     }
 
     if (body.hotelIds) {
       locationParams = { hotelIds: body.hotelIds };
       console.log("Using hotelIds:", body.hotelIds);
-    } else if (placeId) {
-      // Use placeId from autocomplete - this is the recommended approach
-      locationParams = { placeId: placeId };
-      console.log("Using placeId:", placeId);
-    } else if (normalizedCityName) {
-      // Fallback to cityName if no placeId
+    } else if (normalizedCityName && countryCode) {
+      // PRIORITIZE cityName + countryCode for accurate city-specific searches
+      // This ensures we only get hotels in the exact city selected
       locationParams = { cityName: normalizedCityName, countryCode: countryCode };
       console.log("Using cityName:", normalizedCityName, "(original:", body.cityName, ") countryCode:", countryCode);
+    } else if (placeId) {
+      // Fallback to placeId if cityName not available (should rarely happen)
+      // Note: placeId from autocomplete might not be Google Place ID
+      locationParams = { placeId: placeId };
+      console.log("Using placeId:", placeId);
     } else {
-      // Default fallback
-      locationParams = { cityName: "Manila", countryCode: countryCode };
-      console.log("Using default cityName: Manila, countryCode:", countryCode);
+      // Last resort fallback
+      locationParams = { cityName: "Manila", countryCode: "PH" };
+      console.log("Using default cityName: Manila, countryCode: PH");
     }
 
     console.log("Full location params:", JSON.stringify(locationParams));
@@ -126,40 +129,6 @@ Deno.serve(async (req: Request) => {
     console.log("LiteAPI Full Response:", JSON.stringify(ratesData).substring(0, 500));
 
     let hotels = ratesData.data || [];
-
-    // FALLBACK: If placeId returned 0 results and we have a cityName, retry with cityName
-    if (hotels.length === 0 && placeId && normalizedCityName) {
-      console.log("PlaceId returned 0 results - trying cityName fallback:", normalizedCityName);
-
-      const fallbackPayload = JSON.stringify({
-        checkin,
-        checkout,
-        currency,
-        guestNationality,
-        cityName: normalizedCityName,
-        countryCode: countryCode,
-        occupancies: [{ adults: body.adults || 2, children: body.children || [] }],
-        roomMapping: true,
-        includeHotelData: true,
-        timeout: 15
-      });
-
-      console.log("Fallback payload:", fallbackPayload);
-
-      const fallbackResponse = await fetch(`https://api.liteapi.travel/v3.0/hotels/rates`, {
-        method: "POST",
-        headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' },
-        body: fallbackPayload
-      });
-
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json() as { data: Hotel[], rooms?: any[] };
-        console.log("Fallback response data count:", fallbackData.data?.length || 0);
-        hotels = fallbackData.data || [];
-      } else {
-        console.log("Fallback request failed:", fallbackResponse.status);
-      }
-    }
 
     if (hotels.length === 0) {
       console.log("No hotels found - returning empty result");

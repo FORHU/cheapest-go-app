@@ -6,27 +6,61 @@ export async function invokeEdgeFunction<T = any>(
     body?: any,
     options?: { headers?: Record<string, string>; method?: 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH' }
 ) {
-    const supabase = createClient();
-    const { data, error } = await supabase.functions.invoke<T>(functionName, {
-        body,
-        headers: options?.headers,
-        method: options?.method || 'POST',
+    // Use direct HTTP fetch to bypass Supabase client auth issues on server side (and client side consistency)
+    // This matches the robust implementation in src/utils/supabase/functions.ts
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
+
+    const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
+    const method = options?.method || 'POST';
+
+    // console.log(`[invokeEdgeFunction] Calling ${functionUrl}`);
+
+    const response = await fetch(functionUrl, {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey,
+            ...options?.headers
+        },
+        body: body ? JSON.stringify(body) : undefined
     });
 
-    if (error) {
-        let responseBody = '';
+    if (!response.ok) {
+        let errorText = '';
         try {
-            responseBody = JSON.stringify(error);
-            if ('context' in error && error.context && 'json' in error.context && typeof error.context.json === 'function') {
-                const json = await error.context.json();
-                responseBody = JSON.stringify(json);
-            }
-        } catch (e) {
-            responseBody = 'Could not read response body';
-        }
+            errorText = await response.text();
+            console.error(`[invokeEdgeFunction] ${functionName} ERROR ${response.status}:`, errorText);
 
-        throw new Error(`Error invoking ${functionName}: ${error.message || 'Unknown error'} (Status: ${error.code || 'Unknown'}). details: ${responseBody}`);
+            // Try to parse JSON error from Edge Function if available
+            try {
+                const jsonError = JSON.parse(errorText);
+                if (jsonError.error) errorText = jsonError.error;
+            } catch (ignore) { }
+        } catch (e) {
+            console.error(`[invokeEdgeFunction] Failed to read error text`, e);
+            errorText = 'Could not read error response';
+        }
+        if (errorText.includes("Connection Failed") || errorText.includes("Stream Failed") || response.status === 400) {
+            errorText += "\n\n(Note: Your booking session may have expired. Please go back and search for the room again.)";
+        }
+        throw new Error(`${errorText || response.statusText || 'Unknown error'}`);
     }
 
-    return data;
+    const responseData = await response.json();
+
+    // Fix for double-wrapping issue with LiteAPI proxies
+    // If the response is { data: [...] } and we wrap it in { data: responseData }, 
+    // the caller gets { data: { data: [...] } }.
+    // We want the caller to get { data: [...] } (where .data is the array).
+
+    // Check if the response ITSELF has a 'data' property that looks like what we want
+    if (responseData && typeof responseData === 'object' && 'data' in responseData) {
+        return { data: responseData.data };
+    }
+
+    // Otherwise, assume the entire response is the data (e.g. if it returned an array directly)
+    return { data: responseData };
+
 }

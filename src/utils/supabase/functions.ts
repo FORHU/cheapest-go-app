@@ -71,77 +71,132 @@ export async function getHotelDetails(hotelId: string, options: any = {}) {
         try {
             const detailRooms = hotel.detailRooms;
 
+            console.log("[PhotoFix] DEBUG - Starting room photo matching");
+            console.log("[PhotoFix] Number of roomTypes:", hotel.roomTypes.length);
+            console.log("[PhotoFix] Number of detailRooms:", detailRooms.length);
+
+            // Log first roomType structure for debugging
+            if (hotel.roomTypes[0]) {
+                console.log("[PhotoFix] Sample roomType keys:", Object.keys(hotel.roomTypes[0]));
+                console.log("[PhotoFix] Sample roomType.mappedRoomId:", hotel.roomTypes[0].mappedRoomId);
+                console.log("[PhotoFix] Sample roomType.rates[0]?.name:", hotel.roomTypes[0].rates?.[0]?.name);
+            }
+
+            // Log first detailRoom structure for debugging
+            if (detailRooms[0]) {
+                console.log("[PhotoFix] Sample detailRoom keys:", Object.keys(detailRooms[0]));
+                console.log("[PhotoFix] Sample detailRoom.id:", detailRooms[0].id);
+                console.log("[PhotoFix] Sample detailRoom.name:", detailRooms[0].name || detailRooms[0].roomName);
+                console.log("[PhotoFix] Sample detailRoom photos count:", detailRooms[0].photos?.length || 0);
+            }
+
             // Create a pool of ONLY room photos first (avoid lobby/exterior shots for rooms)
             const allRoomPhotos = detailRooms.flatMap((r: any) => r.photos || []).map((p: any) => p.url || p.hd_url || p.urlHd || p).filter(Boolean);
             const fallbackPool = allRoomPhotos.length > 0 ? allRoomPhotos : (hotel.images || []);
             const distinctImages = Array.from(new Set(fallbackPool));
 
+            console.log("[PhotoFix] Total room photos available:", allRoomPhotos.length);
+            console.log("[PhotoFix] Distinct images in pool:", distinctImages.length);
+
             hotel.roomTypes.forEach((roomType: any, index: number) => {
 
                 // 1. Try Official LiteAPI mappedRoomId Match (Best & Most Accurate)
+                // Note: mappedRoomId is returned when roomMapping: true is set in the rates request
                 let matchedRoom = detailRooms.find((dr: any) => {
                     if (roomType.mappedRoomId) {
-                        const drId = dr.id || dr.room_id;
+                        const drId = dr.id || dr.room_id || dr.roomId;
                         return String(roomType.mappedRoomId) === String(drId);
                     }
                     return false;
                 });
 
-                // 2. Try Accurate ID Match (Legacy)
+                // 2. Try Name Match (from rates array) with improved fuzzy matching
                 if (!matchedRoom) {
-                    matchedRoom = detailRooms.find((dr: any) => {
-                        const rtId = roomType.room_id || roomType.id;
-                        const drId = dr.id || dr.room_id;
-                        return rtId && drId && String(rtId) === String(drId);
-                    });
-                }
-
-                // 3. Try Name Match (Strict Substring)
-                // 3. Try Name Match (Strict Substring)
-
-                // 3. Try Name Match (Strict Substring)
-                if (!matchedRoom) {
-                    // Robustly resolve the room name from various potential properties
+                    // Get room name from the rates array (where LiteAPI stores it)
                     const roomTypeName = (
+                        roomType.rates?.[0]?.name ||
                         roomType.name ||
                         roomType.roomName ||
-                        (roomType.rates && roomType.rates[0] && roomType.rates[0].name) ||
                         ''
-                    ).toLowerCase();
+                    ).toLowerCase().trim();
 
                     if (roomTypeName) {
-                        matchedRoom = detailRooms.find((dr: any) => {
-                            const detailName = (dr.roomName || dr.name || '').toLowerCase();
-                            // Only match if names are very similar
-                            const isMatch = (roomTypeName.includes(detailName) || detailName.includes(roomTypeName)) &&
-                                Math.abs(roomTypeName.length - detailName.length) < 10;
+                        // Extract key words from room type name (ignore common words)
+                        const stopWords = ['room', 'with', 'and', 'the', 'a', 'an', 'for', 'of'];
+                        const roomTypeWords = roomTypeName
+                            .split(/[\s-]+/)
+                            .filter(word => word.length > 2 && !stopWords.includes(word));
 
-                            if (isMatch) console.log(`[PhotoFix] Name match found: '${roomTypeName}' ~= '${detailName}'`);
-                            return isMatch;
+                        // Try fuzzy matching based on key words
+                        let bestMatch: any = null;
+                        let bestScore = 0;
+
+                        detailRooms.forEach((dr: any) => {
+                            const detailName = (dr.roomName || dr.name || '').toLowerCase().trim();
+                            if (!detailName) return;
+
+                            const detailWords = detailName.split(/[\s-]+/);
+
+                            // Count how many key words from roomType appear in detailName
+                            let score = 0;
+                            roomTypeWords.forEach(word => {
+                                if (detailWords.some(dw => dw.includes(word) || word.includes(dw))) {
+                                    score++;
+                                }
+                            });
+
+                            // Also check if roomTypeName is contained in detailName
+                            if (detailName.includes(roomTypeName)) {
+                                score += 2; // Bonus for substring match
+                            }
+
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestMatch = dr;
+                            }
                         });
+
+                        // Accept match if at least 50% of key words matched
+                        // For 1-2 key words, require at least 1 match. For 3+, require 50% or score >= 2
+                        const threshold = roomTypeWords.length <= 2 ? 1 : Math.max(2, roomTypeWords.length * 0.5);
+                        if (bestMatch && bestScore >= threshold) {
+                            matchedRoom = bestMatch;
+                            console.log(`[PhotoFix] ✓ Fuzzy match found: '${roomTypeName}' matched with '${matchedRoom.roomName || matchedRoom.name}' (score: ${bestScore}/${roomTypeWords.length}, threshold: ${threshold})`);
+                        }
+                    } else {
+                        console.log(`[PhotoFix] No room name found for roomType at index ${index}`);
                     }
                 }
 
                 if (!matchedRoom) {
-                    console.log(`[PhotoFix] No match for room: '${roomType.name}' (ID: ${roomType.room_id}, MappedID: ${roomType.mappedRoomId})`);
-                    // Log available detail rooms for debugging
-                    // console.log("Available detail rooms:", detailRooms.map((dr: any) => `${dr.roomName || dr.name} (${dr.id})`).join(", "));
+                    const roomName = roomType.rates?.[0]?.name || roomType.name || 'undefined';
+                    console.log(`[PhotoFix] ✗ No match for room: '${roomName}' (MappedID: ${roomType.mappedRoomId || 'none'})`);
                 }
 
-                // 4. Apply Match
+                // 3. Apply Match
                 if (matchedRoom && matchedRoom.photos && matchedRoom.photos.length > 0) {
                     roomType.roomPhotos = matchedRoom.photos.map((p: any) => p.url || p.hd_url || p.urlHd || p).filter(Boolean);
+                    console.log(`[PhotoFix] ✓ Assigned ${roomType.roomPhotos.length} photos to room`);
                     if (matchedRoom.description) roomType.roomDescription = matchedRoom.description;
                     if (matchedRoom.bedTypes) roomType.bedTypes = matchedRoom.bedTypes;
                     if (matchedRoom.amenities) roomType.amenities = matchedRoom.amenities;
                     if (matchedRoom.roomAmenities) roomType.amenities = matchedRoom.roomAmenities; // Handle API variations
                 } else {
-                    // Fallback: If no specific room match, use the HOTEL'S main images 
-                    // Do NOT guess by index or pool, as this causes duplicate/wrong images for different room types
-                    roomType.roomPhotos = hotel.images || [];
+                    // Fallback: Use unique images from distinct pool to avoid duplicates
+                    if (distinctImages.length > 0) {
+                        // Use modulo to cycle through distinct images
+                        roomType.roomPhotos = [distinctImages[index % distinctImages.length]];
+                        console.log(`[PhotoFix] ⚠ Using fallback image ${index % distinctImages.length + 1}/${distinctImages.length}`);
+                    } else if (hotel.images && hotel.images.length > 0) {
+                        roomType.roomPhotos = [hotel.images[0]];
+                        console.log(`[PhotoFix] ⚠ Using hotel main image as fallback`);
+                    } else {
+                        roomType.roomPhotos = [];
+                        console.log(`[PhotoFix] ✗ No images available`);
+                    }
                 }
             });
-            console.log("Client-side room photo correction applied (Strict MappedRoomID Strategy).");
+            console.log("Client-side room photo correction applied.");
         } catch (err) {
             console.error("Error applying room photo fix:", err);
         }
