@@ -192,13 +192,13 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
     const router = useRouter();
     const { setBookingDetails, viewingRoom, setViewingRoom } = useBookingStore();
 
-    const handleReserve = (roomTitle: string, price: number) => {
+    const handleReserve = (roomTitle: string, price: number, offerId?: string) => {
         const checkInDate = searchParams?.checkIn ? new Date(searchParams.checkIn) : new Date(2026, 0, 23);
         const checkOutDate = searchParams?.checkOut ? new Date(searchParams.checkOut) : new Date(2026, 0, 25);
 
         setBookingDetails({
             property,
-            selectedRoom: { id: roomTitle, title: roomTitle, price },
+            selectedRoom: { id: roomTitle, offerId, title: roomTitle, price },
             checkIn: checkInDate,
             checkOut: checkOutDate,
             adults: searchParams?.adults || 2,
@@ -238,6 +238,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                     property={property}
                     room={viewingRoom}
                     onBack={() => setViewingRoom(null)}
+                    searchParams={searchParams}
                 />
             </div>
         );
@@ -271,7 +272,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                 description={room.roomDescription}
                                 amenities={room.amenities}
                                 photoCount={room.roomPhotos?.length}
-                                onReserve={() => handleReserve(roomName, priceInfo.amount)}
+                                onReserve={() => handleReserve(roomName, priceInfo.amount, room.offerId)}
                                 onViewDetails={() => {
                                     setViewingRoom(room);
                                     window.scrollTo(0, 0);

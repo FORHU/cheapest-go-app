@@ -69,34 +69,26 @@ export const DestinationPicker: React.FC = () => {
                 if (res && res.data) {
                     console.log("[DestinationPicker] Raw LiteAPI response:", res);
                     // Map LiteAPI results to Destination objects
-                    // Response format: { placeId, displayName, formattedAddress, ... }
+                    // Response format from LiteAPI /data/places: { placeId, displayName, formattedAddress, country_code, ... }
                     const mapped = res.data.map((item: any) => {
                         console.log("[DestinationPicker] Mapping item:", item);
-                        const address = item.formattedAddress || '';
-                        // Simple heuristic for country code since API doesn't return it directly
-                        let cc = 'PH';
-                        if (address.includes('South Korea') || address.includes('Korea')) cc = 'KR';
-                        else if (address.includes('Japan')) cc = 'JP';
-                        else if (address.includes('United States') || address.includes('USA')) cc = 'US';
-                        // Southeast Asia
-                        else if (address.includes('Singapore')) cc = 'SG';
-                        else if (address.includes('Malaysia')) cc = 'MY';
-                        else if (address.includes('Thailand')) cc = 'TH';
-                        else if (address.includes('Indonesia')) cc = 'ID';
-                        else if (address.includes('Vietnam') || address.includes('Viet Nam')) cc = 'VN';
-                        else if (address.includes('Cambodia')) cc = 'KH';
-                        else if (address.includes('Laos') || address.includes('Lao PDR')) cc = 'LA';
-                        else if (address.includes('Myanmar') || address.includes('Burma')) cc = 'MM';
-                        else if (address.includes('Brunei')) cc = 'BN';
-                        else if (address.includes('Philippines')) cc = 'PH';
-                        // Add more if needed, default to PH for now
+
+                        // Use the actual countryCode from LiteAPI response (most accurate)
+                        // LiteAPI returns country_code or countryCode field
+                        const countryCode = item.country_code || item.countryCode || item.countryIso || 'PH';
+
+                        // Extract city name (prefer displayName, fallback to name)
+                        const cityName = item.displayName || item.name || '';
+
+                        // Use formattedAddress for subtitle
+                        const address = item.formattedAddress || item.address || '';
 
                         const mappedItem = {
-                            type: 'city',
-                            title: item.displayName || item.name,
+                            type: 'city' as const,
+                            title: cityName,
                             subtitle: address,
-                            countryCode: cc,
-                            id: item.placeId || item.id
+                            countryCode: countryCode.toUpperCase(), // Ensure uppercase for consistency
+                            id: item.placeId || item.id // Store placeId for reference but prioritize cityName + countryCode
                         };
                         console.log("[DestinationPicker] Mapped to:", mappedItem);
                         return mappedItem;

@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Property } from '@/data/mockProperties';
 import { ArrowLeft, User, Bed, Wifi, MapPin, Check, Star, Share2, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBookingStore } from '@/stores/bookingStore';
@@ -9,9 +10,12 @@ interface RoomDetailsViewProps {
     property: Property;
     room: any; // Using existing loose type for room
     onBack: () => void;
+    searchParams?: { checkIn?: string; checkOut?: string; adults?: number; children?: number };
 }
 
-const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBack }) => {
+const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBack, searchParams }) => {
+    const router = useRouter();
+    const { setBookingDetails } = useBookingStore();
     const [currentPhotoIndex, setCurrentPhotoIndex] = React.useState(0);
 
     // Scroll to top on mount
@@ -20,6 +24,42 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
     }, []);
 
     const amenities = room.amenities || [];
+
+    // Extract price from room rates
+    const extractPrice = (rates?: any[]): number => {
+        if (!rates || rates.length === 0) return 0;
+        const total = rates[0]?.retailRate?.total;
+        if (Array.isArray(total) && total.length > 0) {
+            return total[0].amount || 0;
+        }
+        if (typeof total === 'object' && total !== null && 'amount' in total) {
+            return (total as { amount: number }).amount || 0;
+        }
+        return 0;
+    };
+
+    const handleSelectRoom = () => {
+        const checkInDate = searchParams?.checkIn ? new Date(searchParams.checkIn) : new Date(2026, 0, 23);
+        const checkOutDate = searchParams?.checkOut ? new Date(searchParams.checkOut) : new Date(2026, 0, 25);
+        const roomName = room.name || room.rates?.[0]?.name || "Selected Room";
+        const roomPrice = extractPrice(room.rates);
+
+        setBookingDetails({
+            property,
+            selectedRoom: {
+                id: roomName,
+                offerId: room.offerId,
+                title: roomName,
+                price: roomPrice
+            },
+            checkIn: checkInDate,
+            checkOut: checkOutDate,
+            adults: searchParams?.adults || 2,
+            children: searchParams?.children || 0
+        });
+
+        router.push('/checkout');
+    };
 
     return (
         <div className="min-h-screen bg-alabaster bg-grid-alabaster bg-[length:40px_40px] pb-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -159,7 +199,7 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
                             </div>
 
                             <button
-                                onClick={onBack}
+                                onClick={handleSelectRoom}
                                 className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 mb-4"
                             >
                                 Select this Room
