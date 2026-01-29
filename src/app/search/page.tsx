@@ -1,4 +1,4 @@
-import React from 'react';
+import { Suspense } from 'react';
 import { Header, Footer } from '@/components/landing';
 import SearchFilters from '@/components/search/SearchFilters';
 import SearchResults from '@/components/search/SearchResults';
@@ -39,7 +39,19 @@ export default async function SearchPage(props: {
     // Don't strip " City" anymore to allow "Quezon City" etc.
     const rawDestination = queryDestination;
 
-    const queryParams = {
+    // Parse filter parameters from URL
+    const hotelName = typeof searchParams.hotelName === 'string' ? searchParams.hotelName : undefined;
+    const starRating = typeof searchParams.starRating === 'string'
+        ? searchParams.starRating.split(',').map(Number).filter(n => !isNaN(n) && n >= 1 && n <= 5)
+        : undefined;
+    const minRating = typeof searchParams.minRating === 'string' ? Number(searchParams.minRating) : undefined;
+    const minReviewsCount = typeof searchParams.minReviewsCount === 'string' ? Number(searchParams.minReviewsCount) : undefined;
+    const facilities = typeof searchParams.facilities === 'string'
+        ? searchParams.facilities.split(',').map(Number).filter(n => !isNaN(n))
+        : undefined;
+    const strictFacilityFiltering = searchParams.strictFacilityFiltering === 'true';
+
+    const queryParams: Record<string, any> = {
         checkin: formatDate(rawCheckin) || "2026-06-01",
         checkout: formatDate(rawCheckout) || "2026-06-05",
         adults: Number(searchParams.adults) || 2,
@@ -51,6 +63,16 @@ export default async function SearchPage(props: {
         placeId: typeof searchParams.placeId === 'string' ? searchParams.placeId : undefined,
         query: rawDestination,
     };
+
+    // Add filter parameters if present
+    if (hotelName) queryParams.hotelName = hotelName;
+    if (starRating && starRating.length > 0) queryParams.starRating = starRating;
+    if (minRating && minRating > 0) queryParams.minRating = minRating;
+    if (minReviewsCount && minReviewsCount > 0) queryParams.minReviewsCount = minReviewsCount;
+    if (facilities && facilities.length > 0) {
+        queryParams.facilities = facilities;
+        if (strictFacilityFiltering) queryParams.strictFacilityFiltering = true;
+    }
 
     let initialProperties: Property[] = [];
 
@@ -140,7 +162,19 @@ export default async function SearchPage(props: {
                 </div>
 
                 <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
-                    <SearchFilters />
+                    <Suspense fallback={
+                        <div className="w-full flex-shrink-0 lg:w-[280px] space-y-4">
+                            <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse" />
+                            <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/2 animate-pulse" />
+                            <div className="space-y-3">
+                                {[1, 2, 3, 4, 5].map(i => (
+                                    <div key={i} className="h-10 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                                ))}
+                            </div>
+                        </div>
+                    }>
+                        <SearchFilters />
+                    </Suspense>
                     <SearchResults initialProperties={initialProperties} />
                 </div>
             </main>

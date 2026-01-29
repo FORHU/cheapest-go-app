@@ -56,38 +56,28 @@ Deno.serve(async (req: Request) => {
 
     console.log("Extracted values - checkin:", checkin, "checkout:", checkout, "placeId:", placeId, "countryCode:", countryCode, "cityName:", body.cityName);
 
-    // ... probe code ...
-
     // 1. Fetch Rates
     console.log("Fetching rates...");
 
-    // Construct location parameters:
-    // Priority: hotelIds > cityName + countryCode > placeId
-    // NOTE: cityName + countryCode provides most accurate city-specific results
-    // placeId is for Google Place IDs which may not match LiteAPI's place IDs
     let locationParams = {};
 
-    // Normalize city name for better LiteAPI matching
-    // LiteAPI requires exact cityName match (case-sensitive)
     let normalizedCityName = body.cityName || "";
     if (normalizedCityName) {
-      // Remove "City" suffix for cleaner matching (e.g., "Baguio City" -> "Baguio")
       normalizedCityName = normalizedCityName.replace(/\s+City$/i, '').trim();
     }
 
     if (body.hotelIds) {
       locationParams = { hotelIds: body.hotelIds };
       console.log("Using hotelIds:", body.hotelIds);
+
     } else if (normalizedCityName && countryCode) {
-      // PRIORITIZE cityName + countryCode for accurate city-specific searches
-      // This ensures we only get hotels in the exact city selected
       locationParams = { cityName: normalizedCityName, countryCode: countryCode };
       console.log("Using cityName:", normalizedCityName, "(original:", body.cityName, ") countryCode:", countryCode);
+
     } else if (placeId) {
-      // Fallback to placeId if cityName not available (should rarely happen)
-      // Note: placeId from autocomplete might not be Google Place ID
       locationParams = { placeId: placeId };
       console.log("Using placeId:", placeId);
+
     } else {
       // Last resort fallback
       locationParams = { cityName: "Manila", countryCode: "PH" };
@@ -96,15 +86,55 @@ Deno.serve(async (req: Request) => {
 
     console.log("Full location params:", JSON.stringify(locationParams));
 
+    // Build filter parameters from request body
+    const filterParams: Record<string, any> = {};
+
+    // Hotel name search (partial match)
+    if (body.hotelName) {
+      filterParams.hotelName = body.hotelName;
+      console.log("Filter: hotelName =", body.hotelName);
+    }
+
+    // Star rating filter (array of ratings like [3, 4, 5])
+    if (body.starRating && Array.isArray(body.starRating) && body.starRating.length > 0) {
+      filterParams.starRating = body.starRating;
+      console.log("Filter: starRating =", body.starRating);
+    }
+
+    // Minimum guest rating (e.g., 7, 8, 9)
+    if (body.minRating && typeof body.minRating === 'number') {
+      filterParams.minRating = body.minRating;
+      console.log("Filter: minRating =", body.minRating);
+    }
+
+    // Minimum reviews count
+    if (body.minReviewsCount && typeof body.minReviewsCount === 'number') {
+      filterParams.minReviewsCount = body.minReviewsCount;
+      console.log("Filter: minReviewsCount =", body.minReviewsCount);
+    }
+
+    // Facilities filter (array of facility IDs)
+    if (body.facilities && Array.isArray(body.facilities) && body.facilities.length > 0) {
+      filterParams.facilities = body.facilities;
+      console.log("Filter: facilities =", body.facilities);
+
+      // Strict facility filtering (require ALL facilities)
+      if (body.strictFacilityFiltering === true) {
+        filterParams.strictFacilityFiltering = true;
+        console.log("Filter: strictFacilityFiltering = true");
+      }
+    }
+
     const ratesPayload = JSON.stringify({
       checkin,
       checkout,
       currency,
       guestNationality,
       ...locationParams,
+      ...filterParams,
       occupancies: [{ adults: body.adults || 2, children: body.children || [] }],
-      roomMapping: true,  // Enable room photos and details
-      includeHotelData: true,  // Include hotel data with photos
+      roomMapping: true, 
+      includeHotelData: true, 
       timeout: 15
     });
 
@@ -142,8 +172,6 @@ Deno.serve(async (req: Request) => {
     const hotelIds = hotels.slice(0, 20).map((h) => h.hotelId);
 
     // 3. Fetch Hotel Details
-    // Use singular /data/hotel/{id} endpoint for single hotel (returns full hotelImages array)
-    // Use plural /data/hotels endpoint for multiple hotels (only returns main_photo)
     let detailsData: { data: HotelDetails[] } = { data: [] };
 
     if (hotelIds.length === 1) {
@@ -161,9 +189,6 @@ Deno.serve(async (req: Request) => {
       } else {
       }
     } else {
-      // Multiple hotels - use /data/hotels for batch fetch
-      // We need to fetch details for ALL hotels, but the API URL has length limits
-      // Chunk the IDs into batches of 50
       const CHUNK_SIZE = 50;
       const allHotelIds = hotels.map((h) => h.hotelId);
       const chunks = [];
@@ -206,20 +231,18 @@ Deno.serve(async (req: Request) => {
     }
 
     // Process the details data (whether from single or batch fetch)
-    // Normalize IDs to string vs number mismatch
     const detailsMap = new Map((detailsData.data || []).map((d) => [String(d.id), d]));
 
     // 4. Merge Details into Hotels
     hotels.forEach((hotel: Hotel) => {
       const detail = detailsMap.get(String(hotel.hotelId));
       if (detail) {
-        hotel.details = detail; // Attach the full detail object
-        // Overwrite name with official detail name
+        hotel.details = detail; 
         hotel.name = detail.name;
-        hotel.starRating = detail.hotel_star_rating || detail.star_rating; // Handle API variations
+        hotel.starRating = detail.hotel_star_rating || detail.star_rating; 
         hotel.thumbnailUrl = detail.main_photo;
         hotel.address = detail.address;
-        hotel.location = detail.address; // Map to location
+        hotel.location = detail.address;
 
         // Map Description - Only overwrite if detail has it
         if (detail.description || detail.hotel_description || detail.short_description) {
@@ -240,8 +263,6 @@ Deno.serve(async (req: Request) => {
           hotel.images = [detail.main_photo];
         }
 
-        // Extract rooms from hotel details for room photo mapping
-        // The /data/hotel endpoint returns rooms array with photos
         const detailRooms = detail.rooms || [];
         if (Array.isArray(detailRooms) && detailRooms.length > 0) {
           hotel.detailRooms = detailRooms;  // Store for mapping later
