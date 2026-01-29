@@ -4,11 +4,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { PlaneTakeoff, ArrowLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { useSearchParams } from 'next/navigation';
 
 export default function ResetPasswordPage() {
     const { isLoading } = useAuthStore();
-    const searchParams = useSearchParams();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);

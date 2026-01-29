@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plane } from 'lucide-react';
-import { TabList, PropertyCard } from '@/components/ui';
+import { TabList } from '@/components/ui';
+import { PropertyCard } from '@/components/shared';
 import { packages, packageTabs } from '@/data';
 
 export const ExploreVacationPackages: React.FC = () => {

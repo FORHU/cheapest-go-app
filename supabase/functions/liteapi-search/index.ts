@@ -267,12 +267,6 @@ Deno.serve(async (req: Request) => {
       }
     });
 
-    // Map room photos from hotel details (/data/hotel endpoint)
-    // The detailRooms array has room photos, we match them to roomTypes by name similarity
-    // Mapping of room photos is now handled Client-Side (src/utils/supabase/functions.ts)
-    // to allow for more advanced fuzzy matching and pooling without risking edge function timeouts/crashes.
-
-
     return new Response(JSON.stringify({
       data: hotels
     }), {

@@ -125,7 +125,7 @@ export async function getHotelDetails(hotelId: string, options: any = {}) {
                         const stopWords = ['room', 'with', 'and', 'the', 'a', 'an', 'for', 'of'];
                         const roomTypeWords = roomTypeName
                             .split(/[\s-]+/)
-                            .filter(word => word.length > 2 && !stopWords.includes(word));
+                            .filter((word: string) => word.length > 2 && !stopWords.includes(word));
 
                         // Try fuzzy matching based on key words
                         let bestMatch: any = null;
@@ -139,8 +139,8 @@ export async function getHotelDetails(hotelId: string, options: any = {}) {
 
                             // Count how many key words from roomType appear in detailName
                             let score = 0;
-                            roomTypeWords.forEach(word => {
-                                if (detailWords.some(dw => dw.includes(word) || word.includes(dw))) {
+                            roomTypeWords.forEach((word: string) => {
+                                if (detailWords.some((dw: string) => dw.includes(word) || word.includes(dw))) {
                                     score++;
                                 }
                             });

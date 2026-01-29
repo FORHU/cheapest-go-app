@@ -2,20 +2,40 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useBookingStore } from '@/stores/bookingStore';
+import {
+    useProperty,
+    useSelectedRoom,
+    useBookingDates,
+    useGuestCount,
+    useBookingId,
+} from '@/stores/bookingStore';
+import { useBookingFlow } from '@/hooks';
 import { Header, Footer } from '@/components/landing';
-import { ChevronLeft, Lock, CreditCard, ShieldCheck, CheckCircle, User as UserIcon } from 'lucide-react';
+import { Lock, CreditCard, ShieldCheck, CheckCircle, User as UserIcon } from 'lucide-react';
 import BackButton from '@/components/common/BackButton';
-import { invokeEdgeFunction } from '@/utils/supabase/client-functions';
 
 export default function CheckoutPage() {
     const router = useRouter();
-    const { property, selectedRoom, checkIn, checkOut, adults, children, prebookId, setBookingDetails } = useBookingStore();
+    // Use granular selectors (Phase 2) - prevents unnecessary re-renders
+    const property = useProperty();
+    const selectedRoom = useSelectedRoom();
+    const { checkIn, checkOut } = useBookingDates();
+    const { adults, children } = useGuestCount();
+    const bookingId = useBookingId();
+
+    // Use React Query booking flow (Phase 3)
+    const {
+        prebookId,
+        priceData,
+        isPrebooking: prebooking,
+        isBooking: loading,
+        prebookError: prebookErrorObj,
+        startPrebook,
+        completeBooking,
+    } = useBookingFlow();
+
     const [isSuccess, setIsSuccess] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [prebooking, setPrebooking] = useState(false);
-    const [prebookError, setPrebookError] = useState<string | null>(null);
-    const [priceData, setPriceData] = useState<{ price: number, tax: number, total: number } | null>(null);
+    const prebookError = prebookErrorObj?.message || null;
 
     const [selectedCurrency, setSelectedCurrency] = useState('PHP');
     const [phoneCountryCode, setPhoneCountryCode] = useState('+63');
@@ -70,84 +90,40 @@ export default function CheckoutPage() {
         }
     }, [property, selectedRoom, router]);
 
-    // 1. PRE-BOOK on Mount or Currency Change
+    // 1. PRE-BOOK on Mount or Currency Change (Phase 3 - React Query)
+    // Track if prebook was already initiated for this offer/currency combo
+    const prebookInitiatedRef = React.useRef<string | null>(null);
+
     useEffect(() => {
-        const runPrebook = async () => {
-            if (selectedRoom?.offerId) {
-                setPrebooking(true);
-                try {
-                    console.log("Starting Prebook for offer:", selectedRoom.offerId, "Currency:", selectedCurrency);
-                    const result = await invokeEdgeFunction('liteapi-prebook-v2', {
-                        offerId: selectedRoom.offerId,
-                        currency: selectedCurrency
-                    });
+        const prebookKey = `${selectedRoom?.offerId}-${selectedCurrency}`;
 
-                    if (result && result.data && result.data.prebookId) {
-                        console.log("Prebook Success:", result.data.prebookId);
-
-                        // Store prebookId
-                        setBookingDetails({
-                            prebookId: result.data.prebookId
-                        });
-
-                        // Update price if available in prebook
-                        if (result.data.price && result.data.price.total) {
-                            setPriceData({
-                                price: result.data.price.subtotal || result.data.price.total, // fallback
-                                tax: result.data.price.taxes || 0,
-                                total: result.data.price.total
-                            });
-                        }
-                    }
-                } catch (err: any) {
+        // Only call prebook if we haven't already for this offer/currency
+        if (selectedRoom?.offerId && prebookInitiatedRef.current !== prebookKey) {
+            prebookInitiatedRef.current = prebookKey;
+            console.log("Starting Prebook for offer:", selectedRoom.offerId, "Currency:", selectedCurrency);
+            startPrebook(selectedRoom.offerId, selectedCurrency)
+                .then((result) => {
+                    console.log("Prebook Success:", result.prebookId);
+                })
+                .catch((err) => {
                     console.error("Prebook Error:", err);
-                    setPrebookError("Could not verify room availability. Please try again.");
-                } finally {
-                    setPrebooking(false);
-                }
-            }
-        };
+                    // Reset ref on error so user can retry
+                    prebookInitiatedRef.current = null;
+                });
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedRoom?.offerId, selectedCurrency]);
 
-        runPrebook();
-    }, [selectedRoom, setBookingDetails, selectedCurrency]);
-
+    // 2. COMPLETE BOOKING (Phase 3 - React Query with automatic retry)
     const handleCompleteBooking = async () => {
-        setLoading(true);
         try {
-            // Check if prebookId exists, attempt to refresh if missing or expired
-            let currentPrebookId = prebookId;
-
-            if (!currentPrebookId || !selectedRoom?.offerId) {
+            if (!prebookId || !selectedRoom?.offerId) {
                 throw new Error("Booking session expired. Please go back and select the room again.");
             }
 
-            // Combine Country Code + Phone (Strict E.164)
-            // Remove spaces/dashes from user input first
-            let cleanPhoneInput = formData.phone.replace(/[\s-]/g, '');
-            // Strip leading 0 if present (e.g. 0912 -> 912)
-            if (cleanPhoneInput.startsWith('0')) {
-                cleanPhoneInput = cleanPhoneInput.substring(1);
-            }
-            // Combine: e.g. "+63" + "912..." -> "+63912..."
-            let formattedPhone = phoneCountryCode + cleanPhoneInput;
-
-
-            // Format Expiry: Ensure simple MM/YY (strip spaces)
-            let cleanExpiry = formData.expiry.replace(/\s/g, '');
-            // User likely enters MM/YY, so we just ensure no spaces. 
-            // If they entered MM/YYYY, we might need to truncate, but let's stick to standard MM/YY.
-            if (cleanExpiry.length > 5) {
-                // truncate 12/2030 -> 12/30
-                const [mm, yyyy] = cleanExpiry.split('/');
-                if (yyyy && yyyy.length === 4) {
-                    cleanExpiry = `${mm}/${yyyy.substring(2)}`;
-                }
-            }
-
-            // Construct Payload - Simplified to match LiteAPI v3.0 documentation
-            // Reference: https://docs.liteapi.travel/reference/post_rates-book
+            // Construct guest details
             const primaryGuest: any = {
-                occupancyNumber: 1, // Required to map guest to room
+                occupancyNumber: 1,
                 firstName: bookingFor === 'myself' ? formData.firstName : formData.guestFirstName,
                 lastName: bookingFor === 'myself' ? formData.lastName : formData.guestLastName,
                 email: formData.email
@@ -158,10 +134,10 @@ export default function CheckoutPage() {
                 primaryGuest.remarks = specialRequests.trim();
             }
 
-            // Use ACC_CREDIT_CARD for sandbox testing
-            // Each sandbox key is attached to a hidden testing ACC_CREDIT_CARD
-            const payload = {
-                prebookId: currentPrebookId,
+            console.log("Starting booking with React Query...");
+
+            // Use completeBooking from useBookingFlow (handles retry automatically)
+            await completeBooking({
                 holder: {
                     firstName: formData.firstName,
                     lastName: formData.lastName,
@@ -171,75 +147,21 @@ export default function CheckoutPage() {
                 payment: {
                     method: "ACC_CREDIT_CARD"
                 }
-            };
+            });
 
-            console.log("Sending Booking Payload:", payload);
-
-            let result;
-            try {
-                result = await invokeEdgeFunction('liteapi-book-v2', payload);
-                console.log("Booking Result:", result);
-            } catch (bookingError: any) {
-                // Check for fraud check rejection (error code 2013)
-                if (bookingError.message?.includes("fraud check") || bookingError.message?.includes("2013")) {
-                    throw new Error("Booking rejected by fraud prevention system.\n\nPlease use realistic information:\n• Real-looking names (e.g., 'John Smith')\n• Valid email addresses (not @mailinator.com)\n• Realistic phone numbers\n\nAuto-generated fake data triggers fraud detection.");
-                }
-
-                // Check if error is due to expired prebook session
-                if (bookingError.message?.includes("expired") || bookingError.message?.includes("booking failed")) {
-                    console.log("Prebook session expired, attempting to refresh...");
-
-                    // Attempt to refresh prebook
-                    try {
-                        setPrebooking(true);
-                        const refreshResult = await invokeEdgeFunction('liteapi-prebook-v2', {
-                            offerId: selectedRoom?.offerId,
-                            currency: selectedCurrency
-                        });
-
-                        if (refreshResult?.data?.prebookId) {
-                            currentPrebookId = refreshResult.data.prebookId;
-                            setBookingDetails({ prebookId: currentPrebookId });
-
-                            console.log("Prebook refreshed with new ID:", currentPrebookId);
-
-                            // Create new payload with updated prebookId using ACC_CREDIT_CARD
-                            const updatedPayload = {
-                                ...payload,
-                                prebookId: currentPrebookId,
-                                payment: {
-                                    method: "ACC_CREDIT_CARD"
-                                }
-                            };
-
-                            console.log("Retrying booking with updated payload:", updatedPayload);
-                            // Retry booking with new prebookId
-                            result = await invokeEdgeFunction('liteapi-book-v2', updatedPayload);
-                        } else {
-                            throw new Error("Could not refresh booking session");
-                        }
-                    } catch (refreshError) {
-                        throw new Error("Booking session expired. Please go back and select the room again.");
-                    } finally {
-                        setPrebooking(false);
-                    }
-                } else {
-                    throw bookingError;
-                }
-            }
-
-            if (result && (result.data?.bookingId || result.data?.status === 'Confirmed')) {
-                setBookingDetails({ bookingId: result.data.bookingId });
-                setIsSuccess(true);
-            } else {
-                throw new Error("Booking failed - No Booking ID returned");
-            }
+            // Success - booking completed
+            setIsSuccess(true);
+            console.log("Booking completed successfully!");
 
         } catch (err: any) {
             console.error("Booking Error:", err);
-            alert(`Booking Failed: ${err.message}\n\nPlease go back and select your room again.`);
-        } finally {
-            setLoading(false);
+
+            // Check for fraud check rejection
+            if (err.message?.includes("fraud check") || err.message?.includes("2013")) {
+                alert("Booking rejected by fraud prevention system.\n\nPlease use realistic information:\n• Real-looking names (e.g., 'John Smith')\n• Valid email addresses (not @mailinator.com)\n• Realistic phone numbers");
+            } else {
+                alert(`Booking Failed: ${err.message}\n\nPlease go back and select your room again.`);
+            }
         }
     };
 
@@ -257,7 +179,7 @@ export default function CheckoutPage() {
                             Your reservation at <span className="font-semibold text-slate-900 dark:text-white">{property?.name || "Grand Sierra Pines"}</span> is complete.
                         </p>
                         <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-lg mb-6 text-left text-sm">
-                            <div className="mb-2"><span className="text-slate-500">Booking ID:</span> <span className="font-mono font-bold text-slate-900 dark:text-white">{useBookingStore.getState().bookingId}</span></div>
+                            <div className="mb-2"><span className="text-slate-500">Booking ID:</span> <span className="font-mono font-bold text-slate-900 dark:text-white">{bookingId}</span></div>
                             <div><span className="text-slate-500">Email sent to:</span> <span className="font-medium text-slate-900 dark:text-white">{formData.email}</span></div>
                         </div>
                         <div className="space-y-3">
@@ -279,9 +201,10 @@ export default function CheckoutPage() {
 
     // Calculate totals - PREFER PRICE DATA FROM API IF AVAILABLE
     // If priceData exists (from prebook), use it. Else calculate locally (legacy).
-    const roomPrice = priceData ? priceData.price : (displayRoom.price * totalNights);
-    const taxes = priceData ? priceData.tax : (roomPrice * 0.12);
-    const totalPrice = priceData ? priceData.total : (roomPrice + taxes);
+    const baseRoomPrice = displayRoom.price || 5200;
+    const roomPrice = priceData?.price ?? (baseRoomPrice * totalNights);
+    const taxes = priceData?.tax ?? (roomPrice * 0.12);
+    const totalPrice = priceData?.total ?? (roomPrice + taxes);
 
     return (
         <>
@@ -299,9 +222,44 @@ export default function CheckoutPage() {
                         Secure your booking
                     </h1>
 
+                    {/* Debug Info - Remove after fixing */}
+                    <div className="mb-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-mono">
+                        <div>Room OfferId: {selectedRoom?.offerId || 'NOT SET'}</div>
+                        <div>PrebookId: {prebookId || 'NOT SET'}</div>
+                        <div>Prebooking: {prebooking ? 'YES' : 'NO'}</div>
+                        <div>Currency: {selectedCurrency}</div>
+                        {!selectedRoom?.offerId && (
+                            <div className="text-red-500 mt-2">⚠️ No offerId - go back and select a room first!</div>
+                        )}
+                        {prebooking && (
+                            <button
+                                onClick={() => {
+                                    prebookInitiatedRef.current = null;
+                                    if (selectedRoom?.offerId) {
+                                        startPrebook(selectedRoom.offerId, selectedCurrency);
+                                    }
+                                }}
+                                className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-xs"
+                            >
+                                Retry Prebook
+                            </button>
+                        )}
+                    </div>
+
                     {prebookError && (
                         <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg text-red-600 dark:text-red-400">
                             <strong>Error:</strong> {prebookError}
+                            <button
+                                onClick={() => {
+                                    prebookInitiatedRef.current = null;
+                                    if (selectedRoom?.offerId) {
+                                        startPrebook(selectedRoom.offerId, selectedCurrency);
+                                    }
+                                }}
+                                className="ml-4 px-3 py-1 bg-red-500 text-white rounded text-sm"
+                            >
+                                Retry
+                            </button>
                         </div>
                     )}
 
@@ -487,12 +445,12 @@ export default function CheckoutPage() {
 
                             <button
                                 onClick={handleCompleteBooking}
-                                disabled={loading || prebooking || !!prebookError}
+                                disabled={loading || (prebooking && !prebookId) || !!prebookError}
                                 className={`w-full py-4 text-slate-900 font-bold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-2
-                                    ${loading || prebooking ? 'bg-slate-300 cursor-not-allowed' : 'bg-yellow-400 hover:bg-yellow-500 shadow-yellow-400/20'}
+                                    ${loading || (prebooking && !prebookId) ? 'bg-slate-300 cursor-not-allowed' : 'bg-yellow-400 hover:bg-yellow-500 shadow-yellow-400/20'}
                                 `}
                             >
-                                {loading ? 'Processing Booking...' : prebooking ? 'Verifying Room...' : `Complete Booking • ₱${totalPrice.toLocaleString()}`}
+                                {loading ? 'Processing Booking...' : (prebooking && !prebookId) ? 'Verifying Room...' : `Complete Booking • ₱${(totalPrice || 0).toLocaleString()}`}
                             </button>
                         </div>
 
@@ -529,7 +487,7 @@ export default function CheckoutPage() {
                                     </div>
                                     <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
                                         <span className="text-slate-900 dark:text-white">Total</span>
-                                        <span className="text-slate-900 dark:text-white">₱{totalPrice.toLocaleString()}</span>
+                                        <span className="text-slate-900 dark:text-white">₱{(totalPrice || 0).toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>
