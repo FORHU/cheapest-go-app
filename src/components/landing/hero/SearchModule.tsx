@@ -1,11 +1,11 @@
 "use client";
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { MagneticButton } from '@/components/ui';
 import { DestinationSection, DateSection, TravelersSection } from './search/SearchSections';
 import { useSearchModule } from '@/hooks/useSearchModule';
 
-export const SearchModule: React.FC = () => {
+const SearchModuleContent: React.FC = () => {
     // All logic is extracted to the custom hook
     const { handleSearch, isSearching } = useSearchModule();
 
@@ -21,6 +21,17 @@ export const SearchModule: React.FC = () => {
             {/* Search Button */}
             <MagneticButton onClick={handleSearch} isLoading={isSearching} />
         </div>
+    );
+};
+
+// Suspense wrapper for SearchModule
+export const SearchModule: React.FC = () => {
+    return (
+        <Suspense fallback={
+            <div className="relative bg-white/60 dark:bg-[#0f172a]/80 backdrop-blur-3xl rounded-xl shadow-2xl border border-white/20 dark:border-white/10 p-2 h-[72px] animate-pulse" />
+        }>
+            <SearchModuleContent />
+        </Suspense>
     );
 };
 

@@ -1,20 +1,26 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Property, baguioProperties } from '@/data/mockProperties';
-import PropertyCard from './PropertyCard';
+import { PropertyCard } from '@/components/shared';
 import { ChevronDown, ArrowUpDown } from 'lucide-react';
 
 interface SearchResultsProps {
     initialProperties?: Property[];
 }
 
-const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
+const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) => {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const destination = searchParams.get('destination') || '';
     const [sortBy, setSortBy] = useState('recommended');
     const [visibleCount, setVisibleCount] = useState(12);
+
+    const handlePropertyClick = (propertyId: string) => {
+        const currentParams = new URLSearchParams(searchParams.toString());
+        router.push(`/property/${propertyId}?${currentParams.toString()}`);
+    };
 
     // Filter properties based on search params
     const filteredProperties = useMemo(() => {
@@ -65,7 +71,13 @@ const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
             {visibleProperties.length > 0 ? (
                 <div className="space-y-4">
                     {visibleProperties.map((property, index) => (
-                        <PropertyCard key={property.id} property={property} index={index} />
+                        <PropertyCard
+                            key={property.id}
+                            variant="horizontal"
+                            property={property}
+                            index={index}
+                            onClick={() => handlePropertyClick(property.id)}
+                        />
                     ))}
                 </div>
             ) : (
@@ -93,6 +105,26 @@ const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
                 </div>
             )}
         </div>
+    );
+};
+
+const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
+    return (
+        <Suspense fallback={
+            <div className="flex-1 min-w-0">
+                <div className="animate-pulse space-y-4">
+                    <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4" />
+                    <div className="space-y-4 mt-6">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-48 bg-slate-200 dark:bg-slate-700 rounded-xl" />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        }>
+            <SearchResultsContent initialProperties={initialProperties} />
+        </Suspense>
     );
 };
 

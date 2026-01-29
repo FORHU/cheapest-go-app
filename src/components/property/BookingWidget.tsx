@@ -3,7 +3,7 @@
 import React from 'react';
 import { Property } from '@/data/mockProperties';
 import { MapPin, X, Bed, User, Wifi, Check } from 'lucide-react';
-import { useBookingStore } from '@/stores/bookingStore';
+import { useViewingRoom, useBookingActions } from '@/stores/bookingStore';
 
 interface BookingWidgetProps {
     property: Property;
@@ -17,7 +17,9 @@ interface BookingWidgetProps {
 }
 
 const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, searchParams }) => {
-    const { viewingRoom, setViewingRoom } = useBookingStore();
+    // Use granular selectors (Phase 2)
+    const viewingRoom = useViewingRoom();
+    const { setViewingRoom } = useBookingActions();
 
     // Reset viewing room on mount/unmount to ensure clean state
     React.useEffect(() => {

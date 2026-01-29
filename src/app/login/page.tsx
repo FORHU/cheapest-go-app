@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { PlaneTakeoff, ArrowLeft, Mail, User, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/authStore';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import VerifyEmailStep from '@/components/auth/VerifyEmailStep';
 
-export default function LoginPage() {
+function LoginPageContent() {
     const { register, login, isLoading, authStep, setAuthStep } = useAuthStore();
     const searchParams = useSearchParams();
 
@@ -324,5 +324,17 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+        }>
+            <LoginPageContent />
+        </Suspense>
     );
 }
