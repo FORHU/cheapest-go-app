@@ -11,7 +11,7 @@ import {
 } from '@/stores/bookingStore';
 import { useBookingFlow } from '@/hooks';
 import { Header, Footer } from '@/components/landing';
-import { Lock, CreditCard, ShieldCheck, CheckCircle, User as UserIcon } from 'lucide-react';
+import { Lock, CreditCard, ShieldCheck, CheckCircle, User as UserIcon, Loader2 } from 'lucide-react';
 import BackButton from '@/components/common/BackButton';
 
 export default function CheckoutPage() {
@@ -446,12 +446,36 @@ export default function CheckoutPage() {
                             <button
                                 onClick={handleCompleteBooking}
                                 disabled={loading || (prebooking && !prebookId) || !!prebookError}
-                                className={`w-full py-4 text-slate-900 font-bold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-2
-                                    ${loading || (prebooking && !prebookId) ? 'bg-slate-300 cursor-not-allowed' : 'bg-yellow-400 hover:bg-yellow-500 shadow-yellow-400/20'}
+                                className={`w-full py-4 text-slate-900 font-bold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-3
+                                    ${loading ? 'bg-blue-500 text-white cursor-wait animate-pulse' : (prebooking && !prebookId) ? 'bg-slate-300 cursor-not-allowed' : 'bg-yellow-400 hover:bg-yellow-500 shadow-yellow-400/20'}
                                 `}
                             >
-                                {loading ? 'Processing Booking...' : (prebooking && !prebookId) ? 'Verifying Room...' : `Complete Booking • ₱${(totalPrice || 0).toLocaleString()}`}
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <span>Processing Your Booking...</span>
+                                    </>
+                                ) : (prebooking && !prebookId) ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <span>Verifying Room Availability...</span>
+                                    </>
+                                ) : (
+                                    `Complete Booking • ₱${(totalPrice || 0).toLocaleString()}`
+                                )}
                             </button>
+
+                            {/* Loading overlay message */}
+                            {loading && (
+                                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg text-center">
+                                    <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                                        Please wait while we confirm your reservation with the hotel...
+                                    </p>
+                                    <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                                        This may take up to 30 seconds. Do not close this page.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Sidebar Summary */}

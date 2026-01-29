@@ -62,9 +62,9 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
     };
 
     return (
-        <div className="min-h-screen bg-alabaster bg-grid-alabaster bg-[length:40px_40px] pb-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="min-h-screen bg-transparent pb-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
             {/* Sticky Header */}
-            <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
+            <div className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-white/10">
                 <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
                     <button
                         onClick={onBack}
@@ -178,7 +178,7 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
                                     const name = typeof item === 'string' ? item : item.name;
                                     return (
                                         <div key={i} className="flex items-center gap-3 text-slate-700 dark:text-slate-300 p-3 rounded-lg border border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                                            <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                                            <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                                                 <Check size={16} />
                                             </div>
                                             <span className="font-medium">{name}</span>
@@ -192,7 +192,7 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
 
                     {/* Right Column: Booking Card (Sticky) */}
                     <div className="lg:col-span-1">
-                        <div className="sticky top-24 bg-white rounded-2xl border border-slate-200 shadow-lg p-6">
+                        <div className="sticky top-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg p-6">
                             <div className="mb-6">
                                 <span className="text-3xl font-bold text-slate-900 dark:text-white">Price Varies</span>
                                 <span className="text-sm text-slate-500 block">Check dates for specific rates</span>
