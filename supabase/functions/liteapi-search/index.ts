@@ -125,6 +125,48 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Build occupancies array based on rooms, adults, and children
+    const buildOccupancies = () => {
+      const totalAdults = body.adults || 2;
+      const totalChildren = body.children || 0; // This is a COUNT, not ages array
+      const totalRooms = body.rooms || 1;
+
+      // Convert children count to array of default ages (assume age 10 for each child)
+      const childrenAges: number[] = [];
+      if (typeof totalChildren === 'number' && totalChildren > 0) {
+        for (let i = 0; i < totalChildren; i++) {
+          childrenAges.push(10); // Default age 10 for children
+        }
+      } else if (Array.isArray(totalChildren)) {
+        // If already an array of ages, use it directly
+        childrenAges.push(...totalChildren);
+      }
+
+      // Distribute guests across rooms
+      const occupancies = [];
+      const adultsPerRoom = Math.ceil(totalAdults / totalRooms);
+      const childrenPerRoom = Math.ceil(childrenAges.length / totalRooms);
+
+      let remainingAdults = totalAdults;
+      let remainingChildrenAges = [...childrenAges];
+
+      for (let i = 0; i < totalRooms; i++) {
+        const roomAdults = Math.min(adultsPerRoom, remainingAdults);
+        remainingAdults -= roomAdults;
+
+        const roomChildrenCount = Math.min(childrenPerRoom, remainingChildrenAges.length);
+        const roomChildrenAges = remainingChildrenAges.splice(0, roomChildrenCount);
+
+        occupancies.push({
+          adults: roomAdults || 1, // At least 1 adult per room
+          children: roomChildrenAges
+        });
+      }
+
+      console.log("Built occupancies:", JSON.stringify(occupancies));
+      return occupancies;
+    };
+
     const ratesPayload = JSON.stringify({
       checkin,
       checkout,
@@ -132,9 +174,9 @@ Deno.serve(async (req: Request) => {
       guestNationality,
       ...locationParams,
       ...filterParams,
-      occupancies: [{ adults: body.adults || 2, children: body.children || [] }],
-      roomMapping: true, 
-      includeHotelData: true, 
+      occupancies: buildOccupancies(),
+      roomMapping: true,
+      includeHotelData: true,
       timeout: 15
     });
 
@@ -265,7 +307,28 @@ Deno.serve(async (req: Request) => {
 
         const detailRooms = detail.rooms || [];
         if (Array.isArray(detailRooms) && detailRooms.length > 0) {
-          hotel.detailRooms = detailRooms;  // Store for mapping later
+          // Normalize room data structure for client-side matching
+          hotel.detailRooms = detailRooms.map((room: any) => {
+            // Extract photos from various possible LiteAPI structures
+            const rawPhotos = room.photos || room.roomPhotos || room.images || room.roomImages || [];
+            const normalizedPhotos = rawPhotos.map((p: any) => {
+              if (typeof p === 'string') return { url: p };
+              return {
+                url: p.url || p.urlHd || p.hd_url || p.hdUrl || p.thumbnail || p
+              };
+            }).filter((p: any) => p.url);
+
+            return {
+              ...room,
+              // Normalize ID field
+              id: room.id || room.roomId || room.room_id,
+              // Normalize name field
+              roomName: room.roomName || room.name || room.room_name,
+              // Normalize photos to consistent structure
+              photos: normalizedPhotos
+            };
+          });
+          console.log(`[Rooms] Processed ${hotel.detailRooms.length} detail rooms with photos`);
         }
 
         // Map Check-in/Check-out times

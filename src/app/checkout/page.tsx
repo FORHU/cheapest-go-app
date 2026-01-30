@@ -91,6 +91,23 @@ export default function CheckoutPage() {
         }
     }, [user]);
 
+    // Auto-retry prebook after successful authentication if there was an error
+    useEffect(() => {
+        // Only retry if: user just logged in, there was a prebook error, and we have an offer
+        if (user && prebookError && selectedRoom?.offerId && !isAuthModalOpen) {
+            console.log("[Checkout] User authenticated, retrying prebook after error...");
+            prebookInitiatedRef.current = null; // Reset to allow retry
+            startPrebook(selectedRoom.offerId, selectedCurrency)
+                .then((result) => {
+                    console.log("[Checkout] Prebook retry success:", result.prebookId);
+                })
+                .catch((err) => {
+                    console.error("[Checkout] Prebook retry failed:", err);
+                });
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, isAuthModalOpen]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
@@ -427,7 +444,8 @@ export default function CheckoutPage() {
                         </div>
                     )}
 
-                    {prebookError && (
+                    {/* Only show prebook error when auth modal is NOT open - prevents confusing UX during sign-in */}
+                    {prebookError && !isAuthModalOpen && (
                         <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg text-red-600 dark:text-red-400">
                             <strong>Error:</strong> {prebookError}
                             <button

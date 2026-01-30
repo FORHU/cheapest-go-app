@@ -1,11 +1,11 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Property } from '@/data/mockProperties';
 import { useViewingRoom, useBookingActions } from '@/stores/bookingStore';
 import RoomDetailsView from './RoomDetailsView';
-import { RoomCard } from './RoomCard';
+import { RoomCard, RateOption } from './RoomCard';
 
 interface RoomType {
     offerId?: string;
@@ -26,14 +26,30 @@ interface RoomType {
             total?: Array<{ amount: number; currency: string }> | { amount: number };
         };
         cancellationPolicy?: { cancelPolicyInfos?: Array<{ cancelDeadline?: string }> };
+        refundableTag?: string;
     }>;
     amenities?: (string | { name: string })[]; // From roomMapping (Can be string[] or object[])
+}
+
+/** Grouped room with multiple rate options */
+interface GroupedRoom {
+    roomName: string;
+    roomTypes: RoomType[];
+    rateOptions: RateOption[];
+    lowestPrice: number;
+    currency: string;
+    maxOccupancy?: number;
+    bedType?: string;
+    roomSize?: string;
+    roomPhotos?: string[];
+    roomDescription?: string;
+    amenities?: (string | { name: string })[];
 }
 
 interface RoomListProps {
     property: Property;
     roomTypes?: RoomType[];
-    searchParams?: { checkIn?: string; checkOut?: string; adults?: number; children?: number };
+    searchParams?: { checkIn?: string; checkOut?: string; adults?: number; children?: number; rooms?: number };
     hotelImages?: string[];  // Hotel images to use as fallbacks for room cards
 }
 
@@ -75,15 +91,83 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
         return { amount: 0, currency: 'PHP' };
     };
 
-    // Check if free cancellation
+    // Check if free cancellation based on refundableTag or cancellation policy
     const hasFreeCancellation = (rates?: RoomType['rates']): boolean => {
-        if (!rates || rates.length === 0) return true;
+        if (!rates || rates.length === 0) return false;
+        // Check refundableTag first (LiteAPI standard)
+        if (rates[0]?.refundableTag === 'RFN') return true;
+        if (rates[0]?.refundableTag === 'NRFN') return false;
+        // Fallback to checking cancellation policy
         const policy = rates[0]?.cancellationPolicy;
         return !!policy?.cancelPolicyInfos?.length;
     };
 
-    // Use API room types if available, otherwise fall back to mock data
-    const displayRooms = roomTypes && roomTypes.length > 0 ? roomTypes : null;
+    // Group roomTypes by their physical room name (rates are different pricing options)
+    const groupedRooms = useMemo((): GroupedRoom[] => {
+        if (!roomTypes || roomTypes.length === 0) return [];
+
+        const groups = new Map<string, GroupedRoom>();
+
+        roomTypes.forEach((roomType) => {
+            // Get room name - LiteAPI stores it in rates[0].name
+            const roomName = roomType.rates?.[0]?.name || roomType.name || roomType.roomName || 'Standard Room';
+            // Normalize room name (remove rate-specific suffixes like "- Non Refundable")
+            const normalizedName = roomName
+                .replace(/\s*-\s*(non[- ]?refundable|refundable|room only|breakfast included).*$/i, '')
+                .trim();
+
+            const priceInfo = extractPrice(roomType.rates);
+            const refundable = hasFreeCancellation(roomType.rates);
+
+            const rateOption: RateOption = {
+                offerId: roomType.offerId || '',
+                price: priceInfo.amount,
+                currency: priceInfo.currency,
+                boardType: roomType.rates?.[0]?.boardType,
+                boardName: roomType.rates?.[0]?.boardName || 'Room only',
+                refundable,
+                cancellationDeadline: roomType.rates?.[0]?.cancellationPolicy?.cancelPolicyInfos?.[0]?.cancelDeadline
+            };
+
+            if (groups.has(normalizedName)) {
+                const existing = groups.get(normalizedName)!;
+                existing.rateOptions.push(rateOption);
+                existing.roomTypes.push(roomType);
+                // Update lowest price
+                if (priceInfo.amount < existing.lowestPrice) {
+                    existing.lowestPrice = priceInfo.amount;
+                }
+                // Merge photos if new ones found
+                if (roomType.roomPhotos && roomType.roomPhotos.length > 0 && (!existing.roomPhotos || existing.roomPhotos.length === 0)) {
+                    existing.roomPhotos = roomType.roomPhotos;
+                }
+            } else {
+                groups.set(normalizedName, {
+                    roomName: normalizedName,
+                    roomTypes: [roomType],
+                    rateOptions: [rateOption],
+                    lowestPrice: priceInfo.amount,
+                    currency: priceInfo.currency,
+                    maxOccupancy: roomType.maxOccupancy || roomType.rates?.[0]?.maxOccupancy,
+                    bedType: roomType.bedType,
+                    roomSize: roomType.roomSize,
+                    roomPhotos: roomType.roomPhotos,
+                    roomDescription: roomType.roomDescription,
+                    amenities: roomType.amenities
+                });
+            }
+        });
+
+        // Sort rate options by price within each group
+        groups.forEach((group) => {
+            group.rateOptions.sort((a, b) => a.price - b.price);
+        });
+
+        return Array.from(groups.values());
+    }, [roomTypes]);
+
+    // Use grouped rooms if available
+    const displayRooms = groupedRooms.length > 0 ? groupedRooms : null;
 
     // Full Page Room Details Overlay
     if (viewingRoom) {
@@ -108,28 +192,38 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
             {/* Vertical Stack Layout for Wide Cards */}
             <div className="flex flex-col gap-4">
                 {displayRooms ? (
-                    displayRooms.map((room, index) => {
-                        const priceInfo = extractPrice(room.rates);
-                        const roomName = room.name || room.rates?.[0]?.name || `Room ${index + 1}`;
-                        const roomImage = room.roomPhotos?.[0] || hotelImages[index % hotelImages.length];
+                    displayRooms.map((groupedRoom, index) => {
+                        const roomImage = groupedRoom.roomPhotos?.[0] || hotelImages[index % hotelImages.length];
+                        const hasMultipleRates = groupedRoom.rateOptions.length > 1;
+                        const lowestRate = groupedRoom.rateOptions[0]; // Already sorted by price
 
                         return (
                             <RoomCard
-                                key={room.offerId || index}
-                                title={roomName}
-                                price={priceInfo.amount}
-                                currency={priceInfo.currency}
-                                maxOccupancy={room.maxOccupancy}
-                                bedType={room.bedType}
-                                roomSize={room.roomSize}
-                                freeCancellation={hasFreeCancellation(room.rates)}
+                                key={groupedRoom.roomName + index}
+                                title={groupedRoom.roomName}
+                                price={groupedRoom.lowestPrice}
+                                currency={groupedRoom.currency}
+                                maxOccupancy={groupedRoom.maxOccupancy}
+                                bedType={groupedRoom.bedType}
+                                roomSize={groupedRoom.roomSize}
+                                freeCancellation={lowestRate?.refundable}
                                 roomImage={roomImage}
-                                description={room.roomDescription}
-                                amenities={room.amenities}
-                                photoCount={room.roomPhotos?.length}
-                                onReserve={() => handleReserve(roomName, priceInfo.amount, room.offerId)}
+                                amenities={groupedRoom.amenities}
+                                photoCount={groupedRoom.roomPhotos?.length}
+                                rateOptions={hasMultipleRates ? groupedRoom.rateOptions : undefined}
+                                onReserve={(offerId) => {
+                                    const selectedRate = offerId
+                                        ? groupedRoom.rateOptions.find(r => r.offerId === offerId)
+                                        : lowestRate;
+                                    handleReserve(
+                                        groupedRoom.roomName,
+                                        selectedRate?.price || groupedRoom.lowestPrice,
+                                        offerId || lowestRate?.offerId
+                                    );
+                                }}
                                 onViewDetails={() => {
-                                    setViewingRoom(room);
+                                    // Pass the first roomType for details view
+                                    setViewingRoom(groupedRoom.roomTypes[0]);
                                     window.scrollTo(0, 0);
                                 }}
                             />

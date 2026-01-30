@@ -167,6 +167,10 @@ Deno.serve(async (req: any) => {
         console.log("Extracted price:", totalPrice, currency);
         console.log("Full result.data structure:", JSON.stringify(result.data, null, 2).substring(0, 1000));
 
+        // Get current timestamp in ISO format (UTC)
+        const bookedAt = new Date().toISOString();
+        console.log("Booking timestamp (UTC):", bookedAt);
+
         const { error: dbError } = await supabaseAdmin
             .from('bookings')
             .insert([{
@@ -177,6 +181,7 @@ Deno.serve(async (req: any) => {
                 total_price: totalPrice,
                 currency: currency,
                 status: result.data?.status || 'confirmed',
+                booked_at: bookedAt,
                 payload: result // Save full payload for debug
             }]);
 

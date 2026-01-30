@@ -123,28 +123,6 @@ export interface QueryErrorBoundaryProps {
     onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
 
-/**
- * Query Error Boundary
- * Integrates React Query's error reset with React error boundaries
- *
- * @example
- * <QueryErrorBoundary>
- *   <ComponentThatMayError />
- * </QueryErrorBoundary>
- *
- * @example
- * // With custom fallback
- * <QueryErrorBoundary
- *   fallback={({ error, resetErrorBoundary }) => (
- *     <div>
- *       <p>Error: {error.message}</p>
- *       <button onClick={resetErrorBoundary}>Retry</button>
- *     </div>
- *   )}
- * >
- *   <ComponentThatMayError />
- * </QueryErrorBoundary>
- */
 export const QueryErrorBoundary: React.FC<QueryErrorBoundaryProps> = ({
     children,
     fallback,

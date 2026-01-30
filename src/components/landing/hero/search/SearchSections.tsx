@@ -79,8 +79,8 @@ export const TravelersSection: React.FC = () => {
 
     return (
         <div
-            className="flex-1 relative flex items-center px-4 h-16 group cursor-pointer"
-            onClick={() => setActiveDropdown('travelers')}
+            className="flex-1 relative flex items-center px-4 h-16 group cursor-pointer z-20"
+            onClick={() => setActiveDropdown(isTravelersOpen ? null : 'travelers')}
         >
             <User className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
             <div className="ml-3 flex flex-col justify-center w-full text-left">

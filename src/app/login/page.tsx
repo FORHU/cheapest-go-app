@@ -73,11 +73,6 @@ function LoginPageContent() {
 
         try {
             if (mode === 'signup') {
-                // Pass directly, store handles args. Store.register signature:
-                // register: (data: { email, password, firstName, lastName }) => Promise<void>
-                // Note: AuthContext might have had extra args. Store doesn't seem to have `shouldOpenModal` param.
-                // Store logic for register: if user, might need confirmation.
-                // I will call it as per store signature.
                 await register({ email, password, firstName, lastName });
                 toast.success("Account created successfully!");
             } else {

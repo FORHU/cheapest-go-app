@@ -56,6 +56,7 @@ export default async function SearchPage(props: {
         checkout: formatDate(rawCheckout) || "2026-06-05",
         adults: Number(searchParams.adults) || 2,
         children: Number(searchParams.children) || 0,
+        rooms: Number(searchParams.rooms) || 1,
         guest_nationality: typeof searchParams.nationality === 'string' && searchParams.nationality ? searchParams.nationality : "KR",
         currency: "PHP",
         cityName: rawDestination,
@@ -94,8 +95,6 @@ export default async function SearchPage(props: {
                         // Use retailRate.total for price
                         const total = firstRoom.rates[0]?.retailRate?.total;
 
-                        // Debugging showed: "total": [ { "amount": 339.1, "currency": "USD" } ]
-                        // So it is an array of objects
                         if (Array.isArray(total) && total.length > 0 && typeof total[0] === 'object' && 'amount' in total[0]) {
                             price = (total[0] as any).amount || 0;
                         } else if (typeof total === 'object' && total !== null && 'amount' in total) {
@@ -106,10 +105,6 @@ export default async function SearchPage(props: {
                         } else {
                             price = 0;
                         }
-
-                        // Check if there's a suggested retail price or similar for "originalPrice" visual
-                        // If API doesn't provide strict "original vs sale", we skipp it or fake it if needed
-                        // For now, undefined.
                     }
                 }
 

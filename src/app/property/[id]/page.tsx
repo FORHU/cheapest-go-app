@@ -43,8 +43,6 @@ export default async function PropertyPage({
         }
     }
 
-    // Try to fetch real property details if ID looks like a real ID (or if we have pre-book data that suggests an ID)
-    // For now, if the ID is NOT in mock data, we try to fetch it from API
     if (!getProperty(id)) {
         try {
             // If pre-book result has hotelId, use that. Otherwise try the page ID.
@@ -78,7 +76,8 @@ export default async function PropertyPage({
                 checkIn: checkInParam,
                 checkOut: checkOutParam,
                 adults: Number(searchParamsResult.adults || 2),
-                children: Number(searchParamsResult.children || 0)
+                children: Number(searchParamsResult.children || 0),
+                rooms: Number(searchParamsResult.rooms || 1)
             });
         } catch (error) {
             console.error('Failed to fetch property details:', error);
@@ -217,7 +216,8 @@ export default async function PropertyPage({
                                         checkIn: searchParamsResult.checkIn as string,
                                         checkOut: searchParamsResult.checkOut as string,
                                         adults: Number(searchParamsResult.adults || 2),
-                                        children: Number(searchParamsResult.children || 0)
+                                        children: Number(searchParamsResult.children || 0),
+                                        rooms: Number(searchParamsResult.rooms || 1)
                                     }}
                                 />
                             </FadeInUp>
