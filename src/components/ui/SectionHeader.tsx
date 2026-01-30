@@ -48,7 +48,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: false }}
+      viewport={{ once: true }}
       className={`flex items-end justify-between mb-8 ${className}`}
     >
       <div className="flex items-start gap-3">
@@ -62,7 +62,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false }}
+              viewport={{ once: true }}
               className={`inline-flex items-center gap-2 px-3 py-1.5 mb-3 border rounded-full ${badgeVariants[badge.variant || 'amber']}`}
             >
               {badge.icon}
@@ -74,7 +74,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
           <motion.h2
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: false }}
+            viewport={{ once: true }}
             transition={{ delay: badge ? 0.1 : 0 }}
             className={`${titleSizes[size]} font-display font-bold text-slate-900 dark:text-white`}
           >

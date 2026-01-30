@@ -111,11 +111,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     register: async (data) => {
         set({ isLoading: true, email: data.email });
         try {
+            // Preserve current path for redirect after email confirmation
+            const currentPath = window.location.pathname + window.location.search;
+            const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentPath)}`;
+
             const { data: authData, error } = await supabase.auth.signUp({
                 email: data.email,
                 password: data.password,
                 options: {
-                    emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    emailRedirectTo,
                     data: {
                         first_name: data.firstName,
                         last_name: data.lastName,
@@ -159,10 +163,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     socialLogin: async (provider) => {
         set({ isLoading: true });
         try {
+            // Preserve current path for redirect after auth
+            const currentPath = window.location.pathname + window.location.search;
+            const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentPath)}`;
+
             const { error } = await supabase.auth.signInWithOAuth({
                 provider,
                 options: {
-                    redirectTo: `${window.location.origin}/auth/callback`,
+                    redirectTo,
                 },
             });
             if (error) throw error;

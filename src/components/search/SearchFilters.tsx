@@ -50,7 +50,7 @@ const FilterSection = ({ title, children, index = 0 }: FilterSectionProps) => (
     <motion.div
         initial={{ opacity: 0, x: -20 }}
         whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: false, amount: 0.3 }}
+        viewport={{ once: true, amount: 0.3 }}
         transition={{ delay: index * 0.05, duration: 0.4 }}
         className="border-b border-slate-200 dark:border-white/5 py-4 last:border-0"
     >
@@ -229,7 +229,7 @@ const SearchFilters = () => {
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: false, amount: 0.3 }}
+                viewport={{ once: true, amount: 0.3 }}
                 transition={{ duration: 0.5 }}
                 className="relative h-32 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 group cursor-pointer mb-6"
             >
@@ -245,7 +245,7 @@ const SearchFilters = () => {
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: false, amount: 0.5 }}
+                viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 0.4 }}
                 className="pb-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
             >

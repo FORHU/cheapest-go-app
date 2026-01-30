@@ -15,7 +15,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
   <motion.div
     initial={{ opacity: 0, x: 50 }}
     whileInView={{ opacity: 1, x: 0 }}
-    viewport={{ once: false }}
+    viewport={{ once: true }}
     transition={{ delay: index * 0.1 }}
     className="flex-shrink-0 w-[300px] snap-start"
   >

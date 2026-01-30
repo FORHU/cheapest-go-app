@@ -1,4 +1,3 @@
-
 import { createClient } from "npm:@supabase/supabase-js@2";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
@@ -132,6 +131,42 @@ Deno.serve(async (req: any) => {
 
         // 2. SAVE TO DATABASE
         console.log("Saving booking to database...");
+
+        // Extract price from LiteAPI booking response
+        // Based on actual response: data.price = 9548.92
+        const extractPrice = () => {
+            const data = result.data;
+            if (!data) return 0;
+
+            // Primary: data.price (confirmed from actual response)
+            if (typeof data.price === 'number') return data.price;
+            if (typeof data.sellingPrice === 'string') return parseFloat(data.sellingPrice);
+
+            // Fallback paths
+            return data.bookedRooms?.[0]?.amount ||
+                   data.rate?.retailRate?.total?.amount ||
+                   data.totalAmount ||
+                   0;
+        };
+
+        // Extract currency from LiteAPI booking response
+        // Based on actual response: data.currency = "PHP"
+        const extractCurrency = () => {
+            const data = result.data;
+            if (!data) return "USD";
+
+            // Primary: data.currency (confirmed from actual response)
+            return data.currency ||
+                   data.bookedRooms?.[0]?.currency ||
+                   "USD";
+        };
+
+        const totalPrice = extractPrice();
+        const currency = extractCurrency();
+
+        console.log("Extracted price:", totalPrice, currency);
+        console.log("Full result.data structure:", JSON.stringify(result.data, null, 2).substring(0, 1000));
+
         const { error: dbError } = await supabaseAdmin
             .from('bookings')
             .insert([{
@@ -139,8 +174,8 @@ Deno.serve(async (req: any) => {
                 hotel_name: result.data?.hotel?.name || "Unknown Property",
                 guest_first_name: guests[0]?.firstName,
                 guest_last_name: guests[0]?.lastName,
-                total_price: result.data?.total || 0,
-                currency: result.data?.currency || "USD",
+                total_price: totalPrice,
+                currency: currency,
                 status: result.data?.status || 'confirmed',
                 payload: result // Save full payload for debug
             }]);

@@ -9,10 +9,14 @@ import {
     useGuestCount,
     useBookingId,
 } from '@/stores/bookingStore';
+import { useAuthStore, useUser } from '@/stores/authStore';
 import { useBookingFlow } from '@/hooks';
 import { Header, Footer } from '@/components/landing';
-import { Lock, CreditCard, ShieldCheck, CheckCircle, User as UserIcon, Loader2 } from 'lucide-react';
+import { Lock, CreditCard, ShieldCheck, CheckCircle, User as UserIcon, Loader2, LogIn, Mail, PartyPopper, Calendar, MapPin } from 'lucide-react';
+import { motion } from 'framer-motion';
 import BackButton from '@/components/common/BackButton';
+import AuthModal from '@/components/auth/AuthModal';
+import { Confetti, Balloons } from '@/components/ui/Animations';
 
 export default function CheckoutPage() {
     const router = useRouter();
@@ -22,6 +26,10 @@ export default function CheckoutPage() {
     const { checkIn, checkOut } = useBookingDates();
     const { adults, children } = useGuestCount();
     const bookingId = useBookingId();
+
+    // Auth state
+    const user = useUser();
+    const { openAuthModal, isAuthModalOpen } = useAuthStore();
 
     // Use React Query booking flow (Phase 3)
     const {
@@ -35,6 +43,7 @@ export default function CheckoutPage() {
     } = useBookingFlow();
 
     const [isSuccess, setIsSuccess] = useState(false);
+    const [emailSent, setEmailSent] = useState(false);
     const prebookError = prebookErrorObj?.message || null;
 
     const [selectedCurrency, setSelectedCurrency] = useState('PHP');
@@ -50,11 +59,12 @@ export default function CheckoutPage() {
     const [payeeFirstName, setPayeeFirstName] = useState('');
     const [payeeLastName, setPayeeLastName] = useState('');
 
+    // Pre-fill form with user data if logged in
     const [formData, setFormData] = useState({
         firstName: '', // Booker First Name
         lastName: '',  // Booker Last Name
         phone: '',
-        email: 'test@example.com',
+        email: '',
 
         // Guest Details (if different from booker)
         guestFirstName: '',
@@ -68,6 +78,18 @@ export default function CheckoutPage() {
         cardCity: '',
         cardZip: ''
     });
+
+    // Auto-fill form when user logs in
+    useEffect(() => {
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                firstName: prev.firstName || user.firstName || '',
+                lastName: prev.lastName || user.lastName || '',
+                email: prev.email || user.email || '',
+            }));
+        }
+    }, [user]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -114,8 +136,42 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedRoom?.offerId, selectedCurrency]);
 
+    // Send booking confirmation email
+    const sendConfirmationEmail = async (bookingDetails: {
+        bookingId: string;
+        email: string;
+        guestName: string;
+        hotelName: string;
+        roomName: string;
+        checkIn: string;
+        checkOut: string;
+        totalPrice: number;
+        currency: string;
+    }) => {
+        try {
+            const response = await fetch('/api/send-booking-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bookingDetails),
+            });
+            if (response.ok) {
+                setEmailSent(true);
+                console.log("Confirmation email sent successfully");
+            }
+        } catch (err) {
+            console.error("Failed to send confirmation email:", err);
+            // Don't fail the booking if email fails
+        }
+    };
+
     // 2. COMPLETE BOOKING (Phase 3 - React Query with automatic retry)
     const handleCompleteBooking = async () => {
+        // Check if user is logged in
+        if (!user) {
+            openAuthModal('email');
+            return;
+        }
+
         try {
             if (!prebookId || !selectedRoom?.offerId) {
                 throw new Error("Booking session expired. Please go back and select the room again.");
@@ -153,6 +209,19 @@ export default function CheckoutPage() {
             setIsSuccess(true);
             console.log("Booking completed successfully!");
 
+            // Send confirmation email (bookingId comes from store after mutation)
+            await sendConfirmationEmail({
+                bookingId: bookingId || 'N/A',
+                email: formData.email,
+                guestName: `${primaryGuest.firstName} ${primaryGuest.lastName}`,
+                hotelName: property?.name || 'Hotel',
+                roomName: selectedRoom?.title || 'Room',
+                checkIn: checkIn?.toLocaleDateString() || '',
+                checkOut: checkOut?.toLocaleDateString() || '',
+                totalPrice: priceData?.total || totalPrice || 0,
+                currency: selectedCurrency,
+            });
+
         } catch (err: any) {
             console.error("Booking Error:", err);
 
@@ -169,25 +238,140 @@ export default function CheckoutPage() {
         return (
             <>
                 <Header />
-                <main className="min-h-screen pt-6 pb-20 px-4 flex items-center justify-center">
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-slate-200 dark:border-white/10">
-                        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <CheckCircle size={32} />
-                        </div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Booking Confirmed!</h1>
-                        <p className="text-slate-500 mb-8">
-                            Your reservation at <span className="font-semibold text-slate-900 dark:text-white">{property?.name || "Grand Sierra Pines"}</span> is complete.
-                        </p>
-                        <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-lg mb-6 text-left text-sm">
-                            <div className="mb-2"><span className="text-slate-500">Booking ID:</span> <span className="font-mono font-bold text-slate-900 dark:text-white">{bookingId}</span></div>
-                            <div><span className="text-slate-500">Email sent to:</span> <span className="font-medium text-slate-900 dark:text-white">{formData.email}</span></div>
-                        </div>
-                        <div className="space-y-3">
-                            <button onClick={() => router.push('/')} className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors">
+                <main className="min-h-screen pt-6 pb-20 px-4 flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
+                    {/* Celebration Effects */}
+                    <Confetti count={80} />
+                    <Balloons count={12} />
+
+                    {/* Animated background circles */}
+                    <motion.div
+                        className="absolute top-20 left-10 w-72 h-72 bg-green-300/20 dark:bg-green-500/10 rounded-full blur-3xl"
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+                        transition={{ duration: 4, repeat: Infinity }}
+                    />
+                    <motion.div
+                        className="absolute bottom-20 right-10 w-96 h-96 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-3xl"
+                        animate={{ scale: [1.2, 1, 1.2], opacity: [0.3, 0.5, 0.3] }}
+                        transition={{ duration: 5, repeat: Infinity }}
+                    />
+
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ duration: 0.5, type: 'spring', bounce: 0.4 }}
+                        className="relative z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-white/50 dark:border-white/10"
+                    >
+                        {/* Success Icon with Animation */}
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.2, type: 'spring', bounce: 0.6 }}
+                            className="relative mx-auto mb-6"
+                        >
+                            <motion.div
+                                className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/30"
+                                animate={{ boxShadow: ['0 10px 30px rgba(34, 197, 94, 0.3)', '0 10px 50px rgba(34, 197, 94, 0.5)', '0 10px 30px rgba(34, 197, 94, 0.3)'] }}
+                                transition={{ duration: 2, repeat: Infinity }}
+                            >
+                                <CheckCircle size={40} className="text-white" strokeWidth={2.5} />
+                            </motion.div>
+                            <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.4, type: 'spring' }}
+                                className="absolute -top-1 -right-1 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center shadow-md"
+                            >
+                                <PartyPopper size={16} className="text-yellow-800" />
+                            </motion.div>
+                        </motion.div>
+
+                        <motion.h1
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="text-2xl font-bold text-slate-900 dark:text-white mb-2"
+                        >
+                            Booking Confirmed! 🎉
+                        </motion.h1>
+
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.4 }}
+                            className="text-slate-500 dark:text-slate-400 mb-6"
+                        >
+                            Your reservation at <span className="font-semibold text-emerald-600 dark:text-emerald-400">{property?.name || "Grand Sierra Pines"}</span> is complete.
+                        </motion.p>
+
+                        {/* Booking Details Card */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.5 }}
+                            className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/10 p-5 rounded-2xl mb-6 text-left border border-slate-200/50 dark:border-white/5"
+                        >
+                            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-200 dark:border-white/10">
+                                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                    <MapPin size={18} className="text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Booking ID</p>
+                                    <p className="font-mono font-bold text-slate-900 dark:text-white text-sm">{bookingId}</p>
+                                </div>
+                            </div>
+
+                            {checkIn && checkOut && (
+                                <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-200 dark:border-white/10">
+                                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                                        <Calendar size={18} className="text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Stay Duration</p>
+                                        <p className="font-medium text-slate-900 dark:text-white text-sm">
+                                            {checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {checkOut.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                    <Mail size={18} className="text-green-600 dark:text-green-400" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Confirmation sent to</p>
+                                    <p className="font-medium text-slate-900 dark:text-white text-sm">{formData.email}</p>
+                                </div>
+                                {emailSent && (
+                                    <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full"
+                                    >
+                                        <CheckCircle size={12} />
+                                        Sent
+                                    </motion.div>
+                                )}
+                            </div>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.6 }}
+                            className="space-y-3"
+                        >
+                            <button
+                                onClick={() => router.push('/')}
+                                className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all active:scale-[0.98]"
+                            >
                                 Return to Home
                             </button>
-                        </div>
-                    </div>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">
+                                Check your email for booking details and updates
+                            </p>
+                        </motion.div>
+                    </motion.div>
                 </main>
                 <Footer />
             </>
@@ -222,29 +406,26 @@ export default function CheckoutPage() {
                         Secure your booking
                     </h1>
 
-                    {/* Debug Info - Remove after fixing */}
-                    <div className="mb-4 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-mono">
-                        <div>Room OfferId: {selectedRoom?.offerId || 'NOT SET'}</div>
-                        <div>PrebookId: {prebookId || 'NOT SET'}</div>
-                        <div>Prebooking: {prebooking ? 'YES' : 'NO'}</div>
-                        <div>Currency: {selectedCurrency}</div>
-                        {!selectedRoom?.offerId && (
-                            <div className="text-red-500 mt-2">⚠️ No offerId - go back and select a room first!</div>
-                        )}
-                        {prebooking && (
-                            <button
-                                onClick={() => {
-                                    prebookInitiatedRef.current = null;
-                                    if (selectedRoom?.offerId) {
-                                        startPrebook(selectedRoom.offerId, selectedCurrency);
-                                    }
-                                }}
-                                className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-xs"
-                            >
-                                Retry Prebook
-                            </button>
-                        )}
-                    </div>
+                    {/* Auth Required Banner */}
+                    {!user && (
+                        <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4 rounded-lg">
+                            <div className="flex items-center gap-3">
+                                <LogIn className="text-amber-600 dark:text-amber-400" size={24} />
+                                <div className="flex-1">
+                                    <h3 className="font-semibold text-amber-800 dark:text-amber-200">Sign in to complete your booking</h3>
+                                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                                        You'll receive booking confirmation and updates via email.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => openAuthModal('email')}
+                                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
+                                >
+                                    Sign In
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {prebookError && (
                         <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg text-red-600 dark:text-red-400">
@@ -446,8 +627,11 @@ export default function CheckoutPage() {
                             <button
                                 onClick={handleCompleteBooking}
                                 disabled={loading || (prebooking && !prebookId) || !!prebookError}
-                                className={`w-full py-4 text-slate-900 font-bold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-3
-                                    ${loading ? 'bg-blue-500 text-white cursor-wait animate-pulse' : (prebooking && !prebookId) ? 'bg-slate-300 cursor-not-allowed' : 'bg-yellow-400 hover:bg-yellow-500 shadow-yellow-400/20'}
+                                className={`w-full py-4 font-bold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-3
+                                    ${loading ? 'bg-blue-500 text-white cursor-wait animate-pulse' :
+                                      (prebooking && !prebookId) ? 'bg-slate-300 text-slate-900 cursor-not-allowed' :
+                                      !user ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20' :
+                                      'bg-yellow-400 hover:bg-yellow-500 text-slate-900 shadow-yellow-400/20'}
                                 `}
                             >
                                 {loading ? (
@@ -459,6 +643,11 @@ export default function CheckoutPage() {
                                     <>
                                         <Loader2 className="w-5 h-5 animate-spin" />
                                         <span>Verifying Room Availability...</span>
+                                    </>
+                                ) : !user ? (
+                                    <>
+                                        <LogIn className="w-5 h-5" />
+                                        <span>Sign In to Complete Booking</span>
                                     </>
                                 ) : (
                                     `Complete Booking • ₱${(totalPrice || 0).toLocaleString()}`
@@ -520,6 +709,9 @@ export default function CheckoutPage() {
                 </div>
             </main>
             <Footer />
+
+            {/* Auth Modal */}
+            <AuthModal />
         </>
     );
 }

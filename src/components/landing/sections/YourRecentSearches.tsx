@@ -11,7 +11,7 @@ export const YourRecentSearches: React.FC = () => {
         <motion.h3
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: false }}
+          viewport={{ once: true }}
           className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-4"
         >
           Quick Access
@@ -23,7 +23,7 @@ export const YourRecentSearches: React.FC = () => {
               key={search.id}
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: false }}
+              viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
               className="shrink-0 flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group"
             >

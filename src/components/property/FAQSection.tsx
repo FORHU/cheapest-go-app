@@ -11,7 +11,7 @@ const FAQItem = ({ question, answer, index }: { question: string, answer: string
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: false, amount: 0.5, margin: "-30px" }}
+            viewport={{ once: true, amount: 0.5, margin: "-30px" }}
             transition={{ delay: index * 0.05, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
             className="border-b border-slate-200 dark:border-white/10 last:border-0"
         >
@@ -87,7 +87,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({ propertyName, checkInTime, chec
             <motion.h2
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: false, amount: 0.5 }}
+                viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 0.5 }}
                 className="text-xl font-bold text-slate-900 dark:text-white mb-6"
             >

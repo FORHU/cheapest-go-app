@@ -18,7 +18,7 @@ export const ExploreUniqueStays: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: false }}
+          viewport={{ once: true }}
           className="flex items-center gap-2 mb-2"
         >
           <motion.div
@@ -34,7 +34,7 @@ export const ExploreUniqueStays: React.FC = () => {
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: false }}
+          viewport={{ once: true }}
           transition={{ delay: 0.1 }}
           className="text-slate-500 dark:text-slate-400 text-sm mb-8"
         >
@@ -54,7 +54,7 @@ export const ExploreUniqueStays: React.FC = () => {
               key={stay.id}
               initial={{ opacity: 0, y: 30, scale: 0.95 }}
               whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              viewport={{ once: false }}
+              viewport={{ once: true }}
               transition={{
                 delay: i * 0.08,
                 type: 'spring',

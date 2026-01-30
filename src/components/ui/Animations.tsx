@@ -229,7 +229,7 @@ export const Parallax: React.FC<ParallaxProps> = ({
       className={className}
       initial={{ y: 0 }}
       whileInView={{ y: 0 }}
-      viewport={{ once: false }}
+      viewport={{ once: true }}
       style={{ willChange: 'transform' }}
       transition={{ type: 'spring', stiffness: 100 * speed }}
     >
@@ -251,6 +251,163 @@ export const Shimmer: React.FC<{ className?: string }> = ({ className = '' }) =>
           ease: 'linear',
         }}
       />
+    </div>
+  );
+};
+
+// Confetti celebration effect
+interface ConfettiProps {
+  count?: number;
+  className?: string;
+}
+
+export const Confetti: React.FC<ConfettiProps> = ({ count = 50, className = '' }) => {
+  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'];
+
+  const confetti = Array.from({ length: count }, (_, i) => ({
+    id: i,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    left: Math.random() * 100,
+    delay: Math.random() * 3,
+    duration: Math.random() * 3 + 2,
+    size: Math.random() * 10 + 5,
+    rotation: Math.random() * 360,
+    shape: Math.random() > 0.5 ? 'circle' : 'rect',
+  }));
+
+  return (
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+      {confetti.map((piece) => (
+        <motion.div
+          key={piece.id}
+          className="absolute"
+          style={{
+            left: `${piece.left}%`,
+            top: -20,
+            width: piece.shape === 'circle' ? piece.size : piece.size * 0.4,
+            height: piece.size,
+            backgroundColor: piece.color,
+            borderRadius: piece.shape === 'circle' ? '50%' : '2px',
+          }}
+          initial={{ y: -20, rotate: 0, opacity: 1 }}
+          animate={{
+            y: ['0vh', '100vh'],
+            rotate: [0, piece.rotation + 720],
+            opacity: [1, 1, 0],
+          }}
+          transition={{
+            duration: piece.duration,
+            delay: piece.delay,
+            ease: 'linear',
+            repeat: Infinity,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Balloon celebration effect
+interface BalloonsProps {
+  count?: number;
+  className?: string;
+}
+
+export const Balloons: React.FC<BalloonsProps> = ({ count = 8, className = '' }) => {
+  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#F06292', '#64B5F6'];
+
+  const balloons = Array.from({ length: count }, (_, i) => ({
+    id: i,
+    color: colors[i % colors.length],
+    left: 10 + (i * (80 / count)) + Math.random() * 10,
+    delay: i * 0.3,
+    duration: 4 + Math.random() * 2,
+    size: 40 + Math.random() * 20,
+    sway: Math.random() * 30 - 15,
+  }));
+
+  return (
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+      {balloons.map((balloon) => (
+        <motion.div
+          key={balloon.id}
+          className="absolute bottom-0"
+          style={{ left: `${balloon.left}%` }}
+          initial={{ y: '100%', opacity: 0 }}
+          animate={{
+            y: ['-10%', '-120%'],
+            x: [0, balloon.sway, 0, -balloon.sway, 0],
+            opacity: [0, 1, 1, 1, 0.8],
+          }}
+          transition={{
+            duration: balloon.duration,
+            delay: balloon.delay,
+            ease: 'easeOut',
+          }}
+        >
+          {/* Balloon body */}
+          <div
+            style={{
+              width: balloon.size,
+              height: balloon.size * 1.2,
+              backgroundColor: balloon.color,
+              borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
+              position: 'relative',
+              boxShadow: `inset -${balloon.size * 0.15}px -${balloon.size * 0.1}px ${balloon.size * 0.2}px rgba(0,0,0,0.1), inset ${balloon.size * 0.1}px ${balloon.size * 0.1}px ${balloon.size * 0.3}px rgba(255,255,255,0.3)`,
+            }}
+          >
+            {/* Balloon knot */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: -5,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 8,
+                height: 8,
+                backgroundColor: balloon.color,
+                borderRadius: '50%',
+                filter: 'brightness(0.8)',
+              }}
+            />
+            {/* Balloon string */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: -60,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 1,
+                height: 60,
+                background: `linear-gradient(to bottom, ${balloon.color}, transparent)`,
+              }}
+            />
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+};
+
+// Celebration wrapper with confetti and balloons
+interface CelebrationProps {
+  children: React.ReactNode;
+  className?: string;
+  showConfetti?: boolean;
+  showBalloons?: boolean;
+}
+
+export const Celebration: React.FC<CelebrationProps> = ({
+  children,
+  className = '',
+  showConfetti = true,
+  showBalloons = true,
+}) => {
+  return (
+    <div className={`relative ${className}`}>
+      {showConfetti && <Confetti count={60} />}
+      {showBalloons && <Balloons count={10} />}
+      <div className="relative z-10">{children}</div>
     </div>
   );
 };

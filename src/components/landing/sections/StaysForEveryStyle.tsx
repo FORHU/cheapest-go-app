@@ -23,7 +23,7 @@ export const StaysForEveryStyle: React.FC = () => {
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: false }}
+          viewport={{ once: true }}
           transition={{ type: 'spring', stiffness: 100 }}
           className="text-2xl md:text-3xl font-display font-bold text-slate-900 dark:text-white mb-2"
         >
@@ -32,7 +32,7 @@ export const StaysForEveryStyle: React.FC = () => {
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: false }}
+          viewport={{ once: true }}
           transition={{ delay: 0.1 }}
           className="text-slate-500 dark:text-slate-400 text-sm mb-6"
         >
@@ -52,7 +52,7 @@ export const StaysForEveryStyle: React.FC = () => {
               key={style.id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false }}
+              viewport={{ once: true }}
               transition={{
                 delay: i * 0.1,
                 type: 'spring',
