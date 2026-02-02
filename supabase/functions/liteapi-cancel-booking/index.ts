@@ -55,16 +55,32 @@ Deno.serve(async (req: any) => {
 
         // LiteAPI booking cancellation endpoint
         const url = `https://api.liteapi.travel/v3.0/bookings/${bookingId}`;
+        const FETCH_TIMEOUT = 10000; // 10 second timeout
 
-        const liteResponse = await fetch(url, {
-            method: "PUT",
-            headers: {
-                'X-API-Key': LITEAPI_KEY,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({})
-        });
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+        let liteResponse;
+        try {
+            liteResponse = await fetch(url, {
+                method: "PUT",
+                headers: {
+                    'X-API-Key': LITEAPI_KEY,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({}),
+                signal: controller.signal
+            });
+        } catch (fetchErr: any) {
+            if (fetchErr.name === 'AbortError') {
+                throw new Error('Cancellation request timed out. Please try again.');
+            }
+            throw fetchErr;
+        } finally {
+            clearTimeout(timeoutId);
+        }
 
         console.log(`LiteAPI Cancel Status:`, liteResponse.status);
 

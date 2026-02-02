@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, Check, Loader2, Calendar, DollarSign, Info } from 'lucide-react';
 import { bookingService, type BookingRecord, type BookingDetailsResponse, type CancelPolicyInfo } from '@/services/booking.service';
@@ -14,38 +14,50 @@ interface CancellationModalProps {
 }
 
 export default function CancellationModal({ booking, isOpen, onClose, onCancelled }: CancellationModalProps) {
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [isCancelling, setIsCancelling] = useState(false);
     const [bookingDetails, setBookingDetails] = useState<BookingDetailsResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (isOpen && booking) {
-            fetchBookingDetails();
-        }
-    }, [isOpen, booking]);
+    // Use cached cancellation policy from booking if available, fetch fresh data in background
+    const hasCachedPolicy = !!booking.cancellation_policy?.cancelPolicyInfos;
 
-    const fetchBookingDetails = async () => {
-        setIsLoading(true);
+    const fetchBookingDetails = useCallback(async () => {
+        // Only show loading if we don't have cached data
+        if (!hasCachedPolicy) {
+            setIsLoading(true);
+        }
         setError(null);
+
         try {
             const details = await bookingService.getBookingDetails(booking.booking_id);
             setBookingDetails(details);
         } catch (err: any) {
             console.error('Failed to fetch booking details:', err);
-            setError(err.message || 'Failed to fetch cancellation policy');
+            // Only set error if we don't have cached data
+            if (!hasCachedPolicy) {
+                setError(err.message || 'Failed to fetch cancellation policy');
+            }
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [booking.booking_id, hasCachedPolicy]);
 
-    const handleCancel = async () => {
+    useEffect(() => {
+        if (isOpen && booking) {
+            fetchBookingDetails();
+        }
+    }, [isOpen, booking, fetchBookingDetails]);
+
+    // Parallelize cancel API call and database update for faster completion
+    const handleCancel = useCallback(async () => {
         setIsCancelling(true);
         try {
-            const result = await bookingService.cancelBooking(booking.booking_id);
-
-            // Update local database status
-            await bookingService.updateBookingStatus(booking.booking_id, 'cancelled');
+            // Run cancel and update in parallel for faster completion
+            const [result] = await Promise.all([
+                bookingService.cancelBooking(booking.booking_id),
+                bookingService.updateBookingStatus(booking.booking_id, 'cancelled')
+            ]);
 
             toast.success('Booking cancelled successfully', {
                 description: result.refund
@@ -63,9 +75,9 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
         } finally {
             setIsCancelling(false);
         }
-    };
+    }, [booking.booking_id, onCancelled, onClose]);
 
-    const formatDate = (dateStr: string) => {
+    const formatDate = useCallback((dateStr: string) => {
         return new Date(dateStr).toLocaleDateString('en-US', {
             weekday: 'short',
             month: 'short',
@@ -74,21 +86,27 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
             hour: '2-digit',
             minute: '2-digit'
         });
-    };
+    }, []);
 
-    const formatPrice = (amount: number, currency: string) => {
+    const formatPrice = useCallback((amount: number, currency: string) => {
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
             currency: currency || 'PHP',
         }).format(amount);
-    };
+    }, []);
 
-    const isRefundable = () => {
-        return bookingDetails?.cancellationPolicies?.refundableTag === 'RFN';
-    };
+    // Get cancellation policies from fetched details or cached booking data
+    const cancellationPolicies = useMemo(() => {
+        return bookingDetails?.cancellationPolicies || booking.cancellation_policy;
+    }, [bookingDetails?.cancellationPolicies, booking.cancellation_policy]);
 
-    const getCurrentCancellationFee = (): { fee: number; refund: number; currency: string } | null => {
-        const policies = bookingDetails?.cancellationPolicies?.cancelPolicyInfos;
+    const isRefundable = useMemo(() => {
+        return cancellationPolicies?.refundableTag === 'RFN';
+    }, [cancellationPolicies?.refundableTag]);
+
+    // Memoize the cancellation fee calculation
+    const currentCancellationFee = useMemo((): { fee: number; refund: number; currency: string } | null => {
+        const policies = cancellationPolicies?.cancelPolicyInfos;
         if (!policies || policies.length === 0) return null;
 
         const now = new Date();
@@ -104,16 +122,10 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
         let applicableFee = 0;
         for (const policy of sortedPolicies) {
             const policyTime = new Date(policy.cancelTime);
-            if (now < policyTime) {
-                // This policy hasn't kicked in yet
-                break;
-            }
-            // Apply this policy's fee
-            if (policy.type === 'PERCENT') {
-                applicableFee = (totalPrice * policy.amount) / 100;
-            } else {
-                applicableFee = policy.amount;
-            }
+            if (now < policyTime) break;
+            applicableFee = policy.type === 'PERCENT'
+                ? (totalPrice * policy.amount) / 100
+                : policy.amount;
         }
 
         return {
@@ -121,10 +133,10 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
             refund: totalPrice - applicableFee,
             currency
         };
-    };
+    }, [cancellationPolicies?.cancelPolicyInfos, booking.total_price, booking.currency]);
 
-    const renderCancellationPolicies = () => {
-        const policies = bookingDetails?.cancellationPolicies?.cancelPolicyInfos;
+    const renderCancellationPolicies = useCallback(() => {
+        const policies = cancellationPolicies?.cancelPolicyInfos;
         if (!policies || policies.length === 0) {
             return (
                 <div className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-white/5 p-4 rounded-lg">
@@ -166,9 +178,12 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                 })}
             </div>
         );
-    };
+    }, [cancellationPolicies?.cancelPolicyInfos, formatDate, formatPrice]);
 
     if (!isOpen) return null;
+
+    // Show content immediately if we have cached data
+    const showContent = !isLoading || hasCachedPolicy;
 
     return (
         <AnimatePresence>
@@ -207,14 +222,14 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
 
                     {/* Content */}
                     <div className="p-5 overflow-y-auto max-h-[60vh]">
-                        {isLoading ? (
+                        {!showContent ? (
                             <div className="flex flex-col items-center justify-center py-12">
                                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
                                 <p className="text-sm text-slate-500 dark:text-slate-400">
                                     Loading cancellation policy...
                                 </p>
                             </div>
-                        ) : error ? (
+                        ) : error && !hasCachedPolicy ? (
                             <div className="text-center py-8">
                                 <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
                                 <p className="text-slate-900 dark:text-white font-medium mb-2">
@@ -252,49 +267,45 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
 
                                 {/* Refundable Status */}
                                 <div className={`flex items-center gap-2 p-3 rounded-lg mb-5 ${
-                                    isRefundable()
+                                    isRefundable
                                         ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
                                         : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
                                 }`}>
-                                    {isRefundable() ? (
+                                    {isRefundable ? (
                                         <Check className="w-5 h-5" />
                                     ) : (
                                         <AlertTriangle className="w-5 h-5" />
                                     )}
                                     <span className="font-medium text-sm">
-                                        {isRefundable() ? 'This booking is refundable' : 'This booking may not be fully refundable'}
+                                        {isRefundable ? 'This booking is refundable' : 'This booking may not be fully refundable'}
                                     </span>
                                 </div>
 
                                 {/* Current Refund Amount */}
-                                {(() => {
-                                    const current = getCurrentCancellationFee();
-                                    if (!current) return null;
-                                    return (
-                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-5">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                                                <span className="font-medium text-blue-900 dark:text-blue-100">
-                                                    If you cancel now:
-                                                </span>
+                                {currentCancellationFee && (
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-5">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                            <span className="font-medium text-blue-900 dark:text-blue-100">
+                                                If you cancel now:
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4 mt-3">
+                                            <div>
+                                                <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Cancellation Fee</p>
+                                                <p className="text-lg font-bold text-blue-900 dark:text-blue-100">
+                                                    {formatPrice(currentCancellationFee.fee, currentCancellationFee.currency)}
+                                                </p>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-4 mt-3">
-                                                <div>
-                                                    <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Cancellation Fee</p>
-                                                    <p className="text-lg font-bold text-blue-900 dark:text-blue-100">
-                                                        {formatPrice(current.fee, current.currency)}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-green-600 dark:text-green-400 mb-1">You'll Receive</p>
-                                                    <p className="text-lg font-bold text-green-700 dark:text-green-300">
-                                                        {formatPrice(current.refund, current.currency)}
-                                                    </p>
-                                                </div>
+                                            <div>
+                                                <p className="text-xs text-green-600 dark:text-green-400 mb-1">You'll Receive</p>
+                                                <p className="text-lg font-bold text-green-700 dark:text-green-300">
+                                                    {formatPrice(currentCancellationFee.refund, currentCancellationFee.currency)}
+                                                </p>
                                             </div>
                                         </div>
-                                    );
-                                })()}
+                                    </div>
+                                )}
 
                                 {/* Cancellation Policies */}
                                 <div className="mb-5">
@@ -305,14 +316,14 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                 </div>
 
                                 {/* Hotel Remarks */}
-                                {bookingDetails?.cancellationPolicies?.hotelRemarks &&
-                                 bookingDetails.cancellationPolicies.hotelRemarks.length > 0 && (
+                                {cancellationPolicies?.hotelRemarks &&
+                                 cancellationPolicies.hotelRemarks.length > 0 && (
                                     <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
                                         <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2 text-sm">
                                             Important Notes
                                         </h4>
                                         <ul className="space-y-1">
-                                            {bookingDetails.cancellationPolicies.hotelRemarks.map((remark: string, idx: number) => (
+                                            {cancellationPolicies.hotelRemarks.map((remark: string, idx: number) => (
                                                 <li key={idx} className="text-xs text-amber-700 dark:text-amber-300">
                                                     • {remark}
                                                 </li>
