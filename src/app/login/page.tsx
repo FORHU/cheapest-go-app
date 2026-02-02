@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { PlaneTakeoff, ArrowLeft, Mail, User, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
@@ -10,8 +10,9 @@ import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import VerifyEmailStep from '@/components/auth/VerifyEmailStep';
 
 function LoginPageContent() {
-    const { register, login, isLoading, authStep, setAuthStep } = useAuthStore();
+    const { register, login, isLoading, authStep, setAuthStep, user } = useAuthStore();
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     const [mode, setMode] = useState<'signin' | 'signup'>('signin');
     const [email, setEmail] = useState('');
@@ -20,6 +21,14 @@ function LoginPageContent() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Redirect when user is authenticated
+    useEffect(() => {
+        if (user) {
+            const redirectTo = searchParams.get('redirect') || '/';
+            router.push(redirectTo);
+        }
+    }, [user, router, searchParams]);
 
     // Read mode from URL query parameter
     useEffect(() => {

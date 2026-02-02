@@ -8,10 +8,12 @@ import {
     useBookingDates,
     useGuestCount,
     useBookingId,
+    useBookingStore,
 } from '@/stores/bookingStore';
 import { useAuthStore, useUser } from '@/stores/authStore';
 import { useBookingFlow } from '@/hooks';
 import { Header, Footer } from '@/components/landing';
+import { bookingService } from '@/services/booking.service';
 import { Lock, CreditCard, ShieldCheck, CheckCircle, User as UserIcon, Loader2, LogIn, Mail, PartyPopper, Calendar, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import BackButton from '@/components/common/BackButton';
@@ -226,9 +228,13 @@ export default function CheckoutPage() {
             setIsSuccess(true);
             console.log("Booking completed successfully!");
 
-            // Send confirmation email (bookingId comes from store after mutation)
+            // Get fresh bookingId from store (the mutation updated it)
+            const confirmedBookingId = useBookingStore.getState().bookingId;
+            console.log("Confirmed booking ID:", confirmedBookingId);
+
+            // Send confirmation email
             await sendConfirmationEmail({
-                bookingId: bookingId || 'N/A',
+                bookingId: confirmedBookingId || 'N/A',
                 email: formData.email,
                 guestName: `${primaryGuest.firstName} ${primaryGuest.lastName}`,
                 hotelName: property?.name || 'Hotel',
@@ -238,6 +244,33 @@ export default function CheckoutPage() {
                 totalPrice: priceData?.total || totalPrice || 0,
                 currency: selectedCurrency,
             });
+
+            // Save booking to database for history
+            if (user && confirmedBookingId) {
+                try {
+                    await bookingService.saveBooking({
+                        bookingId: confirmedBookingId,
+                        userId: user.id,
+                        propertyName: property?.name || 'Hotel',
+                        propertyImage: property?.image,
+                        roomName: selectedRoom?.title || 'Room',
+                        checkIn: checkIn?.toISOString().split('T')[0] || '',
+                        checkOut: checkOut?.toISOString().split('T')[0] || '',
+                        adults,
+                        children,
+                        totalPrice: priceData?.total || totalPrice || 0,
+                        currency: selectedCurrency,
+                        holderFirstName: formData.firstName,
+                        holderLastName: formData.lastName,
+                        holderEmail: formData.email,
+                        specialRequests: specialRequests || undefined,
+                    });
+                    console.log("Booking saved to history");
+                } catch (saveError) {
+                    console.error("Failed to save booking to history:", saveError);
+                    // Don't fail the booking if saving to history fails
+                }
+            }
 
         } catch (err: any) {
             console.error("Booking Error:", err);
@@ -379,8 +412,14 @@ export default function CheckoutPage() {
                             className="space-y-3"
                         >
                             <button
-                                onClick={() => router.push('/')}
+                                onClick={() => router.push('/trips')}
                                 className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all active:scale-[0.98]"
+                            >
+                                View My Trips
+                            </button>
+                            <button
+                                onClick={() => router.push('/')}
+                                className="w-full py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition-colors"
                             >
                                 Return to Home
                             </button>
