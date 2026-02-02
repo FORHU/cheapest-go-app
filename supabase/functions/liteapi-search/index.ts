@@ -29,6 +29,19 @@ interface Hotel {
   description?: string;
   reviewCount?: number;
   reviewRating?: number;
+  refundableTag?: string; // "RFN" = refundable, "NRFN" = non-refundable
+  roomTypes?: Array<{
+    offerId?: string;
+    rates?: Array<{
+      refundableTag?: string;
+      cancelPolicyInfos?: Array<{
+        cancelTime: string;
+        amount: number;
+        currency: string;
+        type: string;
+      }>;
+    }>;
+  }>;
   [key: string]: any;
 }
 
@@ -277,11 +290,32 @@ Deno.serve(async (req: Request) => {
 
     // 4. Merge Details into Hotels
     hotels.forEach((hotel: Hotel) => {
+      // Extract refundableTag from roomTypes/rates (LiteAPI rates response)
+      // Check if any room has a refundable rate - if so, mark hotel as refundable
+      if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
+        for (const roomType of hotel.roomTypes) {
+          if (roomType.rates && Array.isArray(roomType.rates)) {
+            for (const rate of roomType.rates) {
+              if (rate.refundableTag === 'RFN') {
+                hotel.refundableTag = 'RFN';
+                break;
+              }
+              // Also check for NRFN if no refundable found yet
+              if (rate.refundableTag === 'NRFN' && !hotel.refundableTag) {
+                hotel.refundableTag = 'NRFN';
+              }
+            }
+          }
+          if (hotel.refundableTag === 'RFN') break;
+        }
+      }
+      console.log(`[Hotel ${hotel.hotelId}] refundableTag:`, hotel.refundableTag || 'not found');
+
       const detail = detailsMap.get(String(hotel.hotelId));
       if (detail) {
-        hotel.details = detail; 
+        hotel.details = detail;
         hotel.name = detail.name;
-        hotel.starRating = detail.hotel_star_rating || detail.star_rating; 
+        hotel.starRating = detail.hotel_star_rating || detail.star_rating;
         hotel.thumbnailUrl = detail.main_photo;
         hotel.address = detail.address;
         hotel.location = detail.address;

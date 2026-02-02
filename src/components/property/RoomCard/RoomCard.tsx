@@ -155,7 +155,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                                 <div className="text-xs font-medium text-slate-700 dark:text-slate-200">
                                                     {rate.boardName || 'Room only'}
                                                 </div>
-                                                <div className={`text-[10px] ${rate.refundable ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                <div className={`text-[10px] font-medium ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                                     {rate.refundable ? 'Free cancellation' : 'Non-refundable'}
                                                 </div>
                                             </div>
@@ -181,8 +181,8 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                         <Check size={12} /> Free cancellation
                                     </div>
                                 ) : (
-                                    <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                                        <div className="w-3 h-3 rounded-full border border-slate-300 flex items-center justify-center text-[8px]">
+                                    <div className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
+                                        <div className="w-3 h-3 rounded-full border border-amber-400 dark:border-amber-500 flex items-center justify-center text-[8px] text-amber-500">
                                             i
                                         </div>
                                         Non-Refundable

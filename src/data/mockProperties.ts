@@ -16,6 +16,8 @@ export interface Property {
         lat: number;
         lng: number;
     };
+    /** Cancellation policy tag from LiteAPI: "RFN" = refundable, "NRFN" = non-refundable */
+    refundableTag?: 'RFN' | 'NRFN' | string;
 }
 
 export const baguioProperties: Property[] = [

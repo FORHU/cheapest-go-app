@@ -1,12 +1,14 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
-import { Calendar, MapPin, Users, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, XCircle } from 'lucide-react';
 import type { BookingRecord } from '@/services/booking.service';
+import CancellationModal from './CancellationModal';
 
 interface BookingCardProps {
     booking: BookingRecord;
+    onBookingUpdated?: () => void;
 }
 
 const statusColors = {
@@ -23,7 +25,8 @@ const statusLabels = {
     cancelled: 'Cancelled',
 };
 
-export default function BookingCard({ booking }: BookingCardProps) {
+export default function BookingCard({ booking, onBookingUpdated }: BookingCardProps) {
+    const [showCancelModal, setShowCancelModal] = useState(false);
     const checkInDate = new Date(booking.check_in);
     const checkOutDate = new Date(booking.check_out);
     const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -125,10 +128,19 @@ export default function BookingCard({ booking }: BookingCardProps) {
                             </div>
 
                             {isUpcoming && booking.status === 'confirmed' && (
-                                <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full">
-                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                                    Upcoming
-                                </span>
+                                <div className="flex flex-col items-end gap-2">
+                                    <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full">
+                                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                                        Upcoming
+                                    </span>
+                                    <button
+                                        onClick={() => setShowCancelModal(true)}
+                                        className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:underline transition-colors"
+                                    >
+                                        <XCircle className="w-3.5 h-3.5" />
+                                        Cancel booking
+                                    </button>
+                                </div>
                             )}
 
                             {isPast && booking.status === 'confirmed' && (
@@ -136,10 +148,27 @@ export default function BookingCard({ booking }: BookingCardProps) {
                                     Trip completed
                                 </span>
                             )}
+
+                            {booking.status === 'cancelled' && (
+                                <span className="text-xs text-red-500 dark:text-red-400">
+                                    Booking cancelled
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Cancellation Modal */}
+            <CancellationModal
+                booking={booking}
+                isOpen={showCancelModal}
+                onClose={() => setShowCancelModal(false)}
+                onCancelled={() => {
+                    setShowCancelModal(false);
+                    onBookingUpdated?.();
+                }}
+            />
         </div>
     );
 }

@@ -81,6 +81,14 @@ export default async function SearchPage(props: {
         console.log("[SearchPage] Calling searchLiteApi with params:", queryParams);
         const data = await searchLiteApi(queryParams);
 
+        // Debug: Log first hotel's refundableTag data
+        if (data?.data?.[0]) {
+            const firstHotel = data.data[0];
+            console.log("[SearchPage] First hotel refundableTag:", firstHotel.refundableTag);
+            console.log("[SearchPage] First hotel roomTypes[0]?.rates[0]?.refundableTag:",
+                firstHotel.roomTypes?.[0]?.rates?.[0]?.refundableTag);
+        }
+
         if (data && data.data && Array.isArray(data.data)) {
 
             // Map API response to Property interface
@@ -108,6 +116,23 @@ export default async function SearchPage(props: {
                     }
                 }
 
+                // Extract refundableTag from roomTypes/rates if not at hotel level
+                let refundableTag = hotel.refundableTag;
+                if (!refundableTag && hotel.roomTypes && hotel.roomTypes.length > 0) {
+                    for (const roomType of hotel.roomTypes) {
+                        if (roomType.rates && roomType.rates.length > 0) {
+                            const rate = roomType.rates[0];
+                            if (rate.refundableTag) {
+                                refundableTag = rate.refundableTag;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Debug: log extracted refundableTag for each hotel
+                console.log(`[SearchPage] Hotel ${hotel.hotelId} (${hotel.name}) refundableTag:`, refundableTag);
+
                 return {
                     id: hotel.hotelId,
                     // Use enriched details if available, otherwise fallback
@@ -126,7 +151,8 @@ export default async function SearchPage(props: {
                     coordinates: {
                         lat: hotel.details?.location?.latitude || 0,
                         lng: hotel.details?.location?.longitude || 0
-                    }
+                    },
+                    refundableTag: refundableTag, // "RFN" = refundable, "NRFN" = non-refundable
                 } as Property;
             });
         }
