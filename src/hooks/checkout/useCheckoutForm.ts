@@ -1,7 +1,15 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useUser, useAuthStore } from '@/stores/authStore';
+import {
+    useCheckoutFormData,
+    useBookingOptions,
+    usePayeeInfo,
+    usePhoneCurrency,
+    useCheckoutUIState,
+    useCheckoutActions,
+} from '@/stores/checkoutStore';
 import { CheckoutFormData, BookingForType } from '@/components/checkout/types';
 
 interface UseCheckoutFormOptions {
@@ -11,140 +19,105 @@ interface UseCheckoutFormOptions {
 interface UseCheckoutFormReturn {
     // Form data
     formData: CheckoutFormData;
-    setFormData: React.Dispatch<React.SetStateAction<CheckoutFormData>>;
+    setFormData: (data: Partial<CheckoutFormData>) => void;
     handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
 
     // Booking options
     bookingFor: BookingForType;
-    setBookingFor: React.Dispatch<React.SetStateAction<BookingForType>>;
+    setBookingFor: (value: BookingForType) => void;
     isWorkTravel: boolean;
-    setIsWorkTravel: React.Dispatch<React.SetStateAction<boolean>>;
+    setIsWorkTravel: (value: boolean) => void;
     specialRequests: string;
-    setSpecialRequests: React.Dispatch<React.SetStateAction<string>>;
+    setSpecialRequests: (value: string) => void;
 
     // Payee info
     payeeFirstName: string;
-    setPayeeFirstName: React.Dispatch<React.SetStateAction<string>>;
+    setPayeeFirstName: (value: string) => void;
     payeeLastName: string;
-    setPayeeLastName: React.Dispatch<React.SetStateAction<string>>;
+    setPayeeLastName: (value: string) => void;
 
     // Phone/currency
     phoneCountryCode: string;
-    setPhoneCountryCode: React.Dispatch<React.SetStateAction<string>>;
+    setPhoneCountryCode: (value: string) => void;
     selectedCurrency: string;
-    setSelectedCurrency: React.Dispatch<React.SetStateAction<string>>;
+    setSelectedCurrency: (value: string) => void;
 
     // UI state
     isSuccess: boolean;
-    setIsSuccess: React.Dispatch<React.SetStateAction<boolean>>;
+    setIsSuccess: (value: boolean) => void;
     emailSent: boolean;
-    setEmailSent: React.Dispatch<React.SetStateAction<boolean>>;
+    setEmailSent: (value: boolean) => void;
 }
 
 /**
- * Consolidates all checkout form state and handlers.
- * Auto-fills form when user logs in using useEffect.
+ * Checkout form hook - bridges checkoutStore with React component needs.
+ * Handles auto-fill when user logs in using useEffect.
  */
 export function useCheckoutForm(options: UseCheckoutFormOptions = {}): UseCheckoutFormReturn {
     const { onCurrencyChange } = options;
     const user = useUser();
     const { isAuthModalOpen } = useAuthStore();
 
-    // Pre-fill form with user data - computed once
-    const initialFormData = useMemo((): CheckoutFormData => ({
-        firstName: user?.firstName || '',
-        lastName: user?.lastName || '',
-        phone: '',
-        email: user?.email || '',
-        guestFirstName: '',
-        guestLastName: '',
-        cardNumber: '',
-        expiry: '',
-        cvc: '',
-        cardCountry: 'PH',
-        cardAddress: '',
-        cardCity: '',
-        cardZip: ''
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }), []);
+    // Get state from store using granular selectors
+    const formData = useCheckoutFormData();
+    const { bookingFor, isWorkTravel, specialRequests } = useBookingOptions();
+    const { payeeFirstName, payeeLastName } = usePayeeInfo();
+    const { phoneCountryCode, selectedCurrency } = usePhoneCurrency();
+    const { isSuccess, emailSent } = useCheckoutUIState();
 
-    const [formData, setFormData] = useState<CheckoutFormData>(initialFormData);
-
-    // Booking options
-    const [bookingFor, setBookingFor] = useState<BookingForType>('myself');
-    const [isWorkTravel, setIsWorkTravel] = useState(false);
-    const [specialRequests, setSpecialRequests] = useState('');
-
-    // Payee info
-    const [payeeFirstName, setPayeeFirstName] = useState('');
-    const [payeeLastName, setPayeeLastName] = useState('');
-
-    // Phone/currency
-    const [phoneCountryCode, setPhoneCountryCode] = useState('+63');
-    const [selectedCurrency, setSelectedCurrency] = useState('PHP');
-
-    // UI state
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [emailSent, setEmailSent] = useState(false);
+    // Get actions from store
+    const actions = useCheckoutActions();
 
     // Track previous user to detect login
     const prevUserRef = useRef(user);
+    const prevCurrencyRef = useRef(selectedCurrency);
 
     // Auto-fill form when user logs in
     useEffect(() => {
         if (user && !prevUserRef.current && !isAuthModalOpen) {
             const needsUpdate = !formData.firstName || !formData.lastName || !formData.email;
             if (needsUpdate) {
-                setFormData(prev => ({
-                    ...prev,
-                    firstName: prev.firstName || user.firstName || '',
-                    lastName: prev.lastName || user.lastName || '',
-                    email: prev.email || user.email || '',
-                }));
+                actions.autoFillFromUser(user);
             }
         }
         prevUserRef.current = user;
-    }, [user, isAuthModalOpen, formData.firstName, formData.lastName, formData.email]);
+    }, [user, isAuthModalOpen, formData.firstName, formData.lastName, formData.email, actions]);
 
-    // Handle input changes with auto currency switch
+    // Notify parent when currency changes
+    useEffect(() => {
+        if (selectedCurrency !== prevCurrencyRef.current) {
+            onCurrencyChange?.(selectedCurrency);
+            prevCurrencyRef.current = selectedCurrency;
+        }
+    }, [selectedCurrency, onCurrencyChange]);
+
+    // Handle input changes - wraps store action with event handling
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-
-        // Auto-switch currency based on billing country
-        if (name === 'cardCountry') {
-            const currencyMap: Record<string, string> = {
-                'PH': 'PHP', 'SG': 'SGD', 'MY': 'MYR', 'ID': 'IDR',
-                'TH': 'THB', 'VN': 'VND', 'KR': 'KRW', 'JP': 'JPY', 'US': 'USD'
-            };
-            if (currencyMap[value]) {
-                setSelectedCurrency(currencyMap[value]);
-                onCurrencyChange?.(currencyMap[value]);
-            }
-        }
-    }, [onCurrencyChange]);
+        actions.handleInputChange(name, value);
+    }, [actions]);
 
     return {
         formData,
-        setFormData,
+        setFormData: actions.setFormData,
         handleInputChange,
         bookingFor,
-        setBookingFor,
+        setBookingFor: actions.setBookingFor,
         isWorkTravel,
-        setIsWorkTravel,
+        setIsWorkTravel: actions.setIsWorkTravel,
         specialRequests,
-        setSpecialRequests,
+        setSpecialRequests: actions.setSpecialRequests,
         payeeFirstName,
-        setPayeeFirstName,
+        setPayeeFirstName: actions.setPayeeFirstName,
         payeeLastName,
-        setPayeeLastName,
+        setPayeeLastName: actions.setPayeeLastName,
         phoneCountryCode,
-        setPhoneCountryCode,
+        setPhoneCountryCode: actions.setPhoneCountryCode,
         selectedCurrency,
-        setSelectedCurrency,
+        setSelectedCurrency: actions.setSelectedCurrency,
         isSuccess,
-        setIsSuccess,
+        setIsSuccess: actions.setIsSuccess,
         emailSent,
-        setEmailSent,
+        setEmailSent: actions.setEmailSent,
     };
 }

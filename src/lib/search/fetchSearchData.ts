@@ -198,8 +198,21 @@ export async function fetchSearchProperties(params: SearchParams): Promise<Prope
         console.log("[SearchPage] Calling searchLiteApi with params:", queryParams);
         const data = await searchLiteApi(queryParams);
 
+        // Debug: Log raw API response structure for first hotel
+        if (data?.data?.[0]) {
+            const firstHotel = data.data[0];
+            console.log("[SearchPage] First hotel raw data keys:", Object.keys(firstHotel));
+            console.log("[SearchPage] First hotel refundableTag (hotel level):", firstHotel.refundableTag);
+            console.log("[SearchPage] First hotel roomTypes?.[0]?.rates?.[0]:", JSON.stringify(firstHotel.roomTypes?.[0]?.rates?.[0], null, 2));
+        }
+
         if (data?.data && Array.isArray(data.data)) {
-            return data.data.map((hotel: any) => transformHotelToProperty(hotel, queryParams.cityName));
+            const properties = data.data.map((hotel: any) => {
+                const prop = transformHotelToProperty(hotel, queryParams.cityName);
+                console.log(`[SearchPage] Hotel ${hotel.hotelId} (${hotel.name}) refundableTag:`, prop.refundableTag);
+                return prop;
+            });
+            return properties;
         }
     } catch (e) {
         console.error("Failed to fetch properties:", e);

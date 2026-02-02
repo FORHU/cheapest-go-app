@@ -33,3 +33,7 @@ export { useTripsData } from './trips';
 
 // Checkout hooks
 export { useCheckoutForm, useCheckoutPrebook, usePricingCalculation } from './checkout';
+
+// Room hooks (property page)
+export { useRoomGrouping } from './room';
+export type { UseRoomGroupingOptions, UseRoomGroupingReturn } from './room';
