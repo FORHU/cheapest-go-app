@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from 'react';
 import { useSearchStore, Destination } from '@/stores/searchStore';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 
 /**
  * Custom hook for search module logic
@@ -159,35 +160,61 @@ export const useSearchModule = (): UseSearchModuleReturn => {
     /**
      * handleSearch - Navigate to search results
      * Builds URL params with all necessary data including placeId
+     * Validates required fields before searching
      */
     const handleSearch = useCallback(() => {
+        // Get fresh state for validation
+        const state = useSearchStore.getState();
+
+        // Validation: Check required fields
+        const destValue = state.destination?.title || state.destinationQuery;
+        const hasDestination = destValue && destValue.trim().length > 0;
+        const hasCheckIn = state.dates.checkIn !== null;
+        const hasCheckOut = state.dates.checkOut !== null;
+
+        // Collect missing fields
+        const missingFields: string[] = [];
+        if (!hasDestination) missingFields.push('destination');
+        if (!hasCheckIn) missingFields.push('check-in date');
+        if (!hasCheckOut) missingFields.push('check-out date');
+
+        // If any fields are missing, show error and focus the first missing field
+        if (missingFields.length > 0) {
+            const fieldText = missingFields.length === 1
+                ? missingFields[0]
+                : missingFields.slice(0, -1).join(', ') + ' and ' + missingFields[missingFields.length - 1];
+
+            toast.error(`Please select ${fieldText}`, {
+                description: 'All fields are required to search for hotels',
+            });
+
+            // Open the first missing dropdown
+            if (!hasDestination) {
+                setActiveDropdown('destination');
+            } else if (!hasCheckIn || !hasCheckOut) {
+                setActiveDropdown('dates');
+            }
+            return;
+        }
+
         setIsSearching(true);
         setActiveDropdown(null);
 
-        // Get fresh state for building params
-        const state = useSearchStore.getState();
         const params = new URLSearchParams();
 
-        // Destination - use query if object is missing
-        const destValue = state.destination?.title || state.destinationQuery;
-        if (destValue) {
-            params.set('destination', destValue);
-            // Include placeId and countryCode for accurate API results
-            if (state.destination?.countryCode) {
-                params.set('countryCode', state.destination.countryCode);
-            }
-            if (state.destination?.id) {
-                params.set('placeId', state.destination.id);
-            }
+        // Destination
+        params.set('destination', destValue!);
+        // Include placeId and countryCode for accurate API results
+        if (state.destination?.countryCode) {
+            params.set('countryCode', state.destination.countryCode);
+        }
+        if (state.destination?.id) {
+            params.set('placeId', state.destination.id);
         }
 
         // Dates
-        if (state.dates.checkIn) {
-            params.set('checkIn', state.dates.checkIn.toISOString());
-        }
-        if (state.dates.checkOut) {
-            params.set('checkOut', state.dates.checkOut.toISOString());
-        }
+        params.set('checkIn', state.dates.checkIn!.toISOString());
+        params.set('checkOut', state.dates.checkOut!.toISOString());
 
         // Travelers
         params.set('adults', state.travelers.adults.toString());

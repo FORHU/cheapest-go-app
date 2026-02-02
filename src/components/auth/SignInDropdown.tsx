@@ -97,7 +97,7 @@ const SignInDropdown: React.FC = () => {
                             {/* Menu Items */}
                             <div className="py-2">
                                 <Link
-                                    href="#"
+                                    href="/trips"
                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
                                     onClick={() => setIsOpen(false)}
                                 >
@@ -183,7 +183,7 @@ const SignInDropdown: React.FC = () => {
                         {/* Links */}
                         <div className="border-t border-slate-100 dark:border-white/5 py-2">
                             <Link
-                                href="#"
+                                href="/login?redirect=/trips"
                                 className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
                                 onClick={() => setIsOpen(false)}
                             >

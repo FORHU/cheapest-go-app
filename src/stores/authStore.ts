@@ -29,6 +29,8 @@ interface AuthState {
     socialLogin: (provider: 'google' | 'apple' | 'facebook') => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
     resendConfirmation: (email: string) => Promise<void>;
+    updateProfile: (data: { firstName: string; lastName: string }) => Promise<void>;
+    updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 
     // Helper to sync state from session
     syncSession: (session: Session | null) => void;

@@ -47,9 +47,9 @@ const Header = () => {
           </a>
 
           {/* Trips */}
-          <a href="#" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
+          <Link href="/trips" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
             Trips
-          </a>
+          </Link>
 
           {/* Theme Toggle */}
           <button

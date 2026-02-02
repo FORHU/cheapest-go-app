@@ -15,6 +15,18 @@ const nextConfig = {
             tailwindcss: require.resolve('tailwindcss'),
         },
     },
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'static.cupid.travel',
+            },
+            {
+                protocol: 'https',
+                hostname: '*.cupid.travel',
+            },
+        ],
+    },
 };
 
 export default nextConfig;
