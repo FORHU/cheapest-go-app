@@ -102,6 +102,81 @@ export interface BookingRecord {
   special_requests?: string;
   created_at: string;
   updated_at: string;
+  cancellation_policy?: CancellationPolicy;
+}
+
+/**
+ * Cancellation policy info from LiteAPI
+ */
+export interface CancellationPolicy {
+  cancelPolicyInfos?: CancelPolicyInfo[];
+  hotelRemarks?: string[];
+  refundableTag?: string; // "RFN" = refundable, "NRFN" = non-refundable
+}
+
+export interface CancelPolicyInfo {
+  cancelTime: string; // ISO timestamp
+  amount: number;
+  currency: string;
+  type: string; // e.g., "PERCENT" or "AMOUNT"
+}
+
+/**
+ * Booking details from LiteAPI
+ */
+export interface BookingDetailsResponse {
+  bookingId: string;
+  status: string;
+  hotel: {
+    name: string;
+    hotelId: string;
+  };
+  bookedRooms: Array<{
+    roomType: string;
+    adults: number;
+    children: number;
+    rate: {
+      retailRate: {
+        total: { amount: number; currency: string };
+      };
+    };
+  }>;
+  guestInfo: {
+    guestFirstName: string;
+    guestLastName: string;
+    guestEmail: string;
+  };
+  checkin: string;
+  checkout: string;
+  cancellationPolicies?: {
+    cancelPolicyInfos?: CancelPolicyInfo[];
+    hotelRemarks?: string[];
+    refundableTag?: string;
+  };
+  cancellation?: {
+    cancelAllowed: boolean;
+    fee?: {
+      amount: number;
+      currency: string;
+    };
+    refund?: {
+      amount: number;
+      currency: string;
+    };
+  };
+}
+
+/**
+ * Cancellation response from LiteAPI
+ */
+export interface CancellationResponse {
+  bookingId: string;
+  status: string;
+  cancellationId?: string;
+  refund?: {
+    amount: number;
+    currency: string;
+  };
 }
 
 /**
@@ -187,5 +262,43 @@ export const bookingService = {
     }
 
     return data || [];
+  },
+
+  /**
+   * Get booking details from LiteAPI
+   * @param bookingId - The booking ID to retrieve
+   * @returns Booking details including cancellation policies
+   */
+  getBookingDetails: async (bookingId: string): Promise<BookingDetailsResponse> => {
+    const result = await invokeEdgeFunction('liteapi-booking-details', { bookingId });
+    return result.data;
+  },
+
+  /**
+   * Cancel a booking via LiteAPI
+   * @param bookingId - The booking ID to cancel
+   * @returns Cancellation response with refund information
+   */
+  cancelBooking: async (bookingId: string): Promise<CancellationResponse> => {
+    const result = await invokeEdgeFunction('liteapi-cancel-booking', { bookingId });
+    return result.data;
+  },
+
+  /**
+   * Update booking status in database after cancellation
+   * @param bookingId - The booking ID to update
+   * @param status - New status
+   */
+  updateBookingStatus: async (bookingId: string, status: BookingRecord['status']): Promise<void> => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('booking_id', bookingId);
+
+    if (error) {
+      console.error('Failed to update booking status:', error);
+      throw error;
+    }
   },
 };

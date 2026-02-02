@@ -319,15 +319,29 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                         includes taxes & fees
                     </div>
 
+                    {property.refundableTag && (
+                        <div className="mb-3">
+                            {property.refundableTag === 'RFN' ? (
+                                <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    Free Cancellation
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1 text-xs bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    Non-refundable
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     <button className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm">
                         View Availability
                     </button>
-
-                    <div className="mt-2 text-center">
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                            Free Cancellation
-                        </span>
-                    </div>
                 </div>
             </div>
         </motion.div>

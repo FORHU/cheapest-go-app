@@ -6,10 +6,6 @@ import { useRouter } from 'next/navigation';
 import {
     User,
     Bell,
-    CreditCard,
-    Tag,
-    DollarSign,
-    MessageSquare,
     Shield,
     HelpCircle,
     ArrowLeft
@@ -50,13 +46,9 @@ export default function AccountSettingsPage() {
     };
 
     const sidebarItems = [
-        { id: 'profile', icon: <User size={20} />, title: 'Profile', description: 'Provide your personal details and travel documents' },
+        { id: 'profile', icon: <User size={20} />, title: 'Profile', description: 'View and edit your personal details' },
         { id: 'communications', icon: <Bell size={20} />, title: 'Communications', description: 'Control which notifications you get' },
-        { id: 'payment', icon: <CreditCard size={20} />, title: 'Payment methods', description: 'View saved payment methods' },
-        { id: 'coupons', icon: <Tag size={20} />, title: 'Coupons', description: 'View your available coupons' },
-        { id: 'credits', icon: <DollarSign size={20} />, title: 'Credits', description: 'View your active airline credits' },
-        { id: 'reviews', icon: <MessageSquare size={20} />, title: 'Reviews', description: 'Read reviews you\'ve shared' },
-        { id: 'security', icon: <Shield size={20} />, title: 'Security and settings', description: 'Update your email or password' },
+        { id: 'security', icon: <Shield size={20} />, title: 'Security', description: 'Update your password' },
         { id: 'help', icon: <HelpCircle size={20} />, title: 'Help and feedback', description: 'Get customer support' },
     ];
 
@@ -85,7 +77,7 @@ export default function AccountSettingsPage() {
                     />
 
                     {/* Main Content */}
-                    <AccountMainContent user={user} />
+                    <AccountMainContent user={user} activeSection={activeSection} />
                 </div>
             </main>
         </div>

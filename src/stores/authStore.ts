@@ -247,6 +247,64 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             set({ isLoading: false });
         }
     },
+
+    updateProfile: async (data) => {
+        set({ isLoading: true });
+        try {
+            console.log('[Auth] Updating profile:', data);
+            const { data: userData, error } = await supabase.auth.updateUser({
+                data: {
+                    first_name: data.firstName,
+                    last_name: data.lastName,
+                    full_name: `${data.firstName} ${data.lastName}`,
+                },
+            });
+
+            if (error) throw error;
+
+            if (userData.user) {
+                const updatedUser = extractUserProfile(userData.user);
+                set({ user: updatedUser, supabaseUser: userData.user });
+                console.log('[Auth] Profile updated successfully');
+            }
+        } catch (error) {
+            console.error('Profile update failed:', error);
+            throw error;
+        } finally {
+            set({ isLoading: false });
+        }
+    },
+
+    updatePassword: async (currentPassword, newPassword) => {
+        set({ isLoading: true });
+        try {
+            const { user } = get();
+            if (!user?.email) throw new Error('No user logged in');
+
+            // First verify current password by re-authenticating
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email: user.email,
+                password: currentPassword,
+            });
+
+            if (signInError) {
+                throw new Error('Current password is incorrect');
+            }
+
+            // Then update to new password
+            const { error } = await supabase.auth.updateUser({
+                password: newPassword,
+            });
+
+            if (error) throw error;
+            console.log('[Auth] Password updated successfully');
+        } catch (error) {
+            console.error('Password update failed:', error);
+            throw error;
+        } finally {
+            set({ isLoading: false });
+        }
+    },
 }));
 
 // Selectors

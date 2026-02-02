@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plane, Calendar, Loader2, Luggage, ArrowRight } from 'lucide-react';
+import { Plane, Loader2, Luggage, ArrowRight } from 'lucide-react';
 import { Header, Footer } from '@/components/landing';
 import BookingCard from '@/components/trips/BookingCard';
 import { bookingService, type BookingRecord } from '@/services/booking.service';
@@ -17,27 +17,27 @@ export default function TripsPage() {
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
 
+    const fetchBookings = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            const data = await bookingService.getUserBookings();
+            setBookings(data);
+        } catch (err: any) {
+            console.error('Failed to fetch bookings:', err);
+            setError(err.message || 'Failed to load your trips');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (!user) {
             router.push('/login?redirect=/trips');
             return;
         }
 
-        const fetchBookings = async () => {
-            try {
-                setIsLoading(true);
-                const data = await bookingService.getUserBookings();
-                setBookings(data);
-            } catch (err: any) {
-                console.error('Failed to fetch bookings:', err);
-                setError(err.message || 'Failed to load your trips');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
         fetchBookings();
-    }, [user, router]);
+    }, [user, router, fetchBookings]);
 
     const now = new Date();
     const upcomingBookings = bookings.filter(b => new Date(b.check_in) >= now && b.status !== 'cancelled');
@@ -154,7 +154,11 @@ export default function TripsPage() {
                     ) : (
                         <div className="space-y-4">
                             {displayedBookings.map((booking) => (
-                                <BookingCard key={booking.id} booking={booking} />
+                                <BookingCard
+                                    key={booking.id}
+                                    booking={booking}
+                                    onBookingUpdated={fetchBookings}
+                                />
                             ))}
                         </div>
                     )}
