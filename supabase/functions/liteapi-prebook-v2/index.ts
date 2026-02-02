@@ -67,6 +67,9 @@ Deno.serve(async (req: any) => {
         ];
 
         const MAX_RETRIES = 2; // Per endpoint
+        const FETCH_TIMEOUT = 10000; // 10 second timeout
+        const RETRY_DELAY = 200; // 200ms between retries (reduced from 500ms)
+
         let liteResponse;
         let liteResponseText = "";
         let success = false;
@@ -79,30 +82,38 @@ Deno.serve(async (req: any) => {
                 try {
                     if (i > 0) console.log(`Retry attempt ${i + 1} for ${url}...`);
 
-                    liteResponse = await fetch(url, {
-                        method: "POST",
-                        headers: {
-                            'X-API-Key': LITEAPI_KEY,
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
+                    // Create abort controller for timeout
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+                    try {
+                        liteResponse = await fetch(url, {
+                            method: "POST",
+                            headers: {
+                                'X-API-Key': LITEAPI_KEY,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(payload),
+                            signal: controller.signal
+                        });
+                    } finally {
+                        clearTimeout(timeoutId);
+                    }
 
                     console.log(`Endpoint ${url} Status:`, liteResponse.status);
 
                     // Try reading the stream immediately to confirm it's valid
                     liteResponseText = await liteResponse.text();
 
-                    // If we get here without error, success! 
-                    // (Even if status is 400, strictly speaking the connection didn't fail)
+                    // If we get here without error, success!
                     success = true;
                     break outerLoop;
                 } catch (err: any) {
-                    console.error(`Attempt ${i + 1} on ${url} failed:`, err);
+                    console.error(`Attempt ${i + 1} on ${url} failed:`, err.name === 'AbortError' ? 'Request timed out' : err);
                     lastError = err;
                     // Wait briefly before retry
-                    await new Promise(r => setTimeout(r, 500));
+                    await new Promise(r => setTimeout(r, RETRY_DELAY));
                 }
             }
         }

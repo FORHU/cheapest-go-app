@@ -148,25 +148,30 @@ export default function CheckoutPage() {
                 payment: { method: "ACC_CREDIT_CARD" }
             });
 
+            // Show success immediately - don't wait for email/save
             setIsSuccess(true);
 
             const confirmedBookingId = useBookingStore.getState().bookingId;
 
-            await sendConfirmationEmail({
-                bookingId: confirmedBookingId || 'N/A',
-                email: formData.email,
-                guestName: `${primaryGuest.firstName} ${primaryGuest.lastName}`,
-                hotelName: property?.name || 'Hotel',
-                roomName: selectedRoom?.title || 'Room',
-                checkIn: checkIn?.toLocaleDateString() || '',
-                checkOut: checkOut?.toLocaleDateString() || '',
-                totalPrice: priceData?.total || totalPrice || 0,
-                currency: selectedCurrency,
-            });
+            // Run email and save in parallel for faster completion
+            // These are fire-and-forget - user sees success immediately
+            const postBookingTasks: Promise<void>[] = [
+                sendConfirmationEmail({
+                    bookingId: confirmedBookingId || 'N/A',
+                    email: formData.email,
+                    guestName: `${primaryGuest.firstName} ${primaryGuest.lastName}`,
+                    hotelName: property?.name || 'Hotel',
+                    roomName: selectedRoom?.title || 'Room',
+                    checkIn: checkIn?.toLocaleDateString() || '',
+                    checkOut: checkOut?.toLocaleDateString() || '',
+                    totalPrice: priceData?.total || totalPrice || 0,
+                    currency: selectedCurrency,
+                }),
+            ];
 
             if (user && confirmedBookingId) {
-                try {
-                    await bookingService.saveBooking({
+                postBookingTasks.push(
+                    bookingService.saveBooking({
                         bookingId: confirmedBookingId,
                         userId: user.id,
                         propertyName: property?.name || 'Hotel',
@@ -182,11 +187,14 @@ export default function CheckoutPage() {
                         holderLastName: formData.lastName,
                         holderEmail: formData.email,
                         specialRequests: specialRequests || undefined,
-                    });
-                } catch (saveError) {
-                    console.error("Failed to save booking:", saveError);
-                }
+                    }).catch(err => console.error("Failed to save booking:", err))
+                );
             }
+
+            // Execute in parallel without blocking
+            Promise.all(postBookingTasks).catch(err =>
+                console.error("Post-booking tasks error:", err)
+            );
         } catch (err: any) {
             if (err.message?.includes("fraud check") || err.message?.includes("2013")) {
                 alert("Booking rejected by fraud prevention system.\n\nPlease use realistic information.");
