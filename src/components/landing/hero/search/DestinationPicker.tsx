@@ -3,7 +3,15 @@
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, History, Plane, Building2, X } from 'lucide-react';
-import { Destination, useSearchStore, useDestinationQuery, useRecentSearches, useActiveDropdown } from '@/stores/searchStore';
+import {
+    Destination,
+    useSearchStore,
+    useDestinationQuery,
+    useRecentSearches,
+    useActiveDropdown,
+    useSuggestions,
+    useSuggestionsLoading
+} from '@/stores/searchStore';
 
 
 
@@ -14,12 +22,18 @@ export const DestinationPicker: React.FC = () => {
     const query = useDestinationQuery();
     const recentSearches = useRecentSearches();
     const activeDropdown = useActiveDropdown();
+    // Use store selectors for suggestions/loading (no useState)
+    const suggestions = useSuggestions();
+    const loading = useSuggestionsLoading();
+
     const {
         setDestination,
         setDestinationQuery,
         addRecentSearch,
         setActiveDropdown,
-        removeRecentSearch
+        removeRecentSearch,
+        setSuggestions,
+        setSuggestionsLoading
     } = useSearchStore();
 
     const isOpen = activeDropdown === 'destination';
@@ -39,11 +53,6 @@ export const DestinationPicker: React.FC = () => {
     }, [isOpen]);
 
     // Handlers
-    // State
-    const [suggestions, setSuggestions] = React.useState<Destination[]>([]);
-    const [loading, setLoading] = React.useState(false);
-
-    // Handlers
     const handleSelect = (destination: Destination) => {
         setDestination(destination);
         setDestinationQuery(destination.title);
@@ -51,7 +60,7 @@ export const DestinationPicker: React.FC = () => {
         onClose();
     };
 
-    // Debounced Autocomplete
+    // Debounced Autocomplete - uses store actions instead of local setState
     useEffect(() => {
         const timer = setTimeout(async () => {
             if (!query || query.length < 2) {
@@ -59,7 +68,7 @@ export const DestinationPicker: React.FC = () => {
                 return;
             }
 
-            setLoading(true);
+            setSuggestionsLoading(true);
             try {
                 // Use client-side safe functions helper
                 const { invokeEdgeFunction } = await import('@/utils/supabase/client-functions');
@@ -69,29 +78,18 @@ export const DestinationPicker: React.FC = () => {
                 if (res && res.data) {
                     console.log("[DestinationPicker] Raw LiteAPI response:", res);
                     // Map LiteAPI results to Destination objects
-                    // Response format from LiteAPI /data/places: { placeId, displayName, formattedAddress, country_code, ... }
                     const mapped = res.data.map((item: any) => {
-                        console.log("[DestinationPicker] Mapping item:", item);
-
-                        // Use the actual countryCode from LiteAPI response (most accurate)
-                        // LiteAPI returns country_code or countryCode field
                         const countryCode = item.country_code || item.countryCode || item.countryIso || 'PH';
-
-                        // Extract city name (prefer displayName, fallback to name)
                         const cityName = item.displayName || item.name || '';
-
-                        // Use formattedAddress for subtitle
                         const address = item.formattedAddress || item.address || '';
 
-                        const mappedItem = {
+                        return {
                             type: 'city' as const,
                             title: cityName,
                             subtitle: address,
-                            countryCode: countryCode.toUpperCase(), // Ensure uppercase for consistency
-                            id: item.placeId || item.id // Store placeId for reference but prioritize cityName + countryCode
+                            countryCode: countryCode.toUpperCase(),
+                            id: item.placeId || item.id
                         };
-                        console.log("[DestinationPicker] Mapped to:", mappedItem);
-                        return mappedItem;
                     });
                     setSuggestions(mapped);
                 }
@@ -99,17 +97,13 @@ export const DestinationPicker: React.FC = () => {
                 console.error("Autocomplete failed:", error);
                 setSuggestions([]);
             } finally {
-                setLoading(false);
+                setSuggestionsLoading(false);
             }
-        }, 500); // 500ms debounce
+        }, 500);
 
         return () => clearTimeout(timer);
-    }, [query]);
+    }, [query, setSuggestions, setSuggestionsLoading]);
 
-
-    // Filter destinations based on query
-    // Since we removed hardcoded list, this is empty. We rely on Custom Search.
-    const filteredDestinations: Destination[] = [];
 
     const getIcon = (type: Destination['type']) => {
         switch (type) {

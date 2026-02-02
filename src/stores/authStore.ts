@@ -87,6 +87,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     login: async (email, password) => {
         set({ isLoading: true, email });
         try {
+            console.log('[Auth] Attempting login for:', email);
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
@@ -95,12 +96,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             if (error) throw error;
 
             if (data.user && data.session) {
+                console.log('[Auth] Login successful, user metadata:', data.user.user_metadata);
                 get().syncSession(data.session);
             }
         } catch (error: any) {
-            console.error('Login failed:', error);
+            console.error('[Auth] Login failed:', error.message);
             if (error.message && (error.message.includes('Email not confirmed') || error.message.includes('email not confirmed'))) {
-                set({ authStep: 'verify-email' });
+                console.log('[Auth] Email not confirmed, redirecting to verify-email step');
+                set({ authStep: 'verify-email', isLoading: false });
+                throw error; // Still throw so UI can handle
             }
             throw error;
         } finally {
@@ -115,6 +119,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const currentPath = window.location.pathname + window.location.search;
             const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentPath)}`;
 
+            console.log('[Auth] Registering user:', data.email);
+            console.log('[Auth] With metadata:', { first_name: data.firstName, last_name: data.lastName });
+            console.log('[Auth] Redirect URL:', emailRedirectTo);
+
             const { data: authData, error } = await supabase.auth.signUp({
                 email: data.email,
                 password: data.password,
@@ -128,13 +136,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 },
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error('[Auth] Registration error:', error.message);
+                throw error;
+            }
+
+            console.log('[Auth] Registration response:', {
+                hasUser: !!authData.user,
+                hasSession: !!authData.session,
+                userMetadata: authData.user?.user_metadata,
+            });
 
             if (authData.user) {
                 if (authData.session) {
+                    console.log('[Auth] Auto-signed in (no email confirmation required)');
                     get().syncSession(authData.session);
                 } else {
                     // Email confirmation required
+                    console.log('[Auth] Email confirmation required, showing verify-email step');
                     set({ authStep: 'verify-email' });
                 }
             }
@@ -200,11 +219,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     resendConfirmation: async (email) => {
         set({ isLoading: true });
         try {
+            // Build redirect URL same as registration
+            const currentPath = window.location.pathname + window.location.search;
+            const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentPath)}`;
+
+            console.log('[Auth] Resending confirmation email to:', email);
+            console.log('[Auth] Redirect URL:', emailRedirectTo);
+
             const { error } = await supabase.auth.resend({
                 type: 'signup',
                 email: email,
+                options: {
+                    emailRedirectTo,
+                },
             });
-            if (error) throw error;
+            if (error) {
+                console.error('[Auth] Resend confirmation error:', error);
+                throw error;
+            }
+            console.log('[Auth] Confirmation email resent successfully');
         } catch (error) {
             console.error('Resend confirmation failed:', error);
             throw error;

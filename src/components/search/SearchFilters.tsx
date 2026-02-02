@@ -1,9 +1,13 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Search, Map, RotateCcw } from 'lucide-react';
+import {
+    useSearchFilters,
+    useSearchStore,
+} from '@/stores/searchStore';
 
 
 // LiteAPI Facility IDs (common ones)
@@ -106,30 +110,33 @@ const RadioItem = ({ name, label, checked, onChange }: RadioItemProps) => (
 const SearchFilters = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const initializedRef = useRef(false);
 
-    // Initialize state from URL params
-    const [hotelName, setHotelName] = useState(() => searchParams.get('hotelName') || '');
-    const [starRating, setStarRating] = useState<number[]>(() => {
-        const param = searchParams.get('starRating');
-        return param ? param.split(',').map(Number).filter(n => !isNaN(n)) : [];
-    });
-    const [minRating, setMinRating] = useState<number>(() => {
-        const param = searchParams.get('minRating');
-        return param ? Number(param) : 0;
-    });
-    const [minReviewsCount, setMinReviewsCount] = useState<number>(() => {
-        const param = searchParams.get('minReviewsCount');
-        return param ? Number(param) : 0;
-    });
-    const [facilities, setFacilities] = useState<number[]>(() => {
-        const param = searchParams.get('facilities');
-        return param ? param.split(',').map(Number).filter(n => !isNaN(n)) : [];
-    });
-    const [strictFacilityFiltering, setStrictFacilityFiltering] = useState<boolean>(() => {
-        return searchParams.get('strictFacilityFiltering') === 'true';
-    });
+    // Use Zustand store instead of useState - prevents re-renders
+    const filters = useSearchFilters();
+    const { setFilters, toggleStarRating, toggleFacility, resetFilters } = useSearchStore();
 
-    // Debounced URL update
+    // Destructure for cleaner access
+    const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering } = filters;
+
+    // Initialize filters from URL params on mount (only once)
+    useEffect(() => {
+        if (initializedRef.current) return;
+        initializedRef.current = true;
+
+        const urlFilters = {
+            hotelName: searchParams.get('hotelName') || '',
+            starRating: searchParams.get('starRating')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
+            minRating: Number(searchParams.get('minRating')) || 0,
+            minReviewsCount: Number(searchParams.get('minReviewsCount')) || 0,
+            facilities: searchParams.get('facilities')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
+            strictFacilityFiltering: searchParams.get('strictFacilityFiltering') === 'true',
+        };
+        setFilters(urlFilters);
+    }, [searchParams, setFilters]);
+
+    // URL update helper
     const updateURL = useCallback((params: Record<string, string | null>) => {
         const current = new URLSearchParams(searchParams.toString());
 
@@ -144,71 +151,60 @@ const SearchFilters = () => {
         router.push(`/search?${current.toString()}`);
     }, [router, searchParams]);
 
-    // Handle hotel name search with debounce
-    const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
-
-    const handleHotelNameChange = (value: string) => {
-        setHotelName(value);
+    // Handle hotel name search with debounce using ref (no useState for timeout)
+    const handleHotelNameChange = useCallback((value: string) => {
+        setFilters({ hotelName: value });
 
         // Clear existing timeout
-        if (searchTimeout) {
-            clearTimeout(searchTimeout);
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
         }
 
         // Set new timeout for debounced search
-        const timeout = setTimeout(() => {
+        searchTimeoutRef.current = setTimeout(() => {
             updateURL({ hotelName: value || null });
         }, 500);
-
-        setSearchTimeout(timeout);
-    };
+    }, [setFilters, updateURL]);
 
     // Handle star rating toggle
-    const handleStarRatingToggle = (star: number) => {
+    const handleStarRatingToggle = useCallback((star: number) => {
+        toggleStarRating(star);
         const newRatings = starRating.includes(star)
             ? starRating.filter(s => s !== star)
             : [...starRating, star].sort((a, b) => b - a);
-
-        setStarRating(newRatings);
         updateURL({ starRating: newRatings.length > 0 ? newRatings.join(',') : null });
-    };
+    }, [toggleStarRating, starRating, updateURL]);
 
     // Handle guest rating change
-    const handleMinRatingChange = (value: number) => {
-        setMinRating(value);
+    const handleMinRatingChange = useCallback((value: number) => {
+        setFilters({ minRating: value });
         updateURL({ minRating: value > 0 ? String(value) : null });
-    };
+    }, [setFilters, updateURL]);
 
     // Handle review count change
-    const handleMinReviewsCountChange = (value: number) => {
-        setMinReviewsCount(value);
+    const handleMinReviewsCountChange = useCallback((value: number) => {
+        setFilters({ minReviewsCount: value });
         updateURL({ minReviewsCount: value > 0 ? String(value) : null });
-    };
+    }, [setFilters, updateURL]);
 
     // Handle facility toggle
-    const handleFacilityToggle = (facilityId: number) => {
+    const handleFacilityToggle = useCallback((facilityId: number) => {
+        toggleFacility(facilityId);
         const newFacilities = facilities.includes(facilityId)
             ? facilities.filter(f => f !== facilityId)
             : [...facilities, facilityId];
-
-        setFacilities(newFacilities);
         updateURL({ facilities: newFacilities.length > 0 ? newFacilities.join(',') : null });
-    };
+    }, [toggleFacility, facilities, updateURL]);
 
     // Handle strict facility filtering
-    const handleStrictFilteringToggle = (checked: boolean) => {
-        setStrictFacilityFiltering(checked);
+    const handleStrictFilteringToggle = useCallback((checked: boolean) => {
+        setFilters({ strictFacilityFiltering: checked });
         updateURL({ strictFacilityFiltering: checked ? 'true' : null });
-    };
+    }, [setFilters, updateURL]);
 
     // Reset all filters
-    const handleResetFilters = () => {
-        setHotelName('');
-        setStarRating([]);
-        setMinRating(0);
-        setMinReviewsCount(0);
-        setFacilities([]);
-        setStrictFacilityFiltering(false);
+    const handleResetFilters = useCallback(() => {
+        resetFilters();
 
         // Preserve non-filter params (destination, dates, etc.)
         const current = new URLSearchParams(searchParams.toString());
@@ -217,7 +213,7 @@ const SearchFilters = () => {
         });
 
         router.push(`/search?${current.toString()}`);
-    };
+    }, [resetFilters, searchParams, router]);
 
     // Check if any filters are active
     const hasActiveFilters = hotelName || starRating.length > 0 || minRating > 0 ||
