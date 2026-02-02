@@ -1,66 +1,44 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
-import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { PlaneTakeoff, ArrowLeft, Mail, User, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
+import React, { Suspense, useCallback } from 'react';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/stores/authStore';
+import { useLoginForm } from '@/hooks';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import VerifyEmailStep from '@/components/auth/VerifyEmailStep';
+import {
+    AuthHeader,
+    EmailField,
+    PasswordField,
+    NameFields,
+    AuthFooter,
+} from '@/components/login';
 
 function LoginPageContent() {
-    const { register, login, isLoading, authStep, setAuthStep, user } = useAuthStore();
-    const searchParams = useSearchParams();
-    const router = useRouter();
+    // All login state and logic from hook
+    const {
+        isLoading,
+        authStep,
+        setAuthStep,
+        register,
+        login,
+        mode,
+        setMode,
+        email,
+        setEmail,
+        firstName,
+        setFirstName,
+        lastName,
+        setLastName,
+        password,
+        setPassword,
+        errors,
+        setErrors,
+        passwordRequirements,
+        allRequirementsMet,
+        validateEmail,
+    } = useLoginForm();
 
-    const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-    const [email, setEmail] = useState('');
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [errors, setErrors] = useState<Record<string, string>>({});
-
-    // Redirect when user is authenticated
-    useEffect(() => {
-        if (user) {
-            const redirectTo = searchParams.get('redirect') || '/';
-            router.push(redirectTo);
-        }
-    }, [user, router, searchParams]);
-
-    // Read mode from URL query parameter
-    useEffect(() => {
-        const urlMode = searchParams.get('mode');
-        if (urlMode === 'signup') {
-            setMode('signup');
-            setAuthStep('register');
-        }
-    }, [searchParams, setAuthStep]);
-
-    // Handle Auth Step changes (e.g. Back from Verify Email)
-    useEffect(() => {
-        if (authStep === 'password' || authStep === 'email') {
-            setMode('signin');
-        } else if (authStep === 'register') {
-            setMode('signup');
-        }
-    }, [authStep]);
-
-    // Password requirements (only for signup)
-    const passwordRequirements = [
-        { label: '8+ characters', met: password.length >= 8 },
-        { label: 'Uppercase', met: /[A-Z]/.test(password) },
-        { label: 'Lowercase', met: /[a-z]/.test(password) },
-        { label: 'Number', met: /\d/.test(password) },
-    ];
-
-    const allRequirementsMet = passwordRequirements.every(req => req.met);
-
-    const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         const newErrors: Record<string, string> = {};
 
@@ -89,14 +67,12 @@ function LoginPageContent() {
                 toast.success("Welcome back!");
             }
         } catch (error: any) {
-            // Check for rate limit
             if (error?.code === 'over_email_send_rate_limit' || error?.message?.includes('rate limit')) {
                 toast.warning("Please check your email. Verification link already sent.");
                 setAuthStep('verify-email');
                 return;
             }
 
-            // Check for duplicate user (Smart Recovery)
             if (mode === 'signup' && error?.message?.includes('already registered')) {
                 try {
                     toast.info("Account already exists. Attempting to sign in...");
@@ -109,13 +85,12 @@ function LoginPageContent() {
                         return;
                     }
                     toast.error("Account exists. Please sign in.");
-                    setMode('signin'); // Switch to sign in mode
+                    setMode('signin');
                     setAuthStep('password');
                     return;
                 }
             }
 
-            // Check for email not confirmed during login
             if (error?.message?.toLowerCase().includes('email not confirmed')) {
                 setAuthStep('verify-email');
                 return;
@@ -124,33 +99,26 @@ function LoginPageContent() {
             setErrors({ general: error?.message || 'Authentication failed. Please try again.' });
             toast.error(error?.message || 'Authentication failed');
         }
-    };
+    }, [email, password, firstName, lastName, mode, allRequirementsMet, validateEmail, register, login, setErrors, setAuthStep, setMode]);
 
-    // Main layout
+    const handleToggleMode = useCallback(() => {
+        setMode(mode === 'signin' ? 'signup' : 'signin');
+        setErrors({});
+    }, [mode, setMode, setErrors]);
+
+    const clearError = useCallback((field: string) => () => {
+        setErrors({ ...errors, [field]: '' });
+    }, [errors, setErrors]);
+
     return (
         <div className="min-h-screen">
-            {/* Back Button */}
-            <Link
-                href="/"
-                className="absolute top-6 left-6 inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-                onClick={() => setAuthStep('email')}
-            >
-                <ArrowLeft className="h-5 w-5" />
-            </Link>
-
-            {/* Main Content */}
             <div className="flex flex-col items-center pt-8 pb-12 px-6">
-                {/* Logo */}
-                <Link href="/" className="flex items-center gap-3 mb-8">
-                    <div className="size-10 flex items-center justify-center bg-slate-900 dark:bg-white/5 rounded-lg shadow-sm border border-transparent dark:border-white/10">
-                        <PlaneTakeoff className="text-white dark:text-obsidian-accent w-6 h-6" />
-                    </div>
-                    <h1 className="text-slate-900 dark:text-white font-display font-bold text-xl tracking-tight">
-                        AeroVantage<span className="text-alabaster-accent dark:text-obsidian-accent">.Pro</span>
-                    </h1>
-                </Link>
+                <AuthHeader
+                    title={mode === 'signin' ? 'Sign in' : 'Create an account'}
+                    subtitle="One account for all your travel needs"
+                    onBack={() => setAuthStep('email')}
+                />
 
-                {/* Content Container */}
                 <div className="w-full max-w-md">
                     {authStep === 'verify-email' ? (
                         <div className="mt-8">
@@ -158,17 +126,6 @@ function LoginPageContent() {
                         </div>
                     ) : (
                         <>
-                            {/* Header */}
-                            <div className="text-center mb-6">
-                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {mode === 'signin' ? 'Sign in' : 'Create an account'}
-                                </h2>
-                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                    One account for all your travel needs
-                                </p>
-                            </div>
-
-                            {/* Social Login (includes its own divider) */}
                             <SocialLoginButtons />
 
                             {errors.general && (
@@ -178,99 +135,38 @@ function LoginPageContent() {
                             )}
 
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                {/* Email */}
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                        Email
-                                    </label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                                        <input
-                                            type="email"
-                                            value={email}
-                                            onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: '' })); }}
-                                            placeholder="Enter your email"
-                                            className={`w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : 'border-slate-200 dark:border-white/10'}`}
-                                            disabled={isLoading}
-                                        />
-                                    </div>
-                                    {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
-                                </div>
+                                <EmailField
+                                    value={email}
+                                    onChange={setEmail}
+                                    error={errors.email}
+                                    onErrorClear={clearError('email')}
+                                    disabled={isLoading}
+                                />
 
-                                {/* Name Fields (Signup only) */}
                                 {mode === 'signup' && (
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                                First name
-                                            </label>
-                                            <div className="relative">
-                                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                                                <input
-                                                    type="text"
-                                                    value={firstName}
-                                                    onChange={(e) => { setFirstName(e.target.value); setErrors(prev => ({ ...prev, firstName: '' })); }}
-                                                    placeholder="First"
-                                                    className={`w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.firstName ? 'border-red-500' : 'border-slate-200 dark:border-white/10'}`}
-                                                    disabled={isLoading}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                                Last name
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={lastName}
-                                                onChange={(e) => { setLastName(e.target.value); setErrors(prev => ({ ...prev, lastName: '' })); }}
-                                                placeholder="Last"
-                                                className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.lastName ? 'border-red-500' : 'border-slate-200 dark:border-white/10'}`}
-                                                disabled={isLoading}
-                                            />
-                                        </div>
-                                    </div>
+                                    <NameFields
+                                        firstName={firstName}
+                                        lastName={lastName}
+                                        onFirstNameChange={setFirstName}
+                                        onLastNameChange={setLastName}
+                                        firstNameError={errors.firstName}
+                                        lastNameError={errors.lastName}
+                                        onFirstNameErrorClear={clearError('firstName')}
+                                        onLastNameErrorClear={clearError('lastName')}
+                                        disabled={isLoading}
+                                    />
                                 )}
 
-                                {/* Password */}
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                        Password
-                                    </label>
-                                    <div className="relative">
-                                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                                        <input
-                                            type={showPassword ? 'text' : 'password'}
-                                            value={password}
-                                            onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: '' })); }}
-                                            placeholder={mode === 'signin' ? 'Enter your password' : 'Create a password'}
-                                            className={`w-full pl-10 pr-12 py-3 border rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.password ? 'border-red-500' : 'border-slate-200 dark:border-white/10'}`}
-                                            disabled={isLoading}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2"
-                                        >
-                                            {showPassword ? <EyeOff className="h-5 w-5 text-slate-400" /> : <Eye className="h-5 w-5 text-slate-400" />}
-                                        </button>
-                                    </div>
-                                    {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
+                                <PasswordField
+                                    value={password}
+                                    onChange={setPassword}
+                                    error={errors.password}
+                                    onErrorClear={clearError('password')}
+                                    disabled={isLoading}
+                                    placeholder={mode === 'signin' ? 'Enter your password' : 'Create a password'}
+                                    showRequirements={mode === 'signup'}
+                                />
 
-                                    {/* Password Requirements (Signup only) */}
-                                    {mode === 'signup' && password && (
-                                        <div className="mt-2 flex flex-wrap gap-2">
-                                            {passwordRequirements.map((req, i) => (
-                                                <span key={i} className={`inline-flex items-center gap-1 text-xs ${req.met ? 'text-green-600' : 'text-slate-400'}`}>
-                                                    {req.met ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                                                    {req.label}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Forgot Password (Signin only) */}
                                 {mode === 'signin' && (
                                     <div className="text-right">
                                         <button type="button" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
@@ -279,7 +175,6 @@ function LoginPageContent() {
                                     </div>
                                 )}
 
-                                {/* Submit Button */}
                                 <button
                                     type="submit"
                                     disabled={isLoading}
@@ -293,36 +188,7 @@ function LoginPageContent() {
                                 </button>
                             </form>
 
-                            {/* Toggle Mode */}
-                            <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-                                {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
-                                <button
-                                    onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setErrors({}); }}
-                                    className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
-                                >
-                                    {mode === 'signin' ? 'Create one' : 'Sign in'}
-                                </button>
-                            </p>
-
-                            {/* Terms */}
-                            <p className="mt-4 text-xs text-center text-slate-500 dark:text-slate-400">
-                                By continuing, you agree to our{' '}
-                                <a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Terms & Conditions</a>
-                                {' '}and{' '}
-                                <a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Privacy Statement</a>
-                            </p>
-
-                            {/* Partner Logos */}
-                            <div className="mt-6 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
-                                <span className="flex items-center gap-1.5">
-                                    <PlaneTakeoff className="h-4 w-4" />
-                                    AeroVantage
-                                </span>
-                                <span>•</span>
-                                <span>Hotels.com</span>
-                                <span>•</span>
-                                <span>Vrbo</span>
-                            </div>
+                            <AuthFooter mode={mode} onToggleMode={handleToggleMode} />
                         </>
                     )}
                 </div>

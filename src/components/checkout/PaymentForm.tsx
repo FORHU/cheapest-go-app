@@ -1,0 +1,119 @@
+'use client';
+
+import React from 'react';
+import { CreditCard, Lock, ShieldCheck } from 'lucide-react';
+import { CheckoutFormData } from './types';
+
+interface PaymentFormProps {
+    formData: CheckoutFormData;
+    onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+    payeeFirstName: string;
+    payeeLastName: string;
+    onPayeeFirstNameChange: (value: string) => void;
+    onPayeeLastNameChange: (value: string) => void;
+}
+
+export function PaymentForm({
+    formData,
+    onInputChange,
+    payeeFirstName,
+    payeeLastName,
+    onPayeeFirstNameChange,
+    onPayeeLastNameChange,
+}: PaymentFormProps) {
+    return (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <CreditCard size={20} className="text-blue-600" />
+                Payment Information
+            </h2>
+            <div className="flex gap-4 mb-6">
+                <button className="flex-1 py-3 border-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-bold rounded-lg flex items-center justify-center gap-2">
+                    <CreditCard size={18} /> Card
+                </button>
+            </div>
+
+            <div className="space-y-4">
+                <div className="relative">
+                    <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                        name="cardNumber"
+                        value={formData.cardNumber}
+                        onChange={onInputChange}
+                        type="text"
+                        className="w-full p-3 pl-10 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
+                        placeholder="Card number"
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <input
+                        name="expiry"
+                        value={formData.expiry}
+                        onChange={onInputChange}
+                        type="text"
+                        className="w-full p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
+                        placeholder="MM / YY"
+                    />
+                    <input
+                        name="cvc"
+                        value={formData.cvc}
+                        onChange={onInputChange}
+                        type="text"
+                        className="w-full p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
+                        placeholder="Security code"
+                    />
+                </div>
+
+                {/* Country Dropdown */}
+                <div>
+                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Country</label>
+                    <select
+                        name="cardCountry"
+                        value={formData.cardCountry || "PH"}
+                        onChange={onInputChange}
+                        className="w-full p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
+                    >
+                        <option value="PH">Philippines</option>
+                        <option value="SG">Singapore</option>
+                        <option value="MY">Malaysia</option>
+                        <option value="ID">Indonesia</option>
+                        <option value="TH">Thailand</option>
+                        <option value="VN">Vietnam</option>
+                        <option value="KR">South Korea</option>
+                        <option value="JP">Japan</option>
+                        <option value="US">United States</option>
+                    </select>
+                </div>
+
+                {/* Payee Names */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Payee First Name</label>
+                        <input
+                            value={payeeFirstName}
+                            onChange={(e) => onPayeeFirstNameChange(e.target.value)}
+                            type="text"
+                            className="w-full p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Payee Last Name</label>
+                        <input
+                            value={payeeLastName}
+                            onChange={(e) => onPayeeLastNameChange(e.target.value)}
+                            type="text"
+                            className="w-full p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-6 flex items-start gap-3">
+                <ShieldCheck className="text-green-600 shrink-0 mt-0.5" size={18} />
+                <p className="text-xs text-slate-500">
+                    Your payment information is secured.
+                </p>
+            </div>
+        </div>
+    );
+}

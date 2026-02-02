@@ -1,34 +1,35 @@
-// Auth & Supabase hooks
-export { useSupabase } from './useSupabase';
-export { useAuthForm } from './useAuthForm';
+// ============================================
+// HOOKS - Organized by Feature/Page
+// ============================================
 
-// UI utility hooks
-export { useDisclosure } from './useDisclosure';
-export { useClickOutside } from './useClickOutside';
-export { useKeyPress } from './useKeyPress';
-export { useHorizontalScroll } from './useHorizontalScroll';
+// Auth hooks (login, reset-password, account)
+export { useSupabase, useAuthForm, useAuthRedirect, usePasswordValidation, useLoginForm } from './auth';
+export type { PasswordRequirement, AuthMode } from './auth';
 
-// Search hooks
-export { useSearchModule } from './useSearchModule';
+// UI utility hooks (used across multiple pages)
+export { useDisclosure, useClickOutside, useKeyPress, useHorizontalScroll } from './ui';
 
-// State management hooks (Phase 1)
-export { useAsyncOperation } from './useAsyncOperation';
-export type { UseAsyncOperationOptions, UseAsyncOperationReturn } from './useAsyncOperation';
-export { useFormState } from './useFormState';
-export type { FormErrors, FormTouched, UseFormStateOptions, UseFormStateReturn } from './useFormState';
-export { useURLSync, createSerializers, createDeserializers } from './useURLSync';
-export type { SerializeFn, DeserializeFn, SyncTiming, UseURLSyncOptions, UseURLSyncReturn } from './useURLSync';
+// Form & state management hooks
+export { useAsyncOperation, useFormState, useURLSync, createSerializers, createDeserializers, usePagination } from './form';
+export type { UseAsyncOperationOptions, UseAsyncOperationReturn } from './form';
+export type { FormErrors, FormTouched, UseFormStateOptions, UseFormStateReturn } from './form';
+export type { SerializeFn, DeserializeFn, SyncTiming, UseURLSyncOptions, UseURLSyncReturn } from './form';
+export type { UsePaginationOptions, UsePaginationReturn } from './form';
 
-// React Query mutation hooks (Phase 3)
+// Search page hooks
+export { useSearchModule } from './search';
+
+// Booking hooks (checkout, property pages)
+export { useBookingFlow } from './booking';
+export type { PriceData, UseBookingFlowReturn } from './booking';
+
+// React Query mutation hooks
 export { usePrebook, useBooking } from './mutations';
 export type { UsePrebookOptions } from './mutations/usePrebook';
 export type { UseBookingOptions } from './mutations/useBooking';
 
-// High-level booking flow hook (Phase 3)
-export { useBookingFlow } from './useBookingFlow';
-export type { PriceData, UseBookingFlowReturn } from './useBookingFlow';
+// Trips page hooks
+export { useTripsData } from './trips';
 
-// Utility hooks (Phase 5)
-export { usePagination } from './usePagination';
-export type { UsePaginationOptions, UsePaginationReturn } from './usePagination';
-
+// Checkout hooks
+export { useCheckoutForm, useCheckoutPrebook, usePricingCalculation } from './checkout';

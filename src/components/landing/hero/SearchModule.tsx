@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react';
 import { MagneticButton } from '@/components/ui';
 import { DestinationSection, DateSection, TravelersSection } from './search/SearchSections';
-import { useSearchModule } from '@/hooks/useSearchModule';
+import { useSearchModule } from '@/hooks';
 
 const SearchModuleContent: React.FC = () => {
     // All logic is extracted to the custom hook

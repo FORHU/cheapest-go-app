@@ -1,48 +1,25 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 import { Plane, Loader2, Luggage, ArrowRight } from 'lucide-react';
 import { Header, Footer } from '@/components/landing';
 import BookingCard from '@/components/trips/BookingCard';
-import { bookingService, type BookingRecord } from '@/services/booking.service';
-import { useUser } from '@/stores/authStore';
+import { useAuthRedirect, useTripsData } from '@/hooks';
 import Link from 'next/link';
 
 export default function TripsPage() {
-    const router = useRouter();
-    const user = useUser();
-    const [bookings, setBookings] = useState<BookingRecord[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const { user } = useAuthRedirect({ requireAuth: true, returnTo: '/trips' });
+    const {
+        bookings,
+        isLoading,
+        error,
+        upcomingBookings,
+        pastBookings,
+        cancelledBookings,
+        refetch,
+    } = useTripsData();
+
     const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
-
-    const fetchBookings = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            const data = await bookingService.getUserBookings();
-            setBookings(data);
-        } catch (err: any) {
-            console.error('Failed to fetch bookings:', err);
-            setError(err.message || 'Failed to load your trips');
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (!user) {
-            router.push('/login?redirect=/trips');
-            return;
-        }
-
-        fetchBookings();
-    }, [user, router, fetchBookings]);
-
-    const now = new Date();
-    const upcomingBookings = bookings.filter(b => new Date(b.check_in) >= now && b.status !== 'cancelled');
-    const pastBookings = bookings.filter(b => new Date(b.check_out) < now || b.status === 'completed');
-    const cancelledBookings = bookings.filter(b => b.status === 'cancelled');
 
     const displayedBookings = activeTab === 'upcoming'
         ? upcomingBookings
@@ -74,11 +51,10 @@ export default function TripsPage() {
                     <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-white/10">
                         <button
                             onClick={() => setActiveTab('upcoming')}
-                            className={`px-4 py-3 text-sm font-medium transition-colors relative ${
-                                activeTab === 'upcoming'
+                            className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'upcoming'
                                     ? 'text-blue-600 dark:text-blue-400'
                                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-                            }`}
+                                }`}
                         >
                             Upcoming
                             {upcomingBookings.length > 0 && (
@@ -92,11 +68,10 @@ export default function TripsPage() {
                         </button>
                         <button
                             onClick={() => setActiveTab('past')}
-                            className={`px-4 py-3 text-sm font-medium transition-colors relative ${
-                                activeTab === 'past'
+                            className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'past'
                                     ? 'text-blue-600 dark:text-blue-400'
                                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-                            }`}
+                                }`}
                         >
                             Past
                             {activeTab === 'past' && (
@@ -105,11 +80,10 @@ export default function TripsPage() {
                         </button>
                         <button
                             onClick={() => setActiveTab('all')}
-                            className={`px-4 py-3 text-sm font-medium transition-colors relative ${
-                                activeTab === 'all'
+                            className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'all'
                                     ? 'text-blue-600 dark:text-blue-400'
                                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-                            }`}
+                                }`}
                         >
                             All
                             {activeTab === 'all' && (
@@ -157,7 +131,7 @@ export default function TripsPage() {
                                 <BookingCard
                                     key={booking.id}
                                     booking={booking}
-                                    onBookingUpdated={fetchBookings}
+                                    onBookingUpdated={refetch}
                                 />
                             ))}
                         </div>

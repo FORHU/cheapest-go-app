@@ -1,0 +1,1 @@
+export { useTripsData } from './useTripsData';

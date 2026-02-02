@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -17,6 +17,19 @@ export default function AccountSettingsPage() {
     const router = useRouter();
     const { user, logout } = useAuthStore();
     const [activeSection, setActiveSection] = useState('profile');
+
+    // Sidebar items - memoized to avoid recreating on each render
+    const sidebarItems = useMemo(() => [
+        { id: 'profile', icon: <User size={20} />, title: 'Profile', description: 'View and edit your personal details' },
+        { id: 'communications', icon: <Bell size={20} />, title: 'Communications', description: 'Control which notifications you get' },
+        { id: 'security', icon: <Shield size={20} />, title: 'Security', description: 'Update your password' },
+        { id: 'help', icon: <HelpCircle size={20} />, title: 'Help and feedback', description: 'Get customer support' },
+    ], []);
+
+    const handleSignOut = () => {
+        logout();
+        router.push('/');
+    };
 
     // Redirect if not logged in
     if (!user) {
@@ -39,18 +52,6 @@ export default function AccountSettingsPage() {
             </div>
         );
     }
-
-    const handleSignOut = () => {
-        logout();
-        router.push('/');
-    };
-
-    const sidebarItems = [
-        { id: 'profile', icon: <User size={20} />, title: 'Profile', description: 'View and edit your personal details' },
-        { id: 'communications', icon: <Bell size={20} />, title: 'Communications', description: 'Control which notifications you get' },
-        { id: 'security', icon: <Shield size={20} />, title: 'Security', description: 'Update your password' },
-        { id: 'help', icon: <HelpCircle size={20} />, title: 'Help and feedback', description: 'Get customer support' },
-    ];
 
     return (
         <div className="min-h-screen flex flex-col">

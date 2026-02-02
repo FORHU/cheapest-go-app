@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { PlaneTakeoff, ArrowLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { usePasswordValidation } from '@/hooks';
 
 export default function ResetPasswordPage() {
     const { isLoading } = useAuthStore();
@@ -13,21 +14,14 @@ export default function ResetPasswordPage() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
 
-    // Password requirements
-    const passwordRequirements = [
-        { label: 'At least 8 characters', met: password.length >= 8 },
-        { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
-        { label: 'One lowercase letter', met: /[a-z]/.test(password) },
-        { label: 'One number', met: /\d/.test(password) },
-    ];
-
-    const allRequirementsMet = passwordRequirements.every(req => req.met);
+    // Use hook for password validation
+    const { requirements, allMet } = usePasswordValidation(password);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
-        if (!allRequirementsMet) {
+        if (!allMet) {
             setError('Password does not meet all requirements');
             return;
         }
@@ -151,7 +145,7 @@ export default function ResetPasswordPage() {
                                 {/* Password Requirements */}
                                 {password && (
                                     <div className="mt-3 space-y-2">
-                                        {passwordRequirements.map((req, index) => (
+                                        {requirements.map((req, index) => (
                                             <div key={index} className="flex items-center gap-2">
                                                 {req.met ? (
                                                     <Check className="h-4 w-4 text-green-500" />
@@ -189,7 +183,7 @@ export default function ResetPasswordPage() {
 
                             <button
                                 type="submit"
-                                disabled={isLoading || !allRequirementsMet}
+                                disabled={isLoading || !allMet}
                                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isLoading ? (

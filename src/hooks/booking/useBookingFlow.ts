@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { usePrebook } from './mutations/usePrebook';
-import { useBooking } from './mutations/useBooking';
+import { usePrebook } from '../mutations/usePrebook';
+import { useBooking } from '../mutations/useBooking';
 import {
   usePrebookId,
   useSelectedRoom,
