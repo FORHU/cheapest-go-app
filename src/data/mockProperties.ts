@@ -18,6 +18,8 @@ export interface Property {
     };
     /** Cancellation policy tag from LiteAPI: "RFN" = refundable, "NRFN" = non-refundable */
     refundableTag?: 'RFN' | 'NRFN' | string;
+    /** Distance from city centre in meters or km */
+    distance?: string;
 }
 
 export const baguioProperties: Property[] = [

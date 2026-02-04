@@ -45,6 +45,34 @@ interface Hotel {
   [key: string]: any;
 }
 
+// Haversine formula to calculate distance between two lat/lng points
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): string {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+
+  if (distance < 1) {
+    return `${Math.round(distance * 1000)} m`;
+  }
+  return `${distance.toFixed(1)} km`;
+}
+
+// City center coordinates (approximate)
+const cityCenters: Record<string, { lat: number; lng: number }> = {
+  'manila': { lat: 14.5995, lng: 120.9842 },
+  'baguio': { lat: 16.4023, lng: 120.5960 },
+  'cebu': { lat: 10.3157, lng: 123.8854 },
+  'davao': { lat: 7.1907, lng: 125.4553 },
+  'boracay': { lat: 11.9674, lng: 121.9248 },
+  'palawan': { lat: 9.8349, lng: 118.7384 },
+  'default': { lat: 14.5995, lng: 120.9842 } // Default to Manila
+};
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -320,14 +348,32 @@ Deno.serve(async (req: Request) => {
         hotel.address = detail.address;
         hotel.location = detail.address;
 
-        // Map Description - Only overwrite if detail has it
-        if (detail.description || detail.hotel_description || detail.short_description) {
-          hotel.description = detail.description || detail.hotel_description || detail.short_description || "";
+        // Calculate distance from city centre using hotel coordinates
+        const hotelLat = detail.latitude || detail.location?.latitude;
+        const hotelLng = detail.longitude || detail.location?.longitude;
+        if (hotelLat && hotelLng) {
+          // Get city center based on cityName parameter
+          const cityKey = (normalizedCityName || 'default').toLowerCase();
+          const center = cityCenters[cityKey] || cityCenters['default'];
+          hotel.distance = calculateDistance(center.lat, center.lng, hotelLat, hotelLng);
         }
 
-        // Map Reviews
-        hotel.reviewCount = detail.review_count || detail.cnt_reviews || detail.number_of_reviews || 0;
-        hotel.reviewRating = detail.review_score || detail.rating_average || 0;
+        // Map Description - Try various field names that LiteAPI may use
+        const descriptionText = detail.description || detail.hotel_description || detail.short_description ||
+          detail.hotelDescription || detail.propertyDescription ||
+          detail.longDescription || detail.overviewText || detail.summary || "";
+        if (descriptionText) {
+          hotel.description = descriptionText;
+        }
+        console.log(`[Hotel ${hotel.hotelId}] description found:`, hotel.description ? hotel.description.substring(0, 50) + '...' : 'none');
+
+        // Map Reviews - Try various field names that LiteAPI may use
+        hotel.reviewCount = detail.review_count || detail.cnt_reviews || detail.number_of_reviews ||
+          detail.reviews_count || detail.hotelReviewCount || detail.reviewsCount ||
+          (detail.reviews?.length) || 0;
+        hotel.reviewRating = detail.review_score || detail.rating_average || detail.reviews_rating ||
+          detail.hotelReviewRating || detail.reviewsRating || detail.rating ||
+          hotel.starRating || 0;
 
         // Map Images - LiteAPI /data/hotel returns hotelImages array with url/urlHd
         const hotelImages = detail.hotelImages || detail.images || detail.hotel_photos || [];

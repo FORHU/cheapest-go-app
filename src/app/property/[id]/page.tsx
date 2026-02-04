@@ -9,6 +9,7 @@ import FAQSection from '@/components/property/FAQSection';
 import BackButton from '@/components/common/BackButton';
 import { FadeInUp, FadeIn } from '@/components/property/AnimatedContent';
 import { fetchPropertyData } from '@/lib/property';
+import { fetchHotelReviews } from '@/lib/property/fetchReviews';
 
 export default async function PropertyPage({
     params,
@@ -29,6 +30,9 @@ export default async function PropertyPage({
         children: searchParamsResult.children as string,
         rooms: searchParamsResult.rooms as string,
     });
+
+    // Fetch reviews from LiteAPI (parallel with property data would be better but keeping simple for now)
+    const reviewsData = await fetchHotelReviews(id, 10);
 
     // Simulate slow data fetching
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -81,7 +85,7 @@ export default async function PropertyPage({
                             </FadeInUp>
 
                             <FadeInUp delay={0.25}>
-                                <PropertyOverview property={property} />
+                                <PropertyOverview property={property} reviewsData={reviewsData} />
                             </FadeInUp>
 
                             <FadeInUp delay={0.3}>
@@ -124,6 +128,10 @@ export default async function PropertyPage({
                             </FadeInUp>
 
                             <FadeInUp delay={0.5}>
+                                <hr className="border-slate-200 dark:border-white/10" />
+                            </FadeInUp>
+
+                            <FadeInUp delay={0.6}>
                                 <FAQSection
                                     propertyName={property.name}
                                     checkInTime={fetchedDetails?.checkInTime}

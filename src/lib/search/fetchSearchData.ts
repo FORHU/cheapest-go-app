@@ -166,13 +166,25 @@ function transformHotelToProperty(hotel: any, cityName: string): Property {
     const { price, originalPrice } = extractPrice(hotel);
     const refundableTag = extractRefundableTag(hotel);
 
+    // Get review data - reviewRating is typically 0-10 scale
+    // If no reviewRating, convert starRating (1-5) to 10-scale
+    const starRating = hotel.starRating || hotel.details?.star_rating || hotel.details?.hotel_star_rating || 0;
+    let rating = hotel.reviewRating || 0;
+    if (!rating && starRating > 0) {
+        // Convert star rating to approximate review score (e.g., 3 stars = ~6.0, 4 stars = ~7.5, 5 stars = ~9.0)
+        rating = starRating * 1.8;
+    }
+
+    const reviewCount = hotel.reviewCount || hotel.details?.review_count || 0;
+
     return {
         id: hotel.hotelId,
         name: hotel.name || `Hotel ${hotel.hotelId}`,
         location: hotel.location || cityName,
-        description: hotel.description || hotel.details?.description || "No description available",
-        rating: hotel.reviewRating || hotel.starRating || 0,
-        reviews: hotel.reviewCount || hotel.details?.review_count || 0,
+        description: hotel.description || hotel.details?.description || hotel.details?.hotel_description ||
+            hotel.details?.hotelDescription || hotel.details?.short_description || "No description available",
+        rating: rating,
+        reviews: reviewCount,
         price,
         originalPrice,
         image: hotel.thumbnailUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
@@ -185,6 +197,7 @@ function transformHotelToProperty(hotel: any, cityName: string): Property {
             lng: hotel.details?.location?.longitude || 0
         },
         refundableTag,
+        distance: hotel.distance || hotel.details?.distance_from_center || hotel.details?.distance || undefined,
     } as Property;
 }
 

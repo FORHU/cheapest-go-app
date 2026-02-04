@@ -84,6 +84,23 @@ const getRatingColor = (rating: number): string => {
 };
 
 /**
+ * Strip HTML tags from text
+ */
+const stripHtml = (html: string): string => {
+    if (!html) return '';
+    let text = html.replace(/<br\s*\/?>/gi, ' ');
+    text = text.replace(/<\/p>/gi, ' ');
+    text = text.replace(/<[^>]*>/g, '');
+    text = text.replace(/&nbsp;/gi, ' ');
+    text = text.replace(/&amp;/gi, '&');
+    text = text.replace(/&lt;/gi, '<');
+    text = text.replace(/&gt;/gi, '>');
+    text = text.replace(/&quot;/gi, '"');
+    text = text.replace(/\s+/g, ' ').trim();
+    return text;
+};
+
+/**
  * Vertical card layout (for landing page grids)
  */
 const VerticalCard: React.FC<PropertyCardProps> = ({
@@ -218,7 +235,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
 };
 
 /**
- * Horizontal card layout (for search results)
+ * Horizontal card layout (for search results) - LiteAPI Sandbox Style
  */
 const HorizontalCard: React.FC<PropertyCardProps> = ({
     property,
@@ -228,121 +245,155 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
 }) => {
     if (!property) return null;
 
+    // Get star rating from property (1-5 scale hotel stars)
+    const hotelStars = Math.min(5, Math.max(1, Math.round((property.rating || 0) / 2)));
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.1 }}
             transition={{ delay: index * 0.03, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            className={`flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow group cursor-pointer ${className}`}
+            className={`flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all group cursor-pointer ${className}`}
             onClick={onClick}
         >
             {/* Image Section */}
-            <div className="md:w-[320px] relative h-[200px] md:h-auto flex-shrink-0">
+            <div className="md:w-[280px] relative h-[200px] md:h-[220px] flex-shrink-0">
                 <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
                     style={{ backgroundImage: `url(${property.image})` }}
                 />
-                <div className="absolute top-3 left-3 flex flex-col gap-2">
-                    {property.badges.map((badge, i) => (
+                {/* Heart icon */}
+                <button
+                    className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <svg className="w-4 h-4 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                </button>
+            </div>
+
+            {/* Content Section */}
+            <div className="flex-1 p-4 flex flex-col">
+                {/* Star Rating */}
+                <div className="flex items-center gap-0.5 mb-2">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                            key={s}
+                            size={14}
+                            className={s <= hotelStars
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-slate-200 dark:text-slate-600"
+                            }
+                        />
+                    ))}
+                </div>
+
+                {/* Hotel Name */}
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 transition-colors line-clamp-1">
+                    {property.name}
+                </h3>
+
+                {/* Location */}
+                <div className="flex items-center text-sm text-blue-600 dark:text-blue-400 mb-1">
+                    <MapPin size={14} className="mr-1 shrink-0" />
+                    <span className="line-clamp-1">{property.location}</span>
+                </div>
+
+                {/* Distance from centre */}
+                {property.distance && (
+                    <div className="flex items-center text-xs text-slate-500 dark:text-slate-400 mb-2">
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        </svg>
+                        {property.distance} from centre
+                    </div>
+                )}
+
+                {/* Free cancellation / Breakfast included tags */}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
+                    {property.refundableTag === 'RFN' && (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Free cancellation
+                        </span>
+                    )}
+                    {property.amenities.some((a: string) => a.toLowerCase().includes('breakfast')) && (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Breakfast included
+                        </span>
+                    )}
+                </div>
+
+                {/* Amenity Badges */}
+                <div className="flex flex-wrap gap-1.5 mt-auto">
+                    {property.amenities.filter((a: string) => !a.toLowerCase().includes('breakfast')).slice(0, 3).map((amenity, i) => (
                         <span
                             key={i}
-                            className="px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-medium rounded-full shadow-sm"
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs text-slate-600 dark:text-slate-300"
                         >
-                            {badge}
+                            <AmenityIcon amenity={amenity} />
+                            {amenity}
                         </span>
                     ))}
                 </div>
             </div>
 
-            {/* Content Section */}
-            <div className="flex-1 p-5 flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                    <div className="flex justify-between items-start mb-2">
-                        <div>
-                            <h3 className="text-xl font-display font-bold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 transition-colors">
-                                {property.name}
-                            </h3>
-                            <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
-                                <MapPin size={14} className="mr-1" />
-                                {property.location}
-                            </div>
+            {/* Right Section - Rating & Price */}
+            <div className="flex flex-col md:w-[180px] p-4 md:border-l border-t md:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                {/* Rating Section */}
+                <div className="flex items-start justify-between md:justify-end gap-2 mb-4">
+                    <div className="text-right">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-white">
+                            {getRatingLabel(property.rating)}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                            {property.reviews > 0 ? `${property.reviews.toLocaleString()} reviews` : ''}
                         </div>
                     </div>
-
-                    <div className="mb-4">
-                        <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-3">
-                            {property.description}
-                        </p>
-                        <div className="flex flex-wrap gap-x-4 gap-y-2">
-                            {property.amenities.slice(0, 4).map((amenity, i) => (
-                                <div key={i} className="flex items-center text-xs text-slate-500 dark:text-slate-400">
-                                    <AmenityIcon amenity={amenity} />
-                                    <span>{amenity}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold text-white ${getRatingColor(property.rating)}`}>
-                            {property.rating}
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                                {getRatingLabel(property.rating)}
-                            </span>
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                                {property.reviews.toLocaleString()} reviews
-                            </span>
-                        </div>
+                    <div className={`flex items-center justify-center w-9 h-9 rounded-lg text-sm font-bold text-white ${getRatingColor(property.rating)}`}>
+                        {property.rating.toFixed(1)}
                     </div>
                 </div>
 
-                {/* Price Section */}
-                <div className="flex flex-col justify-end md:items-end md:border-l md:border-slate-100 md:dark:border-white/5 md:pl-4 mt-4 md:mt-0 min-w-[140px]">
-                    {property.originalPrice && (
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-0.5 rounded">
-                                Save {Math.round((1 - property.price / property.originalPrice) * 100)}%
-                            </span>
-                            <span className="text-xs text-slate-400 line-through">
-                                ₱{property.originalPrice.toLocaleString()}
-                            </span>
-                        </div>
-                    )}
+                {/* Discount Badge */}
+                {property.originalPrice && property.originalPrice > property.price && (
+                    <div className="flex justify-end mb-2">
+                        <span className="bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded">
+                            {Math.round((1 - property.price / property.originalPrice) * 100)}% off
+                        </span>
+                    </div>
+                )}
 
-                    <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                {/* Price */}
+                <div className="text-right mb-1">
+                    {property.originalPrice && property.originalPrice > property.price && (
+                        <span className="text-sm text-slate-400 line-through mr-2">
+                            ₱{property.originalPrice.toLocaleString()}
+                        </span>
+                    )}
+                    <span className="text-xl font-bold text-slate-900 dark:text-white">
                         ₱{property.price.toLocaleString()}
-                    </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                        includes taxes & fees
-                    </div>
-
-                    {property.refundableTag && (
-                        <div className="mb-3">
-                            {property.refundableTag === 'RFN' ? (
-                                <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 font-medium px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                    Free Cancellation
-                                </span>
-                            ) : (
-                                <span className="inline-flex items-center gap-1 text-xs bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
-                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
-                                    Non-refundable
-                                </span>
-                            )}
-                        </div>
-                    )}
-
-                    <button className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm">
-                        View Availability
-                    </button>
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400"> / night</span>
                 </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 text-right mb-4">
+                    includes taxes & fees
+                </div>
+
+                {/* CTA Button */}
+                <button className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm flex items-center justify-center gap-1">
+                    See availability
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
             </div>
         </motion.div>
     );
