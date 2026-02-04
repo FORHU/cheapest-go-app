@@ -166,6 +166,13 @@ function transformHotelToProperty(hotel: any, cityName: string): Property {
     const { price, originalPrice } = extractPrice(hotel);
     const refundableTag = extractRefundableTag(hotel);
 
+    // Debug logging
+    const hotelId = hotel.hotelId;
+    const hotelName = hotel.name || hotel.details?.name || 'Unknown';
+    const amenities = hotel.hotelFacilities || hotel.details?.hotelFacilities || hotel.details?.facilities || [];
+    console.log(`[SearchPage] Hotel ${hotelId} (${hotelName}) refundableTag:`, refundableTag);
+    console.log(`[SearchPage] Hotel ${hotelId} amenities (${amenities.length}):`, amenities.slice(0, 3));
+
     // Get review data - reviewRating is typically 0-10 scale
     // If no reviewRating, convert starRating (1-5) to 10-scale
     const starRating = hotel.starRating || hotel.details?.star_rating || hotel.details?.hotel_star_rating || 0;
@@ -189,7 +196,7 @@ function transformHotelToProperty(hotel: any, cityName: string): Property {
         originalPrice,
         image: hotel.thumbnailUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
         images: hotel.details?.hotel_images_photos ? hotel.details.hotel_images_photos.map((p: any) => p.url) : [],
-        amenities: hotel.details?.facilities || [],
+        amenities: hotel.hotelFacilities || hotel.details?.hotelFacilities || hotel.details?.facilities || [],
         badges: [],
         type: 'hotel',
         coordinates: {
@@ -225,7 +232,18 @@ export async function fetchSearchProperties(params: SearchParams): Promise<Prope
                 console.log(`[SearchPage] Hotel ${hotel.hotelId} (${hotel.name}) refundableTag:`, prop.refundableTag);
                 return prop;
             });
-            return properties;
+
+            // Filter out hotels with incomplete data (ID-like names indicate missing details)
+            const filteredProperties = properties.filter((prop: Property) => {
+                // Exclude hotels where name looks like an ID (e.g., "Hotel lp38f17b", "Hotel lpe13f0")
+                const hasValidName = prop.name &&
+                    !prop.name.match(/^Hotel\s+lp[a-z0-9]+$/i) &&
+                    !prop.name.match(/^lp[a-z0-9]+$/i);
+                return hasValidName;
+            });
+
+            console.log(`[SearchPage] Filtered ${properties.length - filteredProperties.length} hotels with missing data`);
+            return filteredProperties;
         }
     } catch (e) {
         console.error("Failed to fetch properties:", e);

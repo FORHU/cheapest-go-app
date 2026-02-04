@@ -35,24 +35,8 @@ function stripHtml(html: string): string {
     return text;
 }
 
-// Rating label based on score
-function getRatingLabel(score: number): string {
-    if (score >= 9) return 'Exceptional';
-    if (score >= 8) return 'Excellent';
-    if (score >= 7) return 'Very Good';
-    if (score >= 6) return 'Good';
-    if (score >= 5) return 'Average';
-    return 'Below Average';
-}
-
-// Rating badge color based on score
-function getRatingBgColor(score: number): string {
-    if (score >= 9) return 'bg-emerald-500';
-    if (score >= 8) return 'bg-green-500';
-    if (score >= 7) return 'bg-blue-600';
-    if (score >= 6) return 'bg-yellow-500';
-    return 'bg-slate-500';
-}
+// Import centralized rating helper functions
+import { getRatingLabel, getRatingColor as getRatingBgColor } from '@/lib/property/fetchReviews';
 
 // Inline review card
 function InlineReviewCard({ review }: { review: any }) {
@@ -69,7 +53,7 @@ function InlineReviewCard({ review }: { review: any }) {
                     </div>
                 </div>
                 {review.averageScore > 0 && (
-                    <div className="bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-bold">
+                    <div className={`${getRatingBgColor(review.averageScore)} text-white px-2 py-0.5 rounded text-xs font-bold`}>
                         {review.averageScore.toFixed(1)}
                     </div>
                 )}

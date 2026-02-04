@@ -71,16 +71,19 @@ const getRatingLabel = (rating: number): string => {
     if (rating >= 9) return 'Exceptional';
     if (rating >= 8) return 'Excellent';
     if (rating >= 7) return 'Very Good';
-    return 'Good';
+    if (rating >= 6) return 'Good';
+    return 'Average';
 };
 
 /**
- * Rating badge color based on score
+ * Rating badge color based on score - distinct colors for each level
  */
 const getRatingColor = (rating: number): string => {
-    if (rating >= 9) return 'bg-blue-600';
-    if (rating >= 8) return 'bg-emerald-500';
-    return 'bg-slate-500';
+    if (rating >= 9) return 'bg-indigo-600';    // Exceptional - Deep indigo/purple
+    if (rating >= 8) return 'bg-emerald-500';   // Excellent - Vibrant green
+    if (rating >= 7) return 'bg-teal-500';      // Very Good - Teal
+    if (rating >= 6) return 'bg-blue-500';      // Good - Blue
+    return 'bg-amber-500';                       // Average - Warm amber/orange
 };
 
 /**

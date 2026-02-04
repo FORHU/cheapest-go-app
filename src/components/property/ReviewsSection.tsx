@@ -1,130 +1,184 @@
 /**
- * ReviewsSection - Displays hotel reviews with "See all" functionality
- * Uses client-side state for expand/collapse
+ * ReviewsSection - LiteAPI Sandbox Style Reviews Display
+ * Uses Server Components for data, Client Components for interactivity
  */
 
 "use client";
 
-import React, { useState } from 'react';
-import { ThumbsUp, ThumbsDown, User, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
-import { HotelReview, formatReviewDate, getReviewerInitials } from '@/lib/property/fetchReviews';
+import React from 'react';
+import { Users, Heart, UserCircle, Briefcase, Users2 } from 'lucide-react';
+import {
+    HotelReview,
+    formatReviewDate,
+    getReviewerInitials,
+    getRatingLabel,
+    getRatingColor,
+    calculateTravelerBreakdown,
+    TravelerBreakdown
+} from '@/lib/property/fetchReviews';
+import { useReviewsStore } from '@/stores/reviewsStore';
 
 interface ReviewsSectionProps {
     reviews: HotelReview[];
     averageRating: number;
     totalCount: number;
-    initialDisplayCount?: number;
 }
 
-// Rating badge color based on score
-function getRatingColor(score: number): string {
-    if (score >= 9) return 'bg-emerald-500';
-    if (score >= 8) return 'bg-green-500';
-    if (score >= 7) return 'bg-lime-500';
-    if (score >= 6) return 'bg-yellow-500';
-    return 'bg-orange-500';
-}
+// === Sub-components ===
 
-// Rating label based on score
-function getRatingLabel(score: number): string {
-    if (score >= 9) return 'Exceptional';
-    if (score >= 8) return 'Excellent';
-    if (score >= 7) return 'Very Good';
-    if (score >= 6) return 'Good';
-    if (score >= 5) return 'Average';
-    return 'Below Average';
-}
-
-// Individual review card component
-function ReviewCard({ review }: { review: HotelReview }) {
+/**
+ * Rating Summary Card - Shows overall score and label
+ */
+function RatingSummary({ rating, totalCount }: { rating: number; totalCount: number }) {
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow">
-            {/* Header: Reviewer info + Score */}
-            <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex items-center gap-3">
-                    {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
-                        {getReviewerInitials(review.name)}
-                    </div>
-                    <div>
-                        <p className="font-medium text-slate-900 dark:text-white">
-                            {review.name || 'Anonymous'}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                            {review.country && (
-                                <span className="flex items-center gap-1">
-                                    <MapPin size={10} />
-                                    {review.country}
-                                </span>
-                            )}
-                            {review.type && (
-                                <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded">
-                                    {review.type}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Score badge */}
-                {review.averageScore > 0 && (
-                    <div className={`${getRatingColor(review.averageScore)} text-white px-2.5 py-1 rounded-lg font-bold text-sm`}>
-                        {review.averageScore.toFixed(1)}
-                    </div>
-                )}
+        <div className="flex items-center gap-3 mb-6">
+            <div className={`${getRatingColor(rating)} text-white w-12 h-12 rounded-lg flex items-center justify-center font-bold text-xl`}>
+                {rating > 0 ? rating.toFixed(0) : '-'}
             </div>
-
-            {/* Headline */}
-            {review.headline && (
-                <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">
-                    "{review.headline}"
-                </h4>
-            )}
-
-            {/* Pros */}
-            {review.pros && (
-                <div className="flex items-start gap-2 mb-2">
-                    <ThumbsUp size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-slate-600 dark:text-slate-300">{review.pros}</p>
-                </div>
-            )}
-
-            {/* Cons */}
-            {review.cons && (
-                <div className="flex items-start gap-2 mb-2">
-                    <ThumbsDown size={14} className="text-red-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-slate-600 dark:text-slate-300">{review.cons}</p>
-                </div>
-            )}
-
-            {/* Date */}
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">
-                Reviewed {formatReviewDate(review.date)}
-            </p>
+            <div>
+                <p className="font-semibold text-slate-900 dark:text-white text-lg">
+                    {getRatingLabel(rating)}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Based on {totalCount} review{totalCount !== 1 ? 's' : ''}
+                </p>
+            </div>
         </div>
     );
 }
 
-// Main Reviews Section Component
-export default function ReviewsSection({
-    reviews,
-    averageRating,
-    totalCount,
-    initialDisplayCount = 3
-}: ReviewsSectionProps) {
-    const [showAll, setShowAll] = useState(false);
+/**
+ * Who Stays Here Section - Shows traveler type breakdown
+ */
+function WhoStaysHere({ breakdown }: { breakdown: TravelerBreakdown }) {
+    const types = [
+        { key: 'family', label: 'Family', icon: Users, value: breakdown.family },
+        { key: 'couple', label: 'Couple', icon: Heart, value: breakdown.couple },
+        { key: 'friendsGroup', label: 'Friends/Group', icon: Users2, value: breakdown.friendsGroup },
+        { key: 'solo', label: 'Solo', icon: UserCircle, value: breakdown.solo },
+        { key: 'business', label: 'Business', icon: Briefcase, value: breakdown.business },
+    ].filter(t => t.value > 0);
 
-    const displayedReviews = showAll ? reviews : reviews.slice(0, initialDisplayCount);
-    const hasMoreReviews = reviews.length > initialDisplayCount;
+    if (types.length === 0) return null;
+
+    return (
+        <div className="mb-6">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Who stays here</h3>
+            <div className="flex flex-wrap gap-4">
+                {types.map(({ key, label, icon: Icon, value }) => (
+                    <div key={key} className="flex flex-col items-center text-center">
+                        <Icon className="w-5 h-5 text-slate-400 mb-1" />
+                        <span className="text-xs text-slate-600 dark:text-slate-300">{label}</span>
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">{value}%</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Single Review Item - Matches LiteAPI style
+ */
+function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
+    const { toggleExpanded, expandedReviewIds } = useReviewsStore();
+    const reviewId = `${review.name}-${index}`;
+    const isExpanded = expandedReviewIds.has(reviewId);
+
+    // Combine pros and cons into review text
+    const reviewText = [review.pros, review.cons].filter(Boolean).join(' ');
+    const isLongText = reviewText.length > 200;
+    const displayText = isLongText && !isExpanded
+        ? reviewText.substring(0, 200) + '...'
+        : reviewText;
+
+    return (
+        <div className="py-4 border-b border-slate-100 dark:border-slate-700 last:border-b-0">
+            <div className="flex items-start justify-between gap-4">
+                {/* Left: Reviewer info */}
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-slate-900 dark:text-white">
+                            {review.name || 'Anonymous'}
+                        </span>
+                        {review.type && (
+                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                                • {review.type}
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mb-2">
+                        {formatReviewDate(review.date)}
+                    </p>
+
+                    {/* Headline */}
+                    {review.headline && (
+                        <p className="font-medium text-slate-800 dark:text-slate-200 mb-1">
+                            {review.headline}
+                        </p>
+                    )}
+
+                    {/* Review text with pros/cons */}
+                    {reviewText && (
+                        <div className="text-sm text-slate-600 dark:text-slate-300">
+                            {review.pros && (
+                                <p className="mb-1">
+                                    <span className="text-emerald-500">👍</span> {isExpanded || !isLongText ? review.pros : review.pros.substring(0, 100) + '...'}
+                                </p>
+                            )}
+                            {review.cons && (isExpanded || review.pros === undefined) && (
+                                <p>
+                                    <span className="text-amber-500">👎</span> {review.cons}
+                                </p>
+                            )}
+                            {isLongText && (
+                                <button
+                                    onClick={() => toggleExpanded(reviewId)}
+                                    className="text-blue-600 hover:text-blue-700 text-xs font-medium mt-1"
+                                >
+                                    {isExpanded ? 'Show Less' : 'Show More'}
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Right: Score badge */}
+                {review.averageScore > 0 && (
+                    <div className={`${getRatingColor(review.averageScore)} text-white w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0`}>
+                        {review.averageScore.toFixed(0)}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// === Main Component ===
+
+export default function ReviewsSection({ reviews, averageRating, totalCount }: ReviewsSectionProps) {
+    const { displayCount, loadMore, sortBy, setSortBy } = useReviewsStore();
+
+    // Calculate traveler breakdown
+    const travelerBreakdown = calculateTravelerBreakdown(reviews);
+
+    // Sort reviews
+    const sortedReviews = [...reviews].sort((a, b) => {
+        if (sortBy === 'highest') return (b.averageScore || 0) - (a.averageScore || 0);
+        if (sortBy === 'lowest') return (a.averageScore || 0) - (b.averageScore || 0);
+        // Default: newest first (by date)
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+
+    const displayedReviews = sortedReviews.slice(0, displayCount);
+    const hasMore = displayCount < reviews.length;
 
     if (totalCount === 0) {
         return (
             <section id="reviews-section" className="py-8">
-                <h2 className="text-2xl font-display font-bold text-slate-900 dark:text-white mb-6">
-                    Guest Reviews
-                </h2>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Guest reviews</h2>
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-8 text-center">
-                    <User className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                    <UserCircle className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
                     <p className="text-slate-500 dark:text-slate-400">
                         No reviews available yet for this property.
                     </p>
@@ -135,56 +189,55 @@ export default function ReviewsSection({
 
     return (
         <section id="reviews-section" className="py-8">
-            {/* Header with overall rating */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h2 className="text-2xl font-display font-bold text-slate-900 dark:text-white">
-                    Guest Reviews
-                </h2>
+            <div className="flex flex-col lg:flex-row gap-8">
+                {/* Left Column - Summary */}
+                <div className="lg:w-64 flex-shrink-0">
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Guest reviews</h2>
 
-                {/* Overall rating summary */}
-                <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-2">
-                    <div className={`${getRatingColor(averageRating)} text-white px-3 py-1.5 rounded-lg font-bold text-lg`}>
-                        {averageRating.toFixed(1)}
-                    </div>
-                    <div>
-                        <p className="font-semibold text-slate-900 dark:text-white text-sm">
-                            {getRatingLabel(averageRating)}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Based on {totalCount} review{totalCount !== 1 ? 's' : ''}
-                        </p>
-                    </div>
+                    <RatingSummary rating={averageRating} totalCount={totalCount} />
+                    <WhoStaysHere breakdown={travelerBreakdown} />
                 </div>
-            </div>
 
-            {/* Reviews grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {displayedReviews.map((review, index) => (
-                    <ReviewCard key={`${review.name}-${index}`} review={review} />
-                ))}
-            </div>
+                {/* Right Column - Reviews List */}
+                <div className="flex-1">
+                    {/* Sort dropdown */}
+                    <div className="flex justify-end mb-4">
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as 'newest' | 'highest' | 'lowest')}
+                            className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                        >
+                            <option value="newest">Newest first</option>
+                            <option value="highest">Highest rated</option>
+                            <option value="lowest">Lowest rated</option>
+                        </select>
+                    </div>
 
-            {/* See all / Show less button */}
-            {hasMoreReviews && (
-                <div className="mt-6 text-center">
-                    <button
-                        onClick={() => setShowAll(!showAll)}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-xl transition-colors"
-                    >
-                        {showAll ? (
-                            <>
-                                <ChevronUp size={18} />
-                                Show less
-                            </>
-                        ) : (
-                            <>
-                                <ChevronDown size={18} />
-                                See all {reviews.length} reviews
-                            </>
+                    {/* Reviews list in scrollable container */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 max-h-[500px] overflow-y-auto">
+                        <div className="px-4">
+                            {displayedReviews.map((review, index) => (
+                                <ReviewItem key={`${review.name}-${index}`} review={review} index={index} />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Load more button */}
+                    <div className="mt-4 flex items-center justify-between">
+                        {hasMore && (
+                            <button
+                                onClick={() => loadMore()}
+                                className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                Load more reviews
+                            </button>
                         )}
-                    </button>
+                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                            Showing {displayedReviews.length} of {totalCount} reviews
+                        </span>
+                    </div>
                 </div>
-            )}
+            </div>
         </section>
     );
 }

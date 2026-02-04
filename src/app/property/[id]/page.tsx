@@ -5,6 +5,7 @@ import PropertyOverview from '@/components/property/PropertyOverview';
 import RoomList from '@/components/property/RoomList';
 import LocationSection from '@/components/property/LocationSection';
 import PoliciesSection from '@/components/property/PoliciesSection';
+import ReviewsSection from '@/components/property/ReviewsSection';
 import FAQSection from '@/components/property/FAQSection';
 import BackButton from '@/components/common/BackButton';
 import { FadeInUp, FadeIn } from '@/components/property/AnimatedContent';
@@ -131,7 +132,20 @@ export default async function PropertyPage({
                                 <hr className="border-slate-200 dark:border-white/10" />
                             </FadeInUp>
 
+                            {/* Reviews Section */}
+                            <FadeInUp delay={0.55}>
+                                <ReviewsSection
+                                    reviews={reviewsData.reviews}
+                                    averageRating={reviewsData.averageRating}
+                                    totalCount={reviewsData.totalCount}
+                                />
+                            </FadeInUp>
+
                             <FadeInUp delay={0.6}>
+                                <hr className="border-slate-200 dark:border-white/10" />
+                            </FadeInUp>
+
+                            <FadeInUp delay={0.65}>
                                 <FAQSection
                                     propertyName={property.name}
                                     checkInTime={fetchedDetails?.checkInTime}
