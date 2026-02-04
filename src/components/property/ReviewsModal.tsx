@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { X, ThumbsUp, ThumbsDown, MapPin, ChevronDown } from 'lucide-react';
-import { HotelReview, formatReviewDate, getReviewerInitials } from '@/lib/property/fetchReviews';
+import { HotelReview, formatReviewDate, getReviewerInitials, getRatingColor, getRatingLabel } from '@/lib/property/fetchReviews';
 
 interface ReviewsModalProps {
     isOpen: boolean;
@@ -14,25 +14,6 @@ interface ReviewsModalProps {
     reviews: HotelReview[];
     averageRating: number;
     totalCount: number;
-}
-
-// Rating badge color based on score
-function getRatingColor(score: number): string {
-    if (score >= 9) return 'bg-emerald-500';
-    if (score >= 8) return 'bg-green-500';
-    if (score >= 7) return 'bg-lime-500';
-    if (score >= 6) return 'bg-yellow-500';
-    return 'bg-orange-500';
-}
-
-// Rating label based on score
-function getRatingLabel(score: number): string {
-    if (score >= 9) return 'Exceptional';
-    if (score >= 8) return 'Excellent';
-    if (score >= 7) return 'Very Good';
-    if (score >= 6) return 'Good';
-    if (score >= 5) return 'Average';
-    return 'Below Average';
 }
 
 // Individual review card

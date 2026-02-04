@@ -1,7 +1,29 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User, Bed, Square, X, Check } from 'lucide-react';
+
+/**
+ * Format cancellation deadline for display
+ * Example: "Thu, Feb 5, 1:58 AM"
+ */
+function formatCancellationDeadline(deadline?: string): string | null {
+    if (!deadline) return null;
+    try {
+        const date = new Date(deadline);
+        if (isNaN(date.getTime())) return null;
+        return date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    } catch {
+        return null;
+    }
+}
 
 /** Rate option for a room */
 export interface RateOption {
@@ -156,7 +178,9 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                                     {rate.boardName || 'Room only'}
                                                 </div>
                                                 <div className={`text-[10px] font-medium ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                    {rate.refundable ? 'Free cancellation' : 'Non-refundable'}
+                                                    {rate.refundable
+                                                        ? `Free cancellation${rate.cancellationDeadline ? ` before ${formatCancellationDeadline(rate.cancellationDeadline)}` : ''}`
+                                                        : 'Non-refundable'}
                                                 </div>
                                             </div>
                                         </div>
@@ -178,7 +202,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                 </div>
                                 {displayRefundable ? (
                                     <div className="text-xs text-emerald-600 font-medium flex items-center gap-1.5">
-                                        <Check size={12} /> Free cancellation
+                                        <Check size={12} /> Free cancellation{selectedRate?.cancellationDeadline ? ` before ${formatCancellationDeadline(selectedRate.cancellationDeadline)}` : ''}
                                     </div>
                                 ) : (
                                     <div className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">

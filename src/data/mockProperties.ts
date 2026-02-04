@@ -20,6 +20,8 @@ export interface Property {
     refundableTag?: 'RFN' | 'NRFN' | string;
     /** Distance from city centre in meters or km */
     distance?: string;
+    /** Board/meal plan types from LiteAPI: "Breakfast included", "Room only", etc. */
+    boardTypes?: string[];
 }
 
 export const baguioProperties: Property[] = [

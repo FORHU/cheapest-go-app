@@ -51,29 +51,91 @@ interface FAQSectionProps {
     propertyName: string;
     checkInTime?: string;
     checkOutTime?: string;
-    petPolicy?: string;
+    hotelFacilities?: string[];
+    hotelImportantInformation?: string;
 }
 
-const FAQSection: React.FC<FAQSectionProps> = ({ propertyName, checkInTime, checkOutTime, petPolicy }) => {
-    // Build FAQs dynamically from real data
+const FAQSection: React.FC<FAQSectionProps> = ({
+    propertyName,
+    checkInTime,
+    checkOutTime,
+    hotelFacilities,
+    hotelImportantInformation
+}) => {
+    // Build FAQs dynamically from real LiteAPI data
     const faqs: { question: string; answer: string }[] = [];
 
     if (checkInTime) {
         faqs.push({
             question: "What time is check-in at this property?",
-            answer: checkInTime
+            answer: `Check-in time is ${checkInTime}`
         });
     }
     if (checkOutTime) {
         faqs.push({
             question: "What are the check-out times?",
-            answer: checkOutTime
+            answer: `Check-out time is ${checkOutTime}`
         });
     }
-    if (petPolicy) {
+
+    // Generate FAQs from facilities
+    if (hotelFacilities && hotelFacilities.length > 0) {
+        const facilitiesLower = hotelFacilities.map(f => f.toLowerCase());
+
+        // Parking FAQ
+        const hasParking = facilitiesLower.some(f =>
+            f.includes('parking') || f.includes('car park')
+        );
+        if (hasParking) {
+            const parkingFacility = hotelFacilities.find(f =>
+                f.toLowerCase().includes('parking') || f.toLowerCase().includes('car park')
+            );
+            faqs.push({
+                question: `Does ${propertyName} have parking?`,
+                answer: `Yes, the property offers ${parkingFacility || 'parking facilities'}.`
+            });
+        }
+
+        // WiFi FAQ
+        const hasWifi = facilitiesLower.some(f =>
+            f.includes('wifi') || f.includes('wi-fi') || f.includes('internet')
+        );
+        if (hasWifi) {
+            faqs.push({
+                question: `Is WiFi available at ${propertyName}?`,
+                answer: "Yes, WiFi is available at the property."
+            });
+        }
+
+        // Pool FAQ
+        const hasPool = facilitiesLower.some(f => f.includes('pool') || f.includes('swimming'));
+        if (hasPool) {
+            const poolFacility = hotelFacilities.find(f =>
+                f.toLowerCase().includes('pool') || f.toLowerCase().includes('swimming')
+            );
+            faqs.push({
+                question: `Does ${propertyName} have a pool?`,
+                answer: `Yes, the property has ${poolFacility || 'a swimming pool'}.`
+            });
+        }
+
+        // Restaurant FAQ
+        const hasRestaurant = facilitiesLower.some(f =>
+            f.includes('restaurant') || f.includes('dining')
+        );
+        if (hasRestaurant) {
+            faqs.push({
+                question: `Is there a restaurant at ${propertyName}?`,
+                answer: "Yes, the property has an on-site restaurant."
+            });
+        }
+    }
+
+    // Important information as FAQ if available
+    if (hotelImportantInformation) {
         faqs.push({
-            question: `Is ${propertyName} pet-friendly?`,
-            answer: petPolicy
+            question: "Is there anything important I should know before booking?",
+            answer: hotelImportantInformation
         });
     }
 

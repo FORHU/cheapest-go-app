@@ -1,11 +1,6 @@
-/**
- * ReviewsSection - LiteAPI Sandbox Style Reviews Display
- * Uses Server Components for data, Client Components for interactivity
- */
-
 "use client";
 
-import React from 'react';
+import { useEffect } from 'react';
 import { Users, Heart, UserCircle, Briefcase, Users2 } from 'lucide-react';
 import {
     HotelReview,
@@ -19,6 +14,7 @@ import {
 import { useReviewsStore } from '@/stores/reviewsStore';
 
 interface ReviewsSectionProps {
+    hotelId: string;
     reviews: HotelReview[];
     averageRating: number;
     totalCount: number;
@@ -156,14 +152,29 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
 
 // === Main Component ===
 
-export default function ReviewsSection({ reviews, averageRating, totalCount }: ReviewsSectionProps) {
-    const { displayCount, loadMore, sortBy, setSortBy } = useReviewsStore();
+export default function ReviewsSection({ hotelId, reviews, averageRating, totalCount }: ReviewsSectionProps) {
+    const {
+        displayCount,
+        loadMore,
+        sortBy,
+        setSortBy,
+        allReviews,
+        initializeReviews,
+    } = useReviewsStore();
+
+    // Initialize store with server-fetched reviews
+    useEffect(() => {
+        initializeReviews(hotelId, reviews);
+    }, [hotelId, reviews, initializeReviews]);
+
+    // Use store reviews if available, otherwise use props
+    const reviewsToDisplay = allReviews.length > 0 ? allReviews : reviews;
 
     // Calculate traveler breakdown
-    const travelerBreakdown = calculateTravelerBreakdown(reviews);
+    const travelerBreakdown = calculateTravelerBreakdown(reviewsToDisplay);
 
     // Sort reviews
-    const sortedReviews = [...reviews].sort((a, b) => {
+    const sortedReviews = [...reviewsToDisplay].sort((a, b) => {
         if (sortBy === 'highest') return (b.averageScore || 0) - (a.averageScore || 0);
         if (sortBy === 'lowest') return (a.averageScore || 0) - (b.averageScore || 0);
         // Default: newest first (by date)
@@ -171,7 +182,7 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
     });
 
     const displayedReviews = sortedReviews.slice(0, displayCount);
-    const hasMore = displayCount < reviews.length;
+    const hasMore = displayCount < reviewsToDisplay.length;
 
     if (totalCount === 0) {
         return (
@@ -233,7 +244,7 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
                             </button>
                         )}
                         <span className="text-sm text-slate-500 dark:text-slate-400">
-                            Showing {displayedReviews.length} of {totalCount} reviews
+                            Showing {displayedReviews.length} of {reviewsToDisplay.length} reviews
                         </span>
                     </div>
                 </div>

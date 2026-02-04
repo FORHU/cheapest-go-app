@@ -31,7 +31,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordin
         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
     return (
-        <div className="py-8 border-t border-slate-200 dark:border-white/10" id="location">
+        <div className="py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-36" id="location">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Explore the area</h2>
             <div className="flex flex-col md:flex-row gap-8">
                 {/* Map Preview */}

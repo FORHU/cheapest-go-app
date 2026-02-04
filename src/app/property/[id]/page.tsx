@@ -2,6 +2,7 @@ import React from 'react';
 import { Header, Footer } from '@/components/landing';
 import PropertyGallery from '@/components/property/PropertyGallery';
 import PropertyOverview from '@/components/property/PropertyOverview';
+import PropertyNav from '@/components/property/PropertyNav';
 import RoomList from '@/components/property/RoomList';
 import LocationSection from '@/components/property/LocationSection';
 import PoliciesSection from '@/components/property/PoliciesSection';
@@ -33,7 +34,8 @@ export default async function PropertyPage({
     });
 
     // Fetch reviews from LiteAPI (parallel with property data would be better but keeping simple for now)
-    const reviewsData = await fetchHotelReviews(id, 10);
+    // No limit - fetch all available reviews
+    const reviewsData = await fetchHotelReviews(id, { limit: 1000 });
 
     // Simulate slow data fetching
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -68,21 +70,7 @@ export default async function PropertyPage({
                         <div className="space-y-8">
                             {/* Navigation Tabs */}
                             <FadeInUp delay={0.2}>
-                                <div className="sticky top-[80px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg z-30 py-3 border-b border-slate-200 dark:border-white/10 -mx-4 px-4 md:-mx-6 md:px-6">
-                                    <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                                        {['Overview', 'Rooms', 'Location', 'Amenities', 'Policies', 'Reviews'].map((tab, index) => (
-                                            <button
-                                                key={tab}
-                                                className={`px-4 py-2 text-sm font-semibold rounded-full transition-all whitespace-nowrap ${index === 0
-                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                                                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5'
-                                                    }`}
-                                            >
-                                                {tab}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                                <PropertyNav />
                             </FadeInUp>
 
                             <FadeInUp delay={0.25}>
@@ -123,8 +111,8 @@ export default async function PropertyPage({
                                 <PoliciesSection
                                     checkInTime={fetchedDetails?.checkInTime}
                                     checkOutTime={fetchedDetails?.checkOutTime}
-                                    petPolicy={fetchedDetails?.details?.petPolicy}
-                                    childPolicy={fetchedDetails?.details?.childPolicy}
+                                    hotelImportantInformation={fetchedDetails?.hotelImportantInformation}
+                                    cancellationPolicies={fetchedDetails?.cancellationPolicies}
                                 />
                             </FadeInUp>
 
@@ -135,6 +123,7 @@ export default async function PropertyPage({
                             {/* Reviews Section */}
                             <FadeInUp delay={0.55}>
                                 <ReviewsSection
+                                    hotelId={id}
                                     reviews={reviewsData.reviews}
                                     averageRating={reviewsData.averageRating}
                                     totalCount={reviewsData.totalCount}
@@ -150,7 +139,8 @@ export default async function PropertyPage({
                                     propertyName={property.name}
                                     checkInTime={fetchedDetails?.checkInTime}
                                     checkOutTime={fetchedDetails?.checkOutTime}
-                                    petPolicy={fetchedDetails?.details?.petPolicy}
+                                    hotelFacilities={fetchedDetails?.hotelFacilities}
+                                    hotelImportantInformation={fetchedDetails?.hotelImportantInformation}
                                 />
                             </FadeInUp>
                         </div>

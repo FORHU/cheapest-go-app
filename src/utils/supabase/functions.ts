@@ -49,9 +49,17 @@ export async function preBook(params: any) {
 }
 
 // Specific helper for fetching hotel reviews
-export async function getHotelReviews(hotelId: string, limit: number = 20, getSentiment: boolean = false) {
-    const result = await invokeEdgeFunction('liteapi-reviews', { hotelId, limit, getSentiment });
-    return result?.data || [];
+export async function getHotelReviews(
+    hotelId: string,
+    limit: number = 20,
+    offset: number = 0,
+    getSentiment: boolean = false
+) {
+    const result = await invokeEdgeFunction('liteapi-reviews', { hotelId, limit, offset, getSentiment });
+    return {
+        reviews: result?.data || [],
+        sentimentAnalysis: result?.sentimentAnalysis || null,
+    };
 }
 
 // Specific helper for fetching hotel details

@@ -20,9 +20,9 @@ Deno.serve(async (req: any) => {
         }
 
         const body = await req.json();
-        const { hotelId, limit = 20, getSentiment = false } = body;
+        const { hotelId, limit = 1000, offset = 0, getSentiment = false } = body;
 
-        console.log(`[Reviews] Fetching reviews for hotelId: ${hotelId}, limit: ${limit}`);
+        console.log(`[Reviews] Fetching reviews for hotelId: ${hotelId}, limit: ${limit}, offset: ${offset}`);
 
         if (!hotelId) {
             throw new Error("Missing hotelId parameter");
@@ -33,6 +33,10 @@ Deno.serve(async (req: any) => {
             hotelId: hotelId,
             limit: String(limit),
         });
+
+        if (offset > 0) {
+            params.append('offset', String(offset));
+        }
 
         if (getSentiment) {
             params.append('getSentiment', 'true');

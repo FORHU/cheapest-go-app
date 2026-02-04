@@ -16,13 +16,36 @@ export interface HotelReview {
     country?: string;
     type?: string;
     language?: string;
-    source?: string;
 }
 
 export interface ReviewsData {
     reviews: HotelReview[];
     averageRating: number;
     totalCount: number;
+}
+
+// Sentiment analysis types for LiteAPI getSentiment=true response
+export interface SentimentCategory {
+    name: string;
+    rating: number;
+    description: string;
+}
+
+export interface SentimentAnalysis {
+    categories: SentimentCategory[];
+    pros: string[];
+    cons: string[];
+}
+
+export interface ReviewsDataWithSentiment extends ReviewsData {
+    sentimentAnalysis?: SentimentAnalysis;
+}
+
+// Pagination options for fetching reviews
+export interface FetchReviewsOptions {
+    limit?: number;
+    offset?: number;
+    getSentiment?: boolean;
 }
 
 /**
@@ -62,16 +85,24 @@ export function getReviewerInitials(name: string): string {
 
 /**
  * Main fetch function for reviews - server-side
+ * Fetches all available reviews (up to 1000)
  */
-export async function fetchHotelReviews(hotelId: string, limit: number = 20): Promise<ReviewsData> {
+export async function fetchHotelReviews(
+    hotelId: string,
+    options: FetchReviewsOptions = {}
+): Promise<ReviewsDataWithSentiment> {
+    const { limit = 1000, offset = 0, getSentiment = false } = options;
+
     try {
-        console.log(`[fetchHotelReviews] Fetching reviews for hotelId: ${hotelId}`);
-        const reviews = await getHotelReviews(hotelId, limit) as HotelReview[];
+        console.log(`[fetchHotelReviews] Fetching reviews for hotelId: ${hotelId}, limit: ${limit}`);
+        const result = await getHotelReviews(hotelId, limit, offset, getSentiment);
+        const reviews = (result.reviews || []) as HotelReview[];
 
         return {
             reviews,
             averageRating: calculateAverageRating(reviews),
-            totalCount: reviews.length
+            totalCount: reviews.length,
+            sentimentAnalysis: result.sentimentAnalysis || undefined,
         };
     } catch (error) {
         console.error('[fetchHotelReviews] Error:', error);

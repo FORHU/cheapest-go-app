@@ -1,9 +1,5 @@
-/**
- * Zustand store for reviews state management
- * Handles pagination, sorting, and expanded review states
- */
-
 import { create } from 'zustand';
+import { HotelReview } from '@/lib/property/fetchReviews';
 
 interface ReviewsState {
     // Display state
@@ -11,8 +7,13 @@ interface ReviewsState {
     sortBy: 'newest' | 'highest' | 'lowest';
     expandedReviewIds: Set<string>;
 
+    // Reviews state
+    hotelId: string | null;
+    allReviews: HotelReview[];
+
     // Actions
-    loadMore: (increment?: number) => void;
+    initializeReviews: (hotelId: string, reviews: HotelReview[]) => void;
+    loadMore: () => void;
     resetDisplayCount: (initial?: number) => void;
     setSortBy: (sort: 'newest' | 'highest' | 'lowest') => void;
     toggleExpanded: (reviewId: string) => void;
@@ -24,9 +25,21 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
     sortBy: 'newest',
     expandedReviewIds: new Set(),
 
-    loadMore: (increment = 4) => set((state) => ({
-        displayCount: state.displayCount + increment
-    })),
+    // Reviews state
+    hotelId: null,
+    allReviews: [],
+
+    initializeReviews: (hotelId, reviews) => set({
+        hotelId,
+        allReviews: reviews,
+        displayCount: 4,
+    }),
+
+    loadMore: () => {
+        set((state) => ({
+            displayCount: state.displayCount + 4
+        }));
+    },
 
     resetDisplayCount: (initial = 4) => set({ displayCount: initial }),
 

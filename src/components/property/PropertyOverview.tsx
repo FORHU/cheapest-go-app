@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Star, MapPin, Wifi, Car, Utensils, Coffee, Check } from 'lucide-react';
+import React from 'react';
+import { Star, Wifi, Car, Utensils, Coffee, Check } from 'lucide-react';
 import { Property } from '@/data/mockProperties';
 
 interface ReviewsData {
@@ -38,45 +38,13 @@ function stripHtml(html: string): string {
 // Import centralized rating helper functions
 import { getRatingLabel, getRatingColor as getRatingBgColor } from '@/lib/property/fetchReviews';
 
-// Inline review card
-function InlineReviewCard({ review }: { review: any }) {
-    return (
-        <div className="bg-white dark:bg-slate-700/50 rounded-lg p-3 border border-slate-200 dark:border-slate-600">
-            <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-xs">
-                        {review.name ? review.name.charAt(0).toUpperCase() : '?'}
-                    </div>
-                    <div>
-                        <p className="font-medium text-slate-900 dark:text-white text-sm">{review.name || 'Anonymous'}</p>
-                        <p className="text-xs text-slate-500">{review.country || ''} {review.type ? `• ${review.type}` : ''}</p>
-                    </div>
-                </div>
-                {review.averageScore > 0 && (
-                    <div className={`${getRatingBgColor(review.averageScore)} text-white px-2 py-0.5 rounded text-xs font-bold`}>
-                        {review.averageScore.toFixed(1)}
-                    </div>
-                )}
-            </div>
-            {review.headline && <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">"{review.headline}"</p>}
-            {review.pros && <p className="text-xs text-slate-600 dark:text-slate-300 mb-1">👍 {review.pros}</p>}
-            {review.cons && <p className="text-xs text-slate-600 dark:text-slate-300">👎 {review.cons}</p>}
-        </div>
-    );
-}
-
 const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsData }) => {
-    const [showReviews, setShowReviews] = useState(false);
-    const [showAllReviews, setShowAllReviews] = useState(false);
-
     // Use real review data if available, fallback to property data
     const rating = reviewsData?.averageRating || property.rating;
     const reviewCount = reviewsData?.totalCount || property.reviews;
-    const reviews = reviewsData?.reviews || [];
-    const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 4);
 
     return (
-        <div className="space-y-8">
+        <div id="overview-section" className="space-y-8 scroll-mt-36">
             {/* Header Info */}
             <div>
                 <h1 className="text-3xl font-display font-bold text-slate-900 dark:text-white mb-2">
@@ -110,47 +78,14 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                         {rating.toFixed(1)}
                     </div>
                     <div>
-                        <div className="font-exrta-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <div className="font-extra-bold text-slate-900 dark:text-white">
                             {getRatingLabel(rating)}
-                            <span className="text-xs font-normal text-slate-500 px-2 py-0.5 bg-white dark:bg-slate-800 rounded-full border border-slate-200 dark:border-white/10">VIP Access</span>
                         </div>
                         <div className="text-sm text-slate-600 dark:text-slate-300">
                             {reviewCount.toLocaleString()} verified review{reviewCount !== 1 ? 's' : ''}
                         </div>
-                        <button
-                            onClick={() => setShowReviews(!showReviews)}
-                            className="text-xs text-blue-600 hover:underline mt-1 block"
-                        >
-                            {showReviews ? 'Hide reviews' : 'See all reviews'}
-                        </button>
                     </div>
                 </div>
-
-                {/* Inline Reviews Section */}
-                {showReviews && (
-                    <div className="mt-4 p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
-                        <h3 className="font-bold text-slate-900 dark:text-white mb-3">Guest Reviews</h3>
-                        {reviews.length === 0 ? (
-                            <p className="text-sm text-slate-500">No reviews available yet.</p>
-                        ) : (
-                            <>
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    {displayedReviews.map((review: any, index: number) => (
-                                        <InlineReviewCard key={`${review.name}-${index}`} review={review} />
-                                    ))}
-                                </div>
-                                {reviews.length > 4 && (
-                                    <button
-                                        onClick={() => setShowAllReviews(!showAllReviews)}
-                                        className="mt-3 text-sm text-blue-600 hover:underline"
-                                    >
-                                        {showAllReviews ? 'Show less' : `Show all ${reviews.length} reviews`}
-                                    </button>
-                                )}
-                            </>
-                        )}
-                    </div>
-                )}
             </div>
 
             <div className="flex flex-col gap-8">
@@ -162,7 +97,7 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                 </div>
 
                 {/* Popular amenities - Full width grid */}
-                <div className="w-full">
+                <div id="amenities-section" className="w-full scroll-mt-36">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Popular amenities</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {property.amenities.map((amenity, i) => (

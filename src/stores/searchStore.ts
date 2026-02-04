@@ -16,10 +16,18 @@ export interface DateRange {
     flexibility: 'exact' | '1day' | '2days' | '3days' | '7days';
 }
 
+/** Per-room occupancy configuration */
+export interface RoomOccupancy {
+    adults: number;
+    childrenAges: number[]; // Array of children ages (0-17)
+}
+
 export interface TravelersConfig {
     adults: number;
     children: number;
     rooms: number;
+    /** Per-room configuration for LiteAPI (optional, derived from above if not set) */
+    occupancies?: RoomOccupancy[];
 }
 
 /** Filter state for search results */
