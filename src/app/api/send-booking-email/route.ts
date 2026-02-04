@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
             ? createClient(supabaseUrl, supabaseServiceKey)
             : null;
 
-        // Store email record in database (if Supabase is configured)
+        // Store email record in database 
         if (supabase) {
             const { error: dbError } = await supabase
                 .from('booking_emails')

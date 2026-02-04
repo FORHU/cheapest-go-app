@@ -6,6 +6,21 @@ import { Property } from '@/data/mockProperties';
 import { ArrowLeft, User, Bed, Wifi, MapPin, Check, Star, Share2, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBookingStore } from '@/stores/bookingStore';
 
+// Strip HTML tags from text
+const stripHtml = (html: string): string => {
+    if (!html) return '';
+    let text = html.replace(/<br\s*\/?>/gi, '\n');
+    text = text.replace(/<\/p>/gi, '\n\n');
+    text = text.replace(/<[^>]*>/g, '');
+    text = text.replace(/&nbsp;/gi, ' ');
+    text = text.replace(/&amp;/gi, '&');
+    text = text.replace(/&lt;/gi, '<');
+    text = text.replace(/&gt;/gi, '>');
+    text = text.replace(/&quot;/gi, '"');
+    text = text.replace(/\n{3,}/g, '\n\n').trim();
+    return text;
+};
+
 interface RoomDetailsViewProps {
     property: Property;
     room: any; // Using existing loose type for room
@@ -161,10 +176,20 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
                     <div className="lg:col-span-2 space-y-10">
 
                         {/* Description */}
-                        <section>
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Room Description</h3>
-                            <div className="prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 leading-relaxed text-lg">
-                                {room.roomDescription || "No description available for this room."}
+                        <section className="relative">
+                            <div className="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 via-blue-400 to-transparent rounded-full hidden lg:block" />
+                            <div className="bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50 rounded-2xl p-6 border border-slate-100 dark:border-white/10 shadow-sm">
+                                <div className="flex items-center gap-3 mb-5">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                        <Bed size={20} className="text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Room Description</h3>
+                                </div>
+                                <div className="text-slate-600 dark:text-slate-300 leading-relaxed space-y-3">
+                                    {stripHtml(room.roomDescription)?.split('\n').filter(Boolean).map((paragraph: string, idx: number) => (
+                                        <p key={idx} className="text-[15px]">{paragraph}</p>
+                                    )) || <p className="text-slate-400 italic">No description available for this room.</p>}
+                                </div>
                             </div>
                         </section>
 
