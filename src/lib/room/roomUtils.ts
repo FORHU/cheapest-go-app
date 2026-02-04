@@ -6,7 +6,8 @@
 import { RateOption } from '@/components/property/RoomCard';
 
 /**
- * Room type from LiteAPI
+ * Room type from LiteAPI (each roomType is actually an "offer")
+ * An offer = physical room + meal plan + cancellation policy
  */
 export interface RoomType {
     offerId?: string;
@@ -19,6 +20,21 @@ export interface RoomType {
     roomDescription?: string;
     rates?: RoomRate[];
     amenities?: (string | { name: string })[];
+    /**
+     * Cancellation policies at offer/roomType level (LiteAPI docs structure)
+     * Each "offer" has ONE cancellation policy that applies to all rates within it
+     */
+    cancellationPolicies?: {
+        refundableTag?: 'RFN' | 'NRFN' | string;
+        cancelPolicyInfos?: Array<{
+            cancelTime?: string;
+            cancelDeadline?: string;
+            amount?: number;
+            currency?: string;
+            type?: string;
+        }>;
+        hotelRemarks?: string[];
+    };
 }
 
 export interface RoomRate {
@@ -30,10 +46,24 @@ export interface RoomRate {
     retailRate?: {
         total?: Array<{ amount: number; currency: string }> | { amount: number };
     };
+    /** LiteAPI structure: refundableTag is INSIDE cancellationPolicies */
+    cancellationPolicies?: {
+        refundableTag?: 'RFN' | 'NRFN' | string;
+        cancelPolicyInfos?: Array<{
+            cancelTime?: string;
+            cancelDeadline?: string;
+            amount?: number;
+            currency?: string;
+            type?: string;
+        }>;
+        hotelRemarks?: string[];
+    };
+    /** @deprecated Use cancellationPolicies.refundableTag instead */
+    refundableTag?: string;
+    /** @deprecated Use cancellationPolicies instead */
     cancellationPolicy?: {
         cancelPolicyInfos?: Array<{ cancelDeadline?: string }>;
     };
-    refundableTag?: string;
 }
 
 /**
@@ -90,17 +120,40 @@ export function extractRoomPrice(rates?: RoomRate[]): PriceInfo {
 
 /**
  * Check if free cancellation is available based on refundableTag or cancellation policy
+ *
+ * LiteAPI structure (per docs):
+ * - cancellationPolicies is at roomType/offer level, NOT individual rate level
+ * - Each roomType has ONE cancellation policy that applies to all its rates
+ *
+ * @param roomType - The roomType/offer object (preferred)
+ * @param rates - Fallback: array of rates (for backwards compatibility)
  */
-export function hasFreeCancellation(rates?: RoomRate[]): boolean {
-    if (!rates || rates.length === 0) return false;
+export function hasFreeCancellation(roomType?: RoomType | null, rates?: RoomRate[]): boolean {
+    // 1. Check roomType-level cancellationPolicies (correct per LiteAPI docs)
+    if (roomType?.cancellationPolicies?.refundableTag) {
+        return roomType.cancellationPolicies.refundableTag === 'RFN';
+    }
 
-    // Check refundableTag first (LiteAPI standard)
-    if (rates[0]?.refundableTag === 'RFN') return true;
-    if (rates[0]?.refundableTag === 'NRFN') return false;
+    // 2. Fallback: Check rate-level cancellationPolicies (some API responses include this)
+    const rate = rates?.[0] || roomType?.rates?.[0];
+    if (rate?.cancellationPolicies?.refundableTag) {
+        return rate.cancellationPolicies.refundableTag === 'RFN';
+    }
 
-    // Fallback to checking cancellation policy
-    const policy = rates[0]?.cancellationPolicy;
-    return !!policy?.cancelPolicyInfos?.length;
+    // 3. Fallback: Check legacy refundableTag directly on rate
+    if (rate?.refundableTag === 'RFN') return true;
+    if (rate?.refundableTag === 'NRFN') return false;
+
+    // 4. Last fallback: Check cancelPolicyInfos for 0% fee
+    const cancelPolicies = roomType?.cancellationPolicies?.cancelPolicyInfos ||
+                          rate?.cancellationPolicies?.cancelPolicyInfos ||
+                          rate?.cancellationPolicy?.cancelPolicyInfos;
+    if (cancelPolicies && cancelPolicies.length > 0) {
+        const firstPolicy = cancelPolicies[0];
+        if (firstPolicy.amount === 0) return true;
+    }
+
+    return false;
 }
 
 /**
@@ -120,20 +173,30 @@ export function getRoomDisplayName(roomType: RoomType): string {
 }
 
 /**
- * Create a rate option from a room type
+ * Create a rate option from a room type (offer)
+ * Each roomType in LiteAPI is an "offer" = room + meal plan + cancellation policy
  */
 export function createRateOption(roomType: RoomType): RateOption {
     const priceInfo = extractRoomPrice(roomType.rates);
-    const refundable = hasFreeCancellation(roomType.rates);
+    // Pass roomType to check cancellationPolicies at the correct level (per LiteAPI docs)
+    const refundable = hasFreeCancellation(roomType, roomType.rates);
+    const rate = roomType.rates?.[0];
+
+    // Get cancellation deadline - check roomType level first, then rate level
+    const cancelDeadline = roomType.cancellationPolicies?.cancelPolicyInfos?.[0]?.cancelTime ||
+                          roomType.cancellationPolicies?.cancelPolicyInfos?.[0]?.cancelDeadline ||
+                          rate?.cancellationPolicies?.cancelPolicyInfos?.[0]?.cancelTime ||
+                          rate?.cancellationPolicies?.cancelPolicyInfos?.[0]?.cancelDeadline ||
+                          rate?.cancellationPolicy?.cancelPolicyInfos?.[0]?.cancelDeadline;
 
     return {
         offerId: roomType.offerId || '',
         price: priceInfo.amount,
         currency: priceInfo.currency,
-        boardType: roomType.rates?.[0]?.boardType,
-        boardName: roomType.rates?.[0]?.boardName || 'Room only',
+        boardType: rate?.boardType,
+        boardName: rate?.boardName || 'Room only',
         refundable,
-        cancellationDeadline: roomType.rates?.[0]?.cancellationPolicy?.cancelPolicyInfos?.[0]?.cancelDeadline
+        cancellationDeadline: cancelDeadline
     };
 }
 

@@ -221,6 +221,15 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         params.set('children', state.travelers.children.toString());
         params.set('rooms', state.travelers.rooms.toString());
 
+        // Pass children ages for proper LiteAPI occupancy calculation
+        if (state.travelers.occupancies && state.travelers.occupancies.length > 0) {
+            // Collect all children ages from occupancies
+            const allChildrenAges = state.travelers.occupancies.flatMap(occ => occ.childrenAges);
+            if (allChildrenAges.length > 0) {
+                params.set('childrenAges', allChildrenAges.join(','));
+            }
+        }
+
         router.push(`/search?${params.toString()}`);
     }, [router, setIsSearching, setActiveDropdown]);
 

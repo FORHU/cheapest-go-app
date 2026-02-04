@@ -15,6 +15,7 @@ export interface SearchParams {
     destination?: string;
     adults?: string | number;
     children?: string | number;
+    childrenAges?: string; // Comma-separated ages (e.g., "5,10,12")
     rooms?: string | number;
     nationality?: string;
     countryCode?: string;
@@ -32,6 +33,7 @@ export interface SearchQueryParams {
     checkout: string;
     adults: number;
     children: number;
+    childrenAges?: number[]; // Array of children ages for proper LiteAPI occupancy
     rooms: number;
     guest_nationality: string;
     currency: string;
@@ -94,11 +96,17 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
     const destination = typeof params.destination === 'string' ? params.destination : "";
     const filters = parseFilterParams(params);
 
+    // Parse children ages from comma-separated string
+    const childrenAges = typeof params.childrenAges === 'string' && params.childrenAges
+        ? params.childrenAges.split(',').map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 17)
+        : undefined;
+
     const queryParams: SearchQueryParams = {
         checkin: formatSearchDate(rawCheckin) || "2026-06-01",
         checkout: formatSearchDate(rawCheckout) || "2026-06-05",
         adults: Number(params.adults) || 2,
         children: Number(params.children) || 0,
+        childrenAges, // Pass children ages for proper LiteAPI occupancy
         rooms: Number(params.rooms) || 1,
         guest_nationality: typeof params.nationality === 'string' && params.nationality ? params.nationality : "KR",
         currency: "PHP",
@@ -146,13 +154,27 @@ function extractPrice(hotel: any): { price: number; originalPrice?: number } {
 
 // Extract refundable tag from hotel
 function extractRefundableTag(hotel: any): string | undefined {
+    // First check hotel-level refundableTag (set by edge function)
     let refundableTag = hotel.refundableTag;
+
+    // Debug: log what we received
+    console.log(`[extractRefundableTag] Hotel ${hotel.hotelId} hotel.refundableTag:`, hotel.refundableTag);
+
+    // Fallback: check roomTypes if not found
     if (!refundableTag && hotel.roomTypes && hotel.roomTypes.length > 0) {
         for (const roomType of hotel.roomTypes) {
+            // Check roomType level
+            if (roomType.refundableTag) {
+                refundableTag = roomType.refundableTag;
+                console.log(`[extractRefundableTag] Found at roomType level:`, refundableTag);
+                break;
+            }
+            // Check rate level
             if (roomType.rates && roomType.rates.length > 0) {
                 const rate = roomType.rates[0];
                 if (rate.refundableTag) {
                     refundableTag = rate.refundableTag;
+                    console.log(`[extractRefundableTag] Found at rate level:`, refundableTag);
                     break;
                 }
             }
@@ -205,6 +227,7 @@ function transformHotelToProperty(hotel: any, cityName: string): Property {
         },
         refundableTag,
         distance: hotel.distance || hotel.details?.distance_from_center || hotel.details?.distance || undefined,
+        boardTypes: hotel.boardTypes || [],
     } as Property;
 }
 

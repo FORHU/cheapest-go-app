@@ -27,7 +27,7 @@ Deno.serve(async (req: any) => {
             throw new Error("Missing LITEAPI_KEY configuration");
         }
 
-        console.log(`[CancelBooking] Version: v1`);
+        console.log(`[CancelBooking] Version: v2 - increased timeout to 30s`);
 
         let requestText = "";
         try {
@@ -55,7 +55,7 @@ Deno.serve(async (req: any) => {
 
         // LiteAPI booking cancellation endpoint
         const url = `https://api.liteapi.travel/v3.0/bookings/${bookingId}`;
-        const FETCH_TIMEOUT = 10000; // 10 second timeout
+        const FETCH_TIMEOUT = 30000; // 30 second timeout (LiteAPI cancellation can be slow)
 
         // Create abort controller for timeout
         const controller = new AbortController();

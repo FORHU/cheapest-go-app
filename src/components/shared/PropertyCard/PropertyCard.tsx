@@ -324,10 +324,12 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                             Free cancellation
                         </span>
                     )}
-                    {property.amenities.some((a: string) => a.toLowerCase().includes('breakfast')) && (
+                    {/* Show breakfast from boardTypes (LiteAPI rates) or amenities as fallback */}
+                    {(property.boardTypes?.some((b: string) => b.toLowerCase().includes('breakfast')) ||
+                      property.amenities.some((a: string) => a.toLowerCase().includes('breakfast'))) && (
                         <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                             Breakfast included
                         </span>

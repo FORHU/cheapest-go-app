@@ -30,10 +30,21 @@ interface Hotel {
   reviewCount?: number;
   reviewRating?: number;
   refundableTag?: string; // "RFN" = refundable, "NRFN" = non-refundable
+  boardTypes?: string[]; // Meal plan types: "Breakfast included", "Room only", etc.
   roomTypes?: Array<{
     offerId?: string;
     rates?: Array<{
       refundableTag?: string;
+      refundable_tag?: string;
+      refundable?: boolean;
+      isRefundable?: boolean;
+      boardName?: string;
+      boardType?: string;
+      board?: string;
+      mealPlanName?: string;
+      meal_plan?: string;
+      mealPlan?: string;
+      cancellationPolicy?: any;
       cancelPolicyInfos?: Array<{
         cancelTime: string;
         amount: number;
@@ -169,18 +180,21 @@ Deno.serve(async (req: Request) => {
     // Build occupancies array based on rooms, adults, and children
     const buildOccupancies = () => {
       const totalAdults = body.adults || 2;
-      const totalChildren = body.children || 0; // This is a COUNT, not ages array
+      const totalChildren = body.children || 0; // This is a COUNT
       const totalRooms = body.rooms || 1;
 
-      // Convert children count to array of default ages (assume age 10 for each child)
-      const childrenAges: number[] = [];
-      if (typeof totalChildren === 'number' && totalChildren > 0) {
+      // Use provided childrenAges if available, otherwise default to age 10
+      let childrenAges: number[] = [];
+      if (body.childrenAges && Array.isArray(body.childrenAges) && body.childrenAges.length > 0) {
+        // Use the provided ages array directly
+        childrenAges = body.childrenAges.filter((age: any) => typeof age === 'number' && age >= 0 && age <= 17);
+        console.log("Using provided childrenAges:", childrenAges);
+      } else if (typeof totalChildren === 'number' && totalChildren > 0) {
+        // Fallback: Generate default ages (age 10) for each child
         for (let i = 0; i < totalChildren; i++) {
-          childrenAges.push(10); // Default age 10 for children
+          childrenAges.push(10);
         }
-      } else if (Array.isArray(totalChildren)) {
-        // If already an array of ages, use it directly
-        childrenAges.push(...totalChildren);
+        console.log("Using default childrenAges (age 10):", childrenAges);
       }
 
       // Distribute guests across rooms
@@ -240,6 +254,39 @@ Deno.serve(async (req: Request) => {
     let ratesData = await ratesResponse.json() as { data: Hotel[], rooms?: any[] };
     console.log("LiteAPI Response data count:", ratesData.data?.length || 0);
     console.log("LiteAPI Full Response:", JSON.stringify(ratesData).substring(0, 500));
+
+    // DEBUG: Log complete structure to find refundableTag location
+    if (ratesData.data?.[0]) {
+      const firstHotel = ratesData.data[0] as any;
+      console.log("=== DEBUG: HOTEL LEVEL KEYS ===");
+      console.log("Hotel keys:", Object.keys(firstHotel));
+
+      if (firstHotel.roomTypes?.[0]) {
+        const firstRoomType = firstHotel.roomTypes[0] as any;
+        console.log("=== DEBUG: ROOMTYPE LEVEL ===");
+        console.log("RoomType keys:", Object.keys(firstRoomType));
+
+        if (firstRoomType.rates?.[0]) {
+          const firstRate = firstRoomType.rates[0] as any;
+          console.log("=== DEBUG: RATE LEVEL ===");
+          console.log("Rate ALL keys:", Object.keys(firstRate));
+
+          // The refundableTag is INSIDE cancellationPolicies object, NOT at rate level
+          if (firstRate.cancellationPolicies) {
+            console.log("=== DEBUG: CANCELLATION POLICIES (correct location) ===");
+            console.log("cancellationPolicies keys:", Object.keys(firstRate.cancellationPolicies));
+            console.log("cancellationPolicies.refundableTag:", firstRate.cancellationPolicies.refundableTag);
+            console.log("cancellationPolicies.cancelPolicyInfos:", JSON.stringify(firstRate.cancellationPolicies.cancelPolicyInfos)?.substring(0, 500));
+            console.log("cancellationPolicies.hotelRemarks:", firstRate.cancellationPolicies.hotelRemarks);
+          } else {
+            console.log("No cancellationPolicies found on rate - checking other locations");
+            console.log("Rate cancellationPolicy:", firstRate.cancellationPolicy);
+            console.log("Rate cancelPolicy:", firstRate.cancelPolicy);
+          }
+        }
+      }
+      console.log("=== END DEBUG ===");
+    }
 
     let hotels = ratesData.data || [];
 
@@ -310,26 +357,97 @@ Deno.serve(async (req: Request) => {
 
     // 4. Merge Details into Hotels
     hotels.forEach((hotel: Hotel) => {
-      // Extract refundableTag from roomTypes/rates (LiteAPI rates response)
+      // Extract refundableTag and board/meal plan from roomTypes/rates (LiteAPI rates response)
       // Check if any room has a refundable rate - if so, mark hotel as refundable
+      // Also extract board type (meal plan) info
+      const boardTypes = new Set<string>();
+
+      // Log first room's rate structure for debugging
+      if (hotel.roomTypes?.[0]?.rates?.[0]) {
+        const sampleRate = hotel.roomTypes[0].rates[0] as any;
+        console.log(`[Hotel ${hotel.hotelId}] Sample rate keys:`, Object.keys(sampleRate));
+        // CORRECT: refundableTag is inside cancellationPolicies, not at rate level
+        console.log(`[Hotel ${hotel.hotelId}] cancellationPolicies:`, sampleRate.cancellationPolicies ? Object.keys(sampleRate.cancellationPolicies) : 'undefined');
+        console.log(`[Hotel ${hotel.hotelId}] cancellationPolicies.refundableTag:`, sampleRate.cancellationPolicies?.refundableTag);
+      }
+
       if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
         for (const roomType of hotel.roomTypes) {
+          // Cast to any to check for fields at roomType level
+          const rt = roomType as any;
+
+          // Check refundableTag at roomType level first
+          if (rt.refundableTag === 'RFN') {
+            hotel.refundableTag = 'RFN';
+          } else if (rt.refundableTag === 'NRFN' && !hotel.refundableTag) {
+            hotel.refundableTag = 'NRFN';
+          }
+
+          // Check cancelPolicyInfos at roomType level
+          if (rt.cancelPolicyInfos && Array.isArray(rt.cancelPolicyInfos) && rt.cancelPolicyInfos.length > 0) {
+            const policies = [...rt.cancelPolicyInfos].sort(
+              (a: any, b: any) => new Date(a.cancelTime).getTime() - new Date(b.cancelTime).getTime()
+            );
+            if (policies[0].amount === 0) {
+              hotel.refundableTag = 'RFN';
+              console.log(`[Hotel ${hotel.hotelId}] Found FREE cancellation at roomType level`);
+            }
+          }
+
           if (roomType.rates && Array.isArray(roomType.rates)) {
             for (const rate of roomType.rates) {
-              if (rate.refundableTag === 'RFN') {
-                hotel.refundableTag = 'RFN';
-                break;
+              const r = rate as any;
+
+              // CORRECT LOCATION: refundableTag is INSIDE cancellationPolicies object
+              // Structure: rate.cancellationPolicies.refundableTag (RFN or NRFN)
+              const cancellationPolicies = r.cancellationPolicies;
+              let refundTag = cancellationPolicies?.refundableTag;
+
+              // Fallback: check other possible locations
+              if (!refundTag) {
+                refundTag = r.refundableTag || r.refundable_tag;
               }
-              // Also check for NRFN if no refundable found yet
-              if (rate.refundableTag === 'NRFN' && !hotel.refundableTag) {
+
+              const isRefundable = r.refundable === true || r.isRefundable === true;
+
+              // Check cancelPolicyInfos INSIDE cancellationPolicies
+              let hasFreeCancellation = false;
+              const cancelPolicyInfos = cancellationPolicies?.cancelPolicyInfos || r.cancelPolicyInfos;
+              if (cancelPolicyInfos && Array.isArray(cancelPolicyInfos) && cancelPolicyInfos.length > 0) {
+                const policies = [...cancelPolicyInfos].sort(
+                  (a: any, b: any) => new Date(a.cancelTime).getTime() - new Date(b.cancelTime).getTime()
+                );
+                if (policies[0].amount === 0 || (policies[0].type === 'PERCENT' && policies[0].amount === 0)) {
+                  hasFreeCancellation = true;
+                  console.log(`[Hotel ${hotel.hotelId}] Found FREE cancellation via cancelPolicyInfos`);
+                }
+              }
+
+              // Check if this rate is refundable (RFN = refundable, NRFN = non-refundable)
+              if (refundTag === 'RFN' || isRefundable || hasFreeCancellation) {
+                hotel.refundableTag = 'RFN';
+                console.log(`[Hotel ${hotel.hotelId}] Marked as REFUNDABLE (tag: ${refundTag}, isRefundable: ${isRefundable}, freeCancellation: ${hasFreeCancellation})`);
+              }
+              // Also check for NRFN if no refundableTag found yet
+              if ((refundTag === 'NRFN' || r.refundable === false) && !hotel.refundableTag) {
                 hotel.refundableTag = 'NRFN';
+                console.log(`[Hotel ${hotel.hotelId}] Marked as NON-REFUNDABLE (tag: ${refundTag})`);
+              }
+
+              // Extract board/meal plan info - check multiple field names
+              const boardName = r.boardName || r.boardType || r.board ||
+                               r.mealPlanName || r.meal_plan || r.mealPlan;
+              if (boardName) {
+                boardTypes.add(boardName);
               }
             }
           }
-          if (hotel.refundableTag === 'RFN') break;
         }
       }
-      console.log(`[Hotel ${hotel.hotelId}] refundableTag:`, hotel.refundableTag || 'not found');
+      // Store board types as array
+      hotel.boardTypes = Array.from(boardTypes);
+      console.log(`[Hotel ${hotel.hotelId}] FINAL refundableTag:`, hotel.refundableTag || 'not found');
+      console.log(`[Hotel ${hotel.hotelId}] FINAL boardTypes:`, hotel.boardTypes);
 
       const detail = detailsMap.get(String(hotel.hotelId));
       if (detail) {
@@ -407,6 +525,14 @@ Deno.serve(async (req: Request) => {
         if (detail.checkinCheckoutTimes) {
           hotel.checkInTime = detail.checkinCheckoutTimes.checkin || detail.checkinCheckoutTimes.checkinStart;
           hotel.checkOutTime = detail.checkinCheckoutTimes.checkout;
+        }
+
+        // Map Hotel Important Information (may contain policies like pet/child info)
+        hotel.hotelImportantInformation = detail.hotelImportantInformation || detail.importantInformation || null;
+
+        // Map Cancellation Policies
+        if (detail.cancellationPolicies) {
+          hotel.cancellationPolicies = detail.cancellationPolicies;
         }
 
         // Map Hotel Facilities (array of strings)
