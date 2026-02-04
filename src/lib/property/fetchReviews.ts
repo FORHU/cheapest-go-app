@@ -82,3 +82,77 @@ export async function fetchHotelReviews(hotelId: string, limit: number = 20): Pr
         };
     }
 }
+
+// === Helper Functions for UI ===
+
+/**
+ * Rating label based on score (0-10 scale)
+ */
+export function getRatingLabel(score: number): string {
+    if (score >= 9) return 'Exceptional';
+    if (score >= 8) return 'Excellent';
+    if (score >= 7) return 'Very Good';
+    if (score >= 6) return 'Good';
+    if (score >= 5) return 'Average';
+    return 'Below Average';
+}
+
+/**
+ * Rating badge color based on score - consistent across app
+ */
+export function getRatingColor(score: number): string {
+    if (score >= 9) return 'bg-indigo-600';    // Exceptional
+    if (score >= 8) return 'bg-emerald-500';   // Excellent
+    if (score >= 7) return 'bg-teal-500';      // Very Good
+    if (score >= 6) return 'bg-blue-500';      // Good
+    return 'bg-amber-500';                      // Average/Below
+}
+
+/**
+ * Traveler type breakdown interface
+ */
+export interface TravelerBreakdown {
+    family: number;
+    couple: number;
+    friendsGroup: number;
+    solo: number;
+    business: number;
+}
+
+/**
+ * Calculate traveler type breakdown from reviews
+ */
+export function calculateTravelerBreakdown(reviews: HotelReview[]): TravelerBreakdown {
+    if (!reviews || reviews.length === 0) {
+        return { family: 0, couple: 0, friendsGroup: 0, solo: 0, business: 0 };
+    }
+
+    const counts = { family: 0, couple: 0, friendsGroup: 0, solo: 0, business: 0 };
+
+    reviews.forEach(review => {
+        const type = (review.type || '').toLowerCase();
+        if (type.includes('family') || type.includes('children')) {
+            counts.family++;
+        } else if (type.includes('couple') || type.includes('partner')) {
+            counts.couple++;
+        } else if (type.includes('friend') || type.includes('group') || type.includes('extended')) {
+            counts.friendsGroup++;
+        } else if (type.includes('solo') || type.includes('single')) {
+            counts.solo++;
+        } else if (type.includes('business') || type.includes('work')) {
+            counts.business++;
+        } else {
+            // Default to couple if unspecified
+            counts.couple++;
+        }
+    });
+
+    const total = reviews.length;
+    return {
+        family: Math.round((counts.family / total) * 100),
+        couple: Math.round((counts.couple / total) * 100),
+        friendsGroup: Math.round((counts.friendsGroup / total) * 100),
+        solo: Math.round((counts.solo / total) * 100),
+        business: Math.round((counts.business / total) * 100)
+    };
+}

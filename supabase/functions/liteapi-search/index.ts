@@ -272,45 +272,37 @@ Deno.serve(async (req: Request) => {
       } else {
       }
     } else {
-      const CHUNK_SIZE = 50;
-      const allHotelIds = hotels.map((h) => h.hotelId);
-      const chunks = [];
+      // Use individual /data/hotel calls for each hotel to get full details including hotelFacilities
+      // The batch /data/hotels endpoint doesn't return facilities
+      const limitedHotelIds = hotels.slice(0, 20).map((h) => h.hotelId);
+      console.log(`Fetching individual details for ${limitedHotelIds.length} hotels (parallel)`);
 
-      for (let i = 0; i < allHotelIds.length; i += CHUNK_SIZE) {
-        chunks.push(allHotelIds.slice(i, i + CHUNK_SIZE));
-      }
-
-      console.log(`Fetching batch details for ${allHotelIds.length} hotels in ${chunks.length} chunks`);
-
-      // Fetch all chunks in parallel
-      const chunkPromises = chunks.map(async (chunkIds) => {
-        const idsStr = chunkIds.join(',');
+      // Fetch all hotel details in parallel
+      const detailPromises = limitedHotelIds.map(async (hotelId) => {
         try {
-          const detailsResponse = await fetch(`https://api.liteapi.travel/v3.0/data/hotels?hotelIds=${idsStr}`, {
+          const detailsResponse = await fetch(`https://api.liteapi.travel/v3.0/data/hotel?hotelId=${hotelId}`, {
             method: "GET",
             headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' }
           });
 
           if (detailsResponse.ok) {
             const json = await detailsResponse.json();
-            return json.data || [];
+            return json.data || null;
           } else {
-            const errText = await detailsResponse.text();
-            console.error(`Batch details chunk fetch failed: ${detailsResponse.status} ${errText}`);
-            return [];
+            console.error(`Hotel ${hotelId} details fetch failed: ${detailsResponse.status}`);
+            return null;
           }
         } catch (e) {
-          console.error("Batch details chunk error:", e);
-          return [];
+          console.error(`Hotel ${hotelId} details error:`, e);
+          return null;
         }
       });
 
-      const allDetailsArrays = await Promise.all(chunkPromises);
-      // Flatten arrays
-      const allDetails = allDetailsArrays.flat();
-      console.log(`Total details fetched: ${allDetails.length}`);
+      const allDetails = await Promise.all(detailPromises);
+      const validDetails = allDetails.filter(Boolean);
+      console.log(`Total details fetched: ${validDetails.length}`);
 
-      detailsData = { data: allDetails };
+      detailsData = { data: validDetails };
     }
 
     // Process the details data (whether from single or batch fetch)
@@ -419,6 +411,13 @@ Deno.serve(async (req: Request) => {
 
         // Map Hotel Facilities (array of strings)
         hotel.hotelFacilities = detail.hotelFacilities || [];
+        console.log(`[Hotel ${hotel.hotelId}] hotelFacilities:`, hotel.hotelFacilities.slice(0, 3), `(total: ${hotel.hotelFacilities.length})`);
+
+        // Also try 'facilities' field (array of objects with name/facilityId)
+        if (hotel.hotelFacilities.length === 0 && detail.facilities && Array.isArray(detail.facilities)) {
+          hotel.hotelFacilities = detail.facilities.map((f: any) => f.name || f).filter(Boolean);
+          console.log(`[Hotel ${hotel.hotelId}] facilities (from objects):`, hotel.hotelFacilities.slice(0, 3));
+        }
 
         // Map Coordinates
         hotel.latitude = detail.latitude;
