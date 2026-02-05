@@ -10,4 +10,6 @@ export type {
   PrebookResponse,
   BookingResponse,
   CancellationPolicy,
+  AmendBookingParams,
+  AmendBookingResponse,
 } from './booking.service';

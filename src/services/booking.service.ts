@@ -183,6 +183,25 @@ export interface CancellationResponse {
 }
 
 /**
+ * Parameters for amending a booking's holder information
+ */
+export interface AmendBookingParams {
+  bookingId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  remarks?: string;
+}
+
+/**
+ * Response from LiteAPI amend endpoint
+ */
+export interface AmendBookingResponse {
+  bookingId: string;
+  status: string;
+}
+
+/**
  * Booking service for prebook and confirmation
  * Wraps Supabase Edge Functions with typed interfaces
  */
@@ -313,5 +332,16 @@ export const bookingService = {
       console.error('Failed to update booking status:', error);
       throw error;
     }
+  },
+
+  /**
+   * Amend a booking's holder information via LiteAPI
+   * The edge function also updates the local database
+   * @param params - The amendment details
+   * @returns Amendment response
+   */
+  amendBooking: async (params: AmendBookingParams): Promise<AmendBookingResponse> => {
+    const result = await invokeEdgeFunction('liteapi-amend-booking', params);
+    return result.data;
   },
 };

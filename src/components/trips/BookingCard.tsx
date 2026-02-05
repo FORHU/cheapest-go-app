@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Calendar, MapPin, Users, Clock, XCircle } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, XCircle, Pencil } from 'lucide-react';
 import type { BookingRecord } from '@/services/booking.service';
 import CancellationModal from './CancellationModal';
+import ModificationModal from './ModificationModal';
 import { statusColors, statusLabels } from '@/lib/constants';
 import { formatDate, formatCurrency, calculateNights } from '@/lib/utils';
 
@@ -15,6 +16,7 @@ interface BookingCardProps {
 
 export default function BookingCard({ booking, onBookingUpdated }: BookingCardProps) {
     const [showCancelModal, setShowCancelModal] = useState(false);
+    const [showModifyModal, setShowModifyModal] = useState(false);
     const checkInDate = new Date(booking.check_in);
     const checkOutDate = new Date(booking.check_out);
     const nights = calculateNights(checkInDate, checkOutDate);
@@ -112,6 +114,13 @@ export default function BookingCard({ booking, onBookingUpdated }: BookingCardPr
                                         Upcoming
                                     </span>
                                     <button
+                                        onClick={() => setShowModifyModal(true)}
+                                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors"
+                                    >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                        Modify booking
+                                    </button>
+                                    <button
                                         onClick={() => setShowCancelModal(true)}
                                         className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:underline transition-colors"
                                     >
@@ -136,6 +145,17 @@ export default function BookingCard({ booking, onBookingUpdated }: BookingCardPr
                     </div>
                 </div>
             </div>
+
+            {/* Modification Modal */}
+            <ModificationModal
+                booking={booking}
+                isOpen={showModifyModal}
+                onClose={() => setShowModifyModal(false)}
+                onModified={() => {
+                    setShowModifyModal(false);
+                    onBookingUpdated?.();
+                }}
+            />
 
             {/* Cancellation Modal */}
             <CancellationModal
