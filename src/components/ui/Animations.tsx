@@ -177,7 +177,7 @@ interface SparklesProps {
 export const SparkleEffect: React.FC<SparklesProps> = ({ count = 20, className = '' }) => {
   const sparkles = Array.from({ length: count }, (_, i) => ({
     id: i,
-    size: Math.random() * 4 + 2,
+    size: Math.random() * 8 + 4,
     left: Math.random() * 100,
     top: Math.random() * 100,
     delay: Math.random() * 3,
@@ -189,16 +189,17 @@ export const SparkleEffect: React.FC<SparklesProps> = ({ count = 20, className =
       {sparkles.map((sparkle) => (
         <motion.div
           key={sparkle.id}
-          className="absolute rounded-full bg-white"
+          className="absolute rounded-full bg-blue-600/80 dark:bg-white/90"
           style={{
             width: sparkle.size,
             height: sparkle.size,
             left: `${sparkle.left}%`,
             top: `${sparkle.top}%`,
+            boxShadow: `0 0 ${sparkle.size * 2}px ${sparkle.size}px rgba(96,165,250,0.3)`,
           }}
           animate={{
             opacity: [0, 1, 0],
-            scale: [0, 1, 0],
+            scale: [0, 1.5, 0],
           }}
           transition={{
             duration: sparkle.duration,
