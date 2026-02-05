@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
     useProperty,
     useSelectedRoom,
@@ -78,6 +78,12 @@ export default function CheckoutPage() {
     } = useCheckoutForm();
 
     const prebookError = prebookErrorObj?.message || null;
+
+    // Reset success state from previous booking on mount
+    useEffect(() => {
+        setIsSuccess(false);
+        setEmailSent(false);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Prebook trigger hook (handles mount, currency change, auth retry)
     const { retryPrebook } = useCheckoutPrebook({

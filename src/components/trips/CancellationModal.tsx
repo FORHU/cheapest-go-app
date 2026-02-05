@@ -112,20 +112,35 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
         const now = new Date();
         const totalPrice = booking.total_price;
         const currency = booking.currency;
+        const rfn = cancellationPolicies?.refundableTag === 'RFN';
 
         // Sort policies by cancelTime ascending
         const sortedPolicies = [...policies].sort(
             (a, b) => new Date(a.cancelTime).getTime() - new Date(b.cancelTime).getTime()
         );
 
-        // Find the current applicable policy
-        let applicableFee = 0;
+        // Find the current applicable fee by finding which time window we're in.
+        // Each entry defines a window: cancel before this cancelTime → this fee.
+        // Past all deadlines → full charge.
+        let applicableFee = totalPrice; // default: past all deadlines
         for (const policy of sortedPolicies) {
-            const policyTime = new Date(policy.cancelTime);
-            if (now < policyTime) break;
-            applicableFee = policy.type === 'PERCENT'
-                ? (totalPrice * policy.amount) / 100
-                : policy.amount;
+            if (now < new Date(policy.cancelTime)) {
+                applicableFee = policy.type === 'PERCENT'
+                    ? (totalPrice * policy.amount) / 100
+                    : policy.amount;
+                break; // found our window
+            }
+        }
+
+        // Handle RFN bookings where the API omits the amount=0 "free period" entry.
+        // If booking is RFN, there are no explicit amount=0 entries, and we're
+        // before the first deadline → we're in the implied free cancellation window.
+        const hasExplicitFreeEntry = sortedPolicies.some(p => p.amount === 0);
+        if (rfn && !hasExplicitFreeEntry && applicableFee > 0) {
+            const firstDeadline = new Date(sortedPolicies[0].cancelTime);
+            if (now < firstDeadline) {
+                applicableFee = 0;
+            }
         }
 
         return {
@@ -133,7 +148,7 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
             refund: totalPrice - applicableFee,
             currency
         };
-    }, [cancellationPolicies?.cancelPolicyInfos, booking.total_price, booking.currency]);
+    }, [cancellationPolicies, booking.total_price, booking.currency]);
 
     // Determine if currently free to cancel based on actual fee calculation
     // This is more accurate than refundableTag alone
