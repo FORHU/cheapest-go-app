@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, PlaneTakeoff } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { useAuthFormStore } from '@/stores/authFormStore';
 import EmailStep from './EmailStep';
 import PasswordStep from './PasswordStep';
 import RegisterStep from './RegisterStep';
@@ -11,12 +12,14 @@ import VerifyEmailStep from './VerifyEmailStep';
 
 const AuthModal: React.FC = () => {
     const { isAuthModalOpen, closeAuthModal, authStep } = useAuthStore();
+    const resetForm = useAuthFormStore((s) => s.reset);
 
     // Close modal on Escape key
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
                 closeAuthModal();
+                resetForm();
             }
         };
 
@@ -29,7 +32,7 @@ const AuthModal: React.FC = () => {
             document.removeEventListener('keydown', handleEscape);
             document.body.style.overflow = 'unset';
         };
-    }, [isAuthModalOpen, closeAuthModal]);
+    }, [isAuthModalOpen, closeAuthModal, resetForm]);
 
 
     const renderStep = () => {
@@ -67,7 +70,7 @@ const AuthModal: React.FC = () => {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                        onClick={closeAuthModal}
+                        onClick={() => { closeAuthModal(); resetForm(); }}
                     />
 
                     {/* Modal */}
@@ -80,7 +83,7 @@ const AuthModal: React.FC = () => {
                     >
                         {/* Close Button */}
                         <button
-                            onClick={closeAuthModal}
+                            onClick={() => { closeAuthModal(); resetForm(); }}
                             className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors z-10"
                             aria-label="Close modal"
                         >

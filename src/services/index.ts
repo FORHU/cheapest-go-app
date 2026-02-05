@@ -1,6 +1,6 @@
 // Service exports for clean imports
 export { liteApiService } from './liteapi.service';
-export type { SearchParams, HotelDetailsParams } from './liteapi.service';
+export type { SearchParams, HotelDetailsParams, LiteApiFacility } from './liteapi.service';
 
 export { bookingService } from './booking.service';
 export type {
@@ -9,4 +9,5 @@ export type {
   Guest,
   PrebookResponse,
   BookingResponse,
+  CancellationPolicy,
 } from './booking.service';

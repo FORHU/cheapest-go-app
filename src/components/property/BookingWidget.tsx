@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { Property } from '@/data/mockProperties';
-import { MapPin, X, Bed, User, Wifi, Check } from 'lucide-react';
+import { MapPin, X, Bed, User, Check } from 'lucide-react';
 import { useViewingRoom, useBookingActions } from '@/stores/bookingStore';
+import { calculateNights } from '@/lib/utils';
 
 interface BookingWidgetProps {
     property: Property;
@@ -30,12 +31,7 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, se
     const checkInDate = searchParams?.checkIn ? new Date(searchParams.checkIn) : new Date();
     const checkOutDate = searchParams?.checkOut ? new Date(searchParams.checkOut) : new Date(new Date().setDate(new Date().getDate() + 2));
 
-    // Calculate nights
-    const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    const formatDate = (date: Date) => {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    };
+    const nights = calculateNights(checkInDate, checkOutDate);
 
     return (
         <>

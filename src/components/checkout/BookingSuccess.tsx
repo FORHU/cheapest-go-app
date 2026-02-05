@@ -29,7 +29,7 @@ export function BookingSuccess({
     return (
         <>
             <Header />
-            <main className="min-h-screen pt-6 pb-20 px-4 flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
+            <main className="min-h-screen pt-6 pb-20 px-4 flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-emerald-50/60 via-white/40 to-blue-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-emerald-950/60">
                 {/* Celebration Effects */}
                 <Confetti count={80} />
                 <Balloons count={12} />

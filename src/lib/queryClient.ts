@@ -53,6 +53,14 @@ export const queryKeys = {
       prebookId,
     ] as const,
   },
+  trips: {
+    all: ['trips'] as const,
+    list: (userId?: string) => [...queryKeys.trips.all, 'list', userId] as const,
+    bookingDetails: (bookingId: string) => [...queryKeys.trips.all, 'details', bookingId] as const,
+  },
+  facilities: {
+    all: ['facilities'] as const,
+  },
   auth: {
     all: ['auth'] as const,
     user: () => [...queryKeys.auth.all, 'user'] as const,

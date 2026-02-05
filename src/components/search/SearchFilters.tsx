@@ -1,111 +1,16 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Search, Map, RotateCcw } from 'lucide-react';
-import {
-    useSearchFilters,
-    useSearchStore,
-} from '@/stores/searchStore';
-
-
-// LiteAPI Facility IDs (common ones)
-const FACILITIES = [
-    { id: 28, label: 'Free WiFi' },
-    { id: 433, label: 'Swimming Pool' },
-    { id: 107, label: 'Spa' },
-    { id: 2, label: 'Parking' },
-    { id: 7, label: 'Restaurant' },
-    { id: 91, label: 'Fitness Center' },
-    { id: 6, label: 'Room Service' },
-    { id: 76, label: 'Airport Shuttle' },
-    { id: 11, label: 'Breakfast Included' },
-    { id: 5, label: 'Air Conditioning' },
-    { id: 25, label: 'Pet Friendly' },
-    { id: 46, label: 'Business Center' },
-];
-
-const STAR_RATINGS = [5, 4, 3, 2, 1];
-
-const GUEST_RATING_OPTIONS = [
-    { value: 0, label: 'Any' },
-    { value: 9, label: 'Excellent 9+' },
-    { value: 8, label: 'Very Good 8+' },
-    { value: 7, label: 'Good 7+' },
-    { value: 6, label: 'Pleasant 6+' },
-];
-
-const REVIEW_COUNT_OPTIONS = [
-    { value: 0, label: 'Any' },
-    { value: 10, label: '10+ reviews' },
-    { value: 50, label: '50+ reviews' },
-    { value: 100, label: '100+ reviews' },
-    { value: 500, label: '500+ reviews' },
-];
-
-interface FilterSectionProps {
-    title: string;
-    children: React.ReactNode;
-    index?: number;
-}
-
-const FilterSection = ({ title, children, index = 0 }: FilterSectionProps) => (
-    <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true, amount: 0.3 }}
-        transition={{ delay: index * 0.05, duration: 0.4 }}
-        className="border-b border-slate-200 dark:border-white/5 py-4 last:border-0"
-    >
-        <h4 className="font-semibold text-sm text-slate-900 dark:text-white mb-3">{title}</h4>
-        <div className="space-y-2">
-            {children}
-        </div>
-    </motion.div>
-);
-
-interface CheckboxItemProps {
-    label: string;
-    checked: boolean;
-    onChange: (checked: boolean) => void;
-}
-
-const CheckboxItem = ({ label, checked, onChange }: CheckboxItemProps) => (
-    <label className="flex items-center gap-3 cursor-pointer group mb-2 last:mb-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-1 rounded transition-colors">
-        <input
-            type="checkbox"
-            checked={checked}
-            onChange={(e) => onChange(e.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-        />
-        <span className="text-sm text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors flex-1">
-            {label}
-        </span>
-    </label>
-);
-
-interface RadioItemProps {
-    name: string;
-    label: string;
-    checked: boolean;
-    onChange: () => void;
-}
-
-const RadioItem = ({ name, label, checked, onChange }: RadioItemProps) => (
-    <label className="flex items-center gap-3 cursor-pointer group mb-2 last:mb-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-1 rounded transition-colors">
-        <input
-            type="radio"
-            name={name}
-            checked={checked}
-            onChange={onChange}
-            className="w-4 h-4 border-slate-300 text-blue-600 focus:ring-blue-500"
-        />
-        <span className="text-sm text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors flex-1">
-            {label}
-        </span>
-    </label>
-);
+import { useSearchFilters, useSearchStore } from '@/stores/searchStore';
+import { STAR_RATINGS, GUEST_RATING_OPTIONS, REVIEW_COUNT_OPTIONS } from '@/lib/constants';
+import { useFacilities } from '@/hooks/search/useFacilities';
+import { FilterSection } from './FilterSection';
+import { CheckboxItem } from './CheckboxItem';
+import { RadioItem } from './RadioItem';
+import { ActiveFiltersSummary } from './ActiveFiltersSummary';
 
 const SearchFilters = () => {
     const router = useRouter();
@@ -113,11 +18,10 @@ const SearchFilters = () => {
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const initializedRef = useRef(false);
 
-    // Use Zustand store instead of useState - prevents re-renders
+    // Zustand store
+    const { facilities: facilityOptions, isLoading: facilitiesLoading } = useFacilities();
     const filters = useSearchFilters();
     const { setFilters, toggleStarRating, toggleFacility, resetFilters } = useSearchStore();
-
-    // Destructure for cleaner access
     const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering } = filters;
 
     // Initialize filters from URL params on mount (only once)
@@ -139,7 +43,6 @@ const SearchFilters = () => {
     // URL update helper
     const updateURL = useCallback((params: Record<string, string | null>) => {
         const current = new URLSearchParams(searchParams.toString());
-
         Object.entries(params).forEach(([key, value]) => {
             if (value === null || value === '' || value === '0') {
                 current.delete(key);
@@ -147,26 +50,18 @@ const SearchFilters = () => {
                 current.set(key, value);
             }
         });
-
         router.push(`/search?${current.toString()}`);
     }, [router, searchParams]);
 
-    // Handle hotel name search with debounce using ref (no useState for timeout)
+    // Debounced hotel name search
     const handleHotelNameChange = useCallback((value: string) => {
         setFilters({ hotelName: value });
-
-        // Clear existing timeout
-        if (searchTimeoutRef.current) {
-            clearTimeout(searchTimeoutRef.current);
-        }
-
-        // Set new timeout for debounced search
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
         searchTimeoutRef.current = setTimeout(() => {
             updateURL({ hotelName: value || null });
         }, 500);
     }, [setFilters, updateURL]);
 
-    // Handle star rating toggle
     const handleStarRatingToggle = useCallback((star: number) => {
         toggleStarRating(star);
         const newRatings = starRating.includes(star)
@@ -175,19 +70,16 @@ const SearchFilters = () => {
         updateURL({ starRating: newRatings.length > 0 ? newRatings.join(',') : null });
     }, [toggleStarRating, starRating, updateURL]);
 
-    // Handle guest rating change
     const handleMinRatingChange = useCallback((value: number) => {
         setFilters({ minRating: value });
         updateURL({ minRating: value > 0 ? String(value) : null });
     }, [setFilters, updateURL]);
 
-    // Handle review count change
     const handleMinReviewsCountChange = useCallback((value: number) => {
         setFilters({ minReviewsCount: value });
         updateURL({ minReviewsCount: value > 0 ? String(value) : null });
     }, [setFilters, updateURL]);
 
-    // Handle facility toggle
     const handleFacilityToggle = useCallback((facilityId: number) => {
         toggleFacility(facilityId);
         const newFacilities = facilities.includes(facilityId)
@@ -196,26 +88,20 @@ const SearchFilters = () => {
         updateURL({ facilities: newFacilities.length > 0 ? newFacilities.join(',') : null });
     }, [toggleFacility, facilities, updateURL]);
 
-    // Handle strict facility filtering
     const handleStrictFilteringToggle = useCallback((checked: boolean) => {
         setFilters({ strictFacilityFiltering: checked });
         updateURL({ strictFacilityFiltering: checked ? 'true' : null });
     }, [setFilters, updateURL]);
 
-    // Reset all filters
     const handleResetFilters = useCallback(() => {
         resetFilters();
-
-        // Preserve non-filter params (destination, dates, etc.)
         const current = new URLSearchParams(searchParams.toString());
         ['hotelName', 'starRating', 'minRating', 'minReviewsCount', 'facilities', 'strictFacilityFiltering'].forEach(key => {
             current.delete(key);
         });
-
         router.push(`/search?${current.toString()}`);
     }, [resetFilters, searchParams, router]);
 
-    // Check if any filters are active
     const hasActiveFilters = hotelName || starRating.length > 0 || minRating > 0 ||
         minReviewsCount > 0 || facilities.length > 0;
 
@@ -286,7 +172,7 @@ const SearchFilters = () => {
                 </div>
             </FilterSection>
 
-            {/* Guest Rating (minRating) */}
+            {/* Guest Rating */}
             <FilterSection title="Guest rating" index={2}>
                 {GUEST_RATING_OPTIONS.map(option => (
                     <RadioItem
@@ -312,20 +198,25 @@ const SearchFilters = () => {
                 ))}
             </FilterSection>
 
-            {/* Facilities/Amenities */}
+            {/* Amenities */}
             <FilterSection title="Amenities" index={4}>
                 <div className="flex flex-col gap-1">
-                    {FACILITIES.map(facility => (
-                        <CheckboxItem
-                            key={facility.id}
-                            label={facility.label}
-                            checked={facilities.includes(facility.id)}
-                            onChange={() => handleFacilityToggle(facility.id)}
-                        />
-                    ))}
+                    {facilitiesLoading ? (
+                        Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className="h-8 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                        ))
+                    ) : (
+                        facilityOptions.map((facility) => (
+                            <CheckboxItem
+                                key={facility.id}
+                                label={facility.name}
+                                checked={facilities.includes(facility.id)}
+                                onChange={() => handleFacilityToggle(facility.id)}
+                            />
+                        ))
+                    )}
                 </div>
 
-                {/* Strict Filtering Option - only show when multiple facilities selected */}
                 {facilities.length > 1 && (
                     <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
                         <CheckboxItem
@@ -341,42 +232,7 @@ const SearchFilters = () => {
             </FilterSection>
 
             {/* Active Filters Summary */}
-            {hasActiveFilters && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
-                >
-                    <p className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-2">Active Filters:</p>
-                    <div className="flex flex-wrap gap-1">
-                        {hotelName && (
-                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 text-xs rounded">
-                                Name: {hotelName}
-                            </span>
-                        )}
-                        {starRating.length > 0 && (
-                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 text-xs rounded">
-                                {starRating.join(', ')} stars
-                            </span>
-                        )}
-                        {minRating > 0 && (
-                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 text-xs rounded">
-                                Rating: {minRating}+
-                            </span>
-                        )}
-                        {minReviewsCount > 0 && (
-                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 text-xs rounded">
-                                {minReviewsCount}+ reviews
-                            </span>
-                        )}
-                        {facilities.length > 0 && (
-                            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-200 text-xs rounded">
-                                {facilities.length} amenities
-                            </span>
-                        )}
-                    </div>
-                </motion.div>
-            )}
+            <ActiveFiltersSummary filters={filters} />
         </div>
     );
 };

@@ -5,47 +5,25 @@ import Image from 'next/image';
 import { Calendar, MapPin, Users, Clock, XCircle } from 'lucide-react';
 import type { BookingRecord } from '@/services/booking.service';
 import CancellationModal from './CancellationModal';
+import { statusColors, statusLabels } from '@/lib/constants';
+import { formatDate, formatCurrency, calculateNights } from '@/lib/utils';
 
 interface BookingCardProps {
     booking: BookingRecord;
     onBookingUpdated?: () => void;
 }
 
-const statusColors = {
-    pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-    confirmed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    completed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-};
-
-const statusLabels = {
-    pending: 'Pending',
-    confirmed: 'Confirmed',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-};
-
 export default function BookingCard({ booking, onBookingUpdated }: BookingCardProps) {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const checkInDate = new Date(booking.check_in);
     const checkOutDate = new Date(booking.check_out);
-    const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
+    const nights = calculateNights(checkInDate, checkOutDate);
 
-    const formatDate = (date: Date) => {
-        return date.toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-        });
-    };
+    const fmtDate = (date: Date) =>
+        formatDate(date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
 
-    const formatPrice = (price: number, currency: string) => {
-        return new Intl.NumberFormat('en-PH', {
-            style: 'currency',
-            currency: currency || 'PHP',
-        }).format(price);
-    };
+    const fmtPrice = (price: number, currency: string) =>
+        formatCurrency(price, currency || 'PHP');
 
     const isUpcoming = checkInDate > new Date();
     const isPast = checkOutDate < new Date();
@@ -91,8 +69,8 @@ export default function BookingCard({ booking, onBookingUpdated }: BookingCardPr
                                 <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                                     <Calendar className="w-4 h-4 text-blue-500" />
                                     <div>
-                                        <p className="font-medium">{formatDate(checkInDate)}</p>
-                                        <p className="text-xs text-slate-400">to {formatDate(checkOutDate)}</p>
+                                        <p className="font-medium">{fmtDate(checkInDate)}</p>
+                                        <p className="text-xs text-slate-400">to {fmtDate(checkOutDate)}</p>
                                     </div>
                                 </div>
 
@@ -123,7 +101,7 @@ export default function BookingCard({ booking, onBookingUpdated }: BookingCardPr
                             <div className="text-right">
                                 <p className="text-xs text-slate-400 dark:text-slate-500">Total paid</p>
                                 <p className="text-xl font-bold text-slate-900 dark:text-white">
-                                    {formatPrice(booking.total_price, booking.currency)}
+                                    {fmtPrice(booking.total_price, booking.currency)}
                                 </p>
                             </div>
 

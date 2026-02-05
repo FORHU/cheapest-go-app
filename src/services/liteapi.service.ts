@@ -26,6 +26,11 @@ export interface HotelDetailsParams {
   children: number;
 }
 
+export interface LiteApiFacility {
+  id: number;
+  name: string;
+}
+
 /**
  * LiteAPI service for hotel search and details
  * Wraps Supabase Edge Functions for clean separation
@@ -43,10 +48,15 @@ export const liteApiService = {
    * Get detailed information about a specific hotel
    */
   getHotelDetails: async (params: HotelDetailsParams) => {
-    // This wraps the existing getHotelDetails logic from functions.ts
-    // For now, we'll keep using the server-side function
-    // In future, we can migrate this to a client-side React Query hook
     const result = await invokeEdgeFunction('liteapi-hotel-details', params);
     return result.data;
+  },
+
+  /**
+   * Get all available hotel facilities from LiteAPI
+   */
+  getFacilities: async (): Promise<LiteApiFacility[]> => {
+    const result = await invokeEdgeFunction('liteapi-facilities', {});
+    return result.data ?? [];
   },
 };

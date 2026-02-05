@@ -74,6 +74,15 @@ export function isClient(): boolean {
 }
 
 /**
+ * Calculate number of nights between two dates
+ */
+export function calculateNights(checkIn: Date | string, checkOut: Date | string): number {
+    const start = typeof checkIn === 'string' ? new Date(checkIn) : checkIn;
+    const end = typeof checkOut === 'string' ? new Date(checkOut) : checkOut;
+    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/**
  * Safe JSON parse with fallback
  */
 export function safeJsonParse<T>(json: string, fallback: T): T {

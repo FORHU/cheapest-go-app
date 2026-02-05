@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@/stores/authStore';
 import { bookingService, BookingRecord } from '@/services/booking.service';
+import { queryKeys } from '@/lib/queryClient';
 
 interface UseTripsDataReturn {
     bookings: BookingRecord[];
@@ -16,48 +18,46 @@ interface UseTripsDataReturn {
 
 /**
  * Hook for fetching and managing user trip/booking data.
- * Handles loading, error states, and categorization.
+ * Uses React Query for caching, background refetch, and stale-while-revalidate.
  */
 export function useTripsData(): UseTripsDataReturn {
     const user = useUser();
-    const [bookings, setBookings] = useState<BookingRecord[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
-    const fetchBookings = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            setError(null);
-            const data = await bookingService.getUserBookings();
-            setBookings(data);
-        } catch (err: any) {
-            console.error('Failed to fetch bookings:', err);
-            setError(err.message || 'Failed to load your trips');
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+    const query = useQuery({
+        queryKey: queryKeys.trips.list(user?.id),
+        queryFn: () => bookingService.getUserBookings(),
+        enabled: !!user,
+    });
 
-    // Auto-fetch when user is authenticated
-    useEffect(() => {
-        if (user) {
-            fetchBookings();
-        }
-    }, [user, fetchBookings]);
+    const bookings = query.data ?? [];
 
-    // Categorize bookings
-    const now = new Date();
-    const upcomingBookings = bookings.filter(b => new Date(b.check_in) >= now && b.status !== 'cancelled');
-    const pastBookings = bookings.filter(b => new Date(b.check_out) < now || b.status === 'completed');
-    const cancelledBookings = bookings.filter(b => b.status === 'cancelled');
+    // Categorize bookings (derived state)
+    const upcomingBookings = useMemo(() => {
+        const now = new Date();
+        return bookings.filter(b => new Date(b.check_in) >= now && b.status !== 'cancelled');
+    }, [bookings]);
+
+    const pastBookings = useMemo(() => {
+        const now = new Date();
+        return bookings.filter(b => new Date(b.check_out) < now || b.status === 'completed');
+    }, [bookings]);
+
+    const cancelledBookings = useMemo(
+        () => bookings.filter(b => b.status === 'cancelled'),
+        [bookings]
+    );
+
+    const refetch = async () => {
+        await query.refetch();
+    };
 
     return {
         bookings,
-        isLoading,
-        error,
+        isLoading: query.isLoading,
+        error: query.error?.message ?? null,
         upcomingBookings,
         pastBookings,
         cancelledBookings,
-        refetch: fetchBookings,
+        refetch,
     };
 }
