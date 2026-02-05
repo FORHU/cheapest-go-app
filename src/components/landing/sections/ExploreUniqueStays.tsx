@@ -11,8 +11,6 @@ export const ExploreUniqueStays: React.FC = () => {
 
   return (
     <section className="relative w-full py-16 overflow-hidden">
-      {/* Background sparkle effect */}
-      <SparkleEffect count={30} className="opacity-30 dark:opacity-50" />
 
       <div className="relative max-w-[1400px] mx-auto px-6">
         <motion.div
