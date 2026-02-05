@@ -6,7 +6,7 @@ import {
   useSelectedRoom,
   useBookingActions,
 } from '@/stores/bookingStore';
-import { bookingService, BookingParams, PrebookResponse } from '@/services';
+import { bookingService, BookingParams, PrebookResponse, CancellationPolicy } from '@/services';
 
 /**
  * Price data from prebook response
@@ -15,6 +15,8 @@ export interface PriceData {
   price: number;
   tax: number;
   total: number;
+  /** Cancellation policies from prebook */
+  cancellationPolicies?: CancellationPolicy;
 }
 
 /**
@@ -86,6 +88,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
           price: data.price.subtotal || data.price.total,
           tax: data.price.taxes || 0,
           total: data.price.total,
+          cancellationPolicies: data.cancellationPolicies,
         });
       }
     },

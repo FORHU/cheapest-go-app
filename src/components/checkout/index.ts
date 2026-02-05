@@ -6,6 +6,7 @@ export { SpecialRequestsSection } from './SpecialRequestsSection';
 export { PaymentForm } from './PaymentForm';
 export { BookingSummary } from './BookingSummary';
 export { SubmitBookingButton } from './SubmitBookingButton';
+export { CancellationPolicySection } from './CancellationPolicySection';
 
 // Types
 export type { CheckoutFormData, BookingForType } from './types';

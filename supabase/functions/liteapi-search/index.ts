@@ -92,11 +92,10 @@ Deno.serve(async (req: Request) => {
   const LITEAPI_KEY = Deno.env.get('LITEAPI_KEY');
 
   try {
+    const t0 = Date.now();
     const rawData = await req.text();
-    console.log("===== INCOMING REQUEST =====");
-    console.log("Raw request body:", rawData);
     const body = JSON.parse(rawData || "{}");
-    console.log("Parsed body:", JSON.stringify(body));
+    console.log("===== SEARCH REQUEST =====", JSON.stringify(body).substring(0, 300));
 
     // Mapping inputs
     const checkin = body.checkin || body.startDate;
@@ -106,10 +105,7 @@ Deno.serve(async (req: Request) => {
     const guestNationality = body.guestNationality || countryCode;
     const placeId = body.placeId;
 
-    console.log("Extracted values - checkin:", checkin, "checkout:", checkout, "placeId:", placeId, "countryCode:", countryCode, "cityName:", body.cityName);
-
     // 1. Fetch Rates
-    console.log("Fetching rates...");
 
     let locationParams = {};
 
@@ -120,61 +116,25 @@ Deno.serve(async (req: Request) => {
 
     if (body.hotelIds) {
       locationParams = { hotelIds: body.hotelIds };
-      console.log("Using hotelIds:", body.hotelIds);
-
     } else if (normalizedCityName && countryCode) {
       locationParams = { cityName: normalizedCityName, countryCode: countryCode };
-      console.log("Using cityName:", normalizedCityName, "(original:", body.cityName, ") countryCode:", countryCode);
-
     } else if (placeId) {
       locationParams = { placeId: placeId };
-      console.log("Using placeId:", placeId);
-
     } else {
-      // Last resort fallback
       locationParams = { cityName: "Manila", countryCode: "PH" };
-      console.log("Using default cityName: Manila, countryCode: PH");
     }
-
-    console.log("Full location params:", JSON.stringify(locationParams));
 
     // Build filter parameters from request body
     const filterParams: Record<string, any> = {};
-
-    // Hotel name search (partial match)
-    if (body.hotelName) {
-      filterParams.hotelName = body.hotelName;
-      console.log("Filter: hotelName =", body.hotelName);
-    }
-
-    // Star rating filter (array of ratings like [3, 4, 5])
+    if (body.hotelName) filterParams.hotelName = body.hotelName;
     if (body.starRating && Array.isArray(body.starRating) && body.starRating.length > 0) {
       filterParams.starRating = body.starRating;
-      console.log("Filter: starRating =", body.starRating);
     }
-
-    // Minimum guest rating (e.g., 7, 8, 9)
-    if (body.minRating && typeof body.minRating === 'number') {
-      filterParams.minRating = body.minRating;
-      console.log("Filter: minRating =", body.minRating);
-    }
-
-    // Minimum reviews count
-    if (body.minReviewsCount && typeof body.minReviewsCount === 'number') {
-      filterParams.minReviewsCount = body.minReviewsCount;
-      console.log("Filter: minReviewsCount =", body.minReviewsCount);
-    }
-
-    // Facilities filter (array of facility IDs)
+    if (body.minRating && typeof body.minRating === 'number') filterParams.minRating = body.minRating;
+    if (body.minReviewsCount && typeof body.minReviewsCount === 'number') filterParams.minReviewsCount = body.minReviewsCount;
     if (body.facilities && Array.isArray(body.facilities) && body.facilities.length > 0) {
       filterParams.facilities = body.facilities;
-      console.log("Filter: facilities =", body.facilities);
-
-      // Strict facility filtering (require ALL facilities)
-      if (body.strictFacilityFiltering === true) {
-        filterParams.strictFacilityFiltering = true;
-        console.log("Filter: strictFacilityFiltering = true");
-      }
+      if (body.strictFacilityFiltering === true) filterParams.strictFacilityFiltering = true;
     }
 
     // Build occupancies array based on rooms, adults, and children
@@ -188,13 +148,10 @@ Deno.serve(async (req: Request) => {
       if (body.childrenAges && Array.isArray(body.childrenAges) && body.childrenAges.length > 0) {
         // Use the provided ages array directly
         childrenAges = body.childrenAges.filter((age: any) => typeof age === 'number' && age >= 0 && age <= 17);
-        console.log("Using provided childrenAges:", childrenAges);
       } else if (typeof totalChildren === 'number' && totalChildren > 0) {
-        // Fallback: Generate default ages (age 10) for each child
         for (let i = 0; i < totalChildren; i++) {
           childrenAges.push(10);
         }
-        console.log("Using default childrenAges (age 10):", childrenAges);
       }
 
       // Distribute guests across rooms
@@ -218,7 +175,6 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      console.log("Built occupancies:", JSON.stringify(occupancies));
       return occupancies;
     };
 
@@ -235,122 +191,86 @@ Deno.serve(async (req: Request) => {
       timeout: 15
     });
 
-    console.log("Rates payload:", ratesPayload);
-
+    const t1 = Date.now();
     const ratesResponse = await fetch(`https://api.liteapi.travel/v3.0/hotels/rates`, {
       method: "POST",
       headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' },
       body: ratesPayload
     });
 
-    console.log("LiteAPI Response status:", ratesResponse.status);
-
     if (!ratesResponse.ok) {
       const errorText = await ratesResponse.text();
-      console.error("LiteAPI Error Response:", errorText);
+      console.error("LiteAPI Error:", errorText);
       throw new Error(`LiteAPI Rates ${ratesResponse.status}: ${errorText}`);
     }
 
     let ratesData = await ratesResponse.json() as { data: Hotel[], rooms?: any[] };
-    console.log("LiteAPI Response data count:", ratesData.data?.length || 0);
-    console.log("LiteAPI Full Response:", JSON.stringify(ratesData).substring(0, 500));
-
-    // DEBUG: Log complete structure to find refundableTag location
-    if (ratesData.data?.[0]) {
-      const firstHotel = ratesData.data[0] as any;
-      console.log("=== DEBUG: HOTEL LEVEL KEYS ===");
-      console.log("Hotel keys:", Object.keys(firstHotel));
-
-      if (firstHotel.roomTypes?.[0]) {
-        const firstRoomType = firstHotel.roomTypes[0] as any;
-        console.log("=== DEBUG: ROOMTYPE LEVEL ===");
-        console.log("RoomType keys:", Object.keys(firstRoomType));
-
-        if (firstRoomType.rates?.[0]) {
-          const firstRate = firstRoomType.rates[0] as any;
-          console.log("=== DEBUG: RATE LEVEL ===");
-          console.log("Rate ALL keys:", Object.keys(firstRate));
-
-          // The refundableTag is INSIDE cancellationPolicies object, NOT at rate level
-          if (firstRate.cancellationPolicies) {
-            console.log("=== DEBUG: CANCELLATION POLICIES (correct location) ===");
-            console.log("cancellationPolicies keys:", Object.keys(firstRate.cancellationPolicies));
-            console.log("cancellationPolicies.refundableTag:", firstRate.cancellationPolicies.refundableTag);
-            console.log("cancellationPolicies.cancelPolicyInfos:", JSON.stringify(firstRate.cancellationPolicies.cancelPolicyInfos)?.substring(0, 500));
-            console.log("cancellationPolicies.hotelRemarks:", firstRate.cancellationPolicies.hotelRemarks);
-          } else {
-            console.log("No cancellationPolicies found on rate - checking other locations");
-            console.log("Rate cancellationPolicy:", firstRate.cancellationPolicy);
-            console.log("Rate cancelPolicy:", firstRate.cancelPolicy);
-          }
-        }
-      }
-      console.log("=== END DEBUG ===");
-    }
+    const t2 = Date.now();
+    console.log(`[Timing] Rates API: ${t2 - t1}ms, hotels: ${ratesData.data?.length || 0}`);
 
     let hotels = ratesData.data || [];
 
     if (hotels.length === 0) {
-      console.log("No hotels found - returning empty result");
       return new Response(JSON.stringify({ data: [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
       });
     }
 
-    // 2. Extract Hotel IDs (Limit to top 20 to avoid hitting URL length limits or timeouts)
+    // 2. Fetch Hotel Details
+    // Single hotel = individual endpoint (full details for property page)
+    // Multiple hotels = batch endpoint (faster for search results)
     const hotelIds = hotels.slice(0, 20).map((h) => h.hotelId);
-
-    // 3. Fetch Hotel Details
     let detailsData: { data: HotelDetails[] } = { data: [] };
 
     if (hotelIds.length === 1) {
-      // Single hotel - use /data/hotel/{id} for full details including hotelImages
-      console.log(`Fetching detailed info for single hotel: ${hotelIds[0]}`);
+      // Single hotel - full details including images, rooms, facilities
       const detailsResponse = await fetch(`https://api.liteapi.travel/v3.0/data/hotel?hotelId=${hotelIds[0]}`, {
         method: "GET",
         headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' }
       });
-
       if (detailsResponse.ok) {
         const singleDetail = await detailsResponse.json();
-        // The singular endpoint returns { data: { ...hotelDetails } } - wrap in array
         detailsData = { data: singleDetail.data ? [singleDetail.data] : [] };
-      } else {
       }
     } else {
-      // Use individual /data/hotel calls for each hotel to get full details including hotelFacilities
-      // The batch /data/hotels endpoint doesn't return facilities
-      const limitedHotelIds = hotels.slice(0, 20).map((h) => h.hotelId);
-      console.log(`Fetching individual details for ${limitedHotelIds.length} hotels (parallel)`);
-
-      // Fetch all hotel details in parallel
-      const detailPromises = limitedHotelIds.map(async (hotelId) => {
-        try {
-          const detailsResponse = await fetch(`https://api.liteapi.travel/v3.0/data/hotel?hotelId=${hotelId}`, {
-            method: "GET",
-            headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' }
+      // Multiple hotels - use batch endpoint (1 call instead of 20)
+      const hotelIdsParam = hotelIds.join(',');
+      console.log(`[Details] Batch fetching ${hotelIds.length} hotels`);
+      try {
+        const batchResponse = await fetch(`https://api.liteapi.travel/v3.0/data/hotels?hotelIds=${hotelIdsParam}&countryCode=${countryCode}`, {
+          method: "GET",
+          headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' }
+        });
+        if (batchResponse.ok) {
+          const batchData = await batchResponse.json();
+          detailsData = { data: batchData.data || [] };
+        } else {
+          console.error(`[Details] Batch fetch failed: ${batchResponse.status}, falling back to individual`);
+          // Fallback: fetch individually but limit to 10 for speed
+          const limitedIds = hotelIds.slice(0, 10);
+          const detailPromises = limitedIds.map(async (hotelId) => {
+            try {
+              const resp = await fetch(`https://api.liteapi.travel/v3.0/data/hotel?hotelId=${hotelId}`, {
+                method: "GET",
+                headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' }
+              });
+              if (resp.ok) {
+                const json = await resp.json();
+                return json.data || null;
+              }
+              return null;
+            } catch { return null; }
           });
-
-          if (detailsResponse.ok) {
-            const json = await detailsResponse.json();
-            return json.data || null;
-          } else {
-            console.error(`Hotel ${hotelId} details fetch failed: ${detailsResponse.status}`);
-            return null;
-          }
-        } catch (e) {
-          console.error(`Hotel ${hotelId} details error:`, e);
-          return null;
+          const allDetails = await Promise.all(detailPromises);
+          detailsData = { data: allDetails.filter(Boolean) };
         }
-      });
-
-      const allDetails = await Promise.all(detailPromises);
-      const validDetails = allDetails.filter(Boolean);
-      console.log(`Total details fetched: ${validDetails.length}`);
-
-      detailsData = { data: validDetails };
+      } catch (e) {
+        console.error("[Details] Batch error:", e);
+      }
     }
+    const t3 = Date.now();
+    console.log(`[Timing] Hotel details: ${t3 - t2}ms, fetched: ${detailsData.data.length}`);
 
     // Process the details data (whether from single or batch fetch)
     const detailsMap = new Map((detailsData.data || []).map((d) => [String(d.id), d]));
@@ -362,92 +282,54 @@ Deno.serve(async (req: Request) => {
       // Also extract board type (meal plan) info
       const boardTypes = new Set<string>();
 
-      // Log first room's rate structure for debugging
-      if (hotel.roomTypes?.[0]?.rates?.[0]) {
-        const sampleRate = hotel.roomTypes[0].rates[0] as any;
-        console.log(`[Hotel ${hotel.hotelId}] Sample rate keys:`, Object.keys(sampleRate));
-        // CORRECT: refundableTag is inside cancellationPolicies, not at rate level
-        console.log(`[Hotel ${hotel.hotelId}] cancellationPolicies:`, sampleRate.cancellationPolicies ? Object.keys(sampleRate.cancellationPolicies) : 'undefined');
-        console.log(`[Hotel ${hotel.hotelId}] cancellationPolicies.refundableTag:`, sampleRate.cancellationPolicies?.refundableTag);
-      }
-
       if (hotel.roomTypes && Array.isArray(hotel.roomTypes)) {
         for (const roomType of hotel.roomTypes) {
-          // Cast to any to check for fields at roomType level
           const rt = roomType as any;
 
-          // Check refundableTag at roomType level first
-          if (rt.refundableTag === 'RFN') {
+          // Check cancellationPolicies at roomType/offer level (per LiteAPI docs)
+          if (rt.cancellationPolicies?.refundableTag === 'RFN') {
             hotel.refundableTag = 'RFN';
-          } else if (rt.refundableTag === 'NRFN' && !hotel.refundableTag) {
+          } else if (rt.cancellationPolicies?.refundableTag === 'NRFN' && !hotel.refundableTag) {
             hotel.refundableTag = 'NRFN';
           }
 
-          // Check cancelPolicyInfos at roomType level
-          if (rt.cancelPolicyInfos && Array.isArray(rt.cancelPolicyInfos) && rt.cancelPolicyInfos.length > 0) {
-            const policies = [...rt.cancelPolicyInfos].sort(
-              (a: any, b: any) => new Date(a.cancelTime).getTime() - new Date(b.cancelTime).getTime()
-            );
-            if (policies[0].amount === 0) {
-              hotel.refundableTag = 'RFN';
-              console.log(`[Hotel ${hotel.hotelId}] Found FREE cancellation at roomType level`);
-            }
-          }
+          // Legacy: check refundableTag directly on roomType
+          if (rt.refundableTag === 'RFN') hotel.refundableTag = 'RFN';
+          else if (rt.refundableTag === 'NRFN' && !hotel.refundableTag) hotel.refundableTag = 'NRFN';
 
           if (roomType.rates && Array.isArray(roomType.rates)) {
             for (const rate of roomType.rates) {
               const r = rate as any;
 
-              // CORRECT LOCATION: refundableTag is INSIDE cancellationPolicies object
-              // Structure: rate.cancellationPolicies.refundableTag (RFN or NRFN)
+              // refundableTag is INSIDE cancellationPolicies (per LiteAPI docs)
               const cancellationPolicies = r.cancellationPolicies;
-              let refundTag = cancellationPolicies?.refundableTag;
+              let refundTag = cancellationPolicies?.refundableTag || r.refundableTag;
 
-              // Fallback: check other possible locations
-              if (!refundTag) {
-                refundTag = r.refundableTag || r.refundable_tag;
-              }
-
-              const isRefundable = r.refundable === true || r.isRefundable === true;
-
-              // Check cancelPolicyInfos INSIDE cancellationPolicies
+              // Check cancelPolicyInfos for free cancellation
               let hasFreeCancellation = false;
               const cancelPolicyInfos = cancellationPolicies?.cancelPolicyInfos || r.cancelPolicyInfos;
-              if (cancelPolicyInfos && Array.isArray(cancelPolicyInfos) && cancelPolicyInfos.length > 0) {
-                const policies = [...cancelPolicyInfos].sort(
+              if (cancelPolicyInfos?.length > 0) {
+                const sorted = [...cancelPolicyInfos].sort(
                   (a: any, b: any) => new Date(a.cancelTime).getTime() - new Date(b.cancelTime).getTime()
                 );
-                if (policies[0].amount === 0 || (policies[0].type === 'PERCENT' && policies[0].amount === 0)) {
-                  hasFreeCancellation = true;
-                  console.log(`[Hotel ${hotel.hotelId}] Found FREE cancellation via cancelPolicyInfos`);
-                }
+                if (sorted[0].amount === 0) hasFreeCancellation = true;
               }
 
-              // Check if this rate is refundable (RFN = refundable, NRFN = non-refundable)
-              if (refundTag === 'RFN' || isRefundable || hasFreeCancellation) {
+              if (refundTag === 'RFN' || r.refundable === true || hasFreeCancellation) {
                 hotel.refundableTag = 'RFN';
-                console.log(`[Hotel ${hotel.hotelId}] Marked as REFUNDABLE (tag: ${refundTag}, isRefundable: ${isRefundable}, freeCancellation: ${hasFreeCancellation})`);
               }
-              // Also check for NRFN if no refundableTag found yet
               if ((refundTag === 'NRFN' || r.refundable === false) && !hotel.refundableTag) {
                 hotel.refundableTag = 'NRFN';
-                console.log(`[Hotel ${hotel.hotelId}] Marked as NON-REFUNDABLE (tag: ${refundTag})`);
               }
 
-              // Extract board/meal plan info - check multiple field names
-              const boardName = r.boardName || r.boardType || r.board ||
-                               r.mealPlanName || r.meal_plan || r.mealPlan;
-              if (boardName) {
-                boardTypes.add(boardName);
-              }
+              // Extract board/meal plan info
+              const boardName = r.boardName || r.boardType || r.board || r.mealPlanName;
+              if (boardName) boardTypes.add(boardName);
             }
           }
         }
       }
-      // Store board types as array
       hotel.boardTypes = Array.from(boardTypes);
-      console.log(`[Hotel ${hotel.hotelId}] FINAL refundableTag:`, hotel.refundableTag || 'not found');
-      console.log(`[Hotel ${hotel.hotelId}] FINAL boardTypes:`, hotel.boardTypes);
 
       const detail = detailsMap.get(String(hotel.hotelId));
       if (detail) {
@@ -475,8 +357,6 @@ Deno.serve(async (req: Request) => {
         if (descriptionText) {
           hotel.description = descriptionText;
         }
-        console.log(`[Hotel ${hotel.hotelId}] description found:`, hotel.description ? hotel.description.substring(0, 50) + '...' : 'none');
-
         // Map Reviews - Try various field names that LiteAPI may use
         hotel.reviewCount = detail.review_count || detail.cnt_reviews || detail.number_of_reviews ||
           detail.reviews_count || detail.hotelReviewCount || detail.reviewsCount ||
@@ -518,7 +398,6 @@ Deno.serve(async (req: Request) => {
               photos: normalizedPhotos
             };
           });
-          console.log(`[Rooms] Processed ${hotel.detailRooms.length} detail rooms with photos`);
         }
 
         // Map Check-in/Check-out times
@@ -537,12 +416,9 @@ Deno.serve(async (req: Request) => {
 
         // Map Hotel Facilities (array of strings)
         hotel.hotelFacilities = detail.hotelFacilities || [];
-        console.log(`[Hotel ${hotel.hotelId}] hotelFacilities:`, hotel.hotelFacilities.slice(0, 3), `(total: ${hotel.hotelFacilities.length})`);
-
         // Also try 'facilities' field (array of objects with name/facilityId)
         if (hotel.hotelFacilities.length === 0 && detail.facilities && Array.isArray(detail.facilities)) {
           hotel.hotelFacilities = detail.facilities.map((f: any) => f.name || f).filter(Boolean);
-          console.log(`[Hotel ${hotel.hotelId}] facilities (from objects):`, hotel.hotelFacilities.slice(0, 3));
         }
 
         // Map Coordinates
@@ -555,6 +431,8 @@ Deno.serve(async (req: Request) => {
         hotel.countryCode = detail.countryCode;
       }
     });
+
+    console.log(`[Timing] TOTAL: ${Date.now() - t0}ms (rates: ${t2 - t1}ms, details: ${t3 - t2}ms, merge: ${Date.now() - t3}ms) — ${hotels.length} hotels`);
 
     return new Response(JSON.stringify({
       data: hotels
