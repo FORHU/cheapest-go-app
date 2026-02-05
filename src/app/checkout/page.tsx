@@ -187,6 +187,7 @@ export default function CheckoutPage() {
                         holderLastName: formData.lastName,
                         holderEmail: formData.email,
                         specialRequests: specialRequests || undefined,
+                        cancellationPolicy: priceData?.cancellationPolicies || undefined,
                     }).catch(err => console.error("Failed to save booking:", err))
                 );
             }
@@ -312,6 +313,11 @@ export default function CheckoutPage() {
                         {/* Sidebar Summary */}
                         <BookingSummary
                             propertyName={displayProperty.name}
+                            propertyImage={property?.image}
+                            propertyAddress={property?.location}
+                            starRating={undefined}
+                            reviewScore={property?.rating}
+                            reviewCount={property?.reviews}
                             roomTitle={displayRoom.title}
                             roomPrice={displayRoom.price}
                             totalNights={totalNights}
@@ -319,7 +325,10 @@ export default function CheckoutPage() {
                             children={children}
                             taxes={taxes}
                             totalPrice={totalPrice}
+                            checkIn={checkIn}
+                            checkOut={checkOut}
                             prebookId={prebookId}
+                            cancellationPolicies={priceData?.cancellationPolicies}
                         />
                     </div>
                 </div>

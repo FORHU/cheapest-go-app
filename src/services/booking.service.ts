@@ -47,6 +47,8 @@ export interface PrebookResponse {
     total: number;
   };
   status?: string;
+  /** Cancellation policies from prebook response */
+  cancellationPolicies?: CancellationPolicy;
 }
 
 /**
@@ -77,6 +79,7 @@ export interface SaveBookingParams {
   holderLastName: string;
   holderEmail: string;
   specialRequests?: string;
+  cancellationPolicy?: CancellationPolicy;
 }
 
 /**
@@ -221,7 +224,7 @@ export const bookingService = {
    */
   saveBooking: async (booking: SaveBookingParams): Promise<void> => {
     const supabase = createClient();
-    const { error } = await supabase.from('bookings').insert({
+    const baseData = {
       booking_id: booking.bookingId,
       user_id: booking.userId,
       property_name: booking.propertyName,
@@ -238,11 +241,21 @@ export const bookingService = {
       holder_email: booking.holderEmail,
       status: 'confirmed',
       special_requests: booking.specialRequests,
+    };
+
+    // Try with cancellation_policy first, fallback without if column doesn't exist
+    const { error } = await supabase.from('bookings').insert({
+      ...baseData,
+      cancellation_policy: booking.cancellationPolicy || null,
     });
 
     if (error) {
-      console.error('Failed to save booking:', error);
-      throw error;
+      // Retry without cancellation_policy in case column doesn't exist yet
+      const { error: retryError } = await supabase.from('bookings').insert(baseData);
+      if (retryError) {
+        console.error('Failed to save booking:', retryError);
+        throw retryError;
+      }
     }
   },
 

@@ -122,7 +122,7 @@ Deno.serve(async (req: any) => {
             throw new Error(`LiteAPI Connection Failed (All Endpoints): ${lastError?.message || "Stream Error"}`);
         }
 
-        console.log("Prebook LiteAPI Raw Response:", liteResponseText.substring(0, 500));
+        console.log("Prebook LiteAPI Raw Response:", liteResponseText.substring(0, 1000));
 
 
         let result;
@@ -137,6 +137,11 @@ Deno.serve(async (req: any) => {
             console.error("Prebook Failed:", JSON.stringify(result));
             throw new Error(result.error?.message || `Prebook failed with status ${liteResponse?.status}`);
         }
+
+        // Log cancellation policies from prebook response
+        const prebookData = result.data || result;
+        console.log("[Prebook] cancellationPolicies:", JSON.stringify(prebookData.cancellationPolicies)?.substring(0, 500));
+        console.log("[Prebook] refundableTag:", prebookData.cancellationPolicies?.refundableTag);
 
         return new Response(JSON.stringify(result), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

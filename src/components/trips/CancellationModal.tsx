@@ -135,6 +135,15 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
         };
     }, [cancellationPolicies?.cancelPolicyInfos, booking.total_price, booking.currency]);
 
+    // Determine if currently free to cancel based on actual fee calculation
+    // This is more accurate than refundableTag alone
+    const isCurrentlyFreeCancellation = useMemo(() => {
+        if (currentCancellationFee) {
+            return currentCancellationFee.fee === 0;
+        }
+        return isRefundable;
+    }, [currentCancellationFee, isRefundable]);
+
     const renderCancellationPolicies = useCallback(() => {
         const policies = cancellationPolicies?.cancelPolicyInfos;
         if (!policies || policies.length === 0) {
@@ -267,17 +276,19 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
 
                                 {/* Refundable Status */}
                                 <div className={`flex items-center gap-2 p-3 rounded-lg mb-5 ${
-                                    isRefundable
+                                    isCurrentlyFreeCancellation
                                         ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
                                         : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
                                 }`}>
-                                    {isRefundable ? (
+                                    {isCurrentlyFreeCancellation ? (
                                         <Check className="w-5 h-5" />
                                     ) : (
                                         <AlertTriangle className="w-5 h-5" />
                                     )}
                                     <span className="font-medium text-sm">
-                                        {isRefundable ? 'This booking is refundable' : 'This booking may not be fully refundable'}
+                                        {isCurrentlyFreeCancellation
+                                            ? 'Free cancellation — full refund if cancelled now'
+                                            : 'This booking may not be fully refundable'}
                                     </span>
                                 </div>
 
