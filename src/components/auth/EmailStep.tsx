@@ -1,39 +1,34 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Mail, ArrowRight, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
+import { useAuthFormStore } from '@/stores/authFormStore';
 import SocialLoginButtons from './SocialLoginButtons';
 import { Input, Button } from '@/components/ui';
 import { PasswordRequirements } from './PasswordRequirements';
 import { emailSchema, registerSchema } from '@/lib/schemas/auth';
 
 const EmailStep: React.FC = () => {
-    const { email, setEmail, setAuthStep, isLoading, register } = useAuthStore();
-    const [localEmail, setLocalEmail] = useState(email);
-    const [error, setError] = useState('');
-
-    // Direct signup state
-    const [showSignupForm, setShowSignupForm] = useState(false);
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [password, setPassword] = useState('');
-    const [errors, setErrors] = useState<Record<string, string>>({});
+    const { setEmail, setAuthStep, isLoading, register } = useAuthStore();
+    const {
+        localEmail, firstName, lastName, password, errors, showSignupForm,
+        setField, setShowSignupForm, setErrors, clearErrors,
+    } = useAuthFormStore();
 
     const handleContinue = (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
+        clearErrors();
 
         const result = emailSchema.safeParse({ email: localEmail });
 
         if (!result.success) {
-            setError(result.error.flatten().fieldErrors.email?.[0] || 'Invalid email');
+            setErrors({ email: result.error.flatten().fieldErrors.email?.[0] || 'Invalid email' });
             return;
         }
 
         setEmail(localEmail);
-        // Simulation logic can be improved later
         if (localEmail.toLowerCase().includes('new')) {
             setAuthStep('register');
         } else {
@@ -43,15 +38,9 @@ const EmailStep: React.FC = () => {
 
     const handleDirectSignup = async (e: React.FormEvent) => {
         e.preventDefault();
-        setErrors({});
+        clearErrors();
 
-        const formData = {
-            email: localEmail,
-            firstName,
-            lastName,
-            password
-        };
-
+        const formData = { email: localEmail, firstName, lastName, password };
         const result = registerSchema.safeParse(formData);
 
         if (!result.success) {
@@ -70,7 +59,6 @@ const EmailStep: React.FC = () => {
             await register({ email: localEmail, password, firstName, lastName });
             toast.success("Account created successfully!");
         } catch (error: any) {
-            // Handle rate limit specifically
             if (error?.code === 'over_email_send_rate_limit' || error?.message?.includes('rate limit')) {
                 toast.warning("Please check your email. Verification link already sent.");
                 setAuthStep('verify-email');
@@ -102,13 +90,10 @@ const EmailStep: React.FC = () => {
                             type="email"
                             label="Email"
                             value={localEmail}
-                            onChange={(e) => {
-                                setLocalEmail(e.target.value);
-                                setError('');
-                            }}
+                            onChange={(e) => setField('localEmail', e.target.value)}
                             placeholder="Enter your email"
                             icon={Mail}
-                            error={error}
+                            error={errors.email}
                             disabled={isLoading}
                         />
 
@@ -140,10 +125,7 @@ const EmailStep: React.FC = () => {
                             type="email"
                             label="Email"
                             value={localEmail}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                setLocalEmail(e.target.value);
-                                setErrors(prev => ({ ...prev, email: '' }));
-                            }}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('localEmail', e.target.value)}
                             placeholder="Enter your email"
                             icon={Mail}
                             error={errors.email}
@@ -155,10 +137,7 @@ const EmailStep: React.FC = () => {
                                 id="firstName"
                                 label="First name"
                                 value={firstName}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                    setFirstName(e.target.value);
-                                    setErrors(prev => ({ ...prev, firstName: '' }));
-                                }}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('firstName', e.target.value)}
                                 placeholder="First"
                                 icon={User}
                                 error={errors.firstName}
@@ -168,10 +147,7 @@ const EmailStep: React.FC = () => {
                                 id="lastName"
                                 label="Last name"
                                 value={lastName}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                    setLastName(e.target.value);
-                                    setErrors(prev => ({ ...prev, lastName: '' }));
-                                }}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('lastName', e.target.value)}
                                 placeholder="Last"
                                 error={errors.lastName}
                                 disabled={isLoading}
@@ -184,10 +160,7 @@ const EmailStep: React.FC = () => {
                                 type="password"
                                 label="Password"
                                 value={password}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                    setPassword(e.target.value);
-                                    setErrors(prev => ({ ...prev, password: '' }));
-                                }}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('password', e.target.value)}
                                 placeholder="Create a password"
                                 icon={Lock}
                                 error={errors.password}

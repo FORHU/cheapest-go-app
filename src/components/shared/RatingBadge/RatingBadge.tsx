@@ -1,5 +1,3 @@
-"use client";
-
 import React from 'react';
 
 export type RatingBadgeSize = 'sm' | 'md' | 'lg';

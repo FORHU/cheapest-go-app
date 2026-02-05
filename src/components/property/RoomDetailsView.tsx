@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Property } from '@/data/mockProperties';
-import { ArrowLeft, User, Bed, Wifi, MapPin, Check, Star, Share2, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, User, Bed, MapPin, Check, Share2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useBookingStore } from '@/stores/bookingStore';
 
 // Strip HTML tags from text
@@ -32,6 +32,7 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
     const router = useRouter();
     const { setBookingDetails } = useBookingStore();
     const [currentPhotoIndex, setCurrentPhotoIndex] = React.useState(0);
+    const [lightboxOpen, setLightboxOpen] = React.useState(false);
 
     // Scroll to top on mount
     React.useEffect(() => {
@@ -39,6 +40,7 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
     }, []);
 
     const amenities = room.amenities || [];
+    const photos: string[] = room.roomPhotos || [];
 
     // Extract price from room rates
     const extractPrice = (rates?: any[]): number => {
@@ -75,6 +77,9 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
 
         router.push('/checkout');
     };
+
+    const goToPrev = () => setCurrentPhotoIndex((prev) => (prev === 0 ? photos.length - 1 : prev - 1));
+    const goToNext = () => setCurrentPhotoIndex((prev) => (prev === photos.length - 1 ? 0 : prev + 1));
 
     return (
         <div className="min-h-screen bg-transparent pb-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -125,33 +130,30 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
                     </div>
                 </div>
 
-                {/* Hero Image */}
-                <div className="mb-8 rounded-2xl overflow-hidden shadow-lg h-[300px] md:h-[500px] relative bg-slate-200 dark:bg-slate-800 group">
-                    {room.roomPhotos && room.roomPhotos.length > 0 ? (
+                {/* Hero Image — clickable to open lightbox */}
+                <div
+                    className="mb-8 rounded-2xl overflow-hidden shadow-lg h-[300px] md:h-[500px] relative bg-slate-200 dark:bg-slate-800 group cursor-pointer"
+                    onClick={() => photos.length > 0 && setLightboxOpen(true)}
+                >
+                    {photos.length > 0 ? (
                         <>
                             <img
-                                src={room.roomPhotos[currentPhotoIndex]}
+                                src={photos[currentPhotoIndex]}
                                 alt={`${room.name} - Photo ${currentPhotoIndex + 1}`}
                                 className="w-full h-full object-cover transition-opacity duration-300"
                             />
 
                             {/* Navigation Buttons */}
-                            {room.roomPhotos.length > 1 && (
+                            {photos.length > 1 && (
                                 <>
                                     <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setCurrentPhotoIndex((prev) => (prev === 0 ? room.roomPhotos.length - 1 : prev - 1));
-                                        }}
+                                        onClick={(e) => { e.stopPropagation(); goToPrev(); }}
                                         className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 dark:bg-black/50 hover:bg-white dark:hover:bg-black/70 text-slate-800 dark:text-white transition-all opacity-0 group-hover:opacity-100"
                                     >
                                         <ChevronLeft size={24} />
                                     </button>
                                     <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setCurrentPhotoIndex((prev) => (prev === room.roomPhotos.length - 1 ? 0 : prev + 1));
-                                        }}
+                                        onClick={(e) => { e.stopPropagation(); goToNext(); }}
                                         className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 dark:bg-black/50 hover:bg-white dark:hover:bg-black/70 text-slate-800 dark:text-white transition-all opacity-0 group-hover:opacity-100"
                                     >
                                         <ChevronRight size={24} />
@@ -159,7 +161,7 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
 
                                     {/* Counter Badge */}
                                     <div className="absolute bottom-4 right-4 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-medium">
-                                        {currentPhotoIndex + 1} / {room.roomPhotos.length}
+                                        {currentPhotoIndex + 1} / {photos.length}
                                     </div>
                                 </>
                             )}
@@ -248,6 +250,53 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
                     </div>
                 </div>
             </div>
+
+            {/* Image Lightbox Dialog */}
+            {lightboxOpen && photos.length > 0 && (
+                <div
+                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+                    onClick={() => setLightboxOpen(false)}
+                >
+                    {/* Close button */}
+                    <button
+                        onClick={() => setLightboxOpen(false)}
+                        className="absolute top-4 right-4 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10"
+                    >
+                        <X size={24} />
+                    </button>
+
+                    {/* Counter */}
+                    <div className="absolute top-5 left-1/2 -translate-x-1/2 text-white/80 text-sm font-medium z-10">
+                        {currentPhotoIndex + 1} / {photos.length}
+                    </div>
+
+                    {/* Image */}
+                    <img
+                        src={photos[currentPhotoIndex]}
+                        alt={`${room.name} - Photo ${currentPhotoIndex + 1}`}
+                        className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl select-none"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+
+                    {/* Nav buttons */}
+                    {photos.length > 1 && (
+                        <>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); goToPrev(); }}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
+                            >
+                                <ChevronLeft size={28} />
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); goToNext(); }}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
+                            >
+                                <ChevronRight size={28} />
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

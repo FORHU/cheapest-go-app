@@ -62,7 +62,7 @@ export interface RoomRate {
     refundableTag?: string;
     /** @deprecated Use cancellationPolicies instead */
     cancellationPolicy?: {
-        cancelPolicyInfos?: Array<{ cancelDeadline?: string }>;
+        cancelPolicyInfos?: Array<{ cancelDeadline?: string; amount?: number }>;
     };
 }
 

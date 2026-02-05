@@ -1,5 +1,3 @@
-"use client";
-
 import React from 'react';
 import { Clock, Info, XCircle, CheckCircle } from 'lucide-react';
 
@@ -119,9 +117,10 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                             ))}
 
                             {cancellationPolicies.hotelRemarks && (
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                                    {cancellationPolicies.hotelRemarks}
-                                </p>
+                                <div
+                                    className="text-xs text-slate-500 dark:text-slate-400 mt-2 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4"
+                                    dangerouslySetInnerHTML={{ __html: cancellationPolicies.hotelRemarks }}
+                                />
                             )}
                         </div>
                     </div>
@@ -135,11 +134,10 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                         <Info size={18} />
                         Important Information
                     </h3>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                        <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">
-                            {hotelImportantInformation}
-                        </p>
-                    </div>
+                    <div
+                        className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1"
+                        dangerouslySetInnerHTML={{ __html: hotelImportantInformation }}
+                    />
                 </div>
             )}
         </div>

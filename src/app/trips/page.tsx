@@ -20,6 +20,12 @@ export default function TripsPage() {
     } = useTripsData();
 
     const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+    const [visibleCount, setVisibleCount] = useState(10);
+
+    const handleTabChange = (tab: 'upcoming' | 'past' | 'all') => {
+        setActiveTab(tab);
+        setVisibleCount(10);
+    };
 
     const displayedBookings = activeTab === 'upcoming'
         ? upcomingBookings
@@ -50,7 +56,7 @@ export default function TripsPage() {
                     {/* Tabs */}
                     <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-white/10">
                         <button
-                            onClick={() => setActiveTab('upcoming')}
+                            onClick={() => handleTabChange('upcoming')}
                             className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'upcoming'
                                     ? 'text-blue-600 dark:text-blue-400'
                                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
@@ -67,7 +73,7 @@ export default function TripsPage() {
                             )}
                         </button>
                         <button
-                            onClick={() => setActiveTab('past')}
+                            onClick={() => handleTabChange('past')}
                             className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'past'
                                     ? 'text-blue-600 dark:text-blue-400'
                                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
@@ -79,7 +85,7 @@ export default function TripsPage() {
                             )}
                         </button>
                         <button
-                            onClick={() => setActiveTab('all')}
+                            onClick={() => handleTabChange('all')}
                             className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'all'
                                     ? 'text-blue-600 dark:text-blue-400'
                                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
@@ -127,13 +133,23 @@ export default function TripsPage() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {displayedBookings.map((booking) => (
+                            {displayedBookings.slice(0, visibleCount).map((booking) => (
                                 <BookingCard
                                     key={booking.id}
                                     booking={booking}
                                     onBookingUpdated={refetch}
                                 />
                             ))}
+                            {visibleCount < displayedBookings.length && (
+                                <div className="flex justify-center pt-4">
+                                    <button
+                                        onClick={() => setVisibleCount(prev => prev + 10)}
+                                        className="px-6 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors"
+                                    >
+                                        View more ({displayedBookings.length - visibleCount} remaining)
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

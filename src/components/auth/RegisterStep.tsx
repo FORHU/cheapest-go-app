@@ -1,32 +1,26 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ArrowLeft, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
+import { useAuthFormStore } from '@/stores/authFormStore';
 import { Input, Button } from '@/components/ui';
 import { PasswordRequirements } from './PasswordRequirements';
 import { registerSchema } from '@/lib/schemas/auth';
 
 const RegisterStep: React.FC = () => {
     const { email, setAuthStep, register, isLoading, login } = useAuthStore();
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [password, setPassword] = useState('');
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    const [keepSignedIn, setKeepSignedIn] = useState(true);
+    const {
+        firstName, lastName, password, errors, rememberMe,
+        setField, setRememberMe, setErrors, clearErrors,
+    } = useAuthFormStore();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setErrors({});
+        clearErrors();
 
-        const formData = {
-            email,
-            firstName,
-            lastName,
-            password
-        };
-
+        const formData = { email, firstName, lastName, password };
         const result = registerSchema.safeParse(formData);
 
         if (!result.success) {
@@ -104,10 +98,7 @@ const RegisterStep: React.FC = () => {
                         id="firstName"
                         label="First name"
                         value={firstName}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                            setFirstName(e.target.value);
-                            setErrors(prev => ({ ...prev, firstName: '' }));
-                        }}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('firstName', e.target.value)}
                         placeholder="First"
                         icon={User}
                         error={errors.firstName}
@@ -117,10 +108,7 @@ const RegisterStep: React.FC = () => {
                         id="lastName"
                         label="Last name"
                         value={lastName}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                            setLastName(e.target.value);
-                            setErrors(prev => ({ ...prev, lastName: '' }));
-                        }}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('lastName', e.target.value)}
                         placeholder="Last"
                         error={errors.lastName}
                         disabled={isLoading}
@@ -133,10 +121,7 @@ const RegisterStep: React.FC = () => {
                         type="password"
                         label="Password"
                         value={password}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                            setPassword(e.target.value);
-                            setErrors(prev => ({ ...prev, password: '' }));
-                        }}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('password', e.target.value)}
                         placeholder="Create a password"
                         icon={Lock}
                         error={errors.password}
@@ -148,8 +133,8 @@ const RegisterStep: React.FC = () => {
                 <label className="flex items-center gap-2 cursor-pointer">
                     <input
                         type="checkbox"
-                        checked={keepSignedIn}
-                        onChange={(e) => setKeepSignedIn(e.target.checked)}
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
                         className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-sm text-slate-600 dark:text-slate-400">Keep me signed in</span>

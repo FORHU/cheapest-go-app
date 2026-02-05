@@ -1,5 +1,3 @@
-"use client";
-
 import React from 'react';
 import { MapPin, Building, ExternalLink } from 'lucide-react';
 
