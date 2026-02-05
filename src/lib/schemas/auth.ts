@@ -25,6 +25,18 @@ export const registerSchema = z.object({
     password: passwordSchema.shape.password,
 });
 
+export const profileSchema = z.object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+});
+
+export const updatePasswordSchema = z.object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: passwordSchema.shape.password,
+});
+
 export type EmailInput = z.infer<typeof emailSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type ProfileInput = z.infer<typeof profileSchema>;
+export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;

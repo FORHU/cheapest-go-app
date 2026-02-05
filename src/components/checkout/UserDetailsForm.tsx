@@ -11,7 +11,11 @@ interface UserDetailsFormProps {
     onPhoneCountryChange: (value: string) => void;
     isWorkTravel: boolean;
     onWorkTravelChange: (value: boolean) => void;
+    errors?: Record<string, string>;
 }
+
+const FieldError = ({ message }: { message?: string }) =>
+    message ? <p className="mt-1 text-xs text-red-500">{message}</p> : null;
 
 export function UserDetailsForm({
     formData,
@@ -20,6 +24,7 @@ export function UserDetailsForm({
     onPhoneCountryChange,
     isWorkTravel,
     onWorkTravelChange,
+    errors = {},
 }: UserDetailsFormProps) {
     return (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 p-6 shadow-sm">
@@ -35,9 +40,10 @@ export function UserDetailsForm({
                         value={formData.firstName}
                         onChange={onInputChange}
                         type="text"
-                        className="w-full p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
+                        className={`w-full p-3 rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors.firstName ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
                         placeholder="Enter first name"
                     />
+                    <FieldError message={errors.firstName} />
                 </div>
                 <div>
                     <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Last Name *</label>
@@ -46,9 +52,10 @@ export function UserDetailsForm({
                         value={formData.lastName}
                         onChange={onInputChange}
                         type="text"
-                        className="w-full p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
+                        className={`w-full p-3 rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors.lastName ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
                         placeholder="Enter last name"
                     />
+                    <FieldError message={errors.lastName} />
                 </div>
                 <div className="md:col-span-2">
                     <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Email *</label>
@@ -57,9 +64,10 @@ export function UserDetailsForm({
                         value={formData.email}
                         onChange={onInputChange}
                         type="email"
-                        className="w-full p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
+                        className={`w-full p-3 rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors.email ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
                         placeholder="Enter email"
                     />
+                    <FieldError message={errors.email} />
                 </div>
                 <div className="md:col-span-2">
                     <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Phone</label>

@@ -2,6 +2,32 @@ import { create } from 'zustand';
 import { createClient } from '@/utils/supabase/client';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import type { User, AuthStep } from '@/types/auth';
+import {
+    loginSchema, registerSchema, emailSchema, profileSchema, updatePasswordSchema,
+    type RegisterInput, type ProfileInput,
+} from '@/lib/schemas/auth';
+
+// --- Helpers ---
+
+const supabase = createClient();
+
+const extractUserProfile = (supabaseUser: SupabaseUser): User => {
+    const meta = supabaseUser.user_metadata || {};
+    return {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        firstName: meta.first_name || meta.firstName || meta.name?.split(' ')[0] || 'User',
+        lastName: meta.last_name || meta.lastName || meta.name?.split(' ').slice(1).join(' ') || '',
+        avatar: meta.avatar_url || meta.picture,
+    };
+};
+
+const buildRedirectUrl = (path = '/auth/callback') => {
+    const currentPath = window.location.pathname + window.location.search;
+    return `${window.location.origin}${path}?next=${encodeURIComponent(currentPath)}`;
+};
+
+// --- Types ---
 
 interface AuthState {
     user: User | null;
@@ -12,303 +38,172 @@ interface AuthState {
     isLoading: boolean;
     isAuthModalOpen: boolean;
 
-    // Actions
     setAuthStep: (step: AuthStep) => void;
     setEmail: (email: string) => void;
-    setUser: (user: User | null) => void;
-    setSupabaseUser: (user: SupabaseUser | null) => void;
-    setSession: (session: Session | null) => void;
-    setIsLoading: (loading: boolean) => void;
     openAuthModal: (step?: AuthStep) => void;
     closeAuthModal: () => void;
+    syncSession: (session: Session | null) => void;
 
-    // Async Actions
     login: (email: string, password: string) => Promise<void>;
-    register: (data: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
+    register: (data: RegisterInput) => Promise<void>;
     logout: () => Promise<void>;
     socialLogin: (provider: 'google' | 'apple' | 'facebook') => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
     resendConfirmation: (email: string) => Promise<void>;
-    updateProfile: (data: { firstName: string; lastName: string }) => Promise<void>;
+    updateProfile: (data: ProfileInput) => Promise<void>;
     updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-
-    // Helper to sync state from session
-    syncSession: (session: Session | null) => void;
 }
 
-// Helper to extract user profile
-const extractUserProfile = (supabaseUser: SupabaseUser): User => {
-    const metadata = supabaseUser.user_metadata || {};
-    return {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        firstName: metadata.first_name || metadata.firstName || metadata.name?.split(' ')[0] || 'User',
-        lastName: metadata.last_name || metadata.lastName || metadata.name?.split(' ').slice(1).join(' ') || '',
-        avatar: metadata.avatar_url || metadata.picture,
+// --- Store ---
+
+export const useAuthStore = create<AuthState>((set, get) => {
+    /** Wraps an async action with isLoading state management. */
+    const withLoading = <T>(fn: () => Promise<T>): Promise<T> => {
+        set({ isLoading: true });
+        return fn().finally(() => set({ isLoading: false }));
     };
-};
 
-const supabase = createClient();
+    return {
+        user: null,
+        supabaseUser: null,
+        session: null,
+        authStep: 'email',
+        email: '',
+        isLoading: true,
+        isAuthModalOpen: false,
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-    user: null,
-    supabaseUser: null,
-    session: null,
-    authStep: 'email',
-    email: '',
-    isLoading: true,
-    isAuthModalOpen: false,
+        setAuthStep: (authStep) => set({ authStep }),
+        setEmail: (email) => set({ email }),
+        openAuthModal: (step = 'email') => set({ isAuthModalOpen: true, authStep: step }),
+        closeAuthModal: () => set({ isAuthModalOpen: false }),
 
-    setAuthStep: (authStep) => set({ authStep }),
-    setEmail: (email) => set({ email }),
-    setUser: (user) => set({ user }),
-    setSupabaseUser: (supabaseUser) => set({ supabaseUser }),
-    setSession: (session) => set({ session }),
-    setIsLoading: (isLoading) => set({ isLoading }),
-    openAuthModal: (step = 'email') => set({ isAuthModalOpen: true, authStep: step }),
-    closeAuthModal: () => set({ isAuthModalOpen: false }),
+        syncSession: (session) => {
+            set(session?.user
+                ? { session, supabaseUser: session.user, user: extractUserProfile(session.user), isLoading: false }
+                : { session: null, supabaseUser: null, user: null, isLoading: false },
+            );
+        },
 
-    syncSession: (session) => {
-        if (session?.user) {
-            set({
-                session,
-                supabaseUser: session.user,
-                user: extractUserProfile(session.user),
-                isLoading: false,
+        login: async (email, password) => {
+            loginSchema.parse({ email, password });
+            set({ email });
+            return withLoading(async () => {
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) {
+                    if (error.message?.toLowerCase().includes('email not confirmed')) {
+                        set({ authStep: 'verify-email' });
+                    }
+                    throw error;
+                }
+                if (data.user && data.session) get().syncSession(data.session);
             });
-        } else {
-            set({
-                session: null,
-                supabaseUser: null,
-                user: null,
-                isLoading: false,
-            });
-        }
-    },
+        },
 
-    login: async (email, password) => {
-        set({ isLoading: true, email });
-        try {
-            console.log('[Auth] Attempting login for:', email);
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
+        register: async (data) => {
+            registerSchema.parse(data);
+            set({ email: data.email });
+            return withLoading(async () => {
+                const { data: authData, error } = await supabase.auth.signUp({
+                    email: data.email,
+                    password: data.password,
+                    options: {
+                        emailRedirectTo: buildRedirectUrl(),
+                        data: {
+                            first_name: data.firstName,
+                            last_name: data.lastName,
+                            full_name: `${data.firstName} ${data.lastName}`,
+                        },
+                    },
+                });
+                if (error) throw error;
 
+                if (authData.user) {
+                    authData.session
+                        ? get().syncSession(authData.session)
+                        : set({ authStep: 'verify-email' });
+                }
+            });
+        },
+
+        logout: () => withLoading(async () => {
+            const { error } = await supabase.auth.signOut();
             if (error) throw error;
+            get().syncSession(null);
+        }),
 
-            if (data.user && data.session) {
-                console.log('[Auth] Login successful, user metadata:', data.user.user_metadata);
-                get().syncSession(data.session);
+        socialLogin: async (provider) => {
+            set({ isLoading: true });
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: { redirectTo: buildRedirectUrl() },
+            });
+            if (error) {
+                set({ isLoading: false });
+                throw error;
             }
-        } catch (error: any) {
-            console.error('[Auth] Login failed:', error.message);
-            if (error.message && (error.message.includes('Email not confirmed') || error.message.includes('email not confirmed'))) {
-                console.log('[Auth] Email not confirmed, redirecting to verify-email step');
-                set({ authStep: 'verify-email', isLoading: false });
-                throw error; // Still throw so UI can handle
-            }
-            throw error;
-        } finally {
-            set({ isLoading: false });
-        }
-    },
+            // No finally — page redirects on success, loading stays true
+        },
 
-    register: async (data) => {
-        set({ isLoading: true, email: data.email });
-        try {
-            // Preserve current path for redirect after email confirmation
-            const currentPath = window.location.pathname + window.location.search;
-            const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentPath)}`;
+        resetPassword: (email) => {
+            emailSchema.parse({ email });
+            return withLoading(async () => {
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/auth/reset-password`,
+                });
+                if (error) throw error;
+            });
+        },
 
-            console.log('[Auth] Registering user:', data.email);
-            console.log('[Auth] With metadata:', { first_name: data.firstName, last_name: data.lastName });
-            console.log('[Auth] Redirect URL:', emailRedirectTo);
+        resendConfirmation: (email) => {
+            emailSchema.parse({ email });
+            return withLoading(async () => {
+                const { error } = await supabase.auth.resend({
+                    type: 'signup',
+                    email,
+                    options: { emailRedirectTo: buildRedirectUrl() },
+                });
+                if (error) throw error;
+            });
+        },
 
-            const { data: authData, error } = await supabase.auth.signUp({
-                email: data.email,
-                password: data.password,
-                options: {
-                    emailRedirectTo,
+        updateProfile: (data) => {
+            profileSchema.parse(data);
+            return withLoading(async () => {
+                const { data: userData, error } = await supabase.auth.updateUser({
                     data: {
                         first_name: data.firstName,
                         last_name: data.lastName,
                         full_name: `${data.firstName} ${data.lastName}`,
                     },
-                },
-            });
-
-            if (error) {
-                console.error('[Auth] Registration error:', error.message);
-                throw error;
-            }
-
-            console.log('[Auth] Registration response:', {
-                hasUser: !!authData.user,
-                hasSession: !!authData.session,
-                userMetadata: authData.user?.user_metadata,
-            });
-
-            if (authData.user) {
-                if (authData.session) {
-                    console.log('[Auth] Auto-signed in (no email confirmation required)');
-                    get().syncSession(authData.session);
-                } else {
-                    // Email confirmation required
-                    console.log('[Auth] Email confirmation required, showing verify-email step');
-                    set({ authStep: 'verify-email' });
+                });
+                if (error) throw error;
+                if (userData.user) {
+                    set({ user: extractUserProfile(userData.user), supabaseUser: userData.user });
                 }
-            }
-        } catch (error) {
-            console.error('Registration failed:', error);
-            throw error;
-        } finally {
-            set({ isLoading: false });
-        }
-    },
-
-    logout: async () => {
-        set({ isLoading: true });
-        try {
-            const { error } = await supabase.auth.signOut();
-            if (error) throw error;
-            get().syncSession(null);
-        } catch (error) {
-            console.error('Logout failed:', error);
-            throw error;
-        } finally {
-            set({ isLoading: false });
-        }
-    },
-
-    socialLogin: async (provider) => {
-        set({ isLoading: true });
-        try {
-            // Preserve current path for redirect after auth
-            const currentPath = window.location.pathname + window.location.search;
-            const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentPath)}`;
-
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider,
-                options: {
-                    redirectTo,
-                },
             });
-            if (error) throw error;
-        } catch (error) {
-            console.error(`${provider} login failed:`, error);
-            set({ isLoading: false });
-            throw error;
-        }
-    },
+        },
 
-    resetPassword: async (email) => {
-        set({ isLoading: true });
-        try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/auth/reset-password`,
+        updatePassword: (currentPassword, newPassword) => {
+            updatePasswordSchema.parse({ currentPassword, newPassword });
+            return withLoading(async () => {
+                const { user } = get();
+                if (!user?.email) throw new Error('No user logged in');
+
+                const { error: signInError } = await supabase.auth.signInWithPassword({
+                    email: user.email,
+                    password: currentPassword,
+                });
+                if (signInError) throw new Error('Current password is incorrect');
+
+                const { error } = await supabase.auth.updateUser({ password: newPassword });
+                if (error) throw error;
             });
-            if (error) throw error;
-            alert('Password reset email sent. Please check your inbox.');
-        } catch (error) {
-            console.error('Password reset failed:', error);
-            throw error;
-        } finally {
-            set({ isLoading: false });
-        }
-    },
-
-    resendConfirmation: async (email) => {
-        set({ isLoading: true });
-        try {
-            // Build redirect URL same as registration
-            const currentPath = window.location.pathname + window.location.search;
-            const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentPath)}`;
-
-            console.log('[Auth] Resending confirmation email to:', email);
-            console.log('[Auth] Redirect URL:', emailRedirectTo);
-
-            const { error } = await supabase.auth.resend({
-                type: 'signup',
-                email: email,
-                options: {
-                    emailRedirectTo,
-                },
-            });
-            if (error) {
-                console.error('[Auth] Resend confirmation error:', error);
-                throw error;
-            }
-            console.log('[Auth] Confirmation email resent successfully');
-        } catch (error) {
-            console.error('Resend confirmation failed:', error);
-            throw error;
-        } finally {
-            set({ isLoading: false });
-        }
-    },
-
-    updateProfile: async (data) => {
-        set({ isLoading: true });
-        try {
-            console.log('[Auth] Updating profile:', data);
-            const { data: userData, error } = await supabase.auth.updateUser({
-                data: {
-                    first_name: data.firstName,
-                    last_name: data.lastName,
-                    full_name: `${data.firstName} ${data.lastName}`,
-                },
-            });
-
-            if (error) throw error;
-
-            if (userData.user) {
-                const updatedUser = extractUserProfile(userData.user);
-                set({ user: updatedUser, supabaseUser: userData.user });
-                console.log('[Auth] Profile updated successfully');
-            }
-        } catch (error) {
-            console.error('Profile update failed:', error);
-            throw error;
-        } finally {
-            set({ isLoading: false });
-        }
-    },
-
-    updatePassword: async (currentPassword, newPassword) => {
-        set({ isLoading: true });
-        try {
-            const { user } = get();
-            if (!user?.email) throw new Error('No user logged in');
-
-            // First verify current password by re-authenticating
-            const { error: signInError } = await supabase.auth.signInWithPassword({
-                email: user.email,
-                password: currentPassword,
-            });
-
-            if (signInError) {
-                throw new Error('Current password is incorrect');
-            }
-
-            // Then update to new password
-            const { error } = await supabase.auth.updateUser({
-                password: newPassword,
-            });
-
-            if (error) throw error;
-            console.log('[Auth] Password updated successfully');
-        } catch (error) {
-            console.error('Password update failed:', error);
-            throw error;
-        } finally {
-            set({ isLoading: false });
-        }
-    },
-}));
+        },
+    };
+});
 
 // Selectors
-export const useUser = () => useAuthStore((state) => state.user);
-export const useSession = () => useAuthStore((state) => state.session);
-export const useAuthStep = () => useAuthStore((state) => state.authStep);
-export const useAuthLoading = () => useAuthStore((state) => state.isLoading);
+export const useUser = () => useAuthStore((s) => s.user);
+export const useSession = () => useAuthStore((s) => s.session);
+export const useAuthStep = () => useAuthStore((s) => s.authStep);
+export const useAuthLoading = () => useAuthStore((s) => s.isLoading);

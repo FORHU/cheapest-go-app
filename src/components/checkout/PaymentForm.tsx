@@ -11,7 +11,11 @@ interface PaymentFormProps {
     payeeLastName: string;
     onPayeeFirstNameChange: (value: string) => void;
     onPayeeLastNameChange: (value: string) => void;
+    errors?: Record<string, string>;
 }
+
+const FieldError = ({ message }: { message?: string }) =>
+    message ? <p className="mt-1 text-xs text-red-500">{message}</p> : null;
 
 export function PaymentForm({
     formData,
@@ -20,6 +24,7 @@ export function PaymentForm({
     payeeLastName,
     onPayeeFirstNameChange,
     onPayeeLastNameChange,
+    errors = {},
 }: PaymentFormProps) {
     return (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 p-6 shadow-sm">
@@ -34,34 +39,43 @@ export function PaymentForm({
             </div>
 
             <div className="space-y-4">
-                <div className="relative">
-                    <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                        name="cardNumber"
-                        value={formData.cardNumber}
-                        onChange={onInputChange}
-                        type="text"
-                        className="w-full p-3 pl-10 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
-                        placeholder="Card number"
-                    />
+                <div>
+                    <div className="relative">
+                        <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            name="cardNumber"
+                            value={formData.cardNumber}
+                            onChange={onInputChange}
+                            type="text"
+                            className={`w-full p-3 pl-10 rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors.cardNumber ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                            placeholder="Card number"
+                        />
+                    </div>
+                    <FieldError message={errors.cardNumber} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <input
-                        name="expiry"
-                        value={formData.expiry}
-                        onChange={onInputChange}
-                        type="text"
-                        className="w-full p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
-                        placeholder="MM / YY"
-                    />
-                    <input
-                        name="cvc"
-                        value={formData.cvc}
-                        onChange={onInputChange}
-                        type="text"
-                        className="w-full p-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
-                        placeholder="Security code"
-                    />
+                    <div>
+                        <input
+                            name="expiry"
+                            value={formData.expiry}
+                            onChange={onInputChange}
+                            type="text"
+                            className={`w-full p-3 rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors.expiry ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                            placeholder="MM / YY"
+                        />
+                        <FieldError message={errors.expiry} />
+                    </div>
+                    <div>
+                        <input
+                            name="cvc"
+                            value={formData.cvc}
+                            onChange={onInputChange}
+                            type="text"
+                            className={`w-full p-3 rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors.cvc ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                            placeholder="Security code"
+                        />
+                        <FieldError message={errors.cvc} />
+                    </div>
                 </div>
 
                 {/* Country Dropdown */}

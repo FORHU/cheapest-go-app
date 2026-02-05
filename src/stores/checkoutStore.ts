@@ -50,6 +50,9 @@ export interface CheckoutState {
     isSuccess: boolean;
     emailSent: boolean;
 
+    // Validation errors (field name → message)
+    formErrors: Record<string, string>;
+
     // Actions
     setFormData: (data: Partial<CheckoutFormData>) => void;
     setFormField: (name: keyof CheckoutFormData, value: string) => void;
@@ -62,6 +65,8 @@ export interface CheckoutState {
     setSelectedCurrency: (value: string) => void;
     setIsSuccess: (value: boolean) => void;
     setEmailSent: (value: boolean) => void;
+    setFormErrors: (errors: Record<string, string>) => void;
+    clearFormErrors: () => void;
 
     // Composite actions
     handleInputChange: (name: string, value: string) => void;
@@ -81,6 +86,7 @@ export const useCheckoutStore = create<CheckoutState>()((set, get) => ({
     selectedCurrency: 'PHP',
     isSuccess: false,
     emailSent: false,
+    formErrors: {},
 
     // Form data actions
     setFormData: (data) => set((state) => ({
@@ -107,6 +113,8 @@ export const useCheckoutStore = create<CheckoutState>()((set, get) => ({
     // UI state
     setIsSuccess: (value) => set({ isSuccess: value }),
     setEmailSent: (value) => set({ emailSent: value }),
+    setFormErrors: (formErrors) => set({ formErrors }),
+    clearFormErrors: () => set({ formErrors: {} }),
 
     // Composite actions
     handleInputChange: (name, value) => {
@@ -149,6 +157,7 @@ export const useCheckoutStore = create<CheckoutState>()((set, get) => ({
         selectedCurrency: 'PHP',
         isSuccess: false,
         emailSent: false,
+        formErrors: {},
     }),
 }));
 
@@ -194,6 +203,9 @@ export const useCheckoutUIState = () =>
         }))
     );
 
+/** Select form errors */
+export const useCheckoutFormErrors = () => useCheckoutStore((state) => state.formErrors);
+
 /** Select all checkout actions */
 export const useCheckoutActions = () =>
     useCheckoutStore(
@@ -209,6 +221,8 @@ export const useCheckoutActions = () =>
             setSelectedCurrency: state.setSelectedCurrency,
             setIsSuccess: state.setIsSuccess,
             setEmailSent: state.setEmailSent,
+            setFormErrors: state.setFormErrors,
+            clearFormErrors: state.clearFormErrors,
             handleInputChange: state.handleInputChange,
             autoFillFromUser: state.autoFillFromUser,
             resetForm: state.resetForm,

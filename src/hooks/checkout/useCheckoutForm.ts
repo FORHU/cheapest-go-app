@@ -8,6 +8,7 @@ import {
     usePayeeInfo,
     usePhoneCurrency,
     useCheckoutUIState,
+    useCheckoutFormErrors,
     useCheckoutActions,
 } from '@/stores/checkoutStore';
 import { CheckoutFormData, BookingForType } from '@/components/checkout/types';
@@ -47,6 +48,11 @@ interface UseCheckoutFormReturn {
     setIsSuccess: (value: boolean) => void;
     emailSent: boolean;
     setEmailSent: (value: boolean) => void;
+
+    // Validation
+    formErrors: Record<string, string>;
+    setFormErrors: (errors: Record<string, string>) => void;
+    clearFormErrors: () => void;
 }
 
 /**
@@ -64,6 +70,7 @@ export function useCheckoutForm(options: UseCheckoutFormOptions = {}): UseChecko
     const { payeeFirstName, payeeLastName } = usePayeeInfo();
     const { phoneCountryCode, selectedCurrency } = usePhoneCurrency();
     const { isSuccess, emailSent } = useCheckoutUIState();
+    const formErrors = useCheckoutFormErrors();
 
     // Get actions from store
     const actions = useCheckoutActions();
@@ -119,5 +126,8 @@ export function useCheckoutForm(options: UseCheckoutFormOptions = {}): UseChecko
         setIsSuccess: actions.setIsSuccess,
         emailSent,
         setEmailSent: actions.setEmailSent,
+        formErrors,
+        setFormErrors: actions.setFormErrors,
+        clearFormErrors: actions.clearFormErrors,
     };
 }

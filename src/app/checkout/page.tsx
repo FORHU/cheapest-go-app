@@ -21,6 +21,7 @@ import { bookingService } from '@/services/booking.service';
 import { LogIn } from 'lucide-react';
 import BackButton from '@/components/common/BackButton';
 import AuthModal from '@/components/auth/AuthModal';
+import { checkoutSchema, guestDetailsSchema } from '@/lib/schemas/checkout';
 import {
     BookingSuccess,
     UserDetailsForm,
@@ -75,6 +76,9 @@ export default function CheckoutPage() {
         setIsSuccess,
         emailSent,
         setEmailSent,
+        formErrors,
+        setFormErrors,
+        clearFormErrors,
     } = useCheckoutForm();
 
     const prebookError = prebookErrorObj?.message || null;
@@ -125,6 +129,43 @@ export default function CheckoutPage() {
     const handleCompleteBooking = useCallback(async () => {
         if (!user) {
             openAuthModal('email');
+            return;
+        }
+
+        // Validate form fields
+        clearFormErrors();
+        const errors: Record<string, string> = {};
+
+        const mainResult = checkoutSchema.safeParse({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            cardNumber: formData.cardNumber,
+            expiry: formData.expiry,
+            cvc: formData.cvc,
+        });
+
+        if (!mainResult.success) {
+            for (const [field, msgs] of Object.entries(mainResult.error.flatten().fieldErrors)) {
+                if (msgs?.[0]) errors[field] = msgs[0];
+            }
+        }
+
+        if (bookingFor === 'someone_else') {
+            const guestResult = guestDetailsSchema.safeParse({
+                guestFirstName: formData.guestFirstName,
+                guestLastName: formData.guestLastName,
+            });
+            if (!guestResult.success) {
+                for (const [field, msgs] of Object.entries(guestResult.error.flatten().fieldErrors)) {
+                    if (msgs?.[0]) errors[field] = msgs[0];
+                }
+            }
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
             return;
         }
 
@@ -209,7 +250,7 @@ export default function CheckoutPage() {
                 alert(`Booking Failed: ${err.message}`);
             }
         }
-    }, [user, prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, openAuthModal, totalPrice]);
+    }, [user, prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, openAuthModal, totalPrice, clearFormErrors, setFormErrors]);
 
     // Success screen
     if (isSuccess) {
@@ -282,6 +323,7 @@ export default function CheckoutPage() {
                                 onPhoneCountryChange={setPhoneCountryCode}
                                 isWorkTravel={isWorkTravel}
                                 onWorkTravelChange={setIsWorkTravel}
+                                errors={formErrors}
                             />
 
                             <BookingForSection
@@ -289,6 +331,7 @@ export default function CheckoutPage() {
                                 onBookingForChange={setBookingFor}
                                 formData={formData}
                                 onInputChange={handleInputChange}
+                                errors={formErrors}
                             />
 
                             <SpecialRequestsSection
@@ -303,6 +346,7 @@ export default function CheckoutPage() {
                                 payeeLastName={payeeLastName}
                                 onPayeeFirstNameChange={setPayeeFirstName}
                                 onPayeeLastNameChange={setPayeeLastName}
+                                errors={formErrors}
                             />
 
                             <SubmitBookingButton
