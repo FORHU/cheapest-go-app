@@ -1,5 +1,7 @@
+'use client';
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { bookingService, PrebookParams, PrebookResponse } from '@/services';
+import { prebookRoom, PrebookParams, PrebookResult } from '@/app/actions';
 import { queryKeys } from '@/lib/queryClient';
 import { useBookingActions } from '@/stores/bookingStore';
 
@@ -7,13 +9,13 @@ import { useBookingActions } from '@/stores/bookingStore';
  * Options for usePrebook mutation
  */
 export interface UsePrebookOptions {
-  onSuccess?: (data: PrebookResponse) => void;
+  onSuccess?: (data: NonNullable<PrebookResult['data']>) => void;
   onError?: (error: Error) => void;
 }
 
 /**
- * React Query mutation hook for prebook operation
- * Handles room reservation with automatic state management
+ * React Query mutation hook for prebook operation.
+ * Uses Server Action for secure server-side processing.
  *
  * @example
  * ```tsx
@@ -30,7 +32,15 @@ export function usePrebook(options: UsePrebookOptions = {}) {
   const { setPrebookId } = useBookingActions();
 
   return useMutation({
-    mutationFn: (params: PrebookParams) => bookingService.prebook(params),
+    mutationFn: async (params: PrebookParams) => {
+      const result = await prebookRoom(params);
+
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Prebook failed');
+      }
+
+      return result.data;
+    },
 
     onSuccess: (data) => {
       // Store prebookId in Zustand

@@ -4,7 +4,7 @@ import SearchFilters from '@/components/search/SearchFilters';
 import SearchResults from '@/components/search/SearchResults';
 import { SearchModule } from '@/components/landing/hero/SearchModule';
 import BackButton from '@/components/common/BackButton';
-import { fetchSearchProperties } from '@/lib/search';
+import { fetchSearchProperties, fetchFacilities } from '@/lib/search';
 
 export const metadata = {
     title: 'Search Results - AeroVantage',
@@ -16,8 +16,11 @@ export default async function SearchPage(props: {
 }) {
     const searchParams = await props.searchParams;
 
-    // Fetch properties using utility function
-    const initialProperties = await fetchSearchProperties(searchParams as any);
+    // Parallel fetch: properties and facilities
+    const [initialProperties, initialFacilities] = await Promise.all([
+        fetchSearchProperties(searchParams as any),
+        fetchFacilities(),
+    ]);
 
     return (
         <>
@@ -50,7 +53,7 @@ export default async function SearchPage(props: {
                             </div>
                         </div>
                     }>
-                        <SearchFilters />
+                        <SearchFilters initialFacilities={initialFacilities} />
                     </Suspense>
                     <SearchResults initialProperties={initialProperties} />
                 </div>
