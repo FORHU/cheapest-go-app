@@ -4,20 +4,27 @@
  * Server Actions for booking operations.
  * All LiteAPI calls are proxied through Supabase Edge Functions,
  * keeping API keys and business logic server-side.
+ *
+ * All inputs are validated with Zod schemas before processing.
  */
 
 import { createClient } from '@/utils/supabase/server';
 import { invokeEdgeFunction } from '@/utils/supabase/functions';
 import { revalidatePath } from 'next/cache';
+import {
+  prebookSchema,
+  bookingConfirmSchema,
+  amendBookingSchema,
+  saveBookingSchema,
+  type PrebookInput,
+  type BookingConfirmInput,
+  type AmendBookingInput,
+  type SaveBookingInput,
+} from '@/lib/schemas';
 
 // ============================================================================
-// Types
+// Result Types
 // ============================================================================
-
-export interface PrebookParams {
-  offerId: string;
-  currency: string;
-}
 
 export interface PrebookResult {
   success: boolean;
@@ -32,25 +39,6 @@ export interface PrebookResult {
     cancellationPolicies?: CancellationPolicy;
   };
   error?: string;
-}
-
-export interface BookingParams {
-  prebookId: string;
-  holder: {
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  guests: Array<{
-    occupancyNumber: number;
-    firstName: string;
-    lastName: string;
-    email: string;
-    remarks?: string;
-  }>;
-  payment: {
-    method: string;
-  };
 }
 
 export interface BookingResult {
@@ -77,14 +65,6 @@ export interface CancelBookingResult {
   error?: string;
 }
 
-export interface AmendBookingParams {
-  bookingId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  remarks?: string;
-}
-
 export interface AmendBookingResult {
   success: boolean;
   data?: {
@@ -103,24 +83,6 @@ export interface CancellationPolicy {
   }>;
   hotelRemarks?: string[];
   refundableTag?: string;
-}
-
-export interface SaveBookingParams {
-  bookingId: string;
-  propertyName: string;
-  propertyImage?: string;
-  roomName: string;
-  checkIn: string;
-  checkOut: string;
-  adults: number;
-  children: number;
-  totalPrice: number;
-  currency: string;
-  holderFirstName: string;
-  holderLastName: string;
-  holderEmail: string;
-  specialRequests?: string;
-  cancellationPolicy?: CancellationPolicy;
 }
 
 export interface BookingDetailsResult {
@@ -159,6 +121,12 @@ export interface BookingDetailsResult {
   error?: string;
 }
 
+// Re-export input types for hooks
+export type { PrebookInput as PrebookParams };
+export type { BookingConfirmInput as BookingParams };
+export type { AmendBookingInput as AmendBookingParams };
+export type { SaveBookingInput as SaveBookingParams };
+
 // ============================================================================
 // Helper: Get authenticated user
 // ============================================================================
@@ -182,7 +150,14 @@ async function getAuthenticatedUser() {
  * Prebook a room to reserve it temporarily.
  * Requires authentication.
  */
-export async function prebookRoom(params: PrebookParams): Promise<PrebookResult> {
+export async function prebookRoom(params: PrebookInput): Promise<PrebookResult> {
+  // Validate input
+  const validation = prebookSchema.safeParse(params);
+  if (!validation.success) {
+    const firstError = validation.error.issues[0];
+    return { success: false, error: firstError?.message || 'Invalid input' };
+  }
+
   try {
     const { user, error: authError } = await getAuthenticatedUser();
 
@@ -190,7 +165,7 @@ export async function prebookRoom(params: PrebookParams): Promise<PrebookResult>
       return { success: false, error: 'Authentication required' };
     }
 
-    const result = await invokeEdgeFunction('liteapi-prebook-v2', params);
+    const result = await invokeEdgeFunction('liteapi-prebook-v2', validation.data);
 
     return {
       success: true,
@@ -209,7 +184,14 @@ export async function prebookRoom(params: PrebookParams): Promise<PrebookResult>
  * Confirm a booking with guest and payment details.
  * Requires authentication.
  */
-export async function confirmBooking(params: BookingParams): Promise<BookingResult> {
+export async function confirmBooking(params: BookingConfirmInput): Promise<BookingResult> {
+  // Validate input
+  const validation = bookingConfirmSchema.safeParse(params);
+  if (!validation.success) {
+    const firstError = validation.error.issues[0];
+    return { success: false, error: firstError?.message || 'Invalid input' };
+  }
+
   try {
     const { user, error: authError } = await getAuthenticatedUser();
 
@@ -217,7 +199,7 @@ export async function confirmBooking(params: BookingParams): Promise<BookingResu
       return { success: false, error: 'Authentication required' };
     }
 
-    const result = await invokeEdgeFunction('liteapi-book-v2', params);
+    const result = await invokeEdgeFunction('liteapi-book-v2', validation.data);
 
     // Revalidate trips page after successful booking
     revalidatePath('/trips');
@@ -240,6 +222,11 @@ export async function confirmBooking(params: BookingParams): Promise<BookingResu
  * Requires authentication and ownership verification.
  */
 export async function cancelBooking(bookingId: string): Promise<CancelBookingResult> {
+  // Validate input
+  if (!bookingId || typeof bookingId !== 'string' || bookingId.trim().length === 0) {
+    return { success: false, error: 'Booking ID is required' };
+  }
+
   try {
     const { user, supabase, error: authError } = await getAuthenticatedUser();
 
@@ -291,7 +278,14 @@ export async function cancelBooking(bookingId: string): Promise<CancelBookingRes
  * Amend a booking's holder information.
  * Requires authentication and ownership verification.
  */
-export async function amendBooking(params: AmendBookingParams): Promise<AmendBookingResult> {
+export async function amendBooking(params: AmendBookingInput): Promise<AmendBookingResult> {
+  // Validate input
+  const validation = amendBookingSchema.safeParse(params);
+  if (!validation.success) {
+    const firstError = validation.error.issues[0];
+    return { success: false, error: firstError?.message || 'Invalid input' };
+  }
+
   try {
     const { user, supabase, error: authError } = await getAuthenticatedUser();
 
@@ -303,7 +297,7 @@ export async function amendBooking(params: AmendBookingParams): Promise<AmendBoo
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
       .select('user_id')
-      .eq('booking_id', params.bookingId)
+      .eq('booking_id', validation.data.bookingId)
       .single();
 
     if (fetchError || !booking) {
@@ -315,19 +309,19 @@ export async function amendBooking(params: AmendBookingParams): Promise<AmendBoo
     }
 
     // Call LiteAPI to amend
-    const result = await invokeEdgeFunction('liteapi-amend-booking', params);
+    const result = await invokeEdgeFunction('liteapi-amend-booking', validation.data);
 
     // Update local database
     await supabase
       .from('bookings')
       .update({
-        holder_first_name: params.firstName,
-        holder_last_name: params.lastName,
-        holder_email: params.email,
-        special_requests: params.remarks,
+        holder_first_name: validation.data.firstName,
+        holder_last_name: validation.data.lastName,
+        holder_email: validation.data.email,
+        special_requests: validation.data.remarks,
         updated_at: new Date().toISOString(),
       })
-      .eq('booking_id', params.bookingId);
+      .eq('booking_id', validation.data.bookingId);
 
     // Revalidate trips page
     revalidatePath('/trips');
@@ -350,6 +344,11 @@ export async function amendBooking(params: AmendBookingParams): Promise<AmendBoo
  * Requires authentication and ownership verification.
  */
 export async function getBookingDetails(bookingId: string): Promise<BookingDetailsResult> {
+  // Validate input
+  if (!bookingId || typeof bookingId !== 'string' || bookingId.trim().length === 0) {
+    return { success: false, error: 'Booking ID is required' };
+  }
+
   try {
     const { user, supabase, error: authError } = await getAuthenticatedUser();
 
@@ -391,7 +390,14 @@ export async function getBookingDetails(bookingId: string): Promise<BookingDetai
  * Save a booking to the database after confirmation.
  * Requires authentication.
  */
-export async function saveBookingToDatabase(params: SaveBookingParams): Promise<{ success: boolean; error?: string }> {
+export async function saveBookingToDatabase(params: SaveBookingInput): Promise<{ success: boolean; error?: string }> {
+  // Validate input
+  const validation = saveBookingSchema.safeParse(params);
+  if (!validation.success) {
+    const firstError = validation.error.issues[0];
+    return { success: false, error: firstError?.message || 'Invalid input' };
+  }
+
   try {
     const { user, supabase, error: authError } = await getAuthenticatedUser();
 
@@ -399,45 +405,47 @@ export async function saveBookingToDatabase(params: SaveBookingParams): Promise<
       return { success: false, error: 'Authentication required' };
     }
 
+    const data = validation.data;
+
     const { error: insertError } = await supabase.from('bookings').insert({
-      booking_id: params.bookingId,
+      booking_id: data.bookingId,
       user_id: user.id,
-      property_name: params.propertyName,
-      property_image: params.propertyImage,
-      room_name: params.roomName,
-      check_in: params.checkIn,
-      check_out: params.checkOut,
-      guests_adults: params.adults,
-      guests_children: params.children,
-      total_price: params.totalPrice,
-      currency: params.currency,
-      holder_first_name: params.holderFirstName,
-      holder_last_name: params.holderLastName,
-      holder_email: params.holderEmail,
+      property_name: data.propertyName,
+      property_image: data.propertyImage,
+      room_name: data.roomName,
+      check_in: data.checkIn,
+      check_out: data.checkOut,
+      guests_adults: data.adults,
+      guests_children: data.children,
+      total_price: data.totalPrice,
+      currency: data.currency,
+      holder_first_name: data.holderFirstName,
+      holder_last_name: data.holderLastName,
+      holder_email: data.holderEmail,
       status: 'confirmed',
-      special_requests: params.specialRequests,
-      cancellation_policy: params.cancellationPolicy,
+      special_requests: data.specialRequests,
+      cancellation_policy: data.cancellationPolicy,
     });
 
     if (insertError) {
       // Retry without cancellation_policy in case column doesn't exist
       const { error: retryError } = await supabase.from('bookings').insert({
-        booking_id: params.bookingId,
+        booking_id: data.bookingId,
         user_id: user.id,
-        property_name: params.propertyName,
-        property_image: params.propertyImage,
-        room_name: params.roomName,
-        check_in: params.checkIn,
-        check_out: params.checkOut,
-        guests_adults: params.adults,
-        guests_children: params.children,
-        total_price: params.totalPrice,
-        currency: params.currency,
-        holder_first_name: params.holderFirstName,
-        holder_last_name: params.holderLastName,
-        holder_email: params.holderEmail,
+        property_name: data.propertyName,
+        property_image: data.propertyImage,
+        room_name: data.roomName,
+        check_in: data.checkIn,
+        check_out: data.checkOut,
+        guests_adults: data.adults,
+        guests_children: data.children,
+        total_price: data.totalPrice,
+        currency: data.currency,
+        holder_first_name: data.holderFirstName,
+        holder_last_name: data.holderLastName,
+        holder_email: data.holderEmail,
         status: 'confirmed',
-        special_requests: params.specialRequests,
+        special_requests: data.specialRequests,
       });
 
       if (retryError) {

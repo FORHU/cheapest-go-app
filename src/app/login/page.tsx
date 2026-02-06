@@ -3,6 +3,7 @@
 import React, { Suspense, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useLoginForm } from '@/hooks';
+import { loginSchema, registerSchema } from '@/lib/schemas/auth';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import VerifyEmailStep from '@/components/auth/VerifyEmailStep';
 import {
@@ -33,28 +34,28 @@ function LoginPageContent() {
         setPassword,
         errors,
         setErrors,
-        passwordRequirements,
-        allRequirementsMet,
-        validateEmail,
     } = useLoginForm();
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        const newErrors: Record<string, string> = {};
 
-        if (!email.trim() || !validateEmail(email)) {
-            newErrors.email = 'Valid email required';
-        }
-        if (mode === 'signup') {
-            if (!firstName.trim()) newErrors.firstName = 'Required';
-            if (!lastName.trim()) newErrors.lastName = 'Required';
-            if (!password || !allRequirementsMet) newErrors.password = 'Password does not meet requirements';
-        } else {
-            if (!password) newErrors.password = 'Password required';
-        }
+        // Validate with Zod schema
+        const schema = mode === 'signup' ? registerSchema : loginSchema;
+        const data = mode === 'signup'
+            ? { email, password, firstName, lastName }
+            : { email, password };
 
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
+        const result = schema.safeParse(data);
+
+        if (!result.success) {
+            const fieldErrors: Record<string, string> = {};
+            result.error.issues.forEach((issue) => {
+                const field = issue.path[0] as string;
+                if (field && !fieldErrors[field]) {
+                    fieldErrors[field] = issue.message;
+                }
+            });
+            setErrors(fieldErrors);
             return;
         }
 
@@ -99,7 +100,7 @@ function LoginPageContent() {
             setErrors({ general: error?.message || 'Authentication failed. Please try again.' });
             toast.error(error?.message || 'Authentication failed');
         }
-    }, [email, password, firstName, lastName, mode, allRequirementsMet, validateEmail, register, login, setErrors, setAuthStep, setMode]);
+    }, [email, password, firstName, lastName, mode, register, login, setErrors, setAuthStep, setMode]);
 
     const handleToggleMode = useCallback(() => {
         setMode(mode === 'signin' ? 'signup' : 'signin');
