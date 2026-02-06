@@ -12,14 +12,20 @@ import { CheckboxItem } from './CheckboxItem';
 import { RadioItem } from './RadioItem';
 import { ActiveFiltersSummary } from './ActiveFiltersSummary';
 
-const SearchFilters = () => {
+interface SearchFiltersProps {
+    initialFacilities?: Array<{ id: number; name: string }>;
+}
+
+const SearchFilters = ({ initialFacilities }: SearchFiltersProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const initializedRef = useRef(false);
 
-    // Zustand store
-    const { facilities: facilityOptions, isLoading: facilitiesLoading } = useFacilities();
+    // Use server-prefetched facilities if available, otherwise fall back to hook
+    const { facilities: hookFacilities, isLoading: hookLoading } = useFacilities();
+    const facilityOptions = initialFacilities || hookFacilities;
+    const facilitiesLoading = !initialFacilities && hookLoading;
     const filters = useSearchFilters();
     const { setFilters, toggleStarRating, toggleFacility, resetFilters } = useSearchStore();
     const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering } = filters;
