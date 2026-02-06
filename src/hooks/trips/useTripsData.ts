@@ -3,7 +3,8 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@/stores/authStore';
-import { bookingService, BookingRecord } from '@/services/booking.service';
+import { getUserBookings } from '@/app/actions';
+import type { BookingRecord } from '@/lib/server/bookings';
 import { queryKeys } from '@/lib/queryClient';
 
 interface UseTripsDataReturn {
@@ -25,7 +26,13 @@ export function useTripsData(): UseTripsDataReturn {
 
     const query = useQuery({
         queryKey: queryKeys.trips.list(user?.id),
-        queryFn: () => bookingService.getUserBookings(),
+        queryFn: async () => {
+            const result = await getUserBookings();
+            if (!result.success || !result.data) {
+                throw new Error(result.error || 'Failed to fetch bookings');
+            }
+            return result.data;
+        },
         enabled: !!user,
     });
 

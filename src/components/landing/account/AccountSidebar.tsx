@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { ChevronRight, HelpCircle, Mail } from 'lucide-react';
-import type { User } from '@/types/auth';
+import type { UserProfile } from '@/app/actions';
 
 interface AccountSidebarProps {
-    user: User;
+    user: UserProfile;
     activeSection: string;
     onSectionChange: (section: string) => void;
     onSignOut: () => void;

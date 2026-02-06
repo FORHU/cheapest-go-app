@@ -4,6 +4,11 @@ import { type NextRequest, NextResponse } from "next/server";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
+/**
+ * Supabase session refresh + protected route enforcement.
+ * Runs on every matched request to keep auth tokens fresh
+ * and redirect unauthenticated users from protected routes.
+ */
 export const updateSession = async (request: NextRequest) => {
     let supabaseResponse = NextResponse.next({
         request,
@@ -32,10 +37,23 @@ export const updateSession = async (request: NextRequest) => {
         }
     );
 
-    // Refreshing the auth token
+    // Refresh the auth token - Do NOT use getSession() as it doesn't validate
     const {
         data: { user },
     } = await supabase.auth.getUser();
+
+    // Protected routes that require authentication
+    const protectedPaths = ['/account', '/trips'];
+    const isProtectedRoute = protectedPaths.some((path) =>
+        request.nextUrl.pathname.startsWith(path)
+    );
+
+    if (isProtectedRoute && !user) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/login';
+        url.searchParams.set('returnTo', request.nextUrl.pathname);
+        return NextResponse.redirect(url);
+    }
 
     return supabaseResponse;
 };

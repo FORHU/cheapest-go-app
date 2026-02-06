@@ -3,8 +3,8 @@
  * Uses server Supabase client for authenticated requests.
  */
 
-import { createClient } from '@/utils/supabase/server';
-import type { BookingRecord } from '@/services/booking.service';
+import { createClient } from '@/lib/supabase-server';
+import type { BookingRecord } from '@/app/actions';
 
 export interface TripsData {
   bookings: BookingRecord[];

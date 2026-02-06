@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/lib/supabase-client';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import type { User, AuthStep } from '@/types/auth';
 import {

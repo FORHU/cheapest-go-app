@@ -1,29 +1,5 @@
-export {
-  prebookRoom,
-  confirmBooking,
-  cancelBooking,
-  amendBooking,
-  getBookingDetails,
-  saveBookingToDatabase,
-  getUserBookings,
-  updateBookingStatus,
-} from './booking';
-
-export type {
-  PrebookParams,
-  PrebookResult,
-  BookingParams,
-  BookingResult,
-  CancelBookingResult,
-  AmendBookingParams,
-  AmendBookingResult,
-  BookingDetailsResult,
-  SaveBookingParams,
-  CancellationPolicy,
-  CancelPolicyInfo,
-  PrebookResponse,
-  BookingRecord,
-} from './booking';
+// Server-side logic barrel exports
+// All backend logic is centralized here
 
 export {
   getCurrentUser,
@@ -37,3 +13,30 @@ export type {
   AuthResult,
   UserProfile,
 } from './auth';
+
+export {
+  prebookRoom,
+  confirmBooking,
+  cancelBooking,
+  amendBooking,
+  getBookingDetails,
+  saveBookingToDatabase,
+  getUserBookings,
+  updateBookingStatus,
+} from './bookings';
+
+export type {
+  PrebookParams,
+  PrebookResult,
+  BookingParams,
+  BookingResult,
+  CancelBookingResult,
+  AmendBookingParams,
+  AmendBookingResult,
+  CancellationPolicy,
+  CancelPolicyInfo,
+  PrebookResponse,
+  SaveBookingParams,
+  BookingDetailsResult,
+  BookingRecord,
+} from './bookings';

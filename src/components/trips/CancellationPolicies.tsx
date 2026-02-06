@@ -3,7 +3,7 @@
 import React from 'react';
 import { Calendar, Info } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import type { CancelPolicyInfo } from '@/services/booking.service';
+import type { CancelPolicyInfo } from '@/lib/server/bookings';
 
 interface CancellationPoliciesProps {
     policies: CancelPolicyInfo[] | undefined;

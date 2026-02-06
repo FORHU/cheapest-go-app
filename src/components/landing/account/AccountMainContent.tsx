@@ -2,17 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Lock, Bell, Loader2, Check, Eye, EyeOff, HelpCircle, MessageCircle, Mail } from 'lucide-react';
-import type { User as UserType } from '@/types/auth';
-import { useAuthStore } from '@/stores/authStore';
+import type { UserProfile } from '@/app/actions';
+import { updateProfile as updateProfileAction, updatePassword as updatePasswordAction } from '@/app/actions';
 import { toast } from 'sonner';
 
 interface AccountMainContentProps {
-    user: UserType;
+    user: UserProfile;
     activeSection?: string;
 }
 
 export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, activeSection = 'profile' }) => {
-    const { updateProfile, updatePassword } = useAuthStore();
 
     // Profile form state
     const [firstName, setFirstName] = useState(user.firstName || '');
@@ -47,9 +46,13 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
 
         setProfileSaving(true);
         try {
-            await updateProfile({ firstName: firstName.trim(), lastName: lastName.trim() });
-            toast.success('Profile updated successfully');
-            setIsEditingProfile(false);
+            const result = await updateProfileAction({ firstName: firstName.trim(), lastName: lastName.trim() });
+            if (result.success) {
+                toast.success('Profile updated successfully');
+                setIsEditingProfile(false);
+            } else {
+                toast.error(result.error || 'Failed to update profile');
+            }
         } catch (error: any) {
             toast.error(error.message || 'Failed to update profile');
         } finally {
@@ -77,11 +80,15 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
 
         setPasswordSaving(true);
         try {
-            await updatePassword(currentPassword, newPassword);
-            toast.success('Password updated successfully');
-            setCurrentPassword('');
-            setNewPassword('');
-            setConfirmPassword('');
+            const result = await updatePasswordAction(currentPassword, newPassword);
+            if (result.success) {
+                toast.success('Password updated successfully');
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                toast.error(result.error || 'Failed to update password');
+            }
         } catch (error: any) {
             toast.error(error.message || 'Failed to update password');
         } finally {

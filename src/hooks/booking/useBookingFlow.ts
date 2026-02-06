@@ -6,7 +6,8 @@ import {
   useSelectedRoom,
   useBookingActions,
 } from '@/stores/bookingStore';
-import { bookingService, BookingParams, PrebookResponse, CancellationPolicy } from '@/services';
+import { prebookRoom } from '@/app/actions';
+import type { BookingParams, CancellationPolicy, PrebookResponse } from '@/app/actions';
 
 /**
  * Price data from prebook response
@@ -109,15 +110,18 @@ export function useBookingFlow(): UseBookingFlowReturn {
   );
 
   /**
-   * Refresh an expired prebook session
+   * Refresh an expired prebook session via server action
    */
   const refreshPrebook = useCallback(
     async (offerId: string, currency: string): Promise<PrebookResponse> => {
-      const result = await bookingService.refreshPrebook({ offerId, currency });
-      if (result.prebookId) {
-        setPrebookId(result.prebookId);
+      const result = await prebookRoom({ offerId, currency });
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Refresh prebook failed');
       }
-      return result;
+      if (result.data.prebookId) {
+        setPrebookId(result.data.prebookId);
+      }
+      return result.data as PrebookResponse;
     },
     [setPrebookId]
   );

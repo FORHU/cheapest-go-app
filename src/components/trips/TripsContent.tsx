@@ -1,12 +1,10 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useTransition } from 'react';
 import { Plane, Loader2, Luggage, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import { bookingService, BookingRecord } from '@/services/booking.service';
-import { queryKeys } from '@/lib/queryClient';
-import { useUser } from '@/stores/authStore';
+import { getUserBookings } from '@/app/actions';
+import type { BookingRecord } from '@/app/actions';
 import BookingCard from './BookingCard';
 import type { TripsData } from '@/lib/trips';
 
@@ -15,34 +13,25 @@ interface TripsContentProps {
 }
 
 export function TripsContent({ initialData }: TripsContentProps) {
-  const user = useUser();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
   const [visibleCount, setVisibleCount] = useState(10);
-
-  // Use React Query with server-fetched initial data
-  const query = useQuery({
-    queryKey: queryKeys.trips.list(user?.id),
-    queryFn: () => bookingService.getUserBookings(),
-    enabled: !!user,
-    initialData: initialData.bookings,
-    staleTime: 60 * 1000, // Consider data stale after 1 minute
-  });
-
-  const bookings = query.data ?? [];
+  const [bookings, setBookings] = useState<BookingRecord[]>(initialData.bookings);
+  const [isRefetching, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   // Derive categorized bookings
   const upcomingBookings = useMemo(() => {
     const now = new Date();
-    return bookings.filter((b: BookingRecord) => new Date(b.check_in) >= now && b.status !== 'cancelled');
+    return bookings.filter((b) => new Date(b.check_in) >= now && b.status !== 'cancelled');
   }, [bookings]);
 
   const pastBookings = useMemo(() => {
     const now = new Date();
-    return bookings.filter((b: BookingRecord) => new Date(b.check_out) < now || b.status === 'completed');
+    return bookings.filter((b) => new Date(b.check_out) < now || b.status === 'completed');
   }, [bookings]);
 
   const cancelledBookings = useMemo(
-    () => bookings.filter((b: BookingRecord) => b.status === 'cancelled'),
+    () => bookings.filter((b) => b.status === 'cancelled'),
     [bookings]
   );
 
@@ -57,9 +46,18 @@ export function TripsContent({ initialData }: TripsContentProps) {
       ? [...pastBookings, ...cancelledBookings]
       : bookings;
 
-  const refetch = async () => {
-    await query.refetch();
-  };
+  // Refetch via server action instead of client-side Supabase query
+  const refetch = useCallback(() => {
+    startTransition(async () => {
+      const result = await getUserBookings();
+      if (result.success && result.data) {
+        setBookings(result.data);
+        setError(null);
+      } else {
+        setError(result.error || 'Failed to refresh bookings');
+      }
+    });
+  }, []);
 
   return (
     <main className="min-h-screen pt-6 pb-20 px-4 md:px-6">
@@ -121,15 +119,10 @@ export function TripsContent({ initialData }: TripsContentProps) {
         </div>
 
         {/* Content */}
-        {query.isLoading && !query.data ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-            <p className="text-slate-500 dark:text-slate-400">Loading your trips...</p>
-          </div>
-        ) : query.error ? (
+        {error ? (
           <div className="text-center py-20">
             <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg inline-block">
-              {query.error.message || 'Failed to load trips'}
+              {error}
             </div>
           </div>
         ) : displayedBookings.length === 0 ? (

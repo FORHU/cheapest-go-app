@@ -1,6 +1,6 @@
 'use client';
 
-import { CancellationPolicy } from '@/services/booking.service';
+import { CancellationPolicy } from '@/lib/server/bookings';
 import { Info } from 'lucide-react';
 
 interface CancellationPolicySectionProps {

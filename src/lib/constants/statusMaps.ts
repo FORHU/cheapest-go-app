@@ -1,4 +1,4 @@
-import type { BookingRecord } from '@/services/booking.service';
+import type { BookingRecord } from '@/lib/server/bookings';
 
 type BookingStatus = BookingRecord['status'];
 

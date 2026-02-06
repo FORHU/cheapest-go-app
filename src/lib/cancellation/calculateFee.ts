@@ -1,4 +1,4 @@
-import type { CancellationPolicy, CancelPolicyInfo } from '@/services/booking.service';
+import type { CancellationPolicy } from '@/lib/server/bookings';
 
 export interface CancellationFeeResult {
     fee: number;

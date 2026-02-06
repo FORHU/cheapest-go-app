@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/lib/supabase-server';
 import { fetchTripsData } from '@/lib/trips';
 import { TripsContent } from '@/components/trips';
 import { Header, Footer } from '@/components/landing';

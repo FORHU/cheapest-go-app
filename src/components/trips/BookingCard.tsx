@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { Calendar, MapPin, Users, Clock, XCircle, Pencil } from 'lucide-react';
-import type { BookingRecord } from '@/services/booking.service';
+import type { BookingRecord } from '@/lib/server/bookings';
 import CancellationModal from './CancellationModal';
 import ModificationModal from './ModificationModal';
 import { statusColors, statusLabels } from '@/lib/constants';

@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, Check, Loader2 } from 'lucide-react';
-import type { BookingRecord } from '@/services/booking.service';
+import type { BookingRecord } from '@/lib/server/bookings';
 import { formatCurrency } from '@/lib/utils';
 import { calculateCancellationFee } from '@/lib/cancellation';
 import { useBookingDetails, useCancelBooking } from '@/hooks/trips';

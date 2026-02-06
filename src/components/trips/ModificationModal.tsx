@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Pencil, Loader2 } from 'lucide-react';
-import type { BookingRecord } from '@/services/booking.service';
+import type { BookingRecord } from '@/lib/server/bookings';
 import { useAmendBooking } from '@/hooks/trips';
 import { amendBookingSchema, type AmendBookingInput } from '@/lib/schemas/amend';
 

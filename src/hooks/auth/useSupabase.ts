@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from '@/lib/supabase-client';
 
 /**
  * Hook to get the Supabase client for use in components

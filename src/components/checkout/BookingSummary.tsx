@@ -3,7 +3,7 @@
 import React from 'react';
 import { Calendar, Star, MapPin } from 'lucide-react';
 import { CancellationPolicySection } from './CancellationPolicySection';
-import { CancellationPolicy } from '@/services/booking.service';
+import { CancellationPolicy } from '@/lib/server/bookings';
 
 interface BookingSummaryProps {
     propertyName: string;
