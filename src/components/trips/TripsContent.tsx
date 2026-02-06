@@ -4,7 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { Plane, Loader2, Luggage, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { bookingService, BookingRecord } from '@/services/booking.service';
+import type { BookingRecord } from '@/services/booking.service';
+import { getUserBookings } from '@/app/actions';
 import { queryKeys } from '@/lib/queryClient';
 import { useUser } from '@/stores/authStore';
 import BookingCard from './BookingCard';
@@ -22,7 +23,11 @@ export function TripsContent({ initialData }: TripsContentProps) {
   // Use React Query with server-fetched initial data
   const query = useQuery({
     queryKey: queryKeys.trips.list(user?.id),
-    queryFn: () => bookingService.getUserBookings(),
+    queryFn: async () => {
+      const result = await getUserBookings();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch bookings');
+      return (result.data || []) as BookingRecord[];
+    },
     enabled: !!user,
     initialData: initialData.bookings,
     staleTime: 60 * 1000, // Consider data stale after 1 minute

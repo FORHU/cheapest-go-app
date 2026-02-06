@@ -27,6 +27,7 @@ import type {
   CancelBookingResult,
   AmendBookingResult,
   BookingDetailsResult,
+  GetUserBookingsResult,
 } from './types';
 
 // ============================================================================
@@ -367,6 +368,39 @@ export async function saveBookingToDatabase(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to save booking',
+    };
+  }
+}
+
+/**
+ * Get the authenticated user's bookings from the database.
+ * Filters by user_id server-side for security.
+ */
+export async function getUserBookings(): Promise<GetUserBookingsResult> {
+  try {
+    const { user, supabase, error: authError } = await getAuthenticatedUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[getUserBookings] Error:', error);
+      return { success: false, error: 'Failed to fetch bookings' };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('[getUserBookings] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch bookings',
     };
   }
 }

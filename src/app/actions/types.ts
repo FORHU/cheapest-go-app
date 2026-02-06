@@ -71,6 +71,50 @@ export interface CancellationPolicy {
   refundableTag?: string;
 }
 
+export interface GetUserBookingsResult {
+  success: boolean;
+  data?: Array<{
+    id: string;
+    booking_id: string;
+    user_id: string;
+    property_name: string;
+    property_image?: string;
+    room_name: string;
+    check_in: string;
+    check_out: string;
+    guests_adults: number;
+    guests_children: number;
+    total_price: number;
+    currency: string;
+    holder_first_name: string;
+    holder_last_name: string;
+    holder_email: string;
+    status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+    special_requests?: string;
+    created_at: string;
+    updated_at: string;
+    cancellation_policy?: CancellationPolicy;
+  }>;
+  error?: string;
+}
+
+export interface SendBookingEmailParams {
+  bookingId: string;
+  email: string;
+  guestName: string;
+  hotelName: string;
+  roomName: string;
+  checkIn: string;
+  checkOut: string;
+  totalPrice: number;
+  currency: string;
+}
+
+export interface SendBookingEmailResult {
+  success: boolean;
+  error?: string;
+}
+
 export interface BookingDetailsResult {
   success: boolean;
   data?: {

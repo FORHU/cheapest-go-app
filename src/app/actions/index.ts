@@ -5,7 +5,10 @@ export {
   amendBooking,
   getBookingDetails,
   saveBookingToDatabase,
+  getUserBookings,
 } from './booking';
+
+export { sendBookingConfirmationEmail } from './email';
 
 export type {
   PrebookParams,
@@ -18,4 +21,7 @@ export type {
   BookingDetailsResult,
   SaveBookingParams,
   CancellationPolicy,
+  GetUserBookingsResult,
+  SendBookingEmailParams,
+  SendBookingEmailResult,
 } from './types';

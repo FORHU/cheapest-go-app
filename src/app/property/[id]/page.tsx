@@ -123,7 +123,6 @@ export default async function PropertyPage({
                             {/* Reviews Section */}
                             <FadeInUp delay={0.55}>
                                 <ReviewsSection
-                                    hotelId={id}
                                     reviews={reviewsData.reviews}
                                     averageRating={reviewsData.averageRating}
                                     totalCount={reviewsData.totalCount}
