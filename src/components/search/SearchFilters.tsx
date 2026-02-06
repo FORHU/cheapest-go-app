@@ -5,8 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Search, Map, RotateCcw } from 'lucide-react';
 import { useSearchFilters, useSearchStore } from '@/stores/searchStore';
-import { STAR_RATINGS, GUEST_RATING_OPTIONS, REVIEW_COUNT_OPTIONS } from '@/lib/constants';
-import { useFacilities } from '@/hooks/search/useFacilities';
+import { STAR_RATINGS, GUEST_RATING_OPTIONS, REVIEW_COUNT_OPTIONS, FACILITIES } from '@/lib/constants';
 import { FilterSection } from './FilterSection';
 import { CheckboxItem } from './CheckboxItem';
 import { RadioItem } from './RadioItem';
@@ -22,11 +21,11 @@ const SearchFilters = ({ initialFacilities }: SearchFiltersProps) => {
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const initializedRef = useRef(false);
 
-    // Use server-prefetched facilities if available, otherwise fall back to hook
-    const { facilities: hookFacilities, isLoading: hookLoading } = useFacilities();
+    // Use server-prefetched facilities, fall back to hardcoded constants
     const facilityOptions = useMemo(() => {
-        const list = initialFacilities ?? hookFacilities;
-        if (!list) return [];
+        const list = initialFacilities && initialFacilities.length > 0
+            ? initialFacilities
+            : FACILITIES.map(f => ({ id: f.id, name: f.label }));
         const seen = new Set<number>();
         const unique: Array<{ id: number; name: string }> = [];
         for (const facility of list) {
@@ -38,8 +37,7 @@ const SearchFilters = ({ initialFacilities }: SearchFiltersProps) => {
             unique.push({ id, name });
         }
         return unique;
-    }, [initialFacilities, hookFacilities]);
-    const facilitiesLoading = !initialFacilities && hookLoading;
+    }, [initialFacilities]);
     const filters = useSearchFilters();
     const { setFilters, toggleStarRating, toggleFacility, resetFilters } = useSearchStore();
     const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering } = filters;
@@ -221,20 +219,14 @@ const SearchFilters = ({ initialFacilities }: SearchFiltersProps) => {
             {/* Amenities */}
             <FilterSection title="Amenities" index={4}>
                 <div className="flex flex-col gap-1">
-                    {facilitiesLoading ? (
-                        Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className="h-8 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-                        ))
-                    ) : (
-                        facilityOptions.map((facility) => (
-                            <CheckboxItem
-                                key={facility.id}
-                                label={facility.name}
-                                checked={facilities.includes(facility.id)}
-                                onChange={() => handleFacilityToggle(facility.id)}
-                            />
-                        ))
-                    )}
+                    {facilityOptions.map((facility) => (
+                        <CheckboxItem
+                            key={facility.id}
+                            label={facility.name}
+                            checked={facilities.includes(facility.id)}
+                            onChange={() => handleFacilityToggle(facility.id)}
+                        />
+                    ))}
                 </div>
 
                 {facilities.length > 1 && (

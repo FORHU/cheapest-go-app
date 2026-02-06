@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { HotelReview } from '@/lib/property/fetchReviews';
 
 interface ReviewsState {
     // Display state
@@ -7,12 +6,7 @@ interface ReviewsState {
     sortBy: 'newest' | 'highest' | 'lowest';
     expandedReviewIds: Set<string>;
 
-    // Reviews state
-    hotelId: string | null;
-    allReviews: HotelReview[];
-
     // Actions
-    initializeReviews: (hotelId: string, reviews: HotelReview[]) => void;
     loadMore: () => void;
     resetDisplayCount: (initial?: number) => void;
     setSortBy: (sort: 'newest' | 'highest' | 'lowest') => void;
@@ -24,16 +18,6 @@ export const useReviewsStore = create<ReviewsState>((set, get) => ({
     displayCount: 4,
     sortBy: 'newest',
     expandedReviewIds: new Set(),
-
-    // Reviews state
-    hotelId: null,
-    allReviews: [],
-
-    initializeReviews: (hotelId, reviews) => set({
-        hotelId,
-        allReviews: reviews,
-        displayCount: 4,
-    }),
 
     loadMore: () => {
         set((state) => ({
