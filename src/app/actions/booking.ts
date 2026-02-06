@@ -16,116 +16,18 @@ import {
   bookingConfirmSchema,
   amendBookingSchema,
   saveBookingSchema,
-  type PrebookInput,
-  type BookingConfirmInput,
-  type AmendBookingInput,
-  type SaveBookingInput,
 } from '@/lib/schemas';
-
-// ============================================================================
-// Result Types
-// ============================================================================
-
-export interface PrebookResult {
-  success: boolean;
-  data?: {
-    prebookId: string;
-    price?: {
-      subtotal?: number;
-      taxes?: number;
-      total: number;
-    };
-    status?: string;
-    cancellationPolicies?: CancellationPolicy;
-  };
-  error?: string;
-}
-
-export interface BookingResult {
-  success: boolean;
-  data?: {
-    bookingId: string;
-    status: string;
-    confirmationNumber?: string;
-  };
-  error?: string;
-}
-
-export interface CancelBookingResult {
-  success: boolean;
-  data?: {
-    bookingId: string;
-    status: string;
-    cancellationId?: string;
-    refund?: {
-      amount: number;
-      currency: string;
-    };
-  };
-  error?: string;
-}
-
-export interface AmendBookingResult {
-  success: boolean;
-  data?: {
-    bookingId: string;
-    status: string;
-  };
-  error?: string;
-}
-
-export interface CancellationPolicy {
-  cancelPolicyInfos?: Array<{
-    cancelTime: string;
-    amount: number;
-    currency: string;
-    type: string;
-  }>;
-  hotelRemarks?: string[];
-  refundableTag?: string;
-}
-
-export interface BookingDetailsResult {
-  success: boolean;
-  data?: {
-    bookingId: string;
-    status: string;
-    hotel: {
-      name: string;
-      hotelId: string;
-    };
-    bookedRooms: Array<{
-      roomType: string;
-      adults: number;
-      children: number;
-      rate: {
-        retailRate: {
-          total: { amount: number; currency: string };
-        };
-      };
-    }>;
-    guestInfo: {
-      guestFirstName: string;
-      guestLastName: string;
-      guestEmail: string;
-    };
-    checkin: string;
-    checkout: string;
-    cancellationPolicies?: CancellationPolicy;
-    cancellation?: {
-      cancelAllowed: boolean;
-      fee?: { amount: number; currency: string };
-      refund?: { amount: number; currency: string };
-    };
-  };
-  error?: string;
-}
-
-// Re-export input types for hooks
-export type { PrebookInput as PrebookParams };
-export type { BookingConfirmInput as BookingParams };
-export type { AmendBookingInput as AmendBookingParams };
-export type { SaveBookingInput as SaveBookingParams };
+import type {
+  PrebookParams,
+  BookingParams,
+  AmendBookingParams,
+  SaveBookingParams,
+  PrebookResult,
+  BookingResult,
+  CancelBookingResult,
+  AmendBookingResult,
+  BookingDetailsResult,
+} from './types';
 
 // ============================================================================
 // Helper: Get authenticated user
@@ -150,7 +52,7 @@ async function getAuthenticatedUser() {
  * Prebook a room to reserve it temporarily.
  * Requires authentication.
  */
-export async function prebookRoom(params: PrebookInput): Promise<PrebookResult> {
+export async function prebookRoom(params: PrebookParams): Promise<PrebookResult> {
   // Validate input
   const validation = prebookSchema.safeParse(params);
   if (!validation.success) {
@@ -184,7 +86,7 @@ export async function prebookRoom(params: PrebookInput): Promise<PrebookResult> 
  * Confirm a booking with guest and payment details.
  * Requires authentication.
  */
-export async function confirmBooking(params: BookingConfirmInput): Promise<BookingResult> {
+export async function confirmBooking(params: BookingParams): Promise<BookingResult> {
   // Validate input
   const validation = bookingConfirmSchema.safeParse(params);
   if (!validation.success) {
@@ -278,7 +180,7 @@ export async function cancelBooking(bookingId: string): Promise<CancelBookingRes
  * Amend a booking's holder information.
  * Requires authentication and ownership verification.
  */
-export async function amendBooking(params: AmendBookingInput): Promise<AmendBookingResult> {
+export async function amendBooking(params: AmendBookingParams): Promise<AmendBookingResult> {
   // Validate input
   const validation = amendBookingSchema.safeParse(params);
   if (!validation.success) {
@@ -390,7 +292,9 @@ export async function getBookingDetails(bookingId: string): Promise<BookingDetai
  * Save a booking to the database after confirmation.
  * Requires authentication.
  */
-export async function saveBookingToDatabase(params: SaveBookingInput): Promise<{ success: boolean; error?: string }> {
+export async function saveBookingToDatabase(
+  params: SaveBookingParams
+): Promise<{ success: boolean; error?: string }> {
   // Validate input
   const validation = saveBookingSchema.safeParse(params);
   if (!validation.success) {
