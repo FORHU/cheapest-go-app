@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Search, Map, RotateCcw } from 'lucide-react';
@@ -24,7 +24,21 @@ const SearchFilters = ({ initialFacilities }: SearchFiltersProps) => {
 
     // Use server-prefetched facilities if available, otherwise fall back to hook
     const { facilities: hookFacilities, isLoading: hookLoading } = useFacilities();
-    const facilityOptions = initialFacilities || hookFacilities;
+    const facilityOptions = useMemo(() => {
+        const list = initialFacilities ?? hookFacilities;
+        if (!list) return [];
+        const seen = new Set<number>();
+        const unique: Array<{ id: number; name: string }> = [];
+        for (const facility of list) {
+            const id = Number(facility.id);
+            const name = facility.name;
+            if (!Number.isFinite(id) || !name) continue;
+            if (seen.has(id)) continue;
+            seen.add(id);
+            unique.push({ id, name });
+        }
+        return unique;
+    }, [initialFacilities, hookFacilities]);
     const facilitiesLoading = !initialFacilities && hookLoading;
     const filters = useSearchFilters();
     const { setFilters, toggleStarRating, toggleFacility, resetFilters } = useSearchStore();
@@ -244,3 +258,4 @@ const SearchFilters = ({ initialFacilities }: SearchFiltersProps) => {
 };
 
 export default SearchFilters;
+

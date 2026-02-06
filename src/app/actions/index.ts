@@ -18,4 +18,4 @@ export type {
   BookingDetailsResult,
   SaveBookingParams,
   CancellationPolicy,
-} from './booking';
+} from './types';
