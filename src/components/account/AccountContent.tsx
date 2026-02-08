@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     User,
     Bell,
@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AccountSidebar, AccountMainContent as AccountMain } from '@/components/landing';
+
+const VALID_SECTIONS = ['profile', 'communications', 'security', 'help'] as const;
 
 interface AccountContentProps {
     initialUser: {
@@ -23,8 +25,21 @@ interface AccountContentProps {
 
 export function AccountContent({ initialUser }: AccountContentProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user: storeUser, logout } = useAuthStore();
-    const [activeSection, setActiveSection] = useState('profile');
+
+    const rawSection = searchParams.get('section');
+    const activeSection = VALID_SECTIONS.includes(rawSection as any) ? rawSection! : 'profile';
+
+    const setActiveSection = useCallback((section: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (section === 'profile') {
+            params.delete('section');
+        } else {
+            params.set('section', section);
+        }
+        router.replace(`?${params.toString()}`);
+    }, [router, searchParams]);
 
     // Use store user if available (real-time), otherwise fall back to server-provided data
     const user = storeUser || {

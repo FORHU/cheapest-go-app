@@ -19,14 +19,14 @@ const tabs: NavTab[] = [
 export default function PropertyNav() {
     const [activeTab, setActiveTab] = useState('overview-section');
 
-    // Scroll to section when tab is clicked
+    // Scroll to section when tab is clicked — let the scroll listener
+    // determine active state after scroll completes (single source of truth)
     const handleTabClick = (sectionId: string) => {
         const section = document.getElementById(sectionId);
         if (section) {
             const navHeight = 140; // Account for sticky nav
             const sectionTop = section.getBoundingClientRect().top + window.scrollY - navHeight;
             window.scrollTo({ top: sectionTop, behavior: 'smooth' });
-            setActiveTab(sectionId);
         }
     };
 

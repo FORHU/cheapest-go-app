@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Property, baguioProperties } from '@/data/mockProperties';
+import { Property } from '@/data/mockProperties';
 import { PropertyCard } from '@/components/shared';
-import { ChevronDown, ArrowUpDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
+
+const SORT_OPTIONS = ['recommended', 'price-low', 'price-high', 'rating'] as const;
+type SortValue = typeof SORT_OPTIONS[number];
 
 interface SearchResultsProps {
     initialProperties?: Property[];
@@ -14,7 +17,20 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
     const router = useRouter();
     const searchParams = useSearchParams();
     const destination = searchParams.get('destination') || '';
-    const [sortBy, setSortBy] = useState('recommended');
+
+    const rawSort = searchParams.get('sort');
+    const sortBy: SortValue = SORT_OPTIONS.includes(rawSort as SortValue) ? (rawSort as SortValue) : 'recommended';
+
+    const handleSortChange = useCallback((value: SortValue) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (value === 'recommended') {
+            params.delete('sort');
+        } else {
+            params.set('sort', value);
+        }
+        router.replace(`?${params.toString()}`);
+    }, [router, searchParams]);
+
     const [visibleCount, setVisibleCount] = useState(12);
 
     const handlePropertyClick = (propertyId: string) => {
@@ -22,15 +38,20 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
         router.push(`/property/${propertyId}?${currentParams.toString()}`);
     };
 
-    // Filter properties based on search params
+    // Filter and sort properties
     const filteredProperties = useMemo(() => {
-        // If we have initialProperties passed from server, use them
-        if (initialProperties && initialProperties.length > 0) {
-            return initialProperties;
+        const props = initialProperties && initialProperties.length > 0 ? [...initialProperties] : [];
+
+        if (sortBy === 'price-low') {
+            props.sort((a, b) => a.price - b.price);
+        } else if (sortBy === 'price-high') {
+            props.sort((a, b) => b.price - a.price);
+        } else if (sortBy === 'rating') {
+            props.sort((a, b) => b.rating - a.rating);
         }
 
-        return [];
-    }, [initialProperties]);
+        return props;
+    }, [initialProperties, sortBy]);
 
     // Reset visible count when filters/destination change
     React.useEffect(() => {
@@ -58,12 +79,18 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                     </p>
                 </div>
 
-                <div className="relative group">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
-                        <span className="text-slate-500 dark:text-slate-400">Sort by:</span>
-                        <span className="text-slate-900 dark:text-white capitalize">{sortBy}</span>
-                        <ChevronDown size={14} className="text-slate-400" />
-                    </button>
+                <div className="relative">
+                    <select
+                        value={sortBy}
+                        onChange={(e) => handleSortChange(e.target.value as SortValue)}
+                        className="appearance-none pl-4 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="recommended">Recommended</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                        <option value="rating">Highest Rated</option>
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
             </div>
 
