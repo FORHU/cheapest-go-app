@@ -1,14 +1,10 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { Plane, Loader2, Luggage, ArrowRight } from 'lucide-react';
+import { Plane, Luggage, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import type { BookingRecord } from '@/services/booking.service';
-import { getUserBookings } from '@/app/actions';
-import { queryKeys } from '@/lib/queryClient';
-import { useUser } from '@/stores/authStore';
 import BookingCard from './BookingCard';
 import type { TripsData } from '@/lib/trips';
 
@@ -20,7 +16,6 @@ interface TripsContentProps {
 }
 
 export function TripsContent({ initialData }: TripsContentProps) {
-  const user = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -29,20 +24,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
 
   const [visibleCount, setVisibleCount] = useState(10);
 
-  // Use React Query with server-fetched initial data
-  const query = useQuery({
-    queryKey: queryKeys.trips.list(user?.id),
-    queryFn: async () => {
-      const result = await getUserBookings();
-      if (!result.success) throw new Error(result.error || 'Failed to fetch bookings');
-      return (result.data || []) as BookingRecord[];
-    },
-    enabled: !!user,
-    initialData: initialData.bookings,
-    staleTime: 60 * 1000, // Consider data stale after 1 minute
-  });
-
-  const bookings = query.data ?? [];
+  const bookings = initialData.bookings;
 
   // Derive categorized bookings
   const upcomingBookings = useMemo(() => {
@@ -77,9 +59,10 @@ export function TripsContent({ initialData }: TripsContentProps) {
       ? [...pastBookings, ...cancelledBookings]
       : bookings;
 
-  const refetch = async () => {
-    await query.refetch();
-  };
+  // Re-run server component fetch to get fresh data
+  const refetch = useCallback(() => {
+    router.refresh();
+  }, [router]);
 
   return (
     <main className="min-h-screen pt-6 pb-20 px-4 md:px-6">
@@ -140,19 +123,8 @@ export function TripsContent({ initialData }: TripsContentProps) {
           </button>
         </div>
 
-        {/* Content */}
-        {query.isLoading && !query.data ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-            <p className="text-slate-500 dark:text-slate-400">Loading your trips...</p>
-          </div>
-        ) : query.error ? (
-          <div className="text-center py-20">
-            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg inline-block">
-              {query.error.message || 'Failed to load trips'}
-            </div>
-          </div>
-        ) : displayedBookings.length === 0 ? (
+        {/* Content — data is server-fetched, loading state handled by Suspense */}
+        {displayedBookings.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-20 h-20 mx-auto mb-6 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center">
               <Luggage className="w-10 h-10 text-slate-400" />
