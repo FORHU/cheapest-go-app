@@ -2,13 +2,16 @@ import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { type EmailOtpType } from '@supabase/supabase-js';
 
+/** Only allow relative paths — blocks protocol-relative URLs and external redirects. */
+function validateRedirectUrl(url: string): string {
+    if (!url.startsWith('/') || url.startsWith('//') || url.includes('://')) {
+        return '/';
+    }
+    return url;
+}
+
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
-
-    // Log all incoming parameters for debugging
-    console.log('=== Auth Callback ===');
-    console.log('Full URL:', request.url);
-    console.log('All params:', Object.fromEntries(searchParams.entries()));
 
     // Handle OAuth code exchange
     const code = searchParams.get('code');
@@ -23,53 +26,41 @@ export async function GET(request: Request) {
     const error_description = searchParams.get('error_description');
 
     if (error) {
-        console.error('Auth error from Supabase:', { error, error_code, error_description });
+        console.error('Auth error:', error_code, error_description);
         return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${encodeURIComponent(error_description || error)}`);
     }
 
-    const next = searchParams.get('next') ?? '/';
+    const next = validateRedirectUrl(searchParams.get('next') ?? '/');
 
     const supabase = await createClient();
 
     // Email confirmation flow (from "Confirm your mail" link)
     if (token_hash && type) {
-        console.log('Attempting OTP verification with:', { token_hash: token_hash.substring(0, 10) + '...', type });
-
         const { data, error: verifyError } = await supabase.auth.verifyOtp({
             type,
             token_hash,
         });
 
-        console.log('OTP verification result:', { data, error: verifyError });
-
         if (!verifyError && data.session) {
-            // Successfully verified - redirect to home as signed in
-            console.log('Email verification successful!');
             return NextResponse.redirect(`${origin}${next}`);
         }
 
-        // Token expired or invalid
-        console.error('Email verification error:', verifyError);
+        console.error('Email verification error:', verifyError?.message);
         return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${encodeURIComponent(verifyError?.message || 'Verification failed')}`);
     }
 
     // OAuth code exchange flow (from Google/social login)
     if (code) {
-        console.log('Attempting code exchange');
         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-        console.log('Code exchange result:', { hasSession: !!data.session, error: exchangeError });
-
         if (!exchangeError && data.session) {
-            console.log('OAuth login successful!');
             return NextResponse.redirect(`${origin}${next}`);
         }
 
-        console.error('Code exchange error:', exchangeError);
+        console.error('Code exchange error:', exchangeError?.message);
         return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${encodeURIComponent(exchangeError?.message || 'Session exchange failed')}`);
     }
 
-    console.log('No valid auth parameters found');
     // Return the user to an error page with instructions
     return NextResponse.redirect(`${origin}/auth/auth-code-error`);
 }
