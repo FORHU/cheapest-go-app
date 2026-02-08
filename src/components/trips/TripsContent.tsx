@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Plane, Loader2, Luggage, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import type { BookingRecord } from '@/services/booking.service';
 import { getUserBookings } from '@/app/actions';
@@ -11,13 +12,21 @@ import { useUser } from '@/stores/authStore';
 import BookingCard from './BookingCard';
 import type { TripsData } from '@/lib/trips';
 
+type TabValue = 'upcoming' | 'past' | 'all';
+const VALID_TABS: TabValue[] = ['upcoming', 'past', 'all'];
+
 interface TripsContentProps {
   initialData: TripsData;
 }
 
 export function TripsContent({ initialData }: TripsContentProps) {
   const user = useUser();
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const rawTab = searchParams.get('tab');
+  const activeTab: TabValue = VALID_TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';
+
   const [visibleCount, setVisibleCount] = useState(10);
 
   // Use React Query with server-fetched initial data
@@ -51,10 +60,16 @@ export function TripsContent({ initialData }: TripsContentProps) {
     [bookings]
   );
 
-  const handleTabChange = (tab: 'upcoming' | 'past' | 'all') => {
-    setActiveTab(tab);
+  const handleTabChange = useCallback((tab: TabValue) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === 'upcoming') {
+      params.delete('tab');
+    } else {
+      params.set('tab', tab);
+    }
+    router.replace(`?${params.toString()}`);
     setVisibleCount(10);
-  };
+  }, [router, searchParams]);
 
   const displayedBookings = activeTab === 'upcoming'
     ? upcomingBookings
