@@ -29,7 +29,6 @@ export type { UsePrebookOptions } from './mutations/usePrebook';
 export type { UseBookingOptions } from './mutations/useBooking';
 
 // Trips page hooks
-export { useTripsData } from './trips';
 
 // Checkout hooks
 export { useCheckoutForm, useCheckoutPrebook, usePricingCalculation } from './checkout';
