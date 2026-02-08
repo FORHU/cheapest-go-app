@@ -1,5 +1,9 @@
-import { invokeEdgeFunction } from '@/utils/supabase/client-functions';
-import { createClient } from '@/utils/supabase/client';
+/**
+ * Booking type definitions.
+ *
+ * All runtime booking operations use server actions in `@/app/actions/booking.ts`.
+ * This file only exports types consumed across the codebase.
+ */
 
 /**
  * Prebook parameters for room reservation
@@ -201,115 +205,3 @@ export interface AmendBookingResponse {
   status: string;
 }
 
-/**
- * Booking service for prebook and confirmation.
- * @deprecated All methods have been replaced by server actions in `@/app/actions/booking.ts`.
- * Use the server actions directly instead. Type exports from this file are still valid.
- */
-export const bookingService = {
-  /** @deprecated Use `prebookRoom` server action from `@/app/actions` instead */
-  prebook: async (params: PrebookParams): Promise<PrebookResponse> => {
-    // invokeEdgeFunction throws on error, so we just return the data
-    const result = await invokeEdgeFunction('liteapi-prebook-v2', params);
-    return result.data;
-  },
-
-  /** @deprecated Use `confirmBooking` server action from `@/app/actions` instead */
-  confirmBooking: async (params: BookingParams): Promise<BookingResponse> => {
-    // invokeEdgeFunction throws on error, so we just return the data
-    const result = await invokeEdgeFunction('liteapi-book-v2', params);
-    return result.data;
-  },
-
-  /** @deprecated Use `prebookRoom` server action from `@/app/actions` instead */
-  refreshPrebook: async (params: PrebookParams): Promise<PrebookResponse> => {
-    // Same as prebook but semantically different - used when session expires
-    return bookingService.prebook(params);
-  },
-
-  /** @deprecated Use `saveBookingToDatabase` server action from `@/app/actions` instead */
-  saveBooking: async (booking: SaveBookingParams): Promise<void> => {
-    const supabase = createClient();
-    const baseData = {
-      booking_id: booking.bookingId,
-      user_id: booking.userId,
-      property_name: booking.propertyName,
-      property_image: booking.propertyImage,
-      room_name: booking.roomName,
-      check_in: booking.checkIn,
-      check_out: booking.checkOut,
-      guests_adults: booking.adults,
-      guests_children: booking.children,
-      total_price: booking.totalPrice,
-      currency: booking.currency,
-      holder_first_name: booking.holderFirstName,
-      holder_last_name: booking.holderLastName,
-      holder_email: booking.holderEmail,
-      status: 'confirmed',
-      special_requests: booking.specialRequests,
-    };
-
-    // Try with cancellation_policy first, fallback without if column doesn't exist
-    const { error } = await supabase.from('bookings').insert({
-      ...baseData,
-      cancellation_policy: booking.cancellationPolicy || null,
-    });
-
-    if (error) {
-      // Retry without cancellation_policy in case column doesn't exist yet
-      const { error: retryError } = await supabase.from('bookings').insert(baseData);
-      if (retryError) {
-        console.error('Failed to save booking:', retryError);
-        throw retryError;
-      }
-    }
-  },
-
-  /** @deprecated Use `getUserBookings` server action from `@/app/actions` instead */
-  getUserBookings: async (): Promise<BookingRecord[]> => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Failed to fetch bookings:', error);
-      throw error;
-    }
-
-    return data || [];
-  },
-
-  /** @deprecated Use `getBookingDetails` server action from `@/app/actions` instead */
-  getBookingDetails: async (bookingId: string): Promise<BookingDetailsResponse> => {
-    const result = await invokeEdgeFunction('liteapi-booking-details', { bookingId });
-    return result.data;
-  },
-
-  /** @deprecated Use `cancelBooking` server action from `@/app/actions` instead */
-  cancelBooking: async (bookingId: string): Promise<CancellationResponse> => {
-    const result = await invokeEdgeFunction('liteapi-cancel-booking', { bookingId });
-    return result.data;
-  },
-
-  /** @deprecated Status updates are handled inside `cancelBooking` server action */
-  updateBookingStatus: async (bookingId: string, status: BookingRecord['status']): Promise<void> => {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('bookings')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('booking_id', bookingId);
-
-    if (error) {
-      console.error('Failed to update booking status:', error);
-      throw error;
-    }
-  },
-
-  /** @deprecated Use `amendBooking` server action from `@/app/actions` instead */
-  amendBooking: async (params: AmendBookingParams): Promise<AmendBookingResponse> => {
-    const result = await invokeEdgeFunction('liteapi-amend-booking', params);
-    return result.data;
-  },
-};
