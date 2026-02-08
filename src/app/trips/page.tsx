@@ -1,16 +1,10 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
 import { fetchTripsData } from '@/lib/trips';
 import { TripsContent } from '@/components/trips';
 import { Header, Footer } from '@/components/landing';
 
 export default async function TripsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/login?returnTo=/trips');
-  }
+  // Auth protection handled by middleware.ts
+  // This page is only accessible to authenticated users
 
   const initialData = await fetchTripsData();
 
