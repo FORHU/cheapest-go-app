@@ -18,52 +18,17 @@ export const queryClient = new QueryClient({
 });
 
 /**
- * Query Keys Factory Pattern
- * Centralized query key management for type safety and consistency
- *
- * Usage:
- * - queryKeys.properties.all - ['properties']
- * - queryKeys.properties.detail('123') - ['properties', 'detail', '123']
- * - queryKeys.hotels.search(params) - ['hotels', 'search', params]
+ * Query Keys — only keys actually used by hooks.
+ * booking.all: invalidated by usePrebook, useBooking
+ * trips.all: invalidated by useCancelBooking, useAmendBooking
+ * trips.bookingDetails: used by useBookingDetails (on-demand modal fetch)
  */
 export const queryKeys = {
-  properties: {
-    all: ['properties'] as const,
-    lists: () => [...queryKeys.properties.all, 'list'] as const,
-    list: (filters: string) => [...queryKeys.properties.lists(), filters] as const,
-    details: () => [...queryKeys.properties.all, 'detail'] as const,
-    detail: (id: string) => [...queryKeys.properties.details(), id] as const,
-  },
-  hotels: {
-    all: ['hotels'] as const,
-    detail: (id: string, params: any) => [...queryKeys.hotels.all, 'detail', id, params] as const,
-    search: (params: any) => [...queryKeys.hotels.all, 'search', params] as const,
-  },
   booking: {
     all: ['booking'] as const,
-    prebook: (offerId: string, currency: string) => [
-      ...queryKeys.booking.all,
-      'prebook',
-      offerId,
-      currency,
-    ] as const,
-    confirm: (prebookId: string) => [
-      ...queryKeys.booking.all,
-      'confirm',
-      prebookId,
-    ] as const,
   },
   trips: {
     all: ['trips'] as const,
-    list: (userId?: string) => [...queryKeys.trips.all, 'list', userId] as const,
     bookingDetails: (bookingId: string) => [...queryKeys.trips.all, 'details', bookingId] as const,
-  },
-  facilities: {
-    all: ['facilities'] as const,
-  },
-  auth: {
-    all: ['auth'] as const,
-    user: () => [...queryKeys.auth.all, 'user'] as const,
-    session: () => [...queryKeys.auth.all, 'session'] as const,
   },
 };
