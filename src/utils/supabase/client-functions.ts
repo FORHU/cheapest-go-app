@@ -20,8 +20,6 @@ export async function invokeEdgeFunction<T = any>(
     const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
     const method = options?.method || 'POST';
 
-    // console.log(`[invokeEdgeFunction] Calling ${functionUrl}`);
-
     const response = await fetch(functionUrl, {
         method,
         headers: {

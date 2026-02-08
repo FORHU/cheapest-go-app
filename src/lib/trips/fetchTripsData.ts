@@ -1,9 +1,9 @@
 /**
  * Server-side data fetching for trips page.
- * Uses server Supabase client for authenticated requests.
+ * Uses shared server auth utility for authenticated requests.
  */
 
-import { createClient } from '@/utils/supabase/server';
+import { getAuthenticatedUser } from '@/lib/server/auth';
 import type { BookingRecord } from '@/services/booking.service';
 
 export interface TripsData {
@@ -13,21 +13,22 @@ export interface TripsData {
   cancelledBookings: BookingRecord[];
 }
 
+const EMPTY_TRIPS: TripsData = {
+  bookings: [],
+  upcomingBookings: [],
+  pastBookings: [],
+  cancelledBookings: [],
+};
+
 /**
  * Fetch user's trips data server-side.
  * Returns empty data if user is not authenticated.
  */
 export async function fetchTripsData(): Promise<TripsData> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, supabase, error: authError } = await getAuthenticatedUser();
 
-  if (!user) {
-    return {
-      bookings: [],
-      upcomingBookings: [],
-      pastBookings: [],
-      cancelledBookings: []
-    };
+  if (authError || !user) {
+    return EMPTY_TRIPS;
   }
 
   const { data, error } = await supabase
@@ -38,12 +39,7 @@ export async function fetchTripsData(): Promise<TripsData> {
 
   if (error) {
     console.error('Failed to fetch bookings:', error);
-    return {
-      bookings: [],
-      upcomingBookings: [],
-      pastBookings: [],
-      cancelledBookings: []
-    };
+    return EMPTY_TRIPS;
   }
 
   const bookings = (data || []) as BookingRecord[];
