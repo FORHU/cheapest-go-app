@@ -2,7 +2,6 @@
 export { liteApiService } from './liteapi.service';
 export type { SearchParams, HotelDetailsParams, LiteApiFacility } from './liteapi.service';
 
-export { bookingService } from './booking.service';
 export type {
   PrebookParams,
   BookingParams,

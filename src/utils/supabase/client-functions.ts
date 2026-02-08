@@ -1,4 +1,10 @@
-
+/**
+ * Client-side Edge Function invocation.
+ *
+ * Only use for user-triggered, non-sensitive operations (e.g. autocomplete, search).
+ * For mutations and sensitive queries, use server actions with the server-side
+ * equivalent in `@/utils/supabase/functions.ts`.
+ */
 import { createClient } from './client';
 
 export async function invokeEdgeFunction<T = any>(
