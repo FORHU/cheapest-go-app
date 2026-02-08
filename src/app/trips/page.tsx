@@ -1,17 +1,38 @@
+import { Suspense } from 'react';
 import { fetchTripsData } from '@/lib/trips';
 import { TripsContent } from '@/components/trips';
 import { Header, Footer } from '@/components/landing';
+import { Skeleton } from '@/components/shared/Skeleton';
 
-export default async function TripsPage() {
-  // Auth protection handled by middleware.ts
-  // This page is only accessible to authenticated users
+function TripsSkeleton() {
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-6">
+      {/* Tabs skeleton */}
+      <div className="flex gap-4">
+        {[1, 2, 3].map(i => (
+          <Skeleton key={i} width={100} height={36} rounded="lg" />
+        ))}
+      </div>
+      {/* Card skeletons */}
+      {[1, 2, 3].map(i => (
+        <Skeleton key={i} height={160} rounded="xl" />
+      ))}
+    </div>
+  );
+}
 
+async function TripsLoader() {
   const initialData = await fetchTripsData();
+  return <TripsContent initialData={initialData} />;
+}
 
+export default function TripsPage() {
   return (
     <>
       <Header />
-      <TripsContent initialData={initialData} />
+      <Suspense fallback={<TripsSkeleton />}>
+        <TripsLoader />
+      </Suspense>
       <Footer />
     </>
   );

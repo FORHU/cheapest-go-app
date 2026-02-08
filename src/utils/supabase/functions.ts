@@ -11,8 +11,6 @@ export async function invokeEdgeFunction<T = any>(
     const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
     const method = options?.method || 'POST';
 
-    console.log(`[invokeEdgeFunction] Calling ${functionUrl}`);
-
     const response = await fetch(functionUrl, {
         method,
         headers: {
@@ -86,25 +84,6 @@ export async function getHotelDetails(hotelId: string, options: any = {}) {
         try {
             const detailRooms = hotel.detailRooms;
 
-            console.log("[PhotoFix] DEBUG - Starting room photo matching");
-            console.log("[PhotoFix] Number of roomTypes:", hotel.roomTypes.length);
-            console.log("[PhotoFix] Number of detailRooms:", detailRooms.length);
-
-            // Log first roomType structure for debugging
-            if (hotel.roomTypes[0]) {
-                console.log("[PhotoFix] Sample roomType keys:", Object.keys(hotel.roomTypes[0]));
-                console.log("[PhotoFix] Sample roomType.mappedRoomId:", hotel.roomTypes[0].mappedRoomId);
-                console.log("[PhotoFix] Sample roomType.rates[0]?.name:", hotel.roomTypes[0].rates?.[0]?.name);
-            }
-
-            // Log first detailRoom structure for debugging
-            if (detailRooms[0]) {
-                console.log("[PhotoFix] Sample detailRoom keys:", Object.keys(detailRooms[0]));
-                console.log("[PhotoFix] Sample detailRoom.id:", detailRooms[0].id);
-                console.log("[PhotoFix] Sample detailRoom.roomName:", detailRooms[0].roomName);
-                console.log("[PhotoFix] Sample detailRoom photos count:", detailRooms[0].photos?.length || 0);
-            }
-
             // Collect all room photos with their source room info
             const roomPhotosWithSource: { url: string; roomName: string }[] = [];
             detailRooms.forEach((r: any) => {
@@ -118,9 +97,6 @@ export async function getHotelDetails(hotelId: string, options: any = {}) {
             // Track used images to prevent duplicates across rooms
             const usedImages = new Set<string>();
             const hotelImages = hotel.images || [];
-
-            console.log("[PhotoFix] Total room photos with source:", roomPhotosWithSource.length);
-            console.log("[PhotoFix] Hotel images available:", hotelImages.length);
 
             hotel.roomTypes.forEach((roomType: any, index: number) => {
                 const roomTypeName = (
@@ -175,7 +151,6 @@ export async function getHotelDetails(hotelId: string, options: any = {}) {
                     const threshold = roomTypeWords.length <= 2 ? 1 : Math.max(2, roomTypeWords.length * 0.5);
                     if (bestMatch && bestScore >= threshold) {
                         matchedRoom = bestMatch;
-                        console.log(`[PhotoFix] ✓ Fuzzy match: '${roomTypeName}' → '${matchedRoom.roomName}' (score: ${bestScore})`);
                     }
                 }
 
@@ -183,7 +158,6 @@ export async function getHotelDetails(hotelId: string, options: any = {}) {
                 if (matchedRoom && matchedRoom.photos && matchedRoom.photos.length > 0) {
                     roomType.roomPhotos = matchedRoom.photos.map((p: any) => p.url || p).filter(Boolean);
                     roomType.roomPhotos.forEach((url: string) => usedImages.add(url));
-                    console.log(`[PhotoFix] ✓ Assigned ${roomType.roomPhotos.length} matched photos to '${roomTypeName}'`);
                     if (matchedRoom.description) roomType.roomDescription = matchedRoom.description;
                     if (matchedRoom.bedTypes) roomType.bedTypes = matchedRoom.bedTypes;
                     if (matchedRoom.amenities) roomType.amenities = matchedRoom.amenities;
@@ -232,10 +206,8 @@ export async function getHotelDetails(hotelId: string, options: any = {}) {
 
                     roomType.roomPhotos = fallbackPhotos;
                     fallbackPhotos.forEach((url: string) => usedImages.add(url));
-                    console.log(`[PhotoFix] ⚠ Fallback: assigned ${fallbackPhotos.length} photos to '${roomTypeName}'`);
                 }
             });
-            console.log("[PhotoFix] Room photo correction complete. Unique images used:", usedImages.size);
         } catch (err) {
             console.error("Error applying room photo fix:", err);
         }
