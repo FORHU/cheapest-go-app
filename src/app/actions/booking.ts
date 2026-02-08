@@ -8,7 +8,6 @@
  * All inputs are validated with Zod schemas before processing.
  */
 
-import { createClient } from '@/utils/supabase/server';
 import { invokeEdgeFunction } from '@/utils/supabase/functions';
 import { revalidatePath } from 'next/cache';
 import {
@@ -17,6 +16,8 @@ import {
   amendBookingSchema,
   saveBookingSchema,
 } from '@/lib/schemas';
+import { getAuthenticatedUser } from '@/lib/server/auth';
+import { verifyBookingOwnership } from '@/lib/server/bookings';
 import type {
   PrebookParams,
   BookingParams,
@@ -29,21 +30,6 @@ import type {
   BookingDetailsResult,
   GetUserBookingsResult,
 } from './types';
-
-// ============================================================================
-// Helper: Get authenticated user
-// ============================================================================
-
-async function getAuthenticatedUser() {
-  const supabase = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    return { user: null, supabase, error: 'Not authenticated' };
-  }
-
-  return { user, supabase, error: null };
-}
 
 // ============================================================================
 // Server Actions
@@ -137,19 +123,10 @@ export async function cancelBooking(bookingId: string): Promise<CancelBookingRes
       return { success: false, error: 'Authentication required' };
     }
 
-    // Verify ownership - user can only cancel their own bookings
-    const { data: booking, error: fetchError } = await supabase
-      .from('bookings')
-      .select('user_id')
-      .eq('booking_id', bookingId)
-      .single();
-
-    if (fetchError || !booking) {
-      return { success: false, error: 'Booking not found' };
-    }
-
-    if (booking.user_id !== user.id) {
-      return { success: false, error: 'Not authorized to cancel this booking' };
+    // Verify ownership
+    const { isOwner, error: ownerError } = await verifyBookingOwnership(supabase, bookingId, user.id);
+    if (!isOwner) {
+      return { success: false, error: ownerError || 'Not authorized to cancel this booking' };
     }
 
     // Call LiteAPI to cancel
@@ -197,18 +174,9 @@ export async function amendBooking(params: AmendBookingParams): Promise<AmendBoo
     }
 
     // Verify ownership
-    const { data: booking, error: fetchError } = await supabase
-      .from('bookings')
-      .select('user_id')
-      .eq('booking_id', validation.data.bookingId)
-      .single();
-
-    if (fetchError || !booking) {
-      return { success: false, error: 'Booking not found' };
-    }
-
-    if (booking.user_id !== user.id) {
-      return { success: false, error: 'Not authorized to modify this booking' };
+    const { isOwner, error: ownerError } = await verifyBookingOwnership(supabase, validation.data.bookingId, user.id);
+    if (!isOwner) {
+      return { success: false, error: ownerError || 'Not authorized to modify this booking' };
     }
 
     // Call LiteAPI to amend
@@ -260,18 +228,9 @@ export async function getBookingDetails(bookingId: string): Promise<BookingDetai
     }
 
     // Verify ownership
-    const { data: booking, error: fetchError } = await supabase
-      .from('bookings')
-      .select('user_id')
-      .eq('booking_id', bookingId)
-      .single();
-
-    if (fetchError || !booking) {
-      return { success: false, error: 'Booking not found' };
-    }
-
-    if (booking.user_id !== user.id) {
-      return { success: false, error: 'Not authorized to view this booking' };
+    const { isOwner, error: ownerError } = await verifyBookingOwnership(supabase, bookingId, user.id);
+    if (!isOwner) {
+      return { success: false, error: ownerError || 'Not authorized to view this booking' };
     }
 
     const result = await invokeEdgeFunction('liteapi-booking-details', { bookingId });

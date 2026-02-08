@@ -23,22 +23,18 @@ export default async function PropertyPage({
     const { id } = await params;
     const searchParamsResult = await searchParams;
 
-    // Fetch all property data using utility function
-    const { property, fetchedDetails } = await fetchPropertyData(id, {
-        offerId: searchParamsResult.offerId as string,
-        checkIn: searchParamsResult.checkIn as string,
-        checkOut: searchParamsResult.checkOut as string,
-        adults: searchParamsResult.adults as string,
-        children: searchParamsResult.children as string,
-        rooms: searchParamsResult.rooms as string,
-    });
-
-    // Fetch reviews from LiteAPI (parallel with property data would be better but keeping simple for now)
-    // No limit - fetch all available reviews
-    const reviewsData = await fetchHotelReviews(id, { limit: 1000 });
-
-    // Simulate slow data fetching
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Parallel fetch: property data + reviews
+    const [{ property, fetchedDetails }, reviewsData] = await Promise.all([
+        fetchPropertyData(id, {
+            offerId: searchParamsResult.offerId as string,
+            checkIn: searchParamsResult.checkIn as string,
+            checkOut: searchParamsResult.checkOut as string,
+            adults: searchParamsResult.adults as string,
+            children: searchParamsResult.children as string,
+            rooms: searchParamsResult.rooms as string,
+        }),
+        fetchHotelReviews(id, { limit: 1000 }),
+    ]);
 
     if (!property) {
         return (
