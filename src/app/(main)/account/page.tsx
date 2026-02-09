@@ -1,5 +1,4 @@
 import { createClient } from '@/utils/supabase/server';
-import { Header } from '@/components/landing';
 import { AccountContent } from '@/components/account';
 
 export default async function AccountSettingsPage() {
@@ -17,7 +16,6 @@ export default async function AccountSettingsPage() {
 
     return (
         <div className="min-h-screen flex flex-col">
-            <Header />
             <AccountContent initialUser={initialUser} />
         </div>
     );

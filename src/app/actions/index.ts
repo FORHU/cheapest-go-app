@@ -10,7 +10,10 @@ export {
 
 export { sendBookingConfirmationEmail } from './email';
 
+export { autocompleteDestinations } from './search';
+
 export type {
+  ActionResult,
   PrebookParams,
   PrebookResult,
   BookingParams,
