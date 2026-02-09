@@ -18,9 +18,10 @@ import {
 } from '@/hooks';
 import { saveBookingToDatabase, sendBookingConfirmationEmail } from '@/app/actions';
 import { LogIn } from 'lucide-react';
+import { toast } from 'sonner';
 import BackButton from '@/components/common/BackButton';
 import AuthModal from '@/components/auth/AuthModal';
-import { checkoutSchema, guestDetailsSchema } from '@/lib/schemas/checkout';
+import { validateCheckoutForm, buildGuestPayload, buildHolderPayload } from '@/lib/server/checkout';
 import {
     BookingSuccess,
     UserDetailsForm,
@@ -127,40 +128,11 @@ export function CheckoutContent() {
             return;
         }
 
-        // Validate form fields
+        // Validate form fields using server utility
         clearFormErrors();
-        const errors: Record<string, string> = {};
-
-        const mainResult = checkoutSchema.safeParse({
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            cardNumber: formData.cardNumber,
-            expiry: formData.expiry,
-            cvc: formData.cvc,
-        });
-
-        if (!mainResult.success) {
-            for (const [field, msgs] of Object.entries(mainResult.error.flatten().fieldErrors)) {
-                if (msgs?.[0]) errors[field] = msgs[0];
-            }
-        }
-
-        if (bookingFor === 'someone_else') {
-            const guestResult = guestDetailsSchema.safeParse({
-                guestFirstName: formData.guestFirstName,
-                guestLastName: formData.guestLastName,
-            });
-            if (!guestResult.success) {
-                for (const [field, msgs] of Object.entries(guestResult.error.flatten().fieldErrors)) {
-                    if (msgs?.[0]) errors[field] = msgs[0];
-                }
-            }
-        }
-
-        if (Object.keys(errors).length > 0) {
-            setFormErrors(errors);
+        const validation = validateCheckoutForm(formData, bookingFor);
+        if (!validation.success) {
+            setFormErrors(validation.errors);
             return;
         }
 
@@ -169,24 +141,12 @@ export function CheckoutContent() {
                 throw new Error("Booking session expired. Please go back and select the room again.");
             }
 
-            const primaryGuest: any = {
-                occupancyNumber: 1,
-                firstName: bookingFor === 'myself' ? formData.firstName : formData.guestFirstName,
-                lastName: bookingFor === 'myself' ? formData.lastName : formData.guestLastName,
-                email: formData.email
-            };
-
-            if (specialRequests?.trim()) {
-                primaryGuest.remarks = specialRequests.trim();
-            }
+            const guests = buildGuestPayload(formData, bookingFor, specialRequests);
+            const holder = buildHolderPayload(formData);
 
             await completeBooking({
-                holder: {
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    email: formData.email
-                },
-                guests: [primaryGuest],
+                holder,
+                guests,
                 payment: { method: "ACC_CREDIT_CARD" }
             });
 
@@ -201,7 +161,7 @@ export function CheckoutContent() {
                 sendConfirmationEmail({
                     bookingId: confirmedBookingId || 'N/A',
                     email: formData.email,
-                    guestName: `${primaryGuest.firstName} ${primaryGuest.lastName}`,
+                    guestName: `${guests[0].firstName} ${guests[0].lastName}`,
                     hotelName: property?.name || 'Hotel',
                     roomName: selectedRoom?.title || 'Room',
                     checkIn: checkIn?.toLocaleDateString() || '',
@@ -237,11 +197,12 @@ export function CheckoutContent() {
             Promise.all(postBookingTasks).catch(err =>
                 console.error("Post-booking tasks error:", err)
             );
-        } catch (err: any) {
-            if (err.message?.includes("fraud check") || err.message?.includes("2013")) {
-                alert("Booking rejected by fraud prevention system.\n\nPlease use realistic information.");
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Booking failed';
+            if (message.includes("fraud check") || message.includes("2013")) {
+                toast.error("Booking rejected by fraud prevention. Please use realistic information.");
             } else {
-                alert(`Booking Failed: ${err.message}`);
+                toast.error(`Booking failed: ${message}`);
             }
         }
     }, [user, prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, openAuthModal, totalPrice, clearFormErrors, setFormErrors]);

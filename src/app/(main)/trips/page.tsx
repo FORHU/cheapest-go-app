@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import { fetchTripsData } from '@/lib/trips';
 import { TripsContent } from '@/components/trips';
-import { Header, Footer } from '@/components/landing';
 import { Skeleton } from '@/components/shared/Skeleton';
 
 function TripsSkeleton() {
@@ -28,12 +27,8 @@ async function TripsLoader() {
 
 export default function TripsPage() {
   return (
-    <>
-      <Header />
-      <Suspense fallback={<TripsSkeleton />}>
-        <TripsLoader />
-      </Suspense>
-      <Footer />
-    </>
+    <Suspense fallback={<TripsSkeleton />}>
+      <TripsLoader />
+    </Suspense>
   );
 }
