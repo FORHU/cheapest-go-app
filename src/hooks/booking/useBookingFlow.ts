@@ -150,8 +150,6 @@ export function useBookingFlow(): UseBookingFlowReturn {
         const isExpiredSession = errorCode === '2012' || errorCode === '2010';
 
         if (isExpiredSession && selectedRoom?.offerId) {
-          // Attempt to refresh prebook
-          console.log('Prebook expired, refreshing...');
           const refreshResult = await refreshPrebook(
             selectedRoom.offerId,
             'PHP'
@@ -159,7 +157,6 @@ export function useBookingFlow(): UseBookingFlowReturn {
 
           if (refreshResult?.prebookId) {
             currentPrebookId = refreshResult.prebookId;
-            console.log('Prebook refreshed with new ID:', currentPrebookId);
 
             // Retry booking with new prebookId
             await bookingMutation.mutateAsync({

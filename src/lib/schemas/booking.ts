@@ -64,6 +64,10 @@ export const amendBookingSchema = z.object({
 
 export type AmendBookingInput = z.infer<typeof amendBookingSchema>;
 
+// Form-only schema (without bookingId) for client-side validation
+export const amendFormSchema = amendBookingSchema.omit({ bookingId: true });
+export type AmendFormInput = z.infer<typeof amendFormSchema>;
+
 // ============================================================================
 // Save Booking to Database
 // ============================================================================
