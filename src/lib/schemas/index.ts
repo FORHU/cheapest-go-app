@@ -23,6 +23,7 @@ export {
   bookingConfirmSchema,
   cancelBookingSchema,
   amendBookingSchema,
+  amendFormSchema,
   saveBookingSchema,
   getBookingDetailsSchema,
 } from './booking';
@@ -31,6 +32,7 @@ export type {
   BookingConfirmInput,
   CancelBookingInput,
   AmendBookingInput,
+  AmendFormInput,
   SaveBookingInput,
   GetBookingDetailsInput,
 } from './booking';
