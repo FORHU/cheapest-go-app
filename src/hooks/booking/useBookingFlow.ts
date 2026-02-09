@@ -143,9 +143,10 @@ export function useBookingFlow(): UseBookingFlowReturn {
           ...params,
           prebookId: currentPrebookId,
         });
-      } catch (error: any) {
+      } catch (error) {
         // Check if error is due to expired prebook session
-        const errorCode = error?.code || error?.message?.match(/\d{4}/)?.[0];
+        const errorMessage = error instanceof Error ? error.message : '';
+        const errorCode = (error as { code?: string })?.code || errorMessage.match(/\d{4}/)?.[0];
         const isExpiredSession = errorCode === '2012' || errorCode === '2010';
 
         if (isExpiredSession && selectedRoom?.offerId) {

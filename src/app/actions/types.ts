@@ -5,6 +5,14 @@ import type {
   SaveBookingInput,
 } from '@/lib/schemas';
 
+/**
+ * Standardized result type for all server actions.
+ * Discriminated union ensures type-safe handling of success/error cases.
+ */
+export type ActionResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+
 // Re-export input types for hooks and services
 export type PrebookParams = PrebookInput;
 export type BookingParams = BookingConfirmInput;

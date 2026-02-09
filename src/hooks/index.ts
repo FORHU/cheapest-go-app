@@ -1,8 +1,3 @@
-// ============================================
-// HOOKS - Organized by Feature/Page
-// ============================================
-
-// Auth hooks (login, reset-password, account)
 export { useSupabase, useAuthForm, useAuthRedirect, usePasswordValidation, useLoginForm } from './auth';
 export type { PasswordRequirement, AuthMode } from './auth';
 

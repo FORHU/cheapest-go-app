@@ -292,30 +292,8 @@ export async function saveBookingToDatabase(
     });
 
     if (insertError) {
-      // Retry without cancellation_policy in case column doesn't exist
-      const { error: retryError } = await supabase.from('bookings').insert({
-        booking_id: data.bookingId,
-        user_id: user.id,
-        property_name: data.propertyName,
-        property_image: data.propertyImage,
-        room_name: data.roomName,
-        check_in: data.checkIn,
-        check_out: data.checkOut,
-        guests_adults: data.adults,
-        guests_children: data.children,
-        total_price: data.totalPrice,
-        currency: data.currency,
-        holder_first_name: data.holderFirstName,
-        holder_last_name: data.holderLastName,
-        holder_email: data.holderEmail,
-        status: 'confirmed',
-        special_requests: data.specialRequests,
-      });
-
-      if (retryError) {
-        console.error('[saveBookingToDatabase] Error:', retryError);
-        return { success: false, error: 'Failed to save booking' };
-      }
+      console.error('[saveBookingToDatabase] Error:', insertError);
+      return { success: false, error: 'Failed to save booking' };
     }
 
     // Revalidate trips page

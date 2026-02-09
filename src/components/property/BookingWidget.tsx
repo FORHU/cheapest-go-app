@@ -112,10 +112,10 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, se
                             <div>
                                 <h5 className="text-xs font-bold uppercase text-slate-400 mb-4 tracking-wider">Amenities</h5>
                                 <div className="grid grid-cols-2 gap-3">
-                                    {(viewingRoom.amenities || ['Air conditioning', 'WiFi', 'Private Bathroom', 'Flat-screen TV', 'Soundproofing']).map((item: string, i: number) => (
+                                    {(viewingRoom.amenities || ['Air conditioning', 'WiFi', 'Private Bathroom', 'Flat-screen TV', 'Soundproofing']).map((item, i) => (
                                         <div key={i} className="flex items-start gap-2.5 text-sm text-slate-700 dark:text-slate-300">
                                             <Check size={16} className="text-emerald-500 mt-0.5 shrink-0" />
-                                            <span>{item}</span>
+                                            <span>{typeof item === 'string' ? item : item.name}</span>
                                         </div>
                                     ))}
                                 </div>

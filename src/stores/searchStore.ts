@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 
 export interface Destination {
     type: 'city' | 'airport' | 'history';
@@ -236,19 +237,22 @@ export const useSuggestions = () => useSearchStore((state) => state.suggestions.
 export const useSuggestionsLoading = () => useSearchStore((state) => state.suggestions.loading);
 
 // Actions selector (for components that only need to update state)
-export const useSearchActions = () => useSearchStore((state) => ({
-    setDestination: state.setDestination,
-    setDestinationQuery: state.setDestinationQuery,
-    setDates: state.setDates,
-    setTravelers: state.setTravelers,
-    setActiveDropdown: state.setActiveDropdown,
-    setFilters: state.setFilters,
-    toggleStarRating: state.toggleStarRating,
-    toggleFacility: state.toggleFacility,
-    resetFilters: state.resetFilters,
-    setSuggestions: state.setSuggestions,
-    setSuggestionsLoading: state.setSuggestionsLoading,
-    addRecentSearch: state.addRecentSearch,
-    removeRecentSearch: state.removeRecentSearch,
-    reset: state.reset,
-}));
+export const useSearchActions = () =>
+    useSearchStore(
+        useShallow((state) => ({
+            setDestination: state.setDestination,
+            setDestinationQuery: state.setDestinationQuery,
+            setDates: state.setDates,
+            setTravelers: state.setTravelers,
+            setActiveDropdown: state.setActiveDropdown,
+            setFilters: state.setFilters,
+            toggleStarRating: state.toggleStarRating,
+            toggleFacility: state.toggleFacility,
+            resetFilters: state.resetFilters,
+            setSuggestions: state.setSuggestions,
+            setSuggestionsLoading: state.setSuggestionsLoading,
+            addRecentSearch: state.addRecentSearch,
+            removeRecentSearch: state.removeRecentSearch,
+            reset: state.reset,
+        }))
+    );
