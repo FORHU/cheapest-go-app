@@ -157,16 +157,12 @@ function extractRefundableTag(hotel: any): string | undefined {
     // First check hotel-level refundableTag (set by edge function)
     let refundableTag = hotel.refundableTag;
 
-    // Debug: log what we received
-    console.log(`[extractRefundableTag] Hotel ${hotel.hotelId} hotel.refundableTag:`, hotel.refundableTag);
-
     // Fallback: check roomTypes if not found
     if (!refundableTag && hotel.roomTypes && hotel.roomTypes.length > 0) {
         for (const roomType of hotel.roomTypes) {
             // Check roomType level
             if (roomType.refundableTag) {
                 refundableTag = roomType.refundableTag;
-                console.log(`[extractRefundableTag] Found at roomType level:`, refundableTag);
                 break;
             }
             // Check rate level
@@ -174,7 +170,6 @@ function extractRefundableTag(hotel: any): string | undefined {
                 const rate = roomType.rates[0];
                 if (rate.refundableTag) {
                     refundableTag = rate.refundableTag;
-                    console.log(`[extractRefundableTag] Found at rate level:`, refundableTag);
                     break;
                 }
             }
@@ -187,13 +182,6 @@ function extractRefundableTag(hotel: any): string | undefined {
 function transformHotelToProperty(hotel: any, cityName: string): Property {
     const { price, originalPrice } = extractPrice(hotel);
     const refundableTag = extractRefundableTag(hotel);
-
-    // Debug logging
-    const hotelId = hotel.hotelId;
-    const hotelName = hotel.name || hotel.details?.name || 'Unknown';
-    const amenities = hotel.hotelFacilities || hotel.details?.hotelFacilities || hotel.details?.facilities || [];
-    console.log(`[SearchPage] Hotel ${hotelId} (${hotelName}) refundableTag:`, refundableTag);
-    console.log(`[SearchPage] Hotel ${hotelId} amenities (${amenities.length}):`, amenities.slice(0, 3));
 
     // Get review data - reviewRating is typically 0-10 scale
     // If no reviewRating, convert starRating (1-5) to 10-scale
@@ -238,23 +226,12 @@ export async function fetchSearchProperties(params: SearchParams): Promise<Prope
     const queryParams = buildSearchQueryParams(params);
 
     try {
-        console.log("[SearchPage] Calling searchLiteApi with params:", queryParams);
         const data = await searchLiteApi(queryParams);
 
-        // Debug: Log raw API response structure for first hotel
-        if (data?.data?.[0]) {
-            const firstHotel = data.data[0];
-            console.log("[SearchPage] First hotel raw data keys:", Object.keys(firstHotel));
-            console.log("[SearchPage] First hotel refundableTag (hotel level):", firstHotel.refundableTag);
-            console.log("[SearchPage] First hotel roomTypes?.[0]?.rates?.[0]:", JSON.stringify(firstHotel.roomTypes?.[0]?.rates?.[0], null, 2));
-        }
-
         if (data?.data && Array.isArray(data.data)) {
-            const properties = data.data.map((hotel: any) => {
-                const prop = transformHotelToProperty(hotel, queryParams.cityName);
-                console.log(`[SearchPage] Hotel ${hotel.hotelId} (${hotel.name}) refundableTag:`, prop.refundableTag);
-                return prop;
-            });
+            const properties = data.data.map((hotel: any) =>
+                transformHotelToProperty(hotel, queryParams.cityName)
+            );
 
             // Filter out hotels with incomplete data (ID-like names indicate missing details)
             const filteredProperties = properties.filter((prop: Property) => {
@@ -265,7 +242,6 @@ export async function fetchSearchProperties(params: SearchParams): Promise<Prope
                 return hasValidName;
             });
 
-            console.log(`[SearchPage] Filtered ${properties.length - filteredProperties.length} hotels with missing data`);
             return filteredProperties;
         }
     } catch (e) {

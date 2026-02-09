@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Pencil, Loader2 } from 'lucide-react';
 import type { BookingRecord } from '@/services/booking.service';
 import { useAmendBooking } from '@/hooks/trips';
-import { amendBookingSchema, type AmendBookingInput } from '@/lib/schemas/amend';
+import { amendFormSchema, type AmendFormInput } from '@/lib/schemas';
 
 interface ModificationModalProps {
     booking: BookingRecord;
@@ -17,14 +17,14 @@ interface ModificationModalProps {
 export default function ModificationModal({ booking, isOpen, onClose, onModified }: ModificationModalProps) {
     const amendMutation = useAmendBooking();
 
-    const [form, setForm] = useState<AmendBookingInput>({
+    const [form, setForm] = useState<AmendFormInput>({
         firstName: booking.holder_first_name,
         lastName: booking.holder_last_name,
         email: booking.holder_email,
         remarks: booking.special_requests || '',
     });
 
-    const [errors, setErrors] = useState<Partial<Record<keyof AmendBookingInput, string>>>({});
+    const [errors, setErrors] = useState<Partial<Record<keyof AmendFormInput, string>>>({});
 
     // Re-initialize form when booking changes or modal opens
     useEffect(() => {
@@ -39,7 +39,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
         }
     }, [isOpen, booking]);
 
-    const handleChange = (field: keyof AmendBookingInput, value: string) => {
+    const handleChange = (field: keyof AmendFormInput, value: string) => {
         setForm(prev => ({ ...prev, [field]: value }));
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: undefined }));
@@ -47,11 +47,11 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
     };
 
     const handleSubmit = async () => {
-        const result = amendBookingSchema.safeParse(form);
+        const result = amendFormSchema.safeParse(form);
         if (!result.success) {
-            const fieldErrors: Partial<Record<keyof AmendBookingInput, string>> = {};
+            const fieldErrors: Partial<Record<keyof AmendFormInput, string>> = {};
             result.error.issues.forEach(err => {
-                const field = err.path[0] as keyof AmendBookingInput;
+                const field = err.path[0] as keyof AmendFormInput;
                 if (!fieldErrors[field]) {
                     fieldErrors[field] = err.message;
                 }
