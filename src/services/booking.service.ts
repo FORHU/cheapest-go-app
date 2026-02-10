@@ -11,6 +11,7 @@
 export interface PrebookParams {
   offerId: string;
   currency: string;
+  voucherCode?: string;
 }
 
 /**
@@ -37,6 +38,7 @@ export interface BookingParams {
   guests: Guest[];
   payment: {
     method: string;
+    transactionId?: string;
   };
 }
 
@@ -53,6 +55,10 @@ export interface PrebookResponse {
   status?: string;
   /** Cancellation policies from prebook response */
   cancellationPolicies?: CancellationPolicy;
+  /** Payment SDK secret key (when usePaymentSdk: true) */
+  secretKey?: string;
+  /** Payment SDK transaction ID (when usePaymentSdk: true) */
+  transactionId?: string;
 }
 
 /**

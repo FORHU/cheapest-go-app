@@ -50,8 +50,16 @@ Deno.serve(async (req: any) => {
 
         const { prebookId, holder, guests, payment, clientReference } = body;
         console.log("Booking Request for prebookId:", prebookId);
+        console.log("Payment method:", payment?.method);
 
         if (!prebookId) throw new Error("Missing prebookId");
+
+        // Build payment object — support TRANSACTION_ID for Payment SDK
+        const paymentPayload: Record<string, any> = { method: payment.method };
+        if (payment.method === 'TRANSACTION_ID' && payment.transactionId) {
+            paymentPayload.transactionId = payment.transactionId;
+            console.log("Using Payment SDK transactionId:", payment.transactionId);
+        }
 
         const endpoints = [
             `https://book.liteapi.travel/v3.0/rates/book`,
@@ -64,7 +72,7 @@ Deno.serve(async (req: any) => {
         let success = false;
         let lastError;
 
-        const payload = { prebookId, holder, guests, payment, clientReference };
+        const payload = { prebookId, holder, guests, payment: paymentPayload, clientReference };
 
         outerLoop:
         for (const url of endpoints) {

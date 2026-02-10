@@ -7,6 +7,7 @@ import { z } from 'zod';
 export const prebookSchema = z.object({
   offerId: z.string().min(1, 'Offer ID is required'),
   currency: z.string().length(3, 'Currency must be 3 characters (e.g., PHP)'),
+  voucherCode: z.string().optional(),
 });
 
 export type PrebookInput = z.infer<typeof prebookSchema>;
@@ -35,6 +36,7 @@ export const bookingConfirmSchema = z.object({
   guests: z.array(guestSchema).min(1, 'At least one guest is required'),
   payment: z.object({
     method: z.string().min(1, 'Payment method is required'),
+    transactionId: z.string().optional(),
   }),
 });
 
