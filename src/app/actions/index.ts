@@ -12,6 +12,8 @@ export { sendBookingConfirmationEmail } from './email';
 
 export { autocompleteDestinations } from './search';
 
+export { validateVoucher, getAvailableVouchers, saveVoucherUsage } from './voucher';
+
 export type {
   ActionResult,
   PrebookParams,

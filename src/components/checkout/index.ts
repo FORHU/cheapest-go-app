@@ -8,6 +8,9 @@ export { PaymentForm } from './PaymentForm';
 export { BookingSummary } from './BookingSummary';
 export { SubmitBookingButton } from './SubmitBookingButton';
 export { CancellationPolicySection } from './CancellationPolicySection';
+export { VoucherInput } from './VoucherInput';
+export { AvailablePromos } from './AvailablePromos';
+
 
 // Types
 export type { CheckoutFormData, BookingForType } from './types';

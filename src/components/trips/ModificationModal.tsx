@@ -62,10 +62,10 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
 
         await amendMutation.mutateAsync({
             bookingId: booking.booking_id,
-            firstName: form.firstName,
-            lastName: form.lastName,
-            email: form.email,
-            remarks: form.remarks || undefined,
+            firstName: form.firstName.trim(),
+            lastName: form.lastName.trim(),
+            email: form.email.trim(),
+            ...(form.remarks?.trim() ? { remarks: form.remarks.trim() } : {}),
         });
 
         onModified();
