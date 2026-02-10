@@ -7,7 +7,7 @@ import {
   useBookingActions,
 } from '@/stores/bookingStore';
 import type { BookingParams, PrebookResponse, CancellationPolicy } from '@/services';
-import { prebookRoom } from '@/app/actions';
+import { apiFetch } from '@/lib/api/client';
 
 /**
  * Price data from prebook response
@@ -117,9 +117,12 @@ export function useBookingFlow(): UseBookingFlowReturn {
       const params: { offerId: string; currency: string; voucherCode?: string } = { offerId, currency };
       if (voucherCode) params.voucherCode = voucherCode;
 
-      const result = await prebookRoom(params);
-      if (!result.success || !result.data) {
+      const result = await apiFetch<PrebookResponse>('/api/booking/prebook', params as unknown as Record<string, unknown>);
+      if (!result.success) {
         throw new Error(result.error || 'Refresh prebook failed');
+      }
+      if (!result.data) {
+        throw new Error('Refresh prebook failed');
       }
 
       // Clear any stale prebook mutation error from previous attempts
@@ -146,14 +149,17 @@ export function useBookingFlow(): UseBookingFlowReturn {
     async (voucherCode: string): Promise<PrebookResponse | null> => {
       if (!selectedRoom?.offerId) return null;
 
-      const result = await prebookRoom({
+      const result = await apiFetch<PrebookResponse>('/api/booking/prebook', {
         offerId: selectedRoom.offerId,
         currency: 'PHP',
         voucherCode,
       });
 
-      if (!result.success || !result.data) {
+      if (!result.success) {
         throw new Error(result.error || 'Failed to apply voucher to booking');
+      }
+      if (!result.data) {
+        throw new Error('Failed to apply voucher to booking');
       }
 
       // Clear any stale prebook mutation error from previous attempts
@@ -184,13 +190,16 @@ export function useBookingFlow(): UseBookingFlowReturn {
     async (): Promise<PrebookResponse | null> => {
       if (!selectedRoom?.offerId) return null;
 
-      const result = await prebookRoom({
+      const result = await apiFetch<PrebookResponse>('/api/booking/prebook', {
         offerId: selectedRoom.offerId,
         currency: 'PHP',
       });
 
-      if (!result.success || !result.data) {
+      if (!result.success) {
         throw new Error(result.error || 'Failed to refresh booking session');
+      }
+      if (!result.data) {
+        throw new Error('Failed to refresh booking session');
       }
 
       // Clear any stale prebook mutation error from previous attempts

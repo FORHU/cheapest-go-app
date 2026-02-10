@@ -1,13 +1,4 @@
-'use server';
-
-/**
- * Server-side voucher utilities.
- * Called by server actions — never by client directly.
- * Now backed by LiteAPI Vouchers API (via liteapi-vouchers edge function).
- * Local validation + LiteAPI as source of truth for voucher data.
- */
-
-import { invokeEdgeFunction } from '@/utils/supabase/functions';
+import { listVouchersLiteApi } from './liteapi';
 import type {
   VoucherValidationResult,
   AvailablePromo,
@@ -64,10 +55,7 @@ export async function validateVoucherServer(params: {
   userId?: string;
 }): Promise<VoucherValidationResult> {
   // Fetch all vouchers from LiteAPI
-  const result = await invokeEdgeFunction<{ success: boolean; data: any }>(
-    'liteapi-vouchers',
-    { action: 'list' }
-  );
+  const result = await listVouchersLiteApi();
 
   if (!result.success || !result.data) {
     return { success: true, valid: false, message: 'Unable to validate voucher at this time' };
@@ -141,10 +129,7 @@ export async function getAvailableVouchersServer(params: {
   hotelId?: string;
   locationCode?: string;
 }): Promise<AvailablePromo[]> {
-  const result = await invokeEdgeFunction<{ success: boolean; data: any }>(
-    'liteapi-vouchers',
-    { action: 'list' }
-  );
+  const result = await listVouchersLiteApi();
 
   if (!result.success || !result.data) {
     return [];

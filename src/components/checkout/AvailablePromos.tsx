@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { Sparkles, Clock, Loader2, Tag, Percent, BadgeDollarSign } from 'lucide-react';
 import { useVoucherState, useVoucherActions } from '@/stores/checkoutStore';
-import { getAvailableVouchers, validateVoucher } from '@/app/actions';
+import { apiFetch } from '@/lib/api/client';
 import type { AvailablePromo, VoucherValidationSuccess } from '@/types/voucher';
 
 interface AvailablePromosProps {
@@ -76,7 +76,7 @@ export function AvailablePromos({
         const fetchPromos = async () => {
             setPromosLoading(true);
             try {
-                const result = await getAvailableVouchers({
+                const result = await apiFetch('/api/voucher/list', {
                     bookingPrice,
                     currency,
                     hotelId,
@@ -107,7 +107,7 @@ export function AvailablePromos({
         setVoucherCode(promo.code);
 
         try {
-            const result = await validateVoucher({
+            const result = await apiFetch('/api/voucher/validate', {
                 code: promo.code,
                 bookingPrice,
                 currency,
