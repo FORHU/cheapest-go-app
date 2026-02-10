@@ -1,5 +1,5 @@
 import { getAuthenticatedUser } from '@/lib/server/auth';
-import { confirmBooking } from '@/lib/server/bookings';
+import { confirmAndSaveBooking } from '@/lib/server/bookings';
 import { revalidatePath } from 'next/cache';
 
 export async function POST(req: Request) {
@@ -13,14 +13,15 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const data = await confirmBooking(body);
 
-        // Revalidate trips page after successful booking
-        if (data.success) {
+        // Unified flow: LiteAPI confirm → normalize policy → atomic DB save
+        const result = await confirmAndSaveBooking(body, user);
+
+        if (result.success) {
             revalidatePath('/trips');
         }
 
-        return Response.json(data);
+        return Response.json(result);
     } catch (err) {
         return Response.json(
             { success: false, error: String(err) },

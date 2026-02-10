@@ -8,11 +8,14 @@ export {
     verifyBookingOwnership,
     prebookRoom,
     confirmBooking,
+    confirmAndSaveBooking,
     cancelBooking,
     amendBooking,
     getBookingDetails,
     saveBookingToDatabase,
     getUserBookings,
+    type ConfirmAndSaveInput,
+    type ConfirmAndSaveResult,
 } from './bookings';
 
 // Vouchers
@@ -27,6 +30,12 @@ export { autocompleteDestinations } from './search';
 
 // Email
 export { sendBookingConfirmationEmail } from './email';
+
+// Policy normalizer
+export { normalizeLiteApiPolicy, type NormalizedPolicy } from './policy-normalizer';
+
+// Cancellation Engine
+export { calculateCancellation, type CancellationResult } from './cancellation-engine';
 
 // LiteAPI gateway
 export {

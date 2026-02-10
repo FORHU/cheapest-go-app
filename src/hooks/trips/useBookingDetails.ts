@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/api/client';
 /**
  * Hook to fetch booking details for a given bookingId.
  */
-export function useBookingDetails(bookingId: string | null) {
+export function useBookingDetails(bookingId: string | null, enabled: boolean = true) {
   return useQuery({
     queryKey: ['bookingDetails', bookingId],
     queryFn: async () => {
@@ -20,7 +20,7 @@ export function useBookingDetails(bookingId: string | null) {
 
       return result.data;
     },
-    enabled: !!bookingId,
+    enabled: !!bookingId && enabled,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });

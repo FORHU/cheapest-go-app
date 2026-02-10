@@ -5,10 +5,15 @@ import { useBookingActions } from '@/stores/bookingStore';
 import { apiFetch } from '@/lib/api/client';
 import type { BookingParams } from '@/services';
 
+export interface UseBookingOptions {
+  onSuccess?: (data: any) => void;
+  onError?: (error: Error) => void;
+}
+
 /**
  * Hook wrapping the confirm booking API call.
  */
-export function useBooking() {
+export function useBooking(options?: UseBookingOptions) {
   const queryClient = useQueryClient();
   const { setBookingId } = useBookingActions();
 
@@ -28,9 +33,11 @@ export function useBooking() {
       }
       // Invalidate trips query so list refreshes
       queryClient.invalidateQueries({ queryKey: ['trips'] });
+      options?.onSuccess?.(data);
     },
     onError: (error: Error) => {
       console.error('[useBooking] Error:', error);
+      options?.onError?.(error);
     },
   });
 }
