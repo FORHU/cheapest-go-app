@@ -55,9 +55,12 @@ export interface CancelBookingResult {
         bookingId: string;
         status: string;
         cancellationId?: string;
+        message?: string;
         refund?: {
+            id?: string;
             amount: number;
             currency: string;
+            status: string;
         };
     };
     error?: string;
