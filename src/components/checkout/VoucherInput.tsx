@@ -3,7 +3,7 @@
 import React, { useCallback } from 'react';
 import { Tag, X, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useVoucherState, useVoucherActions } from '@/stores/checkoutStore';
-import { validateVoucher } from '@/app/actions';
+import { apiFetch } from '@/lib/api/client';
 import type { VoucherValidationSuccess } from '@/types/voucher';
 
 interface VoucherInputProps {
@@ -47,9 +47,9 @@ export function VoucherInput({
         setVoucherError(null);
 
         try {
-            // Server action → server utility → edge function
+            // API route → server utility → edge function
             // ALL validation and calculation happens server-side
-            const result = await validateVoucher({
+            const result = await apiFetch('/api/voucher/validate', {
                 code: voucherCode.trim(),
                 bookingPrice,
                 currency,
@@ -137,7 +137,7 @@ export function VoucherInput({
                     <button
                         onClick={() => {
                             removeVoucher();
-                            onVoucherRemoved?.().catch(() => {});
+                            onVoucherRemoved?.().catch(() => { });
                         }}
                         className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
                         aria-label="Remove voucher"

@@ -17,7 +17,7 @@ import {
     useCheckoutPrebook,
     usePricingCalculation,
 } from '@/hooks';
-import { saveBookingToDatabase, sendBookingConfirmationEmail, saveVoucherUsage } from '@/app/actions';
+import { apiFetch } from '@/lib/api/client';
 import { LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import BackButton from '@/components/common/BackButton';
@@ -109,7 +109,7 @@ export function CheckoutContent() {
         priceData,
     });
 
-    // Send confirmation email via server action
+    // Send confirmation email via API route
     const sendConfirmationEmail = useCallback(async (bookingDetails: {
         bookingId: string;
         email: string;
@@ -122,7 +122,7 @@ export function CheckoutContent() {
         currency: string;
     }) => {
         try {
-            const result = await sendBookingConfirmationEmail(bookingDetails);
+            const result = await apiFetch('/api/email', bookingDetails);
             if (result.success) setEmailSent(true);
         } catch (err) {
             console.error("Failed to send confirmation email:", err);
@@ -190,7 +190,7 @@ export function CheckoutContent() {
 
             if (user && confirmedBookingId) {
                 postBookingTasks.push(
-                    saveBookingToDatabase({
+                    apiFetch('/api/booking/save', {
                         bookingId: confirmedBookingId,
                         propertyName: property?.name || 'Hotel',
                         propertyImage: property?.image,
@@ -212,7 +212,7 @@ export function CheckoutContent() {
                 // Record voucher usage if promo was applied
                 if (appliedVoucher) {
                     postBookingTasks.push(
-                        saveVoucherUsage({
+                        apiFetch('/api/voucher/record', {
                             voucherCode: appliedVoucher.code,
                             bookingId: confirmedBookingId,
                             originalPrice: priceData?.total || totalPrice || 0,
