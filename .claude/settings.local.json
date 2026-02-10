@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del \"C:\\\\Users\\\\USER\\\\Documents\\\\GitHub\\\\TravelBooking-Korean\\\\src\\\\hooks\\\\search\\\\useFacilities.ts\")",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

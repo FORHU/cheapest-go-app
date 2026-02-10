@@ -8,9 +8,11 @@ import { BaseProps } from '../../types';
 interface MagneticButtonProps extends BaseProps {
     onClick?: () => void;
     isLoading?: boolean;
+    label?: string;
+    icon?: React.ReactNode;
 }
 
-export const MagneticButton: React.FC<MagneticButtonProps> = ({ onClick, className, isLoading = false }) => {
+export const MagneticButton: React.FC<MagneticButtonProps> = ({ onClick, className, isLoading = false, label = 'Search', icon }) => {
     const ref = useRef<HTMLButtonElement>(null);
     const [position, setPosition] = useState({ x: 0, y: 0 });
 
@@ -56,7 +58,8 @@ export const MagneticButton: React.FC<MagneticButtonProps> = ({ onClick, classNa
                 <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
                 <>
-                    <span>Search</span>
+                    {icon}
+                    <span>{label}</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
             )}

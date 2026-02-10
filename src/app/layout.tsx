@@ -6,7 +6,6 @@ import { ThemeProvider } from '@/components/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthListener } from '@/components/auth/AuthListener';
 import AuthModal from '@/components/auth/AuthModal';
-import Script from 'next/script';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -26,7 +25,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} font-sans`}>
-        <Script src="https://cdn.jsdelivr.net/npm/react-scan/dist/auto.global.js" />
         <QueryProvider>
           <ThemeProvider>
             <AuthListener />

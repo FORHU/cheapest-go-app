@@ -1,4 +1,5 @@
 // Checkout Components
+export { CheckoutContent } from './CheckoutContent';
 export { BookingSuccess } from './BookingSuccess';
 export { UserDetailsForm } from './UserDetailsForm';
 export { BookingForSection } from './BookingForSection';

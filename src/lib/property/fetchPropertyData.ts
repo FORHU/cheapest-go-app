@@ -156,9 +156,7 @@ export async function fetchPropertyData(
     // 1. Invoke pre-book if offerId is present
     if (searchParams.offerId) {
         try {
-            console.log(`Checking pre-book for offerId: ${searchParams.offerId}...`);
             preBookResult = await preBook({ offerId: searchParams.offerId as string });
-            console.log('Pre-book successful:', preBookResult);
         } catch (error) {
             console.error('Pre-book check failed:', error);
         }
@@ -168,8 +166,6 @@ export async function fetchPropertyData(
     if (!getMockProperty(id)) {
         try {
             const targetHotelId = preBookResult?.data?.hotelId || id;
-            console.log(`Fetching real details for hotelId: ${targetHotelId}...`);
-
             const defaults = getDefaultDates();
             const checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
             const checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;

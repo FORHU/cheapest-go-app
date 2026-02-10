@@ -6,7 +6,8 @@ import {
   useSelectedRoom,
   useBookingActions,
 } from '@/stores/bookingStore';
-import { bookingService, BookingParams, PrebookResponse, CancellationPolicy } from '@/services';
+import type { BookingParams, PrebookResponse, CancellationPolicy } from '@/services';
+import { prebookRoom } from '@/app/actions';
 
 /**
  * Price data from prebook response
@@ -113,11 +114,14 @@ export function useBookingFlow(): UseBookingFlowReturn {
    */
   const refreshPrebook = useCallback(
     async (offerId: string, currency: string): Promise<PrebookResponse> => {
-      const result = await bookingService.refreshPrebook({ offerId, currency });
-      if (result.prebookId) {
-        setPrebookId(result.prebookId);
+      const result = await prebookRoom({ offerId, currency });
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Refresh prebook failed');
       }
-      return result;
+      if (result.data.prebookId) {
+        setPrebookId(result.data.prebookId);
+      }
+      return result.data as PrebookResponse;
     },
     [setPrebookId]
   );
@@ -139,14 +143,13 @@ export function useBookingFlow(): UseBookingFlowReturn {
           ...params,
           prebookId: currentPrebookId,
         });
-      } catch (error: any) {
+      } catch (error) {
         // Check if error is due to expired prebook session
-        const errorCode = error?.code || error?.message?.match(/\d{4}/)?.[0];
+        const errorMessage = error instanceof Error ? error.message : '';
+        const errorCode = (error as { code?: string })?.code || errorMessage.match(/\d{4}/)?.[0];
         const isExpiredSession = errorCode === '2012' || errorCode === '2010';
 
         if (isExpiredSession && selectedRoom?.offerId) {
-          // Attempt to refresh prebook
-          console.log('Prebook expired, refreshing...');
           const refreshResult = await refreshPrebook(
             selectedRoom.offerId,
             'PHP'
@@ -154,7 +157,6 @@ export function useBookingFlow(): UseBookingFlowReturn {
 
           if (refreshResult?.prebookId) {
             currentPrebookId = refreshResult.prebookId;
-            console.log('Prebook refreshed with new ID:', currentPrebookId);
 
             // Retry booking with new prebookId
             await bookingMutation.mutateAsync({

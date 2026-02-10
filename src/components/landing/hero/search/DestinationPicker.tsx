@@ -60,7 +60,7 @@ export const DestinationPicker: React.FC = () => {
         onClose();
     };
 
-    // Debounced Autocomplete - uses store actions instead of local setState
+    // Debounced Autocomplete via server action
     useEffect(() => {
         const timer = setTimeout(async () => {
             if (!query || query.length < 2) {
@@ -70,28 +70,13 @@ export const DestinationPicker: React.FC = () => {
 
             setSuggestionsLoading(true);
             try {
-                // Use client-side safe functions helper
-                const { invokeEdgeFunction } = await import('@/utils/supabase/client-functions');
+                const { autocompleteDestinations } = await import('@/app/actions/search');
+                const result = await autocompleteDestinations(query);
 
-                const res = await invokeEdgeFunction('liteapi-autocomplete', { keyword: query });
-
-                if (res && res.data) {
-                    console.log("[DestinationPicker] Raw LiteAPI response:", res);
-                    // Map LiteAPI results to Destination objects
-                    const mapped = res.data.map((item: any) => {
-                        const countryCode = item.country_code || item.countryCode || item.countryIso || 'PH';
-                        const cityName = item.displayName || item.name || '';
-                        const address = item.formattedAddress || item.address || '';
-
-                        return {
-                            type: 'city' as const,
-                            title: cityName,
-                            subtitle: address,
-                            countryCode: countryCode.toUpperCase(),
-                            id: item.placeId || item.id
-                        };
-                    });
-                    setSuggestions(mapped);
+                if (result.success) {
+                    setSuggestions(result.data);
+                } else {
+                    setSuggestions([]);
                 }
             } catch (error) {
                 console.error("Autocomplete failed:", error);

@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect } from 'react';
 import { Users, Heart, UserCircle, Briefcase, Users2 } from 'lucide-react';
 import {
     HotelReview,
     formatReviewDate,
-    getReviewerInitials,
     getRatingLabel,
     getRatingColor,
     calculateTravelerBreakdown,
@@ -14,7 +12,6 @@ import {
 import { useReviewsStore } from '@/stores/reviewsStore';
 
 interface ReviewsSectionProps {
-    hotelId: string;
     reviews: HotelReview[];
     averageRating: number;
     totalCount: number;
@@ -152,23 +149,16 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
 
 // === Main Component ===
 
-export default function ReviewsSection({ hotelId, reviews, averageRating, totalCount }: ReviewsSectionProps) {
+export default function ReviewsSection({ reviews, averageRating, totalCount }: ReviewsSectionProps) {
     const {
         displayCount,
         loadMore,
         sortBy,
         setSortBy,
-        allReviews,
-        initializeReviews,
     } = useReviewsStore();
 
-    // Initialize store with server-fetched reviews
-    useEffect(() => {
-        initializeReviews(hotelId, reviews);
-    }, [hotelId, reviews, initializeReviews]);
-
-    // Use store reviews if available, otherwise use props
-    const reviewsToDisplay = allReviews.length > 0 ? allReviews : reviews;
+    // Use server-fetched reviews directly from props (no store copy needed)
+    const reviewsToDisplay = reviews;
 
     // Calculate traveler breakdown
     const travelerBreakdown = calculateTravelerBreakdown(reviewsToDisplay);
