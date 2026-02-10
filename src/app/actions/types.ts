@@ -31,6 +31,10 @@ export interface PrebookResult {
     };
     status?: string;
     cancellationPolicies?: CancellationPolicy;
+    /** Payment SDK secret key (when usePaymentSdk: true) */
+    secretKey?: string;
+    /** Payment SDK transaction ID (when usePaymentSdk: true) */
+    transactionId?: string;
   };
   error?: string;
 }

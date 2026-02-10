@@ -9,5 +9,7 @@ export {
     usePhoneCurrency,
     useCheckoutUIState,
     useCheckoutActions,
+    useVoucherState,
+    useVoucherActions,
 } from './checkoutStore';
 export type { CheckoutState } from './checkoutStore';
