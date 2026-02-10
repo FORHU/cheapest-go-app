@@ -1,5 +1,7 @@
+'use client';
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { bookingService, BookingParams, BookingResponse } from '@/services';
+import { confirmBooking as confirmBookingAction, BookingParams, BookingResult } from '@/app/actions';
 import { queryKeys } from '@/lib/queryClient';
 import { useBookingActions } from '@/stores/bookingStore';
 
@@ -7,13 +9,13 @@ import { useBookingActions } from '@/stores/bookingStore';
  * Options for useBooking mutation
  */
 export interface UseBookingOptions {
-  onSuccess?: (data: BookingResponse) => void;
+  onSuccess?: (data: NonNullable<BookingResult['data']>) => void;
   onError?: (error: Error) => void;
 }
 
 /**
- * React Query mutation hook for booking confirmation
- * Handles final booking submission with automatic state management
+ * React Query mutation hook for booking confirmation.
+ * Uses Server Action for secure server-side processing.
  *
  * @example
  * ```tsx
@@ -35,7 +37,15 @@ export function useBooking(options: UseBookingOptions = {}) {
   const { setBookingId } = useBookingActions();
 
   return useMutation({
-    mutationFn: (params: BookingParams) => bookingService.confirmBooking(params),
+    mutationFn: async (params: BookingParams) => {
+      const result = await confirmBookingAction(params);
+
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Booking confirmation failed');
+      }
+
+      return result.data;
+    },
 
     onSuccess: (data) => {
       // Store bookingId in Zustand

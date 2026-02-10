@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Property } from '@/data/mockProperties';
 import { ArrowLeft, User, Bed, MapPin, Check, Share2, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useBookingStore } from '@/stores/bookingStore';
+import { useBookingActions } from '@/stores/bookingStore';
 
 // Strip HTML tags from text
 const stripHtml = (html: string): string => {
@@ -30,7 +30,7 @@ interface RoomDetailsViewProps {
 
 const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBack, searchParams }) => {
     const router = useRouter();
-    const { setBookingDetails } = useBookingStore();
+    const { setProperty, setSelectedRoom, setDates, setGuests } = useBookingActions();
     const [currentPhotoIndex, setCurrentPhotoIndex] = React.useState(0);
     const [lightboxOpen, setLightboxOpen] = React.useState(false);
 
@@ -61,19 +61,15 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
         const roomName = room.name || room.rates?.[0]?.name || "Selected Room";
         const roomPrice = extractPrice(room.rates);
 
-        setBookingDetails({
-            property,
-            selectedRoom: {
-                id: roomName,
-                offerId: room.offerId,
-                title: roomName,
-                price: roomPrice
-            },
-            checkIn: checkInDate,
-            checkOut: checkOutDate,
-            adults: searchParams?.adults || 2,
-            children: searchParams?.children || 0
+        setProperty(property);
+        setSelectedRoom({
+            id: roomName,
+            offerId: room.offerId,
+            title: roomName,
+            price: roomPrice
         });
+        setDates(checkInDate, checkOutDate);
+        setGuests(searchParams?.adults || 2, searchParams?.children || 0);
 
         router.push('/checkout');
     };

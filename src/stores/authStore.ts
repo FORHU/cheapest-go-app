@@ -1,3 +1,13 @@
+/**
+ * Auth Store — Client-Side Supabase Operations
+ *
+ * Uses the browser Supabase client for operations that MUST run client-side:
+ * - Login/registration (sets browser cookies)
+ * - OAuth redirects (requires browser navigation)
+ * - Session management (real-time listener in AuthListener)
+ *
+ * All database queries use server actions instead. Do NOT add `.from()` calls here.
+ */
 import { create } from 'zustand';
 import { createClient } from '@/utils/supabase/client';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
@@ -24,7 +34,9 @@ const extractUserProfile = (supabaseUser: SupabaseUser): User => {
 
 const buildRedirectUrl = (path = '/auth/callback') => {
     const currentPath = window.location.pathname + window.location.search;
-    return `${window.location.origin}${path}?next=${encodeURIComponent(currentPath)}`;
+    // Only include safe relative paths in the redirect
+    const safePath = currentPath.startsWith('/') && !currentPath.startsWith('//') ? currentPath : '/';
+    return `${window.location.origin}${path}?next=${encodeURIComponent(safePath)}`;
 };
 
 // --- Types ---
