@@ -5,7 +5,7 @@ import { useBookingActions } from '@/stores/bookingStore';
 import { apiFetch } from '@/lib/api/client';
 import type { PrebookResponse } from '@/services';
 
-interface UsePrebookOptions {
+export interface UsePrebookOptions {
   onSuccess?: (data: PrebookResponse) => void;
   onError?: (error: Error) => void;
 }
