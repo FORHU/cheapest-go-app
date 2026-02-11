@@ -307,6 +307,7 @@ export async function confirmAndSaveBooking(
 
 import { calculateCancellation } from './cancellation-engine';
 import { createRefundRequest, processRefund } from './refunds';
+import type { LiteApiRefundInfo } from './refunds';
 
 export async function cancelBooking(
   bookingId: string,
@@ -328,13 +329,20 @@ export async function cancelBooking(
     const calculation = await calculateCancellation(supabase, bookingId);
     console.log('[cancelBooking] Calculation:', calculation);
 
-    // 3. Call LiteAPI to cancel (External system first)
-    // Note: LiteAPI might have its own rules, but we use our stored policy for the refund logic.
+    // 3. Call LiteAPI to cancel
+    // LiteAPI's PUT /bookings/{id} cancels AND refunds the original card automatically.
     const result = await cancelBookingLiteApi({ bookingId });
+
+    // Extract refund info from LiteAPI's response
+    const liteApiInfo: LiteApiRefundInfo = {
+      cancellationId: result?.data?.cancellationId,
+      refund: result?.data?.refund,
+    };
+    console.log('[cancelBooking] LiteAPI refund info:', liteApiInfo);
 
     // 4. Handle Refund Logic
     if (calculation.refundable && calculation.refundAmount > 0) {
-      // A. Create Refund Request
+      // A. Create Refund Log
       const { success: reqSuccess, refundLogId, error: reqError } =
         await createRefundRequest(supabase, bookingId, calculation);
 
@@ -353,18 +361,18 @@ export async function cancelBooking(
           data: {
             bookingId,
             status,
-            message: 'Cancelled, but refund request failed. Contact support.'
+            message: 'Cancelled, but refund logging failed. Contact support.'
           }
         };
       }
 
-      // B. Intentional Fire-and-Forget Process Refund (or await if fast)
-      // For better UX, we await the mock process here so user sees immediate result.
-      const processResult = await processRefund(supabase, refundLogId);
+      // B. Record the LiteAPI refund in our refund_logs
+      // LiteAPI already processed the refund — we just record it.
+      const processResult = await processRefund(supabase, refundLogId, liteApiInfo);
       const status = processResult.success ? 'cancelled_refunded' : 'cancelled_refund_failed';
       const message = processResult.success
         ? 'Booking cancelled and refund processed.'
-        : 'Booking cancelled. Refund processing pending or failed.';
+        : 'Booking cancelled. Refund recording failed — contact support.';
 
       return {
         success: true,

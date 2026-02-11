@@ -189,8 +189,9 @@ export function classifyPolicyType(raw: RawPolicy): BookingPolicyType {
 
     const tag = safeRefundableTag(raw)?.toUpperCase() ?? '';
 
-    // Explicit non-refundable tag
+    // Explicit non-refundable tag (includes NRFN from LiteAPI)
     if (
+        tag === 'NRFN' ||
         tag.includes('NON-REFUNDABLE') ||
         tag.includes('NON_REFUNDABLE') ||
         tag.includes('NONREFUNDABLE')

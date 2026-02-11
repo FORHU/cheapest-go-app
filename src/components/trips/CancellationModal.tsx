@@ -5,7 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import type { BookingRecord } from '@/services/booking.service';
 import { formatCurrency } from '@/lib/utils';
-import { calculateCancellationFee } from '@/lib/cancellation';
+import { calculateCancellationFee, extractNoShowPenalty, extractEarlyDepartureFee } from '@/lib/cancellation';
+import {
+    derivePolicyType,
+    getFreeCancelDeadline,
+    getPolicyTitle,
+    getPolicyBadgeColor,
+    formatPolicyDescription,
+} from '@/lib/policy-formatter';
 import { useBookingDetails, useCancelBooking } from '@/hooks/trips';
 import { CancellationFeeCard } from './CancellationFeeCard';
 import { CancellationPolicies } from './CancellationPolicies';
@@ -41,7 +48,27 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
         [cancellationPolicies, booking.total_price, booking.currency]
     );
 
-    const isFreeCancellation = feeResult ? feeResult.fee === 0 : cancellationPolicies?.refundableTag === 'RFN';
+    // Derive policy type using the formatter bridge
+    const policyType = useMemo(
+        () => derivePolicyType(cancellationPolicies?.refundableTag, cancellationPolicies?.cancelPolicyInfos),
+        [cancellationPolicies]
+    );
+    const freeDeadline = useMemo(
+        () => getFreeCancelDeadline(cancellationPolicies?.cancelPolicyInfos, cancellationPolicies?.refundableTag),
+        [cancellationPolicies]
+    );
+
+    const isFreeCancellation = policyType === 'free_cancellation';
+
+    // Extract special fees from raw policy data
+    const noShowPenalty = useMemo(
+        () => extractNoShowPenalty(cancellationPolicies),
+        [cancellationPolicies]
+    );
+    const earlyDepartureFee = useMemo(
+        () => extractEarlyDepartureFee(cancellationPolicies),
+        [cancellationPolicies]
+    );
 
     const handleCancel = async () => {
         await cancelMutation.mutateAsync(booking.booking_id);
@@ -134,22 +161,19 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                     </div>
                                 </div>
 
-                                {/* Refundable Status */}
-                                <div className={`flex items-center gap-2 p-3 rounded-lg mb-5 ${
-                                    isFreeCancellation
-                                        ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
-                                        : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300'
-                                }`}>
-                                    {isFreeCancellation ? (
-                                        <Check className="w-5 h-5" />
-                                    ) : (
-                                        <AlertTriangle className="w-5 h-5" />
-                                    )}
-                                    <span className="font-medium text-sm">
-                                        {isFreeCancellation
-                                            ? 'Free cancellation — full refund if cancelled now'
-                                            : 'This booking may not be fully refundable'}
+                                {/* Policy Badge + Description */}
+                                <div className="mb-5">
+                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${getPolicyBadgeColor(policyType)}`}>
+                                        {isFreeCancellation ? (
+                                            <Check className="w-3.5 h-3.5" />
+                                        ) : (
+                                            <AlertTriangle className="w-3.5 h-3.5" />
+                                        )}
+                                        {getPolicyTitle(policyType)}
                                     </span>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                                        {formatPolicyDescription(policyType, freeDeadline)}
+                                    </p>
                                 </div>
 
                                 {/* Current Refund Amount */}
@@ -163,6 +187,9 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                     <CancellationPolicies
                                         policies={cancellationPolicies?.cancelPolicyInfos}
                                         hotelRemarks={cancellationPolicies?.hotelRemarks}
+                                        noShowPenalty={noShowPenalty}
+                                        earlyDepartureFee={earlyDepartureFee}
+                                        currency={booking.currency}
                                     />
                                 </div>
                             </>

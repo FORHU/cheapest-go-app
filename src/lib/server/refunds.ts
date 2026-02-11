@@ -17,6 +17,16 @@ export interface ProcessRefundResult {
     error?: string;
 }
 
+/** Shape of the refund/cancellation info returned by LiteAPI */
+export interface LiteApiRefundInfo {
+    cancellationId?: string;
+    refund?: {
+        amount?: number;
+        currency?: string;
+        status?: string;
+    };
+}
+
 // ============================================================================
 // 1. Create Refund Request
 // ============================================================================
@@ -63,40 +73,26 @@ export async function createRefundRequest(
 }
 
 // ============================================================================
-// 2. Process Refund (Mock Payment Gateway)
+// 2. Process Refund (LiteAPI handles payment refund automatically)
 // ============================================================================
 
 /**
- * Mocks the interaction with a payment gateway (e.g., Stripe, Xendit).
- * In production, this would make an API call using the original transaction ID.
- */
-async function mockGatewayRefund(amount: number, currency: string): Promise<ProcessRefundResult> {
-    // Simulate API latency
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Simulate success (90% chance)
-    if (Math.random() > 0.1) {
-        return {
-            success: true,
-            gatewayTransactionId: `ref_${Math.random().toString(36).substring(7)}`,
-        };
-    }
-
-    // Simulate random failure
-    return { success: false, error: 'Gateway declined refund (simulation)' };
-}
-
-/**
- * Processes a pending refund log:
- * 1. Calls Payment Gateway
- * 2. Updates refund_logs status (processed/failed)
- * 3. Updates bookings status (cancelled_refunded / cancelled_refund_failed)
+ * Marks a pending refund as processed using LiteAPI's cancel response.
+ *
+ * LiteAPI's `PUT /bookings/{id}` both cancels the booking AND refunds the
+ * original card automatically. There is no separate "refund API" to call.
+ * This function simply records that fact in our `refund_logs` table.
+ *
+ * @param supabase  – authenticated Supabase client
+ * @param refundLogId – the pending refund_logs row ID
+ * @param liteApiInfo – cancellation/refund data from LiteAPI's response
  */
 export async function processRefund(
     supabase: SupabaseClient,
-    refundLogId: string
+    refundLogId: string,
+    liteApiInfo: LiteApiRefundInfo
 ): Promise<ProcessRefundResult> {
-    // 1. Fetch Refund Log + Booking
+    // 1. Fetch Refund Log
     const { data: log, error: logError } = await supabase
         .from('refund_logs')
         .select('*, bookings(booking_id, total_price)')
@@ -111,53 +107,38 @@ export async function processRefund(
         return { success: false, error: `Refund is already ${log.status}` };
     }
 
-    // 2. Call Gateway
-    const gatewayResult = await mockGatewayRefund(log.requested_amount, log.currency);
-
-    // 3. Handle Result
+    // 2. LiteAPI already processed the refund when we called PUT /bookings/{id}.
+    //    We just record the outcome.
     const now = new Date().toISOString();
+    const externalRef = liteApiInfo.cancellationId ?? null;
 
-    if (gatewayResult.success) {
-        // A. Success: Update Log + Booking
-        const { error: updateError } = await supabase
-            .from('refund_logs')
-            .update({
-                status: 'processed',
-                approved_amount: log.requested_amount,
-                external_ref: gatewayResult.gatewayTransactionId,
-                processed_at: now,
-            })
-            .eq('id', refundLogId);
+    // Mark refund log as processed
+    const { error: updateError } = await supabase
+        .from('refund_logs')
+        .update({
+            status: 'processed',
+            approved_amount: log.requested_amount,
+            external_ref: externalRef,
+            processed_at: now,
+        })
+        .eq('id', refundLogId);
 
-        if (updateError) console.error('Failed to update refund log status (success case)', updateError);
-
-        // Update Booking status
-        await supabase
-            .from('bookings')
-            .update({ status: 'cancelled_refunded' })
-            .eq('booking_id', log.booking_id);
-
-        return gatewayResult;
-
-    } else {
-        // B. Failure: Update Log + Booking
-        const { error: updateError } = await supabase
-            .from('refund_logs')
-            .update({
-                status: 'failed',
-                status_reason: gatewayResult.error,
-                processed_at: now,
-            })
-            .eq('id', refundLogId);
-
-        if (updateError) console.error('Failed to update refund log status (failure case)', updateError);
-
-        // Update Booking status
-        await supabase
-            .from('bookings')
-            .update({ status: 'cancelled_refund_failed' })
-            .eq('booking_id', log.booking_id);
-
-        return gatewayResult;
+    if (updateError) {
+        console.error('[processRefund] Failed to update refund log:', updateError);
+        // Fall through — LiteAPI already refunded, so we treat DB failure as non-fatal
     }
+
+    // Update Booking status
+    await supabase
+        .from('bookings')
+        .update({
+            status: 'cancelled_refunded',
+            updated_at: now,
+        })
+        .eq('booking_id', log.booking_id);
+
+    return {
+        success: true,
+        gatewayTransactionId: externalRef ?? undefined,
+    };
 }

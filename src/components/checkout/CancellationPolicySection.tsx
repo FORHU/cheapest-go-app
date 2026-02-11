@@ -1,7 +1,8 @@
 'use client';
 
 import { CancellationPolicy } from '@/services/booking.service';
-import { Info } from 'lucide-react';
+import { Info, AlertTriangle, LogOut } from 'lucide-react';
+import { extractNoShowPenalty, extractEarlyDepartureFee } from '@/lib/cancellation';
 
 interface CancellationPolicySectionProps {
     cancellationPolicies?: CancellationPolicy;
@@ -48,14 +49,23 @@ export function CancellationPolicySection({
     totalPrice = 0,
     currency = 'PHP',
 }: CancellationPolicySectionProps) {
-    if (!cancellationPolicies?.cancelPolicyInfos?.length) {
+    const noShowPenalty = extractNoShowPenalty(cancellationPolicies);
+    const earlyDepartureFee = extractEarlyDepartureFee(cancellationPolicies);
+
+    if (!cancellationPolicies?.cancelPolicyInfos?.length && noShowPenalty === 0 && earlyDepartureFee === 0) {
         return null;
     }
 
-    const policies = cancellationPolicies.cancelPolicyInfos;
+    const policies = cancellationPolicies?.cancelPolicyInfos ?? [];
+
+    // Filter out special entries (NO_SHOW, EARLY_DEPARTURE) from timeline — they have their own UI cards
+    const timelinePolicies = policies.filter((p) => {
+        const t = (p.type || '').toUpperCase();
+        return !t.includes('NO_SHOW') && !t.includes('NOSHOW') && !t.includes('EARLY_DEPARTURE') && !t.includes('EARLY_CHECKOUT');
+    });
 
     // Sort policies by cancelTime
-    const sortedPolicies = [...policies].sort(
+    const sortedPolicies = [...timelinePolicies].sort(
         (a, b) => new Date(a.cancelTime).getTime() - new Date(b.cancelTime).getTime()
     );
 
@@ -128,8 +138,30 @@ export function CancellationPolicySection({
                 </span>
             </div>
 
+            {/* No-Show Penalty */}
+            {noShowPenalty > 0 && (
+                <div className="flex items-start gap-2 mt-3 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+                    <AlertTriangle size={14} className="mt-0.5 text-orange-500 flex-shrink-0" />
+                    <div className="text-xs text-orange-700 dark:text-orange-300">
+                        <span className="font-medium">No-Show Penalty:</span>{' '}
+                        {formatAmount(noShowPenalty, currency)} if you don&apos;t check in without cancelling.
+                    </div>
+                </div>
+            )}
+
+            {/* Early Departure Fee */}
+            {earlyDepartureFee > 0 && (
+                <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+                    <LogOut size={14} className="mt-0.5 text-orange-500 flex-shrink-0" />
+                    <div className="text-xs text-orange-700 dark:text-orange-300">
+                        <span className="font-medium">Early Departure Fee:</span>{' '}
+                        {formatAmount(earlyDepartureFee, currency)} if you check out before your scheduled date.
+                    </div>
+                </div>
+            )}
+
             {/* Hotel remarks if any */}
-            {cancellationPolicies.hotelRemarks && cancellationPolicies.hotelRemarks.length > 0 && (
+            {cancellationPolicies?.hotelRemarks && cancellationPolicies.hotelRemarks.length > 0 && (
                 <div className="mt-2 text-[10px] text-slate-500 dark:text-slate-400">
                     {cancellationPolicies.hotelRemarks.map((remark, i) => (
                         <p key={i}>{remark}</p>

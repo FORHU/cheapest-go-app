@@ -174,8 +174,14 @@ export async function calculateCancellation(
     const totalPrice = Number(booking.total_price);
     const currency = booking.currency;
 
-    // 1. Non-refundable policy
-    if (snapshot.policyType === 'non_refundable') {
+    // 1. Non-refundable policy (check both policyType and refundableTag for safety)
+    const isNRFN =
+        snapshot.policyType === 'non_refundable' ||
+        snapshot.refundableTag === 'NRFN' ||
+        snapshot.refundableTag === 'NON_REFUNDABLE' ||
+        snapshot.refundableTag === 'NON-REFUNDABLE';
+
+    if (isNRFN) {
         return {
             isCancellable: true,
             refundable: false,
