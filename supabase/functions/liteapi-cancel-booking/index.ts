@@ -104,22 +104,9 @@ Deno.serve(async (req: any) => {
             throw new Error(errorMessage);
         }
 
-        // Update booking status in database
-        console.log("Updating booking status in database...");
-        const cancelledAt = new Date().toISOString();
-
-        const { error: dbError } = await supabaseAdmin
-            .from('bookings')
-            .update({
-                status: 'cancelled',
-                updated_at: cancelledAt
-            })
-            .eq('booking_id', bookingId);
-
-        if (dbError) {
-            console.error("Database Update Error:", dbError);
-            // Don't throw - cancellation was successful with LiteAPI
-        }
+        // NOTE: Do NOT update booking status here.
+        // Status management (cancelled, cancelled_refunded, etc.) is handled
+        // by cancelBooking() in bookings.ts to avoid conflicting updates.
 
         // Return response with refund info if available
         const response = {
