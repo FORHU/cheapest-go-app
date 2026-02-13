@@ -72,7 +72,16 @@ export default async function SearchPage(props: {
                         </div>
                     </div>
                 }>
-                    <SearchFilters initialFacilities={initialFacilities} />
+                    <SearchFilters
+                        initialFacilities={initialFacilities}
+                        previewCoordinates={
+                            initialProperties && initialProperties.length > 0 &&
+                                initialProperties[0].coordinates &&
+                                initialProperties[0].coordinates.lat !== 0
+                                ? initialProperties[0].coordinates
+                                : null
+                        }
+                    />
                 </Suspense>
                 <SearchResults initialProperties={initialProperties} />
             </div>

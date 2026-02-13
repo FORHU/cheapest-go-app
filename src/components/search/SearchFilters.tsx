@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Search, Map, RotateCcw } from 'lucide-react';
+import { Search, Map as MapIcon, RotateCcw } from 'lucide-react';
+import { Map } from '@/components/ui/map';
 import { useSearchFilters, useSearchStore } from '@/stores/searchStore';
 import { STAR_RATINGS, GUEST_RATING_OPTIONS, REVIEW_COUNT_OPTIONS, FACILITIES } from '@/lib/constants';
 import { FilterSection } from './FilterSection';
@@ -13,9 +14,10 @@ import { ActiveFiltersSummary } from './ActiveFiltersSummary';
 
 interface SearchFiltersProps {
     initialFacilities?: Array<{ id: number; name: string }>;
+    previewCoordinates?: { lat: number; lng: number } | null;
 }
 
-const SearchFilters = ({ initialFacilities }: SearchFiltersProps) => {
+const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -133,16 +135,35 @@ const SearchFilters = ({ initialFacilities }: SearchFiltersProps) => {
                 transition={{ duration: 0.5 }}
                 className="relative h-32 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 group cursor-pointer mb-6"
             >
-                <div className="absolute inset-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
-                    <Map className="text-slate-400" />
-                </div>
+                {previewCoordinates ? (
+                    <div className="absolute inset-0 pointer-events-none">
+                        <Map
+                            mapStyle="standard"
+                            initialViewState={{
+                                longitude: previewCoordinates.lng,
+                                latitude: previewCoordinates.lat,
+                                zoom: 12,
+                                pitch: 0,
+                                bearing: 0
+                            }}
+                            scrollZoom={false}
+                            dragPan={false}
+                            attributionControl={false}
+                            reuseMaps
+                        />
+                    </div>
+                ) : (
+                    <div className="absolute inset-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                        <MapIcon className="text-slate-400" />
+                    </div>
+                )}
                 <button
                     onClick={() => {
                         const current = new URLSearchParams(searchParams.toString());
                         current.set('view', 'map');
                         router.push(`/search?${current.toString()}`);
                     }}
-                    className="absolute inset-0 m-auto w-max h-max bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg border border-slate-200 dark:border-white/10 opacity-90 hover:opacity-100 hover:scale-105 transition-all cursor-pointer"
+                    className="absolute inset-0 m-auto w-max h-max bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg border border-slate-200 dark:border-white/10 opacity-90 hover:opacity-100 hover:scale-105 transition-all cursor-pointer z-10"
                 >
                     View on map
                 </button>

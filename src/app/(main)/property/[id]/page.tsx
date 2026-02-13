@@ -31,6 +31,7 @@ export default async function PropertyPage({
             adults: searchParamsResult.adults as string,
             children: searchParamsResult.children as string,
             rooms: searchParamsResult.rooms as string,
+            currency: searchParamsResult.currency as string,
         }),
         fetchHotelReviews(id, { limit: 1000 }),
     ]);
