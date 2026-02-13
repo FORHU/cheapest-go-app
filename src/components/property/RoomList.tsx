@@ -72,6 +72,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                         const hasMultipleRates = groupedRoom.rateOptions.length > 1;
                         const lowestRate = groupedRoom.rateOptions[0];
 
+
                         return (
                             <RoomCard
                                 key={groupedRoom.roomName + index}
