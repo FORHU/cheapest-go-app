@@ -98,7 +98,7 @@ export async function sendBookingConfirmationEmail(
 
     <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
         <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-            This email was sent by AeroVantage Travel<br>
+            This email was sent by CheapestGo<br>
             &copy; ${new Date().getFullYear()} All rights reserved
         </p>
     </div>
@@ -150,7 +150,7 @@ export async function sendBookingConfirmationEmail(
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        from: 'AeroVantage <onboarding@resend.dev>',
+                        from: 'CheapestGo <onboarding@resend.dev>',
                         to: [email],
                         subject: `Booking Confirmed - ${hotelName}`,
                         html: emailHtml,

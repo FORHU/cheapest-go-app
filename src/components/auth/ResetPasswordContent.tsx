@@ -91,7 +91,7 @@ export function ResetPasswordContent() {
                                 <PlaneTakeoff className="text-white dark:text-obsidian-accent w-7 h-7" />
                             </div>
                             <h1 className="text-slate-900 dark:text-white font-display font-bold text-2xl tracking-tight">
-                                AeroVantage<span className="text-alabaster-accent dark:text-obsidian-accent">.Pro</span>
+                                Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span>
                             </h1>
                         </Link>
                     </div>

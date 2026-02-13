@@ -86,3 +86,8 @@ body {
   line-height: 1 !important;
   padding: 0 !important;
 }
+
+/* Hide default close button on map property popup (we use a custom one) */
+.map-property-popup .mapboxgl-popup-close-button {
+  display: none !important;
+}
