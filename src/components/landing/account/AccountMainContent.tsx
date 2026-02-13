@@ -298,7 +298,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
 
                     <div className="space-y-4">
                         <a
-                            href="mailto:support@aerovantage.pro"
+                            href="mailto:support@cheapestgo.com"
                             className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-white/5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
                         >
                             <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -306,7 +306,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                             </div>
                             <div>
                                 <p className="font-medium text-slate-900 dark:text-white">Email Support</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">support@aerovantage.pro</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">support@cheapestgo.com</p>
                             </div>
                         </a>
 

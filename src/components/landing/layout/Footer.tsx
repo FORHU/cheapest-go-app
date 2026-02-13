@@ -7,7 +7,7 @@ const Footer = () => (
       <div>
         <div className="flex items-center gap-2 mb-4">
           <PlaneTakeoff className="text-slate-400 dark:text-slate-500" />
-          <span className="text-slate-900 dark:text-white font-display font-bold text-lg">AeroVantage</span>
+          <span className="text-slate-900 dark:text-white font-display font-bold text-lg">CheapestGo</span>
         </div>
         <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs leading-relaxed">
           Engineered for the discerning traveler. <br/>Precision data. Zero compromise.

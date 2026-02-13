@@ -73,16 +73,26 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return `${distance.toFixed(1)} km`;
 }
 
-// City center coordinates (approximate)
-const cityCenters: Record<string, { lat: number; lng: number }> = {
-  'manila': { lat: 14.5995, lng: 120.9842 },
-  'baguio': { lat: 16.4023, lng: 120.5960 },
-  'cebu': { lat: 10.3157, lng: 123.8854 },
-  'davao': { lat: 7.1907, lng: 125.4553 },
-  'boracay': { lat: 11.9674, lng: 121.9248 },
-  'palawan': { lat: 9.8349, lng: 118.7384 },
-  'default': { lat: 14.5995, lng: 120.9842 } // Default to Manila
-};
+/**
+ * Compute the centroid (average lat/lng) of all hotels that have coordinates.
+ * This dynamically determines the "city center" from the actual hotel data,
+ * so it works for ANY city without hardcoding coordinates.
+ */
+function computeCentroid(hotels: Hotel[], detailsMap: Map<string, HotelDetails>): { lat: number; lng: number } | null {
+  let sumLat = 0, sumLng = 0, count = 0;
+  for (const hotel of hotels) {
+    const detail = detailsMap.get(String(hotel.hotelId));
+    const lat = detail?.latitude || (detail?.location as any)?.latitude || hotel.latitude;
+    const lng = detail?.longitude || (detail?.location as any)?.longitude || hotel.longitude;
+    if (lat && lng) {
+      sumLat += lat;
+      sumLng += lng;
+      count++;
+    }
+  }
+  if (count === 0) return null;
+  return { lat: sumLat / count, lng: sumLng / count };
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -100,9 +110,9 @@ Deno.serve(async (req: Request) => {
     // Mapping inputs
     const checkin = body.checkin || body.startDate;
     const checkout = body.checkout || body.endDate;
-    const countryCode = body.countryCode || "PH";
-    const currency = body.currency || "PHP";
-    const guestNationality = body.guestNationality || countryCode;
+    const countryCode = body.countryCode || "";
+    const currency = body.currency || "USD";
+    const guestNationality = body.guestNationality || body.guest_nationality || countryCode || "US";
     const placeId = body.placeId;
 
     // 1. Fetch Rates
@@ -116,10 +126,14 @@ Deno.serve(async (req: Request) => {
 
     if (body.hotelIds) {
       locationParams = { hotelIds: body.hotelIds };
+    } else if (placeId) {
+      // Prefer placeId — it's the most accurate location identifier from LiteAPI
+      locationParams = { placeId: placeId };
     } else if (normalizedCityName && countryCode) {
       locationParams = { cityName: normalizedCityName, countryCode: countryCode };
-    } else if (placeId) {
-      locationParams = { placeId: placeId };
+    } else if (normalizedCityName) {
+      // cityName without countryCode — still try (LiteAPI may resolve it)
+      locationParams = { cityName: normalizedCityName };
     } else {
       locationParams = { cityName: "Manila", countryCode: "PH" };
     }
@@ -238,7 +252,10 @@ Deno.serve(async (req: Request) => {
       const hotelIdsParam = hotelIds.join(',');
       console.log(`[Details] Batch fetching ${hotelIds.length} hotels`);
       try {
-        const batchResponse = await fetch(`https://api.liteapi.travel/v3.0/data/hotels?hotelIds=${hotelIdsParam}&countryCode=${countryCode}`, {
+        const batchUrl = countryCode
+          ? `https://api.liteapi.travel/v3.0/data/hotels?hotelIds=${hotelIdsParam}&countryCode=${countryCode}`
+          : `https://api.liteapi.travel/v3.0/data/hotels?hotelIds=${hotelIdsParam}`;
+        const batchResponse = await fetch(batchUrl, {
           method: "GET",
           headers: { 'X-API-Key': LITEAPI_KEY, 'Content-Type': 'application/json' }
         });
@@ -274,6 +291,9 @@ Deno.serve(async (req: Request) => {
 
     // Process the details data (whether from single or batch fetch)
     const detailsMap = new Map((detailsData.data || []).map((d) => [String(d.id), d]));
+
+    // Compute dynamic city center from hotel coordinates (works for any city)
+    const cityCenter = computeCentroid(hotels, detailsMap);
 
     // 4. Merge Details into Hotels
     hotels.forEach((hotel: Hotel) => {
@@ -343,11 +363,8 @@ Deno.serve(async (req: Request) => {
         // Calculate distance from city centre using hotel coordinates
         const hotelLat = detail.latitude || detail.location?.latitude;
         const hotelLng = detail.longitude || detail.location?.longitude;
-        if (hotelLat && hotelLng) {
-          // Get city center based on cityName parameter
-          const cityKey = (normalizedCityName || 'default').toLowerCase();
-          const center = cityCenters[cityKey] || cityCenters['default'];
-          hotel.distance = calculateDistance(center.lat, center.lng, hotelLat, hotelLng);
+        if (hotelLat && hotelLng && cityCenter) {
+          hotel.distance = calculateDistance(cityCenter.lat, cityCenter.lng, hotelLat, hotelLng);
         }
 
         // Map Description - Try various field names that LiteAPI may use

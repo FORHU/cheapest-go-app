@@ -58,6 +58,12 @@ interface SearchState {
     // Travelers
     travelers: TravelersConfig;
 
+    // User locale preferences (persisted)
+    userCurrency: string; // ISO currency code (e.g., 'PHP', 'KRW', 'USD')
+    userCountry: string;  // ISO country code (e.g., 'PH', 'KR', 'US')
+    setUserCurrency: (currency: string) => void;
+    setUserCountry: (country: string) => void;
+
     // Recent searches (persisted)
     recentSearches: Destination[];
 
@@ -125,6 +131,8 @@ export const useSearchStore = create<SearchState>()(
             destinationQuery: '',
             dates: initialDates,
             travelers: initialTravelers,
+            userCurrency: 'PHP',
+            userCountry: 'PH',
             recentSearches: [],
             activeDropdown: null,
             isSearching: false,
@@ -132,6 +140,8 @@ export const useSearchStore = create<SearchState>()(
             suggestions: initialSuggestions,
 
             setDestination: (destination) => set({ destination }),
+            setUserCurrency: (userCurrency) => set({ userCurrency }),
+            setUserCountry: (userCountry) => set({ userCountry }),
 
             setDestinationQuery: (destinationQuery) => set({ destinationQuery }),
 
@@ -203,12 +213,14 @@ export const useSearchStore = create<SearchState>()(
             }),
         }),
         {
-            name: 'aerovantage-search',
+            name: 'cheapestgo-search',
             // Persist destination info so placeId survives page navigation
             partialize: (state) => ({
                 recentSearches: state.recentSearches,
                 destination: state.destination,
-                destinationQuery: state.destinationQuery
+                destinationQuery: state.destinationQuery,
+                userCurrency: state.userCurrency,
+                userCountry: state.userCountry,
             }),
         }
     )
@@ -217,6 +229,8 @@ export const useSearchStore = create<SearchState>()(
 // Selector hooks for better performance
 export const useDestination = () => useSearchStore((state) => state.destination);
 export const useDestinationQuery = () => useSearchStore((state) => state.destinationQuery);
+export const useUserCurrency = () => useSearchStore((state) => state.userCurrency);
+export const useUserCountry = () => useSearchStore((state) => state.userCountry);
 export const useDates = () => useSearchStore((state) => state.dates);
 export const useTravelers = () => useSearchStore((state) => state.travelers);
 export const useRecentSearches = () => useSearchStore((state) => state.recentSearches);
@@ -244,6 +258,8 @@ export const useSearchActions = () =>
             setDestinationQuery: state.setDestinationQuery,
             setDates: state.setDates,
             setTravelers: state.setTravelers,
+            setUserCurrency: state.setUserCurrency,
+            setUserCountry: state.setUserCountry,
             setActiveDropdown: state.setActiveDropdown,
             setFilters: state.setFilters,
             toggleStarRating: state.toggleStarRating,

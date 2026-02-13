@@ -1,4 +1,5 @@
 import { autocompleteLiteApi } from './liteapi';
+import { extractCountryCode } from '@/lib/constants/countries';
 
 export interface AutocompleteResult {
     type: 'city';
@@ -23,15 +24,19 @@ export async function autocompleteDestinations(
 
         if (res && res.data) {
             const mapped: AutocompleteResult[] = res.data.map((item: Record<string, unknown>) => {
-                const countryCode = (item.country_code || item.countryCode || item.countryIso || 'PH') as string;
                 const cityName = (item.displayName || item.name || '') as string;
                 const address = (item.formattedAddress || item.address || '') as string;
+
+                // LiteAPI /data/places doesn't return countryCode directly.
+                // Extract it from formattedAddress (e.g., "South Korea" → "KR")
+                // Falls back to displayName for city-states (e.g., "Singapore")
+                const countryCode = extractCountryCode(address, cityName);
 
                 return {
                     type: 'city' as const,
                     title: cityName,
                     subtitle: address,
-                    countryCode: countryCode.toUpperCase(),
+                    countryCode,
                     id: (item.placeId || item.id) as string | undefined,
                 };
             });

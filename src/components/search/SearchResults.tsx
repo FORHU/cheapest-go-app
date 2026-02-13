@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Property } from '@/data/mockProperties';
 import { PropertyCard } from '@/components/shared';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, MapPin } from 'lucide-react';
 
 const SORT_OPTIONS = ['recommended', 'price-low', 'price-high', 'rating'] as const;
 type SortValue = typeof SORT_OPTIONS[number];
@@ -38,6 +38,13 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
         router.push(`/property/${propertyId}?${currentParams.toString()}`);
     };
 
+    // Navigate to map view
+    const handleViewOnMap = useCallback(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('view', 'map');
+        router.push(`/search?${params.toString()}`);
+    }, [router, searchParams]);
+
     // Filter and sort properties
     const filteredProperties = useMemo(() => {
         const props = initialProperties && initialProperties.length > 0 ? [...initialProperties] : [];
@@ -52,6 +59,14 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
 
         return props;
     }, [initialProperties, sortBy]);
+
+    // Count mappable properties
+    const mappableCount = useMemo(
+        () => filteredProperties.filter(
+            (p) => p.coordinates && p.coordinates.lat !== 0 && p.coordinates.lng !== 0
+        ).length,
+        [filteredProperties]
+    );
 
     // Reset visible count when filters/destination change
     React.useEffect(() => {
@@ -79,18 +94,35 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                     </p>
                 </div>
 
-                <div className="relative">
-                    <select
-                        value={sortBy}
-                        onChange={(e) => handleSortChange(e.target.value as SortValue)}
-                        className="appearance-none pl-4 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="recommended">Recommended</option>
-                        <option value="price-low">Price: Low to High</option>
-                        <option value="price-high">Price: High to Low</option>
-                        <option value="rating">Highest Rated</option>
-                    </select>
-                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <div className="flex items-center gap-2">
+                    {/* Show on map button */}
+                    {mappableCount > 0 && (
+                        <button
+                            onClick={handleViewOnMap}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+                        >
+                            <MapPin size={14} />
+                            Show on map
+                            <span className="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                                {mappableCount}
+                            </span>
+                        </button>
+                    )}
+
+                    {/* Sort dropdown */}
+                    <div className="relative">
+                        <select
+                            value={sortBy}
+                            onChange={(e) => handleSortChange(e.target.value as SortValue)}
+                            className="appearance-none pl-4 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="recommended">Recommended</option>
+                            <option value="price-low">Price: Low to High</option>
+                            <option value="price-high">Price: High to Low</option>
+                            <option value="rating">Highest Rated</option>
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
                 </div>
             </div>
 

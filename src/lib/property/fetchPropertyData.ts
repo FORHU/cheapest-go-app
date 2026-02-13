@@ -117,8 +117,8 @@ export function transformFetchedToProperty(
         badges: [],
         type: 'hotel',
         coordinates: {
-            lat: fetchedDetails.latitude || 0,
-            lng: fetchedDetails.longitude || 0
+            lat: fetchedDetails.latitude || fetchedDetails.details?.latitude || fetchedDetails.details?.location?.latitude || 0,
+            lng: fetchedDetails.longitude || fetchedDetails.details?.longitude || fetchedDetails.details?.location?.longitude || 0
         }
     };
 }
