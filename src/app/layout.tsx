@@ -13,8 +13,8 @@ const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' 
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'AeroVantage Pro',
-  description: 'Elite protocol for global mobility.',
+  title: 'CheapestGo',
+  description: 'CheapestGo is a travel booking platform that helps you find the best deals on flights and hotels',
 };
 
 export default function RootLayout({

@@ -216,7 +216,7 @@ const Map = React.forwardRef<MapRef, MapProps>(
         return (
             <div
                 className={cn(
-                    'relative w-full h-full min-h-[400px] rounded-lg overflow-hidden',
+                    'relative w-full h-full min-h-[200px] rounded-lg overflow-hidden',
                     className
                 )}
             >

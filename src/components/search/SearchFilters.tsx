@@ -136,7 +136,14 @@ const SearchFilters = ({ initialFacilities }: SearchFiltersProps) => {
                 <div className="absolute inset-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
                     <Map className="text-slate-400" />
                 </div>
-                <button className="absolute inset-0 m-auto w-max h-max bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg border border-slate-200 dark:border-white/10 opacity-90 hover:opacity-100 hover:scale-105 transition-all">
+                <button
+                    onClick={() => {
+                        const current = new URLSearchParams(searchParams.toString());
+                        current.set('view', 'map');
+                        router.push(`/search?${current.toString()}`);
+                    }}
+                    className="absolute inset-0 m-auto w-max h-max bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg border border-slate-200 dark:border-white/10 opacity-90 hover:opacity-100 hover:scale-105 transition-all cursor-pointer"
+                >
                     View on map
                 </button>
             </motion.div>

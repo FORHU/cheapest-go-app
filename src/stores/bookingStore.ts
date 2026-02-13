@@ -73,7 +73,7 @@ export const useBookingStore = create<BookingState>()(
             }),
         }),
         {
-            name: 'aerovantage-booking',
+            name: 'cheapestgo-booking',
             storage: {
                 getItem: (name) => {
                     const str = localStorage.getItem(name);

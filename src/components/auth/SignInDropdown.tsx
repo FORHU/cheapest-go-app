@@ -203,7 +203,7 @@ const SignInDropdown: React.FC = () => {
                         {/* Info */}
                         <div className="border-t border-slate-100 dark:border-white/5 p-4">
                             <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                                Your account works across AeroVantage and all partner sites
+                                Your account works across CheapestGo and all partner sites
                             </p>
                         </div>
                     </motion.div>
