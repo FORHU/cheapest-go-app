@@ -31,6 +31,7 @@ export interface SearchParamsInput {
     children?: string | number;
     rooms?: string | number;
     offerId?: string;
+    currency?: string;
 }
 
 export interface FetchPropertyResult {
@@ -175,7 +176,8 @@ export async function fetchPropertyData(
                 checkOut,
                 adults: Number(searchParams.adults || 2),
                 children: Number(searchParams.children || 0),
-                rooms: Number(searchParams.rooms || 1)
+                rooms: Number(searchParams.rooms || 1),
+                currency: searchParams.currency
             });
         } catch (error) {
             console.error('Failed to fetch property details:', error);
