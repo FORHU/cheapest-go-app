@@ -1,18 +1,14 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { MapRef, LayerProps } from 'react-map-gl/mapbox';
-import { NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
-import { Map } from '@/components/ui/map';
-import { MapPopup } from '@/components/map/MapPopup';
-import { MapMarker } from '@/components/map/MapMarker';
 import { MapPropertyCard } from '@/components/map/MapPropertyCard';
 import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
 import type { Property } from '@/data/mockProperties';
 import { ArrowLeft, MapPin, ChevronDown } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { SearchMapContainer } from '../mapbox/SearchMapContainer';
 
 // ── Sort logic ──────────────────────────────────────────
 const SORT_OPTIONS = ['recommended', 'price-low', 'price-high', 'rating'] as const;
@@ -25,65 +21,6 @@ const SORT_LABELS: Record<SortValue, string> = {
     'rating': 'Top Rated',
 };
 
-// ── Layer Definitions ───────────────────────────────────
-
-const clusterLayer: LayerProps = {
-    id: 'clusters',
-    type: 'circle',
-    source: 'properties',
-    filter: ['has', 'point_count'],
-    paint: {
-        'circle-color': ['step', ['get', 'point_count'], '#3b82f6', 10, '#2563eb', 30, '#1d4ed8'],
-        'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 30, 25],
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff',
-    },
-};
-
-const clusterCountLayer: LayerProps = {
-    id: 'cluster-count',
-    type: 'symbol',
-    source: 'properties',
-    filter: ['has', 'point_count'],
-    layout: {
-        'text-field': '{point_count_abbreviated}',
-        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-        'text-size': 12,
-    },
-    paint: {
-        'text-color': '#ffffff',
-    },
-};
-
-const unclusteredPointLayer: LayerProps = {
-    id: 'unclustered-point',
-    type: 'circle',
-    source: 'properties',
-    filter: ['!', ['has', 'point_count']],
-    paint: {
-        'circle-color': '#ffffff',
-        'circle-radius': 16,
-        'circle-stroke-width': 1,
-        'circle-stroke-color': '#94a3b8',
-    },
-};
-
-const unclusteredPointTextLayer: LayerProps = {
-    id: 'unclustered-point-text',
-    type: 'symbol',
-    source: 'properties',
-    filter: ['!', ['has', 'point_count']],
-    layout: {
-        'text-field': ['get', 'formattedPrice'],
-        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-        'text-size': 10,
-        'text-offset': [0, 0],
-    },
-    paint: {
-        'text-color': '#0f172a',
-    },
-};
-
 interface SearchMapViewProps {
     properties: Property[];
     destination?: string;
@@ -94,15 +31,12 @@ interface SearchMapViewProps {
  *
  * LEFT  — scrollable property card list with sort controls
  * RIGHT — sticky Mapbox map, full viewport height
- *
- * Rendered as the entire page when ?view=map. No filters sidebar,
- * no search bar — clean immersive map experience.
  */
 function SearchMapView({ properties, destination }: SearchMapViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const mapRef = useRef<MapRef>(null);
 
+    // State
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortValue>('recommended');
@@ -130,36 +64,13 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
         return sorted;
     }, [mappableProperties, sortBy]);
 
+    // Derived
     const bounds = useMemo(() => computeBounds(mappableProperties), [mappableProperties]);
 
     const selectedProperty = useMemo(
         () => (selectedId ? mappableProperties.find((p) => p.id === selectedId) ?? null : null),
         [selectedId, mappableProperties]
     );
-
-
-
-    // ── GeoJSON Data (Lean) ─────────────────────────────────
-    const geoJsonData = useMemo(() => {
-        return {
-            type: 'FeatureCollection' as const,
-            features: mappableProperties.map((p) => ({
-                type: 'Feature' as const,
-                properties: {
-                    id: p.id,
-                    price: p.price,
-                    formattedPrice: formatCurrency(p.price),
-                },
-                geometry: {
-                    type: 'Point' as const,
-                    coordinates: [p.coordinates.lng, p.coordinates.lat],
-                },
-            })),
-        };
-    }, [mappableProperties]);
-
-    const shouldCluster = mappableProperties.length > 100; // Original threshold
-    // ── Handlers ────────────────────────────────────────────
 
     // ── Handlers ────────────────────────────────────────────
 
@@ -191,132 +102,13 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
             if (!property) return;
 
             setSelectedId((prev) => (prev === id ? null : id));
-
-            mapRef.current?.flyTo({
-                center: [property.coordinates.lng, property.coordinates.lat],
-                zoom: 17.5,
-                pitch: 60,
-                duration: 1200,
-            });
         },
         [mappableProperties]
     );
 
-    // Consolidated handler for clicking on the map (background or features)
-    const handleMapClick = useCallback((e: any) => {
-        const feature = e.features?.[0];
-
-        if (!feature) {
-            // Clicked on background map -> deselect
-            setSelectedId(null);
-            return;
-        }
-
-        const clusterId = feature.properties?.cluster_id;
-
-        if (clusterId) {
-            const map = mapRef.current?.getMap();
-            if (map) {
-                (map.getSource('properties') as any).getClusterExpansionZoom(
-                    clusterId,
-                    (err: any, zoom: number) => {
-                        if (err) return;
-                        map.easeTo({
-                            center: (feature.geometry as any).coordinates,
-                            zoom,
-                        });
-                    }
-                );
-            }
-            return;
-        }
-
-        // Handle single point click
-        const id = feature.properties?.id;
-        if (id) {
-            // Prevent event propagation if needed, but here we just handle selection
-            e.originalEvent.stopPropagation();
-            handleCardSelect(id);
-        }
-    }, [handleCardSelect]);
-
-
-    const onMouseEnter = useCallback(() => {
-        if (mapRef.current) {
-            mapRef.current.getCanvas().style.cursor = 'pointer';
-        }
-    }, []);
-
-    const onMouseLeave = useCallback(() => {
-        if (mapRef.current) {
-            mapRef.current.getCanvas().style.cursor = '';
-        }
-    }, []);
-
     const handleHover = useCallback((id: string | null) => {
         setHoveredId(id);
     }, []);
-
-    const handlePopupClose = useCallback(() => {
-        setSelectedId(null);
-    }, []);
-
-    const handleMarkerClick = useCallback(
-        (id: string) => {
-            // For mobile markers
-            const property = mappableProperties.find((p) => p.id === id);
-            if (!property) return;
-
-            setSelectedId(id);
-            scrollToCard(id);
-
-            mapRef.current?.flyTo({
-                center: [property.coordinates.lng, property.coordinates.lat],
-                zoom: 17.5,
-                pitch: 60,
-                duration: 1200,
-            });
-        },
-        [mappableProperties, scrollToCard]
-    );
-
-
-    const [isMapLoaded, setIsMapLoaded] = useState(false);
-
-    // ... existing handlers ...
-
-    const handleMapLoad = useCallback(() => {
-        setIsMapLoaded(true);
-
-        if (mappableProperties.length === 0) return;
-        const map = mapRef.current;
-        if (!map) return;
-
-        if (mappableProperties.length === 1) {
-            map.flyTo({
-                center: [bounds.centerLng, bounds.centerLat],
-                zoom: 15,
-                pitch: 45,
-                bearing: -10,
-                duration: 0,
-            });
-            return;
-        }
-
-        map.fitBounds(
-            [
-                [bounds.minLng, bounds.minLat],
-                [bounds.maxLng, bounds.maxLat],
-            ],
-            {
-                padding: { top: 60, bottom: 60, left: 60, right: 60 },
-                maxZoom: 16,
-                duration: 0,
-                pitch: 45,
-                bearing: -10,
-            }
-        );
-    }, [mappableProperties.length, bounds]);
 
     // ── Price range summary ─────────────────────────────────
     const priceRange = useMemo(() => {
@@ -329,8 +121,8 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
         };
     }, [mappableProperties]);
 
-    // ── Render ──────────────────────────────────────────────
 
+    // ── Render ──────────────────────────────────────────────
     return (
         <div className="flex flex-col h-full w-full">
             {/* ── Top bar ── */}
@@ -418,78 +210,14 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                     className="hidden lg:block flex-1 h-full relative"
                     style={{ paddingRight: 'max(0px, calc((100vw - 1400px) / 2))' }}
                 >
-                    <Map
-                        ref={mapRef}
-                        mapStyle="standard"
-                        standardConfig={{
-                            lightPreset: 'day',
-                            show3dObjects: true,
-                            show3dBuildings: true,
-                        }}
-                        initialViewState={{
-                            longitude: bounds.centerLng || 120.596,
-                            latitude: bounds.centerLat || 14.599,
-                            zoom: 14,
-                            pitch: 45,
-                            bearing: -10,
-                        }}
-                        maxPitch={60}
-                        onClick={handleMapClick as any}
-                        onMouseEnter={onMouseEnter}
-                        onMouseLeave={onMouseLeave}
-                        onLoad={handleMapLoad}
-                        className="rounded-none min-h-0"
-                        interactiveLayerIds={isMapLoaded ? ['clusters', 'unclustered-point', 'unclustered-point-text'] : undefined}
-                    >
-                        <NavigationControl position="top-right" showCompass visualizePitch />
-
-                        {isMapLoaded && (
-                            <Source
-                                id="properties"
-                                type="geojson"
-                                data={geoJsonData}
-                                cluster={shouldCluster}
-                                clusterMaxZoom={14}
-                                clusterRadius={50}
-                            >
-                                {/* Cluster Layers */}
-                                <Layer {...(clusterLayer as any)} />
-                                <Layer {...(clusterCountLayer as any)} />
-
-                                {/* Point Layers */}
-                                <Layer
-                                    {...(unclusteredPointLayer as any)}
-                                    filter={selectedId ? ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], selectedId]] : ['!', ['has', 'point_count']]}
-                                />
-                                <Layer
-                                    {...(unclusteredPointTextLayer as any)}
-                                    filter={selectedId ? ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], selectedId]] : ['!', ['has', 'point_count']]}
-                                />
-                            </Source>
-                        )}
-
-
-                        {selectedProperty && (
-                            <>
-                                <MapMarker
-                                    property={selectedProperty}
-                                    isSelected={true}
-                                    isHovered={false}
-                                    onClick={() => handleCardSelect(selectedProperty.id)}
-                                    onHover={() => { }}
-                                />
-                                <MapPopup
-                                    property={selectedProperty}
-                                    onClose={handlePopupClose}
-                                    onViewDetails={handleViewDetails}
-                                />
-                            </>
-                        )}
-                    </Map>
-
-
-
-
+                    <SearchMapContainer
+                        properties={mappableProperties}
+                        selectedId={selectedId}
+                        onSelectId={setSelectedId}
+                        hoveredId={hoveredId}
+                        onHoverId={setHoveredId}
+                        onViewDetails={handleViewDetails}
+                    />
 
                     {/* Property count badge */}
                     <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300">
@@ -501,54 +229,33 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
             {/* Mobile: show map toggle FAB */}
             <MobileMapToggle
                 properties={mappableProperties}
-                bounds={bounds}
                 selectedId={selectedId}
+                onSelectId={setSelectedId}
                 hoveredId={hoveredId}
-                selectedProperty={selectedProperty}
-                onMarkerClick={() => { }} // No-op for now as mobile map might need update, but hiding complexity for this task
-                onHover={handleHover}
-                onMapClick={handleMapClick}
-                onMapLoad={handleMapLoad}
-                onPopupClose={handlePopupClose}
+                onHoverId={setHoveredId}
                 onViewDetails={handleViewDetails}
             />
-        </div >
+        </div>
     );
 }
 
 // ── Mobile full-screen map overlay ──────────────────────
 function MobileMapToggle({
     properties,
-    bounds,
     selectedId,
+    onSelectId,
     hoveredId,
-    selectedProperty,
-    onMarkerClick,
-    onHover,
-    onMapClick,
-    onMapLoad,
-    onPopupClose,
+    onHoverId,
     onViewDetails,
 }: {
     properties: MappableProperty[];
-    bounds: ReturnType<typeof computeBounds>;
     selectedId: string | null;
+    onSelectId: (id: string | null) => void;
     hoveredId: string | null;
-    selectedProperty: MappableProperty | null;
-    onMarkerClick: (id: string) => void;
-    onHover: (id: string | null) => void;
-    onMapClick: (e: any) => void;
-    onMapLoad: () => void;
-    onPopupClose: () => void;
+    onHoverId: (id: string | null) => void;
     onViewDetails: (id: string) => void;
 }) {
     const [showMobileMap, setShowMobileMap] = useState(false);
-    const mobileMapRef = useRef<MapRef>(null);
-
-    // Note: Mobile map also needs refactoring to GeoJSON if performance matters there, 
-    // but for now we focus on Desktop Large Map which was the main lagging component.
-    // Keeping simple markers for mobile or should we update?
-    // Let's keep it simple for now to avoid breaking mobile logic in this specific step.
 
     if (properties.length === 0) return null;
 
@@ -567,36 +274,23 @@ function MobileMapToggle({
 
             {/* Full-screen mobile map */}
             {showMobileMap && (
-                <div className="lg:hidden fixed inset-0 z-40 bg-white dark:bg-slate-950">
-                    <Map
-                        ref={mobileMapRef}
-                        mapStyle="standard"
-                        standardConfig={{ lightPreset: 'day', show3dObjects: true, show3dBuildings: true }}
-                        initialViewState={{
-                            longitude: bounds.centerLng || 120.596,
-                            latitude: bounds.centerLat || 14.599,
-                            zoom: 14,
-                            pitch: 45,
-                            bearing: -10,
-                        }}
-                        maxPitch={60}
-                        onClick={onMapClick}
-                        onLoad={() => {
-                            if (properties.length <= 1) return;
-                            mobileMapRef.current?.fitBounds(
-                                [[bounds.minLng, bounds.minLat], [bounds.maxLng, bounds.maxLat]],
-                                { padding: 60, maxZoom: 16, duration: 0, pitch: 45, bearing: -10 }
-                            );
-                        }}
-                        className="rounded-none min-h-0 h-full"
-                    >
-                        <NavigationControl position="top-right" showCompass visualizePitch />
-                        {/* Fallback to simple markers for mobile if not refactored yet, or reuse main logic? 
-                             For safety in this specific task "Optimizing Map Performance", 
-                             I will not touch MobileMap logic deeply to avoid out-of-scope errors, 
-                             assuming Desktop split-view is the lag culprit. 
-                         */}
-                    </Map>
+                <div className="lg:hidden fixed inset-0 z-40 bg-white dark:bg-slate-950 flex flex-col">
+                    <div className="relative flex-1">
+                        <SearchMapContainer
+                            properties={properties}
+                            selectedId={selectedId}
+                            onSelectId={onSelectId}
+                            hoveredId={hoveredId}
+                            onHoverId={onHoverId}
+                            onViewDetails={onViewDetails}
+                        />
+                        <button
+                            onClick={() => setShowMobileMap(false)}
+                            className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md z-50 text-slate-800"
+                        >
+                            <ChevronDown className="rotate-180" size={20} />
+                        </button>
+                    </div>
                 </div>
             )}
         </>
