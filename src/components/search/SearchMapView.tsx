@@ -6,7 +6,7 @@ import { MapPropertyCard } from '@/components/map/MapPropertyCard';
 import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
 import type { Property } from '@/data/mockProperties';
-import { ArrowLeft, MapPin, ChevronDown } from 'lucide-react';
+import { ArrowLeft, MapPin, ChevronDown, List } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { SearchMapContainer } from '../mapbox/SearchMapContainer';
 
@@ -223,6 +223,15 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                     <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300">
                         {mappableProperties.length} properties
                     </div>
+
+                    {/* Floating List View Toggle */}
+                    <button
+                        onClick={handleBackToList}
+                        className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 hover:bg-slate-900 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm font-semibold backdrop-blur-sm"
+                    >
+                        <List size={18} />
+                        Show List
+                    </button>
                 </div>
             </div>
 
