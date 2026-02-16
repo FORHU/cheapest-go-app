@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { PlaneTakeoff, Calendar, User } from 'lucide-react';
 import { MagneticButton } from './MagneticButton';
 import { TiltCard } from './TiltCard';
@@ -20,7 +20,7 @@ const Hero = () => {
     }
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { y: 20, opacity: 0 },
     visible: { 
       y: 0, 
