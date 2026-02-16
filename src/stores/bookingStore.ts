@@ -76,6 +76,7 @@ export const useBookingStore = create<BookingState>()(
             name: 'cheapestgo-booking',
             storage: {
                 getItem: (name) => {
+                    if (typeof window === 'undefined') return null;
                     const str = localStorage.getItem(name);
                     if (!str) return null;
                     const parsed = JSON.parse(str);
@@ -88,9 +89,15 @@ export const useBookingStore = create<BookingState>()(
                     };
                 },
                 setItem: (name, value) => {
-                    localStorage.setItem(name, JSON.stringify(value));
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem(name, JSON.stringify(value));
+                    }
                 },
-                removeItem: (name) => localStorage.removeItem(name),
+                removeItem: (name) => {
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem(name);
+                    }
+                },
             }
         }
     )
