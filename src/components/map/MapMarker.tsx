@@ -22,6 +22,9 @@ const MapMarker = React.memo(function MapMarker({
 }: MapMarkerProps) {
     const isActive = isSelected || isHovered;
 
+    // If selected, we show the full Popup instead of the marker to avoid overlap/duplication
+    // if (isSelected) return null;
+
     return (
         <Marker
             latitude={property.coordinates.lat}
@@ -53,8 +56,8 @@ const MapMarker = React.memo(function MapMarker({
                             isSelected
                                 ? 'bg-blue-600 text-white border-blue-700 shadow-blue-500/40'
                                 : isHovered
-                                  ? 'bg-slate-900 text-white border-slate-700 shadow-slate-900/40'
-                                  : 'bg-white text-slate-900 border-slate-200 shadow-slate-300/40 dark:bg-slate-900 dark:text-white dark:border-slate-600 dark:shadow-black/40'
+                                    ? 'bg-slate-900 text-white border-slate-700 shadow-slate-900/40'
+                                    : 'bg-white text-slate-900 border-slate-200 shadow-slate-300/40 dark:bg-slate-900 dark:text-white dark:border-slate-600 dark:shadow-black/40'
                         )}
                     >
                         {formatCurrency(property.price)}
@@ -67,8 +70,8 @@ const MapMarker = React.memo(function MapMarker({
                                 isSelected
                                     ? 'bg-blue-600 border-blue-700'
                                     : isHovered
-                                      ? 'bg-slate-900 border-slate-700'
-                                      : 'bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-600'
+                                        ? 'bg-slate-900 border-slate-700'
+                                        : 'bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-600'
                             )}
                         />
                     </div>
@@ -81,8 +84,8 @@ const MapMarker = React.memo(function MapMarker({
                                 isSelected
                                     ? 'bg-blue-600'
                                     : isHovered
-                                      ? 'bg-slate-900'
-                                      : 'bg-red-500'
+                                        ? 'bg-slate-900'
+                                        : 'bg-red-500'
                             )}
                         />
                         {isActive && (

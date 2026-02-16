@@ -45,8 +45,8 @@ export default async function SearchPage(props: {
 
     // ─── LIST VIEW: Normal search page layout ───────────────────────
     return (
-        <main className="min-h-screen pt-6 pb-20 px-4 md:px-6">
-            <div className="max-w-7xl mx-auto">
+        <main className="min-h-screen pt-6 pb-20 px-6">
+            <div className="max-w-[1400px] mx-auto">
                 {/* Back to Home */}
                 <div className="mb-4">
                     <BackButton label="Back to Home" href="/" />
@@ -60,7 +60,7 @@ export default async function SearchPage(props: {
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+            <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-8">
                 <Suspense fallback={
                     <div className="w-full flex-shrink-0 lg:w-[280px] space-y-4">
                         <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse" />
