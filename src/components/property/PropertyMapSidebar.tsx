@@ -34,7 +34,7 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
         if (!hasCoordinates) return;
         mapRef.current?.flyTo({
             center: [coordinates.lng, coordinates.lat],
-            zoom: 15,
+            zoom: 17.5,
             pitch: 45,
             bearing: -10,
             duration: 800,
@@ -58,7 +58,7 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
                             initialViewState={{
                                 longitude: coordinates.lng,
                                 latitude: coordinates.lat,
-                                zoom: 15,
+                                zoom: 17.5,
                                 pitch: 45,
                                 bearing: -10,
                             }}
@@ -98,23 +98,6 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
                         </div>
                     </div>
                 )}
-            </div>
-
-            {/* Address bar at bottom */}
-            <div className="flex-shrink-0 px-4 py-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700">
-                <div className="flex items-start gap-2.5">
-                    <MapPin size={16} className="text-blue-500 shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white leading-snug truncate">
-                            {address}
-                        </p>
-                        {fullLocation && (
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                {fullLocation}
-                            </p>
-                        )}
-                    </div>
-                </div>
             </div>
         </div>
     );

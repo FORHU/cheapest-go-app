@@ -43,13 +43,13 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             onMouseEnter={() => onHover(property.id)}
             onMouseLeave={() => onHover(null)}
             className={cn(
-                'w-full text-left p-3 transition-all duration-200 cursor-pointer border-b border-slate-100 dark:border-slate-800',
+                'w-full text-left px-6 py-3 transition-all duration-200 cursor-pointer border-b border-slate-100 dark:border-slate-800',
                 'hover:bg-slate-50 dark:hover:bg-slate-800/60',
                 isSelected &&
-                    'bg-blue-50 dark:bg-blue-950/40 border-l-[3px] border-l-blue-500',
+                'bg-blue-50 dark:bg-blue-950/40 border-l-[3px] border-l-blue-500',
                 isHovered &&
-                    !isSelected &&
-                    'bg-slate-50 dark:bg-slate-800/40'
+                !isSelected &&
+                'bg-slate-50 dark:bg-slate-800/40'
             )}
         >
             <div className="flex gap-3">
