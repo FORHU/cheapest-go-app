@@ -33,7 +33,7 @@ const MapPopup = React.memo(function MapPopup({
             offset={40}
             closeOnClick={false}
             onClose={onClose}
-            className="map-property-popup"
+            className="map-property-popup z-50"
             maxWidth="300px"
         >
             <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl min-w-[260px] border border-slate-100 dark:border-slate-800">
