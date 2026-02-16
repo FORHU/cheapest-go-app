@@ -6,6 +6,7 @@ import {
   useSelectedRoom,
   useBookingActions,
 } from '@/stores/bookingStore';
+import { useCheckoutStore } from '@/stores/checkoutStore';
 import type { BookingParams, PrebookResponse, CancellationPolicy } from '@/services';
 import { apiFetch } from '@/lib/api/client';
 
@@ -149,9 +150,13 @@ export function useBookingFlow(): UseBookingFlowReturn {
     async (voucherCode: string): Promise<PrebookResponse | null> => {
       if (!selectedRoom?.offerId) return null;
 
+      // Get current currency from checkout store
+      // Note: We access store directly to avoid dependency cycles or passing it down
+      const currentCurrency = useCheckoutStore.getState().selectedCurrency || 'PHP';
+
       const result = await apiFetch<PrebookResponse>('/api/booking/prebook', {
         offerId: selectedRoom.offerId,
-        currency: 'PHP',
+        currency: currentCurrency,
         voucherCode,
       });
 
@@ -190,9 +195,11 @@ export function useBookingFlow(): UseBookingFlowReturn {
     async (): Promise<PrebookResponse | null> => {
       if (!selectedRoom?.offerId) return null;
 
+      const currentCurrency = useCheckoutStore.getState().selectedCurrency || 'PHP';
+
       const result = await apiFetch<PrebookResponse>('/api/booking/prebook', {
         offerId: selectedRoom.offerId,
-        currency: 'PHP',
+        currency: currentCurrency,
       });
 
       if (!result.success) {
