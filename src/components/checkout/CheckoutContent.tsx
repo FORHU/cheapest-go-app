@@ -10,7 +10,10 @@ import {
     useBookingStore,
 } from '@/stores/bookingStore';
 import { useAuthStore, useUser } from '@/stores/authStore';
-import { useVoucherState } from '@/stores/checkoutStore';
+import {
+    useVoucherState,
+    useCheckoutStore,
+} from '@/stores/checkoutStore';
 import {
     useBookingFlow,
     useCheckoutForm,
@@ -95,6 +98,13 @@ export function CheckoutContent() {
     useEffect(() => {
         setIsSuccess(false);
         setEmailSent(false);
+
+        // Sync currency from URL if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCurrency = urlParams.get('currency');
+        if (urlCurrency && urlCurrency !== selectedCurrency) {
+            useCheckoutStore.getState().setSelectedCurrency(urlCurrency);
+        }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Prebook trigger hook (handles mount, currency change, auth retry)
