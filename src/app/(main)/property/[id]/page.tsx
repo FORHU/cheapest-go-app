@@ -3,10 +3,10 @@ import PropertyGallery from '@/components/property/PropertyGallery';
 import PropertyOverview from '@/components/property/PropertyOverview';
 import PropertyNav from '@/components/property/PropertyNav';
 import RoomList from '@/components/property/RoomList';
-import LocationSection from '@/components/property/LocationSection';
 import PoliciesSection from '@/components/property/PoliciesSection';
 import ReviewsSection from '@/components/property/ReviewsSection';
 import FAQSection from '@/components/property/FAQSection';
+import PropertyMapSidebar from '@/components/property/PropertyMapSidebar';
 import BackButton from '@/components/common/BackButton';
 import { FadeInUp, FadeIn } from '@/components/property/AnimatedContent';
 import { fetchPropertyData } from '@/lib/property';
@@ -31,6 +31,7 @@ export default async function PropertyPage({
             adults: searchParamsResult.adults as string,
             children: searchParamsResult.children as string,
             rooms: searchParamsResult.rooms as string,
+            currency: searchParamsResult.currency as string,
         }),
         fetchHotelReviews(id, { limit: 1000 }),
     ]);
@@ -43,9 +44,20 @@ export default async function PropertyPage({
         );
     }
 
+    const mapProps = {
+        hotelDetails: {
+            address: fetchedDetails?.address || property.location,
+            city: fetchedDetails?.city || fetchedDetails?.details?.city,
+            country: fetchedDetails?.country || fetchedDetails?.details?.country
+        },
+        coordinates: property.coordinates,
+        propertyName: property.name,
+    };
+
     return (
         <main className="min-h-screen pt-6 pb-20 px-4 md:px-6">
             <div className="max-w-7xl mx-auto">
+                {/* Breadcrumb + Back */}
                 <FadeIn delay={0}>
                     <div className="mb-4">
                         <BackButton label="See all properties" />
@@ -55,16 +67,23 @@ export default async function PropertyPage({
                     </div>
                 </FadeIn>
 
+                {/* Gallery — full width */}
                 <FadeInUp delay={0.1}>
                     <PropertyGallery images={property.images} />
                 </FadeInUp>
 
+                {/* Navigation Tabs — full width */}
                 <div className="mt-8">
-                    <div className="space-y-8">
-                        {/* Navigation Tabs */}
-                        <FadeInUp delay={0.2}>
-                            <PropertyNav />
-                        </FadeInUp>
+                    <FadeInUp delay={0.2}>
+                        <PropertyNav />
+                    </FadeInUp>
+                </div>
+
+                {/* ═══ Split layout: Description LEFT | Map RIGHT ═══ */}
+                <div className="mt-8 flex flex-col lg:flex-row gap-8 items-stretch">
+
+                    {/* LEFT — Description / content */}
+                    <div className="flex-1 min-w-0 space-y-8">
 
                         <FadeInUp delay={0.25}>
                             <PropertyOverview property={property} reviewsData={reviewsData} />
@@ -90,17 +109,6 @@ export default async function PropertyPage({
                         </FadeInUp>
 
                         <FadeInUp delay={0.4}>
-                            <LocationSection
-                                hotelDetails={{
-                                    address: fetchedDetails?.address || property.location,
-                                    city: fetchedDetails?.city || fetchedDetails?.details?.city,
-                                    country: fetchedDetails?.country || fetchedDetails?.details?.country
-                                }}
-                                coordinates={property.coordinates}
-                            />
-                        </FadeInUp>
-
-                        <FadeInUp delay={0.45}>
                             <PoliciesSection
                                 checkInTime={fetchedDetails?.checkInTime}
                                 checkOutTime={fetchedDetails?.checkOutTime}
@@ -109,12 +117,11 @@ export default async function PropertyPage({
                             />
                         </FadeInUp>
 
-                        <FadeInUp delay={0.5}>
+                        <FadeInUp delay={0.45}>
                             <hr className="border-slate-200 dark:border-white/10" />
                         </FadeInUp>
 
-                        {/* Reviews Section */}
-                        <FadeInUp delay={0.55}>
+                        <FadeInUp delay={0.5}>
                             <ReviewsSection
                                 reviews={reviewsData.reviews}
                                 averageRating={reviewsData.averageRating}
@@ -122,11 +129,11 @@ export default async function PropertyPage({
                             />
                         </FadeInUp>
 
-                        <FadeInUp delay={0.6}>
+                        <FadeInUp delay={0.55}>
                             <hr className="border-slate-200 dark:border-white/10" />
                         </FadeInUp>
 
-                        <FadeInUp delay={0.65}>
+                        <FadeInUp delay={0.6}>
                             <FAQSection
                                 propertyName={property.name}
                                 checkInTime={fetchedDetails?.checkInTime}
@@ -136,6 +143,22 @@ export default async function PropertyPage({
                             />
                         </FadeInUp>
                     </div>
+
+                    {/* RIGHT — Map (sticky, ~50% width on desktop) */}
+                    <div className="hidden lg:block lg:w-[45%] xl:w-[40%] flex-shrink-0" id="location">
+                        <div className="sticky top-[100px] h-[calc(100vh-140px)]">
+                            <PropertyMapSidebar {...mapProps} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Mobile map — shown below content on small screens */}
+                <div className="lg:hidden mt-8" id="location-mobile">
+                    <FadeInUp delay={0.4}>
+                        <div className="h-[350px]">
+                            <PropertyMapSidebar {...mapProps} />
+                        </div>
+                    </FadeInUp>
                 </div>
             </div>
         </main>

@@ -19,6 +19,7 @@ export interface SearchParams {
     rooms?: string | number;
     nationality?: string;
     countryCode?: string;
+    currency?: string;
     placeId?: string;
     hotelName?: string;
     starRating?: string;
@@ -101,6 +102,15 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         ? params.childrenAges.split(',').map(Number).filter(n => !isNaN(n) && n >= 0 && n <= 17)
         : undefined;
 
+    // countryCode comes from destination selection (autocomplete → URL param)
+    const countryCode = typeof params.countryCode === 'string' && params.countryCode
+        ? params.countryCode : '';
+    const placeId = typeof params.placeId === 'string' ? params.placeId : undefined;
+
+    // Currency comes from the user's locale preference (URL param), NOT the destination
+    const currency = typeof params.currency === 'string' && params.currency
+        ? params.currency : 'PHP';
+
     const queryParams: SearchQueryParams = {
         checkin: formatSearchDate(rawCheckin) || "2026-06-01",
         checkout: formatSearchDate(rawCheckout) || "2026-06-05",
@@ -109,10 +119,12 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         childrenAges, // Pass children ages for proper LiteAPI occupancy
         rooms: Number(params.rooms) || 1,
         guest_nationality: typeof params.nationality === 'string' && params.nationality ? params.nationality : "KR",
-        currency: "PHP",
+        currency,
         cityName: destination,
-        countryCode: typeof params.countryCode === 'string' ? params.countryCode : "PH",
-        placeId: typeof params.placeId === 'string' ? params.placeId : undefined,
+        // When placeId is available, don't send countryCode — placeId is more accurate
+        // and a wrong countryCode (e.g., stale "PH" for Seoul) can cause 0 results
+        countryCode: placeId ? '' : countryCode,
+        placeId,
         query: destination,
     };
 
@@ -210,8 +222,8 @@ function transformHotelToProperty(hotel: any, cityName: string): Property {
         badges: [],
         type: 'hotel',
         coordinates: {
-            lat: hotel.details?.location?.latitude || 0,
-            lng: hotel.details?.location?.longitude || 0
+            lat: hotel.latitude || hotel.details?.latitude || hotel.details?.location?.latitude || 0,
+            lng: hotel.longitude || hotel.details?.longitude || hotel.details?.location?.longitude || 0,
         },
         refundableTag,
         distance: hotel.distance || hotel.details?.distance_from_center || hotel.details?.distance || undefined,

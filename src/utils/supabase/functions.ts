@@ -62,14 +62,15 @@ export async function getHotelReviews(
 
 // Specific helper for fetching hotel details
 export async function getHotelDetails(hotelId: string, options: any = {}) {
-    const { checkIn, checkOut, adults, children, rooms } = options;
+    const { checkIn, checkOut, adults, children, rooms, currency } = options;
     const result = await searchLiteApi({
         hotelIds: [hotelId],
         checkin: checkIn,  // Edge function expects lowercase
         checkout: checkOut,
         adults,
         children,
-        rooms: rooms || 1
+        rooms: rooms || 1,
+        currency
     });
     const hotel = result?.data?.[0] || null;
 

@@ -1,44 +1,32 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { cancelBooking as cancelBookingAction, CancelBookingResult } from '@/app/actions';
+import { apiFetch } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queryClient';
 import { toast } from 'sonner';
 
 /**
- * React Query mutation hook for cancelling a booking.
- * Uses Server Action for secure server-side processing.
- * Handles both the LiteAPI cancellation and local database status update.
- * Automatically invalidates the trips query on success.
+ * Hook wrapping the cancel booking API call.
  */
 export function useCancelBooking() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (bookingId: string): Promise<NonNullable<CancelBookingResult['data']>> => {
-      const result = await cancelBookingAction(bookingId);
+    mutationFn: async (bookingId: string) => {
+      const result = await apiFetch('/api/booking/cancel', { bookingId });
 
-      if (!result.success || !result.data) {
+      if (!result.success) {
         throw new Error(result.error || 'Cancellation failed');
       }
 
       return result.data;
     },
-    onSuccess: (result) => {
-      toast.success('Booking cancelled successfully', {
-        description: result.refund
-          ? `Refund of ${result.refund.currency} ${result.refund.amount.toFixed(2)} will be processed`
-          : 'Your booking has been cancelled',
-      });
-
-      // Invalidate trips list so it refetches
+    onSuccess: () => {
+      toast.success('Booking cancelled successfully');
       queryClient.invalidateQueries({ queryKey: queryKeys.trips.all });
     },
-    onError: (err: Error) => {
-      console.error('Cancellation failed:', err);
-      toast.error('Cancellation failed', {
-        description: err.message || 'Please try again or contact support',
-      });
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to cancel booking');
     },
   });
 }

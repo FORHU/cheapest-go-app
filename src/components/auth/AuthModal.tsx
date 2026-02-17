@@ -97,7 +97,7 @@ const AuthModal: React.FC = () => {
                                     <PlaneTakeoff className="text-white dark:text-obsidian-accent w-6 h-6" />
                                 </div>
                                 <h1 className="text-slate-900 dark:text-white font-display font-bold text-xl tracking-tight">
-                                    AeroVantage<span className="text-alabaster-accent dark:text-obsidian-accent">.Pro</span>
+                                    Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span>
                                 </h1>
                             </div>
                         </div>

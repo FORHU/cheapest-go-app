@@ -165,7 +165,7 @@ const RegisterStep: React.FC = () => {
             </div>
 
             <div className="pt-4 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
-                <span>AeroVantage</span>
+                <span>CheapestGo</span>
                 <span>•</span>
                 <span>Hotels.com</span>
                 <span>•</span>

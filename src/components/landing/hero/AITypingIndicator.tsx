@@ -30,7 +30,7 @@ const AITypingIndicator: React.FC = () => {
                 </div>
 
                 <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
-                    AeroVantage AI is thinking...
+                    CheapestGo AI is thinking...
                 </span>
             </div>
         </motion.div>
