@@ -1,11 +1,3 @@
-/**
- * Flight System Bootstrap
- *
- * Instantiates providers, registers them, and exports the orchestrator.
- * Import from here in API routes and hooks.
- */
-
-// Types (re-exported for convenience)
 export type {
     FlightSearchRequest,
     FlightSearchResponse,

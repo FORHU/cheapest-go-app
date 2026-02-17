@@ -1,12 +1,3 @@
-/**
- * Normalized Flight Types
- * 
- * All flight providers MUST normalize their responses into these types.
- * No provider-specific data should leak beyond the provider adapter.
- */
-
-// ─── Search Request ──────────────────────────────────────────────────
-
 export interface FlightSearchRequest {
     /** Trip type */
     tripType: 'one-way' | 'round-trip' | 'multi-city';

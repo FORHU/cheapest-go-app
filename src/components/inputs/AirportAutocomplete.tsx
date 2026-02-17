@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plane, Loader2 } from 'lucide-react';
+import { Plane, Loader2, MapPin } from 'lucide-react';
 import type { Airport } from '@/lib/airports';
 
-interface AirportAutocompleteProps {
+// ─── Props ───────────────────────────────────────────────────────────
+
+export interface AirportAutocompleteProps {
     /** Currently selected airport */
     value: Airport | null;
-    /** Called when user selects an airport */
+    /** Called when user selects an airport — receives the Airport object (parent reads `.iata`) */
     onChange: (airport: Airport | null) => void;
     /** Label text (e.g. "From", "To") */
     label: string;
@@ -22,6 +24,12 @@ interface AirportAutocompleteProps {
     excludeIata?: string;
 }
 
+// ─── Debounce delay (ms) ─────────────────────────────────────────────
+
+const DEBOUNCE_MS = 250;
+
+// ─── Component ───────────────────────────────────────────────────────
+
 export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     value,
     onChange,
@@ -31,6 +39,8 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     onToggle,
     excludeIata,
 }) => {
+    const uid = useId();
+    const listboxId = `airport-listbox-${uid}`;
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const [query, setQuery] = useState('');
@@ -39,19 +49,18 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     const [error, setError] = useState<string | null>(null);
     const [activeIndex, setActiveIndex] = useState(-1);
 
-    // Reset state when opened/closed
+    // ── Reset when opened/closed ─────────────────────────────────
     useEffect(() => {
         if (isOpen) {
             setQuery('');
             setResults([]);
             setError(null);
             setActiveIndex(-1);
-            // Focus input after layout paint
             requestAnimationFrame(() => inputRef.current?.focus());
         }
     }, [isOpen]);
 
-    // Click outside to close
+    // ── Click outside to close ───────────────────────────────────
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -64,7 +73,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen, onToggle]);
 
-    // Debounced fetch
+    // ── Debounced fetch (Amadeus → local fallback) ───────────────
     useEffect(() => {
         if (!query || query.length < 1) {
             setResults([]);
@@ -80,7 +89,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
             try {
                 const res = await fetch(
                     `/api/airports/search?q=${encodeURIComponent(query)}&limit=8`,
-                    { signal: controller.signal }
+                    { signal: controller.signal },
                 );
                 const json = await res.json();
 
@@ -101,7 +110,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
             } finally {
                 setLoading(false);
             }
-        }, 200);
+        }, DEBOUNCE_MS);
 
         return () => {
             clearTimeout(timer);
@@ -109,7 +118,14 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
         };
     }, [query, excludeIata]);
 
-    // Keyboard navigation
+    // ── Scroll active item into view ─────────────────────────────
+    useEffect(() => {
+        if (activeIndex < 0) return;
+        const el = document.getElementById(`${listboxId}-option-${activeIndex}`);
+        el?.scrollIntoView({ block: 'nearest' });
+    }, [activeIndex, listboxId]);
+
+    // ── Keyboard navigation ──────────────────────────────────────
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         switch (e.key) {
             case 'ArrowDown':
@@ -138,7 +154,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
         onToggle(false);
     };
 
-    // Format display text
+    // ── Display ──────────────────────────────────────────────────
     const displayText = value ? `${value.city} (${value.iata})` : null;
     const displaySubtext = value ? value.name : null;
 
@@ -160,7 +176,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                 )}
             </div>
 
-            {/* Dropdown */}
+            {/* ─── Dropdown ──────────────────────────────────────── */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -171,6 +187,8 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                         transition={{ duration: 0.2 }}
                         className="absolute top-full left-0 mt-4 w-[420px] bg-white dark:bg-[#0f172a] shadow-xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
                         onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-label={`Search ${label} airport`}
                     >
                         {/* Search Input */}
                         <div className="p-3 border-b border-slate-100 dark:border-white/5">
@@ -187,6 +205,13 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                     onKeyDown={handleKeyDown}
                                     placeholder="Type city name or airport code..."
                                     className="bg-transparent border-none p-0 text-sm font-medium focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400"
+                                    role="combobox"
+                                    aria-expanded={results.length > 0}
+                                    aria-controls={listboxId}
+                                    aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
+                                    aria-autocomplete="list"
+                                    autoComplete="off"
+                                    spellCheck={false}
                                 />
                                 {loading && (
                                     <Loader2 className="animate-spin text-blue-500 shrink-0" size={16} />
@@ -195,7 +220,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                         </div>
 
                         {/* Results */}
-                        <div className="max-h-[320px] overflow-y-auto py-1" role="listbox">
+                        <div className="max-h-[320px] overflow-y-auto py-1" role="listbox" id={listboxId}>
                             {error ? (
                                 <div className="px-6 py-4 text-center text-red-400 text-xs">
                                     {error}
@@ -204,12 +229,13 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                 results.map((airport, i) => (
                                     <div
                                         key={airport.iata}
+                                        id={`${listboxId}-option-${i}`}
                                         role="option"
                                         aria-selected={i === activeIndex}
                                         onClick={() => handleSelect(airport)}
                                         className={`px-4 py-2.5 flex items-center gap-3 cursor-pointer transition-colors ${i === activeIndex
-                                                ? 'bg-blue-50 dark:bg-blue-500/10'
-                                                : 'hover:bg-slate-50 dark:hover:bg-white/5'
+                                            ? 'bg-blue-50 dark:bg-blue-500/10'
+                                            : 'hover:bg-slate-50 dark:hover:bg-white/5'
                                             }`}
                                     >
                                         {/* IATA Badge */}
@@ -223,11 +249,14 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                         <div className="flex-1 min-w-0">
                                             <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
                                                 {airport.city}
-                                                <span className="font-normal text-slate-500 dark:text-slate-400">
-                                                    {' · '}{airport.country}
-                                                </span>
+                                                {airport.country && (
+                                                    <span className="font-normal text-slate-500 dark:text-slate-400">
+                                                        {' · '}{airport.country}
+                                                    </span>
+                                                )}
                                             </div>
-                                            <div className="text-xs text-slate-400 truncate">
+                                            <div className="text-xs text-slate-400 truncate flex items-center gap-1">
+                                                <MapPin className="w-3 h-3 shrink-0" />
                                                 {airport.name}
                                             </div>
                                         </div>

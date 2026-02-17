@@ -1,10 +1,3 @@
-/**
- * Flight Provider Interface & Registry
- * 
- * Every flight data source (Amadeus, Mystifly, mock) implements FlightProvider.
- * The ProviderRegistry manages provider lifecycle and discovery.
- */
-
 import type { FlightSearchRequest, FlightSearchResponse, FlightBookingRequest, FlightBookingResponse } from './types';
 
 // ─── Provider Interface ──────────────────────────────────────────────

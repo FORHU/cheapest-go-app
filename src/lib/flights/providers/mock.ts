@@ -1,10 +1,3 @@
-/**
- * Mock Flight Provider
- * 
- * Generates realistic flight offers for development and testing.
- * Always enabled when no real providers are configured.
- */
-
 import type { FlightProvider } from '../provider';
 import type {
     FlightSearchRequest,

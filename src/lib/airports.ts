@@ -1,10 +1,3 @@
-/**
- * Airport Data Layer
- * 
- * Local dataset of ~250 major world airports with in-memory search.
- * Used by /api/airports/search route and AirportAutocomplete component.
- */
-
 export interface Airport {
     /** IATA 3-letter code (e.g. "MNL") */
     iata: string;
@@ -242,18 +235,6 @@ const INDEXED: IndexedAirport[] = AIRPORTS.map(a => ({
     _countryLower: a.country.toLowerCase(),
 }));
 
-/**
- * Search airports by query string. Matches against:
- * - IATA code (exact prefix match boosted)
- * - Airport name
- * - City name
- * - Country name
- * 
- * Results are scored: exact IATA match first, then IATA prefix, then city/name matches.
- * 
- * @param query - Search query (min 1 char)
- * @param limit - Max results to return (default 8)
- */
 export function searchAirports(query: string, limit: number = 8): Airport[] {
     const q = query.trim().toLowerCase();
     if (!q) return [];

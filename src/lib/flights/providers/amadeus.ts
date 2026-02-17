@@ -1,15 +1,3 @@
-/**
- * Amadeus Flight Provider
- *
- * Integrates with Amadeus Flight Offers Search API v2.
- * Handles OAuth2 token management and response normalization.
- *
- * Required env vars:
- *   AMADEUS_API_KEY
- *   AMADEUS_API_SECRET
- *   AMADEUS_BASE_URL (default: https://test.api.amadeus.com)
- */
-
 import type { FlightProvider } from '../provider';
 import type {
     FlightSearchRequest,

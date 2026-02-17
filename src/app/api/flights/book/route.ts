@@ -1,10 +1,3 @@
-/**
- * POST /api/flights/book
- *
- * Routes booking to the correct provider based on offer ID prefix.
- * Placeholder for Phase 2 — returns mock confirmation for now.
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { flightRegistry } from '@/lib/flights';
 

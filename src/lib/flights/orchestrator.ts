@@ -1,10 +1,3 @@
-/**
- * Flight Search Orchestrator
- *
- * Queries all enabled providers in parallel, merges and deduplicates results,
- * and returns a unified sorted list of flight offers.
- */
-
 import type { ProviderRegistry } from './provider';
 import type { FlightSearchRequest, FlightOffer, FlightSearchResponse } from './types';
 
