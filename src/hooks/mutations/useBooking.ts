@@ -1,70 +1,43 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { confirmBooking as confirmBookingAction, BookingParams, BookingResult } from '@/app/actions';
-import { queryKeys } from '@/lib/queryClient';
 import { useBookingActions } from '@/stores/bookingStore';
+import { apiFetch } from '@/lib/api/client';
+import type { BookingParams } from '@/services';
 
-/**
- * Options for useBooking mutation
- */
 export interface UseBookingOptions {
-  onSuccess?: (data: NonNullable<BookingResult['data']>) => void;
+  onSuccess?: (data: any) => void;
   onError?: (error: Error) => void;
 }
 
 /**
- * React Query mutation hook for booking confirmation.
- * Uses Server Action for secure server-side processing.
- *
- * @example
- * ```tsx
- * const { mutate: confirmBooking, isPending, error } = useBooking({
- *   onSuccess: (data) => console.log('Booked:', data.bookingId),
- * });
- *
- * // Confirm booking
- * confirmBooking({
- *   prebookId: 'prebook-123',
- *   holder: { firstName: 'John', lastName: 'Doe', email: 'john@example.com' },
- *   guests: [{ occupancyNumber: 1, firstName: 'John', lastName: 'Doe', email: 'john@example.com' }],
- *   payment: { method: 'ACC_CREDIT_CARD' }
- * });
- * ```
+ * Hook wrapping the confirm booking API call.
  */
-export function useBooking(options: UseBookingOptions = {}) {
+export function useBooking(options?: UseBookingOptions) {
   const queryClient = useQueryClient();
   const { setBookingId } = useBookingActions();
 
   return useMutation({
     mutationFn: async (params: BookingParams) => {
-      const result = await confirmBookingAction(params);
+      const result = await apiFetch('/api/booking/confirm', params as unknown as Record<string, unknown>);
 
-      if (!result.success || !result.data) {
-        throw new Error(result.error || 'Booking confirmation failed');
+      if (!result.success) {
+        throw new Error(result.error || 'Booking failed');
       }
 
       return result.data;
     },
-
-    onSuccess: (data) => {
-      // Store bookingId in Zustand
-      if (data.bookingId) {
+    onSuccess: (data: any) => {
+      if (data?.bookingId) {
         setBookingId(data.bookingId);
       }
-
-      // Invalidate booking queries
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.booking.all,
-      });
-
-      // Call custom success handler
-      options.onSuccess?.(data);
+      // Invalidate trips query so list refreshes
+      queryClient.invalidateQueries({ queryKey: ['trips'] });
+      options?.onSuccess?.(data);
     },
-
     onError: (error: Error) => {
-      console.error('Booking error:', error);
-      options.onError?.(error);
+      console.error('[useBooking] Error:', error);
+      options?.onError?.(error);
     },
   });
 }

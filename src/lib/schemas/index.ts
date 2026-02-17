@@ -50,3 +50,13 @@ export type {
   PaymentInput,
   CheckoutInput,
 } from './checkout';
+
+// Voucher schemas
+export {
+  validateVoucherSchema,
+  getAvailableVouchersSchema,
+} from './voucher';
+export type {
+  ValidateVoucherInput,
+  GetAvailableVouchersInput,
+} from './voucher';

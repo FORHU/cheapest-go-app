@@ -60,7 +60,7 @@ export const DestinationPicker: React.FC = () => {
         onClose();
     };
 
-    // Debounced Autocomplete via server action
+    // Debounced Autocomplete via API route
     useEffect(() => {
         const timer = setTimeout(async () => {
             if (!query || query.length < 2) {
@@ -70,8 +70,8 @@ export const DestinationPicker: React.FC = () => {
 
             setSuggestionsLoading(true);
             try {
-                const { autocompleteDestinations } = await import('@/app/actions/search');
-                const result = await autocompleteDestinations(query);
+                const { apiFetch } = await import('@/lib/api/client');
+                const result = await apiFetch('/api/autocomplete', { query });
 
                 if (result.success) {
                     setSuggestions(result.data);

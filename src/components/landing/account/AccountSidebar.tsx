@@ -69,7 +69,7 @@ export const AccountSidebar: React.FC<AccountSidebarProps> = ({
                     </div>
                     <div>
                         <p className="font-medium text-slate-900 dark:text-white text-sm">Get trip inspiration and offers</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Receive deals, tips, and insights from AeroVantage</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Receive deals, tips, and insights from CheapestGo</p>
                     </div>
                 </div>
                 <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">

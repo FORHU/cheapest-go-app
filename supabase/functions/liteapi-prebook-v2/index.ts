@@ -44,24 +44,31 @@ Deno.serve(async (req: any) => {
             throw new Error(`Failed to parse request body: ${e.message}`);
         }
 
-        const { offerId, currency, guestNationality } = body;
+        const { offerId, currency, guestNationality, voucherCode } = body;
 
         console.log("Prebook Request for offerId:", offerId);
+        if (voucherCode) console.log("Prebook with voucherCode:", voucherCode);
 
         if (!offerId) {
             throw new Error("Missing offerId in request body");
         }
 
-        const payload = {
+        const payload: Record<string, any> = {
             offerId,
             currency: currency || "USD",
             guestNationality: guestNationality || "PH",
-            usePaymentSdk: false  // Use false for sandbox ACC_CREDIT_CARD method
+            usePaymentSdk: true,  // Required for Payment SDK + voucher support
         };
+
+        // Include voucher code when provided
+        if (voucherCode) {
+            payload.voucherCode = voucherCode;
+        }
 
         console.log("Prebook Payload:", JSON.stringify(payload));
 
         const endpoints = [
+            `https://book.liteapi.travel/v3.0/rates/prebook`,
             `https://api.liteapi.travel/v3.0/hotels/rates/prebook`,
             `https://api.liteapi.travel/v3.0/rates/prebook`
         ];
@@ -138,10 +145,12 @@ Deno.serve(async (req: any) => {
             throw new Error(result.error?.message || `Prebook failed with status ${liteResponse?.status}`);
         }
 
-        // Log cancellation policies from prebook response
+        // Log prebook response details
         const prebookData = result.data || result;
         console.log("[Prebook] cancellationPolicies:", JSON.stringify(prebookData.cancellationPolicies)?.substring(0, 500));
         console.log("[Prebook] refundableTag:", prebookData.cancellationPolicies?.refundableTag);
+        console.log("[Prebook] secretKey present:", !!prebookData.secretKey);
+        console.log("[Prebook] transactionId:", prebookData.transactionId);
 
         return new Response(JSON.stringify(result), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

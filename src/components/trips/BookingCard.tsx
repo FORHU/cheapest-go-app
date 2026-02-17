@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Calendar, MapPin, Users, Clock, XCircle, Pencil } from 'lucide-react';
 import type { BookingRecord } from '@/services/booking.service';
@@ -8,6 +8,7 @@ import CancellationModal from './CancellationModal';
 import ModificationModal from './ModificationModal';
 import { statusColors, statusLabels } from '@/lib/constants';
 import { formatDate, formatCurrency, calculateNights } from '@/lib/utils';
+import { derivePolicyType, getPolicyTitle, getPolicyBadgeColor } from '@/lib/policy-formatter';
 
 interface BookingCardProps {
     booking: BookingRecord;
@@ -30,6 +31,15 @@ export default function BookingCard({ booking, onBookingUpdated }: BookingCardPr
     const isUpcoming = checkInDate > new Date();
     const isPast = checkOutDate < new Date();
 
+    // Derive policy type for badge display
+    const policyType = useMemo(
+        () => derivePolicyType(
+            booking.cancellation_policy?.refundableTag,
+            booking.cancellation_policy?.cancelPolicyInfos
+        ),
+        [booking.cancellation_policy]
+    );
+
     return (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
             <div className="flex flex-col md:flex-row">
@@ -51,6 +61,12 @@ export default function BookingCard({ booking, onBookingUpdated }: BookingCardPr
                     <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-semibold ${statusColors[booking.status]}`}>
                         {statusLabels[booking.status]}
                     </div>
+                    {/* Policy Badge */}
+                    {isUpcoming && booking.status === 'confirmed' && (
+                        <div className={`absolute bottom-3 left-3 px-2 py-1 rounded-full text-[10px] font-semibold ${getPolicyBadgeColor(policyType)}`}>
+                            {getPolicyTitle(policyType)}
+                        </div>
+                    )}
                 </div>
 
                 {/* Booking Details */}

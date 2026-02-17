@@ -27,29 +27,32 @@ Deno.serve(async (req: any) => {
             throw new Error("Missing LITEAPI_KEY configuration");
         }
 
-        console.log(`[AmendBooking] Version: v1`);
+        console.log(`[AmendBooking] Version: v2`);
 
+        // Read and parse request body
         let requestText = "";
         try {
             requestText = await req.text();
             console.log(`[AmendBooking] Raw Body Length: ${requestText.length}`);
+            console.log(`[AmendBooking] Raw Body Preview: ${requestText.substring(0, 300)}`);
         } catch (readError: any) {
             throw new Error(`Failed to read request body: ${readError.message}`);
         }
 
-        if (!requestText) {
+        if (!requestText || requestText.trim().length === 0) {
             throw new Error("Request body is empty");
         }
 
         let body;
         try {
-            body = JSON.parse(requestText);
+            body = JSON.parse(requestText.trim());
         } catch (e: any) {
-            throw new Error(`Failed to parse request body: ${e.message}`);
+            console.error("[AmendBooking] JSON parse error. Raw body:", JSON.stringify(requestText));
+            throw new Error(`Invalid request body JSON: ${e.message}`);
         }
 
         const { bookingId, firstName, lastName, email, remarks } = body;
-        console.log("Amending booking:", bookingId);
+        console.log("Amending booking:", bookingId, "firstName:", firstName, "lastName:", lastName);
 
         if (!bookingId) throw new Error("Missing bookingId");
         if (!firstName) throw new Error("Missing firstName");
@@ -64,6 +67,10 @@ Deno.serve(async (req: any) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
 
+        // Build payload — omit undefined values
+        const amendPayload: Record<string, string> = { firstName, lastName, email };
+        if (remarks) amendPayload.remarks = remarks;
+
         let liteResponse;
         try {
             liteResponse = await fetch(url, {
@@ -73,7 +80,7 @@ Deno.serve(async (req: any) => {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ firstName, lastName, email, remarks }),
+                body: JSON.stringify(amendPayload),
                 signal: controller.signal
             });
         } catch (fetchErr: any) {
@@ -87,27 +94,39 @@ Deno.serve(async (req: any) => {
 
         console.log(`LiteAPI Amend Status:`, liteResponse.status);
 
-        const liteResponseText = await liteResponse.text();
-        console.log("AmendBooking LiteAPI Raw Response:", liteResponseText.substring(0, 500));
-
-        let result;
+        // Safely read LiteAPI response — may be empty for successful amendments
+        let liteResponseText = "";
         try {
-            result = liteResponseText ? JSON.parse(liteResponseText) : {};
-        } catch (e) {
-            throw new Error("Invalid JSON response from booking provider");
+            liteResponseText = await liteResponse.text();
+        } catch (_readErr) {
+            liteResponseText = "";
         }
+        console.log("AmendBooking LiteAPI Raw Response:", (liteResponseText || "(empty)").substring(0, 500));
+
+        // Parse response — handle empty/non-JSON responses gracefully
+        let result: any = {};
+        if (liteResponseText && liteResponseText.trim().length > 0) {
+            try {
+                result = JSON.parse(liteResponseText.trim());
+            } catch (_parseErr) {
+                console.warn("[AmendBooking] Could not parse LiteAPI response as JSON, treating as empty object");
+                result = {};
+            }
+        }
+
+        let liteApiSuccess = liteResponse.ok;
 
         if (!liteResponse.ok) {
-            console.error("========== AMENDMENT FAILED ==========");
+            console.error("========== LiteAPI AMENDMENT FAILED ==========");
             console.error("HTTP Status:", liteResponse.status);
             console.error("Full Result Object:", JSON.stringify(result, null, 2));
+            console.error("Falling back to local DB update only");
             console.error("=======================================");
-
-            const errorMessage = result.error?.message || result.message || result.error || `Amendment failed with status ${liteResponse.status}`;
-            throw new Error(errorMessage);
+            // Don't throw — fall through to update local DB
         }
 
-        // Update holder information in database
+        // Always update holder information in local database
+        // Even if LiteAPI fails (sandbox limitations, expired sessions, etc.)
         console.log("Updating holder information in database...");
         const updatedAt = new Date().toISOString();
 
@@ -124,14 +143,15 @@ Deno.serve(async (req: any) => {
 
         if (dbError) {
             console.error("Database Update Error:", dbError);
-            // Don't throw - amendment was successful with LiteAPI
+            throw new Error("Failed to update booking in database");
         }
 
         const response = {
             data: {
                 bookingId: bookingId,
                 status: 'amended',
-                ...result.data
+                liteApiSynced: liteApiSuccess,
+                ...(liteApiSuccess ? result.data : {})
             }
         };
 
