@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Info, XCircle, CheckCircle } from 'lucide-react';
+import { Clock, Info, XCircle, CheckCircle, AlertTriangle, LogOut } from 'lucide-react';
 
 interface CancellationPolicy {
     cancelTime?: string;
@@ -39,6 +39,62 @@ function formatCancellationTime(cancelTime: string): string {
     }
 }
 
+/**
+ * Extract no-show penalty from cancelPolicyInfos or hotelRemarks.
+ * Server-safe (no client dependencies).
+ */
+function detectNoShowPenalty(policies?: CancellationPolicy[], hotelRemarks?: string): number {
+    // Check cancelPolicyInfos for NO_SHOW type entry
+    if (policies) {
+        const noShowEntry = policies.find(
+            (p) => {
+                const t = (p.type || '').toUpperCase();
+                return t.includes('NO_SHOW') || t.includes('NOSHOW');
+            }
+        );
+        if (noShowEntry?.amount) return noShowEntry.amount;
+    }
+
+    // Check hotelRemarks for no-show mention with amount
+    if (hotelRemarks) {
+        const match = hotelRemarks.match(/no[- ]?show.*?(\d+[\d,.]*)/i);
+        if (match) return parseFloat(match[1].replace(',', '')) || 0;
+    }
+
+    return 0;
+}
+
+/**
+ * Extract early departure / early checkout fee from cancelPolicyInfos or hotelRemarks.
+ * Server-safe (no client dependencies).
+ */
+function detectEarlyDepartureFee(policies?: CancellationPolicy[], hotelRemarks?: string): number {
+    // Check cancelPolicyInfos for EARLY_DEPARTURE / EARLY_CHECKOUT type entry
+    if (policies) {
+        const edEntry = policies.find(
+            (p) => {
+                const t = (p.type || '').toUpperCase();
+                return t.includes('EARLY_DEPARTURE') || t.includes('EARLY_CHECKOUT');
+            }
+        );
+        if (edEntry?.amount) return edEntry.amount;
+    }
+
+    // Check hotelRemarks for early departure/checkout mention with amount
+    if (hotelRemarks) {
+        const match = hotelRemarks.match(/early\s+(?:departure|checkout).*?(\d+[\d,.]*)/i);
+        if (match) return parseFloat(match[1].replace(',', '')) || 0;
+    }
+
+    return 0;
+}
+
+/** Format currency for display */
+function formatFeeAmount(amount: number, currency?: string): string {
+    const symbol = currency === 'USD' ? '$' : currency === 'PHP' ? '₱' : currency || '₱';
+    return `${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 const PoliciesSection: React.FC<PoliciesSectionProps> = ({
     checkInTime,
     checkOutTime,
@@ -53,6 +109,19 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
     }
 
     const isRefundable = cancellationPolicies?.refundableTag === 'RFN';
+
+    // Extract special fees
+    const noShowPenalty = detectNoShowPenalty(
+        cancellationPolicies?.cancelPolicyInfos,
+        cancellationPolicies?.hotelRemarks
+    );
+    const earlyDepartureFee = detectEarlyDepartureFee(
+        cancellationPolicies?.cancelPolicyInfos,
+        cancellationPolicies?.hotelRemarks
+    );
+
+    // Get currency from first policy entry
+    const feeCurrency = cancellationPolicies?.cancelPolicyInfos?.[0]?.currency;
 
     return (
         <div className="py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-36" id="policies">
@@ -103,7 +172,12 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                                 {isRefundable ? 'Refundable' : 'Non-refundable'}
                             </div>
 
-                            {cancellationPolicies.cancelPolicyInfos?.map((policy, index) => (
+                            {cancellationPolicies.cancelPolicyInfos
+                                ?.filter((p) => {
+                                    const t = (p.type || '').toUpperCase();
+                                    return !t.includes('NO_SHOW') && !t.includes('NOSHOW') && !t.includes('EARLY_DEPARTURE') && !t.includes('EARLY_CHECKOUT');
+                                })
+                                .map((policy, index) => (
                                 <div key={index} className="text-sm text-slate-600 dark:text-slate-300">
                                     {policy.cancelTime && (
                                         <p>
@@ -115,6 +189,28 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                                     )}
                                 </div>
                             ))}
+
+                            {/* No-Show Penalty */}
+                            {noShowPenalty > 0 && (
+                                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+                                    <AlertTriangle size={14} className="mt-0.5 text-orange-500 flex-shrink-0" />
+                                    <p className="text-xs text-orange-700 dark:text-orange-300">
+                                        <span className="font-medium">No-Show Penalty:</span>{' '}
+                                        {formatFeeAmount(noShowPenalty, feeCurrency)} if you don&apos;t check in without cancelling.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Early Departure Fee */}
+                            {earlyDepartureFee > 0 && (
+                                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+                                    <LogOut size={14} className="mt-0.5 text-orange-500 flex-shrink-0" />
+                                    <p className="text-xs text-orange-700 dark:text-orange-300">
+                                        <span className="font-medium">Early Departure Fee:</span>{' '}
+                                        {formatFeeAmount(earlyDepartureFee, feeCurrency)} if you check out before your scheduled date.
+                                    </p>
+                                </div>
+                            )}
 
                             {cancellationPolicies.hotelRemarks && (
                                 <div

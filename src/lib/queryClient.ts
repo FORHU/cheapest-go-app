@@ -7,63 +7,38 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes - data stays fresh
-      gcTime: 1000 * 60 * 30, // 30 minutes - garbage collection time (formerly cacheTime)
-      retry: 1, // Retry failed requests once
-      refetchOnWindowFocus: false, // Don't refetch on window focus for better UX
+      gcTime: 1000 * 60 * 30, // 30 minutes - garbage collection time
+      retry: 1,
+      refetchOnWindowFocus: false,
     },
     mutations: {
-      retry: 0, // Don't retry mutations by default
+      retry: 0,
     },
   },
 });
 
 /**
- * Query Keys Factory Pattern
- * Centralized query key management for type safety and consistency
+ * Query key factory — centralized key management for cache invalidation.
  *
- * Usage:
- * - queryKeys.properties.all - ['properties']
- * - queryKeys.properties.detail('123') - ['properties', 'detail', '123']
- * - queryKeys.hotels.search(params) - ['hotels', 'search', params]
+ * booking.all: invalidated by usePrebook, useBooking
+ * trips.all: invalidated by useCancelBooking, useAmendBooking
+ * trips.bookingDetails: used by useBookingDetails (on-demand modal fetch)
+ * search/property: reserved for future SSR-cache-backed queries
  */
 export const queryKeys = {
-  properties: {
-    all: ['properties'] as const,
-    lists: () => [...queryKeys.properties.all, 'list'] as const,
-    list: (filters: string) => [...queryKeys.properties.lists(), filters] as const,
-    details: () => [...queryKeys.properties.all, 'detail'] as const,
-    detail: (id: string) => [...queryKeys.properties.details(), id] as const,
+  search: {
+    all: ['search'] as const,
+    results: (params: Record<string, unknown>) => [...queryKeys.search.all, params] as const,
   },
-  hotels: {
-    all: ['hotels'] as const,
-    detail: (id: string, params: any) => [...queryKeys.hotels.all, 'detail', id, params] as const,
-    search: (params: any) => [...queryKeys.hotels.all, 'search', params] as const,
+  property: {
+    all: ['property'] as const,
+    detail: (id: string) => [...queryKeys.property.all, id] as const,
   },
   booking: {
     all: ['booking'] as const,
-    prebook: (offerId: string, currency: string) => [
-      ...queryKeys.booking.all,
-      'prebook',
-      offerId,
-      currency,
-    ] as const,
-    confirm: (prebookId: string) => [
-      ...queryKeys.booking.all,
-      'confirm',
-      prebookId,
-    ] as const,
   },
   trips: {
     all: ['trips'] as const,
-    list: (userId?: string) => [...queryKeys.trips.all, 'list', userId] as const,
     bookingDetails: (bookingId: string) => [...queryKeys.trips.all, 'details', bookingId] as const,
-  },
-  facilities: {
-    all: ['facilities'] as const,
-  },
-  auth: {
-    all: ['auth'] as const,
-    user: () => [...queryKeys.auth.all, 'user'] as const,
-    session: () => [...queryKeys.auth.all, 'session'] as const,
   },
 };

@@ -31,6 +31,7 @@ export interface SearchParamsInput {
     children?: string | number;
     rooms?: string | number;
     offerId?: string;
+    currency?: string;
 }
 
 export interface FetchPropertyResult {
@@ -117,8 +118,8 @@ export function transformFetchedToProperty(
         badges: [],
         type: 'hotel',
         coordinates: {
-            lat: fetchedDetails.latitude || 0,
-            lng: fetchedDetails.longitude || 0
+            lat: fetchedDetails.latitude || fetchedDetails.details?.latitude || fetchedDetails.details?.location?.latitude || 0,
+            lng: fetchedDetails.longitude || fetchedDetails.details?.longitude || fetchedDetails.details?.location?.longitude || 0
         }
     };
 }
@@ -156,9 +157,7 @@ export async function fetchPropertyData(
     // 1. Invoke pre-book if offerId is present
     if (searchParams.offerId) {
         try {
-            console.log(`Checking pre-book for offerId: ${searchParams.offerId}...`);
             preBookResult = await preBook({ offerId: searchParams.offerId as string });
-            console.log('Pre-book successful:', preBookResult);
         } catch (error) {
             console.error('Pre-book check failed:', error);
         }
@@ -168,8 +167,6 @@ export async function fetchPropertyData(
     if (!getMockProperty(id)) {
         try {
             const targetHotelId = preBookResult?.data?.hotelId || id;
-            console.log(`Fetching real details for hotelId: ${targetHotelId}...`);
-
             const defaults = getDefaultDates();
             const checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
             const checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
@@ -179,7 +176,8 @@ export async function fetchPropertyData(
                 checkOut,
                 adults: Number(searchParams.adults || 2),
                 children: Number(searchParams.children || 0),
-                rooms: Number(searchParams.rooms || 1)
+                rooms: Number(searchParams.rooms || 1),
+                currency: searchParams.currency
             });
         } catch (error) {
             console.error('Failed to fetch property details:', error);

@@ -12,7 +12,7 @@ import { RoomCard } from './RoomCard';
 interface RoomListProps {
     property: Property;
     roomTypes?: RoomType[];
-    searchParams?: { checkIn?: string; checkOut?: string; adults?: number; children?: number; rooms?: number };
+    searchParams?: { checkIn?: string; checkOut?: string; adults?: number; children?: number; rooms?: number; currency?: string };
     hotelImages?: string[];
 }
 
@@ -37,12 +37,16 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
         const checkInDate = searchParams?.checkIn ? new Date(searchParams.checkIn) : new Date(2026, 0, 23);
         const checkOutDate = searchParams?.checkOut ? new Date(searchParams.checkOut) : new Date(2026, 0, 25);
 
+        const currency = searchParams?.currency || 'PHP';
+
         setProperty(property);
-        setSelectedRoom({ id: roomTitle, offerId, title: roomTitle, price });
+        setSelectedRoom({ id: roomTitle, offerId, title: roomTitle, price }); // Todo: Add currency to Room interface
         setDates(checkInDate, checkOutDate);
         setGuests(searchParams?.adults || 2, searchParams?.children || 0);
 
-        router.push('/checkout');
+        const params = new URLSearchParams();
+        params.set('currency', currency);
+        router.push(`/checkout?${params.toString()}`);
     };
 
     // Full Page Room Details Overlay
@@ -71,6 +75,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                         const roomImage = getImage(groupedRoom, index);
                         const hasMultipleRates = groupedRoom.rateOptions.length > 1;
                         const lowestRate = groupedRoom.rateOptions[0];
+
 
                         return (
                             <RoomCard

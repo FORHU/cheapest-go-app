@@ -12,3 +12,6 @@ export type {
     SearchParams,
     SearchQueryParams,
 } from './fetchSearchData';
+
+export { fetchFacilities } from './fetchFacilities';
+export type { Facility } from './fetchFacilities';
