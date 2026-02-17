@@ -1,55 +1,44 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { bookingService, PrebookParams, PrebookResponse } from '@/services';
-import { queryKeys } from '@/lib/queryClient';
-import { useBookingActions } from '@/stores/bookingStore';
+'use client';
 
-/**
- * Options for usePrebook mutation
- */
+import { useMutation } from '@tanstack/react-query';
+import { useBookingActions } from '@/stores/bookingStore';
+import { apiFetch } from '@/lib/api/client';
+import type { PrebookResponse } from '@/services';
+
 export interface UsePrebookOptions {
   onSuccess?: (data: PrebookResponse) => void;
   onError?: (error: Error) => void;
 }
 
 /**
- * React Query mutation hook for prebook operation
- * Handles room reservation with automatic state management
- *
- * @example
- * ```tsx
- * const { mutate: prebook, isPending, error } = usePrebook({
- *   onSuccess: (data) => console.log('Prebooked:', data.prebookId),
- * });
- *
- * // Trigger prebook
- * prebook({ offerId: 'offer-123', currency: 'PHP' });
- * ```
+ * Hook wrapping the prebook API call.
  */
-export function usePrebook(options: UsePrebookOptions = {}) {
-  const queryClient = useQueryClient();
+export function usePrebook(options?: UsePrebookOptions) {
   const { setPrebookId } = useBookingActions();
 
   return useMutation({
-    mutationFn: (params: PrebookParams) => bookingService.prebook(params),
+    mutationFn: async (params: {
+      offerId: string;
+      currency: string;
+      voucherCode?: string;
+    }) => {
+      const result = await apiFetch<PrebookResponse>('/api/booking/prebook', params);
 
-    onSuccess: (data) => {
-      // Store prebookId in Zustand
-      if (data.prebookId) {
-        setPrebookId(data.prebookId);
+      if (!result.success) {
+        throw new Error(result.error || 'Prebook failed');
       }
 
-      // Invalidate any related booking queries
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.booking.all,
-      });
-
-      // Call custom success handler
-      options.onSuccess?.(data);
+      return result.data;
     },
-
+    onSuccess: (data) => {
+      if (data?.prebookId) {
+        setPrebookId(data.prebookId);
+      }
+      options?.onSuccess?.(data);
+    },
     onError: (error: Error) => {
-      console.error('Prebook error:', error);
-      options.onError?.(error);
+      console.error('[usePrebook] Error:', error);
+      options?.onError?.(error);
     },
   });
 }

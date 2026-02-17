@@ -50,7 +50,6 @@ Deno.serve(async (req: Request) => {
         }
 
         const data = await res.json();
-        // Expected structure: { data: [ { id, name, country_code, ... } ] }
 
         return new Response(JSON.stringify(data), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

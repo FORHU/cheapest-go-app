@@ -1,35 +1,38 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { bookingService, AmendBookingParams, AmendBookingResponse } from '@/services/booking.service';
+import { apiFetch } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queryClient';
 import { toast } from 'sonner';
 
 /**
- * React Query mutation hook for amending a booking's holder information.
- * Calls the LiteAPI amend endpoint via edge function (which also updates local DB).
- * Automatically invalidates the trips query on success.
+ * Hook wrapping the amend booking API call.
  */
 export function useAmendBooking() {
-    const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-    return useMutation({
-        mutationFn: async (params: AmendBookingParams): Promise<AmendBookingResponse> => {
-            return bookingService.amendBooking(params);
-        },
-        onSuccess: (_result, variables) => {
-            toast.success('Booking updated successfully', {
-                description: `Holder updated to ${variables.firstName} ${variables.lastName}`,
-            });
+  return useMutation({
+    mutationFn: async (params: {
+      bookingId: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      remarks?: string;
+    }) => {
+      const result = await apiFetch('/api/booking/amend', params);
 
-            // Invalidate trips list so it refetches with updated holder info
-            queryClient.invalidateQueries({ queryKey: queryKeys.trips.all });
-        },
-        onError: (err: Error) => {
-            console.error('Amendment failed:', err);
-            toast.error('Failed to update booking', {
-                description: err.message || 'Please try again or contact support',
-            });
-        },
-    });
+      if (!result.success) {
+        throw new Error(result.error || 'Amendment failed');
+      }
+
+      return result.data;
+    },
+    onSuccess: () => {
+      toast.success('Booking updated successfully');
+      queryClient.invalidateQueries({ queryKey: queryKeys.trips.all });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update booking');
+    },
+  });
 }

@@ -1,19 +1,22 @@
-import React from 'react';
+"use client";
+
+import React, { Suspense } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { PlaneTakeoff } from 'lucide-react';
 
-const Footer = () => (
+const StandardFooter = () => (
   <footer className="w-full border-t border-slate-200 dark:border-white/5 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
     <div className="max-w-[1400px] mx-auto px-6 py-12 flex flex-col md:flex-row justify-between items-start gap-8">
       <div>
         <div className="flex items-center gap-2 mb-4">
           <PlaneTakeoff className="text-slate-400 dark:text-slate-500" />
-          <span className="text-slate-900 dark:text-white font-display font-bold text-lg">AeroVantage</span>
+          <span className="text-slate-900 dark:text-white font-display font-bold text-lg">CheapestGo</span>
         </div>
         <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs leading-relaxed">
-          Engineered for the discerning traveler. <br/>Precision data. Zero compromise.
+          Engineered for the discerning traveler. <br />Precision data. Zero compromise.
         </p>
       </div>
-      
+
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-12 text-sm">
         <div className="flex flex-col gap-3">
           <span className="text-slate-900 dark:text-white font-semibold font-display">Module</span>
@@ -38,5 +41,43 @@ const Footer = () => (
     </div>
   </footer>
 );
+
+const MinimalFooter = () => (
+  <footer className="w-full border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+    <div className="max-w-[1400px] mx-auto px-6 h-12 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+      <div className="flex items-center gap-6">
+        <span className="font-semibold text-slate-700 dark:text-slate-300">CheapestGo © 2026</span>
+      </div>
+
+      <div className="hidden md:flex items-center gap-6">
+        <a href="#" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors">Terms & Conditions</a>
+        <a href="#" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors">Privacy Policy</a>
+        <a href="#" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors">Cookie preferences</a>
+        <a href="#" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors">Contact us</a>
+      </div>
+
+      <button className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+        Report a Bug
+      </button>
+    </div>
+  </footer>
+);
+
+const FooterContent = () => {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isMapView = pathname === '/search' && searchParams.get('view') === 'map';
+
+  if (isMapView) return <MinimalFooter />;
+  return <StandardFooter />;
+};
+
+const Footer = () => {
+  return (
+    <Suspense fallback={<StandardFooter />}>
+      <FooterContent />
+    </Suspense>
+  );
+};
 
 export default Footer;

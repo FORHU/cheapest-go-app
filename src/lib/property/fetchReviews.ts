@@ -94,7 +94,6 @@ export async function fetchHotelReviews(
     const { limit = 1000, offset = 0, getSentiment = false } = options;
 
     try {
-        console.log(`[fetchHotelReviews] Fetching reviews for hotelId: ${hotelId}, limit: ${limit}`);
         const result = await getHotelReviews(hotelId, limit, offset, getSentiment);
         const reviews = (result.reviews || []) as HotelReview[];
 

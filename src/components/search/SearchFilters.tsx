@@ -1,25 +1,45 @@
-"use client";
+﻿"use client";
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Search, Map, RotateCcw } from 'lucide-react';
+import { Search, Map as MapIcon, RotateCcw } from 'lucide-react';
+import { Map } from '@/components/ui/map';
 import { useSearchFilters, useSearchStore } from '@/stores/searchStore';
-import { STAR_RATINGS, GUEST_RATING_OPTIONS, REVIEW_COUNT_OPTIONS } from '@/lib/constants';
-import { useFacilities } from '@/hooks/search/useFacilities';
+import { STAR_RATINGS, GUEST_RATING_OPTIONS, REVIEW_COUNT_OPTIONS, FACILITIES } from '@/lib/constants';
 import { FilterSection } from './FilterSection';
 import { CheckboxItem } from './CheckboxItem';
 import { RadioItem } from './RadioItem';
 import { ActiveFiltersSummary } from './ActiveFiltersSummary';
 
-const SearchFilters = () => {
+interface SearchFiltersProps {
+    initialFacilities?: Array<{ id: number; name: string }>;
+    previewCoordinates?: { lat: number; lng: number } | null;
+}
+
+const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const initializedRef = useRef(false);
 
-    // Zustand store
-    const { facilities: facilityOptions, isLoading: facilitiesLoading } = useFacilities();
+    // Use server-prefetched facilities, fall back to hardcoded constants
+    const facilityOptions = useMemo(() => {
+        const list = initialFacilities && initialFacilities.length > 0
+            ? initialFacilities
+            : FACILITIES.map(f => ({ id: f.id, name: f.label }));
+        const seen = new Set<number>();
+        const unique: Array<{ id: number; name: string }> = [];
+        for (const facility of list) {
+            const id = Number(facility.id);
+            const name = facility.name;
+            if (!Number.isFinite(id) || !name) continue;
+            if (seen.has(id)) continue;
+            seen.add(id);
+            unique.push({ id, name });
+        }
+        return unique;
+    }, [initialFacilities]);
     const filters = useSearchFilters();
     const { setFilters, toggleStarRating, toggleFacility, resetFilters } = useSearchStore();
     const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering } = filters;
@@ -115,10 +135,36 @@ const SearchFilters = () => {
                 transition={{ duration: 0.5 }}
                 className="relative h-32 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 group cursor-pointer mb-6"
             >
-                <div className="absolute inset-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
-                    <Map className="text-slate-400" />
-                </div>
-                <button className="absolute inset-0 m-auto w-max h-max bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg border border-slate-200 dark:border-white/10 opacity-90 hover:opacity-100 hover:scale-105 transition-all">
+                {previewCoordinates ? (
+                    <div className="absolute inset-0 pointer-events-none">
+                        <Map
+                            mapStyle="standard"
+                            initialViewState={{
+                                longitude: previewCoordinates.lng,
+                                latitude: previewCoordinates.lat,
+                                zoom: 12,
+                                pitch: 0,
+                                bearing: 0
+                            }}
+                            scrollZoom={false}
+                            dragPan={false}
+                            attributionControl={false}
+                            reuseMaps
+                        />
+                    </div>
+                ) : (
+                    <div className="absolute inset-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                        <MapIcon className="text-slate-400" />
+                    </div>
+                )}
+                <button
+                    onClick={() => {
+                        const current = new URLSearchParams(searchParams.toString());
+                        current.set('view', 'map');
+                        router.push(`/search?${current.toString()}`);
+                    }}
+                    className="absolute inset-0 m-auto w-max h-max bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg border border-slate-200 dark:border-white/10 opacity-90 hover:opacity-100 hover:scale-105 transition-all cursor-pointer z-10"
+                >
                     View on map
                 </button>
             </motion.div>
@@ -201,20 +247,14 @@ const SearchFilters = () => {
             {/* Amenities */}
             <FilterSection title="Amenities" index={4}>
                 <div className="flex flex-col gap-1">
-                    {facilitiesLoading ? (
-                        Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className="h-8 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-                        ))
-                    ) : (
-                        facilityOptions.map((facility) => (
-                            <CheckboxItem
-                                key={facility.id}
-                                label={facility.name}
-                                checked={facilities.includes(facility.id)}
-                                onChange={() => handleFacilityToggle(facility.id)}
-                            />
-                        ))
-                    )}
+                    {facilityOptions.map((facility) => (
+                        <CheckboxItem
+                            key={facility.id}
+                            label={facility.name}
+                            checked={facilities.includes(facility.id)}
+                            onChange={() => handleFacilityToggle(facility.id)}
+                        />
+                    ))}
                 </div>
 
                 {facilities.length > 1 && (
@@ -238,3 +278,4 @@ const SearchFilters = () => {
 };
 
 export default SearchFilters;
+

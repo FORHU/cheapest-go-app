@@ -27,13 +27,15 @@ export function SubmitBookingButton({
     const getButtonClasses = () => {
         if (loading) return 'bg-blue-500 text-white cursor-wait animate-pulse';
         if (prebooking && !prebookId) return 'bg-slate-300 text-slate-900 cursor-not-allowed';
+        if (prebookError) return 'bg-slate-300 text-slate-900 cursor-not-allowed';
         if (!isAuthenticated) return 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20';
-        return 'bg-yellow-400 hover:bg-yellow-500 text-slate-900 shadow-yellow-400/20';
+        return 'bg-yellow-400 hover:bg-yellow-500 text-slate-900 shadow-yellow-400/20 cursor-pointer';
     };
 
     return (
         <>
             <button
+                type="button"
                 onClick={onSubmit}
                 disabled={isDisabled}
                 className={`w-full py-4 font-bold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 ${getButtonClasses()}`}
@@ -48,6 +50,8 @@ export function SubmitBookingButton({
                         <Loader2 className="w-5 h-5 animate-spin" />
                         <span>Verifying Room Availability...</span>
                     </>
+                ) : prebookError ? (
+                    <span>Room verification failed — please retry above</span>
                 ) : !isAuthenticated ? (
                     <>
                         <LogIn className="w-5 h-5" />

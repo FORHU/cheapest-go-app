@@ -212,6 +212,10 @@ export const useSearchModule = (): UseSearchModuleReturn => {
             params.set('placeId', state.destination.id);
         }
 
+        // Currency: based on user's locale (from store), not the destination
+        // A Filipino user searching Korea still sees PHP prices
+        params.set('currency', state.userCurrency || 'PHP');
+
         // Dates
         params.set('checkIn', state.dates.checkIn!.toISOString());
         params.set('checkOut', state.dates.checkOut!.toISOString());
