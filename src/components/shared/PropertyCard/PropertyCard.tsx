@@ -314,14 +314,15 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                     </div>
                 )}
 
-                {/* Free cancellation / Breakfast included tags */}
+                {/* Free cancellation / Breakfast tags — these are hotel-level aggregates */}
+                {/* "on select rooms" qualifier since not all rooms may qualify */}
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
                     {property.refundableTag === 'RFN' && (
                         <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
-                            Free cancellation
+                            Free cancellation on select rooms
                         </span>
                     )}
                     {/* Show breakfast from boardTypes (LiteAPI rates) or amenities as fallback */}
@@ -331,7 +332,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
-                            Breakfast included
+                            Breakfast option available
                         </span>
                     )}
                 </div>

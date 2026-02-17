@@ -2,12 +2,43 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { PlaneTakeoff, Moon, Sun, Download } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import SignInDropdown from '../../auth/SignInDropdown';
+import { useUserCurrency, useUserCountry, useSearchActions } from '@/stores/searchStore';
+
+/** Country code → flag emoji */
+const COUNTRY_FLAGS: Record<string, string> = {
+  'PH': '🇵🇭', 'KR': '🇰🇷', 'JP': '🇯🇵', 'US': '🇺🇸', 'SG': '🇸🇬',
+  'MY': '🇲🇾', 'TH': '🇹🇭', 'VN': '🇻🇳', 'ID': '🇮🇩', 'AU': '🇦🇺',
+  'GB': '🇬🇧', 'FR': '🇫🇷', 'DE': '🇩🇪', 'CN': '🇨🇳', 'TW': '🇹🇼',
+  'HK': '🇭🇰', 'IN': '🇮🇳', 'AE': '🇦🇪', 'CA': '🇨🇦',
+};
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const userCurrency = useUserCurrency();
+  const userCountry = useUserCountry();
+  const { setUserCurrency } = useSearchActions();
+
+  const flag = COUNTRY_FLAGS[userCountry] || '🌐';
+
+  const handleCurrencyChange = () => {
+    const nextCurrency = userCurrency === 'PHP' ? 'USD' : userCurrency === 'USD' ? 'KRW' : 'PHP';
+    setUserCurrency(nextCurrency);
+
+    // Update URL if we are on a property page or search page
+    if (pathname.includes('/property/') || pathname.includes('/search')) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('currency', nextCurrency);
+      router.replace(`${pathname}?${params.toString()}`);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl transition-colors duration-800">
@@ -18,7 +49,7 @@ const Header = () => {
             <PlaneTakeoff className="text-white dark:text-obsidian-accent w-5 h-5" />
           </div>
           <h1 className="text-slate-900 dark:text-white font-display font-bold text-xl tracking-tight">
-            AeroVantage<span className="text-alabaster-accent dark:text-obsidian-accent">.Pro</span>
+            Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span>
           </h1>
         </Link>
 
@@ -30,10 +61,13 @@ const Header = () => {
             Open app
           </a>
 
-          {/* Currency/Region */}
-          <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
-            <span className="text-base">🇵🇭</span>
-            PHP
+          {/* Currency/Region — reflects user's locale preference */}
+          <button
+            onClick={handleCurrencyChange}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+          >
+            <span className="text-base">{flag}</span>
+            {userCurrency}
           </button>
 
           {/* List your property */}

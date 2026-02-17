@@ -42,7 +42,7 @@ export const baguioProperties: Property[] = [
         amenities: ['Free WiFi', 'Spa', 'Garden', 'Restaurant', 'Fitness Center'],
         badges: ['Exceptional', 'Luxury'],
         type: 'hotel',
-        coordinates: { lat: 16.4023, lng: 120.6160 }
+        coordinates: { lat: 16.400591, lng: 120.617627 }
     },
     {
         id: 'baguio-2',
@@ -60,7 +60,7 @@ export const baguioProperties: Property[] = [
         amenities: ['Free WiFi', 'Breakfast included', 'Parking', 'Balcony'],
         badges: ['Very Good'],
         type: 'hotel',
-        coordinates: { lat: 16.4130, lng: 120.6210 }
+        coordinates: { lat: 16.4160, lng: 120.6262 }
     },
     {
         id: 'baguio-3',
@@ -75,7 +75,7 @@ export const baguioProperties: Property[] = [
         amenities: ['Golf Course', 'Heated Pool', 'Gym', 'Multiple Restaurants'],
         badges: ['Historic', 'Excellent'],
         type: 'resort',
-        coordinates: { lat: 16.4010, lng: 120.6120 }
+        coordinates: { lat: 16.4083, lng: 120.6173 }
     },
     {
         id: 'baguio-4',
@@ -91,7 +91,7 @@ export const baguioProperties: Property[] = [
         amenities: ['Kitchenette', 'Free WiFi', 'Family Rooms', 'Concierge'],
         badges: ['Family Friendly'],
         type: 'apartment',
-        coordinates: { lat: 16.4150, lng: 120.6050 }
+        coordinates: { lat: 16.4112, lng: 120.6015 }
     },
     {
         id: 'baguio-5',
@@ -106,6 +106,6 @@ export const baguioProperties: Property[] = [
         amenities: ['Boutique', 'Cafe', 'Instagrammable', 'Garden'],
         badges: ['Trending', 'Exceptional'],
         type: 'hotel',
-        coordinates: { lat: 16.4140, lng: 120.6220 }
+        coordinates: { lat: 16.4128, lng: 120.6245 }
     }
 ];

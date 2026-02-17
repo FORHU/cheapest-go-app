@@ -35,7 +35,7 @@ export function AuthFooter({ mode, onToggleMode }: AuthFooterProps) {
             <div className="mt-6 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
                 <span className="flex items-center gap-1.5">
                     <PlaneTakeoff className="h-4 w-4" />
-                    AeroVantage
+                    CheapestGo
                 </span>
                 <span>•</span>
                 <span>Hotels.com</span>

@@ -11,12 +11,16 @@ import {
 } from '@/stores/bookingStore';
 import { useAuthStore, useUser } from '@/stores/authStore';
 import {
+    useVoucherState,
+    useCheckoutStore,
+} from '@/stores/checkoutStore';
+import {
     useBookingFlow,
     useCheckoutForm,
     useCheckoutPrebook,
     usePricingCalculation,
 } from '@/hooks';
-import { saveBookingToDatabase, sendBookingConfirmationEmail } from '@/app/actions';
+import { apiFetch } from '@/lib/api/client';
 import { LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import BackButton from '@/components/common/BackButton';
@@ -30,6 +34,8 @@ import {
     PaymentForm,
     BookingSummary,
     SubmitBookingButton,
+    VoucherInput,
+    AvailablePromos,
 } from '@/components/checkout';
 
 export function CheckoutContent() {
@@ -44,6 +50,9 @@ export function CheckoutContent() {
     const user = useUser();
     const { openAuthModal, isAuthModalOpen } = useAuthStore();
 
+    // Voucher state (display only — values from server)
+    const { appliedVoucher } = useVoucherState();
+
     // Booking flow hook
     const {
         prebookId,
@@ -53,6 +62,8 @@ export function CheckoutContent() {
         prebookError: prebookErrorObj,
         startPrebook,
         completeBooking,
+        reprebookWithVoucher,
+        reprebookWithoutVoucher,
     } = useBookingFlow();
 
     // Form state hook
@@ -87,6 +98,13 @@ export function CheckoutContent() {
     useEffect(() => {
         setIsSuccess(false);
         setEmailSent(false);
+
+        // Sync currency from URL if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCurrency = urlParams.get('currency');
+        if (urlCurrency && urlCurrency !== selectedCurrency) {
+            useCheckoutStore.getState().setSelectedCurrency(urlCurrency);
+        }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Prebook trigger hook (handles mount, currency change, auth retry)
@@ -101,7 +119,7 @@ export function CheckoutContent() {
         priceData,
     });
 
-    // Send confirmation email via server action
+    // Send confirmation email via API route
     const sendConfirmationEmail = useCallback(async (bookingDetails: {
         bookingId: string;
         email: string;
@@ -114,7 +132,7 @@ export function CheckoutContent() {
         currency: string;
     }) => {
         try {
-            const result = await sendBookingConfirmationEmail(bookingDetails);
+            const result = await apiFetch('/api/email', bookingDetails);
             if (result.success) setEmailSent(true);
         } catch (err) {
             console.error("Failed to send confirmation email:", err);
@@ -133,6 +151,7 @@ export function CheckoutContent() {
         const validation = validateCheckoutForm(formData, bookingFor);
         if (!validation.success) {
             setFormErrors(validation.errors);
+            toast.error('Please fix the highlighted fields before continuing.');
             return;
         }
 
@@ -144,16 +163,24 @@ export function CheckoutContent() {
             const guests = buildGuestPayload(formData, bookingFor, specialRequests);
             const holder = buildHolderPayload(formData);
 
+            // Use direct card payment method
+            const payment = { method: "ACC_CREDIT_CARD" };
+
             await completeBooking({
                 holder,
                 guests,
-                payment: { method: "ACC_CREDIT_CARD" }
+                payment,
             });
 
             // Show success immediately - don't wait for email/save
             setIsSuccess(true);
 
             const confirmedBookingId = useBookingStore.getState().bookingId;
+
+            // Use server-calculated final price if voucher applied
+            const finalBookingPrice = appliedVoucher
+                ? appliedVoucher.finalPrice
+                : (priceData?.total || totalPrice || 0);
 
             // Run email and save in parallel for faster completion
             // These are fire-and-forget - user sees success immediately
@@ -166,14 +193,14 @@ export function CheckoutContent() {
                     roomName: selectedRoom?.title || 'Room',
                     checkIn: checkIn?.toLocaleDateString() || '',
                     checkOut: checkOut?.toLocaleDateString() || '',
-                    totalPrice: priceData?.total || totalPrice || 0,
+                    totalPrice: finalBookingPrice,
                     currency: selectedCurrency,
                 }),
             ];
 
             if (user && confirmedBookingId) {
                 postBookingTasks.push(
-                    saveBookingToDatabase({
+                    apiFetch('/api/booking/save', {
                         bookingId: confirmedBookingId,
                         propertyName: property?.name || 'Hotel',
                         propertyImage: property?.image,
@@ -182,7 +209,7 @@ export function CheckoutContent() {
                         checkOut: checkOut?.toISOString().split('T')[0] || '',
                         adults,
                         children,
-                        totalPrice: priceData?.total || totalPrice || 0,
+                        totalPrice: finalBookingPrice,
                         currency: selectedCurrency,
                         holderFirstName: formData.firstName,
                         holderLastName: formData.lastName,
@@ -191,6 +218,20 @@ export function CheckoutContent() {
                         cancellationPolicy: priceData?.cancellationPolicies || undefined,
                     }).catch(err => console.error("Failed to save booking:", err))
                 );
+
+                // Record voucher usage if promo was applied
+                if (appliedVoucher) {
+                    postBookingTasks.push(
+                        apiFetch('/api/voucher/record', {
+                            voucherCode: appliedVoucher.code,
+                            bookingId: confirmedBookingId,
+                            originalPrice: priceData?.total || totalPrice || 0,
+                            discountApplied: appliedVoucher.discountAmount,
+                            finalPrice: appliedVoucher.finalPrice,
+                            currency: selectedCurrency,
+                        }).catch(err => console.error("Failed to save voucher usage:", err))
+                    );
+                }
             }
 
             // Execute in parallel without blocking
@@ -205,7 +246,10 @@ export function CheckoutContent() {
                 toast.error(`Booking failed: ${message}`);
             }
         }
-    }, [user, prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, openAuthModal, totalPrice, clearFormErrors, setFormErrors]);
+    }, [user, prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher]);
+
+    // Price to show on submit button (server-calculated if voucher applied)
+    const displayTotalPrice = appliedVoucher ? appliedVoucher.finalPrice : totalPrice;
 
     // Success screen
     if (isSuccess) {
@@ -293,6 +337,22 @@ export function CheckoutContent() {
                                 onChange={setSpecialRequests}
                             />
 
+                            {/* Voucher/Promo Section */}
+                            <VoucherInput
+                                bookingPrice={totalPrice}
+                                currency={selectedCurrency}
+                                onVoucherApplied={reprebookWithVoucher}
+                                onVoucherRemoved={reprebookWithoutVoucher}
+                            />
+
+                            {/* Available Promos (server-fetched) */}
+                            <AvailablePromos
+                                bookingPrice={totalPrice}
+                                currency={selectedCurrency}
+                                onVoucherApplied={reprebookWithVoucher}
+                            />
+
+                            {/* Payment — Direct Card Form */}
                             <PaymentForm
                                 formData={formData}
                                 onInputChange={handleInputChange}
@@ -308,7 +368,7 @@ export function CheckoutContent() {
                                 prebooking={prebooking}
                                 prebookId={prebookId}
                                 isAuthenticated={!!user}
-                                totalPrice={totalPrice}
+                                totalPrice={displayTotalPrice}
                                 prebookError={prebookError}
                                 onSubmit={handleCompleteBooking}
                             />
@@ -333,6 +393,7 @@ export function CheckoutContent() {
                             checkOut={checkOut}
                             prebookId={prebookId}
                             cancellationPolicies={priceData?.cancellationPolicies}
+                            appliedVoucher={appliedVoucher}
                         />
                     </div>
                 </div>

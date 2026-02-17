@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { CheckoutFormData, BookingForType } from '@/components/checkout/types';
+import type { AppliedVoucher, AvailablePromo } from '@/types/voucher';
 
 /**
  * Currency mapping by country code
@@ -53,6 +54,14 @@ export interface CheckoutState {
     // Validation errors (field name → message)
     formErrors: Record<string, string>;
 
+    // Voucher/Promo state (display only — all values from server)
+    voucherCode: string;
+    appliedVoucher: AppliedVoucher | null;
+    availablePromos: AvailablePromo[];
+    voucherLoading: boolean;
+    voucherError: string | null;
+    promosLoading: boolean;
+
     // Actions
     setFormData: (data: Partial<CheckoutFormData>) => void;
     setFormField: (name: keyof CheckoutFormData, value: string) => void;
@@ -67,6 +76,15 @@ export interface CheckoutState {
     setEmailSent: (value: boolean) => void;
     setFormErrors: (errors: Record<string, string>) => void;
     clearFormErrors: () => void;
+
+    // Voucher actions
+    setVoucherCode: (code: string) => void;
+    setAppliedVoucher: (voucher: AppliedVoucher | null) => void;
+    setAvailablePromos: (promos: AvailablePromo[]) => void;
+    setVoucherLoading: (loading: boolean) => void;
+    setVoucherError: (error: string | null) => void;
+    setPromosLoading: (loading: boolean) => void;
+    removeVoucher: () => void;
 
     // Composite actions
     handleInputChange: (name: string, value: string) => void;
@@ -87,6 +105,14 @@ export const useCheckoutStore = create<CheckoutState>()((set, get) => ({
     isSuccess: false,
     emailSent: false,
     formErrors: {},
+
+    // Voucher initial state
+    voucherCode: '',
+    appliedVoucher: null,
+    availablePromos: [],
+    voucherLoading: false,
+    voucherError: null,
+    promosLoading: false,
 
     // Form data actions
     setFormData: (data) => set((state) => ({
@@ -115,6 +141,19 @@ export const useCheckoutStore = create<CheckoutState>()((set, get) => ({
     setEmailSent: (value) => set({ emailSent: value }),
     setFormErrors: (formErrors) => set({ formErrors }),
     clearFormErrors: () => set({ formErrors: {} }),
+
+    // Voucher actions
+    setVoucherCode: (code) => set({ voucherCode: code, voucherError: null }),
+    setAppliedVoucher: (voucher) => set({ appliedVoucher: voucher, voucherError: null }),
+    setAvailablePromos: (promos) => set({ availablePromos: promos }),
+    setVoucherLoading: (loading) => set({ voucherLoading: loading }),
+    setVoucherError: (error) => set({ voucherError: error }),
+    setPromosLoading: (loading) => set({ promosLoading: loading }),
+    removeVoucher: () => set({
+        appliedVoucher: null,
+        voucherCode: '',
+        voucherError: null,
+    }),
 
     // Composite actions
     handleInputChange: (name, value) => {
@@ -158,6 +197,13 @@ export const useCheckoutStore = create<CheckoutState>()((set, get) => ({
         isSuccess: false,
         emailSent: false,
         formErrors: {},
+        // Reset voucher state too
+        voucherCode: '',
+        appliedVoucher: null,
+        availablePromos: [],
+        voucherLoading: false,
+        voucherError: null,
+        promosLoading: false,
     }),
 }));
 
@@ -205,6 +251,33 @@ export const useCheckoutUIState = () =>
 
 /** Select form errors */
 export const useCheckoutFormErrors = () => useCheckoutStore((state) => state.formErrors);
+
+/** Select voucher state (display values from server) */
+export const useVoucherState = () =>
+    useCheckoutStore(
+        useShallow((state) => ({
+            voucherCode: state.voucherCode,
+            appliedVoucher: state.appliedVoucher,
+            availablePromos: state.availablePromos,
+            voucherLoading: state.voucherLoading,
+            voucherError: state.voucherError,
+            promosLoading: state.promosLoading,
+        }))
+    );
+
+/** Select voucher actions */
+export const useVoucherActions = () =>
+    useCheckoutStore(
+        useShallow((state) => ({
+            setVoucherCode: state.setVoucherCode,
+            setAppliedVoucher: state.setAppliedVoucher,
+            setAvailablePromos: state.setAvailablePromos,
+            setVoucherLoading: state.setVoucherLoading,
+            setVoucherError: state.setVoucherError,
+            setPromosLoading: state.setPromosLoading,
+            removeVoucher: state.removeVoucher,
+        }))
+    );
 
 /** Select all checkout actions */
 export const useCheckoutActions = () =>

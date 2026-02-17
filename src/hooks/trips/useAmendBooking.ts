@@ -1,41 +1,38 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { amendBooking as amendBookingAction, AmendBookingParams, AmendBookingResult } from '@/app/actions';
+import { apiFetch } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queryClient';
 import { toast } from 'sonner';
 
 /**
- * React Query mutation hook for amending a booking's holder information.
- * Uses Server Action for secure server-side processing.
- * Automatically invalidates the trips query on success.
+ * Hook wrapping the amend booking API call.
  */
 export function useAmendBooking() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: AmendBookingParams): Promise<NonNullable<AmendBookingResult['data']>> => {
-      const result = await amendBookingAction(params);
+    mutationFn: async (params: {
+      bookingId: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      remarks?: string;
+    }) => {
+      const result = await apiFetch('/api/booking/amend', params);
 
-      if (!result.success || !result.data) {
+      if (!result.success) {
         throw new Error(result.error || 'Amendment failed');
       }
 
       return result.data;
     },
-    onSuccess: (_result, variables) => {
-      toast.success('Booking updated successfully', {
-        description: `Holder updated to ${variables.firstName} ${variables.lastName}`,
-      });
-
-      // Invalidate trips list so it refetches with updated holder info
+    onSuccess: () => {
+      toast.success('Booking updated successfully');
       queryClient.invalidateQueries({ queryKey: queryKeys.trips.all });
     },
-    onError: (err: Error) => {
-      console.error('Amendment failed:', err);
-      toast.error('Failed to update booking', {
-        description: err.message || 'Please try again or contact support',
-      });
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update booking');
     },
   });
 }
