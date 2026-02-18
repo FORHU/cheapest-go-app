@@ -80,10 +80,10 @@ export default async function PropertyPage({
                 </div>
 
                 {/* ═══ Split layout: Description LEFT | Map RIGHT ═══ */}
-                <div className="mt-8 flex flex-col lg:flex-row gap-8 items-stretch">
+                <div className="mt-8 flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8 items-stretch">
 
                     {/* LEFT — Description / content */}
-                    <div className="flex-1 min-w-0 space-y-8">
+                    <div className="flex-1 min-w-0 space-y-6 sm:space-y-8">
 
                         <FadeInUp delay={0.25}>
                             <PropertyOverview property={property} reviewsData={reviewsData} />
@@ -155,7 +155,7 @@ export default async function PropertyPage({
                 {/* Mobile map — shown below content on small screens */}
                 <div className="lg:hidden mt-8" id="location-mobile">
                     <FadeInUp delay={0.4}>
-                        <div className="h-[350px]">
+                        <div className="w-full">
                             <PropertyMapSidebar {...mapProps} />
                         </div>
                     </FadeInUp>

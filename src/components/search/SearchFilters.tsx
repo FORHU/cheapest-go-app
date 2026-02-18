@@ -1,9 +1,9 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Search, Map as MapIcon, RotateCcw } from 'lucide-react';
+import { Search, Map as MapIcon, RotateCcw, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { Map } from '@/components/ui/map';
 import { useSearchFilters, useSearchStore } from '@/stores/searchStore';
 import { STAR_RATINGS, GUEST_RATING_OPTIONS, REVIEW_COUNT_OPTIONS, FACILITIES } from '@/lib/constants';
@@ -125,15 +125,35 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
     const hasActiveFilters = hotelName || starRating.length > 0 || minRating > 0 ||
         minReviewsCount > 0 || facilities.length > 0;
 
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    const activeFilterCount = [
+        hotelName ? 1 : 0,
+        starRating.length,
+        minRating > 0 ? 1 : 0,
+        minReviewsCount > 0 ? 1 : 0,
+        facilities.length,
+    ].reduce((a, b) => a + b, 0);
+
     return (
         <div className="w-full flex-shrink-0 lg:w-[280px] space-y-4">
-            {/* Map Preview */}
+            {/* Mobile Filter Toggle */}
+            <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="lg:hidden w-full py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+            >
+                <SlidersHorizontal size={16} />
+                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                <ChevronDown size={14} className={`transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Map Preview — desktop only */}
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true, amount: 0.3 }}
                 transition={{ duration: 0.5 }}
-                className="relative h-32 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 group cursor-pointer mb-6"
+                className="relative h-32 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 group cursor-pointer mb-6 hidden lg:block"
             >
                 {previewCoordinates ? (
                     <div className="absolute inset-0 pointer-events-none">
@@ -168,6 +188,9 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                     View on map
                 </button>
             </motion.div>
+
+            {/* Filter Content — collapsible on mobile, always visible on lg */}
+            <div className={`${isFilterOpen ? 'block' : 'hidden'} lg:block space-y-4`}>
 
             {/* Header with Reset */}
             <motion.div
@@ -273,6 +296,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
 
             {/* Active Filters Summary */}
             <ActiveFiltersSummary filters={filters} />
+            </div>
         </div>
     );
 };

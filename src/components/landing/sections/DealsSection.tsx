@@ -17,7 +17,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
     whileInView={{ opacity: 1, x: 0 }}
     viewport={{ once: true }}
     transition={{ delay: index * 0.1 }}
-    className="flex-shrink-0 w-[300px] snap-start"
+    className="flex-shrink-0 w-[80vw] max-w-[300px] sm:w-[300px] snap-start"
   >
     <TiltCard className="h-full">
       <div className="relative h-full bg-white dark:bg-slate-900/80 rounded-xl overflow-hidden border border-alabaster-border dark:border-obsidian-border shadow-lg dark:shadow-black/30 group">
@@ -73,8 +73,8 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
 
 const DealsSection = () => {
   return (
-    <section className="w-full py-16 overflow-hidden">
-      <div className="max-w-[1400px] mx-auto px-6">
+    <section className="w-full py-10 sm:py-16 overflow-hidden">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <SectionHeader
           title="Exclusive Deals & Offers"
           badge={{ icon: <Sparkles size={14} />, text: 'Limited Time', variant: 'amber' }}

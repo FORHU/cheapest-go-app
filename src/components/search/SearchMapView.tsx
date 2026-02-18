@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPropertyCard } from '@/components/map/MapPropertyCard';
+import { MapModal } from '@/components/map/MapModal';
 import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
 import type { Property } from '@/data/mockProperties';
@@ -40,6 +41,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortValue>('recommended');
+    const [showMobileMap, setShowMobileMap] = useState(false);
 
     // Filter only properties with real coordinates (not 0,0)
     const mappableProperties = useMemo<MappableProperty[]>(
@@ -235,8 +237,15 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                 </div>
             </div>
 
-            {/* Mobile: show map toggle FAB */}
-            <MobileMapToggle
+            {/* Mobile: Map Toggle & Modal */}
+            <MobileMapTrigger
+                isOpen={showMobileMap}
+                onOpen={() => setShowMobileMap(true)}
+            />
+
+            <MapModal
+                isOpen={showMobileMap}
+                onClose={() => setShowMobileMap(false)}
                 properties={mappableProperties}
                 selectedId={selectedId}
                 onSelectId={setSelectedId}
@@ -248,61 +257,17 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
     );
 }
 
-// ── Mobile full-screen map overlay ──────────────────────
-function MobileMapToggle({
-    properties,
-    selectedId,
-    onSelectId,
-    hoveredId,
-    onHoverId,
-    onViewDetails,
-}: {
-    properties: MappableProperty[];
-    selectedId: string | null;
-    onSelectId: (id: string | null) => void;
-    hoveredId: string | null;
-    onHoverId: (id: string | null) => void;
-    onViewDetails: (id: string) => void;
-}) {
-    const [showMobileMap, setShowMobileMap] = useState(false);
-
-    if (properties.length === 0) return null;
+function MobileMapTrigger({ isOpen, onOpen }: { isOpen: boolean; onOpen: () => void }) {
+    if (isOpen) return null;
 
     return (
-        <>
-            {/* FAB */}
-            <button
-                onClick={() => setShowMobileMap((prev) => !prev)}
-                className="lg:hidden fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-full shadow-xl shadow-blue-600/30 flex items-center gap-2 transition-colors cursor-pointer"
-            >
-                <MapPin size={16} />
-                <span className="text-sm font-semibold">
-                    {showMobileMap ? 'List' : 'Map'}
-                </span>
-            </button>
-
-            {/* Full-screen mobile map */}
-            {showMobileMap && (
-                <div className="lg:hidden fixed inset-0 z-40 bg-white dark:bg-slate-950 flex flex-col">
-                    <div className="relative flex-1">
-                        <SearchMapContainer
-                            properties={properties}
-                            selectedId={selectedId}
-                            onSelectId={onSelectId}
-                            hoveredId={hoveredId}
-                            onHoverId={onHoverId}
-                            onViewDetails={onViewDetails}
-                        />
-                        <button
-                            onClick={() => setShowMobileMap(false)}
-                            className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md z-50 text-slate-800"
-                        >
-                            <ChevronDown className="rotate-180" size={20} />
-                        </button>
-                    </div>
-                </div>
-            )}
-        </>
+        <button
+            onClick={onOpen}
+            className="lg:hidden fixed bottom-6 right-6 z-40 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+        >
+            <MapPin size={18} />
+            <span className="text-sm font-semibold">Map</span>
+        </button>
     );
 }
 

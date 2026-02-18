@@ -115,7 +115,7 @@ export default function BookingCard({ booking, onBookingUpdated }: BookingCardPr
                         </div>
 
                         {/* Price & Actions */}
-                        <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-white/5">
+                        <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-white/5">
                             <div className="text-right">
                                 <p className="text-xs text-slate-400 dark:text-slate-500">Total paid</p>
                                 <p className="text-xl font-bold text-slate-900 dark:text-white">
@@ -131,14 +131,14 @@ export default function BookingCard({ booking, onBookingUpdated }: BookingCardPr
                                     </span>
                                     <button
                                         onClick={() => setShowModifyModal(true)}
-                                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors"
+                                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors min-h-[44px] py-2"
                                     >
                                         <Pencil className="w-3.5 h-3.5" />
                                         Modify booking
                                     </button>
                                     <button
                                         onClick={() => setShowCancelModal(true)}
-                                        className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:underline transition-colors"
+                                        className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:underline transition-colors min-h-[44px] py-2"
                                     >
                                         <XCircle className="w-3.5 h-3.5" />
                                         Cancel booking

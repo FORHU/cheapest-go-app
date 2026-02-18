@@ -6,13 +6,13 @@ import { Smartphone, Star, Download, ChevronRight } from 'lucide-react';
 
 const AppBanner = () => {
   return (
-    <section className="w-full py-16">
-      <div className="max-w-[1400px] mx-auto px-6">
+    <section className="w-full py-10 sm:py-16">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 md:p-12"
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-5 sm:p-8 md:p-12"
         >
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10">
@@ -34,7 +34,7 @@ const AppBanner = () => {
               transition={{ delay: 0.2 }}
               className="relative flex-shrink-0"
             >
-              <div className="relative w-40 h-72 bg-slate-900 rounded-[2rem] p-2 shadow-2xl border border-white/20">
+              <div className="relative w-32 h-56 sm:w-40 sm:h-72 bg-slate-900 rounded-[2rem] p-2 shadow-2xl border border-white/20">
                 <div className="w-full h-full bg-gradient-to-b from-slate-800 to-slate-900 rounded-[1.5rem] overflow-hidden">
                   {/* App Screen Content */}
                   <div className="p-3">
@@ -77,7 +77,7 @@ const AppBanner = () => {
                   <span className="text-xs font-medium text-white">Mobile App</span>
                 </div>
 
-                <h3 className="text-2xl md:text-3xl font-display font-bold text-white mb-3">
+                <h3 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-white mb-3">
                   Travel smarter with our app
                 </h3>
                 <p className="text-white/80 mb-6 max-w-md">

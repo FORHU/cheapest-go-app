@@ -273,15 +273,15 @@ export function CheckoutContent() {
                         <BackButton label="Modify booking" />
                     </div>
 
-                    <h1 className="text-3xl font-display font-bold text-slate-900 dark:text-white mb-8">
+                    <h1 className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white mb-6 sm:mb-8">
                         Secure your booking
                     </h1>
 
                     {/* Auth Required Banner */}
                     {!user && (
                         <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4 rounded-lg">
-                            <div className="flex items-center gap-3">
-                                <LogIn className="text-amber-600 dark:text-amber-400" size={24} />
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                <LogIn className="text-amber-600 dark:text-amber-400 flex-shrink-0" size={24} />
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-amber-800 dark:text-amber-200">Sign in to complete your booking</h3>
                                     <p className="text-sm text-amber-600 dark:text-amber-400">
@@ -290,7 +290,7 @@ export function CheckoutContent() {
                                 </div>
                                 <button
                                     onClick={() => openAuthModal('email')}
-                                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
+                                    className="px-4 py-2 min-h-[44px] bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors w-full sm:w-auto"
                                 >
                                     Sign In
                                 </button>
@@ -311,7 +311,7 @@ export function CheckoutContent() {
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                         {/* Main Form */}
                         <div className="lg:col-span-2 space-y-6">
                             <UserDetailsForm

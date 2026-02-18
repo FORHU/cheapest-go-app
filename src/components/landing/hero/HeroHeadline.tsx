@@ -33,9 +33,9 @@ const HeroHeadline: React.FC = () => {
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                className="mb-8"
+                className="mb-5 sm:mb-8"
             >
-                <h1 className="text-5xl md:text-7xl font-display font-bold text-slate-900 dark:text-white tracking-tighter leading-[1.1] mb-6 drop-shadow-sm">
+                <h1 className="text-3xl sm:text-5xl md:text-7xl font-display font-bold text-slate-900 dark:text-white tracking-tighter leading-[1.1] mb-4 sm:mb-6 drop-shadow-sm">
                     <motion.span variants={itemVariants} className="block">
                         Precision Travel.
                     </motion.span>
@@ -48,7 +48,7 @@ const HeroHeadline: React.FC = () => {
 
                 <motion.p
                     variants={itemVariants}
-                    className="text-lg md:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-body leading-relaxed mb-2"
+                    className="text-base sm:text-lg md:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-body leading-relaxed mb-2"
                 >
                     The operating system for the modern voyager.
                 </motion.p>

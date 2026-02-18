@@ -6,7 +6,7 @@ import { PlaneTakeoff } from 'lucide-react';
 
 const StandardFooter = () => (
   <footer className="w-full border-t border-slate-200 dark:border-white/5 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
-    <div className="max-w-[1400px] mx-auto px-6 py-12 flex flex-col md:flex-row justify-between items-start gap-8">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col md:flex-row justify-between items-start gap-8">
       <div>
         <div className="flex items-center gap-2 mb-4">
           <PlaneTakeoff className="text-slate-400 dark:text-slate-500" />
@@ -17,7 +17,7 @@ const StandardFooter = () => (
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-12 text-sm">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-12 text-sm">
         <div className="flex flex-col gap-3">
           <span className="text-slate-900 dark:text-white font-semibold font-display">Module</span>
           <a href="#" className="text-slate-500 hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors">Flights</a>
@@ -44,12 +44,12 @@ const StandardFooter = () => (
 
 const MinimalFooter = () => (
   <footer className="w-full border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-    <div className="max-w-[1400px] mx-auto px-6 h-12 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-auto py-3 sm:h-12 sm:py-0 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 text-xs text-slate-500 dark:text-slate-400">
       <div className="flex items-center gap-6">
         <span className="font-semibold text-slate-700 dark:text-slate-300">CheapestGo © 2026</span>
       </div>
 
-      <div className="hidden md:flex items-center gap-6">
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[10px] sm:text-xs md:gap-6">
         <a href="#" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors">Terms & Conditions</a>
         <a href="#" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors">Privacy Policy</a>
         <a href="#" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors">Cookie preferences</a>

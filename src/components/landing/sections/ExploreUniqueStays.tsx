@@ -10,9 +10,9 @@ export const ExploreUniqueStays: React.FC = () => {
   const [activeTab, setActiveTab] = useState(uniqueTabs[0]);
 
   return (
-    <section className="relative w-full py-16 overflow-hidden">
+    <section className="relative w-full py-10 sm:py-16 overflow-hidden">
 
-      <div className="relative max-w-[1400px] mx-auto px-6">
+      <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -46,7 +46,7 @@ export const ExploreUniqueStays: React.FC = () => {
           className="mb-8"
         />
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-5">
           {uniqueStays.map((stay, i) => (
             <motion.div
               key={stay.id}

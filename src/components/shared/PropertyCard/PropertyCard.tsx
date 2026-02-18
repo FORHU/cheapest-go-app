@@ -159,7 +159,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
 
             {/* Card content */}
             <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg dark:shadow-black/20 backdrop-blur-sm">
-                <div className="relative h-40 overflow-hidden">
+                <div className="relative h-36 sm:h-40 overflow-hidden">
                     <motion.div
                         className="absolute inset-0 bg-cover bg-center"
                         style={{ backgroundImage: `url(${imgSrc})` }}
@@ -181,7 +181,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                     )}
                 </div>
 
-                <div className="p-4">
+                <div className="p-3 sm:p-4">
                     <h3 className="font-semibold text-slate-900 dark:text-white text-sm line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {displayName}
                     </h3>
@@ -261,14 +261,14 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             onClick={onClick}
         >
             {/* Image Section */}
-            <div className="md:w-[280px] relative h-[200px] md:h-[220px] flex-shrink-0">
+            <div className="md:w-[240px] lg:w-[280px] relative h-[180px] sm:h-[200px] md:h-[220px] flex-shrink-0">
                 <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
                     style={{ backgroundImage: `url(${property.image})` }}
                 />
                 {/* Heart icon */}
                 <button
-                    className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"
+                    className="absolute top-3 left-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <svg className="w-4 h-4 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -352,7 +352,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             </div>
 
             {/* Right Section - Rating & Price */}
-            <div className="flex flex-col md:w-[180px] p-4 md:border-l border-t md:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="flex flex-col md:w-[160px] lg:w-[180px] p-4 md:border-l border-t md:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                 {/* Rating Section */}
                 <div className="flex items-start justify-between md:justify-end gap-2 mb-4">
                     <div className="text-right">

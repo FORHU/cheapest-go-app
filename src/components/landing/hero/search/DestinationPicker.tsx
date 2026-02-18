@@ -107,7 +107,7 @@ export const DestinationPicker: React.FC = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-full left-0 mt-4 w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                    className="absolute top-full left-1/2 -translate-x-1/2 md:translate-x-0 md:left-0 mt-4 w-[90vw] max-w-[500px] md:w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Search Header */}

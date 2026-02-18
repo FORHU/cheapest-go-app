@@ -18,8 +18,8 @@ export const StaysForEveryStyle: React.FC = () => {
   const [activeTab, setActiveTab] = useState(styleTabs[0]);
 
   return (
-    <GradientBackground className="w-full py-16">
-      <div className="max-w-[1400px] mx-auto px-6">
+    <GradientBackground className="w-full py-10 sm:py-16">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -46,7 +46,7 @@ export const StaysForEveryStyle: React.FC = () => {
           className="mb-8"
         />
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
           {travelStyles.map((style, i) => (
             <motion.div
               key={style.id}

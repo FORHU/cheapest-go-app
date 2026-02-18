@@ -69,8 +69,8 @@ const RecentlyViewed = () => {
   if (displayItems.length === 0) return null;
 
   return (
-    <section className="w-full pt-16 pb-4">
-      <div className="max-w-[1400px] mx-auto px-6">
+    <section className="w-full pt-10 sm:pt-16 pb-4">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <SectionHeader
           title="Continue Your Search"
           subtitle="Pick up where you left off"

@@ -11,8 +11,8 @@ export const ExploreVacationPackages: React.FC = () => {
   const [activeTab, setActiveTab] = useState(packageTabs[0]);
 
   return (
-    <section className="w-full py-12">
-      <div className="max-w-[1400px] mx-auto px-6">
+    <section className="w-full py-8 sm:py-12">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
