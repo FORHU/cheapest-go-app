@@ -3,80 +3,177 @@
  *
  * POST /functions/v1/amadeus-search
  *
- * Searches Amadeus Flight Offers API and returns normalized flight offers.
- * Called by the unified-flight-search orchestrator or directly for Amadeus-only search.
+ * Searches the Amadeus Flight Offers Search v2 API
+ * and returns normalized NormalizedFlight[] results.
+ *
+ * POST body:
+ *   { origin, destination, departureDate, returnDate?, adults,
+ *     children?, infants?, cabinClass?, currency?, maxOffers?, nonStopOnly? }
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 declare const Deno: any;
 
-import type { FlightSearchRequest, NormalizedFlight } from '../_shared/types.ts';
-import { searchFlights } from '../_shared/amadeusClient.ts';
-import { normalizeAmadeusResponse } from '../_shared/normalizeFlight.ts';
+import type { NormalizedFlight, CabinClass } from '../_shared/types.ts';
+import { amadeusRequest, AmadeusError } from '../_shared/amadeusClient.ts';
+import { normalizeAmadeusResponse, toAmadeusCabin } from '../_shared/normalizeFlight.ts';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ─── Request Body ───────────────────────────────────────────────────
+
+interface AmadeusSearchBody {
+    origin: string;
+    destination: string;
+    departureDate: string;        // YYYY-MM-DD
+    returnDate?: string;          // YYYY-MM-DD
+    adults: number;
+    children?: number;
+    infants?: number;
+    cabinClass?: CabinClass;
+    currency?: string;
+    maxOffers?: number;
+    nonStopOnly?: boolean;
+}
+
+// ─── Amadeus API Response Shape ─────────────────────────────────────
+
+interface AmadeusFlightOffersResponse {
+    meta?: { count: number };
+    data?: unknown[];
+    dictionaries?: {
+        carriers?: Record<string, string>;
+        aircraft?: Record<string, string>;
+        currencies?: Record<string, string>;
+        locations?: Record<string, { cityCode: string; countryCode: string }>;
+    };
+}
+
+// ─── Handler ────────────────────────────────────────────────────────
+
 Deno.serve(async (req: Request) => {
-    // ── CORS Preflight ──
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
 
+    const startMs = Date.now();
+
     try {
-        // ── Parse Request ──
-        const body: FlightSearchRequest = JSON.parse(await req.text());
+        // ── Parse & Validate ──
+        const body: AmadeusSearchBody = JSON.parse(await req.text());
 
-        console.log('[amadeus-search] Request:', {
-            origin: body.segments?.[0]?.origin,
-            destination: body.segments?.[0]?.destination,
-            tripType: body.tripType,
-            passengers: body.passengers,
-        });
-
-        // ── Validate ──
-        if (!body.segments?.length || !body.passengers) {
-            return new Response(
-                JSON.stringify({ success: false, error: 'Missing required fields: segments, passengers' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        if (!body.origin || !body.destination || !body.departureDate || !body.adults) {
+            return jsonResponse(
+                { success: false, error: 'Required: origin, destination, departureDate, adults' },
+                400,
             );
         }
 
-        // ── Search ──
-        const startMs = Date.now();
+        if (!/^[A-Z]{3}$/.test(body.origin) || !/^[A-Z]{3}$/.test(body.destination)) {
+            return jsonResponse(
+                { success: false, error: 'origin and destination must be 3-letter IATA codes' },
+                400,
+            );
+        }
 
-        // TODO: Call Amadeus API and normalize results
-        // const rawResponse = await searchFlights(body);
-        // const offers = normalizeAmadeusResponse(rawResponse.data ?? [], rawResponse.dictionaries);
-        const offers: NormalizedFlight[] = []; // placeholder
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(body.departureDate)) {
+            return jsonResponse(
+                { success: false, error: 'departureDate must be YYYY-MM-DD' },
+                400,
+            );
+        }
+
+        console.log('[amadeus-search] Request:', {
+            origin: body.origin,
+            destination: body.destination,
+            departureDate: body.departureDate,
+            returnDate: body.returnDate,
+            adults: body.adults,
+            cabinClass: body.cabinClass,
+        });
+
+        // ── Build Amadeus GET params ──
+        const params: Record<string, string> = {
+            originLocationCode: body.origin,
+            destinationLocationCode: body.destination,
+            departureDate: body.departureDate,
+            adults: String(body.adults),
+            max: String(body.maxOffers ?? 50),
+        };
+
+        if (body.returnDate) {
+            params.returnDate = body.returnDate;
+        }
+        if (body.children && body.children > 0) {
+            params.children = String(body.children);
+        }
+        if (body.infants && body.infants > 0) {
+            params.infants = String(body.infants);
+        }
+        if (body.cabinClass) {
+            params.travelClass = toAmadeusCabin(body.cabinClass);
+        }
+        if (body.currency) {
+            params.currencyCode = body.currency;
+        }
+        if (body.nonStopOnly) {
+            params.nonStop = 'true';
+        }
+
+        // ── Call Amadeus Flight Offers Search v2 ──
+        const raw = await amadeusRequest<AmadeusFlightOffersResponse>(
+            '/v2/shopping/flight-offers',
+            { method: 'GET', params },
+        );
+
+        console.log(`[amadeus-search] Amadeus returned ${raw.data?.length ?? 0} raw offers`);
+
+        // ── Normalize ──
+        const flights: NormalizedFlight[] = normalizeAmadeusResponse(
+            raw.data ?? [],
+            raw.dictionaries,
+        );
 
         const durationMs = Date.now() - startMs;
 
-        console.log(`[amadeus-search] Returned ${offers.length} offers in ${durationMs}ms`);
+        console.log(`[amadeus-search] Normalized ${flights.length} flights in ${durationMs}ms`);
 
         // ── Response ──
-        return new Response(
-            JSON.stringify({
-                success: true,
-                offers,
-                metadata: {
-                    provider: 'amadeus',
-                    searchId: crypto.randomUUID(),
-                    timestamp: new Date().toISOString(),
-                    totalResults: offers.length,
-                    durationMs,
-                },
-            }),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
+        return jsonResponse({
+            provider: 'amadeus',
+            flights,
+            totalResults: flights.length,
+            durationMs,
+        });
     } catch (err: any) {
+        const durationMs = Date.now() - startMs;
+
         console.error('[amadeus-search] Error:', err.message);
-        return new Response(
-            JSON.stringify({ success: false, error: err.message || 'Amadeus search failed' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+
+        const status = err instanceof AmadeusError ? Math.max(err.status, 400) : 500;
+
+        return jsonResponse(
+            {
+                provider: 'amadeus',
+                flights: [],
+                totalResults: 0,
+                durationMs,
+                error: err.message || 'Amadeus search failed',
+            },
+            status,
         );
     }
 });
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+    return new Response(
+        JSON.stringify(body),
+        { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+}
