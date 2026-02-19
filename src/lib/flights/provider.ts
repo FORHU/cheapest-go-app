@@ -3,7 +3,7 @@ import type { FlightSearchRequest, FlightSearchResponse, FlightBookingRequest, F
 // ─── Provider Interface ──────────────────────────────────────────────
 
 export interface FlightProvider {
-    /** Unique provider identifier (e.g. "amadeus", "mystifly", "mock") */
+    /** Unique provider identifier (e.g. "amadeus", "mystifly") */
     readonly name: string;
 
     /** Human-readable display name */

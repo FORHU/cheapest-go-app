@@ -21,7 +21,6 @@ export type { OrchestratorResult } from './orchestrator';
 
 import { ProviderRegistry } from './provider';
 import { FlightSearchOrchestrator } from './orchestrator';
-import { MockProvider } from './providers/mock';
 import { AmadeusProvider } from './providers/amadeus';
 
 /**
@@ -32,9 +31,6 @@ const registry = new ProviderRegistry();
 
 // Always register Amadeus first (self-disables if no credentials)
 registry.register(new AmadeusProvider());
-
-// Mock provider as fallback (always enabled)
-registry.register(new MockProvider());
 
 /**
  * Global flight search orchestrator — singleton.
