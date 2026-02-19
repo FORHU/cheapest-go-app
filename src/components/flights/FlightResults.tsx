@@ -157,7 +157,7 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
             <AnimatePresence>
                 {offers.map((offer, idx) => (
                     <FlightCard
-                        key={offer.offerId}
+                        key={`${offer.offerId}-${idx}`}
                         offer={offer}
                         index={idx}
                         onSelect={onSelect}

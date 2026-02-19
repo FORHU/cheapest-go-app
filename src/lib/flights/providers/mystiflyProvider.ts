@@ -1,6 +1,7 @@
 import type {
     FlightSearchResponse,
     FlightOffer,
+    FlightPrice,
     FlightSegmentDetail,
     CabinClass,
 } from '../types';
@@ -411,7 +412,7 @@ export class MystiflyProvider implements IFlightProvider {
         // Debug: log full request body to verify format
         console.log('[Mystifly] Full request body:', JSON.stringify(requestBody, null, 2));
 
-        const res = await fetch(`${MYSTIFLY_BASE_URL}/api/v1/BrandedFlight`, {
+        const res = await fetch(`${MYSTIFLY_BASE_URL}/api/v1/Search/Flight`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -526,11 +527,123 @@ export class MystiflyProvider implements IFlightProvider {
     }
 
     async revalidateFlightPrice(params: RevalidatePriceParams): Promise<RevalidatePriceResult> {
-        throw new FlightProviderError(
-            'revalidateFlightPrice not yet implemented for Mystifly',
-            'mystifly',
-            'PROVIDER_ERROR',
-        );
+        const sessionId = await this.getSessionId();
+
+        // Look up the full FareSourceCode from our cache
+        const fareSourceCode = getFareSourceCode(params.offerId);
+        if (!fareSourceCode) {
+            throw new FlightProviderError(
+                `FareSourceCode not found for offerId: ${params.offerId}. The offer may have expired from cache.`,
+                'mystifly',
+                'OFFER_EXPIRED',
+            );
+        }
+
+        console.log('[Mystifly] Revalidating flight price for:', params.offerId);
+
+        const requestBody = {
+            FareSourceCode: fareSourceCode,
+            Target: MYSTIFLY_BASE_URL.includes('demo') ? 'Test' : 'Production',
+        };
+
+        const res = await fetch(`${MYSTIFLY_BASE_URL}/api/v1/Revalidate/Flight`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${sessionId}`,
+            },
+            body: JSON.stringify(requestBody),
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new FlightProviderError(
+                `Mystifly revalidation HTTP error: ${res.status} ${text}`,
+                'mystifly',
+                'PROVIDER_ERROR',
+                res.status,
+                res.status >= 500,
+            );
+        }
+
+        const data = await res.json();
+
+        console.log('[Mystifly] Revalidation response:', JSON.stringify({
+            Success: data.Success,
+            Message: data.Message,
+            PriceChanged: data.Data?.PriceChanged,
+        }));
+
+        if (!data.Success) {
+            const msg = data.Message || '';
+            // Offer no longer available
+            if (msg.toLowerCase().includes('not available')
+                || msg.toLowerCase().includes('not found')
+                || msg.toLowerCase().includes('expired')) {
+                return {
+                    available: false,
+                    offerId: params.offerId,
+                    price: { total: 0, base: 0, taxes: 0, currency: 'USD', pricePerAdult: 0 },
+                    priceChanged: false,
+                };
+            }
+
+            if (msg.includes('session') || msg.includes('Session')) {
+                sessionCache = null;
+            }
+            throw new FlightProviderError(
+                `Mystifly revalidation failed: ${msg}`,
+                'mystifly',
+                'PROVIDER_ERROR',
+                undefined,
+                true,
+            );
+        }
+
+        // Parse the revalidated fare data
+        const revalData = data.Data || {};
+        const priceChanged = revalData.PriceChanged === true;
+
+        // Extract updated pricing — response may nest under FareItinerary or be flat
+        const itinerary = revalData.FareItinerary ?? revalData;
+        const fareInfo = itinerary.AirItineraryFareInfo ?? revalData;
+        const itinFare = fareInfo.ItinTotalFare;
+
+        const currency = itinFare?.TotalFare?.CurrencyCode || 'USD';
+        const total = Number(itinFare?.TotalFare?.Amount) || 0;
+        const base = Number(itinFare?.BaseFare?.Amount) || 0;
+        const taxes = Number(itinFare?.TotalTax?.Amount) || 0;
+
+        // Per-adult price
+        let pricePerAdult = total;
+        const fareBreakdown: unknown[] = fareInfo.FareBreakdown || [];
+        for (const fb of fareBreakdown as Record<string, unknown>[]) {
+            const paxType = fb.PassengerTypeQuantity as Record<string, unknown> | undefined;
+            if (paxType?.Code === 'ADT') {
+                const paxFare = fb.PassengerFare as Record<string, unknown> | undefined;
+                const paxTotal = paxFare?.TotalFare as Record<string, unknown> | undefined;
+                pricePerAdult = Number(paxTotal?.Amount) || total;
+                break;
+            }
+        }
+
+        // Update FareSourceCode cache if a new one was returned
+        const newFareSourceCode = fareInfo.FareSourceCode || revalData.FareSourceCode;
+        if (newFareSourceCode && newFareSourceCode !== fareSourceCode) {
+            fareSourceCache.set(params.offerId, newFareSourceCode);
+            console.log('[Mystifly] Updated FareSourceCode after revalidation');
+        }
+
+        const updatedPrice: FlightPrice = { total, base, taxes, currency, pricePerAdult };
+
+        console.log(`[Mystifly] Revalidation complete — available: true, priceChanged: ${priceChanged}, total: ${currency} ${total}`);
+
+        return {
+            available: true,
+            offerId: params.offerId,
+            price: updatedPrice,
+            priceChanged,
+        };
     }
 
     async createBooking(params: CreateBookingParams): Promise<CreateBookingResult> {
