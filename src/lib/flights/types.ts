@@ -91,6 +91,24 @@ export interface FlightOffer {
     /** Seats remaining (if available from provider) */
     seatsRemaining?: number;
 
+    /** Branded fare information (Mystifly V2) */
+    brandedFare?: {
+        /** Brand name (e.g. "Economy Saver", "Flex Plus") */
+        brandName?: string;
+        /** Brand ID from provider */
+        brandId?: string;
+        /** Brand tier (higher = more features) */
+        brandTier?: number;
+        /** Fare type: WebFare, PublishedFare, or BrandedFare */
+        fareType?: string;
+    };
+
+    /** Validating airline code */
+    validatingAirline?: string;
+
+    /** Last date to issue ticket (ISO date string) */
+    lastTicketDate?: string;
+
     /** Raw provider data for debugging (stripped in production) */
     _raw?: unknown;
 }

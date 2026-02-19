@@ -37,7 +37,18 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { origin, destination, departureDate, returnDate, passengers, cabinClass, tripType } = body;
+
+        // Support both flat format ({ origin, destination, departureDate })
+        // and segments format ({ segments: [{ origin, destination, departureDate }] })
+        const hasSegments = Array.isArray(body.segments) && body.segments.length > 0;
+
+        const origin = hasSegments ? body.segments[0].origin : body.origin;
+        const destination = hasSegments ? body.segments[0].destination : body.destination;
+        const departureDate = hasSegments ? body.segments[0].departureDate : body.departureDate;
+        const returnDate = hasSegments && body.segments[1]
+            ? body.segments[1].departureDate
+            : body.returnDate;
+        const { passengers, cabinClass, tripType } = body;
 
         // Origin / Destination
         const org = String(origin ?? '').toUpperCase();

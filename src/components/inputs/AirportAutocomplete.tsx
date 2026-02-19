@@ -228,7 +228,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                             ) : results.length > 0 ? (
                                 results.map((airport, i) => (
                                     <div
-                                        key={airport.iata}
+                                        key={`${airport.iata}-${i}`}
                                         id={`${listboxId}-option-${i}`}
                                         role="option"
                                         aria-selected={i === activeIndex}
