@@ -34,18 +34,10 @@ export async function POST(req: NextRequest) {
         }
 
         if (!provider.book) {
-            // Phase 2: implement provider.book() for real providers
-            return NextResponse.json({
-                success: true,
-                data: {
-                    bookingId: `BK${Date.now()}`,
-                    pnr: `MOCK${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                    status: 'confirmed' as const,
-                    ticketNumbers: [`TKT${Date.now()}`],
-                    totalPaid: 0,
-                    currency: 'USD',
-                },
-            });
+            return NextResponse.json(
+                { success: false, error: `Provider ${providerName} does not support booking yet` },
+                { status: 501 }
+            );
         }
 
         const result = await provider.book({

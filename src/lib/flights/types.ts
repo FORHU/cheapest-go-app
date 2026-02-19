@@ -57,7 +57,7 @@ export interface FlightSearchResponse {
 // ─── Flight Offer ────────────────────────────────────────────────────
 
 export interface FlightOffer {
-    /** Unique offer ID (prefixed with provider name, e.g. "mock_abc123") */
+    /** Unique offer ID (prefixed with provider name, e.g. "amadeus_abc123") */
     offerId: string;
 
     /** Provider that returned this offer */

@@ -10,7 +10,7 @@ import type {
 // ─── Provider Metadata ───────────────────────────────────────────────
 
 export interface FlightProviderConfig {
-    /** Unique machine-readable identifier (e.g. "amadeus", "mystifly", "mock") */
+    /** Unique machine-readable identifier (e.g. "amadeus", "mystifly") */
     readonly name: string;
 
     /** Human-readable label for UI display (e.g. "Amadeus GDS") */

@@ -1,7 +1,6 @@
 import type { IFlightProvider } from '../providers/flightProvider.interface';
 import { AmadeusProvider } from '../providers/amadeusProvider';
 import { MystiflyProvider } from '../providers/mystiflyProvider';
-import { MockProvider } from '../providers/mockProvider';
 
 // ─── Provider Toggle Map ─────────────────────────────────────────────
 
@@ -16,8 +15,7 @@ export type ProviderMap = Record<string, ProviderToggle>;
 // Default configuration — change these at runtime via resolverInstance.set()
 const DEFAULT_PROVIDER_MAP: ProviderMap = {
     amadeus: { enabled: true, priority: 1 },
-    mystifly: { enabled: false, priority: 2 },
-    mock: { enabled: true, priority: 99 },
+    mystifly: { enabled: true, priority: 2 },
 };
 
 // ─── Provider Factory ────────────────────────────────────────────────
@@ -27,7 +25,6 @@ const DEFAULT_PROVIDER_MAP: ProviderMap = {
 const PROVIDER_FACTORIES: Record<string, () => IFlightProvider> = {
     amadeus: () => new AmadeusProvider(),
     mystifly: () => new MystiflyProvider(),
-    mock: () => new MockProvider(),
 };
 
 // ─── Resolver ────────────────────────────────────────────────────────
