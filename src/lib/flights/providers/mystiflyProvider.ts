@@ -136,6 +136,7 @@ function getMaxStops(nonStopOnly?: boolean): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeOffer(fareItinerary: any): FlightOffer | null {
     try {
+        // V2 may nest under FareItinerary or be flat
         const itinerary = fareItinerary.FareItinerary ?? fareItinerary;
         const fareInfo = itinerary.AirItineraryFareInfo;
         if (!fareInfo) return null;
@@ -244,6 +245,20 @@ function normalizeOffer(fareItinerary: any): FlightOffer | null {
         const baggage = extractBaggage(fareInfo);
         if (baggage) offer.baggage = baggage;
 
+        // ── V2 Branded Fare Info ──
+        const brandedFare = extractBrandedFare(itinerary, fareInfo);
+        if (brandedFare) offer.brandedFare = brandedFare;
+
+        // Validating airline
+        const validatingAirline = (itinerary.ValidatingAirlineCode as string)
+            || (fareInfo.ValidatingAirlineCode as string);
+        if (validatingAirline) offer.validatingAirline = validatingAirline;
+
+        // Last ticket date
+        const lastTicketDate = (fareInfo.LastTicketDate as string)
+            || (itinerary.LastTicketDate as string);
+        if (lastTicketDate) offer.lastTicketDate = lastTicketDate;
+
         return offer;
     } catch (err) {
         console.warn('[Mystifly] Failed to normalize offer:', err);
@@ -298,6 +313,35 @@ function extractBaggage(fareInfo: any): FlightOffer['baggage'] | undefined {
         // Baggage info is optional
     }
     return undefined;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractBrandedFare(itinerary: any, fareInfo: any): FlightOffer['brandedFare'] | undefined {
+    try {
+        // V2 branded fare info can live at itinerary level or fareInfo level
+        const fareType = (itinerary.FareType as string)
+            || (fareInfo.FareType as string);
+        const brandName = (itinerary.BrandName as string)
+            || (fareInfo.BrandName as string)
+            || (itinerary.BrandedFareInformation?.BrandName as string);
+        const brandId = (itinerary.BrandId as string)
+            || (fareInfo.BrandId as string)
+            || (itinerary.BrandedFareInformation?.BrandId as string);
+        const brandTier = Number(itinerary.BrandTier ?? fareInfo.BrandTier
+            ?? itinerary.BrandedFareInformation?.BrandTier) || undefined;
+
+        // Only return if we have at least some branded info
+        if (!fareType && !brandName && !brandId) return undefined;
+
+        return {
+            fareType: fareType || undefined,
+            brandName: brandName || undefined,
+            brandId: brandId || undefined,
+            brandTier,
+        };
+    } catch {
+        return undefined;
+    }
 }
 
 // ─── Provider ────────────────────────────────────────────────────────
@@ -364,9 +408,15 @@ export class MystiflyProvider implements IFlightProvider {
             passengers: params.passengers,
         }));
 
-        const res = await fetch(`${MYSTIFLY_BASE_URL}/api/v1/SearchLowestFare`, {
+        // Debug: log full request body to verify format
+        console.log('[Mystifly] Full request body:', JSON.stringify(requestBody, null, 2));
+
+        const res = await fetch(`${MYSTIFLY_BASE_URL}/api/v1/BrandedFlight`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${sessionId}`,
+            },
             body: JSON.stringify(requestBody),
         });
 
@@ -383,13 +433,49 @@ export class MystiflyProvider implements IFlightProvider {
 
         const data = await res.json();
 
+        console.log('[Mystifly] Search response:', JSON.stringify({
+            Success: data.Success,
+            Message: data.Message,
+            HasData: !!data.Data,
+            FareCount: data.Data?.FareItineraries?.length ?? 0,
+        }));
+
+        // Debug: log first itinerary keys to understand V2 structure
+        const firstItinerary = data.Data?.FareItineraries?.[0];
+        if (firstItinerary) {
+            console.log('[Mystifly] V2 first itinerary keys:', Object.keys(firstItinerary));
+            const inner = firstItinerary.FareItinerary ?? firstItinerary;
+            if (inner !== firstItinerary) {
+                console.log('[Mystifly] V2 inner itinerary keys:', Object.keys(inner));
+            }
+        }
+
         if (!data.Success) {
+            // "Flights not found" is a normal empty result, not an error
+            const msg = data.Message || '';
+            const isEmptyResult = msg.toLowerCase().includes('not found')
+                || msg.toLowerCase().includes('no flights')
+                || msg.toLowerCase().includes('no result');
+
+            if (isEmptyResult) {
+                console.log('[Mystifly] No flights found for this route — returning empty result');
+                return {
+                    offers: [],
+                    metadata: {
+                        provider: 'mystifly',
+                        searchId: data.SessionId || sessionId,
+                        timestamp: new Date().toISOString(),
+                        totalResults: 0,
+                    },
+                };
+            }
+
             // Session may have expired — clear cache and throw retryable error
-            if (data.Message?.includes('session') || data.Message?.includes('Session')) {
+            if (msg.includes('session') || msg.includes('Session')) {
                 sessionCache = null;
             }
             throw new FlightProviderError(
-                `Mystifly search failed: ${data.Message || 'Unknown error'}`,
+                `Mystifly search failed: ${msg || 'Unknown error'}`,
                 'mystifly',
                 'PROVIDER_ERROR',
                 undefined,

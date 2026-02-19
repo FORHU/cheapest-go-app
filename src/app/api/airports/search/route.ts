@@ -103,23 +103,38 @@ export async function GET(req: NextRequest) {
             return Response.json({ success: true, data: [] });
         }
 
-        // Try Amadeus first, fall back to local dataset
-        const amadeusResults = await searchAmadeus(query, limit);
+        // Fetch from both sources and merge (local results ensure major airports always appear)
+        const [amadeusResults, localResults] = await Promise.all([
+            searchAmadeus(query, limit),
+            Promise.resolve(searchAirports(query, limit)),
+        ]);
 
-        if (amadeusResults && amadeusResults.length > 0) {
-            return Response.json({
-                success: true,
-                data: amadeusResults,
-                source: 'amadeus',
-            });
+        // Merge: local first (curated major airports), then Amadeus extras
+        const seen = new Set<string>();
+        const merged: typeof localResults = [];
+
+        // Local results get priority (curated, major airports)
+        for (const r of localResults) {
+            if (!seen.has(r.iata)) {
+                seen.add(r.iata);
+                merged.push(r);
+            }
         }
 
-        // Fallback to local dataset
-        const results = searchAirports(query, limit);
+        // Add Amadeus results that aren't already included
+        if (amadeusResults) {
+            for (const r of amadeusResults) {
+                if (!seen.has(r.iata)) {
+                    seen.add(r.iata);
+                    merged.push(r);
+                }
+            }
+        }
+
         return Response.json({
             success: true,
-            data: results,
-            source: 'local',
+            data: merged.slice(0, limit),
+            source: amadeusResults ? 'merged' : 'local',
         });
     } catch (err) {
         console.error('[airports/search] Error:', err);
