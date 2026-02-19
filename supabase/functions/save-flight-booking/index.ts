@@ -11,7 +11,7 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 declare const Deno: any;
 
