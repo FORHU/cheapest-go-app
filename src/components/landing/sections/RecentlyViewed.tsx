@@ -22,26 +22,26 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, index }) => (
     <motion.div
       whileHover={{ scale: 1.02, y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="flex gap-3 p-3 bg-white dark:bg-slate-900/80 rounded-xl border border-alabaster-border dark:border-obsidian-border shadow-md dark:shadow-black/20 cursor-pointer group"
+      className="flex gap-2 sm:gap-3 p-2.5 sm:p-3 min-h-[88px] sm:min-h-[92px] bg-white dark:bg-slate-900/80 rounded-xl border border-alabaster-border dark:border-obsidian-border shadow-md dark:shadow-black/20 cursor-pointer group"
     >
-      {/* Thumbnail */}
-      <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+      {/* Thumbnail — responsive */}
+      <div className="relative w-14 h-14 min-[380px]:w-[4.5rem] min-[380px]:h-[4.5rem] sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0">
         <div
           className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
           style={{ backgroundImage: `url(${item.image})` }}
         />
       </div>
 
-      {/* Content */}
+      {/* Content — responsive typography */}
       <div className="flex-1 min-w-0">
-        <h3 className="text-sm font-display font-bold text-slate-900 dark:text-white truncate">
+        <h3 className="text-[clamp(0.75rem,1.5vw,0.875rem)] font-display font-bold text-slate-900 dark:text-white truncate">
           {item.destination}
         </h3>
-        <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-500 dark:text-slate-400">
-          <Clock size={11} />
+        <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1 text-[clamp(0.625rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400">
+          <Clock className="w-3 h-3 sm:w-[11px] sm:h-[11px] flex-shrink-0" />
           <span>{item.dates}</span>
         </div>
-        <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center justify-between mt-1.5 sm:mt-2 gap-1">
           <Badge variant="default" size="sm">{item.type}</Badge>
           <PriceDisplay price={item.price} currency="$" size="sm" />
         </div>
@@ -69,8 +69,8 @@ const RecentlyViewed = () => {
   if (displayItems.length === 0) return null;
 
   return (
-    <section className="w-full pt-16 pb-4">
-      <div className="max-w-[1400px] mx-auto px-6">
+    <section className="w-full pt-6 sm:pt-10 pb-2">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <SectionHeader
           title="Continue Your Search"
           subtitle="Pick up where you left off"

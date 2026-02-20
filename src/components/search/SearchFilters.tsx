@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Map as MapIcon, RotateCcw, X } from 'lucide-react';
@@ -231,6 +231,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
 
             {/* Active Filters Summary */}
             <ActiveFiltersSummary filters={filters} />
+            </div>
         </div>
     );
 

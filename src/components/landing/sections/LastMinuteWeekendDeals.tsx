@@ -2,14 +2,14 @@
 
 import React from 'react';
 import { Sparkles } from 'lucide-react';
-import { SectionHeader } from '@/components/ui';
+import { SectionHeader, HorizontalScroll } from '@/components/ui';
 import { PropertyCard } from '@/components/shared';
 import { weekendDeals } from '@/data';
 
 export const LastMinuteWeekendDeals: React.FC = () => {
   return (
-    <section className="w-full py-12">
-      <div className="max-w-[1400px] mx-auto px-6">
+    <section className="w-full py-6 sm:py-10">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <SectionHeader
           title="Flash Getaways"
           subtitle="Limited-time offers on premium stays"
@@ -18,24 +18,27 @@ export const LastMinuteWeekendDeals: React.FC = () => {
           actionHref="/deals"
         />
 
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
+        <HorizontalScroll gap={4} scrollAmount={320}>
           {weekendDeals.map((deal, i) => (
-            <PropertyCard
+            <div
               key={deal.id}
-              image={deal.image}
-              name={deal.name}
-              location={deal.location}
-              rating={deal.rating}
-              reviews={deal.reviews}
-              originalPrice={deal.originalPrice}
-              price={deal.salePrice}
-              badge={deal.badge}
-              badgeColor="green"
-              index={i}
-            />
+              className="flex-shrink-0 w-[48vw] min-w-[200px] max-w-[280px] sm:min-w-[220px] sm:max-w-[320px] snap-start"
+            >
+              <PropertyCard
+                image={deal.image}
+                name={deal.name}
+                location={deal.location}
+                rating={deal.rating}
+                reviews={deal.reviews}
+                originalPrice={deal.originalPrice}
+                price={deal.salePrice}
+                badge={deal.badge}
+                badgeColor="green"
+                index={i}
+              />
+            </div>
           ))}
-        </div>
+        </HorizontalScroll>
       </div>
     </section>
   );

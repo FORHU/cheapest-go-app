@@ -32,7 +32,7 @@ export const TelemetryCard: React.FC<{ data: TelemetryData }> = ({ data }) => {
             <div className="flex justify-between items-start mb-4">
                 <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">{data.label}</span>
-                    <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white">{data.value}</h3>
+                    <h3 className="text-[clamp(0.9375rem,2vw,1.125rem)] font-display font-bold text-slate-900 dark:text-white">{data.value}</h3>
                 </div>
                 <div className={`p-1.5 rounded-md ${data.trend === 'down' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
                     'bg-alabaster-accent/10 text-alabaster-accent dark:bg-obsidian-accent/10 dark:text-obsidian-accent'
@@ -47,7 +47,7 @@ export const TelemetryCard: React.FC<{ data: TelemetryData }> = ({ data }) => {
                 {data.trend === 'down' ? (
                     <>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-mono font-medium text-slate-900 dark:text-white">{data.value}</span>
+                            <span className="text-[clamp(1.25rem,4vw,1.875rem)] font-mono font-medium text-slate-900 dark:text-white">{data.value}</span>
                             <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400">{data.subValue}</span>
                         </div>
                         <div className="w-full bg-slate-200 dark:bg-slate-700 h-1 rounded-full overflow-hidden mt-2">
@@ -72,7 +72,7 @@ export const TelemetryCard: React.FC<{ data: TelemetryData }> = ({ data }) => {
                 ) : (
                     <>
                         <div className="flex items-center gap-4 mb-2">
-                            <div className="text-4xl font-display font-bold text-slate-900 dark:text-white">72°</div>
+                            <div className="text-[clamp(1.5rem,5vw,2.25rem)] font-display font-bold text-slate-900 dark:text-white">72°</div>
                             <div className="flex flex-col text-xs text-slate-500 font-mono">
                                 <span>HUM: 45%</span>
                                 <span>VIS: 10mi</span>

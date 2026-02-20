@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPropertyCard } from '@/components/map/MapPropertyCard';
+import { MapModal } from '@/components/map/MapModal';
 import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
 import type { Property } from '@/data/mockProperties';
@@ -40,6 +41,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortValue>('recommended');
+    const [showMobileMap, setShowMobileMap] = useState(false);
 
     // Filter only properties with real coordinates (not 0,0)
     const mappableProperties = useMemo<MappableProperty[]>(
