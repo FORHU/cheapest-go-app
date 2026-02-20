@@ -34,7 +34,7 @@ const MapPopup = React.memo(function MapPopup({
             closeOnClick={false}
             onClose={onClose}
             className="map-property-popup z-50"
-            maxWidth="300px"
+            maxWidth="min(300px, calc(100vw - 40px))"
         >
             <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl min-w-[260px] border border-slate-100 dark:border-slate-800">
                 {/* Image */}
@@ -47,7 +47,7 @@ const MapPopup = React.memo(function MapPopup({
                     />
                     <button
                         onClick={onClose}
-                        className="absolute top-2 right-2 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer"
+                        className="absolute top-2 right-2 w-8 h-8 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer"
                     >
                         <X className="w-3.5 h-3.5 text-white" />
                     </button>

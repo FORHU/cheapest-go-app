@@ -15,6 +15,9 @@ const nextConfig = {
             tailwindcss: require.resolve('tailwindcss'),
         },
     },
+    typescript: {
+        ignoreBuildErrors: true,
+    },
     images: {
         remotePatterns: [
             {

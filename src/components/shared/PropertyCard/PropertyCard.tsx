@@ -157,9 +157,9 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
             {/* Glow effect on hover */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
 
-            {/* Card content */}
-            <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg dark:shadow-black/20 backdrop-blur-sm">
-                <div className="relative h-40 overflow-hidden">
+            {/* Card content — Airbnb-style size/layout: 4:3 image, rounded corners */}
+            <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-t-xl">
                     <motion.div
                         className="absolute inset-0 bg-cover bg-center"
                         style={{ backgroundImage: `url(${imgSrc})` }}
@@ -173,59 +173,62 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             initial={{ x: -20, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: index * 0.1 + 0.3 }}
-                            className={`absolute top-3 left-3 px-3 py-1 ${badgeClasses[badgeColor]} text-white text-xs font-medium rounded-full flex items-center gap-1 shadow-lg`}
+                            className={`absolute top-2 left-2 sm:top-3 sm:left-3 px-2 py-0.5 sm:px-3 sm:py-1 ${badgeClasses[badgeColor]} text-white text-[clamp(0.625rem,1.25vw,0.75rem)] font-medium rounded-full flex items-center gap-1 shadow-lg`}
                         >
-                            {badgeColor === 'blue' && <Star size={10} fill="currentColor" />}
+                            {badgeColor === 'blue' && <Star size={10} fill="currentColor" className="flex-shrink-0" />}
                             {displayBadges[0]}
                         </motion.div>
                     )}
                 </div>
 
-                <div className="p-4">
-                    <h3 className="font-semibold text-slate-900 dark:text-white text-sm line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <div className="p-2.5 sm:p-3 md:p-4 min-h-[155px] sm:min-h-[168px] flex flex-col">
+                    <h3 className="font-semibold text-slate-900 dark:text-white text-[clamp(0.8125rem,1.5vw,0.875rem)] line-clamp-2 min-h-[2.5em] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {displayName}
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-                        <MapPin size={12} className="text-blue-500" />
-                        {displayLocation}
+                    <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1 flex items-center gap-1 min-w-0">
+                        <MapPin className="w-3 h-3 sm:w-[12px] sm:h-[12px] text-blue-500 flex-shrink-0" />
+                        <span className="truncate">{displayLocation}</span>
                     </p>
 
                     {displayRating && (
-                        <div className="flex items-center gap-2 mt-2">
-                            <span className="px-2 py-0.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-bold rounded-md shadow-sm">
+                        <div className="flex items-center gap-1.5 sm:gap-2 mt-1.5 sm:mt-2 flex-wrap min-h-[1.5rem]">
+                            <span className="px-1.5 py-0.5 sm:px-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[clamp(0.625rem,1.25vw,0.75rem)] font-bold rounded-md shadow-sm">
                                 {displayRating}
                             </span>
                             {displayReviews && (
-                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                <span className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400">
                                     ({displayReviews.toLocaleString()} reviews)
                                 </span>
                             )}
                         </div>
                     )}
+                    {!displayRating && <div className="min-h-[1.5rem]" aria-hidden />}
 
+                    {/* Includes/tags — fixed height so cards with 1 or 2 lines of tags stay same size */}
                     {includes && includes.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
+                        <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2 min-h-[2.75rem] content-start">
                             {includes.map((inc) => (
                                 <span
                                     key={inc}
-                                    className="text-xs bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full border border-green-200 dark:border-green-800"
+                                    className="text-[clamp(0.625rem,1.25vw,0.75rem)] bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 text-green-600 dark:text-green-400 px-1.5 py-0.5 sm:px-2 rounded-full border border-green-200 dark:border-green-800"
                                 >
                                     {inc}
                                 </span>
                             ))}
                         </div>
                     )}
+                    {(!includes || includes.length === 0) && <div className="min-h-[2.75rem]" aria-hidden />}
 
-                    <div className="mt-3 flex items-baseline gap-2">
+                    <div className="mt-auto pt-2 sm:pt-3 flex items-baseline gap-1.5 sm:gap-2 flex-wrap">
                         {displayOriginalPrice && (
-                            <span className="text-xs text-slate-400 line-through">
+                            <span className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-slate-400 line-through">
                                 ₱{displayOriginalPrice.toLocaleString()}
                             </span>
                         )}
-                        <span className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+                        <span className="text-[clamp(0.9375rem,2vw,1.125rem)] font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                             ₱{displayPrice.toLocaleString()}
                             {priceLabel && (
-                                <span className="font-normal text-slate-500 text-sm">
+                                <span className="font-normal text-slate-500 text-[clamp(0.75rem,1.5vw,0.875rem)]">
                                     {priceLabel}
                                 </span>
                             )}
@@ -260,15 +263,15 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             className={`flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all group cursor-pointer ${className}`}
             onClick={onClick}
         >
-            {/* Image Section */}
-            <div className="md:w-[280px] relative h-[200px] md:h-[220px] flex-shrink-0">
+            {/* Image Section — Airbnb-style 4:3 aspect, rounded left */}
+            <div className="relative w-full sm:w-[280px] lg:w-[320px] flex-shrink-0 aspect-[4/3] sm:aspect-auto sm:h-[220px] overflow-hidden rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none">
                 <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
                     style={{ backgroundImage: `url(${property.image})` }}
                 />
                 {/* Heart icon */}
                 <button
-                    className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"
+                    className="absolute top-3 left-3 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <svg className="w-4 h-4 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -352,7 +355,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             </div>
 
             {/* Right Section - Rating & Price */}
-            <div className="flex flex-col md:w-[180px] p-4 md:border-l border-t md:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="flex flex-col md:w-[160px] lg:w-[180px] p-4 md:border-l border-t md:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                 {/* Rating Section */}
                 <div className="flex items-start justify-between md:justify-end gap-2 mb-4">
                     <div className="text-right">
