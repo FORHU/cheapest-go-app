@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plane, ArrowLeftRight, SlidersHorizontal, ArrowUpDown, Loader2, AlertTriangle, Search } from 'lucide-react';
+import { ArrowLeftRight, SlidersHorizontal, ArrowUpDown, Loader2, AlertTriangle, Search, Plane } from 'lucide-react';
 import { FlightCard } from '@/components/flights/FlightCard';
+import { useUserCurrency } from '@/stores/searchStore';
 import type { FlightOffer, FlightSearchRequest, CabinClass } from '@/lib/flights';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -24,6 +25,7 @@ interface SearchResult {
 export default function FlightSearchContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const userCurrency = useUserCurrency();
 
     // Search state
     const [results, setResults] = useState<SearchResult | null>(null);
@@ -83,8 +85,9 @@ export default function FlightSearchContent() {
                 infants: Number(searchParams.get('infants')) || 0,
             },
             cabinClass: (searchParams.get('cabin') as CabinClass) || 'economy',
+            currency: userCurrency,
         };
-    }, [searchParams]);
+    }, [searchParams, userCurrency]);
 
     // Fetch results
     const fetchResults = useCallback(async () => {
@@ -251,8 +254,8 @@ export default function FlightSearchContent() {
                                 key={mode}
                                 onClick={() => setSortMode(mode)}
                                 className={`px-4 py-2 font-medium capitalize transition-colors ${sortMode === mode
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                                     }`}
                             >
                                 {mode}
@@ -271,8 +274,8 @@ export default function FlightSearchContent() {
                                 key={value}
                                 onClick={() => setStopFilter(value)}
                                 className={`px-3 py-2 font-medium transition-colors ${stopFilter === value
-                                        ? 'bg-indigo-600 text-white'
-                                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                                     }`}
                             >
                                 {label}
@@ -284,8 +287,8 @@ export default function FlightSearchContent() {
                     <button
                         onClick={() => setShowFilters(!showFilters)}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${showFilters || airlineFilter.length > 0
-                                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
-                                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                            ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                             }`}
                     >
                         <SlidersHorizontal className="w-4 h-4" />
@@ -332,8 +335,8 @@ export default function FlightSearchContent() {
                                                 );
                                             }}
                                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${airlineFilter.includes(code)
-                                                    ? 'bg-indigo-600 text-white'
-                                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                                                 }`}
                                         >
                                             {code} · {name}

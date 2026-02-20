@@ -325,12 +325,27 @@ export default function FlightBookContent() {
                                 className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                             />
                             <div className="flex gap-2">
-                                <input
-                                    type="text" placeholder="+" required
+                                <select
+                                    required
                                     value={contact.countryCode}
-                                    onChange={(e) => setContact(prev => ({ ...prev, countryCode: e.target.value.replace(/\D/g, '') }))}
-                                    className="w-16 px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm text-center placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
-                                />
+                                    onChange={(e) => setContact(prev => ({ ...prev, countryCode: e.target.value }))}
+                                    className="w-[105px] px-2 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                                >
+                                    <option value="82">+82 (KR)</option>
+                                    <option value="63">+63 (PH)</option>
+                                    <option value="1">+1 (US/CA)</option>
+                                    <option value="81">+81 (JP)</option>
+                                    <option value="86">+86 (CN)</option>
+                                    <option value="44">+44 (GB)</option>
+                                    <option value="61">+61 (AU)</option>
+                                    <option value="49">+49 (DE)</option>
+                                    <option value="33">+33 (FR)</option>
+                                    <option value="65">+65 (SG)</option>
+                                    <option value="66">+66 (TH)</option>
+                                    <option value="84">+84 (VN)</option>
+                                    <option value="91">+91 (IN)</option>
+                                    <option value="60">+60 (MY)</option>
+                                </select>
                                 <input
                                     type="tel" placeholder="Phone Number *" required
                                     value={contact.phone}

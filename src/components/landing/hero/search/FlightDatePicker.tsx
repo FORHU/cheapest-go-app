@@ -96,7 +96,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
 
     return (
         <div
-            className="flex-1 relative flex items-center px-4 h-16 group cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+            className="flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
             onClick={() => onToggle(!isOpen)}
         >
             <CalendarIcon className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />

@@ -33,60 +33,53 @@ export const FlightSearchForm: React.FC = () => {
     return (
         <React.Fragment>
             {/* 1. Origins & Destinations */}
-            {/* We essentially split these into two "cells" to match the grid look */}
-            <div className="flex-[2] flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5">
-                <FlightLocationPicker
-                    label="From"
-                    value={firstSegment.origin}
-                    onChange={(val) => updateFirstSegment({ origin: val })}
-                    isOpen={activeDropdown === 'flight-origin'}
-                    onToggle={(open) => setActiveDropdown(open ? 'flight-origin' : null)}
-                    excludeId={firstSegment.destination?.id}
-                />
+            <FlightLocationPicker
+                label="From"
+                value={firstSegment.origin}
+                onChange={(val) => updateFirstSegment({ origin: val })}
+                isOpen={activeDropdown === 'flight-origin'}
+                onToggle={(open) => setActiveDropdown(open ? 'flight-origin' : null)}
+                excludeId={firstSegment.destination?.id}
+            />
 
-                <FlightLocationPicker
-                    label="To"
-                    value={firstSegment.destination}
-                    onChange={(val) => updateFirstSegment({ destination: val })}
-                    isOpen={activeDropdown === 'flight-destination'}
-                    onToggle={(open) => setActiveDropdown(open ? 'flight-destination' : null)}
-                    excludeId={firstSegment.origin?.id}
-                />
-            </div>
+            <FlightLocationPicker
+                label="To"
+                value={firstSegment.destination}
+                onChange={(val) => updateFirstSegment({ destination: val })}
+                isOpen={activeDropdown === 'flight-destination'}
+                onToggle={(open) => setActiveDropdown(open ? 'flight-destination' : null)}
+                excludeId={firstSegment.origin?.id}
+            />
 
             {/* 2. Dates */}
-            <div className="flex-[1.5] flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5">
-                <FlightDatePicker
-                    label="Departure"
-                    date={ensureDate(firstSegment.date)}
-                    onChange={(d) => updateFirstSegment({ date: d || null })}
-                    isOpen={activeDropdown === 'flight-dates-depart'}
-                    onToggle={(open) => setActiveDropdown(open ? 'flight-dates-depart' : null)}
-                />
+            <FlightDatePicker
+                label="Departure"
+                date={ensureDate(firstSegment.date)}
+                onChange={(d) => updateFirstSegment({ date: d || null })}
+                isOpen={activeDropdown === 'flight-dates-depart'}
+                onToggle={(open) => setActiveDropdown(open ? 'flight-dates-depart' : null)}
+            />
 
-                {tripType === 'round-trip' && (
-                    <FlightDatePicker
-                        label="Return"
-                        date={ensureDate(flights[1]?.date)}
-                        onChange={(d) => setFlightSegment(1, { date: d || null })}
-                        minDate={ensureDate(firstSegment.date)}
-                        isOpen={activeDropdown === 'flight-dates-return'}
-                        onToggle={(open) => setActiveDropdown(open ? 'flight-dates-return' : null)}
-                    />
-                )}
-            </div>
+            {tripType === 'round-trip' && (
+                <FlightDatePicker
+                    label="Return"
+                    date={ensureDate(flights[1]?.date)}
+                    onChange={(d) => setFlightSegment(1, { date: d || null })}
+                    minDate={ensureDate(firstSegment.date)}
+                    isOpen={activeDropdown === 'flight-dates-return'}
+                    onToggle={(open) => setActiveDropdown(open ? 'flight-dates-return' : null)}
+                />
+            )}
 
             {/* 3. Passengers */}
-            <div className="flex-[1.3]">
-                <FlightTravelersPicker
-                    passengers={passengers}
-                    cabinClass={cabinClass}
-                    onChangePassengers={setFlightPassengers}
-                    onChangeCabin={setFlightCabin}
-                    isOpen={activeDropdown === 'flight-passengers'}
-                    onToggle={(open) => setActiveDropdown(open ? 'flight-passengers' : null)}
-                />
-            </div>
+            <FlightTravelersPicker
+                passengers={passengers}
+                cabinClass={cabinClass}
+                onChangePassengers={setFlightPassengers}
+                onChangeCabin={setFlightCabin}
+                isOpen={activeDropdown === 'flight-passengers'}
+                onToggle={(open) => setActiveDropdown(open ? 'flight-passengers' : null)}
+            />
         </React.Fragment>
     );
 };

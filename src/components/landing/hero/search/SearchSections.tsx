@@ -14,7 +14,7 @@ export const DestinationSection: React.FC = () => {
 
     return (
         <div
-            className="flex-1 relative flex items-center px-4 h-16 group cursor-pointer"
+            className="flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer"
             onClick={() => setActiveDropdown('destination')}
         >
             <MapPin className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
@@ -45,7 +45,7 @@ export const DateSection: React.FC = () => {
 
     return (
         <div
-            className="flex-1 relative flex items-center px-4 h-16 group cursor-pointer"
+            className="flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer"
             onClick={() => setActiveDropdown('dates')}
         >
             <Calendar className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
@@ -79,7 +79,7 @@ export const TravelersSection: React.FC = () => {
 
     return (
         <div
-            className="flex-1 relative flex items-center px-4 h-16 group cursor-pointer z-20"
+            className="flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer z-20"
             onClick={() => setActiveDropdown(isTravelersOpen ? null : 'travelers')}
         >
             <User className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />

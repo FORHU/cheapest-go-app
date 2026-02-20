@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
         const returnDate = hasSegments && body.segments[1]
             ? body.segments[1].departureDate
             : body.returnDate;
-        const { passengers, cabinClass, tripType } = body;
+        const { passengers, cabinClass, tripType, currency } = body;
 
         // Origin / Destination
         const org = String(origin ?? '').toUpperCase();
@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
                 cabinClass: cabin,
                 maxOffers: Math.min(Number(body.maxOffers) || 30, 50),
                 nonStopOnly: body.nonStopOnly === true,
+                currency: currency,
             }),
         });
 

@@ -182,7 +182,7 @@ export function normalizeMystiflyOffer(
     try {
         // V2 may nest under .FareItinerary, V1 may be flat
         const itinerary = fareItinerary?.FareItinerary ?? fareItinerary;
-        const fareInfo = itinerary?.AirItineraryFareInfo;
+        const fareInfo = itinerary?.AirItineraryFareInfo ?? itinerary?.AirItineraryPricingInfo;
         if (!fareInfo) return null;
 
         const fareSourceCode: string = fareInfo.FareSourceCode ?? '';
@@ -197,7 +197,7 @@ export function normalizeMystiflyOffer(
 
         // Per-adult price from FareBreakdown
         let pricePerAdult = price;
-        const fareBreakdown: any[] = fareInfo.FareBreakdown ?? [];
+        const fareBreakdown: any[] = fareInfo.FareBreakdown ?? fareInfo.PTC_FareBreakdowns ?? [];
         for (const fb of fareBreakdown) {
             if (fb?.PassengerTypeQuantity?.Code === 'ADT') {
                 pricePerAdult = Number(fb?.PassengerFare?.TotalFare?.Amount) || price;
@@ -217,10 +217,10 @@ export function normalizeMystiflyOffer(
 
         for (const odo of originDestOptions) {
             totalStops += Number(odo.TotalStops) || 0;
-            const options: any[] = odo.OriginDestinationOption ?? [];
+            const options: any[] = odo.OriginDestinationOption ?? odo.FlightSegments ?? [];
 
             for (const opt of options) {
-                const fs = opt.FlightSegment;
+                const fs = opt.FlightSegment ?? opt;
                 if (!fs) continue;
 
                 const airlineCode: string =
@@ -262,14 +262,22 @@ export function normalizeMystiflyOffer(
 
         for (const fb of fareBreakdown) {
             if (fb?.PassengerTypeQuantity?.Code !== 'ADT') continue;
-            const baggageArr: any[] = fb.BaggageAllowance ?? [];
+            const baggageArr: any[] = fb.BaggageAllowance ?? fb.BaggageInfo ?? [];
             if (baggageArr.length > 0) {
-                checkedBags = Number(baggageArr[0].NumberOfPieces) || 0;
-                weightPerBag = Number(baggageArr[0].MaxWeight) || undefined;
+                if (typeof baggageArr[0] === 'string') {
+                    checkedBags = parseInt(baggageArr[0], 10) || 0;
+                } else {
+                    checkedBags = Number(baggageArr[0].NumberOfPieces) || 0;
+                    weightPerBag = Number(baggageArr[0].MaxWeight) || undefined;
+                }
             }
-            const cabinArr: any[] = fb.CabinBaggageAllowance ?? [];
+            const cabinArr: any[] = fb.CabinBaggageAllowance ?? fb.CabinBaggageInfo ?? [];
             if (cabinArr.length > 0) {
-                cabinBag = `${cabinArr[0].MaxWeight ?? 7}kg carry-on`;
+                if (typeof cabinArr[0] === 'string') {
+                    cabinBag = cabinArr[0] === 'SB' ? 'Small Bag' : cabinArr[0];
+                } else {
+                    cabinBag = `${cabinArr[0].MaxWeight ?? 7}kg carry-on`;
+                }
             }
             break;
         }

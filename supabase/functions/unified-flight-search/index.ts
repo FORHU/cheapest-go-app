@@ -63,6 +63,7 @@ interface UnifiedSearchBody {
     cabinClass?: string;
     maxOffers?: number;
     nonStopOnly?: boolean;
+    currency?: string;
 }
 
 // ─── Provider Result ────────────────────────────────────────────────
@@ -106,10 +107,10 @@ Deno.serve(async (req: Request) => {
 
         // ── Fan-out to all providers in parallel ──
         const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
-        const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+        const authHeader = req.headers.get('Authorization') ?? '';
 
         const providerPromises = enabledProviders.map((provider) =>
-            callProvider(provider, body, SUPABASE_URL, SUPABASE_ANON_KEY),
+            callProvider(provider, body, SUPABASE_URL, authHeader),
         );
 
         const providerResults = await Promise.all(providerPromises);
@@ -177,7 +178,7 @@ async function callProvider(
     provider: ProviderConfig,
     body: UnifiedSearchBody,
     supabaseUrl: string,
-    anonKey: string,
+    authHeader: string,
 ): Promise<ProviderResult> {
     const startMs = Date.now();
     const url = `${supabaseUrl}/functions/v1/${provider.functionName}`;
@@ -190,7 +191,7 @@ async function callProvider(
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${anonKey}`,
+                'Authorization': authHeader,
             },
             body: JSON.stringify(body),
             signal: controller.signal,

@@ -87,12 +87,12 @@ Deno.serve(async (req: Request) => {
             OriginLocationCode: string;
             DestinationLocationCode: string;
         }[] = [
-            {
-                DepartureDateTime: `${body.departureDate}T00:00:00`,
-                OriginLocationCode: body.origin,
-                DestinationLocationCode: body.destination,
-            },
-        ];
+                {
+                    DepartureDateTime: `${body.departureDate}T00:00:00`,
+                    OriginLocationCode: body.origin,
+                    DestinationLocationCode: body.destination,
+                },
+            ];
 
         if (body.returnDate) {
             originDestinations.push({
@@ -157,7 +157,7 @@ Deno.serve(async (req: Request) => {
         }
 
         // ── Normalize ──
-        const fareItineraries: any[] = raw.Data?.FareItineraries ?? [];
+        const fareItineraries: any[] = raw.Data?.FareItineraries ?? raw.Data?.PricedItineraries ?? [];
 
         console.log(`[mystifly-search] Mystifly returned ${fareItineraries.length} raw itineraries`);
 
