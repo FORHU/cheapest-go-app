@@ -4,8 +4,9 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Plane, Luggage, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { BookingRecord } from '@/services/booking.service';
+import type { BookingRecord, FlightBookingRecord } from '@/services/booking.service';
 import BookingCard from './BookingCard';
+import FlightBookingCard from './FlightBookingCard';
 import type { TripsData } from '@/lib/trips';
 
 type TabValue = 'upcoming' | 'past' | 'all';
@@ -13,6 +14,12 @@ const VALID_TABS: TabValue[] = ['upcoming', 'past', 'all'];
 
 interface TripsContentProps {
   initialData: TripsData;
+}
+
+type MixedBooking = BookingRecord | FlightBookingRecord;
+
+function isFlight(b: MixedBooking): b is FlightBookingRecord {
+  return 'pnr' in b;
 }
 
 export function TripsContent({ initialData }: TripsContentProps) {
@@ -23,24 +30,19 @@ export function TripsContent({ initialData }: TripsContentProps) {
   const activeTab: TabValue = VALID_TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';
 
   const [visibleCount, setVisibleCount] = useState(10);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'hotels' | 'flights'>('all');
 
-  const bookings = initialData.bookings;
+  const counts = {
+    upcoming: initialData.upcomingBookings.length + initialData.upcomingFlightBookings.length,
+    past: initialData.pastBookings.length + initialData.pastFlightBookings.length,
+    all: initialData.bookings.length + initialData.flightBookings.length,
+  };
 
-  // Derive categorized bookings
-  const upcomingBookings = useMemo(() => {
-    const now = new Date();
-    return bookings.filter((b: BookingRecord) => new Date(b.check_in) >= now && b.status !== 'cancelled');
-  }, [bookings]);
-
-  const pastBookings = useMemo(() => {
-    const now = new Date();
-    return bookings.filter((b: BookingRecord) => new Date(b.check_out) < now || b.status === 'completed');
-  }, [bookings]);
-
-  const cancelledBookings = useMemo(
-    () => bookings.filter((b: BookingRecord) => b.status === 'cancelled'),
-    [bookings]
-  );
+  const displayedHotels = activeTab === 'upcoming'
+    ? initialData.upcomingBookings
+    : activeTab === 'past'
+      ? [...initialData.pastBookings, ...initialData.cancelledBookings]
+      : initialData.bookings;
 
   const handleTabChange = useCallback((tab: TabValue) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -53,11 +55,19 @@ export function TripsContent({ initialData }: TripsContentProps) {
     setVisibleCount(10);
   }, [router, searchParams]);
 
-  const displayedBookings = activeTab === 'upcoming'
-    ? upcomingBookings
+  const displayedFlights = activeTab === 'upcoming'
+    ? initialData.upcomingFlightBookings
     : activeTab === 'past'
-      ? [...pastBookings, ...cancelledBookings]
-      : bookings;
+      ? [...initialData.pastFlightBookings, ...initialData.cancelledFlightBookings]
+      : initialData.flightBookings;
+
+  const displayedBookings = [...displayedHotels, ...displayedFlights]
+    .filter(b => {
+      if (typeFilter === 'hotels') return !isFlight(b);
+      if (typeFilter === 'flights') return isFlight(b);
+      return true;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   // Re-run server component fetch to get fresh data
   const refetch = useCallback(() => {

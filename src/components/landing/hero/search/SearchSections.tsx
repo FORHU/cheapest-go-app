@@ -14,11 +14,11 @@ export const DestinationSection: React.FC = () => {
 
     return (
         <div
-            className="flex-1 relative flex items-center px-4 h-16 group cursor-pointer"
+            className="flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer"
             onClick={() => setActiveDropdown('destination')}
         >
             <MapPin className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
-            <div className="ml-3 flex flex-col justify-center w-full text-left">
+            <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
                 <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
                     Where to?
                 </label>
@@ -45,15 +45,15 @@ export const DateSection: React.FC = () => {
 
     return (
         <div
-            className="flex-1 relative flex items-center px-4 h-16 group cursor-pointer"
+            className="flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer"
             onClick={() => setActiveDropdown('dates')}
         >
             <Calendar className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
-            <div className="ml-3 flex flex-col justify-center w-full text-left">
+            <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
                 <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
                     Dates
                 </label>
-                <div className="text-sm font-bold text-slate-900 dark:text-white">
+                <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
                     {formatDateRange()}
                 </div>
             </div>
@@ -79,15 +79,15 @@ export const TravelersSection: React.FC = () => {
 
     return (
         <div
-            className="flex-1 relative flex items-center px-4 h-16 group cursor-pointer z-20"
+            className="flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer z-20"
             onClick={() => setActiveDropdown(isTravelersOpen ? null : 'travelers')}
         >
             <User className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
-            <div className="ml-3 flex flex-col justify-center w-full text-left">
+            <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
                 <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
                     Travelers
                 </label>
-                <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                <div className="text-sm font-bold text-slate-900 dark:text-white truncate pr-6">
                     {formatTravelers()}
                 </div>
             </div>
