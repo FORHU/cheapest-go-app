@@ -78,6 +78,12 @@ export async function POST(req: NextRequest) {
             : 'Traveler';
 
         try {
+            const tickets = bookingData.passengers && bookingData.status === 'ticketed'
+                ? bookingData.passengers
+                    .filter((p: any) => p.ticket_number)
+                    .map((p: any) => ({ name: `${p.first_name} ${p.last_name}`, number: p.ticket_number }))
+                : [];
+
             const emailResult = await sendFlightBookingConfirmationEmail({
                 bookingId: bookingData.bookingId,
                 pnr: bookingData.pnr,
@@ -85,6 +91,7 @@ export async function POST(req: NextRequest) {
                 passengerName,
                 provider,
                 segments: flight.segments ?? [],
+                tickets: tickets,
                 totalPrice: flight.price ?? 0,
                 currency: flight.currency ?? 'USD',
             });

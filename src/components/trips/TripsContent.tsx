@@ -4,8 +4,9 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Plane, Luggage, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { BookingRecord } from '@/services/booking.service';
+import type { BookingRecord, FlightBookingRecord } from '@/services/booking.service';
 import BookingCard from './BookingCard';
+import FlightBookingCard from './FlightBookingCard';
 import type { TripsData } from '@/lib/trips';
 
 type TabValue = 'upcoming' | 'past' | 'all';
@@ -13,6 +14,12 @@ const VALID_TABS: TabValue[] = ['upcoming', 'past', 'all'];
 
 interface TripsContentProps {
   initialData: TripsData;
+}
+
+type MixedBooking = BookingRecord | FlightBookingRecord;
+
+function isFlight(b: MixedBooking): b is FlightBookingRecord {
+  return 'pnr' in b;
 }
 
 export function TripsContent({ initialData }: TripsContentProps) {
@@ -23,24 +30,19 @@ export function TripsContent({ initialData }: TripsContentProps) {
   const activeTab: TabValue = VALID_TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';
 
   const [visibleCount, setVisibleCount] = useState(10);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'hotels' | 'flights'>('all');
 
-  const bookings = initialData.bookings;
+  const counts = {
+    upcoming: initialData.upcomingBookings.length + initialData.upcomingFlightBookings.length,
+    past: initialData.pastBookings.length + initialData.pastFlightBookings.length,
+    all: initialData.bookings.length + initialData.flightBookings.length,
+  };
 
-  // Derive categorized bookings
-  const upcomingBookings = useMemo(() => {
-    const now = new Date();
-    return bookings.filter((b: BookingRecord) => new Date(b.check_in) >= now && b.status !== 'cancelled');
-  }, [bookings]);
-
-  const pastBookings = useMemo(() => {
-    const now = new Date();
-    return bookings.filter((b: BookingRecord) => new Date(b.check_out) < now || b.status === 'completed');
-  }, [bookings]);
-
-  const cancelledBookings = useMemo(
-    () => bookings.filter((b: BookingRecord) => b.status === 'cancelled'),
-    [bookings]
-  );
+  const displayedHotels = activeTab === 'upcoming'
+    ? initialData.upcomingBookings
+    : activeTab === 'past'
+      ? [...initialData.pastBookings, ...initialData.cancelledBookings]
+      : initialData.bookings;
 
   const handleTabChange = useCallback((tab: TabValue) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -53,11 +55,19 @@ export function TripsContent({ initialData }: TripsContentProps) {
     setVisibleCount(10);
   }, [router, searchParams]);
 
-  const displayedBookings = activeTab === 'upcoming'
-    ? upcomingBookings
+  const displayedFlights = activeTab === 'upcoming'
+    ? initialData.upcomingFlightBookings
     : activeTab === 'past'
-      ? [...pastBookings, ...cancelledBookings]
-      : bookings;
+      ? [...initialData.pastFlightBookings, ...initialData.cancelledFlightBookings]
+      : initialData.flightBookings;
+
+  const displayedBookings = [...displayedHotels, ...displayedFlights]
+    .filter(b => {
+      if (typeFilter === 'hotels') return !isFlight(b);
+      if (typeFilter === 'flights') return isFlight(b);
+      return true;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   // Re-run server component fetch to get fresh data
   const refetch = useCallback(() => {
@@ -78,49 +88,72 @@ export function TripsContent({ initialData }: TripsContentProps) {
           </p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-white/10">
-          <button
-            onClick={() => handleTabChange('upcoming')}
-            className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'upcoming'
-              ? 'text-blue-600 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-              }`}
-          >
-            Upcoming
-            {upcomingBookings.length > 0 && (
-              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
-                {upcomingBookings.length}
-              </span>
-            )}
-            {activeTab === 'upcoming' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-            )}
-          </button>
-          <button
-            onClick={() => handleTabChange('past')}
-            className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'past'
-              ? 'text-blue-600 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-              }`}
-          >
-            Past
-            {activeTab === 'past' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-            )}
-          </button>
-          <button
-            onClick={() => handleTabChange('all')}
-            className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'all'
-              ? 'text-blue-600 dark:text-blue-400'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
-              }`}
-          >
-            All
-            {activeTab === 'all' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
-            )}
-          </button>
+        {/* Tabs and Filters */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 border-b border-slate-200 dark:border-white/10">
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleTabChange('upcoming')}
+              className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'upcoming'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                }`}
+            >
+              Upcoming
+              {counts.upcoming > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
+                  {counts.upcoming}
+                </span>
+              )}
+              {activeTab === 'upcoming' && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
+            <button
+              onClick={() => handleTabChange('past')}
+              className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'past'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                }`}
+            >
+              Past
+              {activeTab === 'past' && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
+            <button
+              onClick={() => handleTabChange('all')}
+              className={`px-4 py-3 text-sm font-medium transition-colors relative ${activeTab === 'all'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                }`}
+            >
+              All
+              {activeTab === 'all' && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
+              )}
+            </button>
+          </div>
+
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 mb-2">
+            <button
+              onClick={() => setTypeFilter('all')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${typeFilter === 'all' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+            >
+              All Types
+            </button>
+            <button
+              onClick={() => setTypeFilter('hotels')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${typeFilter === 'hotels' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+            >
+              Hotels
+            </button>
+            <button
+              onClick={() => setTypeFilter('flights')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${typeFilter === 'flights' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+            >
+              Flights
+            </button>
+          </div>
         </div>
 
         {/* Content — data is server-fetched, loading state handled by Suspense */}
@@ -148,11 +181,15 @@ export function TripsContent({ initialData }: TripsContentProps) {
         ) : (
           <div className="space-y-4">
             {displayedBookings.slice(0, visibleCount).map((booking) => (
-              <BookingCard
-                key={booking.id}
-                booking={booking}
-                onBookingUpdated={refetch}
-              />
+              isFlight(booking) ? (
+                <FlightBookingCard key={booking.id} booking={booking} />
+              ) : (
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  onBookingUpdated={refetch}
+                />
+              )
             ))}
             {visibleCount < displayedBookings.length && (
               <div className="flex justify-center pt-4">

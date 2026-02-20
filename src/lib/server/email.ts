@@ -208,6 +208,7 @@ export interface SendFlightBookingEmailParams {
     passengerName: string;
     provider: string;
     segments: FlightSegmentEmail[];
+    tickets?: { name: string; number: string }[];
     totalPrice: number;
     currency: string;
 }
@@ -220,7 +221,7 @@ export interface SendFlightBookingEmailResult {
 export async function sendFlightBookingConfirmationEmail(
     params: SendFlightBookingEmailParams
 ): Promise<SendFlightBookingEmailResult> {
-    const { bookingId, pnr, email, passengerName, provider, segments, totalPrice, currency } = params;
+    const { bookingId, pnr, email, passengerName, provider, segments, tickets, totalPrice, currency } = params;
 
     if (!email || !bookingId) {
         return { success: false, error: 'Missing required fields' };
@@ -298,6 +299,14 @@ export async function sendFlightBookingConfirmationEmail(
                     <td style="padding: 8px 0; color: #6b7280;">Provider:</td>
                     <td style="padding: 8px 0; text-transform: capitalize;">${provider}</td>
                 </tr>
+                ${tickets && tickets.length > 0 ? `
+                <tr style="border-top: 1px solid #e5e7eb;">
+                    <td style="padding: 12px 0 8px 0; color: #6b7280; font-weight: 600; vertical-align: top;">E-Tickets:</td>
+                    <td style="padding: 12px 0 8px 0;">
+                        ${tickets.map(t => `<div style="margin-bottom: 4px"><span style="color:#4f46e5;font-weight:600;font-family:monospace;">${t.number}</span> <span style="font-size:12px;color:#6b7280;">- ${t.name}</span></div>`).join('')}
+                    </td>
+                </tr>
+                ` : ''}
                 <tr style="border-top: 1px solid #e5e7eb;">
                     <td style="padding: 12px 0 8px 0; color: #6b7280; font-weight: 600;">Total Paid:</td>
                     <td style="padding: 12px 0 8px 0; font-weight: 700; font-size: 18px; color: #059669;">${formattedPrice}</td>
