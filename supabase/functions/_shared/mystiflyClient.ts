@@ -247,6 +247,19 @@ export async function bookFlight(
     return mystiflyRequest('/api/v1/Book/Flight', body, sessionId);
 }
 
+/**
+ * Issue a ticket for a confirmed booking (UniqueID / PNR).
+ */
+export async function ticketFlight(
+    uniqueId: string,
+    sessionId?: string,
+) {
+    return mystiflyRequest('/api/v1/Ticket/Flight', {
+        UniqueID: uniqueId,
+        Target: BASE_URL().includes('demo') ? 'Test' : 'Production',
+    }, sessionId);
+}
+
 // ─── Fetch Helpers ──────────────────────────────────────────────────
 
 /** Single fetch call with AbortController timeout. */

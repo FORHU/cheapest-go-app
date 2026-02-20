@@ -1,0 +1,497 @@
+/**
+ * Create Booking — Supabase Edge Function
+ *
+ * POST /functions/v1/create-booking
+ *
+ * Creates a real flight booking (PNR) by:
+ *   1. Retrieving the booking session
+ *   2. Calling Mystifly or Amadeus to book
+ *   3. Saving the result to flight_bookings, flight_segments, passengers
+ *   4. Marking the session as "booked"
+ *
+ * POST body:
+ *   { sessionId: string }
+ *
+ * Returns:
+ *   { success: true, bookingId: string, pnr: string }
+ */
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+declare const Deno: any;
+
+import { bookFlight, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { amadeusRequest, AmadeusError } from '../_shared/amadeusClient.ts';
+
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// ─── Types ──────────────────────────────────────────────────────────
+
+interface SessionPassenger {
+    type: 'ADT' | 'CHD' | 'INF';
+    firstName: string;
+    lastName: string;
+    gender: string;
+    birthDate: string;
+    nationality: string;
+    passport: string;
+    passportExpiry: string;
+}
+
+interface SessionContact {
+    email: string;
+    phone: string;
+    countryCode: string;
+    addressLine: string;
+    city: string;
+    postalCode: string;
+    country: string;
+}
+
+interface SessionFlight {
+    traceId?: string;
+    resultIndex?: string;
+    price: number;
+    currency: string;
+    validatingAirline?: string;
+    segments: {
+        airline: string;
+        airlineName?: string;
+        flightNumber: string;
+        origin: string;
+        destination: string;
+        departureTime: string;
+        arrivalTime: string;
+        cabinClass?: string;
+    }[];
+    [key: string]: unknown;
+}
+
+interface BookingSession {
+    id: string;
+    user_id: string;
+    provider: 'mystifly' | 'amadeus';
+    flight: SessionFlight;
+    passengers: SessionPassenger[];
+    contact: SessionContact;
+    status: string;
+    expires_at: string;
+}
+
+interface ProviderBookingResult {
+    pnr: string;
+    providerStatus: string;
+    rawPrice?: number;
+    rawCurrency?: string;
+}
+
+// ─── Gender Mapping ─────────────────────────────────────────────────
+
+const GENDER_TO_TITLE: Record<string, string> = {
+    M: 'Mr',
+    F: 'Ms',
+    male: 'Mr',
+    female: 'Ms',
+};
+
+// ─── Handler ────────────────────────────────────────────────────────
+
+Deno.serve(async (req: Request) => {
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
+    const startMs = Date.now();
+
+    try {
+        // ── Parse Request ──
+        const { sessionId } = JSON.parse(await req.text());
+
+        if (!sessionId) {
+            return jsonResponse({ success: false, error: 'sessionId is required' }, 400);
+        }
+
+        // ── Supabase Admin Client ──
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+        if (!supabaseUrl || !serviceRoleKey) {
+            throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');
+        }
+
+        const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+        // ── 1. Retrieve Booking Session ──
+        const { data: session, error: fetchError } = await supabase
+            .from('booking_sessions')
+            .select('*')
+            .eq('id', sessionId)
+            .single();
+
+        if (fetchError || !session) {
+            return jsonResponse({ success: false, error: 'Booking session not found' }, 404);
+        }
+
+        const bs = session as BookingSession;
+
+        // Validate status
+        if (bs.status !== 'pending') {
+            return jsonResponse(
+                { success: false, error: `Session already processed (status: ${bs.status})` },
+                409,
+            );
+        }
+
+        // Validate expiry
+        if (new Date(bs.expires_at) < new Date()) {
+            // Mark as expired
+            await supabase
+                .from('booking_sessions')
+                .update({ status: 'expired' })
+                .eq('id', sessionId);
+
+            return jsonResponse({ success: false, error: 'Booking session has expired' }, 410);
+        }
+
+        console.log('[create-booking] Processing session:', {
+            sessionId,
+            provider: bs.provider,
+            userId: bs.user_id,
+            passengerCount: bs.passengers.length,
+        });
+
+        // ── 2. Call Provider to Book ──
+        let result: ProviderBookingResult;
+
+        if (bs.provider === 'mystifly') {
+            result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact);
+        } else if (bs.provider === 'amadeus') {
+            result = await bookWithAmadeus(bs.flight, bs.passengers, bs.contact);
+        } else {
+            return jsonResponse({ success: false, error: `Unknown provider: ${bs.provider}` }, 400);
+        }
+
+        console.log('[create-booking] Provider returned PNR:', result.pnr);
+
+        // ── 3. Save to flight_bookings ──
+        const bookingPrice = result.rawPrice ?? bs.flight.price ?? 0;
+
+        const { data: booking, error: insertError } = await supabase
+            .from('flight_bookings')
+            .insert({
+                user_id: bs.user_id,
+                pnr: result.pnr,
+                provider: bs.provider,
+                total_price: bookingPrice,
+                status: 'booked',
+            })
+            .select('id')
+            .single();
+
+        if (insertError || !booking) {
+            console.error('[create-booking] DB insert error:', insertError);
+            throw new Error(`Failed to save booking: ${insertError?.message}`);
+        }
+
+        const bookingId = booking.id;
+
+        // ── 4. Save flight_segments ──
+        const segments = (bs.flight.segments ?? []).map((seg) => ({
+            booking_id: bookingId,
+            airline: seg.airline,
+            flight_number: seg.flightNumber,
+            origin: seg.origin,
+            destination: seg.destination,
+            departure: seg.departureTime,
+            arrival: seg.arrivalTime,
+        }));
+
+        if (segments.length > 0) {
+            const { error: segError } = await supabase
+                .from('flight_segments')
+                .insert(segments);
+
+            if (segError) {
+                console.error('[create-booking] Segments insert error:', segError);
+            }
+        }
+
+        // ── 5. Save passengers ──
+        const passengers = bs.passengers.map((pax) => ({
+            booking_id: bookingId,
+            first_name: pax.firstName,
+            last_name: pax.lastName,
+            type: pax.type,
+            passport: pax.passport ?? null,
+        }));
+
+        if (passengers.length > 0) {
+            const { error: paxError } = await supabase
+                .from('passengers')
+                .insert(passengers);
+
+            if (paxError) {
+                console.error('[create-booking] Passengers insert error:', paxError);
+            }
+        }
+
+        // ── 6. Mark session as booked ──
+        await supabase
+            .from('booking_sessions')
+            .update({ status: 'booked' })
+            .eq('id', sessionId);
+
+        const durationMs = Date.now() - startMs;
+        console.log(`[create-booking] Completed: ${bookingId} / PNR ${result.pnr} in ${durationMs}ms`);
+
+        return jsonResponse({
+            success: true,
+            bookingId,
+            pnr: result.pnr,
+        });
+    } catch (err: any) {
+        const durationMs = Date.now() - startMs;
+        console.error(`[create-booking] Error (${durationMs}ms):`, err.message);
+
+        const status =
+            err instanceof MystiflyError ? Math.max(err.status, 400) :
+            err instanceof AmadeusError ? Math.max(err.status, 400) :
+            500;
+
+        return jsonResponse(
+            { success: false, error: err.message || 'Booking failed' },
+            status,
+        );
+    }
+});
+
+// ─── Mystifly Booking ───────────────────────────────────────────────
+
+async function bookWithMystifly(
+    flight: SessionFlight,
+    passengers: SessionPassenger[],
+    contact: SessionContact,
+): Promise<ProviderBookingResult> {
+    const fareSourceCode = flight.traceId;
+    if (!fareSourceCode) {
+        throw new Error('Flight traceId (fareSourceCode) is missing for Mystifly booking');
+    }
+
+    const isDemo = (Deno.env.get('MYSTIFLY_BASE_URL') ?? '').includes('demo');
+
+    // Build Mystifly-format travelers
+    const airTravelers = passengers.map((pax, idx) => {
+        const traveler: Record<string, any> = {
+            PassengerType: pax.type,
+            Gender: pax.gender === 'M' || pax.gender === 'male' ? 'M' : 'F',
+            PassengerName: {
+                PassengerTitle: GENDER_TO_TITLE[pax.gender] ?? 'Mr',
+                PassengerFirstName: pax.firstName,
+                PassengerLastName: pax.lastName,
+            },
+            DateOfBirth: pax.birthDate.includes('T') ? pax.birthDate : `${pax.birthDate}T00:00:00`,
+            Nationality: 'US',
+            ...(idx === 0 ? {
+                PhoneNumber: contact.phone,
+                Email: contact.email,
+                PostCode: '',
+            } : {}),
+        };
+
+        if (pax.passport) {
+            traveler.PassportNumber = pax.passport;
+        }
+
+        return traveler;
+    });
+
+    const mystiflyBody = {
+        FareSourceCode: fareSourceCode,
+        TravelerInfo: {
+            AirTravelers: airTravelers,
+            CountryCode: 'US',
+            AreaCode: '',
+            PhoneNumber: contact.phone,
+            Email: contact.email,
+        },
+        Target: isDemo ? 'Test' : 'Production',
+    };
+
+    const raw = await bookFlight(mystiflyBody);
+
+    if (!raw.Success) {
+        throw new Error(raw.Message ?? 'Mystifly booking failed');
+    }
+
+    const data = raw.Data ?? {};
+
+    return {
+        pnr: data.UniqueID ?? '',
+        providerStatus: String(data.Status ?? 'confirmed'),
+        rawPrice: parseFloat(String(data.TotalFare ?? data.TotalPrice ?? '0')) || undefined,
+        rawCurrency: data.Currency ? String(data.Currency) : undefined,
+    };
+}
+
+// ─── Amadeus Booking ────────────────────────────────────────────────
+
+async function bookWithAmadeus(
+    flight: SessionFlight,
+    passengers: SessionPassenger[],
+    contact: SessionContact,
+): Promise<ProviderBookingResult> {
+    // Amadeus Flight Orders API requires the full flight offer + traveler data
+    // The flight object from the session should contain the raw Amadeus offer
+    const flightOffer = (flight as any).rawOffer ?? buildAmadeusFlightOffer(flight, passengers);
+
+    const phoneNumber = contact.phone.replace(/\D/g, '');
+    const countryCallingCode = contact.countryCode || '82';
+
+    const travelers = passengers.map((pax, idx) => ({
+        id: String(idx + 1),
+        dateOfBirth: pax.birthDate,
+        name: {
+            firstName: pax.firstName.toUpperCase(),
+            lastName: pax.lastName.toUpperCase(),
+        },
+        gender: pax.gender === 'M' || pax.gender === 'male' ? 'MALE' : 'FEMALE',
+        contact: {
+            emailAddress: contact.email,
+            phones: [{
+                deviceType: 'MOBILE',
+                countryCallingCode,
+                number: phoneNumber,
+            }],
+        },
+        documents: [{
+            documentType: 'PASSPORT',
+            birthPlace: contact.city,
+            issuanceLocation: contact.city,
+            issuanceDate: '2020-01-01',
+            number: pax.passport,
+            expiryDate: pax.passportExpiry,
+            issuanceCountry: pax.nationality || 'KR',
+            validityCountry: pax.nationality || 'KR',
+            nationality: pax.nationality || 'KR',
+            holder: true,
+        }],
+    }));
+
+    const body = {
+        data: {
+            type: 'flight-order',
+            flightOffers: [flightOffer],
+            travelers,
+            contacts: [{
+                addresseeName: {
+                    firstName: passengers[0].firstName.toUpperCase(),
+                    lastName: passengers[0].lastName.toUpperCase(),
+                },
+                purpose: 'STANDARD',
+                emailAddress: contact.email,
+                phones: [{
+                    deviceType: 'MOBILE',
+                    countryCallingCode,
+                    number: phoneNumber,
+                }],
+                address: {
+                    lines: [contact.addressLine || 'N/A'],
+                    postalCode: contact.postalCode || '00000',
+                    cityName: contact.city || 'N/A',
+                    countryCode: contact.country || 'KR',
+                },
+            }],
+        },
+    };
+
+    const raw: any = await amadeusRequest('/v1/booking/flight-orders', {
+        method: 'POST',
+        body,
+    });
+
+    const order = raw.data;
+    if (!order?.id) {
+        throw new Error('Amadeus booking failed: no order ID returned');
+    }
+
+    // Extract PNR from associatedRecords
+    const pnr = order.associatedRecords?.[0]?.reference ?? order.id;
+
+    return {
+        pnr,
+        providerStatus: 'confirmed',
+        rawPrice: parseFloat(order.flightOffers?.[0]?.price?.grandTotal ?? '0') || undefined,
+        rawCurrency: order.flightOffers?.[0]?.price?.currency ?? undefined,
+    };
+}
+
+/**
+ * Build a minimal Amadeus flight-offer object from our normalized flight data.
+ * Used when rawOffer is not available in the session.
+ */
+function buildAmadeusFlightOffer(
+    flight: SessionFlight,
+    passengers: SessionPassenger[],
+): Record<string, any> {
+    const cabinMap: Record<string, string> = {
+        economy: 'ECONOMY',
+        premium_economy: 'PREMIUM_ECONOMY',
+        business: 'BUSINESS',
+        first: 'FIRST',
+    };
+
+    const TRAVELER_TYPE_MAP: Record<string, string> = {
+        ADT: 'ADULT',
+        CHD: 'HELD_INFANT',  // Amadeus: child = HELD_INFANT for under 2, or CHILD
+        INF: 'SEATED_INFANT',
+    };
+
+    const mainAirline = flight.validatingAirline ?? flight.segments?.[0]?.airline ?? '';
+
+    const fareDetailsBySegment = (flight.segments ?? []).map((seg, idx) => ({
+        segmentId: String(idx + 1),
+        cabin: cabinMap[seg.cabinClass ?? 'economy'] ?? 'ECONOMY',
+        class: 'Y',
+    }));
+
+    return {
+        type: 'flight-offer',
+        id: flight.resultIndex ?? '1',
+        source: 'GDS',
+        validatingAirlineCodes: [mainAirline],
+        itineraries: [{
+            segments: (flight.segments ?? []).map((seg, idx) => ({
+                departure: { iataCode: seg.origin, at: seg.departureTime },
+                arrival: { iataCode: seg.destination, at: seg.arrivalTime },
+                carrierCode: seg.airline,
+                number: seg.flightNumber.replace(seg.airline, ''),
+                id: String(idx + 1),
+                numberOfStops: 0,
+            })),
+        }],
+        price: {
+            currency: flight.currency ?? 'USD',
+            total: String(flight.price ?? 0),
+            grandTotal: String(flight.price ?? 0),
+        },
+        travelerPricings: passengers.map((pax, idx) => ({
+            travelerId: String(idx + 1),
+            fareOption: 'STANDARD',
+            travelerType: TRAVELER_TYPE_MAP[pax.type] ?? 'ADULT',
+            fareDetailsBySegment,
+        })),
+    };
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+    return new Response(
+        JSON.stringify(body),
+        { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+}

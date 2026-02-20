@@ -377,8 +377,8 @@ export default function FlightSearchContent() {
                                     key={offer.offerId}
                                     offer={offer}
                                     onSelect={(selected) => {
-                                        // TODO: Phase 2 — navigate to booking page
-                                        console.log('Selected:', selected.offerId);
+                                        sessionStorage.setItem('selectedFlight', JSON.stringify(selected));
+                                        router.push('/flights/book');
                                     }}
                                 />
                             ))}

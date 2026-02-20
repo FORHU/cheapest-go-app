@@ -1,25 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FlightEngine } from '@/lib/flights/core/flightEngine';
-import { providerResolver } from '@/lib/flights/core/providerResolver';
-import type { CabinClass } from '@/lib/flights/types';
-import type { SearchFlightsParams } from '@/lib/flights/providers/flightProvider.interface';
+import type { FlightOffer, FlightSegmentDetail, CabinClass } from '@/lib/flights/types';
+import { getAirlineName } from '@/lib/flights/types';
 
 export const dynamic = 'force-dynamic';
-
-// ─── Engine Singleton ────────────────────────────────────────────────
-
-let engine: FlightEngine | null = null;
-
-function getEngine(): FlightEngine {
-    if (!engine) {
-        engine = new FlightEngine({ providerTimeoutMs: 15_000, maxResults: 50 });
-        const providers = providerResolver.resolve();
-        for (const p of providers) {
-            engine.registerProvider(p);
-        }
-    }
-    return engine;
-}
 
 // ─── Validation ──────────────────────────────────────────────────────
 
@@ -38,8 +21,7 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
 
-        // Support both flat format ({ origin, destination, departureDate })
-        // and segments format ({ segments: [{ origin, destination, departureDate }] })
+        // Support both flat format and segments format
         const hasSegments = Array.isArray(body.segments) && body.segments.length > 0;
 
         const origin = hasSegments ? body.segments[0].origin : body.origin;
@@ -87,39 +69,60 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // ─── Build Segments ──────────────────────────────────────
+        // ─── Call unified-flight-search Edge Function ─────────────
 
-        const segments = [{ origin: org, destination: dst, departureDate }];
-        if (trip === 'round-trip' && returnDate) {
-            segments.push({ origin: dst, destination: org, departureDate: returnDate });
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+
+        if (!supabaseUrl || !supabaseKey) {
+            throw new Error('Supabase environment variables not set');
         }
 
-        // ─── Build Search Params ─────────────────────────────────
+        const edgeFnUrl = `${supabaseUrl}/functions/v1/unified-flight-search`;
 
-        const params: SearchFlightsParams = {
-            tripType: trip as SearchFlightsParams['tripType'],
-            segments,
-            passengers: { adults, children, infants },
-            cabinClass: cabin,
-            currency: body.currency || 'USD',
-            maxOffers: Math.min(Number(body.maxOffers) || 30, 50),
-            nonStopOnly: body.nonStopOnly === true,
-            maxPrice: body.maxPrice ? Number(body.maxPrice) : undefined,
-            preferredAirlines: Array.isArray(body.preferredAirlines) ? body.preferredAirlines : undefined,
-        };
+        const edgeRes = await fetch(edgeFnUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({
+                origin: org,
+                destination: dst,
+                departureDate,
+                returnDate: trip === 'round-trip' ? returnDate : undefined,
+                adults,
+                children: children || undefined,
+                infants: infants || undefined,
+                cabinClass: cabin,
+                maxOffers: Math.min(Number(body.maxOffers) || 30, 50),
+                nonStopOnly: body.nonStopOnly === true,
+            }),
+        });
 
-        // ─── Execute Search ──────────────────────────────────────
+        const edgeData = await edgeRes.json();
 
-        const result = await getEngine().search(params);
+        if (!edgeData.success) {
+            throw new Error(edgeData.error || 'Edge function search failed');
+        }
+
+        // ─── Transform NormalizedFlight[] → FlightOffer[] ─────────
+
+        const offers: FlightOffer[] = (edgeData.flights ?? []).map(normalizedToFlightOffer);
 
         return NextResponse.json({
             success: true,
             data: {
-                offers: result.offers,
-                providers: result.providers,
-                totalResults: result.totalResults,
-                searchTimestamp: result.searchTimestamp,
-                searchDurationMs: result.searchDurationMs,
+                offers,
+                providers: (edgeData.providers ?? []).map((p: any) => ({
+                    name: p.name,
+                    offerCount: p.count ?? 0,
+                    searchId: p.name,
+                    error: p.error,
+                })),
+                totalResults: edgeData.totalResults ?? offers.length,
+                searchTimestamp: new Date().toISOString(),
+                searchDurationMs: edgeData.searchDurationMs ?? 0,
             },
         });
     } catch (err) {
@@ -130,4 +133,63 @@ export async function POST(req: NextRequest) {
             { status: 500 },
         );
     }
+}
+
+// ─── Transform NormalizedFlight → FlightOffer ────────────────────────
+
+function normalizedToFlightOffer(nf: any): FlightOffer {
+    const segments: FlightSegmentDetail[] = (nf.segments ?? []).map((seg: any, idx: number) => ({
+        segmentIndex: idx,
+        airline: {
+            code: seg.airline ?? '',
+            name: seg.airlineName || getAirlineName(seg.airline ?? ''),
+        },
+        flightNumber: seg.flightNumber ?? '',
+        departure: {
+            airport: seg.origin ?? '',
+            terminal: seg.terminal,
+            time: seg.departureTime ?? '',
+        },
+        arrival: {
+            airport: seg.destination ?? '',
+            terminal: seg.arrivalTerminal,
+            time: seg.arrivalTime ?? '',
+        },
+        duration: seg.duration ?? 0,
+        stops: 0,
+        aircraft: seg.aircraft,
+        cabinClass: (seg.cabinClass ?? 'economy') as CabinClass,
+    }));
+
+    return {
+        offerId: nf.id ?? '',
+        provider: nf.provider ?? '',
+        price: {
+            total: nf.price ?? 0,
+            base: nf.baseFare ?? 0,
+            taxes: nf.taxes ?? 0,
+            currency: nf.currency ?? 'USD',
+            pricePerAdult: nf.pricePerAdult ?? nf.price ?? 0,
+        },
+        segments,
+        totalDuration: nf.durationMinutes ?? 0,
+        totalStops: nf.stops ?? 0,
+        refundable: nf.refundable ?? false,
+        baggage: nf.checkedBags != null ? {
+            checkedBags: nf.checkedBags,
+            weightPerBag: nf.weightPerBag,
+            cabinBag: nf.cabinBag,
+        } : undefined,
+        seatsRemaining: nf.seatsRemaining,
+        brandedFare: nf.brandName ? {
+            brandName: nf.brandName,
+            brandId: nf.brandId,
+            fareType: nf.fareType,
+        } : undefined,
+        validatingAirline: nf.validatingAirline,
+        lastTicketDate: nf.lastTicketDate,
+        // Provider-specific IDs needed for booking
+        resultIndex: nf.resultIndex,   // Original Amadeus offer ID (e.g. "1")
+        traceId: nf.traceId,           // Mystifly fareSourceCode
+    } as FlightOffer;
 }
