@@ -46,7 +46,7 @@ export const MapContainer = ({
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
             onLoad={onLoad}
-            className="rounded-none min-h-0"
+            className={`rounded-none min-h-0 w-full h-full ${children ? '' : ''}`}
             interactiveLayerIds={interactiveLayerIds}
         >
             <NavigationControl position="top-right" showCompass visualizePitch />

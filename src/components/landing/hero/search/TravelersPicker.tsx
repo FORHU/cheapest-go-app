@@ -24,7 +24,7 @@ const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onC
             <button
                 disabled={value <= min}
                 onClick={() => onChange(value - 1)}
-                className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             >
                 <Minus size={14} />
             </button>
@@ -34,7 +34,7 @@ const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onC
             <button
                 disabled={value >= max}
                 onClick={() => onChange(value + 1)}
-                className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             >
                 <Plus size={14} />
             </button>
@@ -213,7 +213,7 @@ export const TravelersPicker: React.FC = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-full right-0 mt-4 w-[340px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"
+                    className="absolute top-full right-1/2 translate-x-1/2 md:translate-x-0 md:right-0 mt-4 w-[90vw] max-w-[340px] md:w-[340px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="p-5">
@@ -239,7 +239,7 @@ export const TravelersPicker: React.FC = () => {
                                         <button
                                             disabled={children <= 0}
                                             onClick={() => setTravelers({ children: children - 1 })}
-                                            className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                            className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                                         >
                                             <Minus size={14} />
                                         </button>
@@ -249,7 +249,7 @@ export const TravelersPicker: React.FC = () => {
                                         <button
                                             disabled={children >= 6}
                                             onClick={handleAddChild}
-                                            className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                            className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                                         >
                                             <Plus size={14} />
                                         </button>

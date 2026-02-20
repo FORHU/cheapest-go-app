@@ -116,7 +116,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                     />
                     <button
                         onClick={(e) => { e.stopPropagation(); handleOpen(0); }}
-                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
+                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-4 py-2 min-h-[44px] rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
                     >
                         <ImageIcon size={14} />
                         View photo
@@ -125,7 +125,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
             ) : (
                 <div className={`grid gap-2 h-[300px] md:h-[400px] rounded-xl overflow-hidden relative group ${gallerySubImages.length === 0 ? 'grid-cols-1' :
                         gallerySubImages.length === 1 ? 'grid-cols-2' :
-                            'grid-cols-4 grid-rows-2'
+                            'grid-cols-2 sm:grid-cols-4 grid-rows-2'
                     }`}>
                     <div
                         className={`relative cursor-pointer overflow-hidden ${gallerySubImages.length >= 2 ? 'col-span-2 row-span-2' : ''}`}
@@ -157,7 +157,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                     ))}
                     <button
                         onClick={() => handleOpen(0)}
-                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
+                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-4 py-2 min-h-[44px] rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
                     >
                         <ImageIcon size={14} />
                         Show all photos
@@ -201,17 +201,19 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                         {/* Main Image Area */}
                         <div className="flex-1 flex items-center justify-center relative w-full h-full p-4 md:pb-28">
                             <button
-                                className="absolute left-4 p-3 bg-white/5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors hidden md:block backdrop-blur-sm group z-20"
+                                className="absolute left-2 sm:left-4 p-2 sm:p-3 bg-white/10 hover:bg-white/20 md:bg-white/5 md:hover:bg-white/10 rounded-full text-white/90 hover:text-white transition-colors backdrop-blur-sm group z-20"
                                 onClick={handlePrev}
                             >
-                                <ChevronLeft size={32} className="group-hover:-translate-x-0.5 transition-transform" />
+                                <ChevronLeft size={24} className="sm:hidden group-hover:-translate-x-0.5 transition-transform" />
+                                <ChevronLeft size={32} className="hidden sm:block group-hover:-translate-x-0.5 transition-transform" />
                             </button>
 
                             <button
-                                className="absolute right-4 p-3 bg-white/5 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors hidden md:block backdrop-blur-sm group z-20"
+                                className="absolute right-2 sm:right-4 p-2 sm:p-3 bg-white/10 hover:bg-white/20 md:bg-white/5 md:hover:bg-white/10 rounded-full text-white/90 hover:text-white transition-colors backdrop-blur-sm group z-20"
                                 onClick={handleNext}
                             >
-                                <ChevronRight size={32} className="group-hover:translate-x-0.5 transition-transform" />
+                                <ChevronRight size={24} className="sm:hidden group-hover:translate-x-0.5 transition-transform" />
+                                <ChevronRight size={32} className="hidden sm:block group-hover:translate-x-0.5 transition-transform" />
                             </button>
 
                             {/* Main image - instant swap, no animation */}

@@ -43,7 +43,7 @@ const MapMarker = React.memo(function MapMarker({
                 onMouseEnter={() => onHover(property.id)}
                 onMouseLeave={() => onHover(null)}
                 className={cn(
-                    'transition-transform duration-200 ease-out',
+                    'transition-transform duration-200 ease-out p-2 -m-2', // Add padding and negative margin to increase touch target to ~44px
                     isActive ? 'scale-110' : 'scale-100 hover:scale-105'
                 )}
             >

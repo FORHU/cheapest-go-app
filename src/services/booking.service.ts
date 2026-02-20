@@ -208,6 +208,48 @@ export interface AmendBookingParams {
  */
 export interface AmendBookingResponse {
   bookingId: string;
-  status: string;
 }
 
+/**
+ * Flight segment record from database
+ */
+export interface FlightSegmentRecord {
+  id: string;
+  booking_id: string;
+  airline: string;
+  flight_number: string;
+  origin: string;
+  destination: string;
+  departure: string;
+  arrival: string;
+}
+
+/**
+ * Flight passenger record from database
+ */
+export interface FlightPassengerRecord {
+  id: string;
+  booking_id: string;
+  first_name: string;
+  last_name: string;
+  type: string;
+  passport?: string | null;
+  ticket_number?: string | null;
+}
+
+/**
+ * Flight booking record from database
+ */
+export interface FlightBookingRecord {
+  id: string;
+  user_id: string;
+  pnr: string;
+  provider: 'amadeus' | 'mystifly';
+  total_price: number;
+  status: 'booked' | 'ticketed' | 'cancelled' | 'failed';
+  created_at: string;
+
+  // Joined relation fields
+  flight_segments?: FlightSegmentRecord[];
+  passengers?: FlightPassengerRecord[];
+}

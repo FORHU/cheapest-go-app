@@ -6,6 +6,7 @@ import { MapPin, X } from 'lucide-react';
 import type { Property } from '@/data/mockProperties';
 import { PropertyMapList, scrollToProperty } from './PropertyMapList';
 import { PropertyMapView } from './PropertyMapView';
+import { MapModal } from './MapModal';
 import type { MappableProperty } from './types';
 
 interface MapSearchLayoutProps {
@@ -96,37 +97,39 @@ function MapSearchLayout({ properties, title }: MapSearchLayoutProps) {
                 />
             </div>
 
-            {/* RIGHT: Map */}
-            {showMap && (
-                <div className="hidden lg:block flex-1 h-full sticky top-0">
-                    <PropertyMapView
-                        properties={mappableProperties}
-                        selectedId={selectedId}
-                        hoveredId={hoveredId}
-                        onSelect={handleSelect}
-                        onHover={handleHover}
-                        onViewDetails={handleViewDetails}
-                    />
-                </div>
-            )}
+            {/* RIGHT: Map (Tablet/Desktop) */}
+            {/* Show side-by-side on md+ */}
+            <div className="hidden md:block flex-1 h-full sticky top-0">
+                <PropertyMapView
+                    properties={mappableProperties}
+                    selectedId={selectedId}
+                    hoveredId={hoveredId}
+                    onSelect={handleSelect}
+                    onHover={handleHover}
+                    onViewDetails={handleViewDetails}
+                />
+            </div>
 
-            {/* Mobile: Map toggle FAB */}
+            {/* Mobile: Map Toggle FAB */}
             <button
-                onClick={() => setShowMap((prev) => !prev)}
-                className="lg:hidden fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-full shadow-xl shadow-blue-600/30 flex items-center gap-2 transition-colors cursor-pointer"
+                onClick={() => setShowMap(true)}
+                className="md:hidden fixed bottom-6 right-6 z-40 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
             >
-                {showMap ? (
-                    <>
-                        <X className="w-4 h-4" />
-                        <span className="text-sm font-semibold">List</span>
-                    </>
-                ) : (
-                    <>
-                        <MapPin className="w-4 h-4" />
-                        <span className="text-sm font-semibold">Map</span>
-                    </>
-                )}
+                <MapPin size={18} />
+                <span className="text-sm font-semibold">Map</span>
             </button>
+
+            {/* Mobile Map Modal */}
+            <MapModal
+                isOpen={showMap}
+                onClose={() => setShowMap(false)}
+                properties={mappableProperties}
+                selectedId={selectedId}
+                onSelectId={handleSelect}
+                hoveredId={hoveredId}
+                onHoverId={handleHover}
+                onViewDetails={handleViewDetails}
+            />
         </div>
     );
 }

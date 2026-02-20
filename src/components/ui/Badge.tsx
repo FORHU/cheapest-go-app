@@ -23,8 +23,8 @@ const variantClasses: Record<BadgeVariant, string> = {
 };
 
 const sizeClasses = {
-    sm: 'px-2 py-0.5 text-[10px]',
-    md: 'px-2.5 py-1 text-xs',
+    sm: 'px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-[clamp(0.5625rem,1.1vw,0.625rem)] font-medium',
+    md: 'px-2 py-0.5 sm:px-2.5 sm:py-1 text-[clamp(0.625rem,1.25vw,0.75rem)]',
 };
 
 export const Badge: React.FC<BadgeProps> = ({
@@ -38,7 +38,7 @@ export const Badge: React.FC<BadgeProps> = ({
 
     return (
         <Component
-            className={`inline-flex items-center gap-1 font-medium rounded-full border ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+            className={`inline-flex items-center justify-center gap-0.5 sm:gap-1 font-medium rounded-full border whitespace-nowrap ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
             {...(animated ? { initial: { scale: 0.8, opacity: 0 }, animate: { scale: 1, opacity: 1 } } : {})}
         >
             {children}

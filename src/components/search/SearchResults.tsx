@@ -86,7 +86,7 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
             {/* Header / sorting */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-2xl font-display font-bold text-slate-900 dark:text-white">
+                    <h1 className="text-xl sm:text-2xl font-display font-bold text-slate-900 dark:text-white">
                         {destination ? `Stays in ${destination}` : 'All properties'}
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -99,7 +99,7 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                     {mappableCount > 0 && (
                         <button
                             onClick={handleViewOnMap}
-                            className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-2.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
                         >
                             <MapPin size={14} />
                             Show on map
