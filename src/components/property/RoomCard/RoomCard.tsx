@@ -116,8 +116,8 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     return (
         <div className="border border-slate-200 dark:border-white/10 rounded-xl bg-white dark:bg-slate-900 overflow-hidden hover:shadow-md transition-shadow">
             {/* Header: Title */}
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5">
-                <h4 className="text-lg font-bold text-slate-900 dark:text-white line-clamp-1">
+            <div className="px-3 md:px-4 py-2.5 md:py-3 border-b border-slate-100 dark:border-white/5">
+                <h4 className="text-base md:text-lg font-bold text-slate-900 dark:text-white line-clamp-1">
                     {title}
                 </h4>
             </div>
@@ -125,7 +125,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
             <div className="flex flex-col md:flex-row">
                 {/* Left: Image */}
                 <div
-                    className="w-full md:w-1/3 md:max-w-[300px] h-48 md:h-auto relative cursor-pointer group"
+                    className="w-full md:w-1/3 md:max-w-[300px] h-40 md:h-auto relative cursor-pointer group"
                     onClick={onViewDetails}
                 >
                     {roomImage ? (
@@ -148,33 +148,33 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                 </div>
 
                 {/* Middle: Info & Rate Options */}
-                <div className="flex-1 p-4 border-r border-slate-100 dark:border-white/5 flex flex-col justify-between">
+                <div className="flex-1 p-2.5 md:p-4 md:border-r border-slate-100 dark:border-white/5 flex flex-col justify-between">
                     {/* Rate Options (if multiple) */}
                     {hasMultipleRates ? (
-                        <div className="space-y-2 mb-4">
-                            <div className="text-xs font-bold text-slate-900 dark:text-white mb-2">
-                                {rateOptions.length} rate options available
+                        <div className="space-y-1.5 mb-2 md:mb-4">
+                            <div className="text-[11px] md:text-xs font-bold text-slate-900 dark:text-white mb-1">
+                                {rateOptions.length} rate options
                             </div>
-                            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                            <div className="space-y-1 md:space-y-1.5 max-h-20 md:max-h-32 overflow-y-auto">
                                 {rateOptions.map((rate, idx) => (
                                     <label
                                         key={rate.offerId}
-                                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer border transition-all ${
+                                        className={`flex items-center justify-between p-1.5 md:p-2 rounded-lg cursor-pointer border transition-all ${
                                             selectedRateIdx === idx
                                                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                                                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
                                         }`}
                                     >
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5 md:gap-2">
                                             <input
                                                 type="radio"
                                                 name={`rate-${title}`}
                                                 checked={selectedRateIdx === idx}
                                                 onChange={() => setSelectedRateIdx(idx)}
-                                                className="w-3.5 h-3.5 text-blue-600"
+                                                className="w-3 h-3 md:w-3.5 md:h-3.5 text-blue-600"
                                             />
                                             <div>
-                                                <div className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                                                <div className="text-[11px] md:text-xs font-medium text-slate-700 dark:text-slate-200">
                                                     {rate.boardName || 'Room only'}
                                                 </div>
                                                 <div className={`text-[10px] font-medium ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
@@ -184,7 +184,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-sm font-bold text-slate-900 dark:text-white">
+                                        <div className="text-xs md:text-sm font-bold text-slate-900 dark:text-white ml-2">
                                             {currencySymbol}{rate.price.toLocaleString()}
                                         </div>
                                     </label>
@@ -193,19 +193,19 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         </div>
                     ) : (
                         <div>
-                            <div className="font-bold text-sm text-slate-900 dark:text-white mb-2">
+                            <div className="font-bold text-xs md:text-sm text-slate-900 dark:text-white mb-1 md:mb-2">
                                 Room only
                             </div>
-                            <div className="space-y-1">
-                                <div className="text-xs text-slate-500 flex items-center gap-1.5">
-                                    <X size={12} className="text-slate-400" /> No meals included
+                            <div className="space-y-0.5">
+                                <div className="text-[11px] md:text-xs text-slate-500 flex items-center gap-1">
+                                    <X size={10} className="text-slate-400" /> No meals included
                                 </div>
                                 {displayRefundable ? (
-                                    <div className="text-xs text-emerald-600 font-medium flex items-center gap-1.5">
-                                        <Check size={12} /> Free cancellation{selectedRate?.cancellationDeadline ? ` before ${formatCancellationDeadline(selectedRate.cancellationDeadline)}` : ''}
+                                    <div className="text-[11px] md:text-xs text-emerald-600 font-medium flex items-center gap-1">
+                                        <Check size={10} /> Free cancellation{selectedRate?.cancellationDeadline ? ` before ${formatCancellationDeadline(selectedRate.cancellationDeadline)}` : ''}
                                     </div>
                                 ) : (
-                                    <div className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
+                                    <div className="text-[11px] md:text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
                                         <div className="w-3 h-3 rounded-full border border-amber-400 dark:border-amber-500 flex items-center justify-center text-[8px] text-amber-500">
                                             i
                                         </div>
@@ -216,8 +216,8 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         </div>
                     )}
 
-                    {/* Room Details */}
-                    <div className="mt-4 pt-4 border-t border-slate-50 dark:border-white/5">
+                    {/* Room Details — full on desktop, compact on mobile */}
+                    <div className="hidden md:block mt-4 pt-4 border-t border-slate-50 dark:border-white/5">
                         <div className="text-xs font-bold text-slate-900 dark:text-white mb-2">
                             Room details
                         </div>
@@ -255,40 +255,47 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         </div>
                     </div>
 
+                    {/* Mobile: compact room specs inline */}
+                    <div className="md:hidden flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-400 dark:text-slate-500 mt-1.5 pt-1.5 border-t border-slate-50 dark:border-white/5">
+                        {roomSize && <span className="flex items-center gap-1"><Square size={10} /> {roomSize}</span>}
+                        <span className="flex items-center gap-1"><User size={10} /> {maxOccupancy || 2}</span>
+                        {bedType && <span className="flex items-center gap-1"><Bed size={10} /> {bedType}</span>}
+                    </div>
+
                     <button
                         onClick={onViewDetails}
-                        className="text-xs text-blue-600 font-bold mt-3 hover:underline"
+                        className="text-[11px] md:text-xs text-blue-600 font-bold mt-1.5 md:mt-3 hover:underline"
                     >
                         Room details
                     </button>
                 </div>
 
                 {/* Right: Pricing & Action */}
-                <div className="w-full md:w-1/4 p-4 flex flex-col justify-between items-end bg-slate-50/50 dark:bg-white/5 min-w-[200px]">
-                    <div className="text-right w-full">
-                        <div className="inline-block bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mb-1">
+                <div className="w-full md:w-1/4 p-3 md:p-4 flex flex-row md:flex-col justify-between items-center md:items-end bg-slate-50/50 dark:bg-white/5 md:min-w-[200px] border-t md:border-t-0 border-slate-100 dark:border-white/5">
+                    <div className="text-left md:text-right md:w-full">
+                        <div className="inline-block bg-emerald-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded mb-0.5 md:mb-1">
                             8% OFF
                         </div>
-                        <div className="flex items-baseline justify-end gap-1">
-                            <span className="text-lg font-bold text-slate-900 dark:text-white">
+                        <div className="flex items-baseline md:justify-end gap-0.5 md:gap-1">
+                            <span className="text-base md:text-lg font-bold text-slate-900 dark:text-white">
                                 {currencySymbol}{displayPrice.toLocaleString()}
                             </span>
-                            <span className="text-xs text-slate-500">/night</span>
+                            <span className="text-[10px] md:text-xs text-slate-500">/night</span>
                         </div>
-                        <div className="text-xs text-slate-400 line-through">
+                        <div className="text-[10px] md:text-xs text-slate-400 line-through">
                             {currencySymbol}
                             {(displayPrice * 1.08).toLocaleString(undefined, {
                                 maximumFractionDigits: 0,
                             })}
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-1">
+                        <div className="text-[10px] text-slate-400 mt-0.5 md:mt-1 hidden md:block">
                             (1 night, 1 Room incl. taxes)
                         </div>
                     </div>
 
                     <button
                         onClick={() => onReserve(displayOfferId)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg text-sm transition-colors mt-4"
+                        className="w-auto md:w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 md:py-2.5 px-5 md:px-0 rounded-full md:rounded-lg text-xs md:text-sm transition-colors md:mt-4 shrink-0"
                     >
                         Choose room
                     </button>

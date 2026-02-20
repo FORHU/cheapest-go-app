@@ -81,13 +81,13 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
         <div className="min-h-screen bg-transparent pb-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
             {/* Sticky Header */}
             <div className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-white/10">
-                <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div className="max-w-5xl mx-auto px-3 md:px-4 h-14 md:h-16 flex items-center justify-between">
                     <button
                         onClick={onBack}
                         className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors"
                     >
                         <ArrowLeft size={20} />
-                        <span>Back to Property</span>
+                        <span className="hidden sm:inline">Back to Property</span>
                     </button>
                     <div className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[200px] md:max-w-md hidden sm:block">
                         {room.name || "Room Details"}
@@ -100,13 +100,13 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 py-8">
+            <div className="max-w-5xl mx-auto px-3 md:px-4 py-4 md:py-8">
                 {/* Header Section */}
-                <div className="mb-8">
-                    <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+                <div className="mb-4 md:mb-8">
+                    <h1 className="text-xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-3 md:mb-4">
                         {room.name || "Room Details"}
                     </h1>
-                    <div className="flex flex-wrap gap-4 text-sm text-slate-500 dark:text-slate-400">
+                    <div className="flex flex-wrap gap-2 md:gap-4 text-sm text-slate-500 dark:text-slate-400">
                         {room.roomSize && (
                             <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
                                 <MapPin size={16} />
@@ -128,7 +128,7 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
 
                 {/* Hero Image — clickable to open lightbox */}
                 <div
-                    className="mb-8 rounded-2xl overflow-hidden shadow-lg h-[300px] md:h-[500px] relative bg-slate-200 dark:bg-slate-800 group cursor-pointer"
+                    className="mb-4 md:mb-8 rounded-2xl overflow-hidden shadow-lg h-[220px] sm:h-[300px] md:h-[500px] relative bg-slate-200 dark:bg-slate-800 group cursor-pointer"
                     onClick={() => photos.length > 0 && setLightboxOpen(true)}
                 >
                     {photos.length > 0 ? (
@@ -169,7 +169,7 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-12">
                     {/* Left Column: Description & Amenities */}
                     <div className="lg:col-span-2 space-y-10">
 
@@ -215,7 +215,7 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
 
                     {/* Right Column: Booking Card (Sticky) */}
                     <div className="lg:col-span-1">
-                        <div className="sticky top-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg p-6">
+                        <div className="lg:sticky lg:top-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg p-4 md:p-6">
                             <div className="mb-6">
                                 <span className="text-3xl font-bold text-slate-900 dark:text-white">Price Varies</span>
                                 <span className="text-sm text-slate-500 block">Check dates for specific rates</span>
