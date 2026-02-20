@@ -16,7 +16,7 @@ export const AccountSectionHeader: React.FC<SectionHeaderProps> = ({
 }) => (
     <>
         <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h3>
+            <h3 className="text-[clamp(0.9375rem,2vw,1.125rem)] font-semibold text-slate-900 dark:text-white">{title}</h3>
             {onEdit && (
                 <button
                     onClick={onEdit}

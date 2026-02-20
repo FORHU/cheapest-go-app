@@ -32,6 +32,12 @@
 /* Enable class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Prevent horizontal scrolling on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 /* Smooth Theme Transition */
 body {
   transition-property: background-color, color, border-color;

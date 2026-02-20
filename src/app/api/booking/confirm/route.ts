@@ -2,6 +2,9 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { confirmAndSaveBooking } from '@/lib/server/bookings';
 import { revalidatePath } from 'next/cache';
 
+export const dynamic = 'force-dynamic';
+
+
 export async function POST(req: Request) {
     try {
         const { user, error: authError } = await getAuthenticatedUser();

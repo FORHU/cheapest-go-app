@@ -125,7 +125,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
             <div className="flex flex-col md:flex-row">
                 {/* Left: Image */}
                 <div
-                    className="w-full md:w-1/3 md:max-w-[300px] h-48 md:h-auto relative cursor-pointer group"
+                    className="w-full md:w-1/3 md:max-w-[300px] h-40 sm:h-48 md:h-auto relative cursor-pointer group"
                     onClick={onViewDetails}
                 >
                     {roomImage ? (
@@ -159,7 +159,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                 {rateOptions.map((rate, idx) => (
                                     <label
                                         key={rate.offerId}
-                                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer border transition-all ${
+                                        className={`flex items-center justify-between p-3 sm:p-2 rounded-lg cursor-pointer border transition-all ${
                                             selectedRateIdx === idx
                                                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                                                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
@@ -171,7 +171,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                                 name={`rate-${title}`}
                                                 checked={selectedRateIdx === idx}
                                                 onChange={() => setSelectedRateIdx(idx)}
-                                                className="w-3.5 h-3.5 text-blue-600"
+                                                className="w-4 h-4 text-blue-600"
                                             />
                                             <div>
                                                 <div className="text-xs font-medium text-slate-700 dark:text-slate-200">
@@ -264,7 +264,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                 </div>
 
                 {/* Right: Pricing & Action */}
-                <div className="w-full md:w-1/4 p-4 flex flex-col justify-between items-end bg-slate-50/50 dark:bg-white/5 min-w-[200px]">
+                <div className="w-full md:w-1/4 p-4 flex flex-col justify-between items-end bg-slate-50/50 dark:bg-white/5 min-w-0 sm:min-w-[200px]">
                     <div className="text-right w-full">
                         <div className="inline-block bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mb-1">
                             8% OFF

@@ -190,7 +190,7 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
 
     return (
         <section id="reviews-section" className="py-8">
-            <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
                 {/* Left Column - Summary */}
                 <div className="lg:w-64 flex-shrink-0">
                     <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Guest reviews</h2>

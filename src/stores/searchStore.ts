@@ -47,6 +47,24 @@ export interface SuggestionsState {
     loading: boolean;
 }
 
+export interface FlightSegment {
+    id: string;
+    origin: Destination | null;
+    destination: Destination | null;
+    date: Date | null;
+}
+
+export interface FlightState {
+    tripType: 'one-way' | 'round-trip' | 'multi-city';
+    cabinClass: 'economy' | 'premium_economy' | 'business' | 'first';
+    flights: FlightSegment[];
+    passengers: {
+        adults: number;
+        children: number;
+        infants: number;
+    };
+}
+
 interface SearchState {
     // Destination
     destination: Destination | null;
@@ -68,8 +86,8 @@ interface SearchState {
     recentSearches: Destination[];
 
     // UI Actions
-    activeDropdown: 'destination' | 'dates' | 'travelers' | null;
-    setActiveDropdown: (dropdown: 'destination' | 'dates' | 'travelers' | null) => void;
+    activeDropdown: 'destination' | 'dates' | 'travelers' | 'flight-origin' | 'flight-destination' | 'flight-dates' | 'flight-dates-depart' | 'flight-dates-return' | 'flight-passengers' | null;
+    setActiveDropdown: (dropdown: SearchState['activeDropdown']) => void;
 
     // Loading state (reusable across components)
     isSearching: boolean;
@@ -87,6 +105,10 @@ interface SearchState {
     setSuggestions: (items: Destination[]) => void;
     setSuggestionsLoading: (loading: boolean) => void;
 
+    // Search Mode
+    searchMode: 'hotels' | 'flights' | 'ai';
+    flightState: FlightState;
+
     // Actions
     setDestination: (destination: Destination | null) => void;
     setDestinationQuery: (query: string) => void;
@@ -96,6 +118,15 @@ interface SearchState {
     removeRecentSearch: (title: string) => void;
     clearRecentSearches: () => void;
     reset: () => void;
+
+    // Flight Actions
+    setSearchMode: (mode: 'hotels' | 'flights' | 'ai') => void;
+    setFlightType: (type: FlightState['tripType']) => void;
+    setFlightCabin: (cabin: FlightState['cabinClass']) => void;
+    setFlightSegment: (index: number, segment: Partial<FlightSegment>) => void;
+    addFlightSegment: () => void;
+    removeFlightSegment: (index: number) => void;
+    setFlightPassengers: (passengers: Partial<FlightState['passengers']>) => void;
 }
 
 const initialDates: DateRange = {
@@ -124,6 +155,20 @@ const initialSuggestions: SuggestionsState = {
     loading: false,
 };
 
+const initialFlightState: FlightState = {
+    tripType: 'round-trip',
+    cabinClass: 'economy',
+    flights: [
+        { id: '1', origin: null, destination: null, date: null },
+        { id: '2', origin: null, destination: null, date: null }
+    ],
+    passengers: {
+        adults: 1,
+        children: 0,
+        infants: 0
+    }
+};
+
 export const useSearchStore = create<SearchState>()(
     persist(
         (set) => ({
@@ -138,6 +183,10 @@ export const useSearchStore = create<SearchState>()(
             isSearching: false,
             filters: initialFilters,
             suggestions: initialSuggestions,
+
+            // Flight Initial State
+            searchMode: 'hotels',
+            flightState: initialFlightState,
 
             setDestination: (destination) => set({ destination }),
             setUserCurrency: (userCurrency) => set({ userCurrency }),
@@ -211,6 +260,43 @@ export const useSearchStore = create<SearchState>()(
                 filters: initialFilters,
                 suggestions: initialSuggestions,
             }),
+
+            // Flight Actions Implementation
+            setSearchMode: (mode) => set({ searchMode: mode }),
+            setFlightType: (type) => set((state) => ({
+                flightState: { ...state.flightState, tripType: type }
+            })),
+            setFlightCabin: (cabin) => set((state) => ({
+                flightState: { ...state.flightState, cabinClass: cabin }
+            })),
+            setFlightSegment: (index, segment) => set((state) => {
+                const newFlights = [...state.flightState.flights];
+                if (newFlights[index]) {
+                    newFlights[index] = { ...newFlights[index], ...segment };
+                }
+                return { flightState: { ...state.flightState, flights: newFlights } };
+            }),
+            addFlightSegment: () => set((state) => ({
+                flightState: {
+                    ...state.flightState,
+                    flights: [
+                        ...state.flightState.flights,
+                        { id: Math.random().toString(), origin: null, destination: null, date: null }
+                    ]
+                }
+            })),
+            removeFlightSegment: (index) => set((state) => ({
+                flightState: {
+                    ...state.flightState,
+                    flights: state.flightState.flights.filter((_, i) => i !== index)
+                }
+            })),
+            setFlightPassengers: (passengers) => set((state) => ({
+                flightState: {
+                    ...state.flightState,
+                    passengers: { ...state.flightState.passengers, ...passengers }
+                }
+            })),
         }),
         {
             name: 'cheapestgo-search',
@@ -238,6 +324,7 @@ export const useSearchStore = create<SearchState>()(
                 destinationQuery: state.destinationQuery,
                 userCurrency: state.userCurrency,
                 userCountry: state.userCountry,
+                searchMode: state.searchMode,
             }) as SearchState,
         }
     )
@@ -267,6 +354,10 @@ export const useStrictFacilityFilter = () => useSearchStore((state) => state.fil
 export const useSuggestions = () => useSearchStore((state) => state.suggestions.items);
 export const useSuggestionsLoading = () => useSearchStore((state) => state.suggestions.loading);
 
+// Flight Selectors
+export const useSearchMode = () => useSearchStore((state) => state.searchMode);
+export const useFlightState = () => useSearchStore((state) => state.flightState);
+
 // Actions selector (for components that only need to update state)
 export const useSearchActions = () =>
     useSearchStore(
@@ -287,5 +378,13 @@ export const useSearchActions = () =>
             addRecentSearch: state.addRecentSearch,
             removeRecentSearch: state.removeRecentSearch,
             reset: state.reset,
+            // Flight Actions
+            setSearchMode: state.setSearchMode,
+            setFlightType: state.setFlightType,
+            setFlightCabin: state.setFlightCabin,
+            setFlightSegment: state.setFlightSegment,
+            addFlightSegment: state.addFlightSegment,
+            removeFlightSegment: state.removeFlightSegment,
+            setFlightPassengers: state.setFlightPassengers,
         }))
     );

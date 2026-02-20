@@ -74,7 +74,7 @@ export function AccountContent({ initialUser }: AccountContentProps) {
                 Back to home
             </Link>
 
-            <div className="flex flex-col lg:flex-row gap-8">
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
                 {/* Left Sidebar */}
                 <AccountSidebar
                     user={user}

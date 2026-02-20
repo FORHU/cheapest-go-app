@@ -13,8 +13,31 @@ const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' 
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'CheapestGo',
-  description: 'CheapestGo is a travel booking platform that helps you find the best deals on flights and hotels',
+  metadataBase: new URL('https://cheapestgo.com'),
+  title: 'CheapestGo | Book Flights & Hotels',
+  description: 'CheapestGo is your ultimate travel booking platform. Find the best deals on flights and hotels instantly and start exploring the world.',
+  openGraph: {
+    title: 'CheapestGo | Discover & Book Your Next Journey',
+    description: 'Get the best travel deals globally. Plan your flights and hotels easily and save money with CheapestGo.',
+    url: 'https://cheapestgo.com',
+    siteName: 'CheapestGo',
+    images: [
+      {
+        url: '/og-image.png', // Recommended: Place a 1200x630 image at public/og-image.jpg
+        width: 1200,
+        height: 630,
+        alt: 'CheapestGo - Ultimate Travel Booking Platform',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'CheapestGo | Discover & Book Your Next Journey',
+    description: 'Get the best travel deals globally. Plan your flights and hotels easily and save money with CheapestGo.',
+    images: ['/og-image.png'],
+  },
 };
 
 export default function RootLayout({

@@ -1,6 +1,8 @@
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { recordVoucherUsage } from '@/lib/server/vouchers';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
     try {
         const { user, supabase, error: authError } = await getAuthenticatedUser();

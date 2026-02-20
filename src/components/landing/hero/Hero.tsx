@@ -19,9 +19,9 @@ const Hero = () => {
     }, []);
 
     return (
-        <section className="w-full flex flex-col items-center text-center max-w-4xl mx-auto mt-20 mb-20 relative px-4">
+        <section className="w-full flex flex-col items-center text-center max-w-4xl mx-auto mt-10 sm:mt-16 md:mt-20 mb-10 sm:mb-16 md:mb-20 relative px-4">
             {/* Background Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-alabaster-accent/5 dark:bg-obsidian-accent/10 blur-[100px] rounded-full pointer-events-none z-[-1]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[600px] h-[200px] sm:h-[300px] bg-alabaster-accent/5 dark:bg-obsidian-accent/10 blur-[100px] rounded-full pointer-events-none z-[-1]" />
 
             {/* Headline */}
             <HeroHeadline />

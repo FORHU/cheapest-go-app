@@ -1,6 +1,8 @@
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { getBookingDetailsLiteApi } from '@/lib/server/liteapi';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/booking/backfill-policies
  *
