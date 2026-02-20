@@ -6,7 +6,7 @@ import { PlaneTakeoff } from 'lucide-react';
 
 const StandardFooter = () => (
   <footer className="w-full border-t border-slate-200 dark:border-white/5 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
-    <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col md:flex-row justify-between items-start gap-8">
+    <div className="max-w-[1400px] mx-auto px-6 py-6 md:py-12 flex flex-col md:flex-row justify-between items-start gap-8">
       <div>
         <div className="flex items-center gap-2 mb-4">
           <PlaneTakeoff className="text-slate-400 dark:text-slate-500" />
@@ -17,24 +17,24 @@ const StandardFooter = () => (
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-12 text-sm">
-        <div className="flex flex-col gap-3">
-          <span className="text-slate-900 dark:text-white font-semibold font-display text-[clamp(0.8125rem,1.5vw,0.9375rem)]">Module</span>
+      <div className="grid grid-cols-3 gap-4 sm:gap-12 text-xs sm:text-sm w-full md:w-auto">
+        <div className="flex flex-col gap-2 sm:gap-3">
+          <span className="text-slate-900 dark:text-white font-semibold font-display">Module</span>
           <a href="#" className="text-slate-500 hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors">Flights</a>
           <a href="#" className="text-slate-500 hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors">Hotels</a>
         </div>
-        <div className="flex flex-col gap-3">
-          <span className="text-slate-900 dark:text-white font-semibold font-display text-[clamp(0.8125rem,1.5vw,0.9375rem)]">Company</span>
+        <div className="flex flex-col gap-2 sm:gap-3">
+          <span className="text-slate-900 dark:text-white font-semibold font-display">Company</span>
           <a href="#" className="text-slate-500 hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors">About</a>
           <a href="#" className="text-slate-500 hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors">Enterprise</a>
         </div>
-        <div className="flex flex-col gap-3">
-          <span className="text-slate-900 dark:text-white font-semibold font-display text-[clamp(0.8125rem,1.5vw,0.9375rem)]">Status</span>
-          <div className="flex items-center gap-2 text-slate-500 font-mono text-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span> API: Online
+        <div className="flex flex-col gap-2 sm:gap-3">
+          <span className="text-slate-900 dark:text-white font-semibold font-display">Status</span>
+          <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[10px] sm:text-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span> API: Online
           </div>
-          <div className="flex items-center gap-2 text-slate-500 font-mono text-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Payments: Online
+          <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[10px] sm:text-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span> Payments: Online
           </div>
         </div>
       </div>
@@ -68,7 +68,7 @@ const FooterContent = () => {
   const searchParams = useSearchParams();
   const isMapView = pathname === '/search' && searchParams.get('view') === 'map';
 
-  if (isMapView) return <MinimalFooter />;
+  if (isMapView) return null; // Hide completely in map view to maximize screen space
   return <StandardFooter />;
 };
 

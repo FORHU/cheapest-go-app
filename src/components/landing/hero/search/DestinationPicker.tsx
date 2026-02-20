@@ -15,7 +15,12 @@ import {
 
 
 
-export const DestinationPicker: React.FC = () => {
+interface DestinationPickerProps {
+    hideIcon?: boolean;
+    forceOpen?: boolean;
+}
+
+export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, forceOpen }) => {
     const ref = useRef<HTMLDivElement>(null);
 
     // Store
@@ -36,8 +41,10 @@ export const DestinationPicker: React.FC = () => {
         setSuggestionsLoading
     } = useSearchStore();
 
-    const isOpen = activeDropdown === 'destination';
-    const onClose = () => setActiveDropdown(null);
+    const isOpen = forceOpen || activeDropdown === 'destination';
+    const onClose = () => {
+        if (!forceOpen) setActiveDropdown(null);
+    };
 
     // Close logic
     useEffect(() => {
@@ -103,27 +110,32 @@ export const DestinationPicker: React.FC = () => {
             {isOpen && (
                 <motion.div
                     ref={ref}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    initial={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    exit={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-full left-1/2 -translate-x-1/2 md:translate-x-0 md:left-0 mt-4 w-[90vw] max-w-[500px] md:w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                    className={forceOpen
+                        ? "w-full z-10"
+                        : "absolute top-full left-0 mt-4 w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                    }
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Search Header */}
-                    <div className="p-4 border-b border-slate-100 dark:border-white/5">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-1">
-                            Where to?
-                        </span>
+                    <div className={`${forceOpen ? 'pb-2' : 'p-4'} border-b border-slate-100 dark:border-white/5`}>
+                        {!forceOpen && (
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-1">
+                                Where to?
+                            </span>
+                        )}
                         <div className="flex items-center gap-2">
-                            <MapPin className="text-slate-400 shrink-0" size={20} />
+                            {!hideIcon && <MapPin className="text-slate-400 shrink-0" size={20} />}
                             <input
                                 autoFocus
                                 type="text"
                                 value={query}
                                 onChange={(e) => setDestinationQuery(e.target.value)}
                                 placeholder="Search destinations..."
-                                className="bg-transparent border-none p-0 text-xl font-bold focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400"
+                                className={`bg-transparent border-none p-0 font-bold focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400 ${forceOpen ? 'text-base' : 'text-xl'}`}
                             />
                             {loading && <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />}
                             {query && (
@@ -142,14 +154,14 @@ export const DestinationPicker: React.FC = () => {
                         {/* 1. Recent Searches (only if no query) */}
                         {!query && recentSearches.length > 0 && (
                             <>
-                                <div className="px-6 py-2 text-[10px] font-mono uppercase text-slate-400 tracking-widest">
+                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-2 text-[10px] font-mono uppercase text-slate-400 tracking-widest`}>
                                     Recent Searches
                                 </div>
                                 {recentSearches.map((item, i) => (
                                     <div
                                         key={i}
                                         onClick={() => handleSelect(item)}
-                                        className="px-6 py-3 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center justify-between cursor-pointer group transition-colors"
+                                        className={`${forceOpen ? 'px-2' : 'px-6'} py-3 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center justify-between cursor-pointer group transition-colors`}
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className="mt-0.5 text-slate-400 group-hover:text-amber-500 transition-colors">
@@ -179,7 +191,7 @@ export const DestinationPicker: React.FC = () => {
                         {/* 2. Autocomplete Suggestions */}
                         {query && (
                             <>
-                                <div className="px-6 py-2 text-[10px] font-mono uppercase text-slate-400 tracking-widest">
+                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-2 text-[10px] font-mono uppercase text-slate-400 tracking-widest`}>
                                     LiteAPI Results
                                 </div>
                                 {suggestions.length > 0 ? (
@@ -187,7 +199,7 @@ export const DestinationPicker: React.FC = () => {
                                         <div
                                             key={i}
                                             onClick={() => handleSelect(item)}
-                                            className="px-6 py-3 hover:bg-slate-50 dark:hover:bg-white/5 flex items-start gap-4 cursor-pointer group transition-colors"
+                                            className={`${forceOpen ? 'px-2' : 'px-6'} py-3 hover:bg-slate-50 dark:hover:bg-white/5 flex items-start gap-4 cursor-pointer group transition-colors`}
                                         >
                                             <div className="mt-0.5 text-slate-400 group-hover:text-blue-500 transition-colors">
                                                 {getIcon(item.type)}

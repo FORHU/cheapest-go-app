@@ -38,23 +38,23 @@ export function SubmitBookingButton({
                 type="button"
                 onClick={onSubmit}
                 disabled={isDisabled}
-                className={`w-full py-4 font-bold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 ${getButtonClasses()}`}
+                className={`w-full py-2.5 sm:py-4 font-bold text-[13px] sm:text-lg rounded-lg sm:rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 sm:gap-3 ${getButtonClasses()}`}
             >
                 {loading ? (
                     <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                         <span>Processing Your Booking...</span>
                     </>
                 ) : (prebooking && !prebookId) ? (
                     <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Verifying Room Availability...</span>
+                        <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                        <span>Verifying Room...</span>
                     </>
                 ) : prebookError ? (
-                    <span>Room verification failed — please retry above</span>
+                    <span className="text-[13px] sm:text-base">Room verification failed — please retry above</span>
                 ) : !isAuthenticated ? (
                     <>
-                        <LogIn className="w-5 h-5" />
+                        <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
                         <span>Sign In to Complete Booking</span>
                     </>
                 ) : (

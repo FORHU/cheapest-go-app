@@ -124,28 +124,28 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
     const feeCurrency = cancellationPolicies?.cancelPolicyInfos?.[0]?.currency;
 
     return (
-        <div className="py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-36" id="policies">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Policies</h2>
+        <div className="py-4 md:py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-24 md:scroll-mt-36" id="policies">
+            <h2 className="text-sm md:text-xl font-bold text-slate-900 dark:text-white mb-3 md:mb-6">Policies</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-8">
                 {/* Check-in / Check-out */}
                 {(checkInTime || checkOutTime) && (
-                    <div className="space-y-4">
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <Clock size={18} />
+                    <div className="space-y-2 md:space-y-4">
+                        <h3 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 md:gap-2">
+                            <Clock size={14} className="md:hidden" /><Clock size={18} className="hidden md:block" />
                             Check-in & Check-out
                         </h3>
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 space-y-3">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 md:p-4 space-y-2 md:space-y-3">
                             {checkInTime && (
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">Check-in</span>
-                                    <span className="text-sm font-medium text-slate-900 dark:text-white">{checkInTime}</span>
+                                    <span className="text-xs md:text-sm text-slate-600 dark:text-slate-400">Check-in</span>
+                                    <span className="text-xs md:text-sm font-medium text-slate-900 dark:text-white">{checkInTime}</span>
                                 </div>
                             )}
                             {checkOutTime && (
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm text-slate-600 dark:text-slate-400">Check-out</span>
-                                    <span className="text-sm font-medium text-slate-900 dark:text-white">{checkOutTime}</span>
+                                    <span className="text-xs md:text-sm text-slate-600 dark:text-slate-400">Check-out</span>
+                                    <span className="text-xs md:text-sm font-medium text-slate-900 dark:text-white">{checkOutTime}</span>
                                 </div>
                             )}
                         </div>
@@ -154,17 +154,23 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
 
                 {/* Cancellation Policy */}
                 {cancellationPolicies && (
-                    <div className="space-y-4">
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <div className="space-y-2 md:space-y-4">
+                        <h3 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 md:gap-2">
                             {isRefundable ? (
-                                <CheckCircle size={18} className="text-emerald-500" />
+                                <>
+                                    <CheckCircle size={14} className="text-emerald-500 md:hidden" />
+                                    <CheckCircle size={18} className="text-emerald-500 hidden md:block" />
+                                </>
                             ) : (
-                                <XCircle size={18} className="text-amber-500" />
+                                <>
+                                    <XCircle size={14} className="text-amber-500 md:hidden" />
+                                    <XCircle size={18} className="text-amber-500 hidden md:block" />
+                                </>
                             )}
                             Cancellation Policy
                         </h3>
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 space-y-3">
-                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 md:p-4 space-y-2 md:space-y-3">
+                            <div className={`inline-flex items-center gap-1 md:gap-1.5 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium ${
                                 isRefundable
                                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                                     : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
@@ -178,7 +184,7 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                                     return !t.includes('NO_SHOW') && !t.includes('NOSHOW') && !t.includes('EARLY_DEPARTURE') && !t.includes('EARLY_CHECKOUT');
                                 })
                                 .map((policy, index) => (
-                                <div key={index} className="text-sm text-slate-600 dark:text-slate-300">
+                                <div key={index} className="text-[11px] md:text-sm text-slate-600 dark:text-slate-300">
                                     {policy.cancelTime && (
                                         <p>
                                             Cancel before <span className="font-medium">{formatCancellationTime(policy.cancelTime)}</span>
@@ -225,13 +231,13 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
 
             {/* Important Information */}
             {hotelImportantInformation && (
-                <div className="mt-8 space-y-4">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <Info size={18} />
+                <div className="mt-3 md:mt-8 space-y-2 md:space-y-4">
+                    <h3 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 md:gap-2">
+                        <Info size={14} className="md:hidden" /><Info size={18} className="hidden md:block" />
                         Important Information
                     </h3>
                     <div
-                        className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1"
+                        className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5 md:p-4 text-[11px] md:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1"
                         dangerouslySetInnerHTML={{ __html: hotelImportantInformation }}
                     />
                 </div>

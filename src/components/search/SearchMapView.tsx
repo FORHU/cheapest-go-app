@@ -179,21 +179,23 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                 </div>
             </div>
 
-            {/* ── Split layout ── */}
-            <div className="flex flex-1 min-h-0">
+            {/* ── Desktop Split layout ── */}
+            <div className="hidden lg:flex flex-1 min-h-0 relative">
                 {/* LEFT: Property list */}
-                <div className="w-full lg:w-[calc(420px+max(0px,50vw-700px))] lg:pl-[max(0px,50vw-700px)] flex-shrink-0 h-full overflow-y-auto overscroll-contain bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
+                <div className="w-[420px] xl:w-[calc(420px+max(0px,50vw-700px))] xl:pl-[max(0px,50vw-700px)] flex-shrink-0 h-full overflow-y-auto overscroll-contain bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
                     {sortedProperties.length > 0 ? (
-                        sortedProperties.map((property) => (
-                            <MapPropertyCard
-                                key={property.id}
-                                property={property}
-                                isSelected={selectedId === property.id}
-                                isHovered={hoveredId === property.id}
-                                onSelect={handleCardSelect}
-                                onHover={handleHover}
-                            />
-                        ))
+                        <div className="flex flex-col">
+                            {sortedProperties.map((property) => (
+                                <MapPropertyCard
+                                    key={property.id}
+                                    property={property}
+                                    isSelected={selectedId === property.id}
+                                    isHovered={hoveredId === property.id}
+                                    onSelect={handleCardSelect}
+                                    onHover={handleHover}
+                                />
+                            ))}
+                        </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
                             <MapPin className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
@@ -209,7 +211,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
 
                 {/* RIGHT: Map */}
                 <div
-                    className="hidden lg:block flex-1 h-full relative"
+                    className="flex-1 h-full relative"
                     style={{ paddingRight: 'max(0px, calc((100vw - 1400px) / 2))' }}
                 >
                     <SearchMapContainer
@@ -229,7 +231,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                     {/* Floating List View Toggle */}
                     <button
                         onClick={handleBackToList}
-                        className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 hover:bg-slate-900 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm font-semibold backdrop-blur-sm"
+                        className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/95 hover:bg-slate-900 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm font-semibold backdrop-blur-sm z-50 pointer-events-auto"
                     >
                         <List size={18} />
                         Show List
@@ -237,38 +239,47 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                 </div>
             </div>
 
-            {/* Mobile: Map Toggle & Modal */}
-            <MobileMapTrigger
-                isOpen={showMobileMap}
-                onOpen={() => setShowMobileMap(true)}
-            />
+            {/* ── Mobile Map layout ── */}
+            <div className="flex lg:hidden flex-1 relative min-h-0 w-full">
+                <SearchMapContainer
+                    properties={mappableProperties}
+                    selectedId={selectedId}
+                    onSelectId={setSelectedId}
+                    hoveredId={hoveredId}
+                    onHoverId={setHoveredId}
+                    onViewDetails={handleViewDetails}
+                />
 
-            <MapModal
-                isOpen={showMobileMap}
-                onClose={() => setShowMobileMap(false)}
-                properties={mappableProperties}
-                selectedId={selectedId}
-                onSelectId={setSelectedId}
-                hoveredId={hoveredId}
-                onHoverId={setHoveredId}
-                onViewDetails={handleViewDetails}
-            />
+                {/* Horizontal Swiper */}
+                {sortedProperties.length > 0 && (
+                    <div className="absolute bottom-24 left-0 right-0 w-full overflow-x-auto pb-4 pt-4 px-4 snap-x snap-mandatory flex gap-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] z-10">
+                        {sortedProperties.map((property) => (
+                            <div key={property.id} className="snap-center shrink-0 w-[85vw] sm:w-[320px] shadow-xl rounded-2xl bg-white dark:bg-slate-900">
+                                <MapPropertyCard
+                                    property={property}
+                                    isSelected={selectedId === property.id}
+                                    isHovered={hoveredId === property.id}
+                                    onSelect={handleCardSelect}
+                                    onHover={handleHover}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Floating "List" Toggle */}
+                <button
+                    onClick={handleBackToList}
+                    className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-2.5 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.3)] active:scale-95 transition-transform flex items-center gap-2 text-sm font-semibold z-20 pointer-events-auto"
+                >
+                    <List size={18} />
+                    List
+                </button>
+            </div>
         </div>
     );
 }
 
-function MobileMapTrigger({ isOpen, onOpen }: { isOpen: boolean; onOpen: () => void }) {
-    if (isOpen) return null;
 
-    return (
-        <button
-            onClick={onOpen}
-            className="lg:hidden fixed bottom-6 right-6 z-40 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-        >
-            <MapPin size={18} />
-            <span className="text-sm font-semibold">Map</span>
-        </button>
-    );
-}
 
 export { SearchMapView };

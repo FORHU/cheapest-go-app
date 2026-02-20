@@ -7,6 +7,8 @@ import PoliciesSection from '@/components/property/PoliciesSection';
 import ReviewsSection from '@/components/property/ReviewsSection';
 import FAQSection from '@/components/property/FAQSection';
 import PropertyMapSidebar from '@/components/property/PropertyMapSidebar';
+import MobilePropertyHeader from '@/components/property/MobilePropertyHeader';
+import MobileBookingCTA from '@/components/property/MobileBookingCTA';
 import BackButton from '@/components/common/BackButton';
 import { FadeInUp, FadeIn } from '@/components/property/AnimatedContent';
 import { fetchPropertyData } from '@/lib/property';
@@ -54,16 +56,23 @@ export default async function PropertyPage({
         propertyName: property.name,
     };
 
+    const currency = (searchParamsResult.currency as string) || 'PHP';
+
     return (
-        <main className="min-h-screen pt-6 pb-20 px-4 md:px-6">
+        <main className="min-h-screen pt-3 md:pt-6 pb-24 md:pb-20 px-3 md:px-6">
+            {/* Mobile floating header — appears on scroll */}
+            <MobilePropertyHeader propertyName={property.name} />
+
             <div className="max-w-7xl mx-auto">
-                {/* Breadcrumb + Back */}
+                {/* Breadcrumb + Back — desktop only */}
                 <FadeIn delay={0}>
-                    <div className="mb-4">
-                        <BackButton label="See all properties" />
-                    </div>
-                    <div className="text-xs text-slate-500 mb-4">
-                        Philippines  &gt;  Baguio Properties  &gt;  {property.name}
+                    <div className="hidden md:block">
+                        <div className="mb-4">
+                            <BackButton label="See all properties" />
+                        </div>
+                        <div className="text-xs text-slate-500 mb-4">
+                            Philippines  &gt;  Baguio Properties  &gt;  {property.name}
+                        </div>
                     </div>
                 </FadeIn>
 
@@ -73,21 +82,30 @@ export default async function PropertyPage({
                 </FadeInUp>
 
                 {/* Navigation Tabs — full width */}
-                <div className="mt-8">
+                <div className="mt-4 md:mt-8">
                     <FadeInUp delay={0.2}>
                         <PropertyNav />
                     </FadeInUp>
                 </div>
 
                 {/* ═══ Split layout: Description LEFT | Map RIGHT ═══ */}
-                <div className="mt-8 flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8 items-stretch">
+                <div className="mt-4 md:mt-8 flex flex-col lg:flex-row gap-4 md:gap-8 items-stretch">
 
                     {/* LEFT — Description / content */}
-                    <div className="flex-1 min-w-0 space-y-6 sm:space-y-8">
+                    <div className="flex-1 min-w-0 space-y-4 md:space-y-8">
 
                         <FadeInUp delay={0.25}>
                             <PropertyOverview property={property} reviewsData={reviewsData} />
                         </FadeInUp>
+
+                        {/* Mobile map — shown below PropertyOverview strictly on small screens */}
+                        <div className="lg:hidden" id="location-mobile">
+                            <FadeInUp delay={0.28}>
+                                <div className="h-[280px] md:h-[350px]">
+                                    <PropertyMapSidebar {...mapProps} />
+                                </div>
+                            </FadeInUp>
+                        </div>
 
                         <FadeInUp delay={0.3}>
                             <hr className="border-slate-200 dark:border-white/10" />
@@ -152,15 +170,10 @@ export default async function PropertyPage({
                     </div>
                 </div>
 
-                {/* Mobile map — shown below content on small screens */}
-                <div className="lg:hidden mt-8" id="location-mobile">
-                    <FadeInUp delay={0.4}>
-                        <div className="w-full">
-                            <PropertyMapSidebar {...mapProps} />
-                        </div>
-                    </FadeInUp>
-                </div>
             </div>
+
+            {/* Mobile floating booking CTA */}
+            <MobileBookingCTA price={property.price} currency={currency} />
         </main>
     );
 }

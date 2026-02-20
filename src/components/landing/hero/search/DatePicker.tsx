@@ -8,7 +8,12 @@ import { useSearchStore, useDates, useActiveDropdown } from '@/stores/searchStor
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-export const DatePicker: React.FC = () => {
+interface DatePickerProps {
+    inline?: boolean;
+    forceOpen?: boolean;
+}
+
+export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => {
     const ref = useRef<HTMLDivElement>(null);
     const [activeTab, setActiveTab] = useState<'calendar' | 'flexible'>('calendar');
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -19,8 +24,10 @@ export const DatePicker: React.FC = () => {
     const { checkIn, checkOut, flexibility } = useDates();
     const { setDates, setActiveDropdown } = useSearchStore();
 
-    const isOpen = activeDropdown === 'dates';
-    const onClose = () => setActiveDropdown(null);
+    const isOpen = forceOpen || activeDropdown === 'dates';
+    const onClose = () => {
+        if (!forceOpen) setActiveDropdown(null);
+    };
 
     // Close logic
     useEffect(() => {
@@ -75,7 +82,7 @@ export const DatePicker: React.FC = () => {
 
         // Padding
         for (let i = 0; i < firstDay; i++) {
-            days.push(<div key={`pad-${i}`} className="size-10 sm:size-9" />);
+            days.push(<div key={`pad-${i}`} className={inline ? "size-6 xs:size-7 sm:size-9" : "size-9"} />);
         }
 
         // Days
@@ -92,7 +99,7 @@ export const DatePicker: React.FC = () => {
                     key={day}
                     disabled={isPast}
                     onClick={() => handleDateClick(date)}
-                    className={`size-10 sm:size-9 flex items-center justify-center text-xs font-medium rounded-full transition-all
+                    className={`${inline ? "size-6 xs:size-7 sm:size-9" : "size-9"} flex items-center justify-center ${inline ? "text-[9px] xs:text-[10px] sm:text-xs" : "text-xs"} font-medium rounded-full transition-all
                         ${isPast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer'}
                         ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg' : ''}
                         ${isInRange ? 'bg-alabaster-accent/10 dark:bg-obsidian-accent/10' : ''}
@@ -118,11 +125,13 @@ export const DatePicker: React.FC = () => {
             {isOpen && (
                 <motion.div
                     ref={ref}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    initial={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    exit={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-full left-1/2 -translate-x-1/2 md:translate-x-0 md:left-0 mt-4 w-[90vw] max-w-[650px] md:w-[650px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-50 max-h-[80vh] overflow-y-auto"
+                    className={inline
+                        ? "w-full z-10"
+                        : "absolute top-full left-0 mt-4 w-[650px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"}
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Tabs */}
@@ -147,14 +156,14 @@ export const DatePicker: React.FC = () => {
                         </button>
                     </div>
 
-                    <div className="p-6">
+                    <div className={inline ? "p-2 sm:p-6" : "p-6"}>
                         {activeTab === 'calendar' ? (
                             <>
                                 {/* Selected Dates Display */}
                                 <div className="flex items-center gap-6 mb-8">
                                     <div className="flex-1">
                                         <span className="text-[10px] font-mono text-slate-400 uppercase mb-1 block">Check-in</span>
-                                        <span className={`text-lg font-bold ${checkIn ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+                                        <span className={`text-sm sm:text-lg font-bold ${checkIn ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
                                             {formatDate(checkIn)}
                                         </span>
                                         <div className={`h-0.5 mt-2 w-full ${checkIn ? 'bg-alabaster-accent dark:bg-obsidian-accent' : 'bg-slate-100 dark:bg-white/5'}`} />
@@ -162,7 +171,7 @@ export const DatePicker: React.FC = () => {
                                     <ArrowRight className="text-slate-300" size={20} />
                                     <div className="flex-1">
                                         <span className="text-[10px] font-mono text-slate-400 uppercase mb-1 block">Check-out</span>
-                                        <span className={`text-lg font-bold ${checkOut ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+                                        <span className={`text-sm sm:text-lg font-bold ${checkOut ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
                                             {formatDate(checkOut)}
                                         </span>
                                         <div className={`h-0.5 mt-2 w-full ${checkOut ? 'bg-alabaster-accent dark:bg-obsidian-accent' : 'bg-slate-100 dark:bg-white/5'}`} />
@@ -170,45 +179,45 @@ export const DatePicker: React.FC = () => {
                                 </div>
 
                                 {/* Calendars */}
-                                <div className="flex flex-col md:flex-row gap-8 mb-6">
+                                <div className={`flex gap-1 sm:gap-6 mb-6 ${inline ? 'justify-between' : 'gap-8'}`}>
                                     {/* Month 1 */}
                                     <div className="flex-1">
-                                        <div className="flex justify-between items-center mb-4">
+                                        <div className="flex justify-between items-center mb-4 text-xs sm:text-sm">
                                             <button onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
                                                 <ChevronLeft size={16} className="text-slate-400" />
                                             </button>
-                                            <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                            <span className={`${inline ? "text-xs sm:text-sm" : "text-sm"} font-bold text-slate-900 dark:text-white`}>
                                                 {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                                             </span>
                                             <div className="w-6 md:hidden" /> {/* Spacer for mobile centering if needed */}
                                         </div>
-                                        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                                        <div className={`grid grid-cols-7 text-center mb-2 ${inline ? 'gap-0 sm:gap-1' : 'gap-1'}`}>
                                             {DAYS.map((d, i) => (
-                                                <span key={i} className="text-[10px] font-mono text-slate-400">{d}</span>
+                                                <span key={i} className={`${inline ? "text-[8px] sm:text-[10px]" : "text-[10px]"} font-mono text-slate-400`}>{d}</span>
                                             ))}
                                         </div>
-                                        <div className="grid grid-cols-7 gap-1">
+                                        <div className={`grid grid-cols-7 ${inline ? 'gap-0 sm:gap-1' : 'gap-1'}`}>
                                             {renderMonth(currentMonth)}
                                         </div>
                                     </div>
 
                                     {/* Month 2 */}
-                                    <div className="flex-1 hidden md:block"> {/* Hide second month on very small screens if needed, or stack */}
-                                        <div className="flex justify-between items-center mb-4">
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-4 text-xs sm:text-sm">
                                             <div className="w-6" />
-                                            <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                            <span className={`${inline ? "text-xs sm:text-sm" : "text-sm"} font-bold text-slate-900 dark:text-white`}>
                                                 {MONTHS[getNextMonth(currentMonth).getMonth()]} {getNextMonth(currentMonth).getFullYear()}
                                             </span>
                                             <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
                                                 <ChevronRight size={16} className="text-slate-400" />
                                             </button>
                                         </div>
-                                        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                                        <div className={`grid grid-cols-7 text-center mb-2 ${inline ? 'gap-0 sm:gap-1' : 'gap-1'}`}>
                                             {DAYS.map((d, i) => (
-                                                <span key={i} className="text-[10px] font-mono text-slate-400">{d}</span>
+                                                <span key={i} className={`${inline ? "text-[8px] sm:text-[10px]" : "text-[10px]"} font-mono text-slate-400`}>{d}</span>
                                             ))}
                                         </div>
-                                        <div className="grid grid-cols-7 gap-1">
+                                        <div className={`grid grid-cols-7 ${inline ? 'gap-0 sm:gap-1' : 'gap-1'}`}>
                                             {renderMonth(getNextMonth(currentMonth))}
                                         </div>
                                     </div>
@@ -254,7 +263,7 @@ export const DatePicker: React.FC = () => {
                                 </div>
                                 <div>
                                     <h4 className="text-lg font-bold mb-4 text-center text-slate-900 dark:text-white">When do you want to travel?</h4>
-                                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
+                                    <div className={`grid gap-3 ${inline ? 'grid-cols-3' : 'grid-cols-6'}`}>
                                         {MONTHS.slice(0, 6).map(m => (
                                             <div key={m} className="p-4 rounded-xl border border-slate-200 dark:border-white/10 flex flex-col items-center gap-2 hover:border-alabaster-accent dark:hover:border-obsidian-accent cursor-pointer group transition-all">
                                                 <Calendar size={20} className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent" />
@@ -269,14 +278,16 @@ export const DatePicker: React.FC = () => {
                     </div>
 
                     {/* Footer */}
-                    <div className="flex justify-end p-4 border-t border-slate-100 dark:border-white/5">
-                        <button
-                            onClick={onClose}
-                            className="px-8 py-2.5 bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian rounded-full font-bold text-sm hover:opacity-90 transition-all shadow-lg"
-                        >
-                            Done
-                        </button>
-                    </div>
+                    {!inline && (
+                        <div className="flex justify-end p-4 border-t border-slate-100 dark:border-white/5">
+                            <button
+                                onClick={onClose}
+                                className="px-8 py-2.5 bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian rounded-full font-bold text-sm hover:opacity-90 transition-all shadow-lg"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    )}
                 </motion.div>
             )}
         </AnimatePresence>

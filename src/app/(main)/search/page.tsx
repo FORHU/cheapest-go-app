@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import SearchFilters from '@/components/search/SearchFilters';
 import SearchResults from '@/components/search/SearchResults';
 import { SearchMapView } from '@/components/search/SearchMapView';
-import { SearchModule } from '@/components/landing/hero/SearchModule';
+import { ResponsiveSearchHeader } from '@/components/search/ResponsiveSearchHeader';
 import BackButton from '@/components/common/BackButton';
 import { fetchSearchProperties, fetchFacilities } from '@/lib/search';
 
@@ -45,17 +45,15 @@ export default async function SearchPage(props: {
 
     // ─── LIST VIEW: Normal search page layout ───────────────────────
     return (
-        <main className="min-h-screen pt-6 pb-20 px-4 sm:px-6">
+        <main className="min-h-screen pt-3 md:pt-6 pb-8 md:pb-16 px-3 md:px-6">
             <div className="max-w-[1400px] mx-auto">
                 {/* Back to Home */}
-                <div className="mb-4">
+                <div className="hidden lg:block mb-4">
                     <BackButton label="Back to Home" href="/" />
                 </div>
 
-                {/* Compact Search Bar */}
-                <div className="mb-4 sm:mb-8 relative z-50">
-                    <SearchModule />
-                </div>
+                {/* Responsive Compact Header */}
+                <ResponsiveSearchHeader />
             </div>
 
             <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">

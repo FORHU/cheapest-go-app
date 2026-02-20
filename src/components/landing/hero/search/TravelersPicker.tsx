@@ -108,7 +108,12 @@ const ChildAgeSelector: React.FC<{
     );
 };
 
-export const TravelersPicker: React.FC = () => {
+interface TravelersPickerProps {
+    inline?: boolean;
+    forceOpen?: boolean;
+}
+
+export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceOpen }) => {
     const ref = useRef<HTMLDivElement>(null);
 
     // Store
@@ -159,8 +164,10 @@ export const TravelersPicker: React.FC = () => {
         setTravelers({ occupancies: newOccupancies });
     }, [adults, rooms, childrenAges, setTravelers]);
 
-    const isOpen = activeDropdown === 'travelers';
-    const onClose = () => setActiveDropdown(null);
+    const isOpen = forceOpen || activeDropdown === 'travelers';
+    const onClose = () => {
+        if (!forceOpen) setActiveDropdown(null);
+    };
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -209,17 +216,21 @@ export const TravelersPicker: React.FC = () => {
             {isOpen && (
                 <motion.div
                     ref={ref}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    initial={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    exit={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-full right-1/2 translate-x-1/2 md:translate-x-0 md:right-0 mt-4 w-[90vw] max-w-[340px] md:w-[340px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"
+                    className={inline
+                        ? "w-full z-10"
+                        : "absolute top-full right-0 mt-4 w-[340px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="p-5">
-                        <h4 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2">
-                            Guests & Rooms
-                        </h4>
+                    <div className={inline ? "p-2 sm:p-5" : "p-5"}>
+                        {!forceOpen && (
+                            <h4 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2">
+                                Guests & Rooms
+                            </h4>
+                        )}
 
                         <div className="divide-y divide-slate-100 dark:divide-white/5">
                             <Counter
@@ -289,14 +300,16 @@ export const TravelersPicker: React.FC = () => {
                     </div>
 
                     {/* Footer */}
-                    <div className="flex flex-col gap-3 p-4 border-t border-slate-100 dark:border-white/5">
-                        <button
-                            onClick={onClose}
-                            className="w-full py-3 bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian rounded-xl font-bold text-sm hover:opacity-90 transition-all"
-                        >
-                            Done
-                        </button>
-                    </div>
+                    {!inline && (
+                        <div className="flex flex-col gap-3 p-4 border-t border-slate-100 dark:border-white/5">
+                            <button
+                                onClick={onClose}
+                                className="w-full py-3 bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian rounded-xl font-bold text-sm hover:opacity-90 transition-all"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    )}
                 </motion.div>
             )}
         </AnimatePresence>
