@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { Users, Heart, UserCircle, Briefcase, Users2 } from 'lucide-react';
 import {
     HotelReview,
@@ -157,6 +158,10 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
         setSortBy,
     } = useReviewsStore();
 
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+    const prevDisplayCountRef = React.useRef(displayCount);
+    const prevScrollHeightRef = React.useRef<number>(0);
+
     // Use server-fetched reviews directly from props (no store copy needed)
     const reviewsToDisplay = reviews;
 
@@ -174,6 +179,44 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
     const displayedReviews = sortedReviews.slice(0, displayCount);
     const hasMore = displayCount < reviewsToDisplay.length;
 
+    // State for custom sort dropdown
+    const [isSortOpen, setIsSortOpen] = React.useState(false);
+
+    // Auto-scroll logic when loading more reviews
+    React.useEffect(() => {
+        if (displayCount > prevDisplayCountRef.current) {
+            setTimeout(() => {
+                if (scrollContainerRef.current && prevScrollHeightRef.current > 0) {
+                    const container = scrollContainerRef.current;
+                    // Scroll exactly to where the old content ended, minus a small buffer
+                    container.scrollTo({
+                        top: prevScrollHeightRef.current - 60,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 100);
+        }
+        prevDisplayCountRef.current = displayCount;
+    }, [displayCount]);
+
+    const handleLoadMore = () => {
+        if (scrollContainerRef.current) {
+            prevScrollHeightRef.current = scrollContainerRef.current.scrollHeight;
+        }
+        loadMore();
+    };
+
+    // Click outside handler for custom dropdown
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (isSortOpen && !(event.target as Element).closest('#sort-dropdown')) {
+                setIsSortOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isSortOpen]);
+
     if (totalCount === 0) {
         return (
             <section id="reviews-section" className="py-8">
@@ -188,6 +231,14 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
         );
     }
 
+    const sortOptions = [
+        { value: 'newest', label: 'Newest first' },
+        { value: 'highest', label: 'Highest rated' },
+        { value: 'lowest', label: 'Lowest rated' },
+    ];
+
+    const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label || 'Newest first';
+
     return (
         <section id="reviews-section" className="py-4 md:py-8">
             <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
@@ -200,40 +251,63 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
                 </div>
 
                 {/* Right Column - Reviews List */}
-                <div className="flex-1">
+                <div className="flex-1 w-full min-w-0">
                     {/* Sort dropdown */}
-                    <div className="flex justify-end mb-4">
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as 'newest' | 'highest' | 'lowest')}
-                            className="text-sm border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                        >
-                            <option value="newest">Newest first</option>
-                            <option value="highest">Highest rated</option>
-                            <option value="lowest">Lowest rated</option>
-                        </select>
+                    <div className="flex sm:justify-end mb-4 relative z-20" id="sort-dropdown">
+                        <div className="relative w-full sm:w-auto">
+                            <button
+                                onClick={() => setIsSortOpen(!isSortOpen)}
+                                className="w-full text-left sm:w-48 text-[15px] sm:text-sm border border-slate-200 dark:border-slate-600 rounded-lg pl-4 pr-10 py-3 sm:py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm flex items-center justify-between"
+                            >
+                                <span>{currentSortLabel}</span>
+                                <svg className={`w-4 h-4 text-slate-400 transition-transform ${isSortOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+
+                            {isSortOpen && (
+                                <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 mt-1 w-full sm:w-48 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden z-30">
+                                    {sortOptions.map((opt) => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => {
+                                                setSortBy(opt.value as any);
+                                                setIsSortOpen(false);
+                                            }}
+                                            className={`w-full text-left px-4 py-3 sm:py-2.5 text-[15px] sm:text-sm transition-colors ${sortBy === opt.value
+                                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
+                                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Reviews list in scrollable container */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 max-h-[350px] md:max-h-[500px] overflow-y-auto">
-                        <div className="px-4">
+                    <div
+                        ref={scrollContainerRef}
+                        className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 max-h-[400px] md:max-h-[500px] overflow-y-auto shadow-sm relative z-10"
+                    >
+                        <div className="px-3 md:px-5">
                             {displayedReviews.map((review, index) => (
                                 <ReviewItem key={`${review.name}-${index}`} review={review} index={index} />
                             ))}
                         </div>
                     </div>
 
-                    {/* Load more button */}
-                    <div className="mt-3 md:mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+                    {/* Load more button & count */}
+                    <div className="mt-4 md:mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
                         {hasMore && (
                             <button
-                                onClick={() => loadMore()}
-                                className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                                onClick={handleLoadMore}
+                                className="w-full sm:w-auto px-5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl text-[16px] sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95"
                             >
                                 Load more reviews
                             </button>
                         )}
-                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                        <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center w-full sm:w-auto mt-1 sm:mt-0">
                             Showing {displayedReviews.length} of {reviewsToDisplay.length} reviews
                         </span>
                     </div>

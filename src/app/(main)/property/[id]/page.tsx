@@ -98,6 +98,15 @@ export default async function PropertyPage({
                             <PropertyOverview property={property} reviewsData={reviewsData} />
                         </FadeInUp>
 
+                        {/* Mobile map — shown below PropertyOverview strictly on small screens */}
+                        <div className="lg:hidden" id="location-mobile">
+                            <FadeInUp delay={0.28}>
+                                <div className="h-[280px] md:h-[350px]">
+                                    <PropertyMapSidebar {...mapProps} />
+                                </div>
+                            </FadeInUp>
+                        </div>
+
                         <FadeInUp delay={0.3}>
                             <hr className="border-slate-200 dark:border-white/10" />
                         </FadeInUp>
@@ -161,14 +170,6 @@ export default async function PropertyPage({
                     </div>
                 </div>
 
-                {/* Mobile map — shown below content on small screens */}
-                <div className="lg:hidden mt-4 md:mt-8" id="location-mobile">
-                    <FadeInUp delay={0.4}>
-                        <div className="h-[280px] md:h-[350px]">
-                            <PropertyMapSidebar {...mapProps} />
-                        </div>
-                    </FadeInUp>
-                </div>
             </div>
 
             {/* Mobile floating booking CTA */}

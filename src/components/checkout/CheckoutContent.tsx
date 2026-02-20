@@ -267,13 +267,13 @@ export function CheckoutContent() {
 
     return (
         <>
-            <main className="min-h-screen pt-6 pb-20 px-4 md:px-6">
+            <main className="min-h-screen pt-4 sm:pt-6 pb-20 px-3 sm:px-4 md:px-6">
                 <div className="max-w-6xl mx-auto">
                     <div className="mb-2 flex justify-between items-center">
                         <BackButton label="Modify booking" />
                     </div>
 
-                    <h1 className="text-3xl font-display font-bold text-slate-900 dark:text-white mb-8">
+                    <h1 className="text-xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white mb-4 sm:mb-8">
                         Secure your booking
                     </h1>
 
@@ -311,9 +311,9 @@ export function CheckoutContent() {
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
                         {/* Main Form */}
-                        <div className="lg:col-span-2 space-y-6">
+                        <div className="lg:col-span-2 space-y-4 lg:space-y-6">
                             <UserDetailsForm
                                 formData={formData}
                                 onInputChange={handleInputChange}
@@ -363,38 +363,55 @@ export function CheckoutContent() {
                                 errors={formErrors}
                             />
 
-                            <SubmitBookingButton
-                                loading={loading}
-                                prebooking={prebooking}
-                                prebookId={prebookId}
-                                isAuthenticated={!!user}
-                                totalPrice={displayTotalPrice}
-                                prebookError={prebookError}
-                                onSubmit={handleCompleteBooking}
-                            />
+                            <div className="hidden lg:block">
+                                <SubmitBookingButton
+                                    loading={loading}
+                                    prebooking={prebooking}
+                                    prebookId={prebookId}
+                                    isAuthenticated={!!user}
+                                    totalPrice={displayTotalPrice}
+                                    prebookError={prebookError}
+                                    onSubmit={handleCompleteBooking}
+                                />
+                            </div>
                         </div>
 
                         {/* Sidebar Summary */}
-                        <BookingSummary
-                            propertyName={displayProperty.name}
-                            propertyImage={property?.image}
-                            propertyAddress={property?.location}
-                            starRating={undefined}
-                            reviewScore={property?.rating}
-                            reviewCount={property?.reviews}
-                            roomTitle={displayRoom.title}
-                            roomPrice={displayRoom.price}
-                            totalNights={totalNights}
-                            adults={adults}
-                            children={children}
-                            taxes={taxes}
-                            totalPrice={totalPrice}
-                            checkIn={checkIn}
-                            checkOut={checkOut}
-                            prebookId={prebookId}
-                            cancellationPolicies={priceData?.cancellationPolicies}
-                            appliedVoucher={appliedVoucher}
-                        />
+                        <div className="flex flex-col gap-4 lg:gap-6">
+                            <BookingSummary
+                                propertyName={displayProperty.name}
+                                propertyImage={property?.image}
+                                propertyAddress={property?.location}
+                                starRating={undefined}
+                                reviewScore={property?.rating}
+                                reviewCount={property?.reviews}
+                                roomTitle={displayRoom.title}
+                                roomPrice={displayRoom.price}
+                                totalNights={totalNights}
+                                adults={adults}
+                                children={children}
+                                taxes={taxes}
+                                totalPrice={totalPrice}
+                                checkIn={checkIn}
+                                checkOut={checkOut}
+                                prebookId={prebookId}
+                                cancellationPolicies={priceData?.cancellationPolicies}
+                                appliedVoucher={appliedVoucher}
+                            />
+
+                            {/* Mobile-only Submit Button positioned after the summary */}
+                            <div className="block lg:hidden">
+                                <SubmitBookingButton
+                                    loading={loading}
+                                    prebooking={prebooking}
+                                    prebookId={prebookId}
+                                    isAuthenticated={!!user}
+                                    totalPrice={displayTotalPrice}
+                                    prebookError={prebookError}
+                                    onSubmit={handleCompleteBooking}
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>

@@ -114,56 +114,59 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     const displayOfferId = selectedRate?.offerId;
 
     return (
-        <div className="border border-slate-200 dark:border-white/10 rounded-xl bg-white dark:bg-slate-900 overflow-hidden hover:shadow-md transition-shadow">
-            {/* Header: Title */}
-            <div className="px-3 md:px-4 py-2.5 md:py-3 border-b border-slate-100 dark:border-white/5">
-                <h4 className="text-base md:text-lg font-bold text-slate-900 dark:text-white line-clamp-1">
-                    {title}
-                </h4>
+        <div className="flex flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all group">
+            {/* Left: Image (Horizontal layout on mobile, like search results) */}
+            <div
+                className="w-[120px] md:w-[240px] relative h-auto cursor-pointer p-2 md:p-3 pr-0 md:pr-0 flex-shrink-0"
+                onClick={onViewDetails}
+            >
+                {roomImage ? (
+                    <div
+                        className="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-105 rounded-xl overflow-hidden shadow-sm"
+                        style={{ backgroundImage: `url(${roomImage})` }}
+                    />
+                ) : (
+                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-600 rounded-xl">
+                        <Bed size={40} />
+                    </div>
+                )}
+                {/* Image Counter Badge */}
+                {photoCount && photoCount > 1 && (
+                    <div className="absolute bottom-3 md:bottom-5 right-1 md:right-3 bg-black/60 text-white text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded-md flex items-center gap-1 backdrop-blur-sm z-10">
+                        <span className="hidden md:inline">1/{photoCount}</span>
+                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white rounded-full ml-1 md:ml-1" />
+                    </div>
+                )}
             </div>
 
-            <div className="flex flex-col md:flex-row">
-                {/* Left: Image */}
-                <div
-                    className="w-full md:w-1/3 md:max-w-[300px] h-40 md:h-auto relative cursor-pointer group"
-                    onClick={onViewDetails}
-                >
-                    {roomImage ? (
-                        <div
-                            className="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                            style={{ backgroundImage: `url(${roomImage})` }}
-                        />
-                    ) : (
-                        <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-600">
-                            <Bed size={40} />
-                        </div>
-                    )}
-                    {/* Image Counter Badge */}
-                    {photoCount && photoCount > 1 && (
-                        <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-md flex items-center gap-1 backdrop-blur-sm">
-                            <span>1/{photoCount}</span>
-                            <div className="w-2 h-2 bg-white rounded-full ml-1" />
-                        </div>
-                    )}
-                </div>
+            {/* Middle: Info & Rate Options */}
+            <div className="flex-1 p-2 md:p-4 flex flex-col justify-between">
+                <div>
+                    <h4 className="text-sm md:text-lg font-bold text-slate-900 dark:text-white line-clamp-2 mb-1 group-hover:text-blue-600 transition-colors">
+                        {title}
+                    </h4>
 
-                {/* Middle: Info & Rate Options */}
-                <div className="flex-1 p-2.5 md:p-4 md:border-r border-slate-100 dark:border-white/5 flex flex-col justify-between">
+                    {/* Compact Room Specs */}
+                    <div className="flex flex-wrap gap-x-2.5 gap-y-1 text-[10px] md:text-xs text-slate-500 dark:text-slate-400 mb-3">
+                        {roomSize && <span className="flex items-center gap-1"><Square size={10} /> {roomSize}</span>}
+                        <span className="flex items-center gap-1"><User size={10} /> Sleeps {maxOccupancy || 2}</span>
+                        {bedType && <span className="flex items-center gap-1"><Bed size={10} /> {bedType}</span>}
+                    </div>
+
                     {/* Rate Options (if multiple) */}
                     {hasMultipleRates ? (
-                        <div className="space-y-1.5 mb-2 md:mb-4">
-                            <div className="text-[11px] md:text-xs font-bold text-slate-900 dark:text-white mb-1">
+                        <div className="space-y-1 mb-1.5 md:mb-4">
+                            <div className="text-[10px] md:text-xs font-bold text-slate-900 dark:text-white mb-0.5 mt-2">
                                 {rateOptions.length} rate options
                             </div>
-                            <div className="space-y-1 md:space-y-1.5 max-h-20 md:max-h-32 overflow-y-auto">
+                            <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                                 {rateOptions.map((rate, idx) => (
                                     <label
                                         key={rate.offerId}
-                                        className={`flex items-center justify-between p-1.5 md:p-2 rounded-lg cursor-pointer border transition-all ${
-                                            selectedRateIdx === idx
-                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                                : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                                        }`}
+                                        className={`flex items-center justify-between p-1.5 md:p-2 rounded-lg cursor-pointer border transition-all ${selectedRateIdx === idx
+                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                                            }`}
                                     >
                                         <div className="flex items-center gap-1.5 md:gap-2">
                                             <input
@@ -171,41 +174,42 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                                 name={`rate-${title}`}
                                                 checked={selectedRateIdx === idx}
                                                 onChange={() => setSelectedRateIdx(idx)}
-                                                className="w-3 h-3 md:w-3.5 md:h-3.5 text-blue-600"
+                                                className="w-3 h-3 md:w-3.5 md:h-3.5 text-blue-600 cursor-pointer"
                                             />
                                             <div>
-                                                <div className="text-[11px] md:text-xs font-medium text-slate-700 dark:text-slate-200">
+                                                <div className="text-[11px] md:text-sm font-medium text-slate-800 dark:text-slate-200">
                                                     {rate.boardName || 'Room only'}
                                                 </div>
-                                                <div className={`text-[10px] font-medium ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                                <div className={`text-[9px] md:text-[11px] font-medium leading-tight ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                                     {rate.refundable
                                                         ? `Free cancellation${rate.cancellationDeadline ? ` before ${formatCancellationDeadline(rate.cancellationDeadline)}` : ''}`
                                                         : 'Non-refundable'}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-xs md:text-sm font-bold text-slate-900 dark:text-white ml-2">
+                                        <div className="text-[12px] md:text-sm font-bold text-slate-900 dark:text-white ml-2 text-right">
                                             {currencySymbol}{rate.price.toLocaleString()}
+                                            <div className="text-[9px] text-slate-500 font-normal">/night</div>
                                         </div>
                                     </label>
                                 ))}
                             </div>
                         </div>
                     ) : (
-                        <div>
-                            <div className="font-bold text-xs md:text-sm text-slate-900 dark:text-white mb-1 md:mb-2">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-700">
+                            <div className="font-bold text-[11px] md:text-sm text-slate-900 dark:text-white mb-1">
                                 Room only
                             </div>
-                            <div className="space-y-0.5">
-                                <div className="text-[11px] md:text-xs text-slate-500 flex items-center gap-1">
-                                    <X size={10} className="text-slate-400" /> No meals included
+                            <div className="space-y-1">
+                                <div className="text-[10px] md:text-xs text-slate-500 flex items-center gap-1.5">
+                                    <X size={12} className="text-slate-400" /> No meals included
                                 </div>
                                 {displayRefundable ? (
-                                    <div className="text-[11px] md:text-xs text-emerald-600 font-medium flex items-center gap-1">
-                                        <Check size={10} /> Free cancellation{selectedRate?.cancellationDeadline ? ` before ${formatCancellationDeadline(selectedRate.cancellationDeadline)}` : ''}
+                                    <div className="text-[10px] md:text-xs text-emerald-600 font-medium flex items-center gap-1.5">
+                                        <Check size={12} /> Free cancellation{selectedRate?.cancellationDeadline ? ` before ${formatCancellationDeadline(selectedRate.cancellationDeadline)}` : ''}
                                     </div>
                                 ) : (
-                                    <div className="text-[11px] md:text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                    <div className="text-[10px] md:text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
                                         <div className="w-3 h-3 rounded-full border border-amber-400 dark:border-amber-500 flex items-center justify-center text-[8px] text-amber-500">
                                             i
                                         </div>
@@ -215,87 +219,66 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                             </div>
                         </div>
                     )}
-
-                    {/* Room Details — full on desktop, compact on mobile */}
-                    <div className="hidden md:block mt-4 pt-4 border-t border-slate-50 dark:border-white/5">
-                        <div className="text-xs font-bold text-slate-900 dark:text-white mb-2">
-                            Room details
-                        </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500 dark:text-slate-400 mb-2">
-                            {roomSize && (
-                                <div className="flex items-center gap-1.5">
-                                    <Square size={12} /> {roomSize}
-                                </div>
-                            )}
-                            <div className="flex items-center gap-1.5">
-                                <User size={12} /> Sleeps {maxOccupancy || 2}
-                            </div>
-                            {bedType && (
-                                <div className="flex items-center gap-1.5">
-                                    <Bed size={12} /> {bedType}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="text-xs font-bold text-slate-900 dark:text-white mt-3 mb-1">
-                            Amenities
-                        </div>
-                        <div className="space-y-1">
-                            {(amenities || []).slice(0, 3).map((am, i) => {
-                                const name = typeof am === 'string' ? am : am.name;
-                                return (
-                                    <div
-                                        key={i}
-                                        className="text-xs text-slate-500 flex items-center gap-1.5"
-                                    >
-                                        <Check size={10} className="text-slate-300" /> {name}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Mobile: compact room specs inline */}
-                    <div className="md:hidden flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-400 dark:text-slate-500 mt-1.5 pt-1.5 border-t border-slate-50 dark:border-white/5">
-                        {roomSize && <span className="flex items-center gap-1"><Square size={10} /> {roomSize}</span>}
-                        <span className="flex items-center gap-1"><User size={10} /> {maxOccupancy || 2}</span>
-                        {bedType && <span className="flex items-center gap-1"><Bed size={10} /> {bedType}</span>}
-                    </div>
-
-                    <button
-                        onClick={onViewDetails}
-                        className="text-[11px] md:text-xs text-blue-600 font-bold mt-1.5 md:mt-3 hover:underline"
-                    >
-                        Room details
-                    </button>
                 </div>
 
-                {/* Right: Pricing & Action */}
-                <div className="w-full md:w-1/4 p-3 md:p-4 flex flex-row md:flex-col justify-between items-center md:items-end bg-slate-50/50 dark:bg-white/5 md:min-w-[200px] border-t md:border-t-0 border-slate-100 dark:border-white/5">
-                    <div className="text-left md:text-right md:w-full">
-                        <div className="inline-block bg-emerald-600 text-white text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded mb-0.5 md:mb-1">
-                            8% OFF
-                        </div>
-                        <div className="flex items-baseline md:justify-end gap-0.5 md:gap-1">
-                            <span className="text-base md:text-lg font-bold text-slate-900 dark:text-white">
-                                {currencySymbol}{displayPrice.toLocaleString()}
-                            </span>
-                            <span className="text-[10px] md:text-xs text-slate-500">/night</span>
-                        </div>
-                        <div className="text-[10px] md:text-xs text-slate-400 line-through">
-                            {currencySymbol}
-                            {(displayPrice * 1.08).toLocaleString(undefined, {
-                                maximumFractionDigits: 0,
-                            })}
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5 md:mt-1 hidden md:block">
-                            (1 night, 1 Room incl. taxes)
-                        </div>
+                <div className="flex items-end justify-between mt-3">
+                    <div className="flex flex-col">
+                        <button
+                            onClick={onViewDetails}
+                            className="text-[11px] md:text-xs text-blue-600 font-bold hover:underline self-start mb-1 md:mb-0"
+                        >
+                            Room details
+                        </button>
+                        {/* Hide price on mobile if multiple rates since it's already shown on the radio button */}
+                        {!(hasMultipleRates) && (
+                            <div className="md:hidden mt-0.5">
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-[16px] font-bold text-blue-600 dark:text-blue-400 leading-none">
+                                        {currencySymbol}{displayPrice.toLocaleString()}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500">/night</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
+                    {/* Mobile Action Button */}
                     <button
                         onClick={() => onReserve(displayOfferId)}
-                        className="w-auto md:w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 md:py-2.5 px-5 md:px-0 rounded-full md:rounded-lg text-xs md:text-sm transition-colors md:mt-4 shrink-0"
+                        className="md:hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-[12px] shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shrink-0 ml-2"
+                    >
+                        Choose room
+                    </button>
+                </div>
+            </div>
+
+            {/* Right: Pricing & Action (Desktop Sidebar) */}
+            <div className={`p-3 md:p-4 hidden md:flex md:flex-col justify-between md:items-end bg-slate-50/50 dark:bg-white/5 md:min-w-[180px] border-t md:border-t-0 md:border-l border-slate-100 dark:border-white/5 shrink-0`}>
+                <div className="text-right hidden md:block">
+                    <div className="inline-block bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mb-1">
+                        8% OFF
+                    </div>
+                    <div className="flex items-baseline justify-end gap-1">
+                        <span className="text-[18px] font-bold text-slate-900 dark:text-white leading-none">
+                            {currencySymbol}{displayPrice.toLocaleString()}
+                        </span>
+                        <span className="text-[12px] text-slate-500">/night</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 line-through leading-none mt-1">
+                        {currencySymbol}
+                        {(displayPrice * 1.08).toLocaleString(undefined, {
+                            maximumFractionDigits: 0,
+                        })}
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-2">
+                        (1 night, 1 Room incl. taxes)
+                    </div>
+                </div>
+
+                <div className="w-full h-full md:h-auto flex items-end">
+                    <button
+                        onClick={() => onReserve(displayOfferId)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-[13px] md:text-sm transition-colors w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     >
                         Choose room
                     </button>

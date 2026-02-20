@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Star, Wifi, Car, Utensils, Coffee, Check } from 'lucide-react';
 import { Property } from '@/data/mockProperties';
 
@@ -43,11 +43,18 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
     const rating = reviewsData?.averageRating || property.rating;
     const reviewCount = reviewsData?.totalCount || property.reviews;
 
+    // UI state for expanding description and amenities
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+    const [isAmenitiesExpanded, setIsAmenitiesExpanded] = useState(false);
+
+    const descriptionText = stripHtml(property.description);
+    const isDescriptionLong = descriptionText.length > 150;
+
     return (
         <div id="overview-section" className="space-y-4 md:space-y-8 scroll-mt-24 md:scroll-mt-36">
             {/* Header Info */}
             <div>
-                <h1 className="text-xl md:text-3xl font-display font-bold text-slate-900 dark:text-white mb-2">
+                <h1 className="text-base md:text-3xl font-display font-bold text-slate-900 dark:text-white mb-1.5 md:mb-2">
                     {property.name}
                 </h1>
                 <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm mb-2 md:mb-4">
@@ -73,15 +80,15 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                     </div>
                 </div>
 
-                <div className="flex items-start gap-2.5 md:gap-4 p-2.5 md:p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
-                    <div className={`flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-lg text-xs md:text-sm font-bold text-white shrink-0 ${getRatingBgColor(rating)}`}>
+                <div className="flex items-center gap-2 md:gap-4 p-2 md:p-4 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-100 dark:border-white/10">
+                    <div className={`flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-lg text-[11px] md:text-sm font-bold text-white shrink-0 ${getRatingBgColor(rating)}`}>
                         {rating.toFixed(1)}
                     </div>
                     <div>
-                        <div className="font-extra-bold text-sm md:text-base text-slate-900 dark:text-white">
+                        <div className="font-extra-bold text-xs md:text-base text-slate-900 dark:text-white">
                             {getRatingLabel(rating)}
                         </div>
-                        <div className="text-xs md:text-sm text-slate-600 dark:text-slate-300">
+                        <div className="text-[10px] md:text-sm text-slate-600 dark:text-slate-300">
                             {reviewCount.toLocaleString()} verified review{reviewCount !== 1 ? 's' : ''}
                         </div>
                     </div>
@@ -90,33 +97,48 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
 
             <div className="flex flex-col gap-4 md:gap-8">
                 <div className="w-full">
-                    <h2 className="text-base md:text-xl font-bold text-slate-900 dark:text-white mb-2 md:mb-4">About this property</h2>
-                    <div className="text-xs md:text-sm text-slate-700 dark:text-slate-300 space-y-3 md:space-y-4 leading-relaxed whitespace-pre-line">
-                        {stripHtml(property.description)}
+                    <h2 className="text-sm md:text-xl font-bold text-slate-900 dark:text-white mb-1.5 md:mb-4">About this property</h2>
+                    <div className={`text-[11px] md:text-sm text-slate-700 dark:text-slate-300 space-y-2 md:space-y-4 leading-relaxed whitespace-pre-line ${(!isDescriptionExpanded && isDescriptionLong) ? 'line-clamp-4' : ''}`}>
+                        {descriptionText}
                     </div>
+                    {isDescriptionLong && (
+                        <button
+                            onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                            className="text-blue-600 text-[11px] md:text-sm font-medium hover:underline mt-1 md:mt-2 focus:outline-none"
+                        >
+                            {isDescriptionExpanded ? 'Show less' : 'Read more'}
+                        </button>
+                    )}
                 </div>
 
                 {/* Popular amenities - Full width grid */}
                 <div id="amenities-section" className="w-full scroll-mt-24 md:scroll-mt-36">
-                    <h3 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white mb-2 md:mb-4">Popular amenities</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
-                        {property.amenities.map((amenity, i) => (
-                            <div key={i} className="flex items-center text-xs md:text-sm text-slate-700 dark:text-slate-300">
-                                {amenity === 'Free WiFi' && <Wifi size={14} className="mr-2 md:mr-3 shrink-0" />}
-                                {amenity === 'Parking' && <Car size={14} className="mr-2 md:mr-3 shrink-0" />}
-                                {amenity === 'Restaurant' && <Utensils size={14} className="mr-2 md:mr-3 shrink-0" />}
-                                {amenity === 'Breakfast included' && <Coffee size={14} className="mr-2 md:mr-3 shrink-0" />}
-                                {!['Free WiFi', 'Parking', 'Restaurant', 'Breakfast included'].includes(amenity) && <Check size={14} className="mr-2 md:mr-3 text-emerald-500 shrink-0" />}
+                    <h3 className="text-[11px] md:text-sm font-bold text-slate-900 dark:text-white mb-1.5 md:mb-4">Popular amenities</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-4">
+                        {(isAmenitiesExpanded ? property.amenities : property.amenities.slice(0, 6)).map((amenity, i) => (
+                            <div key={i} className="flex items-center text-[11px] md:text-sm text-slate-700 dark:text-slate-300">
+                                {amenity === 'Free WiFi' && <Wifi size={12} className="mr-1.5 md:mr-3 shrink-0" />}
+                                {amenity === 'Parking' && <Car size={12} className="mr-1.5 md:mr-3 shrink-0" />}
+                                {amenity === 'Restaurant' && <Utensils size={12} className="mr-1.5 md:mr-3 shrink-0" />}
+                                {amenity === 'Breakfast included' && <Coffee size={12} className="mr-1.5 md:mr-3 shrink-0" />}
+                                {!['Free WiFi', 'Parking', 'Restaurant', 'Breakfast included'].includes(amenity) && <Check size={12} className="mr-1.5 md:mr-3 text-emerald-500 shrink-0" />}
                                 {amenity}
                             </div>
                         ))}
                     </div>
-                    <button className="text-blue-600 text-xs md:text-sm font-medium hover:underline mt-3 md:mt-4">See all amenities</button>
+                    {property.amenities.length > 6 && (
+                        <button
+                            onClick={() => setIsAmenitiesExpanded(!isAmenitiesExpanded)}
+                            className="text-blue-600 text-[11px] md:text-sm font-medium hover:underline mt-2 md:mt-4 focus:outline-none"
+                        >
+                            {isAmenitiesExpanded ? 'Show less amenities' : `See all ${property.amenities.length} amenities`}
+                        </button>
+                    )}
                 </div>
             </div>
 
             {/* Cleaning & Safety - Condensed */}
-            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-2.5 md:p-4 rounded-xl flex gap-2 md:gap-3 text-xs md:text-sm">
+            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-2 md:p-4 rounded-xl flex gap-1.5 md:gap-3 text-[11px] md:text-sm">
                 <Check size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                     <span className="font-bold text-emerald-900 dark:text-emerald-200">Cleaning and safety practices</span>

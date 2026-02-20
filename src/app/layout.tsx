@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://cheapestgo.com'),
   title: 'CheapestGo | Book Flights & Hotels',
   description: 'CheapestGo is your ultimate travel booking platform. Find the best deals on flights and hotels instantly and start exploring the world.',
+  icons: {
+    icon: '/icon.png',
+    apple: '/icon.png',
+  },
   openGraph: {
     title: 'CheapestGo | Discover & Book Your Next Journey',
     description: 'Get the best travel deals globally. Plan your flights and hotels easily and save money with CheapestGo.',
