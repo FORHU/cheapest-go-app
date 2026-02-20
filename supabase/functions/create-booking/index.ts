@@ -87,6 +87,7 @@ interface ProviderBookingResult {
     providerStatus: string;
     rawPrice?: number;
     rawCurrency?: string;
+    ticketNumbers?: string[];
 }
 
 // ─── Gender Mapping ─────────────────────────────────────────────────
@@ -179,7 +180,11 @@ Deno.serve(async (req: Request) => {
 
         // ── 3. Save to flight_bookings ──
         const bookingPrice = result.rawPrice ?? bs.flight.price ?? 0;
-
+        
+        // Determine if it was auto-ticketed
+        const finalStatus = (result.providerStatus === 'ticketed' || (result.ticketNumbers && result.ticketNumbers.length > 0)) 
+            ? 'ticketed' 
+            : 'booked';
         const { data: booking, error: insertError } = await supabase
             .from('flight_bookings')
             .insert({
@@ -187,7 +192,7 @@ Deno.serve(async (req: Request) => {
                 pnr: result.pnr,
                 provider: bs.provider,
                 total_price: bookingPrice,
-                status: 'booked',
+                status: finalStatus, // <-- USE DYNAMIC STATUS
             })
             .select('id')
             .single();
@@ -221,12 +226,13 @@ Deno.serve(async (req: Request) => {
         }
 
         // ── 5. Save passengers ──
-        const passengers = bs.passengers.map((pax) => ({
+        const passengers = bs.passengers.map((pax, idx) => ({
             booking_id: bookingId,
             first_name: pax.firstName,
             last_name: pax.lastName,
             type: pax.type,
             passport: pax.passport ?? null,
+            ticket_number: result.ticketNumbers?.[idx] ?? null, // <-- ADD THIS
         }));
 
         if (passengers.length > 0) {
@@ -328,12 +334,18 @@ async function bookWithMystifly(
     }
 
     const data = raw.Data ?? {};
+    const providerStatus = String(data.Status ?? 'confirmed').toLowerCase();
 
+    let ticketNumbers: string[] = [];
+    if (providerStatus === 'ticketed' || data.TktNumbers || data.TicketInfo || data.TravelItinerary?.TicketInfo) {
+        ticketNumbers = extractTicketNumbers(data);
+    }
     return {
         pnr: data.UniqueID ?? '',
-        providerStatus: String(data.Status ?? 'confirmed'),
+        providerStatus: ticketNumbers.length > 0 ? 'ticketed' : providerStatus,
         rawPrice: parseFloat(String(data.TotalFare ?? data.TotalPrice ?? '0')) || undefined,
         rawCurrency: data.Currency ? String(data.Currency) : undefined,
+        ticketNumbers: ticketNumbers.length > 0 ? ticketNumbers : undefined,
     };
 }
 
@@ -344,10 +356,30 @@ async function bookWithAmadeus(
     passengers: SessionPassenger[],
     contact: SessionContact,
 ): Promise<ProviderBookingResult> {
-    // Amadeus Flight Orders API requires the full flight offer + traveler data
-    // The flight object from the session should contain the raw Amadeus offer
-    const flightOffer = (flight as any).rawOffer ?? buildAmadeusFlightOffer(flight, passengers);
+    // Step 1: Build or use raw offer
+    const baseOffer = (flight as any).rawOffer ?? buildAmadeusFlightOffer(flight, passengers);
 
+    // Step 2: Confirm pricing via Amadeus Flight Offers Price API
+    // This is REQUIRED — prices change between search and booking
+    console.log('[create-booking] Confirming price with Amadeus...');
+    const priceResponse: any = await amadeusRequest('/v1/shopping/flight-offers/pricing', {
+        method: 'POST',
+        body: {
+            data: {
+                type: 'flight-offers-pricing',
+                flightOffers: [baseOffer],
+            },
+        },
+    });
+
+    const pricedOffer = priceResponse.data?.flightOffers?.[0];
+    if (!pricedOffer) {
+        throw new Error('Amadeus pricing confirmation failed: no priced offer returned');
+    }
+
+    console.log('[create-booking] Confirmed price:', pricedOffer.price?.grandTotal, pricedOffer.price?.currency);
+
+    // Step 3: Build booking request with the priced offer
     const phoneNumber = contact.phone.replace(/\D/g, '');
     const countryCallingCode = contact.countryCode || '82';
 
@@ -384,7 +416,7 @@ async function bookWithAmadeus(
     const body = {
         data: {
             type: 'flight-order',
-            flightOffers: [flightOffer],
+            flightOffers: [pricedOffer],
             travelers,
             contacts: [{
                 addresseeName: {
@@ -494,4 +526,27 @@ function jsonResponse(body: Record<string, unknown>, status = 200): Response {
         JSON.stringify(body),
         { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
+}
+
+function extractTicketNumbers(data: Record<string, any>): string[] {
+    const candidates = [
+        data.TktNumbers,
+        data.ETicketNumbers,
+        data.TicketNumbers,
+        data.eTicketNumbers,
+    ];
+    for (const field of candidates) {
+        if (Array.isArray(field) && field.length > 0) {
+            return field.map(String);
+        }
+    }
+    const ticketInfos: any[] = data.TravelItinerary?.TicketInfo ?? data.TicketInfo ?? [];
+    if (Array.isArray(ticketInfos) && ticketInfos.length > 0) {
+        return ticketInfos
+            .map((t: any) => t.TicketNumber ?? t.ETicketNumber ?? '')
+            .filter(Boolean);
+    }
+    if (data.TicketNumber) return [String(data.TicketNumber)];
+    if (data.ETicketNumber) return [String(data.ETicketNumber)];
+    return [];
 }

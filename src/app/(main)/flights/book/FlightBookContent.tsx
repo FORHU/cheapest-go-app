@@ -1,208 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, ArrowLeft, Loader2, CheckCircle, AlertTriangle, MapPin } from 'lucide-react';
-import type { FlightOffer } from '@/lib/flights/types';
-import { getAirlineName } from '@/lib/flights/types';
-import { createClient } from '@/utils/supabase/client';
-
-// ─── Types ───────────────────────────────────────────────────────────
-
-interface PassengerForm {
-    type: 'ADT' | 'CHD' | 'INF';
-    firstName: string;
-    lastName: string;
-    gender: string;
-    birthDate: string;
-    nationality: string;
-    passport: string;
-    passportExpiry: string;
-}
-
-interface ContactForm {
-    email: string;
-    phone: string;
-    countryCode: string;
-    addressLine: string;
-    city: string;
-    postalCode: string;
-    country: string;
-}
-
-type BookingStep = 'form' | 'submitting' | 'success' | 'error';
-
-// ─── Helpers ─────────────────────────────────────────────────────────
-
-function formatTime(iso: string): string {
-    const d = new Date(iso);
-    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-}
-
-function formatDuration(minutes: number): string {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-function formatPrice(amount: number, currency: string): string {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0,
-    }).format(amount);
-}
+import { Plane, User, Mail, ArrowLeft, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper } from 'lucide-react';
+import { Confetti, Balloons } from '@/components/ui/Animations';
+import { formatTime, formatDuration, formatPrice } from '@/lib/flights/utils';
+import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function FlightBookContent() {
-    const router = useRouter();
-    const [offer, setOffer] = useState<FlightOffer | null>(null);
-    const [step, setStep] = useState<BookingStep>('form');
-    const [errorMsg, setErrorMsg] = useState('');
-    const [bookingResult, setBookingResult] = useState<{ bookingId: string; pnr: string } | null>(null);
-
-    // Passenger state
-    const [passengers, setPassengers] = useState<PassengerForm[]>([{
-        type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
-        nationality: 'KR', passport: '', passportExpiry: '',
-    }]);
-
-    // Contact state
-    const [contact, setContact] = useState<ContactForm>({
-        email: '', phone: '', countryCode: '82',
-        addressLine: '', city: '', postalCode: '', country: 'KR',
-    });
-
-    // Load selected flight from sessionStorage
-    useEffect(() => {
-        const raw = sessionStorage.getItem('selectedFlight');
-        if (!raw) {
-            router.replace('/');
-            return;
-        }
-        try {
-            setOffer(JSON.parse(raw));
-        } catch {
-            router.replace('/');
-        }
-    }, [router]);
-
-    // ─── Update Passenger ────────────────────────────────────────────
-
-    const updatePassenger = (idx: number, field: keyof PassengerForm, value: string) => {
-        setPassengers(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
-    };
-
-    const addPassenger = () => {
-        setPassengers(prev => [...prev, {
-            type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
-            nationality: 'KR', passport: '', passportExpiry: '',
-        }]);
-    };
-
-    const removePassenger = (idx: number) => {
-        if (passengers.length <= 1) return;
-        setPassengers(prev => prev.filter((_, i) => i !== idx));
-    };
-
-    // ─── Submit Booking ──────────────────────────────────────────────
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!offer) return;
-
-        // Basic validation
-        for (let i = 0; i < passengers.length; i++) {
-            const p = passengers[i];
-            if (!p.firstName.trim() || !p.lastName.trim()) {
-                setErrorMsg(`Passenger ${i + 1}: First and last name are required`);
-                return;
-            }
-            if (!p.gender) {
-                setErrorMsg(`Passenger ${i + 1}: Gender is required`);
-                return;
-            }
-            if (!p.birthDate) {
-                setErrorMsg(`Passenger ${i + 1}: Date of birth is required`);
-                return;
-            }
-            if (!p.passport.trim()) {
-                setErrorMsg(`Passenger ${i + 1}: Passport number is required`);
-                return;
-            }
-            if (!p.passportExpiry) {
-                setErrorMsg(`Passenger ${i + 1}: Passport expiry date is required`);
-                return;
-            }
-        }
-        if (!contact.email.trim() || !contact.phone.trim()) {
-            setErrorMsg('Contact email and phone are required');
-            return;
-        }
-        if (!contact.addressLine.trim() || !contact.city.trim() || !contact.postalCode.trim()) {
-            setErrorMsg('Billing address is required');
-            return;
-        }
-
-        setStep('submitting');
-        setErrorMsg('');
-
-        try {
-            // Get current user ID
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-
-            if (!user) {
-                router.push('/login');
-                return;
-            }
-
-            // Build the flight object for the booking session
-            const flightPayload = {
-                traceId: (offer as any).traceId ?? offer.offerId,
-                resultIndex: (offer as any).resultIndex ?? offer.offerId,
-                price: offer.price.total,
-                currency: offer.price.currency,
-                validatingAirline: offer.validatingAirline ?? offer.segments[0]?.airline.code,
-                segments: offer.segments.map(seg => ({
-                    airline: seg.airline.code,
-                    airlineName: seg.airline.name,
-                    flightNumber: seg.flightNumber,
-                    origin: seg.departure.airport,
-                    destination: seg.arrival.airport,
-                    departureTime: seg.departure.time,
-                    arrivalTime: seg.arrival.time,
-                    cabinClass: seg.cabinClass,
-                })),
-                rawOffer: (offer as any)._raw,
-            };
-
-            const res = await fetch('/api/flights/book', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user.id,
-                    provider: offer.provider,
-                    flight: flightPayload,
-                    passengers,
-                    contact,
-                }),
-            });
-
-            const data = await res.json();
-
-            if (!data.success) {
-                throw new Error(data.error || 'Booking failed');
-            }
-
-            setBookingResult({ bookingId: data.data.bookingId, pnr: data.data.pnr });
-            setStep('success');
-            sessionStorage.removeItem('selectedFlight');
-        } catch (err: any) {
-            setErrorMsg(err.message || 'Booking failed. Please try again.');
-            setStep('error');
-        }
-    };
+    const {
+        offer,
+        step,
+        errorMsg,
+        bookingResult,
+        passengers,
+        contact,
+        updatePassenger,
+        addPassenger,
+        removePassenger,
+        setContact,
+        handleSubmit,
+        router,
+    } = useFlightBooking();
 
     // ─── Loading ─────────────────────────────────────────────────────
 
@@ -221,55 +42,117 @@ export default function FlightBookContent() {
 
     if (step === 'success' && bookingResult) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-24 pb-16">
-                <div className="max-w-2xl mx-auto px-4">
+            <main className="min-h-screen pt-24 pb-20 px-4 flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-emerald-50/60 via-white/40 to-indigo-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-emerald-950/60">
+                {/* Celebration Effects */}
+                <Confetti count={80} />
+                <Balloons count={12} />
+
+                {/* Animated background circles */}
+                <motion.div
+                    className="absolute top-20 left-10 w-72 h-72 bg-emerald-300/20 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+                    transition={{ duration: 4, repeat: Infinity }}
+                />
+                <motion.div
+                    className="absolute bottom-20 right-10 w-96 h-96 bg-indigo-300/20 dark:bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"
+                    animate={{ scale: [1.2, 1, 1.2], opacity: [0.3, 0.5, 0.3] }}
+                    transition={{ duration: 5, repeat: Infinity }}
+                />
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.5, type: 'spring', bounce: 0.4 }}
+                    className="relative z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-white/50 dark:border-white/10"
+                >
+                    {/* Success Icon with Animation */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 text-center"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.2, type: 'spring', bounce: 0.6 }}
+                        className="relative mx-auto mb-6 w-20 flex justify-center"
                     >
-                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                            <CheckCircle className="w-8 h-8 text-emerald-500" />
-                        </div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Booking Confirmed!</h1>
-                        <p className="text-slate-500 dark:text-slate-400 mb-6">Your flight has been booked successfully.</p>
+                        <motion.div
+                            className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30"
+                            animate={{ boxShadow: ['0 10px 30px rgba(16, 185, 129, 0.3)', '0 10px 50px rgba(16, 185, 129, 0.5)', '0 10px 30px rgba(16, 185, 129, 0.3)'] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                        >
+                            <CheckCircle size={40} className="text-white" strokeWidth={2.5} />
+                        </motion.div>
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.4, type: 'spring' }}
+                            className="absolute -top-1 -right-1 w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center shadow-md"
+                        >
+                            <PartyPopper size={16} className="text-amber-800" />
+                        </motion.div>
+                    </motion.div>
 
-                        <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 mb-6 text-left space-y-2">
-                            <div className="flex justify-between">
-                                <span className="text-sm text-slate-500 dark:text-slate-400">PNR</span>
-                                <span className="text-sm font-mono font-bold text-slate-900 dark:text-white">{bookingResult.pnr}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-sm text-slate-500 dark:text-slate-400">Booking ID</span>
-                                <span className="text-sm font-mono text-slate-700 dark:text-slate-300">{bookingResult.bookingId.slice(0, 8)}...</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-sm text-slate-500 dark:text-slate-400">Route</span>
-                                <span className="text-sm text-slate-900 dark:text-white">{primary.departure.airport} → {last.arrival.airport}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-sm text-slate-500 dark:text-slate-400">Total</span>
-                                <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency)}</span>
-                            </div>
-                        </div>
+                    <motion.h1
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-2xl font-bold text-slate-900 dark:text-white mb-2"
+                    >
+                        Booking Confirmed! 🎉
+                    </motion.h1>
 
-                        <div className="flex gap-3 justify-center">
-                            <button
-                                onClick={() => router.push('/trips')}
-                                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-colors"
-                            >
-                                View My Trips
-                            </button>
-                            <button
-                                onClick={() => router.push('/')}
-                                className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-sm transition-colors"
-                            >
-                                Back to Home
-                            </button>
+                    <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.4 }}
+                        className="text-slate-500 dark:text-slate-400 mb-6"
+                    >
+                        Your flight has been booked successfully.
+                    </motion.p>
+
+                    {/* Booking Details Card */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                        className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/10 p-5 rounded-2xl mb-6 text-left border border-slate-200/50 dark:border-white/5 space-y-4"
+                    >
+                        <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
+                            <span className="text-sm text-slate-500 dark:text-slate-400">PNR</span>
+                            <span className="text-sm font-mono font-bold text-slate-900 dark:text-white">{bookingResult.pnr}</span>
+                        </div>
+                        <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
+                            <span className="text-sm text-slate-500 dark:text-slate-400">Booking ID</span>
+                            <span className="text-sm font-mono text-slate-700 dark:text-slate-300">{bookingResult.bookingId.slice(0, 8)}...</span>
+                        </div>
+                        <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
+                            <span className="text-sm text-slate-500 dark:text-slate-400">Route</span>
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">{primary.departure.airport} → {last.arrival.airport}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-500 dark:text-slate-400">Total</span>
+                            <span className="text-sm font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency)}</span>
                         </div>
                     </motion.div>
-                </div>
-            </div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.6 }}
+                        className="space-y-3"
+                    >
+                        <button
+                            onClick={() => router.push('/trips')}
+                            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all active:scale-[0.98]"
+                        >
+                            View My Trips
+                        </button>
+                        <button
+                            onClick={() => router.push('/')}
+                            className="w-full py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition-colors"
+                        >
+                            Return to Home
+                        </button>
+                    </motion.div>
+                </motion.div>
+            </main>
         );
     }
 

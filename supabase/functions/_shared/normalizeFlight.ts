@@ -138,6 +138,9 @@ export function normalizeAmadeusOffer(
             brandName,
             fareType: fareTypes[0],
             resultIndex: rawOffer.id,
+
+            // Preserve the full raw Amadeus offer for booking
+            _rawOffer: rawOffer,
         };
     } catch (err) {
         console.error('[normalizeFlight] Failed to normalize Amadeus offer:', err);
