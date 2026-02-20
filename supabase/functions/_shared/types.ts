@@ -95,6 +95,9 @@ export interface NormalizedFlight {
     fareType?: string;
     traceId?: string;
     resultIndex?: string;
+
+    /** Raw provider offer for booking (not displayed, passed through to booking API) */
+    _rawOffer?: unknown;
 }
 
 // ═════════════════════════════════════════════════════════════════════

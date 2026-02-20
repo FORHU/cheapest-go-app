@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,6 +70,27 @@ export async function POST(req: NextRequest) {
 
         if (!bookingData.success) {
             throw new Error(bookingData.error || 'Booking failed');
+        }
+
+        // ── Send confirmation email ──
+        const passengerName = passengers[0]
+            ? `${passengers[0].firstName} ${passengers[0].lastName}`
+            : 'Traveler';
+
+        try {
+            const emailResult = await sendFlightBookingConfirmationEmail({
+                bookingId: bookingData.bookingId,
+                pnr: bookingData.pnr,
+                email: contact.email,
+                passengerName,
+                provider,
+                segments: flight.segments ?? [],
+                totalPrice: flight.price ?? 0,
+                currency: flight.currency ?? 'USD',
+            });
+            console.log('[FlightBook] Email result:', emailResult);
+        } catch (emailErr) {
+            console.error('[FlightBook] Email send failed:', emailErr);
         }
 
         return NextResponse.json({
