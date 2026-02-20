@@ -33,14 +33,14 @@ const HeroHeadline: React.FC = () => {
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                className="mb-5 sm:mb-8"
+                className="mb-3 sm:mb-5"
             >
-                <h1 className="text-3xl sm:text-5xl md:text-7xl font-display font-bold text-slate-900 dark:text-white tracking-tighter leading-[1.1] mb-4 sm:mb-6 drop-shadow-sm">
+                <h1 className="text-[clamp(1.5rem,5vw,4rem)] font-display font-bold text-slate-900 dark:text-white tracking-tighter leading-[1.1] mb-2 sm:mb-4 drop-shadow-sm">
                     <motion.span variants={itemVariants} className="block">
                         Precision Travel.
                     </motion.span>
                     <motion.span variants={itemVariants} className="block">
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-400 dark:from-blue-400 dark:to-cyan-300">
+                        <span className="text-[clamp(1.5rem,5vw,4rem)] text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-400 dark:from-blue-400 dark:to-cyan-300">
                             Machined for You.
                         </span>
                     </motion.span>
@@ -48,7 +48,7 @@ const HeroHeadline: React.FC = () => {
 
                 <motion.p
                     variants={itemVariants}
-                    className="text-base sm:text-lg md:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-body leading-relaxed mb-2"
+                    className="text-[clamp(0.7rem,2vw,1.5rem)] text-base sm:text-lg md:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-body leading-relaxed mb-2"
                 >
                     The operating system for the modern voyager.
                 </motion.p>
@@ -57,7 +57,7 @@ const HeroHeadline: React.FC = () => {
                     variants={itemVariants}
                     className="text-sm md:text-base max-w-2xl mx-auto font-mono"
                 >
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-400 to-slate-500 dark:from-slate-500 dark:to-slate-400">
+                    <span className="text-[clamp(0.5rem,2vw,1rem)]  text-transparent bg-clip-text bg-gradient-to-r from-slate-400 to-slate-500 dark:from-slate-500 dark:to-slate-400">
                         Ask anything. Book everything.
                     </span>
                 </motion.p>

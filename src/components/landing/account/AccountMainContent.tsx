@@ -94,7 +94,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
         return (
             <div className="flex-1 min-w-0">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-6 lg:p-8">
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
+                    <h2 className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
                         <Lock className="w-6 h-6 text-blue-600" />
                         Security Settings
                     </h2>
@@ -103,7 +103,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                     </p>
 
                     <section className="mb-8">
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Change Password</h3>
+                        <h3 className="text-[clamp(0.9375rem,2vw,1.125rem)] font-semibold text-slate-900 dark:text-white mb-4">Change Password</h3>
 
                         <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-md">
                             <div>
@@ -186,7 +186,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                     <hr className="border-slate-200 dark:border-white/10 my-8" />
 
                     <section>
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Account Email</h3>
+                        <h3 className="text-[clamp(0.9375rem,2vw,1.125rem)] font-semibold text-slate-900 dark:text-white mb-2">Account Email</h3>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                             Your account email address
                         </p>
@@ -205,7 +205,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
         return (
             <div className="flex-1 min-w-0">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-6 lg:p-8">
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
+                    <h2 className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
                         <Bell className="w-6 h-6 text-blue-600" />
                         Communication Preferences
                     </h2>
@@ -288,7 +288,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
         return (
             <div className="flex-1 min-w-0">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-6 lg:p-8">
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
+                    <h2 className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
                         <HelpCircle className="w-6 h-6 text-blue-600" />
                         Help & Support
                     </h2>
@@ -355,7 +355,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
         <div className="flex-1 min-w-0">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-6 lg:p-8">
                 {/* User Name Header */}
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
+                <h2 className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
                     <User className="w-6 h-6 text-blue-600" />
                     Profile Information
                 </h2>

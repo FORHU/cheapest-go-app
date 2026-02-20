@@ -3,21 +3,21 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Star } from 'lucide-react';
-import { TabList, SparkleEffect } from '@/components/ui';
+import { TabList, SparkleEffect, HorizontalScroll } from '@/components/ui';
 import { uniqueStays, uniqueTabs } from '@/data';
 
 export const ExploreUniqueStays: React.FC = () => {
   const [activeTab, setActiveTab] = useState(uniqueTabs[0]);
 
   return (
-    <section className="relative w-full py-10 sm:py-16 overflow-hidden">
+    <section className="relative w-full py-6 sm:py-10 overflow-hidden">
 
       <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="flex items-center gap-2 mb-2"
+          className="flex items-center gap-2 mb-1"
         >
           <motion.div
             animate={{ rotate: [0, 15, -15, 0] }}
@@ -25,7 +25,7 @@ export const ExploreUniqueStays: React.FC = () => {
           >
             <Sparkles size={24} className="text-amber-500" />
           </motion.div>
-          <h2 className="text-2xl md:text-3xl font-display font-bold text-slate-900 dark:text-white">
+          <h2 className="text-[clamp(1.125rem,4vw,1.875rem)] font-display font-bold text-slate-900 dark:text-white">
             Extraordinary Escapes
           </h2>
         </motion.div>
@@ -34,7 +34,7 @@ export const ExploreUniqueStays: React.FC = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1 }}
-          className="text-slate-500 dark:text-slate-400 text-sm mb-8"
+          className="text-slate-500 dark:text-slate-400 text-[clamp(0.75rem,1.5vw,0.875rem)] mb-4"
         >
           One-of-a-kind places from glamping to floating villas
         </motion.p>
@@ -43,29 +43,29 @@ export const ExploreUniqueStays: React.FC = () => {
           tabs={uniqueTabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          className="mb-8"
+          className="mb-4"
         />
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-5">
+        <HorizontalScroll gap={4} scrollAmount={320}>
           {uniqueStays.map((stay, i) => (
             <motion.div
               key={stay.id}
-              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
               whileInView={{ opacity: 1, y: 0, scale: 1 }}
               viewport={{ once: true }}
               transition={{
-                delay: i * 0.08,
+                delay: i * 0.06,
                 type: 'spring',
                 stiffness: 100
               }}
-              whileHover={{ y: -8, scale: 1.03 }}
-              className="relative group cursor-pointer"
+              whileHover={{ y: -6, scale: 1.02 }}
+              className="flex-shrink-0 w-[48vw] min-w-[200px] max-w-[280px] sm:min-w-[220px] sm:max-w-[320px] snap-start relative group cursor-pointer"
             >
               {/* Glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-70 blur-xl transition-all duration-500" />
+              <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-70 blur-xl transition-all duration-500 pointer-events-none" />
 
               <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-                <div className="relative aspect-4/3 overflow-hidden">
+                <div className="relative aspect-[4/3] overflow-hidden">
                   <motion.div
                     className="absolute inset-0 bg-cover bg-center"
                     style={{ backgroundImage: `url(${stay.image})` }}
@@ -78,30 +78,30 @@ export const ExploreUniqueStays: React.FC = () => {
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    transition={{ delay: i * 0.08 + 0.3, type: 'spring' }}
-                    className="absolute top-2 left-2 px-2.5 py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs font-medium rounded-full flex items-center gap-1 shadow-lg"
+                    transition={{ delay: i * 0.06 + 0.2, type: 'spring' }}
+                    className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-[clamp(0.625rem,1.25vw,0.75rem)] font-medium rounded-full flex items-center gap-1 shadow-lg"
                   >
-                    <Star size={10} fill="currentColor" className="animate-pulse" />
+                    <Star size={10} fill="currentColor" className="animate-pulse flex-shrink-0" />
                     {stay.badge}
                   </motion.div>
                 </div>
 
-                <div className="p-3">
-                  <h3 className="font-semibold text-slate-900 dark:text-white text-sm truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <div className="p-2.5 sm:p-3 min-h-[80px] sm:min-h-[88px] flex flex-col">
+                  <h3 className="font-semibold text-slate-900 dark:text-white text-[clamp(0.75rem,1.5vw,0.875rem)] truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors min-h-[1.25rem]">
                     {stay.name}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{stay.location}</p>
-                  <p className="text-sm font-bold mt-1.5">
+                  <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 mt-0.5 truncate min-h-[1rem]">{stay.location}</p>
+                  <p className="text-[clamp(0.75rem,1.5vw,0.875rem)] font-bold mt-auto pt-1 sm:pt-1.5">
                     <span className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                       ₱{stay.price.toLocaleString()}
                     </span>
-                    <span className="font-normal text-slate-400 text-xs">/night</span>
+                    <span className="font-normal text-slate-400 text-[clamp(0.625rem,1.25vw,0.75rem)]">/night</span>
                   </p>
                 </div>
               </div>
             </motion.div>
           ))}
-        </div>
+        </HorizontalScroll>
       </div>
     </section>
   );

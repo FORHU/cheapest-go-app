@@ -54,13 +54,13 @@ export const MapPropertyCarousel: React.FC<MapPropertyCarouselProps> = ({
                     onClick={() => onSelectId(property.id)}
                 >
                     <div className="flex h-24">
-                        {/* Image */}
-                        <div className="w-24 h-full relative shrink-0">
+                        {/* Image — Airbnb-style rounded */}
+                        <div className="w-24 h-full relative shrink-0 rounded-l-xl overflow-hidden">
                             <Image
                                 src={property.image}
                                 alt={property.name}
                                 fill
-                                className="object-cover rounded-l-lg"
+                                className="object-cover"
                                 sizes="96px"
                             />
                         </div>

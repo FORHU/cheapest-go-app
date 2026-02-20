@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from 'react';
-import Image from 'next/image';
-import { Calendar, MapPin, Users, Clock, XCircle, Pencil } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { MapPin, XCircle, Pencil } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { BookingRecord } from '@/services/booking.service';
 import CancellationModal from './CancellationModal';
 import ModificationModal from './ModificationModal';
@@ -13,25 +14,39 @@ import { derivePolicyType, getPolicyTitle, getPolicyBadgeColor } from '@/lib/pol
 interface BookingCardProps {
     booking: BookingRecord;
     onBookingUpdated?: () => void;
+    index?: number;
 }
 
-export default function BookingCard({ booking, onBookingUpdated }: BookingCardProps) {
+function getRatingLabel(rating: number): string {
+    if (rating >= 9) return 'Exceptional';
+    if (rating >= 8) return 'Excellent';
+    if (rating >= 7) return 'Very Good';
+    if (rating >= 6) return 'Good';
+    return 'Pleasant';
+}
+
+function getRatingColor(rating: number): string {
+    if (rating >= 9) return 'bg-indigo-600';
+    if (rating >= 8) return 'bg-emerald-500';
+    if (rating >= 7) return 'bg-teal-500';
+    if (rating >= 6) return 'bg-blue-500';
+    return 'bg-amber-500';
+}
+
+export default function BookingCard({ booking, onBookingUpdated, index = 0 }: BookingCardProps) {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showModifyModal, setShowModifyModal] = useState(false);
+
     const checkInDate = new Date(booking.check_in);
     const checkOutDate = new Date(booking.check_out);
     const nights = calculateNights(checkInDate, checkOutDate);
 
     const fmtDate = (date: Date) =>
-        formatDate(date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
-
-    const fmtPrice = (price: number, currency: string) =>
-        formatCurrency(price, currency || 'PHP');
+        formatDate(date, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
 
     const isUpcoming = checkInDate > new Date();
     const isPast = checkOutDate < new Date();
 
-    // Derive policy type for badge display
     const policyType = useMemo(
         () => derivePolicyType(
             booking.cancellation_policy?.refundableTag,
@@ -40,149 +55,199 @@ export default function BookingCard({ booking, onBookingUpdated }: BookingCardPr
         [booking.cancellation_policy]
     );
 
+    const rating = (booking as any).rating ?? 0;
+
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex flex-col md:flex-row">
-                {/* Property Image */}
-                <div className="relative w-full md:w-48 h-40 md:h-auto flex-shrink-0">
-                    {booking.property_image ? (
-                        <Image
-                            src={booking.property_image}
-                            alt={booking.property_name}
-                            fill
-                            className="object-cover"
-                        />
-                    ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                            <MapPin className="w-12 h-12 text-white/50" />
-                        </div>
-                    )}
-                    {/* Status Badge */}
-                    <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-semibold ${statusColors[booking.status]}`}>
-                        {statusLabels[booking.status]}
-                    </div>
-                    {/* Policy Badge */}
-                    {isUpcoming && booking.status === 'confirmed' && (
-                        <div className={`absolute bottom-3 left-3 px-2 py-1 rounded-full text-[10px] font-semibold ${getPolicyBadgeColor(policyType)}`}>
-                            {getPolicyTitle(policyType)}
-                        </div>
-                    )}
-                </div>
-
-                {/* Booking Details */}
-                <div className="flex-1 p-4 md:p-5">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-                        <div className="flex-1">
-                            {/* Property Name */}
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                                {booking.property_name}
-                            </h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-                                {booking.room_name}
-                            </p>
-
-                            {/* Booking Info Grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                                {/* Dates */}
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                    <Calendar className="w-4 h-4 text-blue-500" />
-                                    <div>
-                                        <p className="font-medium">{fmtDate(checkInDate)}</p>
-                                        <p className="text-xs text-slate-400">to {fmtDate(checkOutDate)}</p>
-                                    </div>
-                                </div>
-
-                                {/* Duration */}
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                    <Clock className="w-4 h-4 text-purple-500" />
-                                    <span>{nights} {nights === 1 ? 'night' : 'nights'}</span>
-                                </div>
-
-                                {/* Guests */}
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                    <Users className="w-4 h-4 text-green-500" />
-                                    <span>
-                                        {booking.guests_adults} {booking.guests_adults === 1 ? 'adult' : 'adults'}
-                                        {booking.guests_children > 0 && `, ${booking.guests_children} ${booking.guests_children === 1 ? 'child' : 'children'}`}
-                                    </span>
-                                </div>
-
-                                {/* Booking ID */}
-                                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                                    <span className="text-xs font-mono">ID: {booking.booking_id}</span>
-                                </div>
+        <>
+            <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.1 }}
+                transition={{ delay: index * 0.03, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+                className="bg-white dark:bg-slate-900 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all group cursor-default"
+            >
+                {/* ── MOBILE layout: compact horizontal list ── */}
+                <div className="flex flex-row md:hidden min-h-[96px]">
+                    {/* Image — smaller thumbnail */}
+                    <div className="relative w-24 min-h-[96px] flex-shrink-0 overflow-hidden rounded-l-lg">
+                        {booking.property_image ? (
+                            <img
+                                src={booking.property_image}
+                                alt={booking.property_name}
+                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                        ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                <MapPin className="w-6 h-6 text-white/50" />
                             </div>
-                        </div>
-
-                        {/* Price & Actions */}
-                        <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-white/5">
-                            <div className="text-right">
-                                <p className="text-xs text-slate-400 dark:text-slate-500">Total paid</p>
-                                <p className="text-xl font-bold text-slate-900 dark:text-white">
-                                    {fmtPrice(booking.total_price, booking.currency)}
-                                </p>
-                            </div>
-
+                        )}
+                        {/* Badges */}
+                        <div className="absolute top-1 left-1 flex flex-col gap-1">
+                            <span className={`text-[clamp(0.5rem,1.5vw,0.5625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${statusColors[booking.status]}`}>
+                                {statusLabels[booking.status]}
+                            </span>
                             {isUpcoming && booking.status === 'confirmed' && (
-                                <div className="flex flex-col items-end gap-2">
-                                    <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full">
-                                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                                        Upcoming
-                                    </span>
-                                    <button
-                                        onClick={() => setShowModifyModal(true)}
-                                        className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors min-h-[44px] py-2"
-                                    >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                        Modify booking
-                                    </button>
-                                    <button
-                                        onClick={() => setShowCancelModal(true)}
-                                        className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:underline transition-colors min-h-[44px] py-2"
-                                    >
-                                        <XCircle className="w-3.5 h-3.5" />
-                                        Cancel booking
-                                    </button>
-                                </div>
-                            )}
-
-                            {isPast && booking.status === 'confirmed' && (
-                                <span className="text-xs text-slate-400">
-                                    Trip completed
-                                </span>
-                            )}
-
-                            {booking.status === 'cancelled' && (
-                                <span className="text-xs text-red-500 dark:text-red-400">
-                                    Booking cancelled
+                                <span className={`text-[clamp(0.5rem,1.5vw,0.5625rem)] font-semibold text-white px-1.5 py-0.5 rounded shadow ${getPolicyBadgeColor(policyType)}`}>
+                                    {getPolicyTitle(policyType)}
                                 </span>
                             )}
                         </div>
                     </div>
+
+                    {/* Content */}
+                    <div className="flex-1 p-2.5 flex flex-col min-w-0">
+                        <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white mb-0.5 leading-tight truncate">
+                            {booking.property_name}
+                        </h3>
+
+                        <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1 truncate">
+                            {fmtDate(checkInDate)} → {fmtDate(checkOutDate)} · {nights} {nights === 1 ? 'night' : 'nights'}
+                        </div>
+
+                        <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1.5">
+                            {booking.guests_adults} {booking.guests_adults === 1 ? 'adult' : 'adults'}
+                            {booking.guests_children > 0 && `, ${booking.guests_children} ${booking.guests_children === 1 ? 'child' : 'children'}`}
+                        </div>
+
+                        {/* Price */}
+                        <div className="mt-auto">
+                            <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(booking.total_price, booking.currency || 'PHP')}
+                            </span>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            {/* Modification Modal */}
-            <ModificationModal
-                booking={booking}
-                isOpen={showModifyModal}
-                onClose={() => setShowModifyModal(false)}
-                onModified={() => {
-                    setShowModifyModal(false);
-                    onBookingUpdated?.();
-                }}
-            />
+                {/* ── DESKTOP layout: compact horizontal list ── */}
+                <div className="hidden md:flex flex-row min-h-[112px]">
+                    {/* Image — smaller thumbnail */}
+                    <div className="relative w-32 min-h-[112px] lg:w-36 lg:min-h-[112px] flex-shrink-0 overflow-hidden rounded-l-lg">
+                        {booking.property_image ? (
+                            <img
+                                src={booking.property_image}
+                                alt={booking.property_name}
+                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                        ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                <MapPin className="w-8 h-8 text-white/50" />
+                            </div>
+                        )}
+                        {/* Badges — stacked column so they never overlap */}
+                        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
+                            <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${statusColors[booking.status]}`}>
+                                {statusLabels[booking.status]}
+                            </span>
+                            {isUpcoming && booking.status === 'confirmed' && (
+                                <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold text-white px-1.5 py-0.5 rounded shadow ${getPolicyBadgeColor(policyType)}`}>
+                                    {getPolicyTitle(policyType)}
+                                </span>
+                            )}
+                        </div>
+                    </div>
 
-            {/* Cancellation Modal */}
-            <CancellationModal
-                booking={booking}
-                isOpen={showCancelModal}
-                onClose={() => setShowCancelModal(false)}
-                onCancelled={() => {
-                    setShowCancelModal(false);
-                    onBookingUpdated?.();
-                }}
-            />
-        </div>
+                    {/* Content */}
+                    <div className="flex-1 p-3 flex flex-col min-w-0">
+                        <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white mb-0.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                            {booking.property_name}
+                        </h3>
+
+                        <div className="flex items-center text-[clamp(0.625rem,1.5vw,0.75rem)] text-blue-600 dark:text-blue-400 mb-0.5">
+                            <MapPin size={12} className="mr-1 shrink-0" />
+                            <span className="truncate">{booking.room_name}</span>
+                        </div>
+
+                        <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1">
+                            {fmtDate(checkInDate)} → {fmtDate(checkOutDate)} · {nights} {nights === 1 ? 'night' : 'nights'}
+                        </div>
+
+                        {/* Guests */}
+                        <div className="flex flex-wrap gap-1 mb-1.5">
+                            <span className="inline-flex items-center px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-600 dark:text-slate-300">
+                                {booking.guests_adults} {booking.guests_adults === 1 ? 'adult' : 'adults'}
+                                {booking.guests_children > 0 && `, ${booking.guests_children} ${booking.guests_children === 1 ? 'child' : 'children'}`}
+                            </span>
+                        </div>
+
+                        {/* Action buttons */}
+                        {isUpcoming && booking.status === 'confirmed' && (
+                            <div className="flex items-center gap-2 mt-auto">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowModifyModal(true); }}
+                                    className="inline-flex items-center gap-1 text-[clamp(0.625rem,1.5vw,0.75rem)] text-blue-600 dark:text-blue-400 hover:underline transition-colors"
+                                >
+                                    <Pencil className="w-3 h-3" />
+                                    Modify
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
+                                    className="inline-flex items-center gap-1 text-[clamp(0.625rem,1.5vw,0.75rem)] text-red-500 dark:text-red-400 hover:underline transition-colors"
+                                >
+                                    <XCircle className="w-3 h-3" />
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                        {isPast && booking.status === 'confirmed' && (
+                            <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-400">Trip completed</span>
+                        )}
+                        {booking.status === 'cancelled' && (
+                            <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-red-500 dark:text-red-400">Cancelled</span>
+                        )}
+                    </div>
+
+                    {/* Right panel — rating & price */}
+                    <div className="flex flex-col items-end justify-center w-[120px] lg:w-[140px] p-3 border-l border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                        {/* Rating */}
+                        {rating > 0 && (
+                            <div className="flex items-center gap-1.5 mb-2">
+                                <span className={cn('text-[clamp(0.5625rem,1.5vw,0.625rem)] font-bold text-white px-1.5 py-0.5 rounded', getRatingColor(rating))}>
+                                    {rating.toFixed(1)}
+                                </span>
+                                <div className="text-right">
+                                    <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] font-semibold text-slate-900 dark:text-white leading-none">
+                                        {getRatingLabel(rating)}
+                                    </div>
+                                    {(booking as any).reviews != null && (booking as any).reviews > 0 && (
+                                        <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400">
+                                            {(booking as any).reviews.toLocaleString()} reviews
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Price */}
+                        <div className="text-right">
+                            <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(booking.total_price, booking.currency || 'PHP')}
+                            </span>
+                            <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400">total</div>
+                        </div>
+                    </div>
+                </div>
+            </motion.div>
+
+        {/* Modals */}
+        <ModificationModal
+            booking={booking}
+            isOpen={showModifyModal}
+            onClose={() => setShowModifyModal(false)}
+            onModified={() => {
+                setShowModifyModal(false);
+                onBookingUpdated?.();
+            }}
+        />
+
+        <CancellationModal
+            booking={booking}
+            isOpen={showCancelModal}
+            onClose={() => setShowCancelModal(false)}
+            onCancelled={() => {
+                setShowCancelModal(false);
+                onBookingUpdated?.();
+            }}
+        />
+        </>
     );
 }

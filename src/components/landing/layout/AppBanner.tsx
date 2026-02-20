@@ -6,7 +6,7 @@ import { Smartphone, Star, Download, ChevronRight } from 'lucide-react';
 
 const AppBanner = () => {
   return (
-    <section className="w-full py-10 sm:py-16">
+    <section className="w-full py-6 sm:py-10">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -77,26 +77,26 @@ const AppBanner = () => {
                   <span className="text-xs font-medium text-white">Mobile App</span>
                 </div>
 
-                <h3 className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-white mb-3">
+                <h3 className="text-[clamp(1.125rem,4vw,1.875rem)] font-display font-bold text-white mb-3">
                   Travel smarter with our app
                 </h3>
-                <p className="text-white/80 mb-6 max-w-md">
+                <p className="text-[clamp(0.8125rem,1.5vw,0.9375rem)] text-white/80 mb-6 max-w-md">
                   Get exclusive app-only deals, instant notifications, and manage your trips on the go.
                 </p>
 
                 {/* Stats */}
                 <div className="flex flex-wrap justify-center md:justify-start gap-6 mb-6">
                   <div>
-                    <div className="text-2xl font-mono font-bold text-white">10M+</div>
-                    <div className="text-xs text-white/60">Downloads</div>
+                    <div className="text-[clamp(1.25rem,3vw,1.5rem)] font-mono font-bold text-white">10M+</div>
+                    <div className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-white/60">Downloads</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-mono font-bold text-white">4.9</div>
-                    <div className="text-xs text-white/60">App Rating</div>
+                    <div className="text-[clamp(1.25rem,3vw,1.5rem)] font-mono font-bold text-white">4.9</div>
+                    <div className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-white/60">App Rating</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-mono font-bold text-white">15%</div>
-                    <div className="text-xs text-white/60">Extra Savings</div>
+                    <div className="text-[clamp(1.25rem,3vw,1.5rem)] font-mono font-bold text-white">15%</div>
+                    <div className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-white/60">Extra Savings</div>
                   </div>
                 </div>
 
