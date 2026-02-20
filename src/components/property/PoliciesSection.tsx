@@ -124,10 +124,10 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
     const feeCurrency = cancellationPolicies?.cancelPolicyInfos?.[0]?.currency;
 
     return (
-        <div className="py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-36" id="policies">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Policies</h2>
+        <div className="py-4 md:py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-24 md:scroll-mt-36" id="policies">
+            <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-4 md:mb-6">Policies</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
                 {/* Check-in / Check-out */}
                 {(checkInTime || checkOutTime) && (
                     <div className="space-y-4">
@@ -225,7 +225,7 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
 
             {/* Important Information */}
             {hotelImportantInformation && (
-                <div className="mt-8 space-y-4">
+                <div className="mt-4 md:mt-8 space-y-3 md:space-y-4">
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <Info size={18} />
                         Important Information

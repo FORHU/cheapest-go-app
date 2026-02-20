@@ -95,6 +95,8 @@ interface SearchState {
 
     // Search Filters (moved from SearchFilters component useState)
     filters: SearchFilters;
+    isMobileFiltersOpen: boolean;
+    setIsMobileFiltersOpen: (isOpen: boolean) => void;
     setFilters: (filters: Partial<SearchFilters>) => void;
     toggleStarRating: (star: number) => void;
     toggleFacility: (facilityId: number) => void;
@@ -182,6 +184,7 @@ export const useSearchStore = create<SearchState>()(
             activeDropdown: null,
             isSearching: false,
             filters: initialFilters,
+            isMobileFiltersOpen: false,
             suggestions: initialSuggestions,
 
             // Flight Initial State
@@ -220,6 +223,7 @@ export const useSearchStore = create<SearchState>()(
             setIsSearching: (isSearching) => set({ isSearching }),
 
             // Filter actions
+            setIsMobileFiltersOpen: (isMobileFiltersOpen) => set({ isMobileFiltersOpen }),
             setFilters: (filters) => set((state) => ({
                 filters: { ...state.filters, ...filters }
             })),
@@ -258,6 +262,7 @@ export const useSearchStore = create<SearchState>()(
                 travelers: initialTravelers,
                 activeDropdown: null,
                 filters: initialFilters,
+                isMobileFiltersOpen: false,
                 suggestions: initialSuggestions,
             }),
 
@@ -370,6 +375,7 @@ export const useSearchActions = () =>
             setUserCountry: state.setUserCountry,
             setActiveDropdown: state.setActiveDropdown,
             setFilters: state.setFilters,
+            setIsMobileFiltersOpen: state.setIsMobileFiltersOpen,
             toggleStarRating: state.toggleStarRating,
             toggleFacility: state.toggleFacility,
             resetFilters: state.resetFilters,

@@ -24,7 +24,7 @@ export default function PropertyNav() {
     const handleTabClick = (sectionId: string) => {
         const section = document.getElementById(sectionId);
         if (section) {
-            const navHeight = 140; // Account for sticky nav
+            const navHeight = window.innerWidth < 768 ? 100 : 140;
             const sectionTop = section.getBoundingClientRect().top + window.scrollY - navHeight;
             window.scrollTo({ top: sectionTop, behavior: 'smooth' });
         }
@@ -33,7 +33,7 @@ export default function PropertyNav() {
     // Update active tab based on scroll position
     useEffect(() => {
         const handleScroll = () => {
-            const navHeight = 150;
+            const navHeight = window.innerWidth < 768 ? 110 : 150;
 
             // Find the section that's currently in view
             for (let i = tabs.length - 1; i >= 0; i--) {
@@ -53,13 +53,13 @@ export default function PropertyNav() {
     }, []);
 
     return (
-        <div className="sticky top-[80px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg z-30 py-3 border-b border-slate-200 dark:border-white/10 -mx-4 px-4 md:-mx-6 md:px-6">
-            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="sticky top-[64px] md:top-[80px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg z-30 py-2 md:py-3 border-b border-slate-200 dark:border-white/10 -mx-3 px-3 md:-mx-6 md:px-6">
+            <div className="flex gap-1.5 md:gap-2 overflow-x-auto no-scrollbar">
                 {tabs.map((tab) => (
                     <button
                         key={tab.sectionId}
                         onClick={() => handleTabClick(tab.sectionId)}
-                        className={`px-4 py-2 text-sm font-semibold rounded-full transition-all whitespace-nowrap ${
+                        className={`px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-semibold rounded-full transition-all whitespace-nowrap ${
                             activeTab === tab.sectionId
                                 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                                 : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5'
