@@ -10,6 +10,7 @@ import { MapPopup } from '@/components/map/MapPopup';
 import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
 import type { Property } from '@/data/mockProperties';
+import { MapModal } from '@/components/map/MapModal';
 import { MapPin } from 'lucide-react';
 
 interface SearchListWithMapProps {
@@ -25,7 +26,9 @@ interface SearchListWithMapProps {
  *   LEFT  — filters + search results (children, scrollable)
  *   RIGHT — sticky Mapbox map with property markers + popups
  *
- * On mobile: map is hidden, only shows children (normal list view).
+ * On mobile/tablet (< lg): map is accessible via a FAB that opens a full-screen modal.
+ * Tablet (md): Can optionally show side-by-side if screened is large enough, or just use modal.
+ * User requested "tablet 50/50 layout".
  */
 function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
     const router = useRouter();
@@ -34,6 +37,7 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
+    const [showMobileMap, setShowMobileMap] = useState(false);
 
     // Filter only properties with real coordinates
     const mappableProperties = useMemo<MappableProperty[]>(
@@ -133,15 +137,16 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
     }
 
     return (
-        <div className="flex flex-col lg:flex-row gap-0 w-full">
+        <div className="flex flex-col md:flex-row gap-0 w-full relative">
             {/* LEFT — Filters + Search Results (scrollable, passed as children) */}
             <div className="flex-1 min-w-0">
                 {children}
             </div>
 
-            {/* RIGHT — Sticky Map Sidebar (desktop only) */}
-            <div className="hidden lg:block lg:w-[45%] xl:w-[40%] flex-shrink-0">
-                <div className="sticky top-[80px] h-[calc(100vh-120px)] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 ml-6">
+            {/* RIGHT — Sticky Map Sidebar (desktop/tablet only) */}
+            {/* Hidden on mobile (< md), Visible on tablet (md+) */}
+            <div className="hidden md:block md:w-[45%] lg:w-[45%] xl:w-[40%] flex-shrink-0">
+                <div className="sticky top-[80px] h-[calc(100vh-120px)] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 ml-4 lg:ml-6">
                     <Map
                         ref={mapRef}
                         mapStyle="standard"
@@ -190,6 +195,27 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Mobile: Map Toggle FAB (< md) */}
+            <button
+                onClick={() => setShowMobileMap(true)}
+                className="md:hidden fixed bottom-6 right-6 z-40 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+            >
+                <MapPin size={18} />
+                <span className="text-sm font-semibold">Map</span>
+            </button>
+
+            {/* Mobile Map Modal */}
+            <MapModal
+                isOpen={showMobileMap}
+                onClose={() => setShowMobileMap(false)}
+                properties={mappableProperties}
+                selectedId={selectedId}
+                onSelectId={setSelectedId}
+                hoveredId={hoveredId}
+                onHoverId={setHoveredId}
+                onViewDetails={handleViewDetails}
+            />
         </div>
     );
 }

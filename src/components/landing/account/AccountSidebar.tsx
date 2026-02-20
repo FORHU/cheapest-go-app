@@ -33,10 +33,10 @@ export const AccountSidebar: React.FC<AccountSidebarProps> = ({
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-6 mb-4">
                 {/* User Greeting */}
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                    <h1 className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white">
                         Hi, {user.firstName}
                     </h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
+                    <p className="text-[clamp(0.75rem,1.5vw,0.875rem)] text-slate-500 dark:text-slate-400">{user.email}</p>
                 </div>
 
                 {/* Membership Badge */}
@@ -52,7 +52,7 @@ export const AccountSidebar: React.FC<AccountSidebarProps> = ({
                         Points value
                         <HelpCircle size={12} />
                     </div>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">₱ 0.00</p>
+                    <p className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white">₱ 0.00</p>
                 </div>
 
                 <button className="w-full text-sm text-blue-600 dark:text-blue-400 hover:underline text-left flex items-center justify-between py-2">

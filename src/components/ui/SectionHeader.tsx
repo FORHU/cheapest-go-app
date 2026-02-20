@@ -28,9 +28,9 @@ const badgeVariants = {
 };
 
 const titleSizes = {
-  sm: 'text-lg',
-  md: 'text-xl md:text-2xl',
-  lg: 'text-2xl md:text-3xl',
+  sm: 'text-[clamp(0.9375rem,2vw,1.125rem)]',
+  md: 'text-[clamp(1.0625rem,2.5vw,1.5rem)]',
+  lg: 'text-[clamp(1.125rem,4vw,1.875rem)]',
 };
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
@@ -49,7 +49,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className={`flex items-end justify-between mb-8 ${className}`}
+      className={`flex items-end justify-between mb-4 sm:mb-5 ${className}`}
     >
       <div className="flex items-start gap-3">
         {Icon && (
@@ -81,7 +81,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
             {title}
           </motion.h2>
           {subtitle && (
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-[clamp(0.6875rem,1.5vw,0.875rem)] text-slate-500 dark:text-slate-400 mt-1">
               {subtitle}
             </p>
           )}

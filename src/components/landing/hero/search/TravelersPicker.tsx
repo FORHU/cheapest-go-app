@@ -24,7 +24,7 @@ const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onC
             <button
                 disabled={value <= min}
                 onClick={() => onChange(value - 1)}
-                className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             >
                 <Minus size={14} />
             </button>
@@ -34,7 +34,7 @@ const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onC
             <button
                 disabled={value >= max}
                 onClick={() => onChange(value + 1)}
-                className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             >
                 <Plus size={14} />
             </button>
@@ -250,7 +250,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                                         <button
                                             disabled={children <= 0}
                                             onClick={() => setTravelers({ children: children - 1 })}
-                                            className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                            className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                                         >
                                             <Minus size={14} />
                                         </button>
@@ -260,7 +260,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                                         <button
                                             disabled={children >= 6}
                                             onClick={handleAddChild}
-                                            className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                            className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                                         >
                                             <Plus size={14} />
                                         </button>

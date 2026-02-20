@@ -189,7 +189,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                                             <span className={`${inline ? "text-xs sm:text-sm" : "text-sm"} font-bold text-slate-900 dark:text-white`}>
                                                 {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                                             </span>
-                                            <div className="w-6" />
+                                            <div className="w-6 md:hidden" /> {/* Spacer for mobile centering if needed */}
                                         </div>
                                         <div className={`grid grid-cols-7 text-center mb-2 ${inline ? 'gap-0 sm:gap-1' : 'gap-1'}`}>
                                             {DAYS.map((d, i) => (
@@ -221,6 +221,16 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                                             {renderMonth(getNextMonth(currentMonth))}
                                         </div>
                                     </div>
+
+                                    {/* Mobile: Show Next Month button at bottom of first month? Or just show one month on mobile? 
+                                        Common pattern: Show vertical list of months. 
+                                        For this specific component structure, showing one month on mobile with nav arrows is safer.
+                                    */}
+                                    <div className="md:hidden flex justify-end">
+                                        <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
+                                            <ChevronRight size={16} className="text-slate-400" />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Flexibility Pills */}
@@ -243,9 +253,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                             <div className="space-y-8">
                                 <div className="text-center">
                                     <h4 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">How long do you want to stay?</h4>
-                                    <div className="flex justify-center gap-2">
+                                    <div className="flex flex-wrap justify-center gap-2">
                                         {['1 night', '2-3 nights', '4-5 nights', '6-7 nights'].map(p => (
-                                            <button key={p} className="px-6 py-2.5 rounded-full border text-xs font-bold border-slate-200 dark:border-white/10 hover:border-alabaster-accent dark:hover:border-obsidian-accent transition-colors text-slate-700 dark:text-slate-300">
+                                            <button key={p} className="px-4 sm:px-6 py-2.5 rounded-full border text-xs font-bold border-slate-200 dark:border-white/10 hover:border-alabaster-accent dark:hover:border-obsidian-accent transition-colors text-slate-700 dark:text-slate-300">
                                                 {p}
                                             </button>
                                         ))}

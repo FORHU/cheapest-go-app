@@ -56,7 +56,7 @@ export default async function SearchPage(props: {
                 <ResponsiveSearchHeader />
             </div>
 
-            <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-8">
+            <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
                 <Suspense fallback={
                     <div className="w-full flex-shrink-0 lg:w-[280px] space-y-4">
                         <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse" />

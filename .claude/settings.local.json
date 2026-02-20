@@ -12,7 +12,7 @@
       "Bash(curl:*)",
       "Bash(npx supabase functions deploy:*)",
       "Bash(npx supabase functions logs:*)",
-      "WebFetch(domain:rover.myfarebox.com)"
+      "Bash(cat:*)"
     ]
   }
 }
