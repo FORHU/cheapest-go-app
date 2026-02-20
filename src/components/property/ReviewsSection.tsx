@@ -1,0 +1,318 @@
+"use client";
+
+import React from 'react';
+import { Users, Heart, UserCircle, Briefcase, Users2 } from 'lucide-react';
+import {
+    HotelReview,
+    formatReviewDate,
+    getRatingLabel,
+    getRatingColor,
+    calculateTravelerBreakdown,
+    TravelerBreakdown
+} from '@/lib/property/fetchReviews';
+import { useReviewsStore } from '@/stores/reviewsStore';
+
+interface ReviewsSectionProps {
+    reviews: HotelReview[];
+    averageRating: number;
+    totalCount: number;
+}
+
+// === Sub-components ===
+
+/**
+ * Rating Summary Card - Shows overall score and label
+ */
+function RatingSummary({ rating, totalCount }: { rating: number; totalCount: number }) {
+    return (
+        <div className="flex items-center gap-2.5 md:gap-3 mb-4 md:mb-6">
+            <div className={`${getRatingColor(rating)} text-white w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-bold text-base md:text-xl`}>
+                {rating > 0 ? rating.toFixed(0) : '-'}
+            </div>
+            <div>
+                <p className="font-semibold text-slate-900 dark:text-white text-sm md:text-lg">
+                    {getRatingLabel(rating)}
+                </p>
+                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
+                    Based on {totalCount} review{totalCount !== 1 ? 's' : ''}
+                </p>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Who Stays Here Section - Shows traveler type breakdown
+ */
+function WhoStaysHere({ breakdown }: { breakdown: TravelerBreakdown }) {
+    const types = [
+        { key: 'family', label: 'Family', icon: Users, value: breakdown.family },
+        { key: 'couple', label: 'Couple', icon: Heart, value: breakdown.couple },
+        { key: 'friendsGroup', label: 'Friends/Group', icon: Users2, value: breakdown.friendsGroup },
+        { key: 'solo', label: 'Solo', icon: UserCircle, value: breakdown.solo },
+        { key: 'business', label: 'Business', icon: Briefcase, value: breakdown.business },
+    ].filter(t => t.value > 0);
+
+    if (types.length === 0) return null;
+
+    return (
+        <div className="mb-4 md:mb-6">
+            <h3 className="text-xs md:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 md:mb-3">Who stays here</h3>
+            <div className="flex flex-wrap gap-3 md:gap-4">
+                {types.map(({ key, label, icon: Icon, value }) => (
+                    <div key={key} className="flex flex-col items-center text-center">
+                        <Icon className="w-4 h-4 md:w-5 md:h-5 text-slate-400 mb-0.5" />
+                        <span className="text-[10px] md:text-xs text-slate-600 dark:text-slate-300">{label}</span>
+                        <span className="text-[10px] md:text-xs font-semibold text-slate-800 dark:text-slate-200">{value}%</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Single Review Item - Matches LiteAPI style
+ */
+function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
+    const { toggleExpanded, expandedReviewIds } = useReviewsStore();
+    const reviewId = `${review.name}-${index}`;
+    const isExpanded = expandedReviewIds.has(reviewId);
+
+    // Combine pros and cons into review text
+    const reviewText = [review.pros, review.cons].filter(Boolean).join(' ');
+    const isLongText = reviewText.length > 200;
+    const displayText = isLongText && !isExpanded
+        ? reviewText.substring(0, 200) + '...'
+        : reviewText;
+
+    return (
+        <div className="py-2.5 md:py-4 border-b border-slate-100 dark:border-slate-700 last:border-b-0">
+            <div className="flex items-start justify-between gap-3 md:gap-4">
+                {/* Left: Reviewer info */}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 md:gap-2 mb-0.5">
+                        <span className="font-semibold text-xs md:text-sm text-slate-900 dark:text-white truncate">
+                            {review.name || 'Anonymous'}
+                        </span>
+                        {review.type && (
+                            <span className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 shrink-0">
+                                • {review.type}
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 mb-1.5 md:mb-2">
+                        {formatReviewDate(review.date)}
+                    </p>
+
+                    {/* Headline */}
+                    {review.headline && (
+                        <p className="font-medium text-xs md:text-sm text-slate-800 dark:text-slate-200 mb-0.5 md:mb-1">
+                            {review.headline}
+                        </p>
+                    )}
+
+                    {/* Review text with pros/cons */}
+                    {reviewText && (
+                        <div className="text-xs md:text-sm text-slate-600 dark:text-slate-300">
+                            {review.pros && (
+                                <p className="mb-0.5 md:mb-1">
+                                    <span className="text-emerald-500">👍</span> {isExpanded || !isLongText ? review.pros : review.pros.substring(0, 100) + '...'}
+                                </p>
+                            )}
+                            {review.cons && (isExpanded || review.pros === undefined) && (
+                                <p>
+                                    <span className="text-amber-500">👎</span> {review.cons}
+                                </p>
+                            )}
+                            {isLongText && (
+                                <button
+                                    onClick={() => toggleExpanded(reviewId)}
+                                    className="text-blue-600 hover:text-blue-700 text-[10px] md:text-xs font-medium mt-1"
+                                >
+                                    {isExpanded ? 'Show Less' : 'Show More'}
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Right: Score badge */}
+                {review.averageScore > 0 && (
+                    <div className={`${getRatingColor(review.averageScore)} text-white w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center font-bold text-[11px] md:text-sm flex-shrink-0`}>
+                        {review.averageScore.toFixed(0)}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// === Main Component ===
+
+export default function ReviewsSection({ reviews, averageRating, totalCount }: ReviewsSectionProps) {
+    const {
+        displayCount,
+        loadMore,
+        sortBy,
+        setSortBy,
+    } = useReviewsStore();
+
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+    const prevDisplayCountRef = React.useRef(displayCount);
+    const prevScrollHeightRef = React.useRef<number>(0);
+
+    // Use server-fetched reviews directly from props (no store copy needed)
+    const reviewsToDisplay = reviews;
+
+    // Calculate traveler breakdown
+    const travelerBreakdown = calculateTravelerBreakdown(reviewsToDisplay);
+
+    // Sort reviews
+    const sortedReviews = [...reviewsToDisplay].sort((a, b) => {
+        if (sortBy === 'highest') return (b.averageScore || 0) - (a.averageScore || 0);
+        if (sortBy === 'lowest') return (a.averageScore || 0) - (b.averageScore || 0);
+        // Default: newest first (by date)
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+
+    const displayedReviews = sortedReviews.slice(0, displayCount);
+    const hasMore = displayCount < reviewsToDisplay.length;
+
+    // State for custom sort dropdown
+    const [isSortOpen, setIsSortOpen] = React.useState(false);
+
+    // Auto-scroll logic when loading more reviews
+    React.useEffect(() => {
+        if (displayCount > prevDisplayCountRef.current) {
+            setTimeout(() => {
+                if (scrollContainerRef.current && prevScrollHeightRef.current > 0) {
+                    const container = scrollContainerRef.current;
+                    // Scroll exactly to where the old content ended, minus a small buffer
+                    container.scrollTo({
+                        top: prevScrollHeightRef.current - 60,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 100);
+        }
+        prevDisplayCountRef.current = displayCount;
+    }, [displayCount]);
+
+    const handleLoadMore = () => {
+        if (scrollContainerRef.current) {
+            prevScrollHeightRef.current = scrollContainerRef.current.scrollHeight;
+        }
+        loadMore();
+    };
+
+    // Click outside handler for custom dropdown
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (isSortOpen && !(event.target as Element).closest('#sort-dropdown')) {
+                setIsSortOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isSortOpen]);
+
+    if (totalCount === 0) {
+        return (
+            <section id="reviews-section" className="py-8">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Guest reviews</h2>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-8 text-center">
+                    <UserCircle className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                    <p className="text-slate-500 dark:text-slate-400">
+                        No reviews available yet for this property.
+                    </p>
+                </div>
+            </section>
+        );
+    }
+
+    const sortOptions = [
+        { value: 'newest', label: 'Newest first' },
+        { value: 'highest', label: 'Highest rated' },
+        { value: 'lowest', label: 'Lowest rated' },
+    ];
+
+    const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label || 'Newest first';
+
+    return (
+        <section id="reviews-section" className="py-4 md:py-8">
+            <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
+                {/* Left Column - Summary */}
+                <div className="lg:w-64 flex-shrink-0">
+                    <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-3 md:mb-4">Guest reviews</h2>
+
+                    <RatingSummary rating={averageRating} totalCount={totalCount} />
+                    <WhoStaysHere breakdown={travelerBreakdown} />
+                </div>
+
+                {/* Right Column - Reviews List */}
+                <div className="flex-1 w-full min-w-0">
+                    {/* Sort dropdown */}
+                    <div className="flex sm:justify-end mb-4 relative z-20" id="sort-dropdown">
+                        <div className="relative w-full sm:w-auto">
+                            <button
+                                onClick={() => setIsSortOpen(!isSortOpen)}
+                                className="w-full text-left sm:w-48 text-[15px] sm:text-sm border border-slate-200 dark:border-slate-600 rounded-lg pl-4 pr-10 py-3 sm:py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm flex items-center justify-between"
+                            >
+                                <span>{currentSortLabel}</span>
+                                <svg className={`w-4 h-4 text-slate-400 transition-transform ${isSortOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+
+                            {isSortOpen && (
+                                <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 mt-1 w-full sm:w-48 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden z-30">
+                                    {sortOptions.map((opt) => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => {
+                                                setSortBy(opt.value as any);
+                                                setIsSortOpen(false);
+                                            }}
+                                            className={`w-full text-left px-4 py-3 sm:py-2.5 text-[15px] sm:text-sm transition-colors ${sortBy === opt.value
+                                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
+                                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                                                }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Reviews list in scrollable container */}
+                    <div
+                        ref={scrollContainerRef}
+                        className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 max-h-[400px] md:max-h-[500px] overflow-y-auto shadow-sm relative z-10"
+                    >
+                        <div className="px-3 md:px-5">
+                            {displayedReviews.map((review, index) => (
+                                <ReviewItem key={`${review.name}-${index}`} review={review} index={index} />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Load more button & count */}
+                    <div className="mt-4 md:mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
+                        {hasMore && (
+                            <button
+                                onClick={handleLoadMore}
+                                className="w-full sm:w-auto px-5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl text-[16px] sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95"
+                            >
+                                Load more reviews
+                            </button>
+                        )}
+                        <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center w-full sm:w-auto mt-1 sm:mt-0">
+                            Showing {displayedReviews.length} of {reviewsToDisplay.length} reviews
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}

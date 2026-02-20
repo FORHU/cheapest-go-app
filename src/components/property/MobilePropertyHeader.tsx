@@ -1,0 +1,64 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Share2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface MobilePropertyHeaderProps {
+    propertyName: string;
+}
+
+const MobilePropertyHeader: React.FC<MobilePropertyHeaderProps> = ({ propertyName }) => {
+    const router = useRouter();
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            // Show header after scrolling past the gallery area (~300px)
+            setIsVisible(window.scrollY > 300);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    return (
+        <AnimatePresence>
+            {isVisible && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="lg:hidden fixed top-0 left-0 right-0 z-40 pointer-events-none"
+                >
+                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-white/10 pointer-events-auto">
+                        <div className="flex items-center gap-2 px-3 py-2.5 max-w-7xl mx-auto">
+                            <button
+                                onClick={() => router.back()}
+                                className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-full shadow-sm shrink-0"
+                            >
+                                <ArrowLeft size={16} className="text-slate-700 dark:text-slate-300" />
+                            </button>
+
+                            <div className="flex-1 min-w-0 px-2">
+                                <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                                    {propertyName}
+                                </p>
+                            </div>
+
+                            <button
+                                className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-full shadow-sm shrink-0"
+                            >
+                                <Share2 size={16} className="text-slate-700 dark:text-slate-300" />
+                            </button>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
+export default MobilePropertyHeader;

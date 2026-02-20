@@ -26,5 +26,5 @@ out
 *.njsproj
 *.sln
 *.sw?
-
+nul
 .env
