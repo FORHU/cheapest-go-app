@@ -159,7 +159,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
 
             {/* Card content — Airbnb-style size/layout: 4:3 image, rounded corners */}
             <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
-                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-xl landscape-compact-img flex-shrink-0">
+                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-xl landscape-compact-img landscape-img flex-shrink-0">
                     <motion.div
                         className="absolute inset-0 bg-cover bg-center"
                         style={{ backgroundImage: `url(${imgSrc})` }}
@@ -173,7 +173,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             initial={{ x: -20, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: index * 0.1 + 0.3 }}
-                            className={`absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 py-px sm:px-3 sm:py-1 ${badgeClasses[badgeColor]} text-white text-[9px] sm:text-xs font-medium rounded-full flex items-center gap-0.5 sm:gap-1 shadow-lg`}
+                            className={`absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 py-px sm:px-3 sm:py-1 ${badgeClasses[badgeColor]} text-white text-[9px] sm:text-xs font-medium rounded-full flex items-center gap-0.5 sm:gap-1 shadow-lg landscape-badge`}
                         >
                             {badgeColor === 'blue' && <Star size={8} fill="currentColor" className="flex-shrink-0 sm:w-[10px] sm:h-[10px]" />}
                             {displayBadges[0]}
@@ -182,16 +182,16 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                 </div>
 
                 <div className="p-1.5 sm:p-3 md:p-4 landscape-compact-content flex flex-col flex-1">
-                    <h3 className="font-semibold text-slate-900 dark:text-white text-[11px] sm:text-sm line-clamp-2 min-h-[2.4em] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h3 className="font-semibold text-slate-900 dark:text-white text-[11px] sm:text-sm line-clamp-2 min-h-[2.4em] leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {displayName}
                     </h3>
-                    <p className="text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-0.5 sm:gap-1 min-w-0">
+                    <p className="text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 -mt-1 flex items-center gap-0.5 sm:gap-1 min-w-0">
                         <MapPin className="w-2 h-2 sm:w-3 sm:h-3 text-blue-500 flex-shrink-0" />
                         <span className="truncate">{displayLocation}</span>
                     </p>
 
                     {displayRating && (
-                        <div className="flex items-center gap-0.5 sm:gap-1.5 mt-1 sm:mt-1.5 flex-wrap">
+                        <div className="flex items-center gap-0.5 sm:gap-1.5 mt-0.5 sm:mt-1 flex-wrap">
                             <span className="px-1 py-px sm:px-1.5 sm:py-0.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[9px] sm:text-xs font-bold rounded-md shadow-sm">
                                 {displayRating}
                             </span>
