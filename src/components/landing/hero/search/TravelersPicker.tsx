@@ -15,28 +15,28 @@ interface CounterProps {
 }
 
 const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onChange }) => (
-    <div className="flex justify-between items-center py-3">
+    <div className="flex justify-between items-center py-2">
         <div>
-            <span className="text-sm font-bold text-slate-900 dark:text-white block">{label}</span>
-            {sublabel && <span className="text-[10px] font-mono text-slate-400">{sublabel}</span>}
+            <span className="text-[11px] font-normal text-slate-900 dark:text-white block">{label}</span>
+            {sublabel && <span className="text-[9px] font-normal text-slate-400">{sublabel}</span>}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
             <button
                 disabled={value <= min}
                 onClick={() => onChange(value - 1)}
-                className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             >
-                <Minus size={14} />
+                <Minus size={12} />
             </button>
-            <span className="w-5 text-center font-mono font-bold text-base text-slate-900 dark:text-white">
+            <span className="w-4 text-center font-normal text-[11px] text-slate-900 dark:text-white">
                 {value}
             </span>
             <button
                 disabled={value >= max}
                 onClick={() => onChange(value + 1)}
-                className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
             >
-                <Plus size={14} />
+                <Plus size={12} />
             </button>
         </div>
     </div>
@@ -225,7 +225,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                         : "absolute top-full right-0 mt-4 w-[340px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className={inline ? "p-2 sm:p-5" : "p-5"}>
+                    <div className={inline ? "p-2" : "p-5"}>
                         {!forceOpen && (
                             <h4 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2">
                                 Guests & Rooms
@@ -243,26 +243,26 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                             <div className="py-3">
                                 <div className="flex justify-between items-center">
                                     <div>
-                                        <span className="text-sm font-bold text-slate-900 dark:text-white block">Children</span>
-                                        <span className="text-[10px] font-mono text-slate-400">Ages 0 to 17</span>
+                                        <span className="text-[11px] font-normal text-slate-900 dark:text-white block">Children</span>
+                                        <span className="text-[9px] font-normal text-slate-400">Ages 0 to 17</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <button
                                             disabled={children <= 0}
                                             onClick={() => setTravelers({ children: children - 1 })}
-                                            className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                            className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                                         >
-                                            <Minus size={14} />
+                                            <Minus size={12} />
                                         </button>
-                                        <span className="w-5 text-center font-mono font-bold text-base text-slate-900 dark:text-white">
+                                        <span className="w-4 text-center font-normal text-[11px] text-slate-900 dark:text-white">
                                             {children}
                                         </span>
                                         <button
                                             disabled={children >= 6}
                                             onClick={handleAddChild}
-                                            className="size-9 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                            className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                                         >
-                                            <Plus size={14} />
+                                            <Plus size={12} />
                                         </button>
                                     </div>
                                 </div>
@@ -293,7 +293,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
 
                         {/* Summary */}
                         <div className="mt-3 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
                                 {summaryText}
                             </p>
                         </div>

@@ -165,14 +165,14 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
         >
             <Plane className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />
             <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
+                <label className="text-[9px] uppercase font-mono text-slate-500 font-medium tracking-wider">
                     {label}
                 </label>
-                <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                     {displayText || <span className="text-slate-400 font-normal">{placeholder}</span>}
                 </div>
                 {displaySubtext && (
-                    <div className="text-[10px] text-slate-400 truncate">{displaySubtext}</div>
+                    <div className="text-[9px] text-slate-400 truncate">{displaySubtext}</div>
                 )}
             </div>
 
@@ -185,7 +185,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-full left-0 mt-4 w-[420px] bg-white dark:bg-[#0f172a] shadow-xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-0 mt-4 w-[calc(100vw-32px)] sm:w-[420px] bg-white dark:bg-[#0f172a] shadow-xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
                         onClick={(e) => e.stopPropagation()}
                         role="dialog"
                         aria-label={`Search ${label} airport`}
@@ -204,7 +204,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                     }}
                                     onKeyDown={handleKeyDown}
                                     placeholder="Type city name or airport code..."
-                                    className="bg-transparent border-none p-0 text-sm font-medium focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400"
+                                    className="bg-transparent border-none p-0 text-xs font-medium focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400"
                                     role="combobox"
                                     aria-expanded={results.length > 0}
                                     aria-controls={listboxId}
@@ -247,7 +247,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
 
                                         {/* Airport Info */}
                                         <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                                            <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                                                 {airport.city}
                                                 {airport.country && (
                                                     <span className="font-normal text-slate-500 dark:text-slate-400">
@@ -255,7 +255,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="text-xs text-slate-400 truncate flex items-center gap-1">
+                                            <div className="text-[10px] text-slate-400 truncate flex items-center gap-1">
                                                 <MapPin className="w-3 h-3 shrink-0" />
                                                 {airport.name}
                                             </div>
