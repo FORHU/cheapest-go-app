@@ -18,20 +18,20 @@ const SITE_URL = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'CheapestGo | Discover & Book Your Next Journey',
-  description: 'Get the best travel deals globally. Plan your flights and hotels easily and save money with CheapestGo.',
+  title: 'CheapestGo | Discover and Book Your Next Global Journey',
+  description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
   icons: {
     icon: '/icon.png',
     apple: '/icon.png',
   },
   openGraph: {
-    title: 'CheapestGo | Discover & Book Your Next Journey',
-    description: 'Get the best travel deals globally. Plan your flights and hotels easily and save money with CheapestGo.',
+    title: 'CheapestGo | Discover and Book Your Next Global Journey',
+    description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
     url: SITE_URL,
     siteName: 'CheapestGo',
     images: [
       {
-        url: `${SITE_URL}/og-image.png`,
+        url: '/og-image.png',
         width: 1200,
         height: 630,
         alt: 'CheapestGo - Ultimate Travel Booking Platform',
@@ -42,9 +42,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CheapestGo | Discover & Book Your Next Journey',
-    description: 'Get the best travel deals globally. Plan your flights and hotels easily and save money with CheapestGo.',
-    images: [`${SITE_URL}/og-image.png`],
+    title: 'CheapestGo | Discover and Book Your Next Global Journey',
+    description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
+    images: ['/og-image.png'],
   },
 };
 
