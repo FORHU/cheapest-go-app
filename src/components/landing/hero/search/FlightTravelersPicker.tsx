@@ -26,8 +26,8 @@ interface CounterProps {
 const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onChange }) => (
     <div className="flex justify-between items-center py-2.5">
         <div>
-            <span className="text-sm font-bold text-slate-900 dark:text-white block">{label}</span>
-            {sublabel && <span className="text-[10px] font-mono text-slate-400">{sublabel}</span>}
+            <span className="text-xs font-bold text-slate-900 dark:text-white block">{label}</span>
+            {sublabel && <span className="text-[9px] font-mono text-slate-400">{sublabel}</span>}
         </div>
         <div className="flex items-center gap-3">
             <button
@@ -37,7 +37,7 @@ const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onC
             >
                 <Minus size={14} />
             </button>
-            <span className="w-4 text-center font-mono font-bold text-base text-slate-900 dark:text-white">
+            <span className="w-4 text-center font-mono font-bold text-xs text-slate-900 dark:text-white">
                 {value}
             </span>
             <button
@@ -90,13 +90,13 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
         >
             <Users className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />
             <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
+                <label className="text-[9px] uppercase font-mono text-slate-500 font-medium tracking-wider">
                     Travelers
                 </label>
-                <div className="text-sm font-bold text-slate-900 dark:text-white truncate pr-6">
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate pr-6">
                     {totalPassengers} {totalPassengers === 1 ? 'Guest' : 'Guests'}
                     <span className="text-slate-400 font-normal mx-1">•</span>
-                    <span className="text-xs font-normal capitalize text-slate-500 dark:text-slate-400">
+                    <span className="text-[10px] font-normal capitalize text-slate-500 dark:text-slate-400">
                         {cabinClass.replace('_', ' ')}
                     </span>
                 </div>
@@ -116,7 +116,7 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-full right-0 mt-4 w-[340px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-auto sm:right-0 mt-4 w-[calc(100vw-32px)] sm:w-[340px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="p-5">

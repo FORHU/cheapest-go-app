@@ -86,7 +86,7 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
             {/* Header / sorting */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6">
                 <div>
-                    <h1 className="text-xl md:text-2xl font-display font-bold text-slate-900 dark:text-white">
+                    <h1 className="text-base landscape:text-base lg:text-2xl font-display font-bold text-slate-900 dark:text-white">
                         {destination ? `Stays in ${destination}` : 'All properties'}
                     </h1>
                     <p className="text-[13px] md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">

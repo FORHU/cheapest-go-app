@@ -22,7 +22,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
     <TiltCard className="h-full">
       <div className="relative h-full bg-white dark:bg-slate-900/80 rounded-xl overflow-hidden border border-alabaster-border dark:border-obsidian-border shadow-lg dark:shadow-black/30 group">
         {/* Image — responsive height */}
-        <div className="relative h-24 sm:h-32 md:h-40 landscape-compact-img overflow-hidden flex-shrink-0">
+        <div className="relative h-24 sm:h-32 md:h-40 landscape-compact-img landscape-img overflow-hidden flex-shrink-0">
           <div
             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
             style={{ backgroundImage: `url(${deal.image})` }}
@@ -30,7 +30,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
           {/* Badges — responsive size, avoid overlap on narrow cards */}
-          <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 min-[400px]:top-2.5 min-[400px]:left-2.5 md:top-3 md:left-3 flex flex-wrap gap-1 max-w-[calc(100%-3rem)]">
+          <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 min-[400px]:top-2.5 min-[400px]:left-2.5 md:top-3 md:left-3 flex flex-wrap gap-1 max-w-[calc(100%-3rem)] landscape-badge">
             <Badge variant="warning" size="sm">{deal.discount}</Badge>
             {deal.tag && (
               <Badge variant="premium" size="sm">{deal.tag}</Badge>
@@ -40,10 +40,10 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
 
         {/* Content — fixed min-height so all cards same size */}
         <div className="p-2 sm:p-3 md:p-4 min-h-[105px] sm:min-h-[115px] md:min-h-[128px] landscape-compact-content flex flex-col flex-1 mt-auto">
-          <h3 className="text-sm sm:text-base md:text-lg font-display font-bold text-slate-900 dark:text-white mb-0.5 sm:mb-1 line-clamp-2 min-h-[2.5em]">
+          <h3 className="text-sm sm:text-base md:text-lg font-display font-bold text-slate-900 dark:text-white mb-0 line-clamp-2 min-h-[2.5em] leading-tight">
             {deal.title}
           </h3>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-2 sm:mb-3 line-clamp-1 flex-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-1 sm:mb-1.5 line-clamp-1 flex-1 -mt-1">
             {deal.subtitle}
           </p>
 

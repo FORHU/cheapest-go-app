@@ -46,7 +46,7 @@ const AIRLINE_COLORS: Record<string, string> = {
 
 function AirlineLogo({ code }: { code: string }) {
     return (
-        <div className={`w-10 h-10 rounded-lg ${AIRLINE_COLORS[code] || 'bg-slate-600'} flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm`}>
+        <div className={`w-7 h-7 lg:w-10 lg:h-10 rounded-md lg:rounded-lg ${AIRLINE_COLORS[code] || 'bg-slate-600'} flex items-center justify-center text-white font-bold text-[10px] lg:text-sm shrink-0`}>
             {code}
         </div>
     );
@@ -56,43 +56,43 @@ function AirlineLogo({ code }: { code: string }) {
 
 function SegmentRow({ segment }: { segment: FlightSegmentDetail }) {
     return (
-        <div className="flex items-center gap-4 py-2.5 px-1">
+        <div className="flex items-center gap-2 lg:gap-4 py-1.5 lg:py-2.5 px-1">
             <AirlineLogo code={segment.airline.code} />
 
             <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    <span className="font-medium">{segment.airline.name}</span>
+                <div className="flex items-center gap-1 lg:gap-2 text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">
+                    <span className="font-medium truncate">{segment.airline.name}</span>
                     <span className="text-slate-300 dark:text-slate-600">·</span>
                     <span>{segment.flightNumber}</span>
                     {segment.aircraft && (
                         <>
-                            <span className="text-slate-300 dark:text-slate-600">·</span>
-                            <span>{segment.aircraft}</span>
+                            <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">·</span>
+                            <span className="hidden sm:inline">{segment.aircraft}</span>
                         </>
                     )}
                 </div>
 
-                <div className="flex items-center gap-3 mt-1.5">
-                    <div className="text-center min-w-[56px]">
-                        <div className="text-base font-semibold text-slate-900 dark:text-white">{formatTime(segment.departure.time)}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">{segment.departure.airport}</div>
+                <div className="flex items-center gap-1.5 lg:gap-3 mt-0.5 lg:mt-1.5">
+                    <div className="text-center min-w-[40px] lg:min-w-[56px]">
+                        <div className="text-xs lg:text-base font-semibold text-slate-900 dark:text-white">{formatTime(segment.departure.time)}</div>
+                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">{segment.departure.airport}</div>
                     </div>
 
-                    <div className="flex-1 flex flex-col items-center gap-0.5 min-w-[90px]">
-                        <span className="text-[11px] text-slate-400 dark:text-slate-500">{formatDuration(segment.duration)}</span>
-                        <div className="w-full flex items-center gap-1">
+                    <div className="flex-1 flex flex-col items-center gap-0 lg:gap-0.5 min-w-[60px] lg:min-w-[90px]">
+                        <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">{formatDuration(segment.duration)}</span>
+                        <div className="w-full flex items-center gap-0.5">
                             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-600 to-transparent" />
-                            <Plane className="w-3 h-3 text-indigo-500 rotate-90 shrink-0" />
+                            <Plane className="w-2 h-2 lg:w-3 lg:h-3 text-indigo-500 rotate-90 shrink-0" />
                             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-600 to-transparent" />
                         </div>
-                        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        <span className="text-[10px] lg:text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                             {segment.stops === 0 ? 'Direct' : `${segment.stops} stop(s)`}
                         </span>
                     </div>
 
-                    <div className="text-center min-w-[56px]">
-                        <div className="text-base font-semibold text-slate-900 dark:text-white">{formatTime(segment.arrival.time)}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">{segment.arrival.airport}</div>
+                    <div className="text-center min-w-[40px] lg:min-w-[56px]">
+                        <div className="text-xs lg:text-base font-semibold text-slate-900 dark:text-white">{formatTime(segment.arrival.time)}</div>
+                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">{segment.arrival.airport}</div>
                     </div>
                 </div>
             </div>
@@ -141,25 +141,25 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                 }
             `}
         >
-            <div className="flex flex-col md:flex-row">
+            <div className="flex flex-col lg:flex-row">
                 {/* ─── Flight Info (left) ─── */}
-                <div className="flex-1 p-4 sm:p-5">
+                <div className="flex-1 px-2.5 pt-2.5 pb-2 lg:p-5">
                     {/* Airline header */}
-                    <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-1.5 lg:gap-3 mb-1.5 lg:mb-3">
                         <AirlineLogo code={primary.airline.code} />
                         <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                                <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                            <div className="flex items-center gap-1 lg:gap-2">
+                                <span className="font-semibold text-slate-900 dark:text-white text-xs lg:text-sm">
                                     {primary.airline.name}
                                 </span>
                                 {offer.seatsRemaining && offer.seatsRemaining <= 5 && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
-                                        <AlertCircle className="w-3 h-3" />
+                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                                        <AlertCircle className="w-2 h-2 lg:w-3 lg:h-3" />
                                         {offer.seatsRemaining} left
                                     </span>
                                 )}
                             </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
                                 {primary.flightNumber}
                                 {offer.segments.length > 1 && ` + ${offer.segments.length - 1} more`}
                             </div>
@@ -167,72 +167,72 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     </div>
 
                     {/* Route timeline */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 lg:gap-3">
                         <div className="text-center">
-                            <div className="text-xl font-bold text-slate-900 dark:text-white">{formatTime(primary.departure.time)}</div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">{primary.departure.airport}</div>
+                            <div className="text-base lg:text-lg font-bold text-slate-900 dark:text-white leading-tight">{formatTime(primary.departure.time)}</div>
+                            <div className="text-[9px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-medium">{primary.departure.airport}</div>
                         </div>
 
-                        <div className="flex-1 flex flex-col items-center gap-0.5">
-                            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">{formatDuration(offer.totalDuration)}</span>
-                            <div className="w-full flex items-center gap-1">
-                                <div className="h-[2px] flex-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full" />
-                                <Plane className="w-4 h-4 text-indigo-500 rotate-90" />
+                        <div className="flex-1 flex flex-col items-center gap-0">
+                            <span className="text-xs lg:text-sm text-slate-400 dark:text-slate-500 font-medium">{formatDuration(offer.totalDuration)}</span>
+                            <div className="w-full flex items-center gap-0.5">
+                                <div className="h-[1.5px] lg:h-[2px] flex-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full" />
+                                <Plane className="w-2.5 h-2.5 lg:w-4 lg:h-4 text-indigo-500 rotate-90" />
                             </div>
-                            <span className={`text-xs font-medium ${offer.totalStops === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                            <span className={`text-xs lg:text-sm font-medium ${offer.totalStops === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                 {stopsLabel(offer.totalStops)}
                             </span>
                         </div>
 
                         <div className="text-center">
-                            <div className="text-xl font-bold text-slate-900 dark:text-white">{formatTime(last.arrival.time)}</div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">{last.arrival.airport}</div>
+                            <div className="text-base lg:text-lg font-bold text-slate-900 dark:text-white leading-tight">{formatTime(last.arrival.time)}</div>
+                            <div className="text-[9px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-medium">{last.arrival.airport}</div>
                         </div>
                     </div>
 
                     {/* Tags */}
-                    <div className="flex flex-wrap gap-1.5 mt-3">
+                    <div className="flex flex-wrap gap-0.5 lg:gap-1.5 mt-1.5 lg:mt-3">
                         {offer.baggage && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                                <Luggage className="w-3 h-3" />
-                                {offer.baggage.checkedBags > 0 ? `${offer.baggage.checkedBags} bag(s)` : 'No checked bag'}
+                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                                <Luggage className="w-2 h-2 lg:w-3 lg:h-3" />
+                                {offer.baggage.checkedBags > 0 ? `${offer.baggage.checkedBags} bag(s)` : 'No bag'}
                             </span>
                         )}
                         {offer.refundable && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
-                                <Shield className="w-3 h-3" />
+                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
+                                <Shield className="w-2 h-2 lg:w-3 lg:h-3" />
                                 Refundable
                             </span>
                         )}
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 capitalize">
+                        <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 capitalize">
                             {primary.cabinClass.replace('_', ' ')}
                         </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
+                        <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
                             {offer.provider}
                         </span>
                     </div>
                 </div>
 
                 {/* ─── Price + CTA (right) ─── */}
-                <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-3 md:gap-2 md:w-[180px] p-4 sm:p-5 md:border-l border-t md:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                    <div className="text-right">
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-1.5 lg:gap-2 lg:w-[180px] px-2.5 py-2 lg:p-5 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                    <div className="lg:text-right">
+                        <div className="text-base lg:text-xl font-bold text-slate-900 dark:text-white leading-tight">
                             {formatPrice(offer.price.total, offer.price.currency)}
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                        <div className="text-xs lg:text-sm text-slate-500 dark:text-slate-400">
                             {formatPrice(offer.price.pricePerAdult, offer.price.currency)}/person
                         </div>
-                        <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                        <div className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500 hidden sm:block">
                             includes taxes & fees
                         </div>
                     </div>
 
                     <button
                         onClick={() => onSelect?.(offer)}
-                        className="w-full md:w-auto px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-colors flex items-center justify-center gap-1.5"
+                        className="px-4 lg:px-6 py-1 lg:py-2 rounded-full lg:rounded-lg lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs lg:text-base transition-colors flex items-center justify-center gap-1 shrink-0"
                     >
                         Select
-                        <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4" />
                     </button>
                 </div>
             </div>
@@ -241,7 +241,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
             {offer.segments.length > 1 && (
                 <button
                     onClick={() => setExpanded(!expanded)}
-                    className="flex items-center gap-1 px-5 pb-3 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
+                    className="flex items-center gap-0.5 px-2.5 lg:px-5 pb-1.5 lg:pb-3 text-xs lg:text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
                 >
                     {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                     {expanded ? 'Hide details' : 'Show all segments'}
@@ -254,7 +254,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="px-5 pb-4 border-t border-slate-100 dark:border-slate-800 space-y-1"
+                    className="px-2.5 lg:px-5 pb-2 lg:pb-4 border-t border-slate-100 dark:border-slate-800 space-y-0.5 lg:space-y-1"
                 >
                     {outbound.length > 0 && (
                         <div className="pt-3">

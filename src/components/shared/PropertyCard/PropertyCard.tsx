@@ -159,7 +159,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
 
             {/* Card content — Airbnb-style size/layout: 4:3 image, rounded corners */}
             <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
-                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-xl landscape-compact-img flex-shrink-0">
+                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-xl landscape-compact-img landscape-img flex-shrink-0">
                     <motion.div
                         className="absolute inset-0 bg-cover bg-center"
                         style={{ backgroundImage: `url(${imgSrc})` }}
@@ -173,7 +173,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             initial={{ x: -20, opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             transition={{ delay: index * 0.1 + 0.3 }}
-                            className={`absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 py-px sm:px-3 sm:py-1 ${badgeClasses[badgeColor]} text-white text-[9px] sm:text-xs font-medium rounded-full flex items-center gap-0.5 sm:gap-1 shadow-lg`}
+                            className={`absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 py-px sm:px-3 sm:py-1 ${badgeClasses[badgeColor]} text-white text-[9px] sm:text-xs font-medium rounded-full flex items-center gap-0.5 sm:gap-1 shadow-lg landscape-badge`}
                         >
                             {badgeColor === 'blue' && <Star size={8} fill="currentColor" className="flex-shrink-0 sm:w-[10px] sm:h-[10px]" />}
                             {displayBadges[0]}
@@ -182,16 +182,16 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                 </div>
 
                 <div className="p-1.5 sm:p-3 md:p-4 landscape-compact-content flex flex-col flex-1">
-                    <h3 className="font-semibold text-slate-900 dark:text-white text-[11px] sm:text-sm line-clamp-2 min-h-[2.4em] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <h3 className="font-semibold text-slate-900 dark:text-white text-[11px] sm:text-sm line-clamp-2 min-h-[2.4em] leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {displayName}
                     </h3>
-                    <p className="text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-0.5 sm:gap-1 min-w-0">
+                    <p className="text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 -mt-1 flex items-center gap-0.5 sm:gap-1 min-w-0">
                         <MapPin className="w-2 h-2 sm:w-3 sm:h-3 text-blue-500 flex-shrink-0" />
                         <span className="truncate">{displayLocation}</span>
                     </p>
 
                     {displayRating && (
-                        <div className="flex items-center gap-0.5 sm:gap-1.5 mt-1 sm:mt-1.5 flex-wrap">
+                        <div className="flex items-center gap-0.5 sm:gap-1.5 mt-0.5 sm:mt-1 flex-wrap">
                             <span className="px-1 py-px sm:px-1.5 sm:py-0.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[9px] sm:text-xs font-bold rounded-md shadow-sm">
                                 {displayRating}
                             </span>
@@ -282,13 +282,13 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             <div className="flex-1 p-2 md:p-4 flex flex-col justify-between">
                 <div className="mt-1 md:mt-0">
                     {/* Hotel Name */}
-                    <h3 className="text-sm md:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
+                    <h3 className="text-[12px] landscape:text-[11px] lg:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
                         {property.name}
                     </h3>
 
                     {/* Location */}
-                    <div className="flex items-center text-[10px] md:text-sm text-slate-500 dark:text-slate-400 mb-2 md:mb-4">
-                        <MapPin className="w-2.5 h-2.5 md:w-4 md:h-4 mr-0.5 md:mr-1 shrink-0" />
+                    <div className="flex items-center text-[10px] landscape:text-[9px] lg:text-sm text-slate-500 dark:text-slate-400 mb-2 md:mb-4">
+                        <MapPin className="w-2.5 h-2.5 lg:w-4 lg:h-4 mr-0.5 md:mr-1 shrink-0" />
                         <span className="line-clamp-1">{property.location}</span>
                     </div>
                 </div>
@@ -296,10 +296,10 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                 <div className="flex items-end justify-between mt-1 md:mt-4">
                     {/* Rating Section */}
                     <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="px-1.5 py-0.5 md:px-2 md:py-1 bg-blue-600 text-white text-[11px] md:text-sm font-bold rounded-md md:rounded-lg">
+                        <div className="px-1.5 py-0.5 lg:px-2 lg:py-1 bg-blue-600 text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg">
                             {property.rating.toFixed(1)}
                         </div>
-                        <span className="text-[11px] md:text-sm font-medium text-slate-700 dark:text-slate-300">
+                        <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
                             {getRatingLabel(property.rating)}
                         </span>
                     </div>
@@ -307,15 +307,15 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                     {/* Price Section */}
                     <div className="text-right">
                         {property.originalPrice && property.originalPrice > property.price && (
-                            <div className="text-[10px] md:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
+                            <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
                                 ₱{property.originalPrice.toLocaleString()}
                             </div>
                         )}
                         <div className="flex items-baseline gap-1 md:gap-1.5">
-                            <span className="text-[15px] md:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
+                            <span className="text-[13px] landscape:text-[12px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
                                 ₱{property.price.toLocaleString()}
                             </span>
-                            <span className="text-[10px] md:text-sm text-slate-500 dark:text-slate-400">
+                            <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
                                 /night
                             </span>
                         </div>

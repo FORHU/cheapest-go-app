@@ -65,68 +65,68 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
             <>
                 {/* User Info */}
                 <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.75rem,1.5vw,0.875rem)]">
-                            {user.firstName[0]}{user.lastName[0]}
-                        </div>
-                        <div className="min-w-0">
-                            <p className="font-medium text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-900 dark:text-white truncate">
-                                {user.firstName} {user.lastName}
-                            </p>
-                            <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
-                        </div>
+                    <div className="size-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.75rem,1.5vw,0.875rem)]">
+                        {user.firstName[0]}{user.lastName[0]}
                     </div>
-
-                    {/* Rewards */}
-                    <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
-                        <Star className="h-4 w-4 text-yellow-500 shrink-0" />
-                        <div>
-                            <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] font-medium text-slate-900 dark:text-white">Gold Member</p>
-                            <p className="text-[clamp(0.625rem,1.1vw,0.6875rem)] text-slate-500 dark:text-slate-400">2,450 points</p>
-                        </div>
+                    <div className="min-w-0">
+                        <p className="font-medium text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-900 dark:text-white truncate">
+                            {user.firstName} {user.lastName}
+                        </p>
+                        <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
                     </div>
+                </div>
 
-                    {/* Links */}
-                    <div className="space-y-1">
-                        <Link
-                            href="/trips"
-                            onClick={handleNav}
-                            className="flex items-center gap-3 px-3 py-2 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
-                        >
-                            <Briefcase className="h-4 w-4 text-slate-400" />
-                            My Trips
-                        </Link>
-                        <Link
-                            href="/account"
-                            onClick={handleNav}
-                            className="flex items-center gap-3 px-3 py-2 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
-                        >
-                            <Settings className="h-4 w-4 text-slate-400" />
-                            Account Settings
-                        </Link>
+                {/* Rewards */}
+                <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
+                    <Star className="h-4 w-4 text-yellow-500 shrink-0" />
+                    <div>
+                        <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] font-medium text-slate-900 dark:text-white">Gold Member</p>
+                        <p className="text-[clamp(0.625rem,1.1vw,0.6875rem)] text-slate-500 dark:text-slate-400">2,450 points</p>
                     </div>
+                </div>
 
-                    {/* Sign Out */}
-                    <button
-                        onClick={() => { logout(); handleNav(); }}
-                        className="w-full flex items-center gap-3 px-3 py-2 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+                {/* Links */}
+                <div className="space-y-0.5">
+                    <Link
+                        href="/trips"
+                        onClick={handleNav}
+                        className="flex items-center gap-3 px-3 py-1.5 text-[clamp(0.75rem,2vw,0.8125rem)] text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
                     >
-                        <LogOut className="h-4 w-4" />
-                        Sign out
-                    </button>
+                        <Briefcase className="h-4 w-4 text-slate-400" />
+                        My Trips
+                    </Link>
+                    <Link
+                        href="/account"
+                        onClick={handleNav}
+                        className="flex items-center gap-3 px-3 py-1.5 text-[clamp(0.75rem,2vw,0.8125rem)] text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+                    >
+                        <Settings className="h-4 w-4 text-slate-400" />
+                        Account Settings
+                    </Link>
+                </div>
+
+                {/* Sign Out */}
+                <button
+                    onClick={() => { logout(); handleNav(); }}
+                    className="w-full flex items-center gap-3 px-3 py-1.5 text-[clamp(0.75rem,2vw,0.8125rem)] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+                >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                </button>
             </>
         ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
                 <Link
                     href="/login"
                     onClick={handleNav}
-                    className="block w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium rounded-full transition-colors text-center"
+                    className="block w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-medium rounded-full transition-colors text-center"
                 >
                     Sign in
                 </Link>
                 <Link
                     href="/login?mode=signup"
                     onClick={handleNav}
-                    className="block w-full py-2.5 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
+                    className="block w-full py-2 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-[13px] font-medium rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
                 >
                     Create an account
                 </Link>
@@ -139,10 +139,10 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                     <button
                         type="button"
                         onClick={() => setInlineOpen(!isInlineOpen)}
-                        className="flex items-center justify-between w-full min-h-[48px] px-4 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-left text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                        className="flex items-center justify-between w-full min-h-[40px] px-3.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                     >
                         <span>{user ? 'Account' : 'Sign in'}</span>
-                        <ChevronDown className={`w-5 h-5 text-slate-400 flex-shrink-0 transition-transform ${isInlineOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform ${isInlineOpen ? 'rotate-180' : ''}`} />
                     </button>
                     <AnimatePresence>
                         {isInlineOpen && (
