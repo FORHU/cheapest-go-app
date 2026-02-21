@@ -106,10 +106,10 @@ export function VoucherInput({
     // Applied state — show badge
     if (appliedVoucher) {
         return (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm p-5">
-                <div className="flex items-center gap-2 mb-3">
-                    <Tag size={16} className="text-blue-600 dark:text-blue-400" />
-                    <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm p-2.5 sm:p-5">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
+                    <Tag size={14} className="text-blue-600 dark:text-blue-400 sm:w-4 sm:h-4" />
+                    <h3 className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm">
                         Promo code
                     </h3>
                 </div>
@@ -158,24 +158,24 @@ export function VoucherInput({
 
     // Input state
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm p-5">
-            <div className="flex items-center gap-2 mb-3">
-                <Tag size={16} className="text-blue-600 dark:text-blue-400" />
-                <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl border border-slate-200 dark:border-white/10 shadow-sm p-2.5 sm:p-5">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
+                <Tag size={14} className="text-blue-600 dark:text-blue-400 sm:w-4 sm:h-4" />
+                <h3 className="font-semibold text-slate-900 dark:text-white text-xs sm:text-sm">
                     Have a promo code?
                 </h3>
             </div>
 
-            <div className="flex gap-2">
-                <div className="flex-1 relative">
+            <div className="flex gap-1.5">
+                <div className="flex-1 relative min-w-0">
                     <input
                         type="text"
                         value={voucherCode}
                         onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
                         onKeyDown={handleKeyDown}
-                        placeholder="Enter promo code"
+                        placeholder="ENTER PROMO CODE"
                         disabled={voucherLoading}
-                        className={`w-full px-3 py-2.5 text-sm font-mono tracking-wider uppercase rounded-lg border transition-colors
+                        className={`w-full px-2 py-1.5 sm:px-3 sm:py-2.5 text-[11px] sm:text-sm font-mono tracking-wider uppercase rounded sm:rounded-lg border transition-colors
                             ${voucherError
                                 ? 'border-red-300 dark:border-red-700 focus:ring-red-500 focus:border-red-500'
                                 : 'border-slate-200 dark:border-white/10 focus:ring-blue-500 focus:border-blue-500'
@@ -189,7 +189,7 @@ export function VoucherInput({
                 <button
                     onClick={handleApply}
                     disabled={!voucherCode.trim() || voucherLoading}
-                    className="px-5 py-2.5 text-sm font-semibold rounded-lg transition-all
+                    className="px-3 py-1.5 sm:px-5 sm:py-2.5 text-[11px] sm:text-sm font-semibold rounded sm:rounded-lg transition-all whitespace-nowrap
                         bg-blue-600 hover:bg-blue-700 text-white
                         disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed
                         dark:disabled:bg-slate-700 dark:disabled:text-slate-500

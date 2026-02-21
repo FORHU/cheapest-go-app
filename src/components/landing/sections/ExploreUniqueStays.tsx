@@ -10,7 +10,7 @@ export const ExploreUniqueStays: React.FC = () => {
   const [activeTab, setActiveTab] = useState(uniqueTabs[0]);
 
   return (
-    <section className="relative w-full py-6 sm:py-10 overflow-hidden">
+    <section className="relative w-full py-4 md:py-8 lg:py-10 landscape-compact-py overflow-hidden">
 
       <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6">
         <motion.div
@@ -25,7 +25,7 @@ export const ExploreUniqueStays: React.FC = () => {
           >
             <Sparkles size={24} className="text-amber-500" />
           </motion.div>
-          <h2 className="text-[clamp(1rem,5vw,1.5rem)] font-display font-bold text-slate-900 dark:text-white">
+          <h2 className="text-base sm:text-2xl md:text-3xl font-display font-bold text-slate-900 dark:text-white">
             Extraordinary Escapes
           </h2>
         </motion.div>
@@ -34,7 +34,7 @@ export const ExploreUniqueStays: React.FC = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1 }}
-          className="text-slate-500 dark:text-slate-400 text-[clamp(0.75rem,1.5vw,0.875rem)] mb-4"
+          className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-sm md:text-base mb-3 sm:mb-4"
         >
           One-of-a-kind places from glamping to floating villas
         </motion.p>
@@ -59,13 +59,13 @@ export const ExploreUniqueStays: React.FC = () => {
                 stiffness: 100
               }}
               whileHover={{ y: -6, scale: 1.02 }}
-              className="flex-shrink-0 w-[48vw] min-w-[200px] max-w-[280px] sm:min-w-[220px] sm:max-w-[320px] snap-start relative group cursor-pointer"
+              className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape-compact-card snap-start relative group cursor-pointer flex flex-col"
             >
               {/* Glow effect */}
               <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-70 blur-xl transition-all duration-500 pointer-events-none" />
 
-              <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
-                <div className="relative aspect-[4/3] overflow-hidden">
+              <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
+                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden flex-shrink-0 landscape-compact-img">
                   <motion.div
                     className="absolute inset-0 bg-cover bg-center"
                     style={{ backgroundImage: `url(${stay.image})` }}
@@ -79,23 +79,23 @@ export const ExploreUniqueStays: React.FC = () => {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: i * 0.06 + 0.2, type: 'spring' }}
-                    className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-[clamp(0.625rem,1.25vw,0.75rem)] font-medium rounded-full flex items-center gap-1 shadow-lg"
+                    className="absolute top-1 left-1 sm:top-2 sm:left-2 px-1.5 py-px sm:px-2.5 sm:py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-[8px] sm:text-xs font-medium rounded-full flex items-center gap-0.5 sm:gap-1 shadow-lg"
                   >
-                    <Star size={10} fill="currentColor" className="animate-pulse flex-shrink-0" />
+                    <Star size={8} fill="currentColor" className="animate-pulse flex-shrink-0 sm:w-[10px] sm:h-[10px]" />
                     {stay.badge}
                   </motion.div>
                 </div>
 
-                <div className="p-2.5 sm:p-3 min-h-[80px] sm:min-h-[88px] flex flex-col">
-                  <h3 className="font-semibold text-slate-900 dark:text-white text-[clamp(0.75rem,1.5vw,0.875rem)] truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors min-h-[1.25rem]">
+                <div className="p-1.5 sm:p-3 landscape-compact-content flex flex-col flex-1">
+                  <h3 className="font-semibold text-slate-900 dark:text-white text-[11px] sm:text-sm truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {stay.name}
                   </h3>
-                  <p className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 mt-0.5 truncate min-h-[1rem]">{stay.location}</p>
-                  <p className="text-[clamp(0.75rem,1.5vw,0.875rem)] font-bold mt-auto pt-1 sm:pt-1.5">
+                  <p className="text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{stay.location}</p>
+                  <p className="text-[11px] sm:text-base font-bold mt-auto pt-1 sm:pt-1.5">
                     <span className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                       ₱{stay.price.toLocaleString()}
                     </span>
-                    <span className="font-normal text-slate-400 text-[clamp(0.625rem,1.25vw,0.75rem)]">/night</span>
+                    <span className="font-normal text-slate-400 text-[8px] sm:text-sm">/night</span>
                   </p>
                 </div>
               </div>

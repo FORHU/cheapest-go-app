@@ -28,9 +28,9 @@ const badgeVariants = {
 };
 
 const titleSizes = {
-  sm: 'text-[clamp(0.9375rem,2vw,1.125rem)]',
-  md: 'text-[clamp(1.0625rem,2.5vw,1.5rem)]',
-  lg: 'text-[clamp(1.125rem,4vw,1.875rem)]',
+  sm: 'text-sm sm:text-lg',
+  md: 'text-base sm:text-xl',
+  lg: 'text-base sm:text-2xl md:text-3xl',
 };
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
@@ -53,8 +53,8 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
     >
       <div className="flex items-start gap-3">
         {Icon && (
-          <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg mt-1">
-            <Icon size={20} className="text-slate-600 dark:text-slate-400" />
+          <div className="p-1.5 sm:p-2 bg-slate-100 dark:bg-slate-800 rounded-lg mt-0.5 sm:mt-1">
+            <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 dark:text-slate-400" />
           </div>
         )}
         <div>
@@ -63,10 +63,10 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 mb-3 border rounded-full ${badgeVariants[badge.variant || 'amber']}`}
+              className={`inline-flex items-center gap-1 sm:gap-2 px-2 py-1 sm:px-3 sm:py-1.5 mb-2 sm:mb-3 border rounded-full ${badgeVariants[badge.variant || 'amber']}`}
             >
               {badge.icon}
-              <span className="text-xs font-mono font-medium uppercase tracking-wider">
+              <span className="text-[9px] sm:text-xs font-mono font-medium uppercase tracking-wider">
                 {badge.text}
               </span>
             </motion.div>
@@ -81,7 +81,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
             {title}
           </motion.h2>
           {subtitle && (
-            <p className="text-[clamp(0.6875rem,1.5vw,0.875rem)] text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-[10px] sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1">
               {subtitle}
             </p>
           )}

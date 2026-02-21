@@ -96,9 +96,9 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
 
     return (
         <>
-            {/* Grid Gallery */}
+            {/* Gallery */}
             {!hasImages ? (
-                <div className="h-[300px] md:h-[400px] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <div className="h-[200px] md:h-[400px] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     <div className="text-center text-slate-400">
                         <ImageIcon size={48} className="mx-auto mb-2 opacity-50" />
                         <p>No images available</p>
@@ -106,7 +106,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                 </div>
             ) : displayImages.length === 1 ? (
                 <div
-                    className="h-[300px] md:h-[400px] rounded-xl overflow-hidden relative cursor-pointer group"
+                    className="h-[200px] md:h-[400px] rounded-xl overflow-hidden relative cursor-pointer group"
                     onClick={() => handleOpen(0)}
                 >
                     <img
@@ -116,53 +116,92 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                     />
                     <button
                         onClick={(e) => { e.stopPropagation(); handleOpen(0); }}
-                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-4 py-2 min-h-[44px] rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
+                        className="absolute bottom-3 right-3 md:bottom-4 md:right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
                     >
                         <ImageIcon size={14} />
                         View photo
                     </button>
                 </div>
             ) : (
-                <div className={`grid gap-2 h-[300px] md:h-[400px] rounded-xl overflow-hidden relative group ${gallerySubImages.length === 0 ? 'grid-cols-1' :
-                        gallerySubImages.length === 1 ? 'grid-cols-2' :
-                            'grid-cols-2 sm:grid-cols-4 grid-rows-2'
-                    }`}>
-                    <div
-                        className={`relative cursor-pointer overflow-hidden ${gallerySubImages.length >= 2 ? 'col-span-2 row-span-2' : ''}`}
-                        onClick={() => handleOpen(0)}
-                    >
-                        <img
-                            src={mainImage}
-                            alt="Main property view"
-                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                        />
-                    </div>
-                    {gallerySubImages.map((img, i) => (
-                        <div
-                            key={i}
-                            className="relative cursor-pointer overflow-hidden"
-                            onClick={() => handleOpen(i + 1)}
-                        >
-                            <img
-                                src={img}
-                                alt={`View ${i + 1}`}
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                            />
-                            {i === gallerySubImages.length - 1 && displayImages.length > 5 && (
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-sm backdrop-blur-sm">
-                                    +{displayImages.length - 5} photos
+                <>
+                    {/* Mobile: Horizontal swipe carousel */}
+                    <div className="md:hidden relative h-[200px] rounded-xl overflow-hidden">
+                        <div className="flex overflow-x-auto snap-x snap-mandatory h-full no-scrollbar">
+                            {displayImages.slice(0, 8).map((img, i) => (
+                                <div
+                                    key={i}
+                                    className="snap-center shrink-0 w-full h-full relative cursor-pointer"
+                                    onClick={() => handleOpen(i)}
+                                >
+                                    <img
+                                        src={img}
+                                        alt={`Property view ${i + 1}`}
+                                        className="w-full h-full object-cover"
+                                    />
                                 </div>
+                            ))}
+                        </div>
+                        {/* Dot indicators */}
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                            {displayImages.slice(0, 5).map((_, i) => (
+                                <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/70" />
+                            ))}
+                            {displayImages.length > 5 && (
+                                <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
                             )}
                         </div>
-                    ))}
-                    <button
-                        onClick={() => handleOpen(0)}
-                        className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-4 py-2 min-h-[44px] rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
-                    >
-                        <ImageIcon size={14} />
-                        Show all photos
-                    </button>
-                </div>
+                        {/* Photo count badge */}
+                        <button
+                            onClick={() => handleOpen(0)}
+                            className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm font-medium flex items-center gap-1.5"
+                        >
+                            <ImageIcon size={12} />
+                            {displayImages.length}
+                        </button>
+                    </div>
+
+                    {/* Desktop: Grid gallery */}
+                    <div className={`hidden md:grid gap-2 h-[400px] rounded-xl overflow-hidden relative group ${gallerySubImages.length === 0 ? 'grid-cols-1' :
+                        gallerySubImages.length === 1 ? 'grid-cols-2' :
+                            'grid-cols-4 grid-rows-2'
+                        }`}>
+                        <div
+                            className={`relative cursor-pointer overflow-hidden ${gallerySubImages.length >= 2 ? 'col-span-2 row-span-2' : ''}`}
+                            onClick={() => handleOpen(0)}
+                        >
+                            <img
+                                src={mainImage}
+                                alt="Main property view"
+                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                            />
+                        </div>
+                        {gallerySubImages.map((img, i) => (
+                            <div
+                                key={i}
+                                className="relative cursor-pointer overflow-hidden"
+                                onClick={() => handleOpen(i + 1)}
+                            >
+                                <img
+                                    src={img}
+                                    alt={`View ${i + 1}`}
+                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                />
+                                {i === gallerySubImages.length - 1 && displayImages.length > 5 && (
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-sm backdrop-blur-sm">
+                                        +{displayImages.length - 5} photos
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        <button
+                            onClick={() => handleOpen(0)}
+                            className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
+                        >
+                            <ImageIcon size={14} />
+                            Show all photos
+                        </button>
+                    </div>
+                </>
             )}
 
             {/* Lightbox Modal */}
@@ -201,19 +240,17 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                         {/* Main Image Area */}
                         <div className="flex-1 flex items-center justify-center relative w-full h-full p-4 md:pb-28">
                             <button
-                                className="absolute left-2 sm:left-4 p-2 sm:p-3 bg-white/10 hover:bg-white/20 md:bg-white/5 md:hover:bg-white/10 rounded-full text-white/90 hover:text-white transition-colors backdrop-blur-sm group z-20"
+                                className="absolute left-2 md:left-4 p-2 md:p-3 bg-white/10 md:bg-white/5 hover:bg-white/20 md:hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors backdrop-blur-sm group z-20"
                                 onClick={handlePrev}
                             >
-                                <ChevronLeft size={24} className="sm:hidden group-hover:-translate-x-0.5 transition-transform" />
-                                <ChevronLeft size={32} className="hidden sm:block group-hover:-translate-x-0.5 transition-transform" />
+                                <ChevronLeft size={24} className="md:w-8 md:h-8 group-hover:-translate-x-0.5 transition-transform" />
                             </button>
 
                             <button
-                                className="absolute right-2 sm:right-4 p-2 sm:p-3 bg-white/10 hover:bg-white/20 md:bg-white/5 md:hover:bg-white/10 rounded-full text-white/90 hover:text-white transition-colors backdrop-blur-sm group z-20"
+                                className="absolute right-2 md:right-4 p-2 md:p-3 bg-white/10 md:bg-white/5 hover:bg-white/20 md:hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors backdrop-blur-sm group z-20"
                                 onClick={handleNext}
                             >
-                                <ChevronRight size={24} className="sm:hidden group-hover:translate-x-0.5 transition-transform" />
-                                <ChevronRight size={32} className="hidden sm:block group-hover:translate-x-0.5 transition-transform" />
+                                <ChevronRight size={24} className="md:w-8 md:h-8 group-hover:translate-x-0.5 transition-transform" />
                             </button>
 
                             {/* Main image - instant swap, no animation */}

@@ -260,7 +260,7 @@ const AISearchBar: React.FC<AISearchBarProps> = (props) => {
     return (
         <Suspense fallback={
             <div className="w-full">
-                <div className="flex justify-center mb-4">
+                <div className="flex justify-center mb-3 sm:mb-4">
                     <div className="h-10 w-48 bg-white/10 rounded-full animate-pulse" />
                 </div>
                 <div className="bg-white/60 dark:bg-[#0f172a]/80 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 p-3 h-[72px] animate-pulse" />

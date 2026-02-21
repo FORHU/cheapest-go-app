@@ -17,12 +17,12 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
     whileInView={{ opacity: 1, x: 0 }}
     viewport={{ once: true }}
     transition={{ delay: index * 0.1 }}
-    className="flex-shrink-0 w-[48vw] min-w-[180px] max-w-[280px] sm:min-w-[220px] sm:max-w-[320px] snap-start"
+    className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[280px] lg:w-[300px] landscape-compact-card snap-start flex flex-col"
   >
     <TiltCard className="h-full">
       <div className="relative h-full bg-white dark:bg-slate-900/80 rounded-xl overflow-hidden border border-alabaster-border dark:border-obsidian-border shadow-lg dark:shadow-black/30 group">
         {/* Image — responsive height */}
-        <div className="relative h-28 min-[400px]:h-32 sm:h-36 md:h-40 overflow-hidden">
+        <div className="relative h-24 sm:h-32 md:h-40 landscape-compact-img overflow-hidden flex-shrink-0">
           <div
             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
             style={{ backgroundImage: `url(${deal.image})` }}
@@ -39,11 +39,11 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
         </div>
 
         {/* Content — fixed min-height so all cards same size */}
-        <div className="p-3 sm:p-4 min-h-[120px] sm:min-h-[128px] flex flex-col">
-          <h3 className="text-[clamp(0.875rem,2vw,1.125rem)] font-display font-bold text-slate-900 dark:text-white mb-0.5 sm:mb-1 line-clamp-2 min-h-[2.5em]">
+        <div className="p-2 sm:p-3 md:p-4 min-h-[105px] sm:min-h-[115px] md:min-h-[128px] landscape-compact-content flex flex-col flex-1 mt-auto">
+          <h3 className="text-sm sm:text-base md:text-lg font-display font-bold text-slate-900 dark:text-white mb-0.5 sm:mb-1 line-clamp-2 min-h-[2.5em]">
             {deal.title}
           </h3>
-          <p className="text-[clamp(0.6875rem,1.5vw,0.875rem)] text-slate-500 dark:text-slate-400 mb-2 sm:mb-3 line-clamp-1 flex-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-2 sm:mb-3 line-clamp-1 flex-1">
             {deal.subtitle}
           </p>
 
@@ -69,7 +69,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
 
 const DealsSection = () => {
   return (
-    <section className="w-full py-6 sm:py-10 overflow-hidden">
+    <section className="w-full py-4 md:py-8 lg:py-10 landscape-compact-py overflow-hidden">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <SectionHeader
           title="Exclusive Deals & Offers"

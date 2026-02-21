@@ -27,3 +27,4 @@ out
 *.sln
 *.sw?
 nul
+.env

@@ -126,11 +126,15 @@ Deno.serve(async (req: Request) => {
 
     if (body.hotelIds) {
       locationParams = { hotelIds: body.hotelIds };
-    } else if (placeId) {
-      // Prefer placeId — it's the most accurate location identifier from LiteAPI
-      locationParams = { placeId: placeId };
     } else if (normalizedCityName && countryCode) {
+      // Prioritize cityName and countryCode over placeId for better results in smaller regions (like Baguio)
       locationParams = { cityName: normalizedCityName, countryCode: countryCode };
+      // Include placeId if it exists to help LiteAPI disambiguate
+      if (placeId) {
+        (locationParams as any).placeId = placeId;
+      }
+    } else if (placeId) {
+      locationParams = { placeId: placeId };
     } else if (normalizedCityName) {
       // cityName without countryCode — still try (LiteAPI may resolve it)
       locationParams = { cityName: normalizedCityName };
