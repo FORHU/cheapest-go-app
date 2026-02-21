@@ -8,7 +8,8 @@ import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
 import type { Property } from '@/data/mockProperties';
 import { ArrowLeft, MapPin, ChevronDown, List } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { formatCurrency, cn } from '@/lib/utils';
 import { SearchMapContainer } from '../mapbox/SearchMapContainer';
 
 // ── Sort logic ──────────────────────────────────────────
@@ -41,7 +42,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortValue>('recommended');
-    const [showMobileMap, setShowMobileMap] = useState(false);
+    const [showMobileMap, setShowMobileMap] = useState(true);
 
     // Filter only properties with real coordinates (not 0,0)
     const mappableProperties = useMemo<MappableProperty[]>(
@@ -128,25 +129,25 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
     return (
         <div className="flex flex-col h-full w-full">
             {/* ── Top bar ── */}
-            <div className="flex-shrink-0 h-12 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 z-10">
-                <div className="max-w-[1400px] mx-auto px-6 h-full flex items-center gap-3">
+            <div className="flex-shrink-0 h-12 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 z-10 landscape-compact-topbar">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-full flex items-center gap-2 sm:gap-3">
                     <button
                         onClick={handleBackToList}
-                        className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                     >
-                        <ArrowLeft size={16} />
-                        <span className="hidden sm:inline">Back to list</span>
+                        <ArrowLeft size={14} className="sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Back</span>
                     </button>
 
                     <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 landscape-compact:hidden">
                         <MapPin size={14} className="text-blue-500" />
                         <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                            {destination || 'Search results'}
+                            {destination || 'Search'}
                         </span>
                         <span className="text-xs text-slate-400 dark:text-slate-500">
-                            · {mappableProperties.length} on map
+                            · {mappableProperties.length}
                         </span>
                     </div>
 
@@ -250,30 +251,54 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                     onViewDetails={handleViewDetails}
                 />
 
-                {/* Horizontal Swiper */}
-                {sortedProperties.length > 0 && (
-                    <div className="absolute bottom-16 left-0 right-0 w-full overflow-x-auto pb-3 pt-3 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] z-10">
-                        {sortedProperties.map((property) => (
-                            <div key={property.id} className="snap-center shrink-0 w-[75vw] sm:w-[300px] shadow-lg rounded-xl bg-white dark:bg-slate-900">
-                                <MapPropertyCard
-                                    property={property}
-                                    isSelected={selectedId === property.id}
-                                    isHovered={hoveredId === property.id}
-                                    onSelect={handleCardSelect}
-                                    onHover={handleHover}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Floating "List" Toggle */}
+                {/* Floating "List" Toggle (Top Right) */}
                 <button
                     onClick={handleBackToList}
-                    className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-2.5 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.3)] active:scale-95 transition-transform flex items-center gap-2 text-sm font-semibold z-20 pointer-events-auto"
+                    className={cn(
+                        "absolute top-4 right-14 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 rounded-full shadow-lg active:scale-95 transition-all flex items-center gap-2 font-semibold z-50 pointer-events-auto",
+                        "text-xs landscape:top-2 landscape:right-12"
+                    )}
                 >
-                    <List size={18} />
+                    <List size={16} />
                     List
+                </button>
+
+                {/* Horizontal Swiper */}
+                <AnimatePresence>
+                    {showMobileMap && sortedProperties.length > 0 && (
+                        <motion.div
+                            initial={{ y: 100, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 100, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="absolute bottom-16 left-0 right-0 w-full overflow-x-auto pb-2 pt-2 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] z-20 landscape:bottom-12"
+                        >
+                            {sortedProperties.map((property) => (
+                                <div key={property.id} className="snap-center shrink-0 w-[75vw] sm:w-[300px] landscape:w-[280px] shadow-lg rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                                    <MapPropertyCard
+                                        property={property}
+                                        isSelected={selectedId === property.id}
+                                        isHovered={hoveredId === property.id}
+                                        onSelect={handleCardSelect}
+                                        onHover={handleHover}
+                                    />
+                                </div>
+                            ))}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Swiper Toggle Button (Bottom Center Pill) */}
+                <button
+                    onClick={() => setShowMobileMap(!showMobileMap)}
+                    className={cn(
+                        "absolute left-1/2 -translate-x-1/2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-800 z-30 active:scale-95 transition-all text-slate-700 dark:text-slate-200 flex items-center gap-1.5",
+                        "bottom-4 landscape:bottom-2"
+                    )}
+                    aria-label={showMobileMap ? "Hide swiper" : "Show swiper"}
+                >
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{showMobileMap ? 'Hide' : 'Show'}</span>
+                    <ChevronDown size={14} className={cn("transition-transform duration-300", !showMobileMap && "rotate-180")} />
                 </button>
             </div>
         </div>

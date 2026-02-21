@@ -25,15 +25,15 @@ interface ReviewsSectionProps {
  */
 function RatingSummary({ rating, totalCount }: { rating: number; totalCount: number }) {
     return (
-        <div className="flex items-center gap-2.5 md:gap-3 mb-4 md:mb-6">
-            <div className={`${getRatingColor(rating)} text-white w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-bold text-base md:text-xl`}>
+        <div className="flex items-center gap-2 lg:gap-3 mb-3 lg:mb-6">
+            <div className={`${getRatingColor(rating)} text-white w-9 h-9 lg:w-12 lg:h-12 rounded-lg flex items-center justify-center font-bold text-sm lg:text-xl`}>
                 {rating > 0 ? rating.toFixed(0) : '-'}
             </div>
             <div>
-                <p className="font-semibold text-slate-900 dark:text-white text-sm md:text-lg">
+                <p className="font-semibold text-slate-900 dark:text-white text-xs lg:text-lg leading-tight">
                     {getRatingLabel(rating)}
                 </p>
-                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
+                <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">
                     Based on {totalCount} review{totalCount !== 1 ? 's' : ''}
                 </p>
             </div>
@@ -56,14 +56,14 @@ function WhoStaysHere({ breakdown }: { breakdown: TravelerBreakdown }) {
     if (types.length === 0) return null;
 
     return (
-        <div className="mb-4 md:mb-6">
-            <h3 className="text-xs md:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 md:mb-3">Who stays here</h3>
-            <div className="flex flex-wrap gap-3 md:gap-4">
+        <div className="mb-4 lg:mb-6">
+            <h3 className="text-[10px] lg:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 lg:mb-3">Who stays here</h3>
+            <div className="flex flex-wrap gap-2.5 lg:gap-4">
                 {types.map(({ key, label, icon: Icon, value }) => (
                     <div key={key} className="flex flex-col items-center text-center">
-                        <Icon className="w-4 h-4 md:w-5 md:h-5 text-slate-400 mb-0.5" />
-                        <span className="text-[10px] md:text-xs text-slate-600 dark:text-slate-300">{label}</span>
-                        <span className="text-[10px] md:text-xs font-semibold text-slate-800 dark:text-slate-200">{value}%</span>
+                        <Icon className="w-3.5 h-3.5 lg:w-5 lg:h-5 text-slate-400 mb-0.5" />
+                        <span className="text-[8px] lg:text-xs text-slate-600 dark:text-slate-300">{label}</span>
+                        <span className="text-[9px] lg:text-xs font-semibold text-slate-800 dark:text-slate-200">{value}%</span>
                     </div>
                 ))}
             </div>
@@ -87,36 +87,36 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
         : reviewText;
 
     return (
-        <div className="py-2.5 md:py-4 border-b border-slate-100 dark:border-slate-700 last:border-b-0">
-            <div className="flex items-start justify-between gap-3 md:gap-4">
+        <div className="py-2.5 lg:py-4 border-b border-slate-100 dark:border-slate-700 last:border-b-0">
+            <div className="flex items-start justify-between gap-3 lg:gap-4">
                 {/* Left: Reviewer info */}
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 md:gap-2 mb-0.5">
-                        <span className="font-semibold text-xs md:text-sm text-slate-900 dark:text-white truncate">
+                    <div className="flex items-center gap-1.5 lg:gap-2 mb-0.5">
+                        <span className="font-semibold text-[11px] lg:text-sm text-slate-900 dark:text-white truncate">
                             {review.name || 'Anonymous'}
                         </span>
                         {review.type && (
-                            <span className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 shrink-0">
+                            <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400 shrink-0">
                                 • {review.type}
                             </span>
                         )}
                     </div>
-                    <p className="text-[10px] md:text-xs text-slate-400 dark:text-slate-500 mb-1.5 md:mb-2">
+                    <p className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500 mb-1 lg:mb-2">
                         {formatReviewDate(review.date)}
                     </p>
 
                     {/* Headline */}
                     {review.headline && (
-                        <p className="font-medium text-xs md:text-sm text-slate-800 dark:text-slate-200 mb-0.5 md:mb-1">
+                        <p className="font-medium text-[11px] lg:text-sm text-slate-800 dark:text-slate-200 mb-0.5 lg:mb-1">
                             {review.headline}
                         </p>
                     )}
 
                     {/* Review text with pros/cons */}
                     {reviewText && (
-                        <div className="text-xs md:text-sm text-slate-600 dark:text-slate-300">
+                        <div className="text-[11px] lg:text-sm text-slate-600 dark:text-slate-300">
                             {review.pros && (
-                                <p className="mb-0.5 md:mb-1">
+                                <p className="mb-0.5 lg:mb-1">
                                     <span className="text-emerald-500">👍</span> {isExpanded || !isLongText ? review.pros : review.pros.substring(0, 100) + '...'}
                                 </p>
                             )}
@@ -128,7 +128,7 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
                             {isLongText && (
                                 <button
                                     onClick={() => toggleExpanded(reviewId)}
-                                    className="text-blue-600 hover:text-blue-700 text-[10px] md:text-xs font-medium mt-1"
+                                    className="text-blue-600 hover:text-blue-700 text-[9px] lg:text-xs font-medium mt-1"
                                 >
                                     {isExpanded ? 'Show Less' : 'Show More'}
                                 </button>
@@ -139,7 +139,7 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
 
                 {/* Right: Score badge */}
                 {review.averageScore > 0 && (
-                    <div className={`${getRatingColor(review.averageScore)} text-white w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center font-bold text-[11px] md:text-sm flex-shrink-0`}>
+                    <div className={`${getRatingColor(review.averageScore)} text-white w-6 h-6 lg:w-9 lg:h-9 rounded-full flex items-center justify-center font-bold text-[10px] lg:text-sm flex-shrink-0`}>
                         {review.averageScore.toFixed(0)}
                     </div>
                 )}
@@ -240,11 +240,11 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
     const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label || 'Newest first';
 
     return (
-        <section id="reviews-section" className="py-4 md:py-8">
-            <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
+        <section id="reviews-section" className="py-4 lg:py-8">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
                 {/* Left Column - Summary */}
                 <div className="lg:w-64 flex-shrink-0">
-                    <h2 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-3 md:mb-4">Guest reviews</h2>
+                    <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-2 lg:mb-4">Guest reviews</h2>
 
                     <RatingSummary rating={averageRating} totalCount={totalCount} />
                     <WhoStaysHere breakdown={travelerBreakdown} />
@@ -273,8 +273,8 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
                                                 setIsSortOpen(false);
                                             }}
                                             className={`w-full text-left px-4 py-3 sm:py-2.5 text-[15px] sm:text-sm transition-colors ${sortBy === opt.value
-                                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
-                                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                                                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium'
+                                                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                                                 }`}
                                         >
                                             {opt.label}

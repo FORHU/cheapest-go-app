@@ -117,7 +117,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
         <div className="flex flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all group">
             {/* Left: Image (Horizontal layout on mobile, like search results) */}
             <div
-                className="w-[120px] md:w-[240px] relative h-auto cursor-pointer p-2 md:p-3 pr-0 md:pr-0 flex-shrink-0"
+                className="w-[110px] lg:w-[240px] relative h-auto cursor-pointer p-2 lg:p-3 pr-0 lg:pr-0 flex-shrink-0"
                 onClick={onViewDetails}
             >
                 {roomImage ? (
@@ -127,90 +127,90 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     />
                 ) : (
                     <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-600 rounded-xl">
-                        <Bed size={40} />
+                        <Bed size={32} />
                     </div>
                 )}
                 {/* Image Counter Badge */}
                 {photoCount && photoCount > 1 && (
-                    <div className="absolute bottom-3 md:bottom-5 right-1 md:right-3 bg-black/60 text-white text-[10px] md:text-xs px-1.5 md:px-2 py-0.5 md:py-1 rounded-md flex items-center gap-1 backdrop-blur-sm z-10">
-                        <span className="hidden md:inline">1/{photoCount}</span>
-                        <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white rounded-full ml-1 md:ml-1" />
+                    <div className="absolute bottom-3 lg:bottom-5 right-1 lg:right-3 bg-black/60 text-white text-[9px] lg:text-xs px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-md flex items-center gap-1 backdrop-blur-sm z-10">
+                        <span className="hidden lg:inline">1/{photoCount}</span>
+                        <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-white rounded-full ml-1 lg:ml-1" />
                     </div>
                 )}
             </div>
 
             {/* Middle: Info & Rate Options */}
-            <div className="flex-1 p-2 md:p-4 flex flex-col justify-between">
+            <div className="flex-1 p-2 lg:p-4 flex flex-col justify-between min-w-0">
                 <div>
-                    <h4 className="text-sm md:text-lg font-bold text-slate-900 dark:text-white line-clamp-2 mb-1 group-hover:text-blue-600 transition-colors">
+                    <h4 className="text-[13px] lg:text-lg font-bold text-slate-900 dark:text-white line-clamp-2 mb-0.5 lg:mb-1 group-hover:text-blue-600 transition-colors">
                         {title}
                     </h4>
 
                     {/* Compact Room Specs */}
-                    <div className="flex flex-wrap gap-x-2.5 gap-y-1 text-[10px] md:text-xs text-slate-500 dark:text-slate-400 mb-3">
-                        {roomSize && <span className="flex items-center gap-1"><Square size={10} /> {roomSize}</span>}
-                        <span className="flex items-center gap-1"><User size={10} /> Sleeps {maxOccupancy || 2}</span>
-                        {bedType && <span className="flex items-center gap-1"><Bed size={10} /> {bedType}</span>}
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] lg:text-xs text-slate-500 dark:text-slate-400 mb-2 lg:mb-3">
+                        {roomSize && <span className="flex items-center gap-1"><Square size={9} /> {roomSize}</span>}
+                        <span className="flex items-center gap-1"><User size={9} /> Sleeps {maxOccupancy || 2}</span>
+                        {bedType && <span className="flex items-center gap-1"><Bed size={9} /> {bedType}</span>}
                     </div>
 
                     {/* Rate Options (if multiple) */}
                     {hasMultipleRates ? (
-                        <div className="space-y-1 mb-1.5 md:mb-4">
-                            <div className="text-[10px] md:text-xs font-bold text-slate-900 dark:text-white mb-0.5 mt-2">
+                        <div className="space-y-1 mb-1 lg:mb-4">
+                            <div className="text-[9px] lg:text-xs font-bold text-slate-900 dark:text-white mb-0.5 mt-1.5 lg:mt-2">
                                 {rateOptions.length} rate options
                             </div>
                             <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                                 {rateOptions.map((rate, idx) => (
                                     <label
                                         key={rate.offerId}
-                                        className={`flex items-center justify-between p-1.5 md:p-2 rounded-lg cursor-pointer border transition-all ${selectedRateIdx === idx
+                                        className={`flex items-center justify-between p-1 LG:p-2 rounded-lg cursor-pointer border transition-all ${selectedRateIdx === idx
                                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                                             : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
                                             }`}
                                     >
-                                        <div className="flex items-center gap-1.5 md:gap-2">
+                                        <div className="flex items-center gap-1 LG:gap-2">
                                             <input
                                                 type="radio"
                                                 name={`rate-${title}`}
                                                 checked={selectedRateIdx === idx}
                                                 onChange={() => setSelectedRateIdx(idx)}
-                                                className="w-3 h-3 md:w-3.5 md:h-3.5 text-blue-600 cursor-pointer"
+                                                className="w-2.5 h-2.5 LG:w-3.5 LG:h-3.5 text-blue-600 cursor-pointer"
                                             />
-                                            <div>
-                                                <div className="text-[11px] md:text-sm font-medium text-slate-800 dark:text-slate-200">
+                                            <div className="min-w-0">
+                                                <div className="text-[10px] lg:text-sm font-medium text-slate-800 dark:text-slate-200 truncate pr-1">
                                                     {rate.boardName || 'Room only'}
                                                 </div>
-                                                <div className={`text-[9px] md:text-[11px] font-medium leading-tight ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                                <div className={`text-[8px] lg:text-[11px] font-medium leading-tight ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                                     {rate.refundable
-                                                        ? `Free cancellation${rate.cancellationDeadline ? ` before ${formatCancellationDeadline(rate.cancellationDeadline)}` : ''}`
+                                                        ? 'Free cancellation'
                                                         : 'Non-refundable'}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-[12px] md:text-sm font-bold text-slate-900 dark:text-white ml-2 text-right">
+                                        <div className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white ml-1.5 text-right shrink-0">
                                             {currencySymbol}{rate.price.toLocaleString()}
-                                            <div className="text-[9px] text-slate-500 font-normal">/night</div>
+                                            <div className="text-[8px] text-slate-500 font-normal">/night</div>
                                         </div>
                                     </label>
                                 ))}
                             </div>
                         </div>
                     ) : (
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-700">
-                            <div className="font-bold text-[11px] md:text-sm text-slate-900 dark:text-white mb-1">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-2.5 border border-slate-100 dark:border-slate-700">
+                            <div className="font-bold text-[10px] lg:text-sm text-slate-900 dark:text-white mb-0.5 lg:mb-1">
                                 Room only
                             </div>
                             <div className="space-y-1">
-                                <div className="text-[10px] md:text-xs text-slate-500 flex items-center gap-1.5">
-                                    <X size={12} className="text-slate-400" /> No meals included
+                                <div className="text-[9px] lg:text-xs text-slate-500 flex items-center gap-1.5">
+                                    <X size={10} className="text-slate-400" /> No meals included
                                 </div>
                                 {displayRefundable ? (
-                                    <div className="text-[10px] md:text-xs text-emerald-600 font-medium flex items-center gap-1.5">
-                                        <Check size={12} /> Free cancellation{selectedRate?.cancellationDeadline ? ` before ${formatCancellationDeadline(selectedRate.cancellationDeadline)}` : ''}
+                                    <div className="text-[9px] lg:text-xs text-emerald-600 font-medium flex items-center gap-1.5">
+                                        <Check size={10} /> Free cancellation
                                     </div>
                                 ) : (
-                                    <div className="text-[10px] md:text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
-                                        <div className="w-3 h-3 rounded-full border border-amber-400 dark:border-amber-500 flex items-center justify-center text-[8px] text-amber-500">
+                                    <div className="text-[9px] lg:text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
+                                        <div className="w-2.5 h-2.5 rounded-full border border-amber-400 dark:border-amber-500 flex items-center justify-center text-[7px] text-amber-500">
                                             i
                                         </div>
                                         Non-Refundable
@@ -221,22 +221,22 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     )}
                 </div>
 
-                <div className="flex items-end justify-between mt-3">
+                <div className="flex items-end justify-between mt-2 lg:mt-3">
                     <div className="flex flex-col">
                         <button
                             onClick={onViewDetails}
-                            className="text-[11px] md:text-xs text-blue-600 font-bold hover:underline self-start mb-1 md:mb-0"
+                            className="text-[10px] lg:text-xs text-blue-600 font-bold hover:underline self-start mb-0.5 lg:mb-0"
                         >
                             Room details
                         </button>
                         {/* Hide price on mobile if multiple rates since it's already shown on the radio button */}
                         {!(hasMultipleRates) && (
-                            <div className="md:hidden mt-0.5">
+                            <div className="lg:hidden mt-0.5">
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-[16px] font-bold text-blue-600 dark:text-blue-400 leading-none">
+                                    <span className="text-[15px] font-bold text-blue-600 dark:text-blue-400 leading-none">
                                         {currencySymbol}{displayPrice.toLocaleString()}
                                     </span>
-                                    <span className="text-[10px] text-slate-500">/night</span>
+                                    <span className="text-[9px] text-slate-500">/night</span>
                                 </div>
                             </div>
                         )}
@@ -245,7 +245,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     {/* Mobile Action Button */}
                     <button
                         onClick={() => onReserve(displayOfferId)}
-                        className="md:hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg text-[12px] shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shrink-0 ml-2"
+                        className="lg:hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded-lg text-[11px] shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shrink-0 ml-2"
                     >
                         Choose room
                     </button>
@@ -253,8 +253,8 @@ export const RoomCard: React.FC<RoomCardProps> = ({
             </div>
 
             {/* Right: Pricing & Action (Desktop Sidebar) */}
-            <div className={`p-3 md:p-4 hidden md:flex md:flex-col justify-between md:items-end bg-slate-50/50 dark:bg-white/5 md:min-w-[180px] border-t md:border-t-0 md:border-l border-slate-100 dark:border-white/5 shrink-0`}>
-                <div className="text-right hidden md:block">
+            <div className={`p-3 lg:p-4 hidden lg:flex lg:flex-col justify-between lg:items-end bg-slate-50/50 dark:bg-white/5 lg:min-w-[180px] border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-white/5 shrink-0`}>
+                <div className="text-right hidden lg:block">
                     <div className="inline-block bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mb-1">
                         8% OFF
                     </div>
@@ -275,10 +275,10 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     </div>
                 </div>
 
-                <div className="w-full h-full md:h-auto flex items-end">
+                <div className="w-full h-full lg:h-auto flex items-end">
                     <button
                         onClick={() => onReserve(displayOfferId)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-[13px] md:text-sm transition-colors w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-[13px] lg:text-sm transition-colors w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     >
                         Choose room
                     </button>

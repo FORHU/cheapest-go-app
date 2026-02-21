@@ -64,9 +64,9 @@ export default async function PropertyPage({
             <MobilePropertyHeader propertyName={property.name} />
 
             <div className="max-w-7xl mx-auto">
-                {/* Breadcrumb + Back — desktop only */}
+                {/* Breadcrumb + Back — desktop only (lg and up) */}
                 <FadeIn delay={0}>
-                    <div className="hidden md:block">
+                    <div className="hidden lg:block">
                         <div className="mb-4">
                             <BackButton label="See all properties" />
                         </div>

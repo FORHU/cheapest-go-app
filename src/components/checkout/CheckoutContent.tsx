@@ -267,7 +267,7 @@ export function CheckoutContent() {
 
     return (
         <>
-            <main className="min-h-screen pt-4 sm:pt-6 pb-20 px-3 sm:px-4 md:px-6 relative">
+            <main className="min-h-screen pt-4 lg:pt-6 pb-20 px-3 lg:px-4 md:px-6 relative">
                 <div className="max-w-6xl mx-auto">
                     {/* Desktop Text Back Button */}
                     <div className="hidden md:flex mb-2 justify-between items-center">
@@ -286,7 +286,7 @@ export function CheckoutContent() {
                         </button>
                     </div>
 
-                    <h1 className="text-xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white mb-4 sm:mb-8 text-left">
+                    <h1 className="text-[18px] lg:text-3xl font-display font-bold text-slate-900 dark:text-white mb-4 lg:mb-8 text-left">
                         Secure your booking
                     </h1>
 
@@ -326,7 +326,7 @@ export function CheckoutContent() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
                         {/* Main Form */}
-                        <div className="lg:col-span-2 space-y-3 lg:space-y-6">
+                        <div className="lg:col-span-2 space-y-2.5 lg:space-y-6">
                             <UserDetailsForm
                                 formData={formData}
                                 onInputChange={handleInputChange}

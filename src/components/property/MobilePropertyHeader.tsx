@@ -25,17 +25,7 @@ const MobilePropertyHeader: React.FC<MobilePropertyHeaderProps> = ({ propertyNam
 
     return (
         <div className="lg:hidden fixed top-0 left-0 right-0 z-40 pointer-events-none">
-            {/* 1. Permanent floating back button */}
-            <div className="absolute top-3 left-3 z-50 pointer-events-auto">
-                <button
-                    onClick={() => router.back()}
-                    className="p-2 border border-slate-200/50 dark:border-slate-700/50 bg-white/90 dark:bg-slate-900/90 backdrop-blur rounded-full shadow-sm"
-                >
-                    <ArrowLeft size={20} className="text-slate-700 dark:text-slate-300" />
-                </button>
-            </div>
-
-            {/* 2. Scrolling sticky header background with title and share button */}
+            {/* Scrolling sticky header background with title and share button */}
             <AnimatePresence>
                 {isVisible && (
                     <motion.div
@@ -46,10 +36,15 @@ const MobilePropertyHeader: React.FC<MobilePropertyHeaderProps> = ({ propertyNam
                         className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/50 dark:border-white/10 pointer-events-auto shadow-sm"
                     >
                         <div className="flex items-center gap-2 px-3 py-2.5 max-w-7xl mx-auto h-[48px]">
-                            {/* Empty spacer to reserve space for the floating back button */}
-                            <div className="w-[36px] shrink-0" />
+                            {/* Back button in sticky header */}
+                            <button
+                                onClick={() => router.back()}
+                                className="p-2 border border-slate-200/50 dark:border-slate-700/50 bg-white dark:bg-slate-900 rounded-full shadow-sm shrink-0"
+                            >
+                                <ArrowLeft size={18} className="text-slate-700 dark:text-slate-300" />
+                            </button>
 
-                            <div className="flex-1 min-w-0 px-2 flex items-center justify-center">
+                            <div className="flex-1 min-w-0 px-2 flex items-center">
                                 <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
                                     {propertyName}
                                 </p>

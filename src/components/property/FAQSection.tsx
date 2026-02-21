@@ -17,15 +17,15 @@ const FAQItem = ({ question, answer, index }: { question: string, answer: string
         >
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full py-3 md:py-4 flex items-center justify-between text-left hover:text-blue-600 transition-colors group"
+                className="w-full py-2.5 lg:py-4 flex items-center justify-between text-left hover:text-blue-600 transition-colors group"
             >
-                <span className="font-semibold text-xs md:text-sm text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">{question}</span>
+                <span className="font-semibold text-[11px] lg:text-sm text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">{question}</span>
                 <motion.div
                     animate={{ rotate: isOpen ? 180 : 0 }}
                     transition={{ duration: 0.2, ease: "easeInOut" }}
                     className="text-slate-400"
                 >
-                    <ChevronDown size={16} />
+                    <ChevronDown size={14} />
                 </motion.div>
             </button>
             <AnimatePresence>
@@ -37,7 +37,7 @@ const FAQItem = ({ question, answer, index }: { question: string, answer: string
                         transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
                         className="overflow-hidden"
                     >
-                        <div className="pb-3 md:pb-4 text-xs md:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        <div className="pb-2.5 lg:pb-4 text-[11px] lg:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                             {answer}
                         </div>
                     </motion.div>
@@ -145,13 +145,13 @@ const FAQSection: React.FC<FAQSectionProps> = ({
     }
 
     return (
-        <div className="py-4 md:py-8 border-t border-slate-200 dark:border-white/10" id="faqs">
+        <div className="py-4 lg:py-8 border-t border-slate-200 dark:border-white/10" id="faqs">
             <motion.h2
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 0.5 }}
-                className="text-base md:text-xl font-bold text-slate-900 dark:text-white mb-3 md:mb-6"
+                className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-2 lg:mb-6"
             >
                 Frequently asked questions
             </motion.h2>

@@ -65,8 +65,8 @@ const Header = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl transition-colors duration-800">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl transition-colors duration-800 landscape-compact-header">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between landscape-compact-header">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <h1 className="text-lg md:text-xl lg:text-2xl text-slate-900 dark:text-white font-display font-bold tracking-tight truncate max-w-[140px] sm:max-w-none">
@@ -111,8 +111,8 @@ const Header = () => {
                           type="button"
                           onClick={() => handleCurrencySelect(currency)}
                           className={`flex items-center gap-2 w-full px-3 py-2 text-left text-sm font-medium transition-colors ${userCurrency === currency
-                              ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
-                              : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
+                            ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
                             }`}
                         >
                           <span className="text-base">{CURRENCY_FLAGS[currency]}</span>
@@ -187,8 +187,8 @@ const Header = () => {
               className="absolute right-0 top-0 h-full w-[280px] bg-white dark:bg-slate-900 shadow-2xl flex flex-col"
             >
               {/* Drawer Header */}
-              <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
-                <span className="font-display font-bold text-base sm:text-lg text-slate-900 dark:text-white">Menu</span>
+              <div className="flex items-center justify-between p-3.5 border-b border-slate-200 dark:border-white/10">
+                <span className="font-display font-bold text-sm text-slate-900 dark:text-white">Menu</span>
                 <button
                   onClick={closeMenu}
                   className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
@@ -202,9 +202,9 @@ const Header = () => {
               <div className="flex-1 overflow-y-auto py-2">
                 <a
                   href="#"
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[40px] text-[13px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
                 >
-                  <Download size={18} />
+                  <Download size={16} />
                   Open app
                 </a>
 
@@ -213,13 +213,13 @@ const Header = () => {
                   <button
                     type="button"
                     onClick={() => setIsMobileCurrencyOpen((o) => !o)}
-                    className="flex items-center justify-between w-full min-h-[48px] px-4 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                    className="flex items-center justify-between w-full min-h-[40px] px-3.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                   >
                     <span className="flex items-center gap-2">
                       <span className="text-base">{currencyFlag}</span>
                       {userCurrency}
                     </span>
-                    <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isMobileCurrencyOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isMobileCurrencyOpen ? 'rotate-180' : ''}`} />
                   </button>
                   <AnimatePresence>
                     {isMobileCurrencyOpen && (
@@ -236,12 +236,12 @@ const Header = () => {
                               key={currency}
                               type="button"
                               onClick={() => { handleCurrencySelect(currency); closeMenu(); }}
-                              className={`flex items-center gap-3 px-4 min-h-[44px] w-full text-left text-sm font-medium transition-colors ${userCurrency === currency
-                                  ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
-                                  : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
+                              className={`flex items-center gap-3 px-3.5 min-h-[38px] w-full text-left text-[13px] font-medium transition-colors ${userCurrency === currency
+                                ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                                : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
                                 }`}
                             >
-                              <span className="text-lg">{CURRENCY_FLAGS[currency]}</span>
+                              <span className="text-base">{CURRENCY_FLAGS[currency]}</span>
                               {currency}
                             </button>
                           ))}
@@ -255,14 +255,14 @@ const Header = () => {
 
                 <a
                   href="#"
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[44px] text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   List your property
                 </a>
 
                 <a
                   href="#"
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[44px] text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   Support
                 </a>
@@ -270,7 +270,7 @@ const Header = () => {
                 <Link
                   href="/trips"
                   onClick={closeMenu}
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[44px] text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   Trips
                 </Link>
@@ -279,7 +279,7 @@ const Header = () => {
 
                 <button
                   onClick={() => { toggleTheme(); }}
-                  className="flex items-center gap-3 px-4 min-h-[48px] w-full text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[44px] w-full text-left text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                   {theme === 'dark' ? 'Light mode' : 'Dark mode'}
@@ -293,7 +293,7 @@ const Header = () => {
             </motion.nav>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence >
     </>
   );
 };
