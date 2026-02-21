@@ -59,7 +59,7 @@ export default async function PropertyPage({
     const currency = (searchParamsResult.currency as string) || 'PHP';
 
     return (
-        <main className="min-h-screen pt-3 md:pt-6 pb-24 md:pb-20 px-3 md:px-6">
+        <main className="min-h-screen pt-0 md:pt-6 pb-24 md:pb-20 px-3 md:px-6">
             {/* Mobile floating header — appears on scroll */}
             <MobilePropertyHeader propertyName={property.name} />
 
@@ -76,23 +76,35 @@ export default async function PropertyPage({
                     </div>
                 </FadeIn>
 
-                {/* Gallery — full width */}
-                <FadeInUp delay={0.1}>
-                    <PropertyGallery images={property.images} />
-                </FadeInUp>
+                {/* Gallery — full width, with absolute mobile back button */}
+                <div className="relative">
+                    {/* Floating Mobile Back Button inside Gallery */}
+                    <div className="lg:hidden absolute top-3 left-3 z-20">
+                        <BackButton
+                            label=""
+                            className="bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-10 h-10 rounded-full flex items-center justify-center shadow-sm !p-0"
+                            bareIcon={true}
+                        />
+                    </div>
+
+                    <FadeInUp delay={0.1}>
+                        <PropertyGallery images={property.images} />
+                    </FadeInUp>
+                </div>
 
                 {/* Navigation Tabs — full width */}
-                <div className="mt-4 md:mt-8">
+                <div className="mt-2 md:mt-8">
                     <FadeInUp delay={0.2}>
                         <PropertyNav />
                     </FadeInUp>
                 </div>
 
                 {/* ═══ Split layout: Description LEFT | Map RIGHT ═══ */}
-                <div className="mt-4 md:mt-8 flex flex-col lg:flex-row gap-4 md:gap-8 items-stretch">
+                <div className="mt-3 md:mt-8 flex flex-col lg:flex-row gap-4 md:gap-8 relative items-start w-full">
 
                     {/* LEFT — Description / content */}
-                    <div className="flex-1 min-w-0 space-y-4 md:space-y-8">
+                    {/* Replaced flex-1 with strict percentages so the column isn't squished by the map on narrow windows */}
+                    <div className="w-full lg:w-[55%] xl:w-[60%] min-w-0 space-y-4 md:space-y-8">
 
                         <FadeInUp delay={0.25}>
                             <PropertyOverview property={property} reviewsData={reviewsData} />
@@ -162,9 +174,9 @@ export default async function PropertyPage({
                         </FadeInUp>
                     </div>
 
-                    {/* RIGHT — Map (sticky, ~50% width on desktop) */}
-                    <div className="hidden lg:block lg:w-[45%] xl:w-[40%] flex-shrink-0" id="location">
-                        <div className="sticky top-[100px] h-[calc(100vh-140px)]">
+                    {/* RIGHT — Map (sticky, ~45% width on desktop) */}
+                    <div className="hidden lg:block lg:w-[45%] xl:w-[40%] flex-shrink-0 sticky top-[80px]" id="location">
+                        <div className="h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-white/10">
                             <PropertyMapSidebar {...mapProps} />
                         </div>
                     </div>

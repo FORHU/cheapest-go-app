@@ -98,7 +98,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
         <>
             {/* Gallery */}
             {!hasImages ? (
-                <div className="h-[250px] md:h-[400px] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <div className="h-[200px] md:h-[400px] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     <div className="text-center text-slate-400">
                         <ImageIcon size={48} className="mx-auto mb-2 opacity-50" />
                         <p>No images available</p>
@@ -106,7 +106,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                 </div>
             ) : displayImages.length === 1 ? (
                 <div
-                    className="h-[250px] md:h-[400px] rounded-xl overflow-hidden relative cursor-pointer group"
+                    className="h-[200px] md:h-[400px] rounded-xl overflow-hidden relative cursor-pointer group"
                     onClick={() => handleOpen(0)}
                 >
                     <img
@@ -125,7 +125,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
             ) : (
                 <>
                     {/* Mobile: Horizontal swipe carousel */}
-                    <div className="md:hidden relative h-[250px] rounded-xl overflow-hidden">
+                    <div className="md:hidden relative h-[200px] rounded-xl overflow-hidden">
                         <div className="flex overflow-x-auto snap-x snap-mandatory h-full no-scrollbar">
                             {displayImages.slice(0, 8).map((img, i) => (
                                 <div
@@ -162,8 +162,8 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
 
                     {/* Desktop: Grid gallery */}
                     <div className={`hidden md:grid gap-2 h-[400px] rounded-xl overflow-hidden relative group ${gallerySubImages.length === 0 ? 'grid-cols-1' :
-                            gallerySubImages.length === 1 ? 'grid-cols-2' :
-                                'grid-cols-4 grid-rows-2'
+                        gallerySubImages.length === 1 ? 'grid-cols-2' :
+                            'grid-cols-4 grid-rows-2'
                         }`}>
                         <div
                             className={`relative cursor-pointer overflow-hidden ${gallerySubImages.length >= 2 ? 'col-span-2 row-span-2' : ''}`}

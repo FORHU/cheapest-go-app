@@ -267,13 +267,26 @@ export function CheckoutContent() {
 
     return (
         <>
-            <main className="min-h-screen pt-4 sm:pt-6 pb-20 px-3 sm:px-4 md:px-6">
+            <main className="min-h-screen pt-4 sm:pt-6 pb-20 px-3 sm:px-4 md:px-6 relative">
                 <div className="max-w-6xl mx-auto">
-                    <div className="mb-2 flex justify-between items-center">
+                    {/* Desktop Text Back Button */}
+                    <div className="hidden md:flex mb-2 justify-between items-center">
                         <BackButton label="Modify booking" />
                     </div>
 
-                    <h1 className="text-xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white mb-4 sm:mb-8">
+                    {/* Mobile Floating Back Button */}
+                    <div className="md:hidden mt-2 mb-4">
+                        <button
+                            onClick={() => window.history.back()}
+                            className="p-2 border border-slate-200/50 dark:border-slate-700/50 bg-white dark:bg-slate-900 rounded-full shadow-sm inline-flex items-center justify-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-700 dark:text-slate-300">
+                                <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <h1 className="text-xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white mb-4 sm:mb-8 text-left">
                         Secure your booking
                     </h1>
 
@@ -313,7 +326,7 @@ export function CheckoutContent() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
                         {/* Main Form */}
-                        <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+                        <div className="lg:col-span-2 space-y-3 lg:space-y-6">
                             <UserDetailsForm
                                 formData={formData}
                                 onInputChange={handleInputChange}

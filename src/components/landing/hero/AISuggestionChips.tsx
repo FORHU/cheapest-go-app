@@ -48,7 +48,7 @@ const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({ onSuggestionClick
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="mt-5 flex md:flex-wrap md:justify-center gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide"
+            className="mt-3 md:mt-5 flex md:flex-wrap md:justify-center gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide"
         >
             {suggestions.map((suggestion) => (
                 <motion.button
@@ -57,7 +57,7 @@ const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({ onSuggestionClick
                     onClick={() => onSuggestionClick(suggestion.prompt)}
                     whileHover={{ scale: 1.04, y: -2 }}
                     whileTap={{ scale: 0.97 }}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full shrink-0 text-xs font-medium transition-colors duration-200 cursor-pointer
+                    className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full shrink-0 text-xs font-medium transition-colors duration-200 cursor-pointer
                         bg-white/50 dark:bg-white/5 backdrop-blur-sm
                         border border-slate-200 dark:border-white/10
                         text-slate-600 dark:text-slate-300
