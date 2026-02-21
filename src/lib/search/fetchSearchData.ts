@@ -121,9 +121,8 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         guest_nationality: typeof params.nationality === 'string' && params.nationality ? params.nationality : "KR",
         currency,
         cityName: destination,
-        // When placeId is available, don't send countryCode — placeId is more accurate
-        // and a wrong countryCode (e.g., stale "PH" for Seoul) can cause 0 results
-        countryCode: placeId ? '' : countryCode,
+        // Send countryCode even if placeId exists. LiteAPI sometimes needs it for smaller cities
+        countryCode: countryCode,
         placeId,
         query: destination,
     };
