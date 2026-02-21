@@ -261,7 +261,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -8, scale: 0.96 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 bottom-full mb-2 w-full min-w-[280px] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"
+                        className="absolute right-0 top-full mt-2 w-full min-w-[280px] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"
                     >
                         {/* Promo Banner */}
                         <div className="p-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
