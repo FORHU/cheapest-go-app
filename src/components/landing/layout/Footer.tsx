@@ -5,19 +5,19 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { PlaneTakeoff } from 'lucide-react';
 
 const StandardFooter = () => (
-  <footer className="w-full border-t border-slate-200 dark:border-white/5 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
-    <div className="max-w-[1400px] mx-auto px-6 py-6 md:py-12 flex flex-col md:flex-row justify-between items-start gap-8">
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <PlaneTakeoff className="text-slate-400 dark:text-slate-500" />
-          <span className="text-slate-900 dark:text-white font-display font-bold text-[clamp(0.9375rem,2vw,1.125rem)]">CheapestGo</span>
+  <footer className="w-full border-t border-slate-200 dark:border-white/5 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md landscape-compact-py">
+    <div className="max-w-[1400px] mx-auto px-6 py-4 md:py-12 flex flex-col md:flex-row justify-between items-start gap-6 md:gap-8">
+      <div className="flex flex-col gap-1 md:gap-4">
+        <div className="flex items-center gap-2">
+          <PlaneTakeoff className="w-4 h-4 md:w-5 md:h-5 text-slate-400 dark:text-slate-500" />
+          <span className="text-slate-900 dark:text-white font-display font-bold text-sm md:text-lg">CheapestGo</span>
         </div>
-        <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs leading-relaxed">
+        <p className="hidden md:block text-slate-500 dark:text-slate-400 text-sm max-w-xs leading-relaxed">
           Engineered for the discerning traveler. <br />Precision data. Zero compromise.
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 sm:gap-12 text-xs sm:text-sm w-full md:w-auto">
+      <div className="grid grid-cols-3 gap-8 sm:gap-12 text-[10px] sm:text-sm w-full md:w-auto">
         <div className="flex flex-col gap-2 sm:gap-3">
           <span className="text-slate-900 dark:text-white font-semibold font-display">Module</span>
           <a href="#" className="text-slate-500 hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors">Flights</a>
@@ -30,11 +30,11 @@ const StandardFooter = () => (
         </div>
         <div className="flex flex-col gap-2 sm:gap-3">
           <span className="text-slate-900 dark:text-white font-semibold font-display">Status</span>
-          <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[10px] sm:text-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span> API: Online
+          <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[9px] sm:text-xs">
+            <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-emerald-500 shrink-0"></span> API
           </div>
-          <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[10px] sm:text-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span> Payments: Online
+          <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[9px] sm:text-xs">
+            <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-emerald-500 shrink-0"></span> Pay
           </div>
         </div>
       </div>
