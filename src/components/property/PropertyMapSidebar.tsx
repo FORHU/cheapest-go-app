@@ -42,9 +42,9 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
     }, [hasCoordinates, coordinates]);
 
     return (
-        <div className="h-[60vh] md:h-full flex flex-col rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+        <div className="h-full w-full flex flex-col rounded-xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-white/10">
             {/* Map — takes all available space */}
-            <div className="flex-1 relative min-h-[300px] md:min-h-[400px]">
+            <div className="flex-1 relative w-full h-full">
                 {hasCoordinates ? (
                     <>
                         <Map
