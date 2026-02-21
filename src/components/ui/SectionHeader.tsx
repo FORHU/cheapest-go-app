@@ -42,7 +42,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   actionHref,
   onAction,
   className = '',
-  size = 'lg',
+  size = 'sm',
 }) => {
   return (
     <motion.div

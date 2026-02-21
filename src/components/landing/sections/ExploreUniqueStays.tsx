@@ -25,7 +25,7 @@ export const ExploreUniqueStays: React.FC = () => {
           >
             <Sparkles size={24} className="text-amber-500" />
           </motion.div>
-          <h2 className="text-[clamp(1.125rem,4vw,1.875rem)] font-display font-bold text-slate-900 dark:text-white">
+          <h2 className="text-[clamp(1rem,5vw,1.5rem)] font-display font-bold text-slate-900 dark:text-white">
             Extraordinary Escapes
           </h2>
         </motion.div>

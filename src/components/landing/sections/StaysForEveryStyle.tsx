@@ -25,7 +25,7 @@ export const StaysForEveryStyle: React.FC = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ type: 'spring', stiffness: 100 }}
-          className="text-[clamp(1.0625rem,4vw,1.875rem)] font-display font-bold text-slate-900 dark:text-white mb-1 sm:mb-2"
+          className="text-[clamp(1rem,5vw,1.5rem)] font-display font-bold text-slate-900 dark:text-white mb-1 sm:mb-2"
         >
           Curated Collections
         </motion.h2>

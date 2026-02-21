@@ -15,7 +15,6 @@ import { useFlightSearch } from '@/hooks/search/useFlightSearch';
 // Import Search Forms
 import { DestinationSection, DateSection, TravelersSection } from './search/SearchSections';
 import { FlightSearchForm } from './search/FlightSearchForm';
-
 // Trip Type Selector Component
 const TripTypeSelector = () => {
     const { flightState, setFlightType } = useFlightSearch();
