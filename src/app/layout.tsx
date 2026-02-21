@@ -12,9 +12,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' });
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
-const SITE_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : 'https://cheapestgo.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
+  || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://cheapestgo.com');
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -31,7 +30,7 @@ export const metadata: Metadata = {
     siteName: 'CheapestGo',
     images: [
       {
-        url: '/og-image.png',
+        url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
         alt: 'CheapestGo - Ultimate Travel Booking Platform',
@@ -44,7 +43,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'CheapestGo | Discover and Book Your Next Global Journey',
     description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
-    images: ['/og-image.png'],
+    images: [`${SITE_URL}/og-image.png`],
   },
 };
 
