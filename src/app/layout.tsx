@@ -13,7 +13,7 @@ const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' 
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://cheapestgo.com'),
+  metadataBase: new URL(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://cheapestgo.com'),
   title: 'CheapestGo | Book Flights & Hotels',
   description: 'CheapestGo is your ultimate travel booking platform. Find the best deals on flights and hotels instantly and start exploring the world.',
   icons: {
