@@ -101,10 +101,10 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
         >
             <CalendarIcon className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />
             <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
+                <label className="text-[9px] uppercase font-mono text-slate-500 font-medium tracking-wider">
                     {label}
                 </label>
-                <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                     {formatDate(date)}
                 </div>
             </div>
@@ -117,7 +117,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-full left-0 mt-4 w-[600px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-0 mt-4 w-[calc(100vw-32px)] sm:w-[600px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="p-6">
@@ -127,10 +127,13 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                                         <button onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
                                             <ChevronLeft size={16} className="text-slate-400" />
                                         </button>
-                                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                        <span className="text-xs font-bold text-slate-900 dark:text-white">
                                             {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                                         </span>
-                                        <div className="w-6" />
+                                        <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded sm:hidden">
+                                            <ChevronRight size={16} className="text-slate-400" />
+                                        </button>
+                                        <div className="w-6 hidden sm:block" />
                                     </div>
                                     <div className="grid grid-cols-7 gap-1 text-center mb-2">
                                         {DAYS.map((d, i) => (
@@ -142,10 +145,10 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="flex-1">
+                                <div className="flex-1 hidden sm:block">
                                     <div className="flex justify-between items-center mb-4">
                                         <div className="w-6" />
-                                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                        <span className="text-xs font-bold text-slate-900 dark:text-white">
                                             {MONTHS[getNextMonth(currentMonth).getMonth()]} {getNextMonth(currentMonth).getFullYear()}
                                         </span>
                                         <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">

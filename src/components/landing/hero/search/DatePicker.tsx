@@ -82,7 +82,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
 
         // Padding
         for (let i = 0; i < firstDay; i++) {
-            days.push(<div key={`pad-${i}`} className={inline ? "size-6 xs:size-7 sm:size-9" : "size-9"} />);
+            days.push(<div key={`pad-${i}`} className={inline ? "w-full aspect-square" : "size-9"} />);
         }
 
         // Days
@@ -99,7 +99,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                     key={day}
                     disabled={isPast}
                     onClick={() => handleDateClick(date)}
-                    className={`${inline ? "size-6 xs:size-7 sm:size-9" : "size-9"} flex items-center justify-center ${inline ? "text-[9px] xs:text-[10px] sm:text-xs" : "text-xs"} font-medium rounded-full transition-all
+                    className={`${inline ? "w-full aspect-square" : "size-9"} flex items-center justify-center ${inline ? "text-[9px]" : "text-xs"} font-medium rounded-full transition-all
                         ${isPast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer'}
                         ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg' : ''}
                         ${isInRange ? 'bg-alabaster-accent/10 dark:bg-obsidian-accent/10' : ''}
@@ -135,10 +135,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Tabs */}
-                    <div className="flex border-b border-slate-100 dark:border-white/5">
+                    <div className={`flex border-b border-slate-100 dark:border-white/5 ${inline ? 'mb-0' : ''}`}>
                         <button
                             onClick={() => setActiveTab('calendar')}
-                            className={`flex-1 py-4 text-xs font-bold font-display transition-all ${activeTab === 'calendar'
+                            className={`flex-1 ${inline ? 'py-2 text-[10px]' : 'py-4 text-xs'} font-bold font-display transition-all ${activeTab === 'calendar'
                                 ? 'text-alabaster-accent dark:text-obsidian-accent border-b-2 border-alabaster-accent dark:border-obsidian-accent'
                                 : 'text-slate-400 hover:text-slate-600'
                                 }`}
@@ -147,7 +147,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                         </button>
                         <button
                             onClick={() => setActiveTab('flexible')}
-                            className={`flex-1 py-4 text-xs font-bold font-display transition-all ${activeTab === 'flexible'
+                            className={`flex-1 ${inline ? 'py-2 text-[10px]' : 'py-4 text-xs'} font-bold font-display transition-all ${activeTab === 'flexible'
                                 ? 'text-alabaster-accent dark:text-obsidian-accent border-b-2 border-alabaster-accent dark:border-obsidian-accent'
                                 : 'text-slate-400 hover:text-slate-600'
                                 }`}
@@ -156,80 +156,73 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                         </button>
                     </div>
 
-                    <div className={inline ? "p-2 sm:p-6" : "p-6"}>
+                    <div className={inline ? "p-2" : "p-6"}>
                         {activeTab === 'calendar' ? (
                             <>
                                 {/* Selected Dates Display */}
-                                <div className="flex items-center gap-6 mb-8">
-                                    <div className="flex-1">
-                                        <span className="text-[10px] font-mono text-slate-400 uppercase mb-1 block">Check-in</span>
-                                        <span className={`text-sm sm:text-lg font-bold ${checkIn ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+                                <div className={`flex items-center ${inline ? 'gap-3 mb-3' : 'gap-6 mb-8'}`}>
+                                    <div className="flex-1 min-w-0">
+                                        <span className={`${inline ? 'text-[7px]' : 'text-[10px]'} font-mono text-slate-400 uppercase mb-0.5 block`}>Check-in</span>
+                                        <span className={`${inline ? 'text-[10px]' : 'text-sm sm:text-lg'} font-bold ${checkIn ? 'text-slate-900 dark:text-white' : 'text-slate-400'} truncate block`}>
                                             {formatDate(checkIn)}
                                         </span>
-                                        <div className={`h-0.5 mt-2 w-full ${checkIn ? 'bg-alabaster-accent dark:bg-obsidian-accent' : 'bg-slate-100 dark:bg-white/5'}`} />
+                                        <div className={`h-0.5 ${inline ? 'mt-1' : 'mt-2'} w-full ${checkIn ? 'bg-alabaster-accent dark:bg-obsidian-accent' : 'bg-slate-100 dark:bg-white/5'}`} />
                                     </div>
-                                    <ArrowRight className="text-slate-300" size={20} />
-                                    <div className="flex-1">
-                                        <span className="text-[10px] font-mono text-slate-400 uppercase mb-1 block">Check-out</span>
-                                        <span className={`text-sm sm:text-lg font-bold ${checkOut ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
+                                    <ArrowRight className="text-slate-300 shrink-0" size={inline ? 14 : 20} />
+                                    <div className="flex-1 min-w-0">
+                                        <span className={`${inline ? 'text-[7px]' : 'text-[10px]'} font-mono text-slate-400 uppercase mb-0.5 block`}>Check-out</span>
+                                        <span className={`${inline ? 'text-[10px]' : 'text-sm sm:text-lg'} font-bold ${checkOut ? 'text-slate-900 dark:text-white' : 'text-slate-400'} truncate block`}>
                                             {formatDate(checkOut)}
                                         </span>
-                                        <div className={`h-0.5 mt-2 w-full ${checkOut ? 'bg-alabaster-accent dark:bg-obsidian-accent' : 'bg-slate-100 dark:bg-white/5'}`} />
+                                        <div className={`h-0.5 ${inline ? 'mt-1' : 'mt-2'} w-full ${checkOut ? 'bg-alabaster-accent dark:bg-obsidian-accent' : 'bg-slate-100 dark:bg-white/5'}`} />
                                     </div>
                                 </div>
 
                                 {/* Calendars */}
-                                <div className={`flex gap-1 sm:gap-6 mb-6 ${inline ? 'justify-between' : 'gap-8'}`}>
+                                <div className={`flex gap-3 ${inline ? 'mb-3' : 'gap-6 mb-6'}`}>
                                     {/* Month 1 */}
-                                    <div className="flex-1">
-                                        <div className="flex justify-between items-center mb-4 text-xs sm:text-sm">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-center mb-3">
                                             <button onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
-                                                <ChevronLeft size={16} className="text-slate-400" />
+                                                <ChevronLeft size={14} className="text-slate-400" />
                                             </button>
-                                            <span className={`${inline ? "text-xs sm:text-sm" : "text-sm"} font-bold text-slate-900 dark:text-white`}>
+                                            <span className="text-[11px] font-bold text-slate-900 dark:text-white text-center">
                                                 {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                                             </span>
-                                            <div className="w-6 md:hidden" /> {/* Spacer for mobile centering if needed */}
+                                            <div className="w-6" />
                                         </div>
-                                        <div className={`grid grid-cols-7 text-center mb-2 ${inline ? 'gap-0 sm:gap-1' : 'gap-1'}`}>
+                                        <div className="grid grid-cols-7 text-center mb-1.5 gap-0">
                                             {DAYS.map((d, i) => (
-                                                <span key={i} className={`${inline ? "text-[8px] sm:text-[10px]" : "text-[10px]"} font-mono text-slate-400`}>{d}</span>
+                                                <span key={i} className="text-[9px] font-mono text-slate-400 text-center">{d}</span>
                                             ))}
                                         </div>
-                                        <div className={`grid grid-cols-7 ${inline ? 'gap-0 sm:gap-1' : 'gap-1'}`}>
+                                        <div className="grid grid-cols-7 gap-0">
                                             {renderMonth(currentMonth)}
                                         </div>
                                     </div>
 
+                                    {/* Divider */}
+                                    <div className="w-px bg-slate-100 dark:bg-white/5 self-stretch" />
+
                                     {/* Month 2 */}
-                                    <div className="flex-1">
-                                        <div className="flex justify-between items-center mb-4 text-xs sm:text-sm">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-center mb-3">
                                             <div className="w-6" />
-                                            <span className={`${inline ? "text-xs sm:text-sm" : "text-sm"} font-bold text-slate-900 dark:text-white`}>
+                                            <span className="text-[11px] font-bold text-slate-900 dark:text-white text-center">
                                                 {MONTHS[getNextMonth(currentMonth).getMonth()]} {getNextMonth(currentMonth).getFullYear()}
                                             </span>
                                             <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
-                                                <ChevronRight size={16} className="text-slate-400" />
+                                                <ChevronRight size={14} className="text-slate-400" />
                                             </button>
                                         </div>
-                                        <div className={`grid grid-cols-7 text-center mb-2 ${inline ? 'gap-0 sm:gap-1' : 'gap-1'}`}>
+                                        <div className="grid grid-cols-7 text-center mb-1.5 gap-0">
                                             {DAYS.map((d, i) => (
-                                                <span key={i} className={`${inline ? "text-[8px] sm:text-[10px]" : "text-[10px]"} font-mono text-slate-400`}>{d}</span>
+                                                <span key={i} className="text-[9px] font-mono text-slate-400 text-center">{d}</span>
                                             ))}
                                         </div>
-                                        <div className={`grid grid-cols-7 ${inline ? 'gap-0 sm:gap-1' : 'gap-1'}`}>
+                                        <div className="grid grid-cols-7 gap-0">
                                             {renderMonth(getNextMonth(currentMonth))}
                                         </div>
-                                    </div>
-
-                                    {/* Mobile: Show Next Month button at bottom of first month? Or just show one month on mobile? 
-                                        Common pattern: Show vertical list of months. 
-                                        For this specific component structure, showing one month on mobile with nav arrows is safer.
-                                    */}
-                                    <div className="md:hidden flex justify-end">
-                                        <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
-                                            <ChevronRight size={16} className="text-slate-400" />
-                                        </button>
                                     </div>
                                 </div>
 
@@ -239,7 +232,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                                         <button
                                             key={opt}
                                             onClick={() => onFlexibilityChange(opt)}
-                                            className={`px-4 py-2 rounded-full border text-xs font-medium transition-all ${flexibility === opt
+                                            className={`px-3 py-1 rounded-full border text-[10px] font-medium transition-all ${flexibility === opt
                                                 ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-obsidian'
                                                 : 'border-slate-200 dark:border-white/10 hover:border-slate-400 text-slate-600 dark:text-slate-400'
                                                 }`}

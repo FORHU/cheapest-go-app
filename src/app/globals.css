@@ -33,6 +33,25 @@
   background-image: linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
 }
 
+@utility thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+
+  &::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.4);
+    border-radius: 999px;
+  }
+}
+
 @utility no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -44,6 +63,9 @@
 
 /* Enable class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Enable landscape orientation variant — mobile only (max-width: 1024px) */
+@custom-variant landscape (@media (orientation: landscape) and (max-width: 1024px));
 
 /* Prevent horizontal scrolling on mobile */
 html,
@@ -66,6 +88,7 @@ body {
 /* Hide scrollbar for cleaner UI */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 3px;
 }
 
 ::-webkit-scrollbar-track {
@@ -110,6 +133,26 @@ body {
 /* Hide default close button on map property popup (we use a custom one) */
 .map-property-popup .mapboxgl-popup-close-button {
   display: none !important;
+}
+
+/* Landscape mobile: larger images, smaller badges */
+@media (orientation: landscape) and (max-width: 1024px) {
+  .landscape-img {
+    aspect-ratio: 16 / 9 !important;
+    height: auto !important;
+    min-height: unset !important;
+    max-height: unset !important;
+  }
+
+  .landscape-badge,
+  .landscape-badge * {
+    font-size: 9px !important;
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    line-height: 1.4 !important;
+  }
 }
 
 /* Custom Utility Classes for extreme mobile landscape compaction */

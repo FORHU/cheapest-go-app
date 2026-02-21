@@ -79,10 +79,12 @@ const RecentlyViewed = () => {
           actionHref="/history"
         />
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {displayItems.slice(0, 4).map((item, i) => (
-            <RecentCard key={item.id} item={item} index={i} />
+        {/* Scrollable Container */}
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+          {displayItems.map((item, i) => (
+            <div key={item.id} className="w-[85vw] sm:w-[calc(50%-8px)] lg:w-[calc(25%-12px)] flex-none snap-start">
+              <RecentCard item={item} index={i} />
+            </div>
           ))}
         </div>
       </div>

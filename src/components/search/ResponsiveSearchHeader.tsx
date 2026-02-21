@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SearchModule } from '@/components/landing/hero/SearchModule';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { MobileSearchAccordion } from './MobileSearchAccordion';
+import { MobileSearchModal } from './MobileSearchModal';
 import { useSearchFilters, useSearchActions } from '@/stores/searchStore';
 
 export const ResponsiveSearchHeader = () => {
@@ -97,50 +98,7 @@ export const ResponsiveSearchHeader = () => {
             </div>
 
             {/* Mobile Search Dropdown Popover */}
-            <AnimatePresence>
-                {isSearchModalOpen && (
-                    <>
-                        {/* Backdrop */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-sm lg:hidden pointer-events-auto"
-                            onClick={() => setIsSearchModalOpen(false)}
-                        />
-
-                        {/* Dropdown Content */}
-                        <motion.div
-                            initial={{ opacity: 0, y: "100%", scale: 1 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: "100%" }}
-                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-[100] bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px] flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {/* Background Sparkles */}
-                            <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
-                                <GlobalSparkle />
-                            </div>
-
-                            {/* Header */}
-                            <div className="p-4 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
-                                <button onClick={() => setIsSearchModalOpen(false)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors -ml-2">
-                                    <X size={20} className="text-slate-700 dark:text-slate-300" />
-                                </button>
-                                <span className="text-sm font-semibold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">Edit Search</span>
-                                <div className="w-9" /> {/* Spacer */}
-                            </div>
-
-                            <div className="w-full h-full max-h-[85vh] relative z-10">
-                                <div className="h-full">
-                                    <MobileSearchAccordion />
-                                </div>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+            <MobileSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
         </>
     );
 };
