@@ -12,8 +12,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' });
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
-  || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://cheapestgo.com');
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://k-travel-booking.vercel.app';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
