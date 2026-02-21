@@ -252,9 +252,9 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
 
                 {/* Horizontal Swiper */}
                 {sortedProperties.length > 0 && (
-                    <div className="absolute bottom-24 left-0 right-0 w-full overflow-x-auto pb-4 pt-4 px-4 snap-x snap-mandatory flex gap-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] z-10">
+                    <div className="absolute bottom-16 left-0 right-0 w-full overflow-x-auto pb-3 pt-3 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] z-10">
                         {sortedProperties.map((property) => (
-                            <div key={property.id} className="snap-center shrink-0 w-[85vw] sm:w-[320px] shadow-xl rounded-2xl bg-white dark:bg-slate-900">
+                            <div key={property.id} className="snap-center shrink-0 w-[75vw] sm:w-[300px] shadow-lg rounded-xl bg-white dark:bg-slate-900">
                                 <MapPropertyCard
                                     property={property}
                                     isSelected={selectedId === property.id}

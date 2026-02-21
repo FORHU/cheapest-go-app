@@ -53,70 +53,54 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                 isHovered && !isSelected && 'bg-slate-50 dark:bg-slate-800/40'
             )}
         >
-            {/* ── MOBILE layout: vertical card (image top, details bottom) ── */}
-            <div className="flex flex-col md:hidden">
+            {/* ── MOBILE layout: compact horizontal card (image left, details right) ── */}
+            <div className="flex flex-row gap-2.5 md:hidden">
                 {/* Image */}
-                <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-3">
+                <div className="relative w-[100px] h-[80px] flex-shrink-0 rounded-lg overflow-hidden">
                     <img
                         src={property.image}
                         alt={property.name}
                         className="w-full h-full object-cover"
                         loading="lazy"
                     />
-                    {/* Badges over image */}
                     {property.refundableTag === 'RFN' && (
-                        <span className="absolute top-2 left-2 text-[11px] font-semibold bg-emerald-500 text-white px-2 py-0.5 rounded-full shadow">
-                            Free cancellation
-                        </span>
-                    )}
-                    {isSelected && (
-                        <span className="absolute top-2 right-2 text-[11px] font-semibold bg-blue-500 text-white px-2 py-0.5 rounded-full shadow">
-                            Selected
+                        <span className="absolute top-1 left-1 text-[8px] font-semibold bg-emerald-500 text-white px-1.5 py-px rounded-full shadow">
+                            Free cancel
                         </span>
                     )}
                 </div>
 
-                {/* Name & location */}
-                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-0.5">
-                    {property.name}
-                </h3>
-                <div className="flex items-center gap-1 mb-3">
-                    <MapPin className="w-3 h-3 text-blue-500 flex-shrink-0" />
-                    <span className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                        {property.location}
-                    </span>
-                </div>
-
-                {/* Rating + Price row */}
-                <div className="flex items-end justify-between">
-                    {/* Rating */}
-                    <div className="flex items-center gap-1.5">
-                        <span className={cn('text-[11px] font-bold text-white px-1.5 py-0.5 rounded', getRatingColor(property.rating))}>
-                            {property.rating.toFixed(1)}
-                        </span>
-                        <div className="flex flex-col">
-                            <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 leading-none">
-                                {getRatingLabel(property.rating)}
+                {/* Details */}
+                <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight line-clamp-1">
+                            {property.name}
+                        </h3>
+                        <div className="flex items-center gap-0.5 mt-0.5">
+                            <MapPin className="w-2.5 h-2.5 text-blue-500 flex-shrink-0" />
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                {property.location}
                             </span>
-                            {property.reviews > 0 && (
-                                <span className="text-[10px] text-slate-400 leading-tight">
-                                    {property.reviews.toLocaleString()} reviews
-                                </span>
-                            )}
                         </div>
                     </div>
 
-                    {/* Price */}
-                    <div className="text-right flex-shrink-0">
-                        {property.originalPrice && property.originalPrice > property.price && (
-                            <span className="text-[10px] text-slate-400 line-through block leading-none">
-                                {formatCurrency(property.originalPrice)}
+                    {/* Rating + Price row */}
+                    <div className="flex items-end justify-between mt-1">
+                        <div className="flex items-center gap-1">
+                            <span className={cn('text-[10px] font-bold text-white px-1 py-px rounded', getRatingColor(property.rating))}>
+                                {property.rating.toFixed(1)}
                             </span>
-                        )}
-                        <span className="text-lg font-bold text-slate-900 dark:text-white">
-                            {formatCurrency(property.price)}
-                        </span>
-                        <span className="text-[10px] text-slate-400 ml-0.5">/night</span>
+                            <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300">
+                                {getRatingLabel(property.rating)}
+                            </span>
+                        </div>
+
+                        <div className="text-right flex-shrink-0">
+                            <span className="text-[13px] font-bold text-slate-900 dark:text-white">
+                                {formatCurrency(property.price)}
+                            </span>
+                            <span className="text-[9px] text-slate-400 ml-0.5">/night</span>
+                        </div>
                     </div>
                 </div>
             </div>
