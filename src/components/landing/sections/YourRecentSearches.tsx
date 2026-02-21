@@ -7,12 +7,12 @@ import { recentSearches } from '@/data';
 export const YourRecentSearches: React.FC = () => {
   return (
     <section className="w-full pb-4">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
+      <div className="w-full max-w-4xl mx-auto px-4 mt-6 sm:mt-8 landscape-compact:mt-2">
         <motion.h3
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-[clamp(0.9375rem,2vw,1.125rem)] font-medium text-slate-700 dark:text-slate-300 mb-3"
+          className="text-base sm:text-lg font-medium text-slate-700 dark:text-slate-300 mb-3"
         >
           Quick Access
         </motion.h3>
@@ -29,9 +29,9 @@ export const YourRecentSearches: React.FC = () => {
             >
               <div className="w-1 h-8 sm:h-10 bg-blue-500 rounded-full flex-shrink-0"></div>
               <div className="min-w-0">
-                <p className="font-semibold text-slate-900 dark:text-white text-[clamp(0.8125rem,1.5vw,0.875rem)] truncate">{search.destination}</p>
-                <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 truncate">{search.dates}</p>
-                <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] text-slate-400 dark:text-slate-500 truncate">{search.travelers} • {search.rooms}</p>
+                <p className="font-semibold text-slate-900 dark:text-white text-sm truncate">{search.destination}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{search.dates}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{search.travelers} • {search.rooms}</p>
               </div>
             </motion.div>
           ))}

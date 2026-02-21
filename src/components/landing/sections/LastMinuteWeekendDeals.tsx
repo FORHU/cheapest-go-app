@@ -8,7 +8,7 @@ import { weekendDeals } from '@/data';
 
 export const LastMinuteWeekendDeals: React.FC = () => {
   return (
-    <section className="w-full py-6 sm:py-10">
+    <section className="w-full py-4 md:py-8 lg:py-10 landscape-compact-py">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <SectionHeader
           title="Flash Getaways"
@@ -22,7 +22,7 @@ export const LastMinuteWeekendDeals: React.FC = () => {
           {weekendDeals.map((deal, i) => (
             <div
               key={deal.id}
-              className="flex-shrink-0 w-[48vw] min-w-[200px] max-w-[280px] sm:min-w-[220px] sm:max-w-[320px] snap-start"
+              className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape-compact-card snap-start flex flex-col"
             >
               <PropertyCard
                 image={deal.image}
@@ -34,7 +34,7 @@ export const LastMinuteWeekendDeals: React.FC = () => {
                 price={deal.salePrice}
                 badge={deal.badge}
                 badgeColor="green"
-                index={i}
+                className="h-full flex flex-col flex-1"
               />
             </div>
           ))}

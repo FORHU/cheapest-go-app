@@ -19,15 +19,15 @@ const modes: { id: SearchMode; label: string; icon: React.ReactNode }[] = [
 
 const SearchModeToggle: React.FC<SearchModeToggleProps> = ({ mode, onModeChange }) => {
     return (
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-3 md:mb-6 landscape-compact:mb-1">
             <div className="inline-flex bg-white/5 dark:bg-obsidian-surface backdrop-blur-xl rounded-full p-1 border border-alabaster-border dark:border-obsidian-border shadow-sm">
                 {modes.map((m) => (
                     <motion.button
                         key={m.id}
                         onClick={() => onModeChange(m.id)}
-                        className={`relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${mode === m.id
-                                ? 'text-white shadow-md'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        className={`relative flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${mode === m.id
+                            ? 'text-white shadow-md'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                             }`}
                         whileHover={{ scale: mode === m.id ? 1 : 1.05 }}
                         whileTap={{ scale: 0.95 }}

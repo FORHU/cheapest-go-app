@@ -69,7 +69,7 @@ const Header = () => {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <h1 className="text-[clamp(1rem,2.5vw,1.5rem)] text-slate-900 dark:text-white font-display font-bold tracking-tight truncate max-w-[140px] sm:max-w-none">
+            <h1 className="text-lg md:text-xl lg:text-2xl text-slate-900 dark:text-white font-display font-bold tracking-tight truncate max-w-[140px] sm:max-w-none">
               Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span>
             </h1>
           </Link>
@@ -77,7 +77,7 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-3">
             {/* Open App Button */}
-            <a href="#" className="flex items-center gap-1.5 px-3 py-1.5 text-[clamp(0.75rem,1.25vw,0.875rem)] font-medium text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
+            <a href="#" className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
               <Download size={14} />
               Open app
             </a>
@@ -86,7 +86,7 @@ const Header = () => {
             <div className="relative" ref={currencyRef}>
               <button
                 onClick={() => setIsCurrencyOpen((o) => !o)}
-                className="flex items-center gap-1.5 px-3 py-2 text-[clamp(0.75rem,1.25vw,0.875rem)] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
                 aria-expanded={isCurrencyOpen}
                 aria-haspopup="listbox"
                 aria-label="Select currency"
@@ -110,11 +110,10 @@ const Header = () => {
                         <button
                           type="button"
                           onClick={() => handleCurrencySelect(currency)}
-                          className={`flex items-center gap-2 w-full px-3 py-2 text-left text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium transition-colors ${
-                            userCurrency === currency
+                          className={`flex items-center gap-2 w-full px-3 py-2 text-left text-sm font-medium transition-colors ${userCurrency === currency
                               ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
                               : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
-                          }`}
+                            }`}
                         >
                           <span className="text-base">{CURRENCY_FLAGS[currency]}</span>
                           {currency}
@@ -127,17 +126,17 @@ const Header = () => {
             </div>
 
             {/* List your property */}
-            <a href="#" className="flex items-center gap-1.5 px-3 py-2 text-[clamp(0.75rem,1.25vw,0.875rem)] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
+            <a href="#" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
               List Your Property
             </a>
 
             {/* Support */}
-            <a href="#" className="flex items-center gap-1.5 px-3 py-2 text-[clamp(0.75rem,1.25vw,0.875rem)] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
+            <a href="#" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
               Support
             </a>
 
             {/* Trips */}
-            <Link href="/trips" className="flex items-center gap-1.5 px-3 py-2 text-[clamp(0.75rem,1.25vw,0.875rem)] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
+            <Link href="/trips" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
               Trips
             </Link>
 
@@ -189,7 +188,7 @@ const Header = () => {
             >
               {/* Drawer Header */}
               <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
-                <span className="font-display font-bold text-[clamp(1rem,2vw,1.25rem)] text-slate-900 dark:text-white">Menu</span>
+                <span className="font-display font-bold text-base sm:text-lg text-slate-900 dark:text-white">Menu</span>
                 <button
                   onClick={closeMenu}
                   className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
@@ -203,7 +202,7 @@ const Header = () => {
               <div className="flex-1 overflow-y-auto py-2">
                 <a
                   href="#"
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
                 >
                   <Download size={18} />
                   Open app
@@ -214,7 +213,7 @@ const Header = () => {
                   <button
                     type="button"
                     onClick={() => setIsMobileCurrencyOpen((o) => !o)}
-                    className="flex items-center justify-between w-full min-h-[48px] px-4 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-left text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                    className="flex items-center justify-between w-full min-h-[48px] px-4 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                   >
                     <span className="flex items-center gap-2">
                       <span className="text-base">{currencyFlag}</span>
@@ -237,11 +236,10 @@ const Header = () => {
                               key={currency}
                               type="button"
                               onClick={() => { handleCurrencySelect(currency); closeMenu(); }}
-                              className={`flex items-center gap-3 px-4 min-h-[44px] w-full text-left text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium transition-colors ${
-                                userCurrency === currency
+                              className={`flex items-center gap-3 px-4 min-h-[44px] w-full text-left text-sm font-medium transition-colors ${userCurrency === currency
                                   ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
                                   : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
-                              }`}
+                                }`}
                             >
                               <span className="text-lg">{CURRENCY_FLAGS[currency]}</span>
                               {currency}
@@ -257,14 +255,14 @@ const Header = () => {
 
                 <a
                   href="#"
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   List your property
                 </a>
 
                 <a
                   href="#"
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   Support
                 </a>
@@ -272,7 +270,7 @@ const Header = () => {
                 <Link
                   href="/trips"
                   onClick={closeMenu}
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   Trips
                 </Link>
@@ -281,7 +279,7 @@ const Header = () => {
 
                 <button
                   onClick={() => { toggleTheme(); }}
-                  className="flex items-center gap-3 px-4 min-h-[48px] w-full text-left text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[48px] w-full text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                   {theme === 'dark' ? 'Light mode' : 'Dark mode'}
