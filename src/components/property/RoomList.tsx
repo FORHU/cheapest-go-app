@@ -64,8 +64,8 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
     }
 
     return (
-        <div id="room-list-section" className="mt-8 scroll-mt-24">
-            <h3 className="text-xl font-display font-bold text-slate-900 dark:text-white mb-6">
+        <div id="room-list-section" className="mt-6 lg:mt-8 scroll-mt-24">
+            <h3 className="text-[14px] lg:text-xl font-display font-bold text-slate-900 dark:text-white mb-4 lg:mb-6">
                 Available Rooms {hasRooms && `(${groupedRooms.length})`}
             </h3>
 

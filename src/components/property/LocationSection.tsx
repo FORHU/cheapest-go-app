@@ -39,8 +39,8 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordin
     }, [hasCoordinates, coordinates]);
 
     return (
-        <div className="py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-36" id="location">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Explore the area</h2>
+        <div className="py-4 lg:py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-36" id="location">
+            <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-4 lg:mb-6">Explore the area</h2>
             <div className="flex flex-col md:flex-row gap-8">
                 {/* Map */}
                 <div className="flex-1 h-[280px] rounded-xl relative overflow-hidden border border-slate-200 dark:border-slate-700">
@@ -102,16 +102,17 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordin
                 {/* Location Info */}
                 <div className="flex-1 space-y-6">
                     <div>
-                        <div className="flex items-center gap-2 mb-3">
-                            <MapPin size={18} className="text-slate-900 dark:text-white" />
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Hotel Location</h3>
+                        <div className="flex items-center gap-2 mb-2 lg:mb-3">
+                            <MapPin size={16} className="text-slate-900 dark:text-white lg:hidden" />
+                            <MapPin size={18} className="text-slate-900 dark:text-white hidden lg:block" />
+                            <h3 className="text-[12px] lg:text-sm font-bold text-slate-900 dark:text-white">Hotel Location</h3>
                         </div>
-                        <div className="space-y-2">
-                            <p className="text-sm text-slate-600 dark:text-slate-300">
+                        <div className="space-y-1.5 lg:space-y-2">
+                            <p className="text-[11px] lg:text-sm text-slate-600 dark:text-slate-300">
                                 {address}
                             </p>
                             {fullLocation && (
-                                <p className="text-sm text-slate-500 dark:text-slate-400">
+                                <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">
                                     {fullLocation}
                                 </p>
                             )}
@@ -135,11 +136,12 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordin
                     </div>
 
                     <div>
-                        <div className="flex items-center gap-2 mb-3">
-                            <Building size={18} className="text-slate-900 dark:text-white" />
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Getting Around</h3>
+                        <div className="flex items-center gap-2 mb-2 lg:mb-3">
+                            <Building size={16} className="text-slate-900 dark:text-white lg:hidden" />
+                            <Building size={18} className="text-slate-900 dark:text-white hidden lg:block" />
+                            <h3 className="text-[12px] lg:text-sm font-bold text-slate-900 dark:text-white">Getting Around</h3>
                         </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                        <p className="text-[11px] lg:text-sm text-slate-600 dark:text-slate-300">
                             Contact the property for transportation options and directions from nearby landmarks.
                         </p>
                     </div>

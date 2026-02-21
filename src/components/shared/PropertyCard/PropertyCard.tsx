@@ -282,13 +282,13 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             <div className="flex-1 p-2 md:p-4 flex flex-col justify-between">
                 <div className="mt-1 md:mt-0">
                     {/* Hotel Name */}
-                    <h3 className="text-sm md:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
+                    <h3 className="text-[12px] landscape:text-[11px] lg:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
                         {property.name}
                     </h3>
 
                     {/* Location */}
-                    <div className="flex items-center text-[10px] md:text-sm text-slate-500 dark:text-slate-400 mb-2 md:mb-4">
-                        <MapPin className="w-2.5 h-2.5 md:w-4 md:h-4 mr-0.5 md:mr-1 shrink-0" />
+                    <div className="flex items-center text-[10px] landscape:text-[9px] lg:text-sm text-slate-500 dark:text-slate-400 mb-2 md:mb-4">
+                        <MapPin className="w-2.5 h-2.5 lg:w-4 lg:h-4 mr-0.5 md:mr-1 shrink-0" />
                         <span className="line-clamp-1">{property.location}</span>
                     </div>
                 </div>
@@ -296,10 +296,10 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                 <div className="flex items-end justify-between mt-1 md:mt-4">
                     {/* Rating Section */}
                     <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="px-1.5 py-0.5 md:px-2 md:py-1 bg-blue-600 text-white text-[11px] md:text-sm font-bold rounded-md md:rounded-lg">
+                        <div className="px-1.5 py-0.5 lg:px-2 lg:py-1 bg-blue-600 text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg">
                             {property.rating.toFixed(1)}
                         </div>
-                        <span className="text-[11px] md:text-sm font-medium text-slate-700 dark:text-slate-300">
+                        <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
                             {getRatingLabel(property.rating)}
                         </span>
                     </div>
@@ -307,15 +307,15 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                     {/* Price Section */}
                     <div className="text-right">
                         {property.originalPrice && property.originalPrice > property.price && (
-                            <div className="text-[10px] md:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
+                            <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
                                 ₱{property.originalPrice.toLocaleString()}
                             </div>
                         )}
                         <div className="flex items-baseline gap-1 md:gap-1.5">
-                            <span className="text-[15px] md:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
+                            <span className="text-[13px] landscape:text-[12px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
                                 ₱{property.price.toLocaleString()}
                             </span>
-                            <span className="text-[10px] md:text-sm text-slate-500 dark:text-slate-400">
+                            <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
                                 /night
                             </span>
                         </div>

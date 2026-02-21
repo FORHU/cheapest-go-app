@@ -43,7 +43,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             onMouseEnter={() => onHover(property.id)}
             onMouseLeave={() => onHover(null)}
             className={cn(
-                'w-full text-left transition-all duration-200 cursor-pointer',
+                'w-full text-left transition-all duration-200 cursor-pointer overflow-hidden',
                 // Mobile: card style with border and spacing
                 'p-3 border-b border-slate-100 dark:border-slate-800',
                 // md+: flush row style
@@ -54,9 +54,9 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             )}
         >
             {/* ── MOBILE layout: compact horizontal card (image left, details right) ── */}
-            <div className="flex flex-row gap-2.5 md:hidden">
+            <div className="flex flex-row gap-2.5 md:hidden landscape:gap-1.5 landscape:p-1.5">
                 {/* Image */}
-                <div className="relative w-[100px] h-[80px] flex-shrink-0 rounded-lg overflow-hidden">
+                <div className="relative w-[100px] h-[80px] flex-shrink-0 rounded-lg overflow-hidden landscape:w-[80px] landscape:h-[60px]">
                     <img
                         src={property.image}
                         alt={property.name}
@@ -64,8 +64,8 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         loading="lazy"
                     />
                     {property.refundableTag === 'RFN' && (
-                        <span className="absolute top-1 left-1 text-[8px] font-semibold bg-emerald-500 text-white px-1.5 py-px rounded-full shadow">
-                            Free cancel
+                        <span className="absolute top-1 left-1 text-[8px] font-semibold bg-emerald-500 text-white px-1.5 py-px rounded-full shadow landscape:text-[7px] landscape:px-1 landscape:py-0">
+                            {typeof window !== 'undefined' && window.innerHeight < 500 ? 'Free' : 'Free cancel'}
                         </span>
                     )}
                 </div>
@@ -73,33 +73,32 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                 {/* Details */}
                 <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight line-clamp-1">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight line-clamp-1 landscape:text-[11px]">
                             {property.name}
                         </h3>
-                        <div className="flex items-center gap-0.5 mt-0.5">
-                            <MapPin className="w-2.5 h-2.5 text-blue-500 flex-shrink-0" />
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        <div className="flex items-center gap-0.5 mt-0.5 landscape:mt-0">
+                            <MapPin className="w-2.5 h-2.5 text-blue-500 flex-shrink-0 landscape:w-2 landscape:h-2" />
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate landscape:text-[8px]">
                                 {property.location}
                             </span>
                         </div>
                     </div>
 
-                    {/* Rating + Price row */}
-                    <div className="flex items-end justify-between mt-1">
-                        <div className="flex items-center gap-1">
-                            <span className={cn('text-[10px] font-bold text-white px-1 py-px rounded', getRatingColor(property.rating))}>
+                    {/* Rating + Price row (Stacked on mobile to prevent overlap) */}
+                    <div className="flex flex-col items-start mt-1 landscape:mt-0 w-full min-w-0 pr-1 gap-0.5">
+                        <div className="flex items-center flex-shrink-0">
+                            <span className={cn('text-[10px] font-bold text-white px-1 py-px rounded landscape:text-[9px] landscape:px-1 landscape:py-0', getRatingColor(property.rating))}>
                                 {property.rating.toFixed(1)}
-                            </span>
-                            <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300">
-                                {getRatingLabel(property.rating)}
                             </span>
                         </div>
 
-                        <div className="text-right flex-shrink-0">
-                            <span className="text-[13px] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(property.price)}
-                            </span>
-                            <span className="text-[9px] text-slate-400 ml-0.5">/night</span>
+                        <div className="flex-shrink-0 w-full min-w-0 overflow-hidden">
+                            <div className="flex items-baseline gap-0.5 w-full overflow-hidden">
+                                <span className="text-[13px] font-bold text-blue-600 dark:text-blue-400 landscape:text-[11px] truncate block">
+                                    {formatCurrency(property.price)}
+                                </span>
+                                <span className="text-[9px] text-slate-400 landscape:text-[7px] flex-shrink-0">/night</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -142,7 +141,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                             <span className={cn('text-[11px] font-bold text-white px-1.5 py-0.5 rounded', getRatingColor(property.rating))}>
                                 {property.rating.toFixed(1)}
                             </span>
-                            <div className="flex flex-col min-w-0">
+                            <div className="flex flex-col min-w-0 landscape-compact:hidden">
                                 <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300 leading-none truncate">
                                     {getRatingLabel(property.rating)}
                                 </span>

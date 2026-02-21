@@ -69,12 +69,12 @@ export function BookingSummary({
 
     return (
         <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-slate-900 rounded-lg sm:rounded-xl border border-slate-200 dark:border-white/10 shadow-lg sticky top-24 overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-lg lg:rounded-xl border border-slate-200 dark:border-white/10 shadow-lg sticky top-24 overflow-hidden">
 
                 {/* Hotel Card Header */}
-                <div className="p-3 sm:p-5 flex gap-3 sm:gap-4">
+                <div className="p-3 lg:p-5 flex gap-3 lg:gap-4">
                     {propertyImage && (
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0">
+                        <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-lg overflow-hidden flex-shrink-0">
                             <img
                                 src={propertyImage}
                                 alt={propertyName}
@@ -91,7 +91,7 @@ export function BookingSummary({
                                 ))}
                             </div>
                         )}
-                        <h3 className="font-bold text-slate-900 dark:text-white text-sm leading-tight truncate">
+                        <h3 className="font-bold text-slate-900 dark:text-white text-[13px] lg:text-sm leading-tight truncate">
                             {propertyName}
                         </h3>
                         {propertyAddress && (
@@ -115,15 +115,15 @@ export function BookingSummary({
                     </div>
                 </div>
 
-                <div className="px-3 sm:px-5 pb-3 sm:pb-5 space-y-3 sm:space-y-4">
+                <div className="px-3 lg:px-5 pb-3 lg:pb-5 space-y-3 lg:space-y-4">
                     {/* Check-in & Check-out */}
                     {checkIn && checkOut && (
-                        <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-3 sm:pt-4">
-                            <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mb-1">
-                                <Calendar size={12} className="sm:w-3.5 sm:h-3.5 w-3 h-3" />
+                        <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-3 lg:pt-4">
+                            <div className="flex items-center gap-1.5 lg:gap-2 text-[10px] lg:text-xs text-slate-500 dark:text-slate-400 mb-1">
+                                <Calendar size={12} className="lg:w-3.5 lg:h-3.5 w-3 h-3" />
                                 <span>Check-in & Check-out</span>
                             </div>
-                            <div className="text-xs sm:text-sm font-medium text-slate-900 dark:text-white">
+                            <div className="text-[11px] lg:text-sm font-medium text-slate-900 dark:text-white">
                                 {formatDate(checkIn)} – {formatDate(checkOut)}
                                 <span className="text-slate-500 dark:text-slate-400 font-normal ml-1">
                                     ({totalNights} {totalNights === 1 ? 'night' : 'nights'})
@@ -143,15 +143,15 @@ export function BookingSummary({
                     ) : null}
 
                     {/* Your Room */}
-                    <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-3 sm:pt-4">
-                        <div className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5 sm:mb-2">Your Room</div>
-                        <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mb-1">
+                    <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-3 lg:pt-4">
+                        <div className="text-[10px] lg:text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5 lg:mb-2">Your Room</div>
+                        <div className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white mb-1">
                             {roomTitle}
                         </div>
-                        <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
                             {adults} {adults === 1 ? 'Adult' : 'Adults'}{children > 0 ? ` + ${children} ${children === 1 ? 'Child' : 'Children'}` : ''}
                         </div>
-                        <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1">
+                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400 mt-0.5 lg:mt-1">
                             ₱{perNightPrice.toLocaleString()} average per night
                         </div>
                         {prebookId && (
@@ -162,8 +162,8 @@ export function BookingSummary({
                     </div>
 
                     {/* Price Breakdown — all values from server */}
-                    <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-3 sm:pt-4 space-y-1.5 sm:space-y-2">
-                        <div className="flex justify-between text-xs sm:text-sm">
+                    <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-3 lg:pt-4 space-y-1.5 lg:space-y-2">
+                        <div className="flex justify-between text-[11px] lg:text-sm">
                             <span className="text-slate-600 dark:text-slate-400">
                                 1 room × {totalNights} {totalNights === 1 ? 'night' : 'nights'}
                             </span>
@@ -171,7 +171,7 @@ export function BookingSummary({
                                 ₱{roomPrice.toLocaleString()}
                             </span>
                         </div>
-                        <div className="flex justify-between text-xs sm:text-sm">
+                        <div className="flex justify-between text-[11px] lg:text-sm">
                             <span className="text-slate-600 dark:text-slate-400">Included taxes and fees</span>
                             <span className="font-medium text-slate-900 dark:text-white">₱{taxes.toLocaleString()}</span>
                         </div>
@@ -190,12 +190,12 @@ export function BookingSummary({
                         )}
 
                         {/* Total — uses server-calculated final price when voucher applied */}
-                        <div className="flex justify-between text-sm sm:text-base font-bold pt-2 border-t border-slate-200 dark:border-white/10">
+                        <div className="flex justify-between text-[14px] lg:text-base font-bold pt-2 border-t border-slate-200 dark:border-white/10">
                             <span className="text-slate-900 dark:text-white">Total</span>
                             <div className="text-right">
                                 {appliedVoucher ? (
                                     <>
-                                        <span className="text-sm line-through text-slate-400 dark:text-slate-500 mr-2 font-normal">
+                                        <span className="text-[12px] line-through text-slate-400 dark:text-slate-500 mr-2 font-normal">
                                             ₱{(totalPrice || 0).toLocaleString()}
                                         </span>
                                         <span className="text-emerald-600 dark:text-emerald-400">

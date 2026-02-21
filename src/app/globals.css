@@ -1,10 +1,14 @@
 @import "tailwindcss";
+
 @import "mapbox-gl/dist/mapbox-gl.css";
 
 @theme {
-  --font-sans: 'Inter', sans-serif;
-  --font-display: 'Inter Tight', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Inter',
+    sans-serif;
+  --font-display: 'Inter Tight',
+    sans-serif;
+  --font-mono: 'JetBrains Mono',
+    monospace;
 
   --color-obsidian: #020617;
   --color-obsidian-surface: rgba(255, 255, 255, 0.05);
@@ -151,5 +155,42 @@ body {
 
   .landscape-compact-mb {
     margin-bottom: 0.125rem !important;
+  }
+
+  /* Specific compactions for Search/Map view */
+  .landscape-compact-header {
+    height: 44px !important;
+  }
+
+  .landscape-compact-topbar {
+    height: 36px !important;
+  }
+
+  .landscape-compact-popup {
+    min-width: 200px !important;
+    max-width: 220px !important;
+  }
+
+  .landscape-compact-popup-img {
+    height: 80px !important;
+  }
+
+  .landscape-compact-text {
+    font-size: 0.625rem !important;
+    /* 10px */
+    line-height: 1 !important;
+  }
+
+  .landscape-compact-price {
+    font-size: 0.875rem !important;
+    /* 14px */
+    line-height: 1 !important;
+  }
+
+  .landscape-compact-btn {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.625rem !important;
+    height: auto !important;
+    min-height: 0 !important;
   }
 }
