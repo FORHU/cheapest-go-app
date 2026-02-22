@@ -124,28 +124,28 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
     const feeCurrency = cancellationPolicies?.cancelPolicyInfos?.[0]?.currency;
 
     return (
-        <div className="py-4 md:py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-24 md:scroll-mt-36" id="policies">
-            <h2 className="text-sm md:text-xl font-bold text-slate-900 dark:text-white mb-3 md:mb-6">Policies</h2>
+        <div className="py-4 lg:py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-24 lg:scroll-mt-36" id="policies">
+            <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-3 lg:mb-6">Policies</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-8">
                 {/* Check-in / Check-out */}
                 {(checkInTime || checkOutTime) && (
-                    <div className="space-y-2 md:space-y-4">
-                        <h3 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 md:gap-2">
-                            <Clock size={14} className="md:hidden" /><Clock size={18} className="hidden md:block" />
+                    <div className="space-y-1.5 lg:space-y-4">
+                        <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 lg:gap-2">
+                            <Clock size={12} className="lg:hidden" /><Clock size={18} className="hidden lg:block" />
                             Check-in & Check-out
                         </h3>
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 md:p-4 space-y-2 md:space-y-3">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-4 space-y-1.5 lg:space-y-3">
                             {checkInTime && (
                                 <div className="flex justify-between items-center">
-                                    <span className="text-xs md:text-sm text-slate-600 dark:text-slate-400">Check-in</span>
-                                    <span className="text-xs md:text-sm font-medium text-slate-900 dark:text-white">{checkInTime}</span>
+                                    <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-in</span>
+                                    <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">{checkInTime}</span>
                                 </div>
                             )}
                             {checkOutTime && (
                                 <div className="flex justify-between items-center">
-                                    <span className="text-xs md:text-sm text-slate-600 dark:text-slate-400">Check-out</span>
-                                    <span className="text-xs md:text-sm font-medium text-slate-900 dark:text-white">{checkOutTime}</span>
+                                    <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-out</span>
+                                    <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">{checkOutTime}</span>
                                 </div>
                             )}
                         </div>
@@ -154,27 +154,26 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
 
                 {/* Cancellation Policy */}
                 {cancellationPolicies && (
-                    <div className="space-y-2 md:space-y-4">
-                        <h3 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 md:gap-2">
+                    <div className="space-y-1.5 lg:space-y-4">
+                        <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 lg:gap-2">
                             {isRefundable ? (
                                 <>
-                                    <CheckCircle size={14} className="text-emerald-500 md:hidden" />
-                                    <CheckCircle size={18} className="text-emerald-500 hidden md:block" />
+                                    <CheckCircle size={12} className="text-emerald-500 lg:hidden" />
+                                    <CheckCircle size={18} className="text-emerald-500 hidden lg:block" />
                                 </>
                             ) : (
                                 <>
-                                    <XCircle size={14} className="text-amber-500 md:hidden" />
-                                    <XCircle size={18} className="text-amber-500 hidden md:block" />
+                                    <XCircle size={12} className="text-amber-500 lg:hidden" />
+                                    <XCircle size={18} className="text-amber-500 hidden lg:block" />
                                 </>
                             )}
                             Cancellation Policy
                         </h3>
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2.5 md:p-4 space-y-2 md:space-y-3">
-                            <div className={`inline-flex items-center gap-1 md:gap-1.5 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium ${
-                                isRefundable
+                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-4 space-y-1.5 lg:space-y-3">
+                            <div className={`inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-xs font-medium ${isRefundable
                                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                                     : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                            }`}>
+                                }`}>
                                 {isRefundable ? 'Refundable' : 'Non-refundable'}
                             </div>
 
@@ -184,17 +183,17 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                                     return !t.includes('NO_SHOW') && !t.includes('NOSHOW') && !t.includes('EARLY_DEPARTURE') && !t.includes('EARLY_CHECKOUT');
                                 })
                                 .map((policy, index) => (
-                                <div key={index} className="text-[11px] md:text-sm text-slate-600 dark:text-slate-300">
-                                    {policy.cancelTime && (
-                                        <p>
-                                            Cancel before <span className="font-medium">{formatCancellationTime(policy.cancelTime)}</span>
-                                            {policy.amount !== undefined && policy.currency && (
-                                                <> - Fee: <span className="font-medium">{policy.currency} {policy.amount}</span></>
-                                            )}
-                                        </p>
-                                    )}
-                                </div>
-                            ))}
+                                    <div key={index} className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-300">
+                                        {policy.cancelTime && (
+                                            <p>
+                                                Cancel before <span className="font-medium">{formatCancellationTime(policy.cancelTime)}</span>
+                                                {policy.amount !== undefined && policy.currency && (
+                                                    <> - Fee: <span className="font-medium">{policy.currency} {policy.amount}</span></>
+                                                )}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
 
                             {/* No-Show Penalty */}
                             {noShowPenalty > 0 && (
@@ -231,13 +230,13 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
 
             {/* Important Information */}
             {hotelImportantInformation && (
-                <div className="mt-3 md:mt-8 space-y-2 md:space-y-4">
-                    <h3 className="text-xs md:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 md:gap-2">
-                        <Info size={14} className="md:hidden" /><Info size={18} className="hidden md:block" />
+                <div className="mt-3 lg:mt-8 space-y-2 lg:space-y-4">
+                    <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 lg:gap-2">
+                        <Info size={12} className="lg:hidden" /><Info size={18} className="hidden lg:block" />
                         Important Information
                     </h3>
                     <div
-                        className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5 md:p-4 text-[11px] md:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1"
+                        className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 lg:p-4 text-[10px] lg:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1"
                         dangerouslySetInnerHTML={{ __html: hotelImportantInformation }}
                     />
                 </div>

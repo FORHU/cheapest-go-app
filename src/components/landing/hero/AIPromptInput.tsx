@@ -91,21 +91,9 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({ value, onChange, onSubmit
     };
 
     return (
-        <div className="flex-[4] relative flex items-start gap-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/5 px-4 py-3">
-            {/* Sparkles Icon */}
-            <motion.div
-                animate={{ scale: [1, 1.2, 1], rotate: [0, 5, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                className="mt-0.5 shrink-0"
-            >
-                <Sparkles
-                    size={20}
-                    className="text-blue-500 dark:text-cyan-400"
-                />
-            </motion.div>
-
+        <div className="relative flex items-end gap-2 bg-transparent px-3 py-2 sm:py-3 w-full">
             {/* Input Area */}
-            <div className="flex-1 relative min-h-[24px]">
+            <div className="flex-1 relative min-h-[28px] pt-1 flex items-center">
                 <textarea
                     ref={textareaRef}
                     value={value}
@@ -113,24 +101,42 @@ const AIPromptInput: React.FC<AIPromptInputProps> = ({ value, onChange, onSubmit
                     onKeyDown={handleKeyDown}
                     disabled={disabled}
                     rows={1}
-                    className="w-full bg-transparent text-base font-sans text-slate-900 dark:text-white placeholder-transparent resize-none outline-none disabled:opacity-50 leading-relaxed"
-                    style={{ minHeight: '24px', maxHeight: '96px' }}
+                    className="w-full bg-transparent text-sm sm:text-[15px] font-medium font-sans text-slate-800 dark:text-slate-100 placeholder-transparent resize-none outline-none disabled:opacity-50 leading-relaxed pr-8"
+                    style={{ minHeight: '28px', maxHeight: '100px' }}
                 />
 
                 {/* Custom animated placeholder */}
                 {!value && (
-                    <div className="absolute inset-0 pointer-events-none flex items-start">
-                        <span className="text-base text-slate-400 dark:text-slate-500 leading-relaxed">
+                    <div className="absolute inset-0 pointer-events-none flex items-center pl-1">
+                        <span className="text-sm sm:text-[15px] font-medium text-slate-500/80 dark:text-slate-400/80 leading-relaxed">
                             {displayPlaceholder}
                             <motion.span
                                 animate={{ opacity: [1, 0] }}
                                 transition={{ duration: 0.5, repeat: Infinity, repeatType: 'reverse' }}
-                                className="inline-block w-0.5 h-5 bg-blue-500 dark:bg-cyan-400 ml-0.5 align-text-bottom"
+                                className="inline-block w-[1.5px] h-[16px] bg-slate-400 dark:bg-slate-500 ml-1 sm:h-[18px] align-middle"
                             />
                         </span>
                     </div>
                 )}
             </div>
+
+            {/* Inline Submit Button */}
+            <button
+                onClick={onSubmit}
+                disabled={disabled || !value.trim()}
+                className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${value.trim() && !disabled
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                    }`}
+            >
+                {disabled ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                )}
+            </button>
         </div>
     );
 };

@@ -23,7 +23,7 @@ export function getPolicyTitle(type: BookingPolicyType): string {
 export function getPolicyBadgeColor(type: BookingPolicyType): string {
     switch (type) {
         case 'free_cancellation':
-            return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+            return 'bg-emerald-500 text-white';
         case 'non_refundable':
             return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
         case 'partial_refund':

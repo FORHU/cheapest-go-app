@@ -12,7 +12,8 @@
       "Bash(curl:*)",
       "Bash(npx supabase functions deploy:*)",
       "Bash(npx supabase functions logs:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebFetch(domain:k-travel-booking.vercel.app)"
     ]
   }
 }

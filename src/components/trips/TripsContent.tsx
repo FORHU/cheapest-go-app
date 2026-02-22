@@ -98,9 +98,9 @@ export function TripsContent({ initialData }: TripsContentProps) {
               }`}
           >
             <span>Upcoming</span>
-            {upcomingBookings.length > 0 && (
+            {counts.upcoming > 0 && (
               <span className="px-1.5 sm:px-2 py-0.5 text-[clamp(0.5625rem,1.5vw,0.75rem)] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
-                {upcomingBookings.length}
+                {counts.upcoming}
               </span>
             )}
             {activeTab === 'upcoming' && (

@@ -231,7 +231,6 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
 
             {/* Active Filters Summary */}
             <ActiveFiltersSummary filters={filters} />
-            </div>
         </div>
     );
 
