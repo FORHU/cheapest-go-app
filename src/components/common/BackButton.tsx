@@ -9,13 +9,16 @@ interface BackButtonProps {
     label?: string;
     className?: string;
     href?: string; // Optional href for specific navigation
+    bareIcon?: boolean; // If true, renders only the icon without text
 }
 
-const BackButton: React.FC<BackButtonProps> = ({ label = "Back", className = "", href }) => {
+const BackButton: React.FC<BackButtonProps> = ({ label = "Back", className = "", href, bareIcon = false }) => {
     const router = useRouter();
 
     const buttonClasses = `flex items-center text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors group ${className}`;
-    const content = (
+    const content = bareIcon ? (
+        <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+    ) : (
         <>
             <ChevronLeft size={16} className="mr-1 group-hover:-translate-x-1 transition-transform" />
             {label}

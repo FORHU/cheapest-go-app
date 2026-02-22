@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeftRight, SlidersHorizontal, ArrowUpDown, Loader2, AlertTriangle, Search, Plane } from 'lucide-react';
 import { FlightCard } from '@/components/flights/FlightCard';
+import BackButton from '@/components/common/BackButton';
 import { useUserCurrency } from '@/stores/searchStore';
 import type { FlightOffer, FlightSearchRequest, CabinClass } from '@/lib/flights';
 
@@ -178,18 +179,18 @@ export default function FlightSearchContent() {
     // ─── Loading State ───────────────────────────────────────────────
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-24 pb-16">
-                <div className="max-w-4xl mx-auto px-4">
-                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-8 pb-12 lg:pb-16">
+                <div className="max-w-4xl mx-auto px-3 lg:px-4">
+                    <div className="flex flex-col items-center justify-center py-12 lg:py-20 gap-3 lg:gap-4">
                         <div className="relative">
-                            <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                                <Plane className="w-8 h-8 text-indigo-500 animate-pulse" />
+                            <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                                <Plane className="w-6 h-6 lg:w-8 lg:h-8 text-indigo-500 animate-pulse" />
                             </div>
-                            <div className="absolute inset-0 w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                            <div className="absolute inset-0 w-12 h-12 lg:w-16 lg:h-16 border-[3px] lg:border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                         </div>
                         <div className="text-center">
-                            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Searching flights...</h2>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            <h2 className="text-base lg:text-xl font-semibold text-slate-900 dark:text-white">Searching flights...</h2>
+                            <p className="text-xs lg:text-sm text-slate-500 dark:text-slate-400 mt-1">
                                 {originName} → {destName}
                             </p>
                         </div>
@@ -202,19 +203,19 @@ export default function FlightSearchContent() {
     // ─── Error State ─────────────────────────────────────────────────
     if (error) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-24 pb-16">
-                <div className="max-w-4xl mx-auto px-4">
-                    <div className="flex flex-col items-center justify-center py-20 gap-4">
-                        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                            <AlertTriangle className="w-8 h-8 text-red-500" />
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-8 pb-12 lg:pb-16">
+                <div className="max-w-4xl mx-auto px-3 lg:px-4">
+                    <div className="flex flex-col items-center justify-center py-12 lg:py-20 gap-3 lg:gap-4">
+                        <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                            <AlertTriangle className="w-6 h-6 lg:w-8 lg:h-8 text-red-500" />
                         </div>
                         <div className="text-center">
-                            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Search Failed</h2>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{error}</p>
+                            <h2 className="text-base lg:text-xl font-semibold text-slate-900 dark:text-white">Search Failed</h2>
+                            <p className="text-xs lg:text-sm text-slate-500 dark:text-slate-400 mt-1">{error}</p>
                         </div>
                         <button
                             onClick={fetchResults}
-                            className="mt-4 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-colors"
+                            className="mt-2 lg:mt-4 px-5 lg:px-6 py-2 lg:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs lg:text-sm transition-colors"
                         >
                             Try Again
                         </button>
@@ -226,19 +227,20 @@ export default function FlightSearchContent() {
 
     // ─── Results ─────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-24 pb-16">
-            <div className="max-w-4xl mx-auto px-4">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-8 pb-8 lg:pb-16">
+            <div className="max-w-4xl mx-auto px-2.5 lg:px-4">
                 {/* ─── Header ─── */}
-                <div className="mb-6">
-                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                        <button onClick={() => router.back()} className="hover:text-indigo-500 transition-colors">← Back</button>
-                    </div>
-                    <div className="flex items-center gap-3 mt-2">
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {originName} <ArrowLeftRight className="w-5 h-5 inline text-indigo-500 mx-1" /> {destName}
+                <div className="mb-2.5 lg:mb-6">
+                    <BackButton
+                        bareIcon
+                        className="bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shadow-sm !p-0"
+                    />
+                    <div className="flex items-center gap-1.5 lg:gap-3 mt-1 lg:mt-2">
+                        <h1 className="text-[13px] lg:text-2xl font-bold text-slate-900 dark:text-white">
+                            {originName} <ArrowLeftRight className="w-3.5 h-3.5 lg:w-5 lg:h-5 inline text-indigo-500 mx-0.5 lg:mx-1" /> {destName}
                         </h1>
                     </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 capitalize">
+                    <p className="text-[9px] lg:text-sm text-slate-500 dark:text-slate-400 mt-0.5 lg:mt-1 capitalize">
                         {tripType.replace('-', ' ')} · {searchParams.get('cabin') || 'economy'} · {
                             Number(searchParams.get('adults') || 1) + Number(searchParams.get('children') || 0)
                         } traveler(s)
@@ -246,14 +248,14 @@ export default function FlightSearchContent() {
                 </div>
 
                 {/* ─── Sort & Filter Bar ─── */}
-                <div className="flex items-center gap-3 flex-wrap mb-4">
+                <div className="flex items-center gap-1.5 lg:gap-3 flex-wrap mb-2 lg:mb-4">
                     {/* Sort */}
-                    <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-sm">
+                    <div className="flex items-center bg-white dark:bg-slate-800 rounded-md lg:rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-[10px] lg:text-sm">
                         {(['cheapest', 'fastest', 'best'] as SortMode[]).map((mode) => (
                             <button
                                 key={mode}
                                 onClick={() => setSortMode(mode)}
-                                className={`px-4 py-2 font-medium capitalize transition-colors ${sortMode === mode
+                                className={`px-2 lg:px-4 py-1 lg:py-2 font-medium capitalize transition-colors ${sortMode === mode
                                     ? 'bg-indigo-600 text-white'
                                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                                     }`}
@@ -264,7 +266,7 @@ export default function FlightSearchContent() {
                     </div>
 
                     {/* Stop filter */}
-                    <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-sm">
+                    <div className="flex items-center bg-white dark:bg-slate-800 rounded-md lg:rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-[10px] lg:text-sm">
                         {[
                             { value: 'any' as StopFilter, label: 'Any' },
                             { value: 'nonstop' as StopFilter, label: 'Nonstop' },
@@ -273,7 +275,7 @@ export default function FlightSearchContent() {
                             <button
                                 key={value}
                                 onClick={() => setStopFilter(value)}
-                                className={`px-3 py-2 font-medium transition-colors ${stopFilter === value
+                                className={`px-1.5 lg:px-3 py-1 lg:py-2 font-medium transition-colors ${stopFilter === value
                                     ? 'bg-indigo-600 text-white'
                                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                                     }`}
@@ -286,20 +288,20 @@ export default function FlightSearchContent() {
                     {/* Airline filter toggle */}
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${showFilters || airlineFilter.length > 0
+                        className={`flex items-center gap-0.5 lg:gap-1.5 px-1.5 lg:px-3 py-1 lg:py-2 rounded-md lg:rounded-xl border text-[10px] lg:text-sm font-medium transition-colors ${showFilters || airlineFilter.length > 0
                             ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
                             : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                             }`}
                     >
-                        <SlidersHorizontal className="w-4 h-4" />
+                        <SlidersHorizontal className="w-3 h-3 lg:w-4 lg:h-4" />
                         Airlines
                         {airlineFilter.length > 0 && (
-                            <span className="px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-xs">{airlineFilter.length}</span>
+                            <span className="px-1 py-px rounded-full bg-indigo-600 text-white text-[8px] lg:text-xs">{airlineFilter.length}</span>
                         )}
                     </button>
 
                     {/* Result count */}
-                    <div className="ml-auto text-sm text-slate-500 dark:text-slate-400">
+                    <div className="ml-auto text-[9px] lg:text-sm text-slate-500 dark:text-slate-400">
                         {displayOffers.length} flight{displayOffers.length !== 1 ? 's' : ''} found
                     </div>
                 </div>
@@ -311,21 +313,21 @@ export default function FlightSearchContent() {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="mb-4 overflow-hidden"
+                            className="mb-2 lg:mb-4 overflow-hidden"
                         >
-                            <div className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Filter by Airline</h3>
+                            <div className="p-2.5 lg:p-4 bg-white dark:bg-slate-800 rounded-lg lg:rounded-xl border border-slate-200 dark:border-slate-700">
+                                <div className="flex items-center justify-between mb-1.5 lg:mb-3">
+                                    <h3 className="text-[10px] lg:text-sm font-semibold text-slate-700 dark:text-slate-200">Filter by Airline</h3>
                                     {airlineFilter.length > 0 && (
                                         <button
                                             onClick={() => setAirlineFilter([])}
-                                            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                                            className="text-[9px] lg:text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
                                         >
                                             Clear all
                                         </button>
                                     )}
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-1 lg:gap-2">
                                     {availableAirlines.map(([code, name]) => (
                                         <button
                                             key={code}
@@ -334,7 +336,7 @@ export default function FlightSearchContent() {
                                                     prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
                                                 );
                                             }}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${airlineFilter.includes(code)
+                                            className={`px-1.5 lg:px-3 py-0.5 lg:py-1.5 rounded-md lg:rounded-lg text-[9px] lg:text-xs font-medium transition-colors ${airlineFilter.includes(code)
                                                 ? 'bg-indigo-600 text-white'
                                                 : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
                                                 }`}
@@ -350,10 +352,10 @@ export default function FlightSearchContent() {
 
                 {/* ─── Provider Info ─── */}
                 {results && results.providers.length > 0 && (
-                    <div className="flex items-center gap-2 mb-4 text-xs text-slate-400 dark:text-slate-500">
+                    <div className="flex items-center gap-1 lg:gap-2 mb-2 lg:mb-4 text-[9px] lg:text-xs text-slate-400 dark:text-slate-500">
                         <span>Sources:</span>
                         {results.providers.map(p => (
-                            <span key={p.name} className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                            <span key={p.name} className="px-1 lg:px-2 py-px lg:py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                                 {p.name} ({p.offerCount})
                                 {p.error && <span className="text-red-400 ml-1">⚠</span>}
                             </span>
@@ -362,20 +364,20 @@ export default function FlightSearchContent() {
                 )}
 
                 {/* ─── Offer List ─── */}
-                <div className="space-y-3">
+                <div className="space-y-2 lg:space-y-3">
                     {displayOffers.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 gap-4">
-                            <Search className="w-12 h-12 text-slate-300 dark:text-slate-600" />
+                        <div className="flex flex-col items-center justify-center py-8 lg:py-16 gap-2 lg:gap-4">
+                            <Search className="w-8 h-8 lg:w-12 lg:h-12 text-slate-300 dark:text-slate-600" />
                             <div className="text-center">
-                                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">No flights found</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                <h3 className="text-xs lg:text-lg font-semibold text-slate-700 dark:text-slate-300">No flights found</h3>
+                                <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                                     Try adjusting your filters or search for different dates.
                                 </p>
                             </div>
                         </div>
                     ) : (
                         <AnimatePresence>
-                            {displayOffers.map((offer, idx) => (
+                            {displayOffers.map((offer) => (
                                 <FlightCard
                                     key={offer.offerId}
                                     offer={offer}

@@ -12,22 +12,24 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' });
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://k-travel-booking.vercel.app';
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://cheapestgo.com'),
-  title: 'CheapestGo | Book Flights & Hotels',
-  description: 'CheapestGo is your ultimate travel booking platform. Find the best deals on flights and hotels instantly and start exploring the world.',
+  metadataBase: new URL(SITE_URL),
+  title: 'CheapestGo | Discover and Book Your Next Global Journey',
+  description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
   icons: {
     icon: '/icon.png',
     apple: '/icon.png',
   },
   openGraph: {
-    title: 'CheapestGo | Discover & Book Your Next Journey',
-    description: 'Get the best travel deals globally. Plan your flights and hotels easily and save money with CheapestGo.',
-    url: 'https://cheapestgo.com',
+    title: 'CheapestGo | Discover and Book Your Next Global Journey',
+    description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
+    url: SITE_URL,
     siteName: 'CheapestGo',
     images: [
       {
-        url: '/og-image.png', // Recommended: Place a 1200x630 image at public/og-image.jpg
+        url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
         alt: 'CheapestGo - Ultimate Travel Booking Platform',
@@ -38,9 +40,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CheapestGo | Discover & Book Your Next Journey',
-    description: 'Get the best travel deals globally. Plan your flights and hotels easily and save money with CheapestGo.',
-    images: ['/og-image.png'],
+    title: 'CheapestGo | Discover and Book Your Next Global Journey',
+    description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
+    images: [`${SITE_URL}/og-image.png`],
   },
 };
 
