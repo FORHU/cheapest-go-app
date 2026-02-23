@@ -31,10 +31,18 @@ import type { FlightProvider } from '../_shared/types.ts';
 import { revalidateFare, MystiflyError } from '../_shared/mystiflyClient.ts';
 import { amadeusRequest, AmadeusError } from '../_shared/amadeusClient.ts';
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('Origin') ?? '';
+    const allowedOrigin = ALLOWED_ORIGINS.length > 0
+        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+        : '*';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 // ─── Request / Response Types ───────────────────────────────────────
 
@@ -72,6 +80,8 @@ interface RevalidateResult {
 // ─── Handler ────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -83,14 +93,14 @@ Deno.serve(async (req: Request) => {
         const body: RevalidateBody = JSON.parse(await req.text());
 
         if (!body.provider || !body.flightPayload || !body.userId) {
-            return jsonResponse({
+            return jsonResponse(corsHeaders, {
                 success: false,
                 error: 'Required: provider, flightPayload, userId',
             }, 400);
         }
 
         if (body.provider !== 'mystifly' && body.provider !== 'amadeus') {
-            return jsonResponse({
+            return jsonResponse(corsHeaders, {
                 success: false,
                 error: `Unknown provider: ${body.provider}`,
             }, 400);
@@ -111,11 +121,11 @@ Deno.serve(async (req: Request) => {
 
         console.log(`[revalidate-flight] Done: available=${result.seatsAvailable}, priceChanged=${result.priceChanged}, new=${result.newPrice} in ${result.durationMs}ms`);
 
-        return jsonResponse(result, result.success ? 200 : 422);
+        return jsonResponse(corsHeaders, result, result.success ? 200 : 422);
     } catch (err: any) {
         console.error('[revalidate-flight] Error:', err.message);
 
-        return jsonResponse({
+        return jsonResponse(getCorsHeaders(req), {
             success: false,
             priceChanged: false,
             oldPrice: 0,
@@ -309,7 +319,7 @@ async function revalidateAmadeus(
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+function jsonResponse(corsHeaders: Record<string, string>, body: Record<string, unknown>, status = 200): Response {
     return new Response(
         JSON.stringify(body),
         { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

@@ -1,5 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
+// ─── HTML Escaping (prevent XSS in email templates) ─────────────────
+
+function escapeHtml(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // ═════════════════════════════════════════════════════════════════════
 //  HOTEL BOOKING EMAIL
 // ═════════════════════════════════════════════════════════════════════
@@ -53,7 +64,7 @@ export async function sendBookingConfirmationEmail(
     </div>
 
     <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
-        <p style="margin: 0 0 20px 0;">Dear <strong>${guestName}</strong>,</p>
+        <p style="margin: 0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
 
         <p style="margin: 0 0 20px 0;">Thank you for your booking! Your reservation has been confirmed.</p>
 
@@ -63,23 +74,23 @@ export async function sendBookingConfirmationEmail(
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                     <td style="padding: 8px 0; color: #6b7280;">Booking ID:</td>
-                    <td style="padding: 8px 0; font-weight: 600; font-family: monospace;">${bookingId}</td>
+                    <td style="padding: 8px 0; font-weight: 600; font-family: monospace;">${escapeHtml(bookingId)}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #6b7280;">Property:</td>
-                    <td style="padding: 8px 0; font-weight: 600;">${hotelName}</td>
+                    <td style="padding: 8px 0; font-weight: 600;">${escapeHtml(hotelName)}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #6b7280;">Room:</td>
-                    <td style="padding: 8px 0;">${roomName}</td>
+                    <td style="padding: 8px 0;">${escapeHtml(roomName)}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #6b7280;">Check-in:</td>
-                    <td style="padding: 8px 0;">${checkIn}</td>
+                    <td style="padding: 8px 0;">${escapeHtml(checkIn)}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #6b7280;">Check-out:</td>
-                    <td style="padding: 8px 0;">${checkOut}</td>
+                    <td style="padding: 8px 0;">${escapeHtml(checkOut)}</td>
                 </tr>
                 <tr style="border-top: 1px solid #e5e7eb;">
                     <td style="padding: 12px 0 8px 0; color: #6b7280; font-weight: 600;">Total:</td>
@@ -249,17 +260,17 @@ export async function sendFlightBookingConfirmationEmail(
             return `
                 <tr>
                     <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">
-                        <strong>${seg.airlineName || seg.airline}</strong><br>
-                        <span style="color: #6b7280; font-size: 13px;">${seg.flightNumber}</span>
+                        <strong>${escapeHtml(seg.airlineName || seg.airline)}</strong><br>
+                        <span style="color: #6b7280; font-size: 13px;">${escapeHtml(seg.flightNumber)}</span>
                     </td>
                     <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">
-                        <strong>${seg.origin}</strong><br>
-                        <span style="color: #6b7280; font-size: 13px;">${depStr}</span>
+                        <strong>${escapeHtml(seg.origin)}</strong><br>
+                        <span style="color: #6b7280; font-size: 13px;">${escapeHtml(depStr)}</span>
                     </td>
                     <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: center; color: #9ca3af;">→</td>
                     <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">
-                        <strong>${seg.destination}</strong><br>
-                        <span style="color: #6b7280; font-size: 13px;">${arrStr}</span>
+                        <strong>${escapeHtml(seg.destination)}</strong><br>
+                        <span style="color: #6b7280; font-size: 13px;">${escapeHtml(arrStr)}</span>
                     </td>
                 </tr>`;
         }).join('');
@@ -275,11 +286,11 @@ export async function sendFlightBookingConfirmationEmail(
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
         <h1 style="color: white; margin: 0; font-size: 28px;">Flight Booking Confirmed!</h1>
-        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">${route}</p>
+        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">${escapeHtml(route)}</p>
     </div>
 
     <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
-        <p style="margin: 0 0 20px 0;">Dear <strong>${passengerName}</strong>,</p>
+        <p style="margin: 0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
 
         <p style="margin: 0 0 20px 0;">Your flight has been booked successfully. Here are your booking details:</p>
 
@@ -289,21 +300,21 @@ export async function sendFlightBookingConfirmationEmail(
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                     <td style="padding: 8px 0; color: #6b7280;">PNR:</td>
-                    <td style="padding: 8px 0; font-weight: 700; font-family: monospace; font-size: 18px; color: #4f46e5;">${pnr}</td>
+                    <td style="padding: 8px 0; font-weight: 700; font-family: monospace; font-size: 18px; color: #4f46e5;">${escapeHtml(pnr)}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #6b7280;">Booking ID:</td>
-                    <td style="padding: 8px 0; font-weight: 600; font-family: monospace;">${bookingId}</td>
+                    <td style="padding: 8px 0; font-weight: 600; font-family: monospace;">${escapeHtml(bookingId)}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px 0; color: #6b7280;">Provider:</td>
-                    <td style="padding: 8px 0; text-transform: capitalize;">${provider}</td>
+                    <td style="padding: 8px 0; text-transform: capitalize;">${escapeHtml(provider)}</td>
                 </tr>
                 ${tickets && tickets.length > 0 ? `
                 <tr style="border-top: 1px solid #e5e7eb;">
                     <td style="padding: 12px 0 8px 0; color: #6b7280; font-weight: 600; vertical-align: top;">E-Tickets:</td>
                     <td style="padding: 12px 0 8px 0;">
-                        ${tickets.map(t => `<div style="margin-bottom: 4px"><span style="color:#4f46e5;font-weight:600;font-family:monospace;">${t.number}</span> <span style="font-size:12px;color:#6b7280;">- ${t.name}</span></div>`).join('')}
+                        ${tickets.map(t => `<div style="margin-bottom: 4px"><span style="color:#4f46e5;font-weight:600;font-family:monospace;">${escapeHtml(t.number)}</span> <span style="font-size:12px;color:#6b7280;">- ${escapeHtml(t.name)}</span></div>`).join('')}
                     </td>
                 </tr>
                 ` : ''}
@@ -324,7 +335,7 @@ export async function sendFlightBookingConfirmationEmail(
         <div style="background: #eef2ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4f46e5;">
             <p style="margin: 0; color: #3730a3; font-size: 14px;">
                 <strong>Important:</strong><br>
-                Please save your PNR (<strong>${pnr}</strong>) for check-in and reference.
+                Please save your PNR (<strong>${escapeHtml(pnr)}</strong>) for check-in and reference.
                 Arrive at the airport at least 2 hours before domestic flights or 3 hours before international flights.
             </p>
         </div>

@@ -6,8 +6,11 @@
  * Stores temporary passenger + selected flight data before the real
  * booking is confirmed. Sessions expire after 30 minutes.
  *
+ * SECURITY: Called via service role key from Next.js API route (which verifies JWT).
+ * Includes idempotency check to prevent duplicate sessions.
+ *
  * POST body:
- *   { userId, provider, flight, passengers, contact }
+ *   { userId, provider, flight, passengers, contact, idempotencyKey? }
  *
  * Returns:
  *   { success: true, sessionId: string }
@@ -18,10 +21,19 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 declare const Deno: any;
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('Origin') ?? '';
+    // MED-5 FIX: Restrict CORS to configured origins (falls back to permissive only if unconfigured)
+    const allowedOrigin = ALLOWED_ORIGINS.length > 0
+        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+        : '*';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 const SESSION_TTL_MINUTES = 30;
 
@@ -47,11 +59,14 @@ interface CreateBookingSessionBody {
     flight: Record<string, unknown>;
     passengers: BookingSessionPassenger[];
     contact: BookingSessionContact;
+    idempotencyKey?: string;
 }
 
 // ─── Handler ────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -63,41 +78,41 @@ Deno.serve(async (req: Request) => {
         const body: CreateBookingSessionBody = JSON.parse(await req.text());
 
         if (!body.userId) {
-            return jsonResponse({ success: false, error: 'userId is required' }, 400);
+            return jsonResponse(corsHeaders, { success: false, error: 'userId is required' }, 400);
         }
         if (!body.provider || !['mystifly', 'amadeus'].includes(body.provider)) {
-            return jsonResponse({ success: false, error: 'provider must be "mystifly" or "amadeus"' }, 400);
+            return jsonResponse(corsHeaders, { success: false, error: 'provider must be "mystifly" or "amadeus"' }, 400);
         }
         if (!body.flight || typeof body.flight !== 'object') {
-            return jsonResponse({ success: false, error: 'flight object is required' }, 400);
+            return jsonResponse(corsHeaders, { success: false, error: 'flight object is required' }, 400);
         }
         if (!Array.isArray(body.passengers) || body.passengers.length === 0) {
-            return jsonResponse({ success: false, error: 'At least one passenger is required' }, 400);
+            return jsonResponse(corsHeaders, { success: false, error: 'At least one passenger is required' }, 400);
         }
 
         // Validate each passenger
         for (let i = 0; i < body.passengers.length; i++) {
             const pax = body.passengers[i];
             if (!pax.type || !['ADT', 'CHD', 'INF'].includes(pax.type)) {
-                return jsonResponse(
+                return jsonResponse(corsHeaders,
                     { success: false, error: `Passenger ${i + 1}: type must be ADT, CHD, or INF` },
                     400,
                 );
             }
             if (!pax.firstName || !pax.lastName) {
-                return jsonResponse(
+                return jsonResponse(corsHeaders,
                     { success: false, error: `Passenger ${i + 1}: firstName and lastName are required` },
                     400,
                 );
             }
             if (!pax.gender) {
-                return jsonResponse(
+                return jsonResponse(corsHeaders,
                     { success: false, error: `Passenger ${i + 1}: gender is required` },
                     400,
                 );
             }
             if (!pax.birthDate) {
-                return jsonResponse(
+                return jsonResponse(corsHeaders,
                     { success: false, error: `Passenger ${i + 1}: birthDate is required` },
                     400,
                 );
@@ -106,10 +121,10 @@ Deno.serve(async (req: Request) => {
 
         // Validate contact
         if (!body.contact?.email) {
-            return jsonResponse({ success: false, error: 'contact.email is required' }, 400);
+            return jsonResponse(corsHeaders, { success: false, error: 'contact.email is required' }, 400);
         }
         if (!body.contact?.phone) {
-            return jsonResponse({ success: false, error: 'contact.phone is required' }, 400);
+            return jsonResponse(corsHeaders, { success: false, error: 'contact.phone is required' }, 400);
         }
 
         console.log('[create-booking-session] Creating session:', {
@@ -117,6 +132,7 @@ Deno.serve(async (req: Request) => {
             provider: body.provider,
             passengerCount: body.passengers.length,
             contactEmail: body.contact.email,
+            hasIdempotencyKey: !!body.idempotencyKey,
         });
 
         // ── Supabase Admin Client (bypasses RLS) ──
@@ -128,6 +144,30 @@ Deno.serve(async (req: Request) => {
         }
 
         const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+        // ── HIGH-2 FIX: Idempotency check ──
+        if (body.idempotencyKey) {
+            const { data: existing } = await supabaseAdmin
+                .from('booking_sessions')
+                .select('id, status')
+                .eq('idempotency_key', body.idempotencyKey)
+                .eq('user_id', body.userId)
+                .maybeSingle();
+
+            if (existing) {
+                if (existing.status === 'pending' || existing.status === 'booked') {
+                    const durationMs = Date.now() - startMs;
+                    console.log(`[create-booking-session] Returning existing session: ${existing.id} (idempotent) in ${durationMs}ms`);
+                    return jsonResponse(corsHeaders, { success: true, sessionId: existing.id });
+                }
+            }
+        }
+
+        // ── CRITICAL-2 FIX: Strip rawOffer from stored flight data ──
+        const sanitizedFlight = { ...body.flight } as Record<string, unknown>;
+        delete sanitizedFlight.rawOffer;
+        delete sanitizedFlight._raw;
+        delete sanitizedFlight._rawOffer;
 
         // ── Generate session ID and expiry ──
         const sessionId = crypto.randomUUID();
@@ -141,13 +181,14 @@ Deno.serve(async (req: Request) => {
                 id: sessionId,
                 user_id: body.userId,
                 provider: body.provider,
-                flight: body.flight,
+                flight: sanitizedFlight,
                 passengers: body.passengers,
                 contact: body.contact,
                 status: 'pending',
                 expires_at: expiresAt.toISOString(),
                 created_at: now.toISOString(),
                 updated_at: now.toISOString(),
+                ...(body.idempotencyKey ? { idempotency_key: body.idempotencyKey } : {}),
             });
 
         if (dbError) {
@@ -159,14 +200,14 @@ Deno.serve(async (req: Request) => {
 
         console.log(`[create-booking-session] Created: ${sessionId} (expires ${expiresAt.toISOString()}) in ${durationMs}ms`);
 
-        return jsonResponse({
+        return jsonResponse(corsHeaders, {
             success: true,
             sessionId,
         });
     } catch (err: any) {
         console.error('[create-booking-session] Error:', err.message);
 
-        return jsonResponse(
+        return jsonResponse(getCorsHeaders(req),
             { success: false, error: err.message || 'Failed to create booking session' },
             500,
         );
@@ -175,7 +216,7 @@ Deno.serve(async (req: Request) => {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+function jsonResponse(corsHeaders: Record<string, string>, body: Record<string, unknown>, status = 200): Response {
     return new Response(
         JSON.stringify(body),
         { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

@@ -19,10 +19,18 @@ import type { NormalizedFlight, CabinClass } from '../_shared/types.ts';
 import { amadeusRequest, AmadeusError } from '../_shared/amadeusClient.ts';
 import { normalizeAmadeusResponse, toAmadeusCabin } from '../_shared/normalizeFlight.ts';
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('Origin') ?? '';
+    const allowedOrigin = ALLOWED_ORIGINS.length > 0
+        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+        : '*';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 // ─── Request Body ───────────────────────────────────────────────────
 
@@ -56,6 +64,8 @@ interface AmadeusFlightOffersResponse {
 // ─── Handler ────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -67,21 +77,21 @@ Deno.serve(async (req: Request) => {
         const body: AmadeusSearchBody = JSON.parse(await req.text());
 
         if (!body.origin || !body.destination || !body.departureDate || !body.adults) {
-            return jsonResponse(
+            return jsonResponse(corsHeaders,
                 { success: false, error: 'Required: origin, destination, departureDate, adults' },
                 400,
             );
         }
 
         if (!/^[A-Z]{3}$/.test(body.origin) || !/^[A-Z]{3}$/.test(body.destination)) {
-            return jsonResponse(
+            return jsonResponse(corsHeaders,
                 { success: false, error: 'origin and destination must be 3-letter IATA codes' },
                 400,
             );
         }
 
         if (!/^\d{4}-\d{2}-\d{2}$/.test(body.departureDate)) {
-            return jsonResponse(
+            return jsonResponse(corsHeaders,
                 { success: false, error: 'departureDate must be YYYY-MM-DD' },
                 400,
             );
@@ -143,7 +153,7 @@ Deno.serve(async (req: Request) => {
         console.log(`[amadeus-search] Normalized ${flights.length} flights in ${durationMs}ms`);
 
         // ── Response ──
-        return jsonResponse({
+        return jsonResponse(corsHeaders, {
             provider: 'amadeus',
             flights,
             totalResults: flights.length,
@@ -156,7 +166,7 @@ Deno.serve(async (req: Request) => {
 
         const status = err instanceof AmadeusError ? Math.max(err.status, 400) : 500;
 
-        return jsonResponse(
+        return jsonResponse(getCorsHeaders(req),
             {
                 provider: 'amadeus',
                 flights: [],
@@ -171,7 +181,7 @@ Deno.serve(async (req: Request) => {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+function jsonResponse(corsHeaders: Record<string, string>, body: Record<string, unknown>, status = 200): Response {
     return new Response(
         JSON.stringify(body),
         { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

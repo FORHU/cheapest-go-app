@@ -134,7 +134,6 @@ export async function GET(req: NextRequest) {
         return Response.json({
             success: true,
             data: merged.slice(0, limit),
-            source: amadeusResults ? 'merged' : 'local',
         });
     } catch (err) {
         console.error('[airports/search] Error:', err);

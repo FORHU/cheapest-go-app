@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -16,6 +16,9 @@ export function useFlightBooking() {
     const [step, setStep] = useState<BookingStep>('form');
     const [errorMsg, setErrorMsg] = useState('');
     const [bookingResult, setBookingResult] = useState<{ bookingId: string; pnr: string } | null>(null);
+
+    // HIGH-2 FIX: Idempotency key to prevent double bookings
+    const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
     const [passengers, setPassengers] = useState<FlightPassengerForm[]>([{
         type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
@@ -58,6 +61,7 @@ export function useFlightBooking() {
 
     const bookMutation = useMutation({
         mutationFn: async ({ offer, passengers, contact }: { offer: FlightOffer, passengers: FlightPassengerForm[], contact: FlightContactForm }) => {
+            // Client-side auth check (fast-fail UX; server re-verifies via JWT)
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
 
@@ -65,6 +69,7 @@ export function useFlightBooking() {
                 throw new Error("unauthenticated");
             }
 
+            // CRITICAL-2 FIX: Do NOT send rawOffer/_raw — server rebuilds from normalized data
             const flightPayload = {
                 traceId: (offer as any).traceId ?? offer.offerId,
                 resultIndex: (offer as any).resultIndex ?? offer.offerId,
@@ -81,18 +86,18 @@ export function useFlightBooking() {
                     arrivalTime: seg.arrival.time,
                     cabinClass: seg.cabinClass,
                 })),
-                rawOffer: (offer as any)._raw,
             };
 
+            // CRITICAL-3 FIX: Don't send userId — server extracts it from JWT
             const res = await fetch('/api/flights/book', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: user.id,
                     provider: offer.provider,
                     flight: flightPayload,
                     passengers,
                     contact,
+                    idempotencyKey: idempotencyKeyRef.current,
                 }),
             });
 
@@ -118,6 +123,8 @@ export function useFlightBooking() {
             } else {
                 setErrorMsg(error.message || 'Booking failed. Please try again.');
                 setStep('error');
+                // Generate a new idempotency key for retry
+                idempotencyKeyRef.current = crypto.randomUUID();
             }
         }
     });
@@ -131,7 +138,6 @@ export function useFlightBooking() {
             bookMutation.mutate({ offer, passengers, contact });
         } catch (error) {
             if (error instanceof z.ZodError) {
-                // Use the first validation error message
                 setErrorMsg(error.issues[0].message);
             } else if (error instanceof Error) {
                 setErrorMsg(error.message);

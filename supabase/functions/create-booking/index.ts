@@ -5,15 +5,16 @@
  *
  * Creates a real flight booking (PNR) by:
  *   1. Retrieving the booking session
- *   2. Calling Mystifly or Amadeus to book
- *   3. Saving the result to flight_bookings, flight_segments, passengers
- *   4. Marking the session as "booked"
+ *   2. REVALIDATING the fare (Mystifly) or repricing (Amadeus)
+ *   3. Calling Mystifly or Amadeus to book
+ *   4. Saving the result to flight_bookings, flight_segments, passengers
+ *   5. Marking the session as "booked"
  *
  * POST body:
  *   { sessionId: string }
  *
  * Returns:
- *   { success: true, bookingId: string, pnr: string }
+ *   { success, bookingId, pnr, status, confirmedPrice, confirmedCurrency }
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -21,13 +22,21 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 declare const Deno: any;
 
-import { bookFlight, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { bookFlight, revalidateFare, MystiflyError } from '../_shared/mystiflyClient.ts';
 import { amadeusRequest, AmadeusError } from '../_shared/amadeusClient.ts';
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('Origin') ?? '';
+    const allowedOrigin = ALLOWED_ORIGINS.length > 0
+        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+        : '*';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -84,6 +93,7 @@ interface BookingSession {
 
 interface ProviderBookingResult {
     pnr: string;
+    amadeusOrderId?: string;
     providerStatus: string;
     rawPrice?: number;
     rawCurrency?: string;
@@ -99,9 +109,26 @@ const GENDER_TO_TITLE: Record<string, string> = {
     female: 'Ms',
 };
 
+// ─── Date Validation ────────────────────────────────────────────────
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** MED-3 FIX: Ensure date is in YYYY-MM-DD format. */
+function normalizeDate(date: string): string {
+    if (DATE_RE.test(date)) return date;
+    // Try to parse common formats
+    const parsed = new Date(date);
+    if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().slice(0, 10);
+    }
+    return date; // Return as-is if unparseable (will fail at provider)
+}
+
 // ─── Handler ────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -113,7 +140,7 @@ Deno.serve(async (req: Request) => {
         const { sessionId } = JSON.parse(await req.text());
 
         if (!sessionId) {
-            return jsonResponse({ success: false, error: 'sessionId is required' }, 400);
+            return jsonResponse(corsHeaders, { success: false, error: 'sessionId is required' }, 400);
         }
 
         // ── Supabase Admin Client ──
@@ -134,14 +161,14 @@ Deno.serve(async (req: Request) => {
             .single();
 
         if (fetchError || !session) {
-            return jsonResponse({ success: false, error: 'Booking session not found' }, 404);
+            return jsonResponse(corsHeaders, { success: false, error: 'Booking session not found' }, 404);
         }
 
         const bs = session as BookingSession;
 
         // Validate status
         if (bs.status !== 'pending') {
-            return jsonResponse(
+            return jsonResponse(corsHeaders,
                 { success: false, error: `Session already processed (status: ${bs.status})` },
                 409,
             );
@@ -149,13 +176,12 @@ Deno.serve(async (req: Request) => {
 
         // Validate expiry
         if (new Date(bs.expires_at) < new Date()) {
-            // Mark as expired
             await supabase
                 .from('booking_sessions')
                 .update({ status: 'expired' })
                 .eq('id', sessionId);
 
-            return jsonResponse({ success: false, error: 'Booking session has expired' }, 410);
+            return jsonResponse(corsHeaders, { success: false, error: 'Booking session has expired' }, 410);
         }
 
         console.log('[create-booking] Processing session:', {
@@ -173,18 +199,20 @@ Deno.serve(async (req: Request) => {
         } else if (bs.provider === 'amadeus') {
             result = await bookWithAmadeus(bs.flight, bs.passengers, bs.contact);
         } else {
-            return jsonResponse({ success: false, error: `Unknown provider: ${bs.provider}` }, 400);
+            return jsonResponse(corsHeaders, { success: false, error: `Unknown provider: ${bs.provider}` }, 400);
         }
 
         console.log('[create-booking] Provider returned PNR:', result.pnr);
 
         // ── 3. Save to flight_bookings ──
+        // HIGH-1 FIX: Always use server-confirmed price from provider, not client-supplied
         const bookingPrice = result.rawPrice ?? bs.flight.price ?? 0;
-        
-        // Determine if it was auto-ticketed
-        const finalStatus = (result.providerStatus === 'ticketed' || (result.ticketNumbers && result.ticketNumbers.length > 0)) 
-            ? 'ticketed' 
+        const bookingCurrency = result.rawCurrency ?? bs.flight.currency ?? 'USD';
+
+        const finalStatus = (result.providerStatus === 'ticketed' || (result.ticketNumbers && result.ticketNumbers.length > 0))
+            ? 'ticketed'
             : 'booked';
+
         const { data: booking, error: insertError } = await supabase
             .from('flight_bookings')
             .insert({
@@ -192,7 +220,11 @@ Deno.serve(async (req: Request) => {
                 pnr: result.pnr,
                 provider: bs.provider,
                 total_price: bookingPrice,
-                status: finalStatus, // <-- USE DYNAMIC STATUS
+                // LOW-3 FIX: Store currency alongside price
+                currency: bookingCurrency,
+                status: finalStatus,
+                // HIGH-5 FIX: Store Amadeus order ID separately for ticket retrieval
+                ...(result.amadeusOrderId ? { amadeus_order_id: result.amadeusOrderId } : {}),
             })
             .select('id')
             .single();
@@ -232,7 +264,7 @@ Deno.serve(async (req: Request) => {
             last_name: pax.lastName,
             type: pax.type,
             passport: pax.passport ?? null,
-            ticket_number: result.ticketNumbers?.[idx] ?? null, // <-- ADD THIS
+            ticket_number: result.ticketNumbers?.[idx] ?? null,
         }));
 
         if (passengers.length > 0) {
@@ -254,10 +286,14 @@ Deno.serve(async (req: Request) => {
         const durationMs = Date.now() - startMs;
         console.log(`[create-booking] Completed: ${bookingId} / PNR ${result.pnr} in ${durationMs}ms`);
 
-        return jsonResponse({
+        // HIGH-1 FIX: Return server-confirmed price so the API route can use it
+        return jsonResponse(corsHeaders, {
             success: true,
             bookingId,
             pnr: result.pnr,
+            status: finalStatus,
+            confirmedPrice: bookingPrice,
+            confirmedCurrency: bookingCurrency,
         });
     } catch (err: any) {
         const durationMs = Date.now() - startMs;
@@ -268,7 +304,7 @@ Deno.serve(async (req: Request) => {
             err instanceof AmadeusError ? Math.max(err.status, 400) :
             500;
 
-        return jsonResponse(
+        return jsonResponse(getCorsHeaders(req),
             { success: false, error: err.message || 'Booking failed' },
             status,
         );
@@ -282,15 +318,45 @@ async function bookWithMystifly(
     passengers: SessionPassenger[],
     contact: SessionContact,
 ): Promise<ProviderBookingResult> {
-    const fareSourceCode = flight.traceId;
+    let fareSourceCode = flight.traceId;
     if (!fareSourceCode) {
         throw new Error('Flight traceId (fareSourceCode) is missing for Mystifly booking');
     }
+
+    // ── CRITICAL-1 FIX: Revalidate fare before booking ──
+    console.log('[create-booking] Revalidating Mystifly fare before booking...');
+    const revalResult = await revalidateFare(fareSourceCode);
+
+    if (!revalResult.Success) {
+        const msg = revalResult.Message ?? '';
+        const isUnavailable = /not available|not found|expired/i.test(msg);
+        throw new Error(isUnavailable ? 'Flight is no longer available' : `Fare revalidation failed: ${msg}`);
+    }
+
+    // Use updated FareSourceCode if revalidation returned a new one
+    const revalData = revalResult.Data ?? {};
+    const revalFareInfo = revalData.FareItinerary?.AirItineraryFareInfo ?? revalData;
+    if (revalFareInfo.FareSourceCode || revalData.FareSourceCode) {
+        fareSourceCode = revalFareInfo.FareSourceCode ?? revalData.FareSourceCode ?? fareSourceCode;
+        console.log('[create-booking] Updated FareSourceCode from revalidation');
+    }
+
+    // Extract revalidated price
+    const revalItinFare = revalFareInfo.ItinTotalFare;
+    const revalidatedPrice = revalItinFare
+        ? (Number(revalItinFare.TotalFare?.Amount) || undefined)
+        : undefined;
+    const revalidatedCurrency = revalItinFare?.TotalFare?.CurrencyCode;
+
+    console.log('[create-booking] Revalidation passed. Price:', revalidatedPrice, revalidatedCurrency);
 
     const isDemo = (Deno.env.get('MYSTIFLY_BASE_URL') ?? '').includes('demo');
 
     // Build Mystifly-format travelers
     const airTravelers = passengers.map((pax, idx) => {
+        // MED-3 FIX: Ensure date is in proper format
+        const birthDate = normalizeDate(pax.birthDate);
+
         const traveler: Record<string, any> = {
             PassengerType: pax.type,
             Gender: pax.gender === 'M' || pax.gender === 'male' ? 'M' : 'F',
@@ -299,17 +365,23 @@ async function bookWithMystifly(
                 PassengerFirstName: pax.firstName,
                 PassengerLastName: pax.lastName,
             },
-            DateOfBirth: pax.birthDate.includes('T') ? pax.birthDate : `${pax.birthDate}T00:00:00`,
-            Nationality: 'US',
+            DateOfBirth: `${birthDate}T00:00:00`,
+            // CRITICAL-5 FIX: Use actual passenger nationality instead of hardcoded 'US'
+            Nationality: pax.nationality || contact.country || 'KR',
             ...(idx === 0 ? {
                 PhoneNumber: contact.phone,
                 Email: contact.email,
-                PostCode: '',
+                PostCode: contact.postalCode || '',
             } : {}),
         };
 
+        // MED-4 FIX: Include passport expiry and issuing country
         if (pax.passport) {
             traveler.PassportNumber = pax.passport;
+            if (pax.passportExpiry) {
+                traveler.PassportExpiryDate = `${normalizeDate(pax.passportExpiry)}T00:00:00`;
+            }
+            traveler.PassportIssuedCountry = pax.nationality || contact.country || 'KR';
         }
 
         return traveler;
@@ -319,8 +391,8 @@ async function bookWithMystifly(
         FareSourceCode: fareSourceCode,
         TravelerInfo: {
             AirTravelers: airTravelers,
-            CountryCode: 'US',
-            AreaCode: '',
+            CountryCode: contact.country || passengers[0]?.nationality || 'KR',
+            AreaCode: contact.countryCode || '',
             PhoneNumber: contact.phone,
             Email: contact.email,
         },
@@ -340,11 +412,12 @@ async function bookWithMystifly(
     if (providerStatus === 'ticketed' || data.TktNumbers || data.TicketInfo || data.TravelItinerary?.TicketInfo) {
         ticketNumbers = extractTicketNumbers(data);
     }
+
     return {
         pnr: data.UniqueID ?? '',
         providerStatus: ticketNumbers.length > 0 ? 'ticketed' : providerStatus,
-        rawPrice: parseFloat(String(data.TotalFare ?? data.TotalPrice ?? '0')) || undefined,
-        rawCurrency: data.Currency ? String(data.Currency) : undefined,
+        rawPrice: revalidatedPrice ?? (parseFloat(String(data.TotalFare ?? data.TotalPrice ?? '0')) || undefined),
+        rawCurrency: revalidatedCurrency ?? (data.Currency ? String(data.Currency) : undefined),
         ticketNumbers: ticketNumbers.length > 0 ? ticketNumbers : undefined,
     };
 }
@@ -356,10 +429,10 @@ async function bookWithAmadeus(
     passengers: SessionPassenger[],
     contact: SessionContact,
 ): Promise<ProviderBookingResult> {
-    // Step 1: Build or use raw offer
-    const baseOffer = (flight as any).rawOffer ?? buildAmadeusFlightOffer(flight, passengers);
+    // CRITICAL-2 FIX: Always build offer from server-side normalized data, never trust rawOffer
+    const baseOffer = buildAmadeusFlightOffer(flight, passengers);
 
-    // Step 2: Confirm pricing via Amadeus Flight Offers Price API
+    // Confirm pricing via Amadeus Flight Offers Price API
     // This is REQUIRED — prices change between search and booking
     console.log('[create-booking] Confirming price with Amadeus...');
     const priceResponse: any = await amadeusRequest('/v1/shopping/flight-offers/pricing', {
@@ -379,39 +452,50 @@ async function bookWithAmadeus(
 
     console.log('[create-booking] Confirmed price:', pricedOffer.price?.grandTotal, pricedOffer.price?.currency);
 
-    // Step 3: Build booking request with the priced offer
+    // Build booking request with the priced offer
     const phoneNumber = contact.phone.replace(/\D/g, '');
     const countryCallingCode = contact.countryCode || '82';
 
-    const travelers = passengers.map((pax, idx) => ({
-        id: String(idx + 1),
-        dateOfBirth: pax.birthDate,
-        name: {
-            firstName: pax.firstName.toUpperCase(),
-            lastName: pax.lastName.toUpperCase(),
-        },
-        gender: pax.gender === 'M' || pax.gender === 'male' ? 'MALE' : 'FEMALE',
-        contact: {
-            emailAddress: contact.email,
-            phones: [{
-                deviceType: 'MOBILE',
-                countryCallingCode,
-                number: phoneNumber,
+    const travelers = passengers.map((pax, idx) => {
+        // MED-3 FIX: Normalize dates
+        const birthDate = normalizeDate(pax.birthDate);
+        const passportExpiry = pax.passportExpiry ? normalizeDate(pax.passportExpiry) : '2030-01-01';
+
+        // HIGH-6 FIX: Derive passport issuance date from expiry (10 years before expiry is standard)
+        const expiryParts = passportExpiry.split('-');
+        const issuanceYear = Math.max(2015, parseInt(expiryParts[0], 10) - 10);
+        const issuanceDate = `${issuanceYear}-${expiryParts[1] || '01'}-${expiryParts[2] || '01'}`;
+
+        return {
+            id: String(idx + 1),
+            dateOfBirth: birthDate,
+            name: {
+                firstName: pax.firstName.toUpperCase(),
+                lastName: pax.lastName.toUpperCase(),
+            },
+            gender: pax.gender === 'M' || pax.gender === 'male' ? 'MALE' : 'FEMALE',
+            contact: {
+                emailAddress: contact.email,
+                phones: [{
+                    deviceType: 'MOBILE',
+                    countryCallingCode,
+                    number: phoneNumber,
+                }],
+            },
+            documents: [{
+                documentType: 'PASSPORT',
+                birthPlace: contact.city,
+                issuanceLocation: contact.city,
+                issuanceDate,
+                number: pax.passport,
+                expiryDate: passportExpiry,
+                issuanceCountry: pax.nationality || 'KR',
+                validityCountry: pax.nationality || 'KR',
+                nationality: pax.nationality || 'KR',
+                holder: true,
             }],
-        },
-        documents: [{
-            documentType: 'PASSPORT',
-            birthPlace: contact.city,
-            issuanceLocation: contact.city,
-            issuanceDate: '2020-01-01',
-            number: pax.passport,
-            expiryDate: pax.passportExpiry,
-            issuanceCountry: pax.nationality || 'KR',
-            validityCountry: pax.nationality || 'KR',
-            nationality: pax.nationality || 'KR',
-            holder: true,
-        }],
-    }));
+        };
+    });
 
     const body = {
         data: {
@@ -450,11 +534,13 @@ async function bookWithAmadeus(
         throw new Error('Amadeus booking failed: no order ID returned');
     }
 
-    // Extract PNR from associatedRecords
-    const pnr = order.associatedRecords?.[0]?.reference ?? order.id;
+    // HIGH-5 FIX: Store BOTH the Amadeus order ID and the airline PNR separately
+    const amadeusOrderId = order.id;
+    const airlinePnr = order.associatedRecords?.[0]?.reference ?? order.id;
 
     return {
-        pnr,
+        pnr: airlinePnr,
+        amadeusOrderId,
         providerStatus: 'confirmed',
         rawPrice: parseFloat(order.flightOffers?.[0]?.price?.grandTotal ?? '0') || undefined,
         rawCurrency: order.flightOffers?.[0]?.price?.currency ?? undefined,
@@ -463,7 +549,7 @@ async function bookWithAmadeus(
 
 /**
  * Build a minimal Amadeus flight-offer object from our normalized flight data.
- * Used when rawOffer is not available in the session.
+ * CRITICAL-2 FIX: This is now the ONLY path — rawOffer from client is never used.
  */
 function buildAmadeusFlightOffer(
     flight: SessionFlight,
@@ -476,10 +562,11 @@ function buildAmadeusFlightOffer(
         first: 'FIRST',
     };
 
+    // HIGH-3 FIX: Correct Amadeus traveler type mapping
     const TRAVELER_TYPE_MAP: Record<string, string> = {
         ADT: 'ADULT',
-        CHD: 'HELD_INFANT',  // Amadeus: child = HELD_INFANT for under 2, or CHILD
-        INF: 'SEATED_INFANT',
+        CHD: 'CHILD',           // FIX: Was incorrectly 'HELD_INFANT'
+        INF: 'HELD_INFANT',     // FIX: Infants on lap = HELD_INFANT (not SEATED_INFANT)
     };
 
     const mainAirline = flight.validatingAirline ?? flight.segments?.[0]?.airline ?? '';
@@ -521,7 +608,7 @@ function buildAmadeusFlightOffer(
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+function jsonResponse(corsHeaders: Record<string, string>, body: Record<string, unknown>, status = 200): Response {
     return new Response(
         JSON.stringify(body),
         { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

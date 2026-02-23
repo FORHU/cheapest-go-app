@@ -20,10 +20,18 @@ import type { NormalizedFlight, CabinClass, TripType } from '../_shared/types.ts
 import { searchFlights, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyResponse } from '../_shared/normalizeFlight.ts';
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('Origin') ?? '';
+    const allowedOrigin = ALLOWED_ORIGINS.length > 0
+        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+        : '*';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 // ─── Request Body ───────────────────────────────────────────────────
 
@@ -44,6 +52,8 @@ interface MystiflySearchBody {
 // ─── Handler ────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -55,14 +65,14 @@ Deno.serve(async (req: Request) => {
         const body: MystiflySearchBody = JSON.parse(await req.text());
 
         if (!body.origin || !body.destination || !body.departureDate || !body.adults) {
-            return jsonResponse(
+            return jsonResponse(corsHeaders,
                 { success: false, error: 'Required: origin, destination, departureDate, adults' },
                 400,
             );
         }
 
         if (!/^[A-Z]{3}$/.test(body.origin) || !/^[A-Z]{3}$/.test(body.destination)) {
-            return jsonResponse(
+            return jsonResponse(corsHeaders,
                 { success: false, error: 'origin and destination must be 3-letter IATA codes' },
                 400,
             );
@@ -141,7 +151,7 @@ Deno.serve(async (req: Request) => {
 
             if (isEmptyResult) {
                 console.log('[mystifly-search] No flights found for this route');
-                return jsonResponse({
+                return jsonResponse(corsHeaders, {
                     provider: 'mystifly',
                     flights: [],
                     totalResults: 0,
@@ -171,7 +181,7 @@ Deno.serve(async (req: Request) => {
         console.log(`[mystifly-search] Normalized ${flights.length} flights in ${durationMs}ms`);
 
         // ── Response — clean, frontend-friendly JSON ──
-        return jsonResponse({
+        return jsonResponse(corsHeaders, {
             provider: 'mystifly',
             flights,
             totalResults: flights.length,
@@ -184,7 +194,7 @@ Deno.serve(async (req: Request) => {
 
         const status = err instanceof MystiflyError ? Math.max(err.status, 400) : 500;
 
-        return jsonResponse(
+        return jsonResponse(corsHeaders,
             {
                 provider: 'mystifly',
                 flights: [],
@@ -199,10 +209,10 @@ Deno.serve(async (req: Request) => {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+function jsonResponse(headers: Record<string, string>, body: Record<string, unknown>, status = 200): Response {
     return new Response(
         JSON.stringify(body),
-        { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status, headers: { ...headers, 'Content-Type': 'application/json' } },
     );
 }
 
