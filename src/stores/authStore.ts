@@ -33,11 +33,18 @@ const extractUserProfile = (supabaseUser: SupabaseUser): User => {
 };
 
 const buildRedirectUrl = (path = '/auth/callback') => {
-    const currentPath = window.location.pathname + window.location.search;
+    const searchParams = new URLSearchParams(window.location.search);
+    const existingRedirect = searchParams.get('redirect') || searchParams.get('next');
+
+    // If we already have a redirect target in the current URL, use it
+    let targetPath = existingRedirect || window.location.pathname + window.location.search;
+
     // Only include safe relative paths in the redirect
-    const safePath = currentPath.startsWith('/') && !currentPath.startsWith('//') ? currentPath : '/';
+    const safePath = targetPath.startsWith('/') && !targetPath.startsWith('//') ? targetPath : '/';
+
     return `${window.location.origin}${path}?next=${encodeURIComponent(safePath)}`;
 };
+
 
 // --- Types ---
 

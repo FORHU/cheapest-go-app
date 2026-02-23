@@ -135,8 +135,7 @@ Deno.serve(async (req: Request) => {
         deduped.sort((a, b) => a.price - b.price);
 
         // ── Apply limit ──
-        const maxOffers = body.maxOffers ?? 50;
-        const flights = deduped.slice(0, maxOffers);
+        const flights = deduped;
 
         const searchDurationMs = Date.now() - searchStart;
 

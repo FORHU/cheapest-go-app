@@ -17,8 +17,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 declare const Deno: any;
 
 import type { NormalizedFlight, CabinClass, TripType } from '../_shared/types.ts';
-import { searchFlights, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP } from '../_shared/mystiflyClient.ts';
+import { searchFlights, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyResponse } from '../_shared/normalizeFlight.ts';
+
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
 
@@ -98,7 +99,7 @@ Deno.serve(async (req: Request) => {
             DestinationLocationCode: string;
         }[] = [
                 {
-                    DepartureDateTime: `${body.departureDate}T00:00:00`,
+                    DepartureDateTime: `${body.departureDate}T00:00:00.000Z`,
                     OriginLocationCode: body.origin,
                     DestinationLocationCode: body.destination,
                 },
@@ -106,7 +107,7 @@ Deno.serve(async (req: Request) => {
 
         if (body.returnDate) {
             originDestinations.push({
-                DepartureDateTime: `${body.returnDate}T00:00:00`,
+                DepartureDateTime: `${body.returnDate}T00:00:00.000Z`,
                 OriginLocationCode: body.destination,
                 DestinationLocationCode: body.origin,
             });
@@ -126,39 +127,46 @@ Deno.serve(async (req: Request) => {
         const cabinCode = CABIN_MAP[body.cabinClass ?? 'economy'] ?? 'Y';
         const airTripType = TRIP_TYPE_MAP[tripType] ?? 'OneWay';
 
+        const conversationId = crypto.randomUUID();
+
         const mystiflyBody = {
             OriginDestinationInformations: originDestinations,
             PassengerTypeQuantities: passengerTypes,
             IsRefundable: false,
-            NearByAirports: false,
-            PricingSourceType: 0,
+            PricingSourceType: 'All',
+
             RequestOptions: getRequestOptions(body.maxOffers),
-            Sources: null,
+            ConversationId: conversationId,
             TravelPreferences: {
+
+
                 AirTripType: airTripType,
                 CabinPreference: cabinCode,
                 MaxStopsQuantity: body.nonStopOnly ? 'Direct' : 'All',
+                Preferences: {
+                    CabinClassPreference: {
+                        CabinType: cabinCode,
+                        PreferenceLevel: 'Preferred',
+                    },
+                },
             },
+
         };
 
+
+
         // ── Call Mystifly Search (auto-creates session) ──
-        const raw = await searchFlights(mystiflyBody);
+        const raw = await searchFlights(mystiflyBody, undefined, conversationId);
+
+        const itinData = raw.Data?.PricedItineraries ?? raw.Data?.FareItineraries ?? [];
+        console.log('[mystifly-search] Itineraries count:', itinData.length);
+        if (!raw.Success) console.log('[mystifly-search] Raw Message:', raw.Message);
+
+
 
         // ── Handle "flights not found" gracefully ──
         if (!raw.Success) {
             const msg: string = raw.Message ?? '';
-            const isEmptyResult = /not found|no flights|no result/i.test(msg);
-
-            if (isEmptyResult) {
-                console.log('[mystifly-search] No flights found for this route');
-                return jsonResponse(corsHeaders, {
-                    provider: 'mystifly',
-                    flights: [],
-                    totalResults: 0,
-                    durationMs: Date.now() - startMs,
-                });
-            }
-
             throw new MystiflyError(
                 `Mystifly search failed: ${msg}`,
                 'CLIENT',
@@ -167,16 +175,27 @@ Deno.serve(async (req: Request) => {
         }
 
         // ── Normalize ──
-        const fareItineraries: any[] = raw.Data?.FareItineraries ?? raw.Data?.PricedItineraries ?? [];
+        const flights = normalizeMystiflyResponse(itinData);
 
-        console.log(`[mystifly-search] Mystifly returned ${fareItineraries.length} raw itineraries`);
+        if (flights.length === 0) {
+            console.log('[mystifly-search] Mystifly returned 0 itineraries');
+        }
 
-        const flights: NormalizedFlight[] = normalizeMystiflyResponse(fareItineraries);
+        // Inject our tunneled traceId (FareSourceCode|ConversationId)
+
+        flights.forEach(offer => {
+            if (offer.traceId) {
+                offer.traceId = `${offer.traceId}|${conversationId}`;
+            }
+        });
+
+        console.log(`[mystifly-search] Mystifly returned ${flights.length} raw itineraries`);
 
         // Sort by price ascending
         flights.sort((a, b) => a.price - b.price);
 
         const durationMs = Date.now() - startMs;
+
 
         console.log(`[mystifly-search] Normalized ${flights.length} flights in ${durationMs}ms`);
 
@@ -187,6 +206,8 @@ Deno.serve(async (req: Request) => {
             totalResults: flights.length,
             durationMs,
         });
+
+
     } catch (err: any) {
         const durationMs = Date.now() - startMs;
 
@@ -218,6 +239,7 @@ function jsonResponse(headers: Record<string, string>, body: Record<string, unkn
 
 function getRequestOptions(maxOffers?: number): string {
     if (!maxOffers || maxOffers <= 50) return 'Fifty';
-    if (maxOffers <= 100) return 'Hundred';
-    return 'TwoHundred';
+    if (maxOffers <= 100) return 'Hundered';
+    return 'TwoHundered';
 }
+

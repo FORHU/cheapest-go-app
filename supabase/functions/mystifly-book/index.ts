@@ -22,7 +22,8 @@ import type {
     BookingStatus,
     MystiflyBookResponse,
 } from '../_shared/types.ts';
-import { bookFlight, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { bookFlight, MystiflyError, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
+
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
 
@@ -237,9 +238,10 @@ function buildMystiflyBookRequest(
             PhoneNumber: contact.phone,
             Email: contact.email,
         },
-        Target: isDemo ? 'Test' : 'Production',
     };
 }
+
+
 
 // ─── Status Mapping ─────────────────────────────────────────────────
 

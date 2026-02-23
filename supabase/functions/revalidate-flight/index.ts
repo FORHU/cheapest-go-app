@@ -146,7 +146,16 @@ async function revalidateMystifly(
     oldPrice: number,
     startMs: number,
 ): Promise<RevalidateResult> {
-    const traceId = body.flightPayload.traceId;
+    let traceId = body.flightPayload.traceId;
+    let conversationId: string | undefined = undefined;
+
+    // ── Extract tunneled IDs (FareSourceCode|ConversationId) ──
+    if (traceId?.includes('|')) {
+        const parts = traceId.split('|');
+        traceId = parts[0];
+        conversationId = parts[1];
+        console.log('[revalidate-flight] Extracted tunneled ConversationId:', conversationId);
+    }
 
     if (!traceId) {
         return {
@@ -162,7 +171,8 @@ async function revalidateMystifly(
         };
     }
 
-    const raw = await revalidateFare(traceId);
+    const raw = await revalidateFare(traceId, undefined, conversationId);
+
 
     // ── Handle failure / unavailable ──
     if (!raw.Success) {
