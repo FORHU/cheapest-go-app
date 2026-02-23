@@ -138,13 +138,11 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-0 mt-4 w-[calc(100vw-32px)] sm:w-[650px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
-                        onMouseDown={(e) => e.stopPropagation()}
+                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-0 mt-4 w-[calc(100vw-32px)] sm:w-[500px] sm:min-w-[500px] sm:max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
                         onClick={(e) => e.stopPropagation()}
                     >
-
-                        <div className="p-6">
-                            <div className="flex gap-8">
+                        <div className="p-5">
+                            <div className="flex gap-2">
                                 <div className="flex-1">
                                     <div className="flex justify-between items-center mb-4">
                                         <button

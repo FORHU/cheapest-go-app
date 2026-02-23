@@ -94,7 +94,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
 
         // Padding
         for (let i = 0; i < firstDay; i++) {
-            days.push(<div key={`pad-${i}`} className={inline ? "w-full aspect-square" : "size-9"} />);
+            days.push(<div key={`pad-${i}`} className={inline ? "w-full aspect-square" : "size-8"} />);
         }
 
         // Days
@@ -111,13 +111,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                     key={day}
                     type="button"
                     disabled={isPast}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleDateClick(date);
-                    }}
-                    className={`${inline ? "w-full aspect-square" : "size-9"} flex items-center justify-center ${inline ? "text-[9px]" : "text-xs"} font-medium rounded-full transition-all relative
-                        ${isPast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20' : 'cursor-pointer'}
-                        ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg z-10' : ''}
+                    onClick={() => handleDateClick(date)}
+                    className={`${inline ? "w-full aspect-square" : "size-8"} flex items-center justify-center ${inline ? "text-[9px]" : "text-[11px]"} font-medium rounded-full transition-all
+                        ${isPast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer'}
+                        ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg' : ''}
                         ${isInRange ? 'bg-alabaster-accent/10 dark:bg-obsidian-accent/10' : ''}
                         ${!isPast && !isCheckIn && !isCheckOut && !isInRange ? 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300' : ''}
                         ${isToday && !isCheckIn && !isCheckOut ? 'ring-1 ring-alabaster-accent dark:ring-obsidian-accent' : ''}
@@ -149,8 +146,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                     transition={{ duration: 0.2 }}
                     className={inline
                         ? "w-full z-10"
-                        : "absolute top-full left-0 mt-4 w-[650px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"}
-                    onMouseDown={(e) => e.stopPropagation()}
+                        : "absolute top-full left-0 mt-4 w-[500px] min-w-[500px] max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"}
                     onClick={(e) => e.stopPropagation()}
                 >
 
@@ -176,7 +172,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                         </button>
                     </div>
 
-                    <div className={inline ? "p-2" : "p-6"}>
+                    <div className={inline ? "p-2" : "p-5"}>
                         {activeTab === 'calendar' ? (
                             <>
                                 {/* Selected Dates Display */}
@@ -199,7 +195,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                                 </div>
 
                                 {/* Calendars */}
-                                <div className={`flex gap-3 ${inline ? 'mb-3' : 'gap-6 mb-6'}`}>
+                                <div className={`flex gap-2 ${inline ? 'mb-3' : 'gap-2 mb-6'}`}>
                                     {/* Month 1 */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-center mb-3">

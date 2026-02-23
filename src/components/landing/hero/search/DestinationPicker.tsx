@@ -116,7 +116,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                     transition={{ duration: 0.2 }}
                     className={forceOpen
                         ? "w-full z-10"
-                        : "absolute top-full left-0 mt-4 w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                        : "absolute top-full left-0 mt-4 w-[500px] min-w-[500px] max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
                     }
                     onClick={(e) => e.stopPropagation()}
                 >
