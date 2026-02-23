@@ -22,7 +22,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 declare const Deno: any;
 
-import { bookFlight, revalidateFare, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { bookFlight, revalidateFare, MystiflyError, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
+
 import { amadeusRequest, AmadeusError } from '../_shared/amadeusClient.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
@@ -301,8 +302,8 @@ Deno.serve(async (req: Request) => {
 
         const status =
             err instanceof MystiflyError ? Math.max(err.status, 400) :
-            err instanceof AmadeusError ? Math.max(err.status, 400) :
-            500;
+                err instanceof AmadeusError ? Math.max(err.status, 400) :
+                    500;
 
         return jsonResponse(getCorsHeaders(req),
             { success: false, error: err.message || 'Booking failed' },
@@ -319,13 +320,24 @@ async function bookWithMystifly(
     contact: SessionContact,
 ): Promise<ProviderBookingResult> {
     let fareSourceCode = flight.traceId;
+    let conversationId: string | undefined = undefined;
+
+    // ── Extract tunneled IDs (FareSourceCode|ConversationId) ──
+    if (fareSourceCode?.includes('|')) {
+        const parts = fareSourceCode.split('|');
+        fareSourceCode = parts[0];
+        conversationId = parts[1];
+        console.log('[create-booking] Extracted tunneled ConversationId:', conversationId);
+    }
+
     if (!fareSourceCode) {
         throw new Error('Flight traceId (fareSourceCode) is missing for Mystifly booking');
     }
 
     // ── CRITICAL-1 FIX: Revalidate fare before booking ──
     console.log('[create-booking] Revalidating Mystifly fare before booking...');
-    const revalResult = await revalidateFare(fareSourceCode);
+    const revalResult = await revalidateFare(fareSourceCode, undefined, conversationId);
+
 
     if (!revalResult.Success) {
         const msg = revalResult.Message ?? '';
@@ -395,11 +407,15 @@ async function bookWithMystifly(
             AreaCode: contact.countryCode || '',
             PhoneNumber: contact.phone,
             Email: contact.email,
+            PostCode: contact.postalCode || '',
         },
-        Target: isDemo ? 'Test' : 'Production',
     };
 
-    const raw = await bookFlight(mystiflyBody);
+
+
+
+    const raw = await bookFlight(mystiflyBody, undefined, conversationId);
+
 
     if (!raw.Success) {
         throw new Error(raw.Message ?? 'Mystifly booking failed');
@@ -429,8 +445,24 @@ async function bookWithAmadeus(
     passengers: SessionPassenger[],
     contact: SessionContact,
 ): Promise<ProviderBookingResult> {
-    // CRITICAL-2 FIX: Always build offer from server-side normalized data, never trust rawOffer
-    const baseOffer = buildAmadeusFlightOffer(flight, passengers);
+    // ── CRITICAL-2 FIX: Reuse original offer if possible to preserve segment integrity ──
+    const baseOffer = (flight._rawOffer as any) || buildAmadeusFlightOffer(flight, passengers);
+
+    console.log('[create-booking] Using Amadeus offer for pricing:', baseOffer.id);
+
+
+    // ── SENIOR-LEVEL PRECISION: Synchronize travelers between pricing and booking ──
+    // This ensures inventory is locked for the exact passenger mix (ADT, CHD, INF)
+    const TRAVELER_TYPE_MAP: Record<string, string> = {
+        ADT: 'ADULT',
+        CHD: 'CHILD',
+        INF: 'HELD_INFANT',
+    };
+
+    const pricingTravelers = passengers.map((pax, idx) => ({
+        id: String(idx + 1),
+        travelerType: TRAVELER_TYPE_MAP[pax.type] ?? 'ADULT',
+    }));
 
     // Confirm pricing via Amadeus Flight Offers Price API
     // This is REQUIRED — prices change between search and booking
@@ -441,9 +473,11 @@ async function bookWithAmadeus(
             data: {
                 type: 'flight-offers-pricing',
                 flightOffers: [baseOffer],
+                travelers: pricingTravelers,
             },
         },
     });
+
 
     const pricedOffer = priceResponse.data?.flightOffers?.[0];
     if (!pricedOffer) {

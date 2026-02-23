@@ -67,9 +67,6 @@ export default async function PropertyPage({
                 {/* Breadcrumb + Back — desktop only (lg and up) */}
                 <FadeIn delay={0}>
                     <div className="hidden lg:block">
-                        <div className="mb-4">
-                            <BackButton label="See all properties" />
-                        </div>
                         <div className="text-xs text-slate-500 mb-4">
                             Philippines  &gt;  Baguio Properties  &gt;  {property.name}
                         </div>

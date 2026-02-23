@@ -14,7 +14,6 @@ export const LastMinuteWeekendDeals: React.FC = () => {
           title="Flash Getaways"
           subtitle="Limited-time offers on premium stays"
           badge={{ icon: <Sparkles size={14} />, text: 'Hot Deals', variant: 'amber' }}
-          actionLabel="See all deals"
           actionHref="/deals"
         />
 

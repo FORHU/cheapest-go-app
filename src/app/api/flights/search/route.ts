@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
                 children: children || undefined,
                 infants: infants || undefined,
                 cabinClass: cabin,
-                maxOffers: Math.min(Number(body.maxOffers) || 30, 50),
+                maxOffers: Number(body.maxOffers) || 200,
                 nonStopOnly: body.nonStopOnly === true,
                 currency: currency,
             }),

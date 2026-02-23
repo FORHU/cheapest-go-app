@@ -17,48 +17,59 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
     whileInView={{ opacity: 1, x: 0 }}
     viewport={{ once: true }}
     transition={{ delay: index * 0.1 }}
-    className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[280px] lg:w-[300px] landscape-compact-card snap-start flex flex-col"
+    whileHover={{ y: -8 }}
+    className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[280px] lg:w-[300px] landscape-compact-card snap-start flex flex-col cursor-pointer"
   >
     <TiltCard className="h-full">
-      <div className="relative h-full bg-white dark:bg-slate-900/80 rounded-xl overflow-hidden border border-alabaster-border dark:border-obsidian-border shadow-lg dark:shadow-black/30 group">
+      <div className="relative h-full bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg group">
         {/* Image — responsive height */}
         <div className="relative h-24 sm:h-32 md:h-40 landscape-compact-img landscape-img overflow-hidden flex-shrink-0">
-          <div
+          <motion.div
             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
             style={{ backgroundImage: `url(${deal.image})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-          {/* Badges — responsive size, avoid overlap on narrow cards */}
-          <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 min-[400px]:top-2.5 min-[400px]:left-2.5 md:top-3 md:left-3 flex flex-wrap gap-1 max-w-[calc(100%-3rem)] landscape-badge">
-            <Badge variant="warning" size="sm">{deal.discount}</Badge>
+          {/* Discount badge */}
+          <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 flex flex-wrap gap-1">
+            <div className="px-1.5 py-px sm:px-2.5 sm:py-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-[8px] sm:text-xs font-medium rounded-full shadow-lg">
+              {deal.discount}
+            </div>
             {deal.tag && (
-              <Badge variant="premium" size="sm">{deal.tag}</Badge>
+              <div className="px-1.5 py-px sm:px-2.5 sm:py-1 bg-white/20 backdrop-blur-md text-white text-[8px] sm:text-xs font-medium rounded-full border border-white/20">
+                {deal.tag}
+              </div>
             )}
+          </div>
+
+          {/* Price tag floating */}
+          <div className="absolute bottom-1.5 left-1.5 sm:bottom-3 sm:left-3 px-1.5 py-1 sm:px-3 sm:py-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded sm:rounded-lg shadow-lg">
+            <span className="text-[8px] sm:text-xs text-slate-400 line-through mr-1">
+              ${deal.originalPrice.toLocaleString()}
+            </span>
+            <span className="text-[9px] sm:text-sm md:text-base font-bold text-slate-900 dark:text-white">
+              ${deal.salePrice.toLocaleString()}
+            </span>
           </div>
         </div>
 
-        {/* Content — fixed min-height so all cards same size */}
-        <div className="p-2 sm:p-3 md:p-4 min-h-[105px] sm:min-h-[115px] md:min-h-[128px] landscape-compact-content flex flex-col flex-1 mt-auto">
-          <h3 className="text-sm sm:text-base md:text-lg font-display font-bold text-slate-900 dark:text-white mb-0 line-clamp-2 min-h-[2.5em] leading-tight">
+        {/* Content */}
+        <div className="p-2 sm:p-2.5 landscape-compact-content flex flex-col flex-1">
+          <h3 className="text-sm sm:text-base font-display font-bold text-slate-900 dark:text-white mb-0.5 line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors min-h-[2em]">
             {deal.title}
           </h3>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-1 sm:mb-1.5 line-clamp-1 flex-1 -mt-1">
-            {deal.subtitle}
-          </p>
 
-          <div className="flex items-end justify-between gap-2 mt-auto">
-            <PriceDisplay
-              price={deal.salePrice}
-              originalPrice={deal.originalPrice}
-              currency="$"
-            />
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="w-1 h-1 sm:w-1.2 sm:h-1.2 flex-shrink-0 bg-blue-500 rounded-full animate-pulse" />
+            <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+              {deal.subtitle}
+            </p>
+          </div>
 
-            <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-slate-100 dark:bg-slate-800 rounded-full flex-shrink-0">
-              <Clock className="w-3 h-3 sm:w-[12px] sm:h-[12px] text-slate-500" />
-              <span className="text-[10px] sm:text-xs font-mono text-slate-600 dark:text-slate-400">
-                {deal.endsIn}
-              </span>
+          <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-100 dark:border-white/5">
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-400">
+              <Clock className="w-3 h-3" />
+              <span>Ends in {deal.endsIn}</span>
             </div>
           </div>
         </div>
@@ -74,7 +85,6 @@ const DealsSection = () => {
         <SectionHeader
           title="Exclusive Deals & Offers"
           badge={{ icon: <Sparkles size={14} />, text: 'Limited Time', variant: 'amber' }}
-          actionLabel="View all deals"
           actionHref="/deals"
         />
 

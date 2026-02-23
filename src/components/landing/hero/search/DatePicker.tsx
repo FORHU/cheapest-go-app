@@ -32,10 +32,16 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
     // Close logic
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+            const isOutside = ref.current && !ref.current.contains(target);
+            // If the click is outside and the target is still in the document, close it.
+            // This avoids closing when the target (like an arrow button) is unmounted 
+            // during a state change (re-render) before this logic runs.
+            if (isOutside && document.contains(target)) {
                 onClose();
             }
         };
+
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
@@ -44,8 +50,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
 
     const getNextMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 1);
 
-    const handlePrevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-    const handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    const handlePrevMonth = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+    };
+    const handleNextMonth = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    };
 
     const handleDateClick = (date: Date) => {
         if (!selectingCheckOut || !checkIn || date < checkIn) {
@@ -97,18 +109,24 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
             days.push(
                 <button
                     key={day}
+                    type="button"
                     disabled={isPast}
-                    onClick={() => handleDateClick(date)}
-                    className={`${inline ? "w-full aspect-square" : "size-9"} flex items-center justify-center ${inline ? "text-[9px]" : "text-xs"} font-medium rounded-full transition-all
-                        ${isPast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer'}
-                        ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg' : ''}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleDateClick(date);
+                    }}
+                    className={`${inline ? "w-full aspect-square" : "size-9"} flex items-center justify-center ${inline ? "text-[9px]" : "text-xs"} font-medium rounded-full transition-all relative
+                        ${isPast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20' : 'cursor-pointer'}
+                        ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg z-10' : ''}
                         ${isInRange ? 'bg-alabaster-accent/10 dark:bg-obsidian-accent/10' : ''}
                         ${!isPast && !isCheckIn && !isCheckOut && !isInRange ? 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300' : ''}
                         ${isToday && !isCheckIn && !isCheckOut ? 'ring-1 ring-alabaster-accent dark:ring-obsidian-accent' : ''}
+                        ${isPast && !isCheckIn && !isCheckOut ? 'line-through decoration-slate-400/30' : ''}
                     `}
                 >
                     {day}
                 </button>
+
             );
         }
 
@@ -132,8 +150,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                     className={inline
                         ? "w-full z-10"
                         : "absolute top-full left-0 mt-4 w-[650px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"}
+                    onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                 >
+
                     {/* Tabs */}
                     <div className={`flex border-b border-slate-100 dark:border-white/5 ${inline ? 'mb-0' : ''}`}>
                         <button
@@ -183,9 +203,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                                     {/* Month 1 */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-center mb-3">
-                                            <button onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
+                                            <button
+                                                type="button"
+                                                onClick={handlePrevMonth}
+                                                className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded transition-colors"
+                                            >
                                                 <ChevronLeft size={14} className="text-slate-400" />
                                             </button>
+
                                             <span className="text-[11px] font-bold text-slate-900 dark:text-white text-center">
                                                 {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                                             </span>
@@ -211,9 +236,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                                             <span className="text-[11px] font-bold text-slate-900 dark:text-white text-center">
                                                 {MONTHS[getNextMonth(currentMonth).getMonth()]} {getNextMonth(currentMonth).getFullYear()}
                                             </span>
-                                            <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
+                                            <button
+                                                type="button"
+                                                onClick={handleNextMonth}
+                                                className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded transition-colors"
+                                            >
                                                 <ChevronRight size={14} className="text-slate-400" />
                                             </button>
+
                                         </div>
                                         <div className="grid grid-cols-7 text-center mb-1.5 gap-0">
                                             {DAYS.map((d, i) => (

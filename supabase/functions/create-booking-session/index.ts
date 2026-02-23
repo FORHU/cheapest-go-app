@@ -164,10 +164,15 @@ Deno.serve(async (req: Request) => {
         }
 
         // ── CRITICAL-2 FIX: Strip rawOffer from stored flight data ──
+        // NOTE: We MUST preserve it for Amadeus to ensure segment integrity,
+        // but it remains sanitized for Mystifly as a legacy safeguard.
         const sanitizedFlight = { ...body.flight } as Record<string, unknown>;
-        delete sanitizedFlight.rawOffer;
-        delete sanitizedFlight._raw;
-        delete sanitizedFlight._rawOffer;
+        if (body.provider === 'mystifly') {
+            delete sanitizedFlight.rawOffer;
+            delete sanitizedFlight._raw;
+            delete sanitizedFlight._rawOffer;
+        }
+
 
         // ── Generate session ID and expiry ──
         const sessionId = crypto.randomUUID();

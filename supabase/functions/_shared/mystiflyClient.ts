@@ -26,6 +26,34 @@ const USERNAME = () => env('MYSTIFLY_USERNAME');
 const PASSWORD = () => env('MYSTIFLY_PASSWORD');
 const ACCOUNT_NUMBER = () => env('MYSTIFLY_ACCOUNT_NUMBER');
 
+/** 
+ * Centralized Mystifly Target (Test/Production). 
+ * 
+ * Logic Priority: 
+ * 1. Code Prefix (T- for Test, P- for Production)
+ * 2. URL detection (demo -> Test, otherwise Production)
+ * 3. Environment Variable override (MYSTIFLY_ENV)
+ */
+export const MYSTIFLY_TARGET = (fareSourceCode?: string) => {
+    // 1. Detect from Code Prefix (very common in Mystifly)
+    if (fareSourceCode?.startsWith('T-')) return 'Test';
+    if (fareSourceCode?.startsWith('P-')) return 'Production';
+
+    // 2. Fallback to URL detection (most reliable indicator of the server we are hitting)
+    const url = BASE_URL();
+    if (url.includes('demo')) return 'Test';
+
+    // 3. Check Manual Override
+    const envVal = env('MYSTIFLY_ENV', '').toLowerCase();
+    if (envVal === 'production') return 'Production';
+    if (envVal === 'test') return 'Test';
+
+    // Default for live URLs
+    return 'Production';
+};
+
+
+
 const FETCH_TIMEOUT_MS = 20_000;
 const MAX_RETRIES = 2;
 const SESSION_TTL_MS = 55 * 60 * 1000; // refresh 5 min before 60 min expiry
@@ -142,19 +170,33 @@ export async function mystiflyRequest<T = any>(
     endpoint: string,
     body: Record<string, any>,
     sessionId?: string,
+    conversationId?: string,
 ): Promise<T> {
     let sid = sessionId ?? await createSession();
 
     const url = `${BASE_URL()}${endpoint}`;
+
+    // Improve Target detection: check if a FareSourceCode is in the body to detect environment
+    const target = MYSTIFLY_TARGET(body.FareSourceCode);
+
+    const finalBody = {
+        Target: target,
+        ConversationId: conversationId ?? crypto.randomUUID(),
+        ...body,
+    };
 
     const buildInit = (s: string): RequestInit => ({
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${s}`,
+            'ConversationId': finalBody.ConversationId,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(finalBody),
     });
+
+
+
 
     // ── First attempt ───────────────────────────────────────────────
 
@@ -200,11 +242,12 @@ export async function mystiflyRequest<T = any>(
     if (!res.ok) {
         const detail = json?.Message ?? json?.error ?? text.slice(0, 300);
         throw new MystiflyError(
-            `Mystifly POST ${endpoint} → ${res.status}: ${detail}`,
+            `Mystifly POST ${endpoint} [Target: ${target}, URL: ${BASE_URL()}] → ${res.status}: ${detail}`,
             res.status >= 500 ? 'SERVER' : 'CLIENT',
             res.status,
         );
     }
+
 
     return json as T;
 }
@@ -220,9 +263,11 @@ export { createSession };
 export async function searchFlights(
     body: Record<string, any>,
     sessionId?: string,
+    conversationId?: string,
 ) {
-    return mystiflyRequest('/api/v1/Search/Flight', body, sessionId);
+    return mystiflyRequest('/api/v1/Search/Flight', body, sessionId, conversationId);
 }
+
 
 /**
  * Revalidate a fare to check current availability and pricing.
@@ -230,12 +275,13 @@ export async function searchFlights(
 export async function revalidateFare(
     fareSourceCode: string,
     sessionId?: string,
+    conversationId?: string,
 ) {
     return mystiflyRequest('/api/v1/Revalidate/Flight', {
         FareSourceCode: fareSourceCode,
-        Target: BASE_URL().includes('demo') ? 'Test' : 'Production',
-    }, sessionId);
+    }, sessionId, conversationId);
 }
+
 
 /**
  * Book a flight using a revalidated FareSourceCode.
@@ -243,22 +289,27 @@ export async function revalidateFare(
 export async function bookFlight(
     body: Record<string, any>,
     sessionId?: string,
+    conversationId?: string,
 ) {
-    return mystiflyRequest('/api/v1/Book/Flight', body, sessionId);
+    return mystiflyRequest('/api/v1/Book/Flight', body, sessionId, conversationId);
 }
+
 
 /**
  * Issue a ticket for a confirmed booking (UniqueID / PNR).
  */
 export async function ticketFlight(
     uniqueId: string,
+    fareSourceCode?: string,
     sessionId?: string,
+    conversationId?: string,
 ) {
-    return mystiflyRequest('/api/v1/Ticket/Flight', {
+    return mystiflyRequest('/api/v1/OrderTicket', {
         UniqueID: uniqueId,
-        Target: BASE_URL().includes('demo') ? 'Test' : 'Production',
-    }, sessionId);
+        FareSourceCode: fareSourceCode,
+    }, sessionId, conversationId);
 }
+
 
 // ─── Fetch Helpers ──────────────────────────────────────────────────
 
