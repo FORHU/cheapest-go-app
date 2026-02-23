@@ -390,7 +390,7 @@ export function CheckoutContent() {
                         </div>
 
                         {/* Sidebar Summary */}
-                        <div className="flex flex-col gap-4 lg:gap-6">
+                        <div className="flex flex-col gap-4 lg:gap-6 lg:sticky lg:top-24 self-start">
                             <BookingSummary
                                 propertyName={displayProperty.name}
                                 propertyImage={property?.image}

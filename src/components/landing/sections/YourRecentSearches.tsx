@@ -3,19 +3,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { recentSearches } from '@/data';
+import { SectionHeader } from '@/components/ui';
 
 export const YourRecentSearches: React.FC = () => {
   return (
     <section className="w-full pb-4">
-      <div className="w-full max-w-4xl mx-auto px-4 mt-6 sm:mt-8 landscape-compact:mt-2">
-        <motion.h3
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-base sm:text-lg font-medium text-slate-700 dark:text-slate-300 mb-3"
-        >
-          Quick Access
-        </motion.h3>
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 mt-6 sm:mt-8 landscape-compact:mt-2">
+        <SectionHeader
+          title="Quick Access"
+          size="sm"
+        />
 
         <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
           {recentSearches.map((search, i) => (
