@@ -17,12 +17,22 @@ declare const Deno: any;
 
 import { revalidateFare, MystiflyError } from '../_shared/mystiflyClient.ts';
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('Origin') ?? '';
+    const allowedOrigin = ALLOWED_ORIGINS.length > 0
+        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+        : '*';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 Deno.serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -34,7 +44,7 @@ Deno.serve(async (req: Request) => {
         const { fareSourceCode, oldPrice } = body;
 
         if (!fareSourceCode) {
-            return jsonResponse(
+            return jsonResponse(corsHeaders,
                 { success: false, error: 'fareSourceCode is required' },
                 400,
             );
@@ -52,7 +62,7 @@ Deno.serve(async (req: Request) => {
 
             console.log(`[mystifly-revalidate] Not available: ${msg}`);
 
-            return jsonResponse({
+            return jsonResponse(corsHeaders, {
                 success: true,
                 available: false,
                 price: 0,
@@ -99,7 +109,7 @@ Deno.serve(async (req: Request) => {
 
         console.log(`[mystifly-revalidate] Available, price: ${currency} ${price}, changed: ${actualPriceChanged}, ${durationMs}ms`);
 
-        return jsonResponse({
+        return jsonResponse(corsHeaders, {
             success: true,
             available: true,
             price,
@@ -117,16 +127,16 @@ Deno.serve(async (req: Request) => {
 
         console.error('[mystifly-revalidate] Error:', err.message);
 
-        return jsonResponse(
+        return jsonResponse(corsHeaders,
             { success: false, error: err.message || 'Revalidation failed', durationMs },
             status,
         );
     }
 });
 
-function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+function jsonResponse(headers: Record<string, string>, body: Record<string, unknown>, status = 200): Response {
     return new Response(
         JSON.stringify(body),
-        { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status, headers: { ...headers, 'Content-Type': 'application/json' } },
     );
 }

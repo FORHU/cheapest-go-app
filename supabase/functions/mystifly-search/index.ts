@@ -17,13 +17,22 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 declare const Deno: any;
 
 import type { NormalizedFlight, CabinClass, TripType } from '../_shared/types.ts';
-import { searchFlights, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP } from '../_shared/mystiflyClient.ts';
+import { searchFlights, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyResponse } from '../_shared/normalizeFlight.ts';
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('Origin') ?? '';
+    const allowedOrigin = ALLOWED_ORIGINS.length > 0
+        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+        : '*';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 // ─── Request Body ───────────────────────────────────────────────────
 
@@ -44,6 +53,8 @@ interface MystiflySearchBody {
 // ─── Handler ────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -55,14 +66,14 @@ Deno.serve(async (req: Request) => {
         const body: MystiflySearchBody = JSON.parse(await req.text());
 
         if (!body.origin || !body.destination || !body.departureDate || !body.adults) {
-            return jsonResponse(
+            return jsonResponse(corsHeaders,
                 { success: false, error: 'Required: origin, destination, departureDate, adults' },
                 400,
             );
         }
 
         if (!/^[A-Z]{3}$/.test(body.origin) || !/^[A-Z]{3}$/.test(body.destination)) {
-            return jsonResponse(
+            return jsonResponse(corsHeaders,
                 { success: false, error: 'origin and destination must be 3-letter IATA codes' },
                 400,
             );
@@ -88,7 +99,7 @@ Deno.serve(async (req: Request) => {
             DestinationLocationCode: string;
         }[] = [
                 {
-                    DepartureDateTime: `${body.departureDate}T00:00:00`,
+                    DepartureDateTime: `${body.departureDate}T00:00:00.000Z`,
                     OriginLocationCode: body.origin,
                     DestinationLocationCode: body.destination,
                 },
@@ -96,7 +107,7 @@ Deno.serve(async (req: Request) => {
 
         if (body.returnDate) {
             originDestinations.push({
-                DepartureDateTime: `${body.returnDate}T00:00:00`,
+                DepartureDateTime: `${body.returnDate}T00:00:00.000Z`,
                 OriginLocationCode: body.destination,
                 DestinationLocationCode: body.origin,
             });
@@ -116,39 +127,46 @@ Deno.serve(async (req: Request) => {
         const cabinCode = CABIN_MAP[body.cabinClass ?? 'economy'] ?? 'Y';
         const airTripType = TRIP_TYPE_MAP[tripType] ?? 'OneWay';
 
+        const conversationId = crypto.randomUUID();
+
         const mystiflyBody = {
             OriginDestinationInformations: originDestinations,
             PassengerTypeQuantities: passengerTypes,
             IsRefundable: false,
-            NearByAirports: false,
-            PricingSourceType: 0,
+            PricingSourceType: 'All',
+
             RequestOptions: getRequestOptions(body.maxOffers),
-            Sources: null,
+            ConversationId: conversationId,
             TravelPreferences: {
+
+
                 AirTripType: airTripType,
                 CabinPreference: cabinCode,
                 MaxStopsQuantity: body.nonStopOnly ? 'Direct' : 'All',
+                Preferences: {
+                    CabinClassPreference: {
+                        CabinType: cabinCode,
+                        PreferenceLevel: 'Preferred',
+                    },
+                },
             },
+
         };
 
+
+
         // ── Call Mystifly Search (auto-creates session) ──
-        const raw = await searchFlights(mystiflyBody);
+        const raw = await searchFlights(mystiflyBody, undefined, conversationId);
+
+        const itinData = raw.Data?.PricedItineraries ?? raw.Data?.FareItineraries ?? [];
+        console.log('[mystifly-search] Itineraries count:', itinData.length);
+        if (!raw.Success) console.log('[mystifly-search] Raw Message:', raw.Message);
+
+
 
         // ── Handle "flights not found" gracefully ──
         if (!raw.Success) {
             const msg: string = raw.Message ?? '';
-            const isEmptyResult = /not found|no flights|no result/i.test(msg);
-
-            if (isEmptyResult) {
-                console.log('[mystifly-search] No flights found for this route');
-                return jsonResponse({
-                    provider: 'mystifly',
-                    flights: [],
-                    totalResults: 0,
-                    durationMs: Date.now() - startMs,
-                });
-            }
-
             throw new MystiflyError(
                 `Mystifly search failed: ${msg}`,
                 'CLIENT',
@@ -157,26 +175,39 @@ Deno.serve(async (req: Request) => {
         }
 
         // ── Normalize ──
-        const fareItineraries: any[] = raw.Data?.FareItineraries ?? raw.Data?.PricedItineraries ?? [];
+        const flights = normalizeMystiflyResponse(itinData);
 
-        console.log(`[mystifly-search] Mystifly returned ${fareItineraries.length} raw itineraries`);
+        if (flights.length === 0) {
+            console.log('[mystifly-search] Mystifly returned 0 itineraries');
+        }
 
-        const flights: NormalizedFlight[] = normalizeMystiflyResponse(fareItineraries);
+        // Inject our tunneled traceId (FareSourceCode|ConversationId)
+
+        flights.forEach(offer => {
+            if (offer.traceId) {
+                offer.traceId = `${offer.traceId}|${conversationId}`;
+            }
+        });
+
+        console.log(`[mystifly-search] Mystifly returned ${flights.length} raw itineraries`);
 
         // Sort by price ascending
         flights.sort((a, b) => a.price - b.price);
 
         const durationMs = Date.now() - startMs;
 
+
         console.log(`[mystifly-search] Normalized ${flights.length} flights in ${durationMs}ms`);
 
         // ── Response — clean, frontend-friendly JSON ──
-        return jsonResponse({
+        return jsonResponse(corsHeaders, {
             provider: 'mystifly',
             flights,
             totalResults: flights.length,
             durationMs,
         });
+
+
     } catch (err: any) {
         const durationMs = Date.now() - startMs;
 
@@ -184,7 +215,7 @@ Deno.serve(async (req: Request) => {
 
         const status = err instanceof MystiflyError ? Math.max(err.status, 400) : 500;
 
-        return jsonResponse(
+        return jsonResponse(corsHeaders,
             {
                 provider: 'mystifly',
                 flights: [],
@@ -199,15 +230,16 @@ Deno.serve(async (req: Request) => {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+function jsonResponse(headers: Record<string, string>, body: Record<string, unknown>, status = 200): Response {
     return new Response(
         JSON.stringify(body),
-        { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status, headers: { ...headers, 'Content-Type': 'application/json' } },
     );
 }
 
 function getRequestOptions(maxOffers?: number): string {
     if (!maxOffers || maxOffers <= 50) return 'Fifty';
-    if (maxOffers <= 100) return 'Hundred';
-    return 'TwoHundred';
+    if (maxOffers <= 100) return 'Hundered';
+    return 'TwoHundered';
 }
+

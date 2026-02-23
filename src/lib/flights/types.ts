@@ -109,7 +109,7 @@ export interface FlightOffer {
     /** Last date to issue ticket (ISO date string) */
     lastTicketDate?: string;
 
-    /** Raw provider data for debugging (stripped in production) */
+    /** @deprecated Raw provider data — never sent to client. Server rebuilds offers during booking. */
     _raw?: unknown;
 }
 
