@@ -222,10 +222,10 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                     transition={{ duration: 0.2 }}
                     className={inline
                         ? "w-full z-10"
-                        : "absolute top-full right-0 mt-4 w-[340px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"}
+                        : "absolute top-full right-0 mt-4 w-[500px] min-w-[500px] max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <div className={inline ? "p-2" : "p-5"}>
+                    <div className={inline ? "p-2" : "p-6"}>
                         {!forceOpen && (
                             <h4 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2">
                                 Guests & Rooms
@@ -301,7 +301,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
 
                     {/* Footer */}
                     {!inline && (
-                        <div className="flex flex-col gap-3 p-4 border-t border-slate-100 dark:border-white/5">
+                        <div className="flex flex-col gap-3 p-6 border-t border-slate-100 dark:border-white/5">
                             <button
                                 onClick={onClose}
                                 className="w-full py-3 bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian rounded-xl font-bold text-sm hover:opacity-90 transition-all"

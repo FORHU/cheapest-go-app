@@ -149,7 +149,8 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
 
     return (
         <div
-            className="transition-all duration-300 ease-in-out overflow-hidden"
+            className="transition-all duration-300 ease-in-out"
+
             style={{
                 width: isWide ? 'min(1150px, 100%)' : '100%',
                 maxWidth: '100%',
