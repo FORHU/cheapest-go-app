@@ -116,10 +116,10 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-auto sm:right-0 mt-4 w-[calc(100vw-32px)] sm:w-[340px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-auto sm:right-0 mt-4 w-[calc(100vw-32px)] sm:w-[500px] sm:min-w-[500px] sm:max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="p-5">
+                        <div className="p-6">
                             {/* Cabin Class Selection */}
                             <div className="mb-4">
                                 <h4 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
@@ -175,7 +175,7 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
                         </div>
 
                         {/* Footer */}
-                        <div className="flex flex-col gap-3 p-4 border-t border-slate-100 dark:border-white/5">
+                        <div className="flex flex-col gap-3 p-6 border-t border-slate-100 dark:border-white/5">
                             <button
                                 onClick={() => onToggle(false)}
                                 className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"

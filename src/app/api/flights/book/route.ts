@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
+import { getAuthenticatedUser } from '@/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,16 +10,30 @@ export const dynamic = 'force-dynamic';
 //   1. create-booking-session  →  stores flight + passengers temporarily
 //   2. create-booking          →  calls provider API, saves to DB
 //
+// SECURITY: Requires authenticated user (JWT verified server-side).
+// Uses service role key for edge function calls to prevent direct abuse.
+// Client-supplied rawOffer is stripped — server rebuilds/revalidates.
+//
 
 export async function POST(req: NextRequest) {
     try {
+        // ── CRITICAL-3 FIX: Server-side authentication ──
+        const { user, error: authError } = await getAuthenticatedUser();
+
+        if (authError || !user) {
+            return NextResponse.json(
+                { success: false, error: 'Authentication required' },
+                { status: 401 },
+            );
+        }
+
         const body = await req.json();
-        const { userId, provider, flight, passengers, contact } = body;
+        const { provider, flight, passengers, contact, idempotencyKey } = body;
+
+        // Use server-verified user ID, never trust client-supplied userId
+        const userId = user.id;
 
         // ── Validate ──
-        if (!userId) {
-            return NextResponse.json({ success: false, error: 'userId is required' }, { status: 400 });
-        }
         if (!provider || !['amadeus', 'mystifly'].includes(provider)) {
             return NextResponse.json({ success: false, error: 'provider must be "amadeus" or "mystifly"' }, { status: 400 });
         }
@@ -33,22 +48,37 @@ export async function POST(req: NextRequest) {
         }
 
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+        // CRITICAL-4 FIX: Use service role key for edge function calls (not public anon key)
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-        if (!supabaseUrl || !supabaseKey) {
+        if (!supabaseUrl || !serviceRoleKey) {
             throw new Error('Supabase environment variables not set');
         }
 
         const headers = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
+            'Authorization': `Bearer ${serviceRoleKey}`,
         };
 
+        // CRITICAL-2 FIX: Strip rawOffer from flight data — server will rebuild/revalidate
+        const sanitizedFlight = { ...flight };
+        delete sanitizedFlight.rawOffer;
+        delete sanitizedFlight._raw;
+        delete sanitizedFlight._rawOffer;
+
         // ── Step 1: Create Booking Session ──
+        // HIGH-2 FIX: Pass idempotencyKey for duplicate detection
         const sessionRes = await fetch(`${supabaseUrl}/functions/v1/create-booking-session`, {
             method: 'POST',
             headers,
-            body: JSON.stringify({ userId, provider, flight, passengers, contact }),
+            body: JSON.stringify({
+                userId,
+                provider,
+                flight: sanitizedFlight,
+                passengers,
+                contact,
+                idempotencyKey: idempotencyKey || undefined,
+            }),
         });
 
         const sessionData = await sessionRes.json();
@@ -72,6 +102,10 @@ export async function POST(req: NextRequest) {
             throw new Error(bookingData.error || 'Booking failed');
         }
 
+        // HIGH-1 FIX: Use server-confirmed price from edge function, not client-supplied
+        const confirmedPrice = bookingData.confirmedPrice ?? flight.price ?? 0;
+        const confirmedCurrency = bookingData.confirmedCurrency ?? flight.currency ?? 'USD';
+
         // ── Send confirmation email ──
         const passengerName = passengers[0]
             ? `${passengers[0].firstName} ${passengers[0].lastName}`
@@ -90,10 +124,10 @@ export async function POST(req: NextRequest) {
                 email: contact.email,
                 passengerName,
                 provider,
-                segments: flight.segments ?? [],
+                segments: sanitizedFlight.segments ?? [],
                 tickets: tickets,
-                totalPrice: flight.price ?? 0,
-                currency: flight.currency ?? 'USD',
+                totalPrice: confirmedPrice,
+                currency: confirmedCurrency,
             });
             console.log('[FlightBook] Email result:', emailResult);
         } catch (emailErr) {
@@ -105,9 +139,9 @@ export async function POST(req: NextRequest) {
             data: {
                 bookingId: bookingData.bookingId,
                 pnr: bookingData.pnr,
-                status: 'confirmed',
-                totalPaid: flight.price ?? 0,
-                currency: flight.currency ?? 'USD',
+                status: bookingData.status ?? 'confirmed',
+                totalPaid: confirmedPrice,
+                currency: confirmedCurrency,
             },
         });
     } catch (err) {

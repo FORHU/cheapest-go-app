@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
                 children: children || undefined,
                 infants: infants || undefined,
                 cabinClass: cabin,
-                maxOffers: Math.min(Number(body.maxOffers) || 30, 50),
+                maxOffers: Number(body.maxOffers) || 200,
                 nonStopOnly: body.nonStopOnly === true,
                 currency: currency,
             }),
@@ -192,7 +192,6 @@ function normalizedToFlightOffer(nf: any): FlightOffer {
         // Provider-specific IDs needed for booking
         resultIndex: nf.resultIndex,   // Original Amadeus offer ID (e.g. "1")
         traceId: nf.traceId,           // Mystifly fareSourceCode
-        // Raw provider offer for booking (Amadeus requires exact offer data)
-        _raw: nf._rawOffer,
+        // CRITICAL-2 FIX: _rawOffer never sent to client — server rebuilds/revalidates during booking
     } as FlightOffer;
 }

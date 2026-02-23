@@ -21,10 +21,18 @@ declare const Deno: any;
 
 import type { NormalizedFlight, FlightProvider } from '../_shared/types.ts';
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('Origin') ?? '';
+    const allowedOrigin = ALLOWED_ORIGINS.length > 0
+        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+        : '*';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 // ─── Provider Configuration ─────────────────────────────────────────
 
@@ -78,6 +86,8 @@ interface ProviderResult {
 // ─── Handler ────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req);
+
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -89,7 +99,7 @@ Deno.serve(async (req: Request) => {
         const body: UnifiedSearchBody = JSON.parse(await req.text());
 
         if (!body.origin || !body.destination || !body.departureDate || !body.adults) {
-            return jsonResponse(
+            return jsonResponse(corsHeaders,
                 { success: false, error: 'Required: origin, destination, departureDate, adults', flights: [] },
                 400,
             );
@@ -125,8 +135,7 @@ Deno.serve(async (req: Request) => {
         deduped.sort((a, b) => a.price - b.price);
 
         // ── Apply limit ──
-        const maxOffers = body.maxOffers ?? 50;
-        const flights = deduped.slice(0, maxOffers);
+        const flights = deduped;
 
         const searchDurationMs = Date.now() - searchStart;
 
@@ -139,7 +148,7 @@ Deno.serve(async (req: Request) => {
         );
 
         // ── Response ──
-        return jsonResponse({
+        return jsonResponse(corsHeaders, {
             success: true,
             flights,
             providers: providerResults.map((r) => ({
@@ -153,7 +162,7 @@ Deno.serve(async (req: Request) => {
         });
     } catch (err: any) {
         console.error('[unified-flight-search] Error:', err.message);
-        return jsonResponse(
+        return jsonResponse(getCorsHeaders(req),
             {
                 success: false,
                 error: err.message || 'Unified flight search failed',
@@ -169,11 +178,6 @@ Deno.serve(async (req: Request) => {
 
 // ─── Provider Call ──────────────────────────────────────────────────
 
-/**
- * Call a single provider's edge function with timeout.
- * Never throws — returns an error result on failure so other providers
- * can still contribute results.
- */
 async function callProvider(
     provider: ProviderConfig,
     body: UnifiedSearchBody,
@@ -244,15 +248,23 @@ async function callProvider(
 // ─── Deduplication ──────────────────────────────────────────────────
 
 /**
- * Remove duplicate flights that appear from multiple GDS providers.
- * Same flight = same flightNumber + same departureTime.
- * When duplicated, keep the cheaper one.
+ * MED-2 FIX: Improved deduplication for multi-segment itineraries.
+ * Uses ALL segment flight numbers + departure times as the composite key
+ * (not just the first segment). This prevents multi-segment itineraries
+ * with different connections from being incorrectly de-duplicated.
  */
 function deduplicateFlights(flights: NormalizedFlight[]): NormalizedFlight[] {
     const seen = new Map<string, NormalizedFlight>();
 
     for (const flight of flights) {
-        const key = `${flight.flightNumber}_${flight.departureTime}`;
+        // Build key from ALL segments, not just the first
+        const segmentKeys = (flight.segments ?? []).map(
+            (seg) => `${seg.flightNumber}_${seg.departureTime}`,
+        );
+        const key = segmentKeys.length > 0
+            ? segmentKeys.join('|')
+            : `${flight.flightNumber}_${flight.departureTime}`;
+
         const existing = seen.get(key);
 
         if (!existing || flight.price < existing.price) {
@@ -265,7 +277,7 @@ function deduplicateFlights(flights: NormalizedFlight[]): NormalizedFlight[] {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+function jsonResponse(corsHeaders: Record<string, string>, body: Record<string, unknown>, status = 200): Response {
     return new Response(
         JSON.stringify(body),
         { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

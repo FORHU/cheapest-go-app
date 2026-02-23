@@ -31,10 +31,16 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+            const isOutside = ref.current && !ref.current.contains(target);
+            // If the click is outside and the target is still in the document, close it.
+            // This avoids closing when the target (like an arrow button) is unmounted 
+            // during a state change (re-render) before this logic runs.
+            if (isOutside && document.contains(target)) {
                 onToggle(false);
             }
         };
+
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
@@ -42,8 +48,15 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     }, [isOpen, onToggle]);
 
     const getNextMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 1);
-    const handlePrevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-    const handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    const handlePrevMonth = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+    };
+    const handleNextMonth = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    };
+
 
     const handleDateClick = (selectedDate: Date) => {
         onChange(selectedDate);
@@ -79,33 +92,41 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
             days.push(
                 <button
                     key={day}
+                    type="button"
                     disabled={isDisabled}
-                    onClick={() => handleDateClick(dateObj)}
-                    className={`size-8 flex items-center justify-center text-xs font-medium rounded-full transition-all
-                        ${isDisabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5'}
-                        ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-700 dark:text-slate-300'}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleDateClick(dateObj);
+                    }}
+                    className={`size-8 flex items-center justify-center text-xs font-medium rounded-full transition-all relative
+                        ${isDisabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20' : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5'}
+                        ${isSelected ? 'bg-blue-600 text-white shadow-lg z-10' : 'text-slate-700 dark:text-slate-300'}
                         ${isToday && !isSelected ? 'ring-1 ring-blue-600/50' : ''}
+                        ${isPast && !isSelected ? 'line-through decoration-slate-400/30' : ''}
                     `}
                 >
                     {day}
                 </button>
+
             );
         }
         return days;
     };
 
     return (
-        <div
-            className="flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-            onClick={() => onToggle(!isOpen)}
-        >
-            <CalendarIcon className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />
-            <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                <label className="text-[9px] uppercase font-mono text-slate-500 font-medium tracking-wider">
-                    {label}
-                </label>
-                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                    {formatDate(date)}
+        <div className="flex-1 min-w-0 relative h-16 group">
+            <div
+                className="w-full h-full flex items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                onClick={() => onToggle(!isOpen)}
+            >
+                <CalendarIcon className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />
+                <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
+                    <label className="text-[9px] uppercase font-mono text-slate-500 font-medium tracking-wider">
+                        {label}
+                    </label>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {formatDate(date)}
+                    </div>
                 </div>
             </div>
 
@@ -117,22 +138,31 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-0 mt-4 w-[calc(100vw-32px)] sm:w-[600px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-0 mt-4 w-[calc(100vw-32px)] sm:w-[500px] sm:min-w-[500px] sm:max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="p-6">
-                            <div className="flex gap-8">
+                        <div className="p-5">
+                            <div className="flex gap-2">
                                 <div className="flex-1">
                                     <div className="flex justify-between items-center mb-4">
-                                        <button onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
+                                        <button
+                                            type="button"
+                                            onClick={handlePrevMonth}
+                                            className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded transition-colors"
+                                        >
                                             <ChevronLeft size={16} className="text-slate-400" />
                                         </button>
                                         <span className="text-xs font-bold text-slate-900 dark:text-white">
                                             {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                                         </span>
-                                        <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded sm:hidden">
+                                        <button
+                                            type="button"
+                                            onClick={handleNextMonth}
+                                            className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded sm:hidden transition-colors"
+                                        >
                                             <ChevronRight size={16} className="text-slate-400" />
                                         </button>
+
                                         <div className="w-6 hidden sm:block" />
                                     </div>
                                     <div className="grid grid-cols-7 gap-1 text-center mb-2">
@@ -151,9 +181,14 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                                         <span className="text-xs font-bold text-slate-900 dark:text-white">
                                             {MONTHS[getNextMonth(currentMonth).getMonth()]} {getNextMonth(currentMonth).getFullYear()}
                                         </span>
-                                        <button onClick={handleNextMonth} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded">
+                                        <button
+                                            type="button"
+                                            onClick={handleNextMonth}
+                                            className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded transition-colors"
+                                        >
                                             <ChevronRight size={16} className="text-slate-400" />
                                         </button>
+
                                     </div>
                                     <div className="grid grid-cols-7 gap-1 text-center mb-2">
                                         {DAYS.map((d, i) => (
@@ -165,6 +200,20 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex justify-end p-4 border-t border-slate-100 dark:border-white/5">
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggle(false);
+                                }}
+                                className="px-8 py-2 bg-blue-600 text-white rounded-full font-bold text-sm hover:bg-blue-700 transition-all shadow-lg"
+                            >
+                                Done
+                            </button>
                         </div>
                     </motion.div>
                 )}

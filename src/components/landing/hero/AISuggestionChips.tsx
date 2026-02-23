@@ -11,11 +11,11 @@ interface Suggestion {
 }
 
 const suggestions: Suggestion[] = [
-    { icon: <Palmtree size={14} />, label: 'Beach Escape', prompt: 'Beachfront resort in Boracay for 2, this weekend' },
-    { icon: <Gem size={14} />, label: 'Luxury Stay', prompt: '5-star hotel in Manila under ₱15,000/night' },
-    { icon: <Heart size={14} />, label: 'Romantic Trip', prompt: "Couple's retreat in Tagaytay with spa" },
-    { icon: <Plane size={14} />, label: 'Quick Getaway', prompt: 'Last-minute deal in Cebu, 3 nights' },
-    { icon: <Mountain size={14} />, label: 'Adventure', prompt: 'Mountain lodge in Baguio for a group of 4' },
+    { icon: <Palmtree size={12} />, label: 'Beach Escape', prompt: 'Beachfront resort in Boracay for 2, this weekend' },
+    { icon: <Gem size={12} />, label: 'Luxury Stay', prompt: '5-star hotel in Manila under ₱15,000/night' },
+    { icon: <Heart size={12} />, label: 'Romantic Trip', prompt: "Couple's retreat in Tagaytay with spa" },
+    { icon: <Plane size={12} />, label: 'Quick Getaway', prompt: 'Last-minute deal in Cebu, 3 nights' },
+    { icon: <Mountain size={12} />, label: 'Adventure', prompt: 'Mountain lodge in Baguio for a group of 4' },
 ];
 
 const containerVariants = {
@@ -48,7 +48,7 @@ const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({ onSuggestionClick
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="mt-3 md:mt-5 flex md:flex-wrap md:justify-center gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide"
+            className="mt-3 md:mt-5 flex flex-wrap justify-center gap-2 pb-2 md:pb-0 px-4 md:px-0"
         >
             {suggestions.map((suggestion) => (
                 <motion.button
@@ -57,7 +57,7 @@ const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({ onSuggestionClick
                     onClick={() => onSuggestionClick(suggestion.prompt)}
                     whileHover={{ scale: 1.04, y: -2 }}
                     whileTap={{ scale: 0.97 }}
-                    className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full shrink-0 text-xs font-medium transition-colors duration-200 cursor-pointer
+                    className="flex items-center gap-1 md:gap-2 px-2 py-1 md:px-4 md:py-2 rounded-full shrink-0 text-[10px] sm:text-xs font-medium transition-colors duration-200 cursor-pointer
                         bg-white/50 dark:bg-white/5 backdrop-blur-sm
                         border border-slate-200 dark:border-white/10
                         text-slate-600 dark:text-slate-300
