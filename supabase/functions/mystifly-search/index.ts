@@ -239,7 +239,7 @@ function jsonResponse(headers: Record<string, string>, body: Record<string, unkn
 
 function getRequestOptions(maxOffers?: number): string {
     if (!maxOffers || maxOffers <= 50) return 'Fifty';
-    if (maxOffers <= 100) return 'Hundered';
-    return 'TwoHundered';
+    if (maxOffers <= 100) return 'Hundred';
+    return 'TwoHundred';
 }
 
