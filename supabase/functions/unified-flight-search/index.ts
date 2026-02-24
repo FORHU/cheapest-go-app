@@ -208,11 +208,22 @@ async function callProvider(
         if (!res.ok) {
             const text = await res.text().catch(() => '');
             console.error(`[unified-flight-search] ${provider.name} HTTP ${res.status}: ${text.slice(0, 200)}`);
+
+            let errorMsg = `${provider.name} returned ${res.status}`;
+            try {
+                const errJson = JSON.parse(text);
+                if (errJson.error) {
+                    errorMsg = errJson.error;
+                }
+            } catch {
+                // Not JSON or no error field, use default
+            }
+
             return {
                 name: provider.name,
                 flights: [],
                 durationMs,
-                error: `${provider.name} returned ${res.status}`,
+                error: errorMsg,
             };
         }
 

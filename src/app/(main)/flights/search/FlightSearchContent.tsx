@@ -357,7 +357,11 @@ export default function FlightSearchContent() {
                         {results.providers.map(p => (
                             <span key={p.name} className="px-1 lg:px-2 py-px lg:py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                                 {p.name} ({p.offerCount})
-                                {p.error && <span className="text-red-400 ml-1">⚠</span>}
+                                {p.error && (
+                                    <span className="text-red-400 ml-1 cursor-help" title={p.error}>
+                                        ⚠
+                                    </span>
+                                )}
                             </span>
                         ))}
                     </div>

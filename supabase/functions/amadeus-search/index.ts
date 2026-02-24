@@ -162,7 +162,12 @@ Deno.serve(async (req: Request) => {
     } catch (err: any) {
         const durationMs = Date.now() - startMs;
 
-        console.error('[amadeus-search] Error:', err.message);
+        console.error('[amadeus-search] Search failed:', {
+            message: err.message,
+            type: err.type,
+            status: err.status,
+            durationMs
+        });
 
         const status = err instanceof AmadeusError ? Math.max(err.status, 400) : 500;
 
