@@ -170,16 +170,24 @@ export function normalizeAmadeusResponse(
 let _mystiflyCounter = 0;
 
 /**
- * Normalize a single Mystifly fare itinerary (from Search/Flight v1).
- *
- * Mystifly nests data under FareItinerary.AirItineraryFareInfo and
- * OriginDestinationOptions with deeply nested FlightSegment objects.
+ * Normalize a single Mystifly fare itinerary.
+ * Supports both v1 (nested) and v2 (summarized/dictionary) formats.
  */
 export function normalizeMystiflyOffer(
     // deno-lint-ignore no-explicit-any
     fareItinerary: any,
+    // deno-lint-ignore no-explicit-any
+    dataContext?: any, // Full 'Data' object for v2 summarized lookups
 ): NormalizedFlight | null {
     try {
+        // ── Detect V2 Summarized vs V1 Nested ──
+        const isV2 = fareItinerary.FareRef !== undefined && dataContext?.FlightFaresList;
+
+        if (isV2) {
+            return normalizeMystiflyV2(fareItinerary, dataContext);
+        }
+
+        // V1/Legacy Path
         // V2 may nest under .FareItinerary, V1 may be flat
         const itinerary = fareItinerary?.FareItinerary ?? fareItinerary;
         const fareInfo = itinerary?.AirItineraryFareInfo ?? itinerary?.AirItineraryPricingInfo;
@@ -348,13 +356,134 @@ export function normalizeMystiflyOffer(
 export function normalizeMystiflyResponse(
     // deno-lint-ignore no-explicit-any
     fareItineraries: any[],
+    // deno-lint-ignore no-explicit-any
+    dataContext?: any,
 ): NormalizedFlight[] {
     const results: NormalizedFlight[] = [];
     for (const fi of fareItineraries) {
-        const offer = normalizeMystiflyOffer(fi);
+        const offer = normalizeMystiflyOffer(fi, dataContext);
         if (offer) results.push(offer);
     }
     return results;
+}
+
+/**
+ * Internal helper to normalize v2 summarized Mystifly itineraries.
+ */
+function normalizeMystiflyV2(
+    // deno-lint-ignore no-explicit-any
+    itin: any,
+    // deno-lint-ignore no-explicit-any
+    data: any,
+): NormalizedFlight | null {
+    try {
+        // Find fare by FareRef ID (not index)
+        const fare = data.FlightFaresList?.find((f: any) => f.FareRef === itin.FareRef);
+        if (!fare) return null;
+
+        const fareSourceCode: string = itin.FareSourceCode ?? '';
+
+        // ── Price ──
+        const currency: string = fare.Currency ?? 'USD';
+        let totalPrice = 0;
+        let totalBase = 0;
+        let pricePerAdult = 0;
+
+        const passengerFares: any[] = fare.PassengerFare ?? [];
+        for (const pf of passengerFares) {
+            const paxTotal = parseFloat(pf.TotalFare) || 0;
+            const paxBase = parseFloat(pf.BaseFare) || 0;
+            const qty = Number(pf.Quantity) || 1;
+
+            totalPrice += paxTotal * qty;
+            totalBase += paxBase * qty;
+
+            if (pf.PaxType === 'ADT') {
+                pricePerAdult = paxTotal;
+            }
+        }
+
+        if (pricePerAdult === 0) pricePerAdult = totalPrice;
+        const taxes = Math.max(0, totalPrice - totalBase);
+
+        // ── Segments ──
+        const allSegments: NormalizedSegment[] = [];
+        let totalDurationMin = 0;
+        let totalStops = 0;
+
+        const odos: any[] = itin.OriginDestinations ?? [];
+        for (const odo of odos) {
+            // Find segment by SegmentRef ID (not index)
+            const seg = data.FlightSegmentList?.find((s: any) => s.SegmentRef === odo.SegmentRef);
+            if (!seg) continue;
+
+            const airlineCode: string =
+                seg.OperatingCarrierCode ?? seg.MarketingCarriercode ?? '';
+            const flightNum: string =
+                seg.OperatingFlightNumber ?? seg.MarketingFlightNumber ?? '';
+
+            const depTime: string = seg.DepartureDateTime ?? '';
+            const arrTime: string = seg.ArrivalDateTime ?? '';
+            const duration = Number(seg.JourneyDuration) || calculateDuration(depTime, arrTime);
+
+            totalDurationMin += duration;
+            totalStops += Number(seg.stops) || 0;
+
+            allSegments.push({
+                airline: airlineCode,
+                airlineName: getAirlineName(airlineCode),
+                flightNumber: `${airlineCode}${flightNum}`,
+                origin: seg.DepartureAirportLocationCode ?? '',
+                destination: seg.ArrivalAirportLocationCode ?? '',
+                departureTime: depTime,
+                arrivalTime: arrTime,
+                duration,
+                terminal: seg.DepartureTerminal,
+                arrivalTerminal: seg.ArrivalTerminal,
+                aircraft: seg.Equipment,
+                cabinClass: mapCabinClass(seg.CabinClassCode ?? 'Y'),
+            });
+        }
+
+        if (!allSegments.length) return null;
+
+        const firstSeg = allSegments[0];
+        const lastSeg = allSegments[allSegments.length - 1];
+
+        _mystiflyCounter++;
+        const id = `mystifly_${Date.now()}_${_mystiflyCounter}`;
+
+        return {
+            id,
+            provider: 'mystifly',
+            airline: firstSeg.airline,
+            airlineName: firstSeg.airlineName,
+            flightNumber: firstSeg.flightNumber,
+            origin: firstSeg.origin,
+            destination: lastSeg.destination,
+            departureTime: firstSeg.departureTime,
+            arrivalTime: lastSeg.arrivalTime,
+            duration: formatDuration(totalDurationMin),
+            durationMinutes: totalDurationMin,
+            stops: totalStops,
+            price: totalPrice,
+            currency,
+            baseFare: totalBase,
+            taxes,
+            pricePerAdult,
+            segments: allSegments,
+            cabinClass: firstSeg.cabinClass,
+            refundable: fare.FareType === 'Public',
+            seatsRemaining: undefined,
+            checkedBags: undefined,
+            weightPerBag: undefined,
+            brandName: fare.FareType,
+            traceId: fareSourceCode,
+        };
+    } catch (err) {
+        console.error('[normalizeFlight] Failed to normalize Mystifly V2 offer:', err);
+        return null;
+    }
 }
 
 // ─── Shared Helpers ─────────────────────────────────────────────────
@@ -421,7 +550,7 @@ const AIRLINES: Record<string, string> = {
     TG: 'Thai Airways', FD: 'Thai AirAsia', VN: 'Vietnam Airlines', VJ: 'VietJet',
     GA: 'Garuda Indonesia', CX: 'Cathay Pacific', HX: 'Hong Kong Airlines',
     CA: 'Air China', MU: 'China Eastern', CZ: 'China Southern',
-    CI: 'China Airlines', BR: 'EVA Air',
+    CI: 'China Airlines', BR: 'EVA Air', YP: 'Air Premia',
     // Middle East
     EK: 'Emirates', EY: 'Etihad Airways', QR: 'Qatar Airways',
     SV: 'Saudia', GF: 'Gulf Air', WY: 'Oman Air',
