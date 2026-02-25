@@ -34,23 +34,39 @@ const ACCOUNT_NUMBER = () => env('MYSTIFLY_ACCOUNT_NUMBER');
  * 2. URL detection (demo -> Test, otherwise Production)
  * 3. Environment Variable override (MYSTIFLY_ENV)
  */
-export const MYSTIFLY_TARGET = (fareSourceCode?: string) => {
-    // 1. Detect from Code Prefix (very common in Mystifly)
-    if (fareSourceCode?.startsWith('T-')) return 'Test';
-    if (fareSourceCode?.startsWith('P-')) return 'Production';
-
-    // 2. Fallback to URL detection (most reliable indicator of the server we are hitting)
+/** 
+ * Centralized Mystifly Target (Test/Production). 
+ * 
+ * Logic Priority (Safety First): 
+ * 1. URL detection (demo -> MUST be Test)
+ * 2. Environment Variable override (MYSTIFLY_ENV)
+ * 3. Code Prefix (T- for Test, P- for Production)
+ */
+export const MYSTIFLY_TARGET = (id?: string) => {
     const url = BASE_URL();
+
+    // 1. Force Test if URL is demo
     if (url.includes('demo')) return 'Test';
 
-    // 3. Check Manual Override
+    // 2. Check Manual Override
     const envVal = env('MYSTIFLY_ENV', '').toLowerCase();
     if (envVal === 'production') return 'Production';
     if (envVal === 'test') return 'Test';
 
+    // 3. Detect from Code Prefix (as fallback for non-demo URLs)
+    const fareSourceCode = extractFareSourceCode(id);
+    if (fareSourceCode?.startsWith('T-')) return 'Test';
+    if (fareSourceCode?.startsWith('P-')) return 'Production';
+
     // Default for live URLs
     return 'Production';
 };
+
+/** Helper to extract original FareSourceCode from tunneled traceId (Code|UUID|Sid). */
+export function extractFareSourceCode(id?: string): string {
+    if (!id) return '';
+    return id.split('|')[0];
+}
 
 
 
@@ -185,6 +201,8 @@ export async function mystiflyRequest<T = any>(
         ...body,
     };
 
+    console.log(`[Mystifly] Request: ${endpoint} | Target: ${finalBody.Target} | ConversationId: ${finalBody.ConversationId}`);
+
     const buildInit = (s: string): RequestInit => ({
         method: 'POST',
         headers: {
@@ -241,8 +259,15 @@ export async function mystiflyRequest<T = any>(
 
     if (!res.ok) {
         const detail = json?.Message ?? json?.error ?? text.slice(0, 300);
+        console.error(`[Mystifly][ANTIGRAVITY-V4] Error details for ${endpoint}:`, {
+            target,
+            status: res.status,
+            detail,
+            response: json, // Log full response for better detail
+            body: finalBody
+        });
         throw new MystiflyError(
-            `Mystifly POST ${endpoint} [Target: ${target}, URL: ${BASE_URL()}] → ${res.status}: ${detail}`,
+            `[ANTIGRAVITY-V4] Mystifly POST ${endpoint} [Target: ${target}, URL: ${BASE_URL()}] → ${res.status}: ${detail}`,
             res.status >= 500 ? 'SERVER' : 'CLIENT',
             res.status,
         );
@@ -265,7 +290,7 @@ export async function searchFlights(
     sessionId?: string,
     conversationId?: string,
 ) {
-    return mystiflyRequest('/api/v1/Search/Flight', body, sessionId, conversationId);
+    return mystiflyRequest('/api/v2/Search/Flight', body, sessionId, conversationId);
 }
 
 

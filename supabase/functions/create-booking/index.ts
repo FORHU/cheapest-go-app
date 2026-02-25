@@ -321,13 +321,15 @@ async function bookWithMystifly(
 ): Promise<ProviderBookingResult> {
     let fareSourceCode = flight.traceId;
     let conversationId: string | undefined = undefined;
+    let sessionId: string | undefined = undefined;
 
-    // ── Extract tunneled IDs (FareSourceCode|ConversationId) ──
+    // ── Extract tunneled IDs (FareSourceCode|ConversationId|SessionId) ──
     if (fareSourceCode?.includes('|')) {
         const parts = fareSourceCode.split('|');
         fareSourceCode = parts[0];
         conversationId = parts[1];
-        console.log('[create-booking] Extracted tunneled ConversationId:', conversationId);
+        sessionId = parts[2];
+        console.log('[create-booking] Extracted tunneled IDs:', { conversationId, hasSessionId: !!sessionId });
     }
 
     if (!fareSourceCode) {
@@ -336,7 +338,7 @@ async function bookWithMystifly(
 
     // ── CRITICAL-1 FIX: Revalidate fare before booking ──
     console.log('[create-booking] Revalidating Mystifly fare before booking...');
-    const revalResult = await revalidateFare(fareSourceCode, undefined, conversationId);
+    const revalResult = await revalidateFare(fareSourceCode, sessionId, conversationId);
 
 
     if (!revalResult.Success) {
@@ -364,39 +366,27 @@ async function bookWithMystifly(
 
     const isDemo = (Deno.env.get('MYSTIFLY_BASE_URL') ?? '').includes('demo');
 
-    // Build Mystifly-format travelers
-    const airTravelers = passengers.map((pax, idx) => {
-        // MED-3 FIX: Ensure date is in proper format
+    // Build Mystifly-format travelers (ASHR 1.0 compliant)
+    const airTravelers = passengers.map((pax) => {
         const birthDate = normalizeDate(pax.birthDate);
+        const passportExpiry = pax.passportExpiry ? normalizeDate(pax.passportExpiry) : '2030-01-01';
 
-        const traveler: Record<string, any> = {
+        return {
             PassengerType: pax.type,
             Gender: pax.gender === 'M' || pax.gender === 'male' ? 'M' : 'F',
             PassengerName: {
-                PassengerTitle: GENDER_TO_TITLE[pax.gender] ?? 'Mr',
+                PassengerTitle: (GENDER_TO_TITLE[pax.gender] ?? 'Mr').toUpperCase(),
                 PassengerFirstName: pax.firstName,
                 PassengerLastName: pax.lastName,
             },
-            DateOfBirth: `${birthDate}T00:00:00`,
-            // CRITICAL-5 FIX: Use actual passenger nationality instead of hardcoded 'US'
-            Nationality: pax.nationality || contact.country || 'KR',
-            ...(idx === 0 ? {
-                PhoneNumber: contact.phone,
-                Email: contact.email,
-                PostCode: contact.postalCode || '',
-            } : {}),
+            DateOfBirth: `${birthDate}T00:00:00.000Z`,
+            Passport: {
+                PassportNumber: pax.passport || 'NOSPPT',
+                ExpiryDate: `${passportExpiry}T00:00:00.000Z`,
+                Country: pax.nationality || contact.country || 'KR',
+            },
+            PassengerNationality: pax.nationality || contact.country || 'KR',
         };
-
-        // MED-4 FIX: Include passport expiry and issuing country
-        if (pax.passport) {
-            traveler.PassportNumber = pax.passport;
-            if (pax.passportExpiry) {
-                traveler.PassportExpiryDate = `${normalizeDate(pax.passportExpiry)}T00:00:00`;
-            }
-            traveler.PassportIssuedCountry = pax.nationality || contact.country || 'KR';
-        }
-
-        return traveler;
     });
 
     const mystiflyBody = {
@@ -414,7 +404,7 @@ async function bookWithMystifly(
 
 
 
-    const raw = await bookFlight(mystiflyBody, undefined, conversationId);
+    const raw = await bookFlight(mystiflyBody, sessionId, conversationId);
 
 
     if (!raw.Success) {

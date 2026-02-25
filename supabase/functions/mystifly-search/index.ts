@@ -17,7 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 declare const Deno: any;
 
 import type { NormalizedFlight, CabinClass, TripType } from '../_shared/types.ts';
-import { searchFlights, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
+import { searchFlights, createSession, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyResponse } from '../_shared/normalizeFlight.ts';
 
 
@@ -100,16 +100,16 @@ Deno.serve(async (req: Request) => {
         }[] = [
                 {
                     DepartureDateTime: `${body.departureDate}T00:00:00.000Z`,
-                    OriginLocationCode: body.origin,
-                    DestinationLocationCode: body.destination,
+                    OriginLocationCode: body.origin.toUpperCase(),
+                    DestinationLocationCode: body.destination.toUpperCase(),
                 },
             ];
 
         if (body.returnDate) {
             originDestinations.push({
                 DepartureDateTime: `${body.returnDate}T00:00:00.000Z`,
-                OriginLocationCode: body.destination,
-                DestinationLocationCode: body.origin,
+                OriginLocationCode: body.destination.toUpperCase(),
+                DestinationLocationCode: body.origin.toUpperCase(),
             });
         }
 
@@ -127,19 +127,19 @@ Deno.serve(async (req: Request) => {
         const cabinCode = CABIN_MAP[body.cabinClass ?? 'economy'] ?? 'Y';
         const airTripType = TRIP_TYPE_MAP[tripType] ?? 'OneWay';
 
+        // ── Obtain Session explicitly to tunnel it for flow consistency ──
+        const sessionId = await createSession();
         const conversationId = crypto.randomUUID();
 
         const mystiflyBody = {
             OriginDestinationInformations: originDestinations,
             PassengerTypeQuantities: passengerTypes,
-            IsRefundable: false,
-            PricingSourceType: 'All',
+            IsRefundable: false,   // Match Postman
+            PricingSourceType: 'All', // Match Postman
 
             RequestOptions: getRequestOptions(body.maxOffers),
             ConversationId: conversationId,
             TravelPreferences: {
-
-
                 AirTripType: airTripType,
                 CabinPreference: cabinCode,
                 MaxStopsQuantity: body.nonStopOnly ? 'Direct' : 'All',
@@ -150,16 +150,18 @@ Deno.serve(async (req: Request) => {
                     },
                 },
             },
-
         };
 
+        console.log('[mystifly-search] Executing v2 search with body keys:', Object.keys(mystiflyBody));
 
-
-        // ── Call Mystifly Search (auto-creates session) ──
-        const raw = await searchFlights(mystiflyBody, undefined, conversationId);
+        // ── Call Mystifly Search ──
+        const raw = await searchFlights(mystiflyBody, sessionId, conversationId);
 
         const itinData = raw.Data?.PricedItineraries ?? raw.Data?.FareItineraries ?? [];
         console.log('[mystifly-search] Itineraries count:', itinData.length);
+        if (itinData.length > 0) {
+            console.log('[mystifly-search] Itineraries found in raw response.');
+        }
         if (!raw.Success) console.log('[mystifly-search] Raw Message:', raw.Message);
 
 
@@ -175,17 +177,16 @@ Deno.serve(async (req: Request) => {
         }
 
         // ── Normalize ──
-        const flights = normalizeMystiflyResponse(itinData);
+        const flights = normalizeMystiflyResponse(itinData, raw.Data);
 
         if (flights.length === 0) {
             console.log('[mystifly-search] Mystifly returned 0 itineraries');
         }
 
-        // Inject our tunneled traceId (FareSourceCode|ConversationId)
-
+        // Inject our tunneled traceId (FareSourceCode|ConversationId|SessionId)
         flights.forEach(offer => {
             if (offer.traceId) {
-                offer.traceId = `${offer.traceId}|${conversationId}`;
+                offer.traceId = `${offer.traceId}|${conversationId}|${sessionId}`;
             }
         });
 
