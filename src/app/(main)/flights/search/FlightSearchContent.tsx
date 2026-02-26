@@ -179,7 +179,7 @@ export default function FlightSearchContent() {
     // ─── Loading State ───────────────────────────────────────────────
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-8 pb-12 lg:pb-16">
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-8 pb-12 lg:pb-16">
                 <div className="max-w-4xl mx-auto px-3 lg:px-4">
                     <div className="flex flex-col items-center justify-center py-12 lg:py-20 gap-3 lg:gap-4">
                         <div className="relative">
@@ -203,7 +203,7 @@ export default function FlightSearchContent() {
     // ─── Error State ─────────────────────────────────────────────────
     if (error) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-8 pb-12 lg:pb-16">
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-8 pb-12 lg:pb-16">
                 <div className="max-w-4xl mx-auto px-3 lg:px-4">
                     <div className="flex flex-col items-center justify-center py-12 lg:py-20 gap-3 lg:gap-4">
                         <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -227,7 +227,7 @@ export default function FlightSearchContent() {
 
     // ─── Results ─────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-8 pb-8 lg:pb-16">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-8 pb-8 lg:pb-16">
             <div className="max-w-4xl mx-auto px-2.5 lg:px-4">
                 {/* ─── Header ─── */}
                 <div className="mb-2.5 lg:mb-6">

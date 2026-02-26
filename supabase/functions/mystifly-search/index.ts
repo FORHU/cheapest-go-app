@@ -99,7 +99,7 @@ Deno.serve(async (req: Request) => {
             DestinationLocationCode: string;
         }[] = [
                 {
-                    DepartureDateTime: `${body.departureDate}T00:00:00.000Z`,
+                    DepartureDateTime: `${body.departureDate}T00:00:00`,
                     OriginLocationCode: body.origin.toUpperCase(),
                     DestinationLocationCode: body.destination.toUpperCase(),
                 },
@@ -107,7 +107,7 @@ Deno.serve(async (req: Request) => {
 
         if (body.returnDate) {
             originDestinations.push({
-                DepartureDateTime: `${body.returnDate}T00:00:00.000Z`,
+                DepartureDateTime: `${body.returnDate}T00:00:00`,
                 OriginLocationCode: body.destination.toUpperCase(),
                 DestinationLocationCode: body.origin.toUpperCase(),
             });
@@ -134,15 +134,14 @@ Deno.serve(async (req: Request) => {
         const mystiflyBody = {
             OriginDestinationInformations: originDestinations,
             PassengerTypeQuantities: passengerTypes,
-            IsRefundable: false,   // Match Postman
-            PricingSourceType: 'All', // Match Postman
-
-            RequestOptions: getRequestOptions(body.maxOffers),
-            ConversationId: conversationId,
+            NearByAirports: true,
+            Target: 'Production', // Based on user documentation image for V1 Search
+            ConversationId: '',
             TravelPreferences: {
                 AirTripType: airTripType,
                 CabinPreference: cabinCode,
                 MaxStopsQuantity: body.nonStopOnly ? 'Direct' : 'All',
+                PreferenceLevel: 'Preferred',
                 Preferences: {
                     CabinClassPreference: {
                         CabinType: cabinCode,
@@ -150,9 +149,11 @@ Deno.serve(async (req: Request) => {
                     },
                 },
             },
+            RequestOptions: getRequestOptions(body.maxOffers),
         };
 
-        console.log('[mystifly-search] Executing v2 search with body keys:', Object.keys(mystiflyBody));
+        console.log('[mystifly-search] Final Mystifly Body keys:', Object.keys(mystiflyBody));
+        console.log('[mystifly-search] First OriginDest:', JSON.stringify(mystiflyBody.OriginDestinationInformations[0]));
 
         // ── Call Mystifly Search ──
         const raw = await searchFlights(mystiflyBody, sessionId, conversationId);

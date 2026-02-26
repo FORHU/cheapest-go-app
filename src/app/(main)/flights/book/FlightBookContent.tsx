@@ -30,7 +30,7 @@ export default function FlightBookContent() {
 
     if (!offer) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian flex items-center justify-center">
                 <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
             </div>
         );
@@ -160,7 +160,7 @@ export default function FlightBookContent() {
     // ─── Booking Form ────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-6 pb-20 px-3 lg:px-4 lg:px-6">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-6 pb-20 px-3 lg:px-4 lg:px-6">
             <div className="max-w-3xl mx-auto">
                 {/* Header */}
                 <div className="mb-3 lg:mb-6">
