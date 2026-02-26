@@ -342,6 +342,7 @@ async function bookWithMystifly(
 
 
     if (!revalResult.Success) {
+        console.error('[create-booking] Mystifly Revalidation FAILED:', JSON.stringify(revalResult));
         const msg = revalResult.Message ?? '';
         const isUnavailable = /not available|not found|expired/i.test(msg);
         throw new Error(isUnavailable ? 'Flight is no longer available' : `Fare revalidation failed: ${msg}`);
@@ -351,40 +352,99 @@ async function bookWithMystifly(
     const revalData = revalResult.Data ?? {};
     const revalFareInfo = revalData.FareItinerary?.AirItineraryFareInfo ?? revalData;
     if (revalFareInfo.FareSourceCode || revalData.FareSourceCode) {
-        fareSourceCode = revalFareInfo.FareSourceCode ?? revalData.FareSourceCode ?? fareSourceCode;
-        console.log('[create-booking] Updated FareSourceCode from revalidation');
+        fareSourceCode = revalFareInfo.FareSourceCode ?? revalData.FareSourceCode ?? (fareSourceCode as string);
+        console.log('[create-booking] Updated FareSourceCode from revalidation:', fareSourceCode.slice(0, 50) + '...');
     }
 
-    // Extract revalidated price
-    const revalItinFare = revalFareInfo.ItinTotalFare;
-    const revalidatedPrice = revalItinFare
-        ? (Number(revalItinFare.TotalFare?.Amount) || undefined)
-        : undefined;
-    const revalidatedCurrency = revalItinFare?.TotalFare?.CurrencyCode;
+    // ── Support V2 Summarized vs V1 Nested ──
+    // V2 (Summarized) always has FlightFaresList. V1 (Legacy) has FareItinerary or PricedItineraries.
+    const isV2 = revalData.FlightFaresList !== undefined;
+    console.log('[create-booking] Revalidation structure:', isV2 ? 'Summarized (V2)' : (revalData.PricedItineraries ? 'List (V1)' : 'Legacy (V1)'));
 
-    console.log('[create-booking] Revalidation passed. Price:', revalidatedPrice, revalidatedCurrency);
+    let revalidatedPrice: number | undefined;
+    let revalidatedCurrency: string | undefined;
+
+    if (isV2 && revalData.FlightFaresList) {
+        // V2 Summarized Path
+        const fare = revalData.FlightFaresList[0];
+        if (fare) {
+            let total = 0;
+            const passengerFares: any[] = fare.PassengerFare ?? [];
+            for (const pf of passengerFares) {
+                total += (pf.TotalFare || 0) * (pf.Quantity || 1);
+                revalidatedCurrency = pf.Currency;
+            }
+            revalidatedPrice = total;
+        }
+    } else if (revalData.PricedItineraries) {
+        // V1 List Path (Standard ASHR 1.0 Revalidate)
+        const pricedItin = revalData.PricedItineraries[0];
+        if (pricedItin) {
+            const pricingInfo = pricedItin.AirItineraryPricingInfo;
+            const itinFare = pricingInfo?.ItinTotalFare;
+            if (itinFare) {
+                const amount = itinFare.TotalFare?.Amount ?? itinFare.TotalFare?.Value;
+                revalidatedPrice = amount ? Number(amount) : undefined;
+                revalidatedCurrency = itinFare.TotalFare?.CurrencyCode ?? itinFare.TotalFare?.Currency;
+            }
+            // CRITICAL: Update FareSourceCode for Booking!
+            const newCode = pricingInfo?.FareSourceCode || pricedItin.FareSourceCode;
+            if (newCode) {
+                fareSourceCode = newCode;
+                console.log('[create-booking] Refreshed FareSourceCode from PricedItineraries:', fareSourceCode.slice(0, 50) + '...');
+            }
+        }
+    } else {
+        // V1 Nested Path (Legacy fallback)
+        const itin = revalData.FareItinerary ?? revalData;
+        const itinFare = itin.AirItineraryFareInfo?.ItinTotalFare ?? itin.ItinTotalFare;
+
+        if (itinFare) {
+            const amount = itinFare.TotalFare?.Amount ?? itinFare.TotalFare?.Value;
+            revalidatedPrice = amount ? Number(amount) : undefined;
+            revalidatedCurrency = itinFare.TotalFare?.CurrencyCode ?? itinFare.TotalFare?.Currency;
+
+            // Check for refreshed code here too
+            const newCode = itin.FareSourceCode || (itin.AirItineraryFareInfo as any)?.FareSourceCode;
+            if (newCode) {
+                fareSourceCode = newCode;
+                console.log('[create-booking] Refreshed FareSourceCode from FareItinerary:', fareSourceCode.slice(0, 50) + '...');
+            }
+        } else {
+            console.warn('[create-booking] V1 Revalidation structure unexpected. Keys:', Object.keys(itin));
+        }
+    }
+
+    console.log('[create-booking] Revalidation parsed. Price:', revalidatedPrice, revalidatedCurrency);
 
     const isDemo = (Deno.env.get('MYSTIFLY_BASE_URL') ?? '').includes('demo');
 
     // Build Mystifly-format travelers (ASHR 1.0 compliant)
-    const airTravelers = passengers.map((pax) => {
+    // Build Mystifly-format travelers (ASHR 1.0 compliant)
+    const airTravelers = passengers.map((pax: any) => {
         const birthDate = normalizeDate(pax.birthDate);
         const passportExpiry = pax.passportExpiry ? normalizeDate(pax.passportExpiry) : '2030-01-01';
 
+        // ASHR 1.0 requires specific codes: ADT, CHD, INF
+        let paxType = 'ADT';
+        const typeStr = (pax.type || '').toLowerCase();
+        if (typeStr.includes('child') || typeStr === 'chd') paxType = 'CHD';
+        if (typeStr.includes('infant') || typeStr === 'inf') paxType = 'INF';
+
         return {
-            PassengerType: pax.type,
+            PassengerType: paxType,
             Gender: pax.gender === 'M' || pax.gender === 'male' ? 'M' : 'F',
             PassengerName: {
                 PassengerTitle: (GENDER_TO_TITLE[pax.gender] ?? 'Mr').toUpperCase(),
                 PassengerFirstName: pax.firstName,
                 PassengerLastName: pax.lastName,
             },
-            DateOfBirth: `${birthDate}T00:00:00.000Z`,
-            Passport: {
-                PassportNumber: pax.passport || 'NOSPPT',
-                ExpiryDate: `${passportExpiry}T00:00:00.000Z`,
-                Country: pax.nationality || contact.country || 'KR',
-            },
+            DateOfBirth: `${birthDate}T00:00:00`,
+            // ASHR 1.0 (v1) often expects flat passport fields
+            PassportNumber: pax.passport || 'NOSPPT',
+            ExpiryDate: `${passportExpiry}T00:00:00`,
+            Country: pax.nationality || contact.country || 'KR',
+            Nationality: pax.nationality || contact.country || 'KR',
             PassengerNationality: pax.nationality || contact.country || 'KR',
         };
     });
@@ -401,13 +461,30 @@ async function bookWithMystifly(
         },
     };
 
+    console.log('[create-booking] EXTREME LOG - FareSourceCode Metadata:', {
+        length: (fareSourceCode as string).length,
+        prefix: (fareSourceCode as string).slice(0, 10),
+        isV2Style: (fareSourceCode as string).length < 200 && !(fareSourceCode as string).includes('+') && !(fareSourceCode as string).includes('/')
+    });
 
+    console.log('[create-booking] EXTREME LOG - Mystifly Body Keys:', Object.keys(mystiflyBody));
+
+    // Log a snippet of the traveler to verify names/codes
+    const firstPax = mystiflyBody.TravelerInfo?.AirTravelers?.[0];
+    if (firstPax) {
+        console.log('[create-booking] EXTREME LOG - First Traveler:', JSON.stringify({
+            ...firstPax,
+            PassengerFirstName: firstPax.PassengerName?.PassengerFirstName,
+            PassengerLastName: firstPax.PassengerName?.PassengerLastName
+        }));
+    }
 
 
     const raw = await bookFlight(mystiflyBody, sessionId, conversationId);
 
 
     if (!raw.Success) {
+        console.error('[create-booking] Mystifly Booking FAILED:', JSON.stringify(raw));
         throw new Error(raw.Message ?? 'Mystifly booking failed');
     }
 

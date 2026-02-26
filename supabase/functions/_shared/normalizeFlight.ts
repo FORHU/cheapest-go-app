@@ -184,8 +184,10 @@ export function normalizeMystiflyOffer(
         const isV2 = fareItinerary.FareRef !== undefined && dataContext?.FlightFaresList;
 
         if (isV2) {
+            console.log('[normalizeFlight] Mystifly V2 (Summarized) detected');
             return normalizeMystiflyV2(fareItinerary, dataContext);
         }
+        console.log('[normalizeFlight] Mystifly V1 (Legacy) detected');
 
         // V1/Legacy Path
         // V2 may nest under .FareItinerary, V1 may be flat
