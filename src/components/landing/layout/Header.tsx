@@ -7,17 +7,21 @@ import { Moon, Sun, Download, Menu, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
 import SignInDropdown from '../../auth/SignInDropdown';
-import { useUserCurrency, useSearchActions } from '@/stores/searchStore';
+import { useUserCurrency, useUserCountry, useSearchActions } from '@/stores/searchStore';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
-/** Currency code → flag emoji (primary country for that currency) */
-const CURRENCY_FLAGS: Record<string, string> = {
-  PHP: '🇵🇭',
-  USD: '🇺🇸',
-  KRW: '🇰🇷',
+/** Country code → currency label mapping */
+const COUNTRY_CURRENCY: Record<string, { currency: string; countryName: string; flag: string }> = {
+  PH: { currency: 'PHP', countryName: 'Philippines', flag: '🇵🇭' },
+  US: { currency: 'USD', countryName: 'United States', flag: '🇺🇸' },
+  KR: { currency: 'KRW', countryName: 'South Korea', flag: '🇰🇷' },
 };
 
-const CURRENCIES = ['PHP', 'USD', 'KRW'] as const;
+const CURRENCIES = [
+  { code: 'PHP', country: 'PH' },
+  { code: 'USD', country: 'US' },
+  { code: 'KRW', country: 'KR' },
+] as const;
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();
@@ -30,9 +34,10 @@ const Header = () => {
   const currencyRef = useRef<HTMLDivElement>(null);
 
   const userCurrency = useUserCurrency();
-  const { setUserCurrency } = useSearchActions();
+  const userCountry = useUserCountry();
+  const { setUserCurrency, setUserCountry } = useSearchActions();
 
-  const currencyFlag = CURRENCY_FLAGS[userCurrency] || '🌐';
+  const selectedCountry = COUNTRY_CURRENCY[userCountry] || COUNTRY_CURRENCY['PH'];
 
   useBodyScrollLock(isMenuOpen);
 
@@ -48,12 +53,16 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isCurrencyOpen]);
 
-  const handleCurrencySelect = (currency: string) => {
-    setUserCurrency(currency);
+  const handleCurrencySelect = (currencyCode: string, countryCode: string) => {
+    setUserCurrency(currencyCode);
+    setUserCountry(countryCode);
     setIsCurrencyOpen(false);
-    if (pathname.includes('/property/') || pathname.includes('/search')) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('currency', currency);
+    setIsMobileCurrencyOpen(false);
+
+    if (pathname && (pathname.includes('/property/') || pathname.includes('/search') || pathname.includes('/flights'))) {
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      params.set('currency', currencyCode);
+      // For properties, it might need re-fetching, so replace URL to trigger server components
       router.replace(`${pathname}?${params.toString()}`);
     }
   };
@@ -91,8 +100,8 @@ const Header = () => {
                 aria-haspopup="listbox"
                 aria-label="Select currency"
               >
-                <span className="text-base">{currencyFlag}</span>
-                {userCurrency}
+                <span className="text-xs text-slate-400 font-bold uppercase">{userCountry}</span>
+                <span className="text-sm font-bold">{userCurrency}</span>
                 <ChevronDown className={`w-4 h-4 transition-transform ${isCurrencyOpen ? 'rotate-180' : ''}`} />
               </button>
               <AnimatePresence>
@@ -103,20 +112,20 @@ const Header = () => {
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.15 }}
                     role="listbox"
-                    className="absolute right-0 top-full mt-1 min-w-[120px] py-1 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-lg z-50"
+                    className="absolute right-0 top-full mt-1 min-w-[140px] py-1.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-hidden"
                   >
-                    {CURRENCIES.map((currency) => (
-                      <li key={currency} role="option" aria-selected={userCurrency === currency}>
+                    {CURRENCIES.map((c) => (
+                      <li key={c.code} role="option" aria-selected={userCurrency === c.code}>
                         <button
                           type="button"
-                          onClick={() => handleCurrencySelect(currency)}
-                          className={`flex items-center gap-2 w-full px-3 py-2 text-left text-sm font-medium transition-colors ${userCurrency === currency
+                          onClick={() => handleCurrencySelect(c.code, c.country)}
+                          className={`flex items-center gap-3 w-full px-4 py-2.5 text-left text-sm font-medium transition-colors ${userCurrency === c.code
                             ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
                             }`}
                         >
-                          <span className="text-base">{CURRENCY_FLAGS[currency]}</span>
-                          {currency}
+                          <span className="text-xs text-slate-400 font-bold w-5">{c.country}</span>
+                          <span className="font-bold">{c.code}</span>
                         </button>
                       </li>
                     ))}
@@ -213,11 +222,11 @@ const Header = () => {
                   <button
                     type="button"
                     onClick={() => setIsMobileCurrencyOpen((o) => !o)}
-                    className="flex items-center justify-between w-full min-h-[40px] px-3.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                    className="flex items-center justify-between w-full min-h-[44px] px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-800/50 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                   >
                     <span className="flex items-center gap-2">
-                      <span className="text-base">{currencyFlag}</span>
-                      {userCurrency}
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">{userCountry}</span>
+                      <span className="font-bold">{userCurrency}</span>
                     </span>
                     <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isMobileCurrencyOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -230,19 +239,19 @@ const Header = () => {
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <div className="mt-1 flex flex-col rounded-lg border border-slate-200 dark:border-white/10 overflow-hidden">
-                          {CURRENCIES.map((currency) => (
+                        <div className="mt-2 flex flex-col rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
+                          {CURRENCIES.map((c) => (
                             <button
-                              key={currency}
+                              key={c.code}
                               type="button"
-                              onClick={() => { handleCurrencySelect(currency); closeMenu(); }}
-                              className={`flex items-center gap-3 px-3.5 min-h-[38px] w-full text-left text-[13px] font-medium transition-colors ${userCurrency === currency
+                              onClick={() => { handleCurrencySelect(c.code, c.country); }}
+                              className={`flex items-center gap-3 px-4 min-h-[44px] w-full text-left text-[13px] font-medium transition-colors ${userCurrency === c.code
                                 ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
                                 : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
                                 }`}
                             >
-                              <span className="text-base">{CURRENCY_FLAGS[currency]}</span>
-                              {currency}
+                              <span className="text-[10px] text-slate-400 font-bold w-6">{c.country}</span>
+                              <span className="font-bold">{c.code}</span>
                             </button>
                           ))}
                         </div>

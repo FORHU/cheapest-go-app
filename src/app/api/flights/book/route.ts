@@ -106,18 +106,49 @@ export async function POST(req: NextRequest) {
         const confirmedPrice = bookingData.confirmedPrice ?? flight.price ?? 0;
         const confirmedCurrency = bookingData.confirmedCurrency ?? flight.currency ?? 'USD';
 
+        let finalBookingStatus = bookingData.status ?? 'confirmed';
+        let confirmedTickets = (bookingData.passengers ?? [])
+            .filter((p: any) => p.ticket_number)
+            .map((p: any) => ({ name: `${p.first_name} ${p.last_name}`, number: p.ticket_number }));
+
+        // ── Step 3: Automate Ticketing for Amadeus ──
+        // Amadeus confirms the PNR first. To match Mystifly's instant-ticket feel,
+        // we automatically trigger the ticketing function if it's not already ticketed.
+        if (provider === 'amadeus' && finalBookingStatus !== 'ticketed') {
+            try {
+                console.log('[FlightBook] Automating Amadeus ticketing for:', bookingData.bookingId);
+                const ticketRes = await fetch(`${supabaseUrl}/functions/v1/issue-ticket`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ bookingId: bookingData.bookingId }),
+                });
+
+                const ticketResult = await ticketRes.json();
+                if (ticketResult.success) {
+                    finalBookingStatus = 'ticketed';
+                    if (ticketResult.ticketNumbers?.length) {
+                        // Re-fetch or map tickets if successful
+                        confirmedTickets = ticketResult.ticketNumbers.map((num: string, idx: number) => ({
+                            name: passengers[idx] ? `${passengers[idx].firstName} ${passengers[idx].lastName}` : 'Traveler',
+                            number: num
+                        }));
+                    }
+                    console.log('[FlightBook] Amadeus ticketing successful');
+                } else {
+                    console.warn('[FlightBook] Amadeus auto-ticketing failed (background):', ticketResult.error);
+                }
+            } catch (ticketErr) {
+                console.error('[FlightBook] Amadeus auto-ticketing error:', ticketErr);
+                // We don't throw here — the PNR is already created, so we return success for the booking part
+            }
+        }
+
         // ── Send confirmation email ──
         const passengerName = passengers[0]
             ? `${passengers[0].firstName} ${passengers[0].lastName}`
             : 'Traveler';
 
         try {
-            const tickets = bookingData.passengers && bookingData.status === 'ticketed'
-                ? bookingData.passengers
-                    .filter((p: any) => p.ticket_number)
-                    .map((p: any) => ({ name: `${p.first_name} ${p.last_name}`, number: p.ticket_number }))
-                : [];
-
             const emailResult = await sendFlightBookingConfirmationEmail({
                 bookingId: bookingData.bookingId,
                 pnr: bookingData.pnr,
@@ -125,7 +156,7 @@ export async function POST(req: NextRequest) {
                 passengerName,
                 provider,
                 segments: sanitizedFlight.segments ?? [],
-                tickets: tickets,
+                tickets: confirmedTickets,
                 totalPrice: confirmedPrice,
                 currency: confirmedCurrency,
             });
@@ -139,7 +170,7 @@ export async function POST(req: NextRequest) {
             data: {
                 bookingId: bookingData.bookingId,
                 pnr: bookingData.pnr,
-                status: bookingData.status ?? 'confirmed',
+                status: finalBookingStatus,
                 totalPaid: confirmedPrice,
                 currency: confirmedCurrency,
             },

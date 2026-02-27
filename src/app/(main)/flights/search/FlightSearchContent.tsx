@@ -6,12 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeftRight, SlidersHorizontal, ArrowUpDown, Loader2, AlertTriangle, Search, Plane } from 'lucide-react';
 import { FlightCard } from '@/components/flights/FlightCard';
 import BackButton from '@/components/common/BackButton';
-import { useUserCurrency } from '@/stores/searchStore';
+import { useSearchStore } from '@/stores/searchStore';
 import type { FlightOffer, FlightSearchRequest, CabinClass } from '@/lib/flights';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
-type SortMode = 'cheapest' | 'fastest' | 'best';
+type SortMode = 'recommended' | 'cheapest' | 'fastest' | 'best';
 type StopFilter = 'any' | 'nonstop' | '1stop' | '2plus';
 
 interface SearchResult {
@@ -26,7 +26,18 @@ interface SearchResult {
 export default function FlightSearchContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const userCurrency = useUserCurrency();
+    const { userCurrency, setUserCurrency, setUserCountry } = useSearchStore(); // Modified: Replaced useUserCurrency with useSearchStore
+
+    // SYNC: Ensure store matches URL on load/change
+    useEffect(() => {
+        const urlCurrency = searchParams?.get('currency');
+        if (urlCurrency && urlCurrency !== userCurrency) {
+            setUserCurrency(urlCurrency);
+            // Default mapping for labels
+            const country = urlCurrency === 'PHP' ? 'PH' : urlCurrency === 'KRW' ? 'KR' : 'US';
+            setUserCountry(country);
+        }
+    }, [searchParams, userCurrency, setUserCurrency, setUserCountry]);
 
     // Search state
     const [results, setResults] = useState<SearchResult | null>(null);
@@ -34,7 +45,7 @@ export default function FlightSearchContent() {
     const [error, setError] = useState<string | null>(null);
 
     // Filter/sort state
-    const [sortMode, setSortMode] = useState<SortMode>('cheapest');
+    const [sortMode, setSortMode] = useState<SortMode>('recommended');
     const [stopFilter, setStopFilter] = useState<StopFilter>('any');
     const [airlineFilter, setAirlineFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
@@ -77,6 +88,9 @@ export default function FlightSearchContent() {
             }
         }
 
+        const urlCurrency = searchParams.get('currency');
+        const effectiveCurrency = urlCurrency || userCurrency || 'PHP';
+
         return {
             tripType,
             segments,
@@ -86,7 +100,7 @@ export default function FlightSearchContent() {
                 infants: Number(searchParams.get('infants')) || 0,
             },
             cabinClass: (searchParams.get('cabin') as CabinClass) || 'economy',
-            currency: userCurrency,
+            currency: effectiveCurrency,
         };
     }, [searchParams, userCurrency]);
 
@@ -157,9 +171,13 @@ export default function FlightSearchContent() {
         }
 
         // Sort
-        if (sortMode === 'cheapest') offers.sort((a, b) => a.price.total - b.price.total);
-        else if (sortMode === 'fastest') offers.sort((a, b) => a.totalDuration - b.totalDuration);
-        else {
+        if (sortMode === 'recommended') {
+            // Already interleaved/sorted by server
+        } else if (sortMode === 'cheapest') {
+            offers.sort((a, b) => a.price.total - b.price.total);
+        } else if (sortMode === 'fastest') {
+            offers.sort((a, b) => a.totalDuration - b.totalDuration);
+        } else {
             // "Best" = weighted score of price + duration
             offers.sort((a, b) => {
                 const scoreA = a.price.total * 0.6 + a.totalDuration * 2;
@@ -251,7 +269,7 @@ export default function FlightSearchContent() {
                 <div className="flex items-center gap-1.5 lg:gap-3 flex-wrap mb-2 lg:mb-4">
                     {/* Sort */}
                     <div className="flex items-center bg-white dark:bg-slate-800 rounded-md lg:rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-[10px] lg:text-sm">
-                        {(['cheapest', 'fastest', 'best'] as SortMode[]).map((mode) => (
+                        {(['recommended', 'cheapest', 'fastest', 'best'] as SortMode[]).map((mode) => (
                             <button
                                 key={mode}
                                 onClick={() => setSortMode(mode)}
@@ -381,10 +399,11 @@ export default function FlightSearchContent() {
                         </div>
                     ) : (
                         <AnimatePresence>
-                            {displayOffers.map((offer) => (
+                            {displayOffers.map((offer, i) => (
                                 <FlightCard
                                     key={offer.offerId}
                                     offer={offer}
+                                    index={i}
                                     onSelect={(selected) => {
                                         sessionStorage.setItem('selectedFlight', JSON.stringify(selected));
                                         router.push('/flights/book');

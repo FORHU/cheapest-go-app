@@ -77,6 +77,9 @@ interface SessionFlight {
         departureTime: string;
         arrivalTime: string;
         cabinClass?: string;
+        bookingClass?: string;
+        fareBasis?: string;
+        itineraryIndex?: number;
     }[];
     [key: string]: unknown;
 }
@@ -675,24 +678,39 @@ function buildAmadeusFlightOffer(
     const fareDetailsBySegment = (flight.segments ?? []).map((seg, idx) => ({
         segmentId: String(idx + 1),
         cabin: cabinMap[seg.cabinClass ?? 'economy'] ?? 'ECONOMY',
-        class: 'Y',
+        class: seg.bookingClass || 'Y',
+        ...(seg.fareBasis ? { fareBasis: seg.fareBasis } : {}),
     }));
+
+    const itineraryMap: Record<number, any[]> = {};
+    (flight.segments ?? []).forEach((seg, idx) => {
+        const itinIdx = seg.itineraryIndex ?? 0;
+        if (!itineraryMap[itinIdx]) itineraryMap[itinIdx] = [];
+        itineraryMap[itinIdx].push({ ...seg, _origIdx: idx });
+    });
+
+    const itineraries = Object.keys(itineraryMap)
+        .sort((a, b) => Number(a) - Number(b))
+        .map((k) => {
+            const segs = itineraryMap[Number(k)];
+            return {
+                segments: segs.map((seg) => ({
+                    departure: { iataCode: seg.origin, at: seg.departureTime },
+                    arrival: { iataCode: seg.destination, at: seg.arrivalTime },
+                    carrierCode: seg.airline,
+                    number: seg.flightNumber.replace(seg.airline, ''),
+                    id: String(seg._origIdx + 1),
+                    numberOfStops: 0,
+                })),
+            };
+        });
 
     return {
         type: 'flight-offer',
         id: flight.resultIndex ?? '1',
         source: 'GDS',
         validatingAirlineCodes: [mainAirline],
-        itineraries: [{
-            segments: (flight.segments ?? []).map((seg, idx) => ({
-                departure: { iataCode: seg.origin, at: seg.departureTime },
-                arrival: { iataCode: seg.destination, at: seg.arrivalTime },
-                carrierCode: seg.airline,
-                number: seg.flightNumber.replace(seg.airline, ''),
-                id: String(idx + 1),
-                numberOfStops: 0,
-            })),
-        }],
+        itineraries,
         price: {
             currency: flight.currency ?? 'USD',
             total: String(flight.price ?? 0),

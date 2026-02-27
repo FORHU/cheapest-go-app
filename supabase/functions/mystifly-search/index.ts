@@ -48,6 +48,7 @@ interface MystiflySearchBody {
     tripType?: TripType;
     maxOffers?: number;
     nonStopOnly?: boolean;
+    currency?: string;
 }
 
 // ─── Handler ────────────────────────────────────────────────────────
@@ -137,6 +138,7 @@ Deno.serve(async (req: Request) => {
             NearByAirports: true,
             Target: 'Production', // Based on user documentation image for V1 Search
             ConversationId: '',
+            CurrencyCode: body.currency,
             TravelPreferences: {
                 AirTripType: airTripType,
                 CabinPreference: cabinCode,
@@ -148,6 +150,7 @@ Deno.serve(async (req: Request) => {
                         PreferenceLevel: 'Preferred',
                     },
                 },
+                CurrencyCode: body.currency,
             },
             RequestOptions: getRequestOptions(body.maxOffers),
         };
@@ -195,17 +198,40 @@ Deno.serve(async (req: Request) => {
 
         // Sort by price ascending
         flights.sort((a, b) => a.price - b.price);
+        // ── Currency Fallback Conversion ──
+        // Some Mystifly fare sources ignore CurrencyCode. We force convert to requested currency.
+        const targetCurrency = body.currency || 'USD';
+        const convertedFlights = flights.map(f => {
+            if (f.currency === targetCurrency) return f;
+
+            // Simple conversion logic (based on lib/currency.ts)
+            const rates: Record<string, number> = { 'USD': 1, 'PHP': 58.0, 'KRW': 1350.0 };
+            const fromRate = rates[f.currency.toUpperCase()] || 1;
+            const toRate = rates[targetCurrency.toUpperCase()] || 1;
+
+            if (fromRate && toRate && f.currency !== targetCurrency) {
+                const ratio = toRate / fromRate;
+                return {
+                    ...f,
+                    price: f.price * ratio,
+                    baseFare: f.baseFare * ratio,
+                    taxes: (f.taxes || 0) * ratio,
+                    pricePerAdult: f.pricePerAdult * ratio,
+                    currency: targetCurrency
+                };
+            }
+            return f;
+        });
 
         const durationMs = Date.now() - startMs;
 
-
-        console.log(`[mystifly-search] Normalized ${flights.length} flights in ${durationMs}ms`);
+        console.log(`[mystifly-search] Normalized ${convertedFlights.length} flights (converted to ${targetCurrency}) in ${durationMs}ms`);
 
         // ── Response — clean, frontend-friendly JSON ──
         return jsonResponse(corsHeaders, {
             provider: 'mystifly',
-            flights,
-            totalResults: flights.length,
+            flights: convertedFlights,
+            totalResults: convertedFlights.length,
             durationMs,
         });
 

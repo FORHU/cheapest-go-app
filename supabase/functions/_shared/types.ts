@@ -46,6 +46,9 @@ export interface NormalizedSegment {
     arrivalTerminal?: string;
     aircraft?: string;
     cabinClass: CabinClass;
+    bookingClass?: string; // RBD
+    fareBasis?: string;
+    itineraryIndex?: number;
 }
 
 export interface NormalizedFlight {

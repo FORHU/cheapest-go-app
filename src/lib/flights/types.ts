@@ -168,6 +168,12 @@ export interface FlightSegmentDetail {
 
     /** Cabin class for this segment */
     cabinClass: CabinClass;
+
+    /** Authentic booking class (RBD) from provider */
+    bookingClass?: string;
+
+    /** Fare basis code from provider */
+    fareBasis?: string;
 }
 
 // ─── Booking ─────────────────────────────────────────────────────────
@@ -200,7 +206,7 @@ export interface FlightBookingRequest {
 }
 
 export interface FlightBookingPassenger {
-    type: 'adult' | 'child' | 'infant';
+    type: 'ADT' | 'CHD' | 'INF';
     title: 'Mr' | 'Mrs' | 'Ms' | 'Miss';
     firstName: string;
     lastName: string;
