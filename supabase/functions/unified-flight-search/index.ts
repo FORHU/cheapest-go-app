@@ -127,15 +127,17 @@ Deno.serve(async (req: Request) => {
 
         // ── Merge all flights ──
         const allFlights: NormalizedFlight[] = providerResults.flatMap((r) => r.flights);
+        const amadeusCount = providerResults.find(r => r.name === 'amadeus')?.flights.length ?? 0;
+        const mystiflyCount = providerResults.find(r => r.name === 'mystifly')?.flights.length ?? 0;
+        console.log(`[unified-flight-search] Raw counts - Amadeus: ${amadeusCount}, Mystifly: ${mystiflyCount}`);
 
         // ── Deduplicate (same flight from multiple GDS) ──
         const deduped = deduplicateFlights(allFlights);
+        console.log(`[unified-flight-search] After dedup: ${deduped.length} flights`);
 
-        // ── Sort by price ascending ──
-        deduped.sort((a, b) => a.price - b.price);
-
-        // ── Apply limit ──
-        const flights = deduped;
+        // ── Smart Multi-Provider Sorting ──
+        // Ensures variety at the top so users don't have to scroll for Amadeus results
+        const flights = smartSort(deduped);
 
         const searchDurationMs = Date.now() - searchStart;
 
@@ -256,34 +258,90 @@ async function callProvider(
     }
 }
 
-// ─── Deduplication ──────────────────────────────────────────────────
-
 /**
  * MED-2 FIX: Improved deduplication for multi-segment itineraries.
- * Uses ALL segment flight numbers + departure times as the composite key
- * (not just the first segment). This prevents multi-segment itineraries
- * with different connections from being incorrectly de-duplicated.
+ * SENIOR-LEVEL: Prefer Amadeus if prices are virtually identical (< 1% diff).
  */
 function deduplicateFlights(flights: NormalizedFlight[]): NormalizedFlight[] {
     const seen = new Map<string, NormalizedFlight>();
 
     for (const flight of flights) {
-        // Build key from ALL segments, not just the first
         const segmentKeys = (flight.segments ?? []).map(
-            (seg) => `${seg.flightNumber}_${seg.departureTime}`,
+            (seg) => `${seg.flightNumber}_${(seg.departureTime || '').slice(0, 16)}`,
         );
         const key = segmentKeys.length > 0
             ? segmentKeys.join('|')
-            : `${flight.flightNumber}_${flight.departureTime}`;
+            : `${flight.flightNumber}_${(flight.departureTime || '').slice(0, 16)}`;
 
         const existing = seen.get(key);
 
-        if (!existing || flight.price < existing.price) {
+        if (!existing) {
+            seen.set(key, flight);
+            continue;
+        }
+
+        // PRICE TIE-BREAKER: If prices are close (< 1% diff), prefer Amadeus for reliability/inclusions
+        const priceDiff = Math.abs(flight.price - existing.price);
+        const threshold = Math.min(existing.price, flight.price) * 0.01;
+        const isNearTie = priceDiff <= threshold || priceDiff < 2;
+
+        if (isNearTie) {
+            if (flight.provider === 'amadeus' && existing.provider !== 'amadeus') {
+                seen.set(key, flight);
+            }
+        } else if (flight.price < existing.price) {
             seen.set(key, flight);
         }
     }
 
     return Array.from(seen.values());
+}
+
+/**
+ * Ensures provider variety in the top results.
+ */
+/**
+ * Ensures provider variety throughout the results list via interleaving.
+ * Uses a 3:1 ratio to ensure the secondary provider is always visible.
+ */
+function smartSort(flights: NormalizedFlight[]): NormalizedFlight[] {
+    const amadeus = flights.filter(f => f.provider === 'amadeus').sort((a, b) => a.price - b.price);
+    const mystifly = flights.filter(f => f.provider === 'mystifly').sort((a, b) => a.price - b.price);
+
+    if (amadeus.length === 0) return mystifly;
+    if (mystifly.length === 0) return amadeus;
+
+    const result: NormalizedFlight[] = [];
+    let aIdx = 0;
+    let mIdx = 0;
+
+    // Determine primary provider (whoever has the cheapest overall flight)
+    const mCheapest = mystifly[0].price;
+    const aCheapest = amadeus[0].price;
+
+    console.log(`[unified-flight-search] Interleaving ${amadeus.length} Amadeus and ${mystifly.length} Mystifly. Primary: ${mCheapest <= aCheapest ? 'mystifly' : 'amadeus'}`);
+
+    while (aIdx < amadeus.length || mIdx < mystifly.length) {
+        if (mCheapest <= aCheapest) {
+            // Case 1: Mystifly is overall cheaper. Pattern: [3 Mystifly, 1 Amadeus]
+            for (let k = 0; k < 3 && mIdx < mystifly.length; k++) {
+                result.push(mystifly[mIdx++]);
+            }
+            if (aIdx < amadeus.length) {
+                result.push(amadeus[aIdx++]);
+            }
+        } else {
+            // Case 2: Amadeus is overall cheaper. Pattern: [3 Amadeus, 1 Mystifly]
+            for (let k = 0; k < 3 && aIdx < amadeus.length; k++) {
+                result.push(amadeus[aIdx++]);
+            }
+            if (mIdx < mystifly.length) {
+                result.push(mystifly[mIdx++]);
+            }
+        }
+    }
+
+    return result;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
