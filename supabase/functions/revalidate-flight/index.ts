@@ -148,13 +148,15 @@ async function revalidateMystifly(
 ): Promise<RevalidateResult> {
     let traceId = body.flightPayload.traceId;
     let conversationId: string | undefined = undefined;
+    let sessionId: string | undefined = undefined;
 
-    // ── Extract tunneled IDs (FareSourceCode|ConversationId) ──
+    // ── Extract tunneled IDs (FareSourceCode|ConversationId|SessionId) ──
     if (traceId?.includes('|')) {
         const parts = traceId.split('|');
         traceId = parts[0];
         conversationId = parts[1];
-        console.log('[revalidate-flight] Extracted tunneled ConversationId:', conversationId);
+        sessionId = parts[2];
+        console.log('[revalidate-flight] Extracted tunneled IDs:', { conversationId, hasSessionId: !!sessionId });
     }
 
     if (!traceId) {
@@ -171,7 +173,7 @@ async function revalidateMystifly(
         };
     }
 
-    const raw = await revalidateFare(traceId, undefined, conversationId);
+    const raw = await revalidateFare(traceId, sessionId, conversationId);
 
 
     // ── Handle failure / unavailable ──

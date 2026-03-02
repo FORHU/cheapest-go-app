@@ -34,27 +34,50 @@ const ACCOUNT_NUMBER = () => env('MYSTIFLY_ACCOUNT_NUMBER');
  * 2. URL detection (demo -> Test, otherwise Production)
  * 3. Environment Variable override (MYSTIFLY_ENV)
  */
-export const MYSTIFLY_TARGET = (fareSourceCode?: string) => {
-    // 1. Detect from Code Prefix (very common in Mystifly)
-    if (fareSourceCode?.startsWith('T-')) return 'Test';
-    if (fareSourceCode?.startsWith('P-')) return 'Production';
+/** 
+ * Centralized Mystifly Target (Test/Production). 
+ * 
+ * Logic Priority (Safety First): 
+ * 1. URL detection (demo -> MUST be Test)
+ * 2. Environment Variable override (MYSTIFLY_ENV)
+ * 3. Code Prefix (T- for Test, P- for Production)
+ */
+export const MYSTIFLY_TARGET = (id?: string, bodyTarget?: string) => {
+    // 1. Explicit body target has highest priority (Doc match)
+    if (bodyTarget === 'Production') return 'Production';
+    if (bodyTarget === 'Test') return 'Test';
 
-    // 2. Fallback to URL detection (most reliable indicator of the server we are hitting)
-    const url = BASE_URL();
-    if (url.includes('demo')) return 'Test';
-
-    // 3. Check Manual Override
+    // 2. Manual Env Override 
     const envVal = env('MYSTIFLY_ENV', '').toLowerCase();
     if (envVal === 'production') return 'Production';
     if (envVal === 'test') return 'Test';
 
-    // Default for live URLs
+    // 3. Detect from Code Prefix
+    const fareSourceCode = extractFareSourceCode(id);
+    if (fareSourceCode?.startsWith('T-')) return 'Test';
+    if (fareSourceCode?.startsWith('P-')) return 'Production';
+
+    // 4. URL detection (demo -> v1 wants Production, v2 wants Test)
+    const url = BASE_URL();
+    if (url.includes('demo')) {
+        // Based on user documentation snapshots: 
+        // V1 Search/Book uses "Production"
+        // V2 Search/Book uses "Test"
+        return 'Production';
+    }
+
     return 'Production';
 };
 
+/** Helper to extract original FareSourceCode from tunneled traceId (Code|UUID|Sid). */
+export function extractFareSourceCode(id?: string): string {
+    if (!id) return '';
+    return id.split('|')[0];
+}
 
 
-const FETCH_TIMEOUT_MS = 20_000;
+
+const FETCH_TIMEOUT_MS = 60_000;
 const MAX_RETRIES = 2;
 const SESSION_TTL_MS = 55 * 60 * 1000; // refresh 5 min before 60 min expiry
 
@@ -176,14 +199,16 @@ export async function mystiflyRequest<T = any>(
 
     const url = `${BASE_URL()}${endpoint}`;
 
-    // Improve Target detection: check if a FareSourceCode is in the body to detect environment
-    const target = MYSTIFLY_TARGET(body.FareSourceCode);
+    // Target detection logic
+    const target = MYSTIFLY_TARGET(body.FareSourceCode, body.Target);
 
     const finalBody = {
-        Target: target,
-        ConversationId: conversationId ?? crypto.randomUUID(),
         ...body,
+        Target: target,
+        ConversationId: conversationId ?? body.ConversationId ?? crypto.randomUUID(),
     };
+
+    console.log(`[Mystifly] Request: ${endpoint} | Target: ${finalBody.Target} | ConversationId: ${finalBody.ConversationId}`);
 
     const buildInit = (s: string): RequestInit => ({
         method: 'POST',
@@ -200,7 +225,11 @@ export async function mystiflyRequest<T = any>(
 
     // ── First attempt ───────────────────────────────────────────────
 
-    let res = await fetchWithRetry(url, buildInit(sid));
+    // ASHR 1.0 (v1) Booking is not idempotent and slow. 
+    // If it times out, a retry with the same ConversationId/Token often triggers "Booking already in progress".
+    const skipTimeoutRetry = endpoint.includes('Book/Flight');
+
+    let res = await fetchWithRetry(url, buildInit(sid), skipTimeoutRetry);
 
     // ── Handle 401 — session may have expired, refresh once ─────────
 
@@ -208,7 +237,7 @@ export async function mystiflyRequest<T = any>(
         console.warn('[Mystifly] 401 received — refreshing session and retrying');
         clearSessionCache();
         sid = await createSession();
-        res = await fetchWithRetry(url, buildInit(sid));
+        res = await fetchWithRetry(url, buildInit(sid), skipTimeoutRetry);
     }
 
     // ── Handle 429 rate limit ───────────────────────────────────────
@@ -230,8 +259,10 @@ export async function mystiflyRequest<T = any>(
     try {
         json = JSON.parse(text);
     } catch {
+        const snippet = text.trim() ? text.slice(0, 500) : '[EMPTY RESPONSE]';
+        console.error(`[Mystifly] Response was not JSON from ${endpoint} (Status: ${res.status}). Raw body:`, snippet);
         throw new MystiflyError(
-            `Invalid JSON from Mystifly: ${text.slice(0, 200)}`,
+            `Invalid JSON from Mystifly: ${snippet.slice(0, 100)}`,
             'PARSE',
             res.status,
         );
@@ -241,13 +272,27 @@ export async function mystiflyRequest<T = any>(
 
     if (!res.ok) {
         const detail = json?.Message ?? json?.error ?? text.slice(0, 300);
+        console.error(`[Mystifly] Error details for ${endpoint}:`, { target, status: res.status, detail });
         throw new MystiflyError(
-            `Mystifly POST ${endpoint} [Target: ${target}, URL: ${BASE_URL()}] → ${res.status}: ${detail}`,
+            `Mystifly POST ${endpoint} [Target: ${target}] → ${res.status}: ${detail}`,
             res.status >= 500 ? 'SERVER' : 'CLIENT',
             res.status,
         );
     }
 
+    // ── Handle Business Errors (Retries) ───────────────────────────
+
+    const errorMsg = json.Message || (json.Data?.Errors?.[0]?.Message) || '';
+    const isMismatch = errorMsg.includes('ERBUK103') || errorMsg.includes('API version mismatch');
+
+    if (!json.Success && isMismatch) {
+        // If we haven't already retried this specific mismatch
+        if (!body.__retriedMismatch) {
+            const altTarget = target === 'Production' ? 'Test' : 'Production';
+            console.warn(`[Mystifly] Business Mismatch (${target}) on ${endpoint}. Retrying with ${altTarget}...`);
+            return await mystiflyRequest(endpoint, { ...body, Target: altTarget, __retriedMismatch: true }, sessionId, conversationId);
+        }
+    }
 
     return json as T;
 }
@@ -261,39 +306,131 @@ export { createSession };
  * Wraps mystiflyRequest with the search endpoint.
  */
 export async function searchFlights(
-    body: Record<string, any>,
+    body: any,
     sessionId?: string,
     conversationId?: string,
 ) {
     return mystiflyRequest('/api/v1/Search/Flight', body, sessionId, conversationId);
 }
 
-
 /**
- * Revalidate a fare to check current availability and pricing.
+ * Revalidate a fare using its FareSourceCode.
+ * SMART VERSIONING: If v1 (Production target) fails with mismatch, retries with v2 (Test target).
  */
 export async function revalidateFare(
     fareSourceCode: string,
     sessionId?: string,
     conversationId?: string,
 ) {
-    return mystiflyRequest('/api/v1/Revalidate/Flight', {
+    console.log('[mystiflyClient] Revalidating attempt (v1/Production)...');
+    const res = await mystiflyRequest('/api/v1/Revalidate/Flight', {
         FareSourceCode: fareSourceCode,
+        Target: 'Production',
     }, sessionId, conversationId);
-}
 
+    const errorMsg = res.Message || (res.Data?.Errors?.[0]?.Message) || '';
+    const isMismatch = errorMsg.includes('ERBUK103') || errorMsg.includes('API version mismatch');
+
+    if (!res.Success && isMismatch) {
+        console.warn('[mystiflyClient] Revalidation mismatch. Retrying with V2 (Test target)...');
+        // V2 revalidation often uses the same v1 endpoint but with Target: Test or V2 endpoint
+        // Let's try the V2 endpoint first as it's cleaner for V2 tokens
+        try {
+            return await mystiflyRequest('/api/v2/Revalidate/Flight', {
+                FareSourceCode: fareSourceCode,
+                Target: 'Test',
+            }, sessionId, conversationId);
+        } catch (v2Err) {
+            console.error('[mystiflyClient] V2 revalidate endpoint failed. Fallback to v1 with Target: Test...');
+            return await mystiflyRequest('/api/v1/Revalidate/Flight', {
+                FareSourceCode: fareSourceCode,
+                Target: 'Test',
+            }, sessionId, conversationId);
+        }
+    }
+
+    return res;
+}
 
 /**
  * Book a flight using a revalidated FareSourceCode.
+ *
+ * SMART VERSIONING: If v1 fails with "API version mismatch", we automatically retry with v2.
  */
 export async function bookFlight(
-    body: Record<string, any>,
+    body: any,
     sessionId?: string,
     conversationId?: string,
 ) {
-    return mystiflyRequest('/api/v1/Book/Flight', body, sessionId, conversationId);
+    console.log('[mystiflyClient] Booking attempt (v1)... Custom Target:', body.Target);
+    const res = await mystiflyRequest('/api/v1/Book/Flight', body, sessionId, conversationId);
+
+    // Check for business error "API version mismatch" (ERBUK103)
+    const errorMsg = res.Message || (res.Data?.Errors?.[0]?.Message) || '';
+    const isMismatch = errorMsg.includes('ERBUK103') || errorMsg.includes('API version mismatch');
+
+    if (!res.Success && isMismatch) {
+        console.warn('[mystiflyClient] ERBUK103 mismatch detected in v1 response. Converting body to V2 and retrying...');
+        const v2Body = convertToV2BookRequest(body);
+        // ASHR 2.0 (v2) documentation shows "Target": "Test"
+        v2Body.Target = 'Test';
+
+        // Some v2 environments use /api/v2/Book/Flight, others use /api/v1/Book/Flight with Target: Test
+        // Since /api/v2/Book/Flight gave 404, we'll try /api/v1/Book/Flight with explicit Test target (though v2Body is the key)
+        try {
+            console.log('[mystiflyClient] Retrying v2 booking on /api/v1/Book/Flight since /api/v2/ gave 404...');
+            return await mystiflyRequest('/api/v1/Book/Flight', v2Body, sessionId, conversationId);
+        } catch (v2Err) {
+            console.error('[mystiflyClient] V2 retry on v1 endpoint failed. Final attempt on /api/v2/OnePoint/Book (possible real v2 path)...');
+            return await mystiflyRequest('/api/v2/OnePoint/Book', v2Body, sessionId, conversationId);
+        }
+    }
+
+    return res;
 }
 
+/**
+ * Internal helper to convert a V1 book request body to V2 format.
+ * - Nests Passport fields
+ * - Adds PassengerNationality
+ * - Uses .000Z date format
+ */
+function convertToV2BookRequest(v1Body: any) {
+    if (!v1Body.TravelerInfo?.AirTravelers) return v1Body;
+
+    try {
+        const v2Body = JSON.parse(JSON.stringify(v1Body)); // deep clone
+        v2Body.TravelerInfo.AirTravelers = v2Body.TravelerInfo.AirTravelers.map((pax: any) => {
+            const v2Pax = { ...pax };
+
+            // 1. Move flat passport fields to nested Passport object
+            v2Pax.Passport = {
+                PassportNumber: pax.PassportNumber || pax.Passport?.PassportNumber || 'NOSPPT',
+                ExpiryDate: pax.ExpiryDate ? pax.ExpiryDate.replace(/T00:00:00$/, 'T00:00:00.000Z') : '2030-01-01T00:00:00.000Z',
+                Country: pax.Country || pax.Passport?.Country || 'KR',
+            };
+
+            // 2. Add PassengerNationality (V2 required key)
+            v2Pax.PassengerNationality = pax.Nationality || pax.Country || 'KR';
+
+            // 3. Fix DateOfBirth format
+            if (v2Pax.DateOfBirth) {
+                v2Pax.DateOfBirth = v2Pax.DateOfBirth.replace(/T00:00:00$/, 'T00:00:00.000Z');
+            }
+
+            // Cleanup v1 fields
+            delete v2Pax.PassportNumber;
+            delete v2Pax.ExpiryDate;
+            delete v2Pax.Nationality;
+
+            return v2Pax;
+        });
+        return v2Body;
+    } catch (e) {
+        console.error('[mystiflyClient] Error converting to V2 body:', e);
+        return v1Body; // fallback to original
+    }
+}
 
 /**
  * Issue a ticket for a confirmed booking (UniqueID / PNR).
@@ -326,7 +463,7 @@ async function fetchWithTimeout(url: string, init: RequestInit): Promise<Respons
 }
 
 /** Fetch with timeout + retry on network errors / 5xx. */
-async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+async function fetchWithRetry(url: string, init: RequestInit, skipTimeoutRetry = false): Promise<Response> {
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -346,6 +483,10 @@ async function fetchWithRetry(url: string, init: RequestInit): Promise<Response>
 
             if (err.name === 'AbortError') {
                 console.error(`[Mystifly] Timeout on attempt ${attempt}/${MAX_RETRIES}`);
+                if (skipTimeoutRetry) {
+                    console.warn('[Mystifly] skipTimeoutRetry is active for this endpoint. Throwing timeout instead of retrying.');
+                    throw err;
+                }
             } else {
                 console.error(`[Mystifly] Network error on attempt ${attempt}/${MAX_RETRIES}:`, err.message);
             }
@@ -371,6 +512,14 @@ export const CABIN_MAP = {
     premium_economy: 'S',
     business: 'C',
     first: 'F',
+} as const;
+
+/** Maps gender to Mystifly title. */
+export const GENDER_TO_TITLE: Record<string, string> = {
+    M: 'Mr',
+    F: 'Ms',
+    male: 'Mr',
+    female: 'Ms',
 } as const;
 
 /** Maps our TripType to Mystifly AirTripType values. */

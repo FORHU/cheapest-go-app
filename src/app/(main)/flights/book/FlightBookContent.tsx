@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper } from 'lucide-react';
+import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock } from 'lucide-react';
 import BackButton from '@/components/common/BackButton';
 import { Confetti, Balloons } from '@/components/ui/Animations';
 import { formatTime, formatDuration, formatPrice } from '@/lib/flights/utils';
@@ -30,7 +30,7 @@ export default function FlightBookContent() {
 
     if (!offer) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian flex items-center justify-center">
                 <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
             </div>
         );
@@ -125,7 +125,11 @@ export default function FlightBookContent() {
                         </div>
                         <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
                             <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">Route</span>
-                            <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">{primary.departure.airport} → {last.arrival.airport}</span>
+                            <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">
+                                {(offer as any).tripType === 'round-trip'
+                                    ? `${primary.departure.airport} ⇌ ${primary.arrival.airport}`
+                                    : `${primary.departure.airport} → ${last.arrival.airport}`}
+                            </span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">Total</span>
@@ -160,7 +164,7 @@ export default function FlightBookContent() {
     // ─── Booking Form ────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-6 pb-20 px-3 lg:px-4 lg:px-6">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-6 pb-20 px-3 lg:px-4 lg:px-6">
             <div className="max-w-3xl mx-auto">
                 {/* Header */}
                 <div className="mb-3 lg:mb-6">
@@ -168,7 +172,11 @@ export default function FlightBookContent() {
                         bareIcon
                         className="mb-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shadow-sm !p-0"
                     />
-                    <h1 className="text-base lg:text-2xl font-bold text-slate-900 dark:text-white">Complete Your Booking</h1>
+                    <h1 className="text-base lg:text-2xl font-bold text-slate-900 dark:text-white">
+                        {(offer as any).tripType === 'round-trip'
+                            ? `Round trip to ${primary.arrival.airport}`
+                            : 'Complete Your Booking'}
+                    </h1>
                 </div>
 
                 {/* Flight Summary */}
@@ -407,13 +415,23 @@ export default function FlightBookContent() {
                         </div>
                     </div>
 
-                    {/* Error Message */}
-                    {(errorMsg || step === 'error') && (
-                        <div className="flex items-center gap-1.5 lg:gap-2 p-2.5 lg:p-4 rounded-lg lg:rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-[11px] lg:text-sm">
-                            <AlertTriangle className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
-                            {errorMsg || 'Booking failed. Please try again.'}
-                        </div>
-                    )}
+                    {/* Status/Error Message */}
+                    {(errorMsg || step === 'error') && (() => {
+                        const isPending = errorMsg?.toLowerCase().includes('pending');
+                        return (
+                            <div className={`flex items-center gap-1.5 lg:gap-2 p-2.5 lg:p-4 rounded-lg lg:rounded-xl border ${isPending
+                                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+                                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
+                                } text-[11px] lg:text-sm`}>
+                                {isPending ? (
+                                    <Info className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
+                                ) : (
+                                    <AlertTriangle className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
+                                )}
+                                {errorMsg || 'Booking failed. Please try again.'}
+                            </div>
+                        );
+                    })()}
 
                     {/* Submit */}
                     <button

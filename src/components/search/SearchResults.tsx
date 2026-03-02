@@ -16,13 +16,13 @@ interface SearchResultsProps {
 const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const destination = searchParams.get('destination') || '';
+    const destination = searchParams?.get('destination') || '';
 
-    const rawSort = searchParams.get('sort');
+    const rawSort = searchParams?.get('sort');
     const sortBy: SortValue = SORT_OPTIONS.includes(rawSort as SortValue) ? (rawSort as SortValue) : 'recommended';
 
     const handleSortChange = useCallback((value: SortValue) => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(searchParams?.toString() || '');
         if (value === 'recommended') {
             params.delete('sort');
         } else {
@@ -34,13 +34,13 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
     const [visibleCount, setVisibleCount] = useState(12);
 
     const handlePropertyClick = (propertyId: string) => {
-        const currentParams = new URLSearchParams(searchParams.toString());
+        const currentParams = new URLSearchParams(searchParams?.toString() || '');
         router.push(`/property/${propertyId}?${currentParams.toString()}`);
     };
 
     // Navigate to map view
     const handleViewOnMap = useCallback(() => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(searchParams?.toString() || '');
         params.set('view', 'map');
         router.push(`/search?${params.toString()}`);
     }, [router, searchParams]);

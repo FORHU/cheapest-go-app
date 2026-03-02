@@ -6,6 +6,7 @@
  * single source of truth for the mapping logic.
  */
 
+import { FlightProvider } from './types.ts';
 import type {
     NormalizedFlight,
     NormalizedSegment,
@@ -13,111 +14,96 @@ import type {
 } from './types.ts';
 import { formatDuration } from './types.ts';
 
-// ─── Amadeus Normalization ──────────────────────────────────────────
+// ─── Duffel Normalization ──────────────────────────────────────────
 
 /**
- * Normalize a single Amadeus flight offer (from /v2/shopping/flight-offers).
- *
- * Amadeus returns offers referencing dictionaries for carrier names, aircraft, etc.
- * The dictionaries object must be passed alongside the raw offer.
+ * Normalize a single Duffel offer.
  */
-export function normalizeAmadeusOffer(
+export function normalizeDuffelOffer(
     // deno-lint-ignore no-explicit-any
     rawOffer: any,
-    // deno-lint-ignore no-explicit-any
-    dictionaries?: Record<string, any>,
 ): NormalizedFlight | null {
     try {
-        const carriers = dictionaries?.carriers ?? {};
-        const aircraftDict = dictionaries?.aircraft ?? {};
-
-        const itineraries = rawOffer?.itineraries;
-        if (!itineraries?.length) return null;
-
-        // First itinerary = outbound
-        const outbound = itineraries[0];
-        const outSegments = outbound.segments ?? [];
-        if (!outSegments.length) return null;
-
-        const firstSeg = outSegments[0];
-        const lastSeg = outSegments[outSegments.length - 1];
+        if (!rawOffer || !rawOffer.slices || !rawOffer.slices.length) return null;
 
         // ── Price ──
-        const price = parseFloat(rawOffer.price?.grandTotal ?? rawOffer.price?.total ?? '0');
-        const baseFare = parseFloat(rawOffer.price?.base ?? '0');
-        const currency = rawOffer.price?.currency ?? 'USD';
-        const taxes = Math.max(0, price - baseFare);
+        const price = parseFloat(rawOffer.total_amount ?? '0');
+        const baseFare = parseFloat(rawOffer.base_amount ?? '0');
+        const currency = rawOffer.total_currency ?? rawOffer.total_amount_currency ?? 'USD';
+        const taxes = parseFloat(rawOffer.tax_amount ?? '0') || Math.max(0, price - baseFare);
 
-        // Per-adult price from travelerPricings
-        // deno-lint-ignore no-explicit-any
-        const adultPricing = rawOffer.travelerPricings?.find((tp: any) => tp.travelerType === 'ADULT');
-        const pricePerAdult = adultPricing
-            ? parseFloat(adultPricing.price?.total ?? '0')
-            : price;
+        // Per-adult price (approximation if not provided per passenger)
+        const pricePerAdult = price / (rawOffer.passengers?.length || 1);
 
-        // ── Cabin & Fare Details ──
-        const fareDetails = adultPricing?.fareDetailsBySegment ?? [];
-        const primaryCabin = fareDetails[0]?.cabin ?? 'ECONOMY';
-        const cabinClass = mapAmadeusCabin(primaryCabin);
-
-        // Refundable — Amadeus signals via pricingOptions.fareType
-        const fareTypes: string[] = rawOffer.pricingOptions?.fareType ?? [];
-        const refundable = fareTypes.some((ft: string) =>
-            ft.toUpperCase().includes('REFUND'),
-        );
-
-        // ── Segments — flatten all itineraries ──
+        // ── Segments — flatten all slices ──
         const allSegments: NormalizedSegment[] = [];
+        let totalDurationMin = 0;
+        let totalStops = 0;
+        let primaryCabinClass = 'economy';
+        let checkedBags = 0;
 
-        for (const itin of itineraries) {
-            for (const seg of itin.segments ?? []) {
-                const carrierCode: string = seg.carrierCode ?? '';
-                // deno-lint-ignore no-explicit-any
-                const fareDetail = fareDetails.find((fd: any) => fd.segmentId === seg.id);
+        let sliceIndex = 0;
+        for (const slice of rawOffer.slices) {
+            totalDurationMin += parsePTDuration(slice.duration);
+            totalStops += Math.max(0, (slice.segments?.length || 1) - 1);
+
+            for (const seg of slice.segments ?? []) {
+                const carrierCode = seg.operating_carrier?.iata_code ?? seg.marketing_carrier?.iata_code ?? '';
+                const carrierName = seg.operating_carrier?.name ?? seg.marketing_carrier?.name ?? getAirlineName(carrierCode);
+                const flightNum = seg.operating_carrier_flight_number ?? seg.marketing_carrier_flight_number ?? '';
+
+                // Cabin and baggage from the first passenger on this segment
+                const firstPax = seg.passengers?.[0];
+                const segCabin = firstPax?.cabin_class ?? 'economy';
+                if (sliceIndex === 0 && allSegments.length === 0) {
+                    primaryCabinClass = segCabin;
+                    const bags = firstPax?.baggages?.filter((b: any) => b.type === 'checked') || [];
+                    checkedBags = bags.reduce((acc: number, b: any) => acc + (b.quantity || 1), 0);
+                }
 
                 allSegments.push({
                     airline: carrierCode,
-                    airlineName: carriers[carrierCode] ?? getAirlineName(carrierCode),
-                    flightNumber: `${carrierCode}${seg.number ?? ''}`,
-                    origin: seg.departure?.iataCode ?? '',
-                    destination: seg.arrival?.iataCode ?? '',
-                    departureTime: seg.departure?.at ?? '',
-                    arrivalTime: seg.arrival?.at ?? '',
+                    airlineName: carrierName,
+                    flightNumber: `${carrierCode}${flightNum}`,
+                    origin: seg.origin?.iata_code ?? '',
+                    destination: seg.destination?.iata_code ?? '',
+                    departureTime: seg.departing_at ?? '',
+                    arrivalTime: seg.arriving_at ?? '',
                     duration: parsePTDuration(seg.duration),
-                    terminal: seg.departure?.terminal,
-                    arrivalTerminal: seg.arrival?.terminal,
-                    aircraft: aircraftDict[seg.aircraft?.code] ?? seg.aircraft?.code,
-                    cabinClass: fareDetail ? mapAmadeusCabin(fareDetail.cabin) : cabinClass,
+                    terminal: seg.origin_terminal,
+                    arrivalTerminal: seg.destination_terminal,
+                    aircraft: seg.aircraft?.name || seg.aircraft?.iata_code,
+                    cabinClass: segCabin as CabinClass,
+                    bookingClass: firstPax?.cabin_class_marketing_name, // Duffel might not expose RBD directly in some plans
+                    fareBasis: firstPax?.fare_basis_code,
+                    itineraryIndex: sliceIndex,
                 });
             }
+            sliceIndex++;
         }
 
-        // ── Outbound summary ──
-        const outboundDurationMin = parsePTDuration(outbound.duration);
+        if (!allSegments.length) return null;
 
-        // ── Baggage ──
-        const checkedBagsInfo = fareDetails[0]?.includedCheckedBags;
-        const checkedBags = checkedBagsInfo?.quantity
-            ?? (checkedBagsInfo?.weight ? 1 : undefined);
-        const weightPerBag = checkedBagsInfo?.weight;
+        const firstSeg = allSegments[0];
+        const lastSeg = allSegments[allSegments.length - 1];
 
-        // ── Brand ──
-        const brandName = fareDetails[0]?.brandedFare;
+        const airlineCode = rawOffer.owner?.iata_code ?? firstSeg.airline;
+        const airlineName = rawOffer.owner?.name ?? firstSeg.airlineName;
 
         return {
-            id: `amadeus_${rawOffer.id}`,
-            provider: 'amadeus',
+            id: `duffel_${rawOffer.id}`,
+            provider: FlightProvider.DUFFEL,
 
-            airline: firstSeg.carrierCode ?? '',
-            airlineName: carriers[firstSeg.carrierCode] ?? getAirlineName(firstSeg.carrierCode ?? ''),
-            flightNumber: `${firstSeg.carrierCode ?? ''}${firstSeg.number ?? ''}`,
-            origin: firstSeg.departure?.iataCode ?? '',
-            destination: lastSeg.arrival?.iataCode ?? '',
-            departureTime: firstSeg.departure?.at ?? '',
-            arrivalTime: lastSeg.arrival?.at ?? '',
-            duration: formatDuration(outboundDurationMin),
-            durationMinutes: outboundDurationMin,
-            stops: outSegments.length - 1,
+            airline: airlineCode,
+            airlineName: airlineName,
+            flightNumber: firstSeg.flightNumber,
+            origin: firstSeg.origin,
+            destination: lastSeg.destination,
+            departureTime: firstSeg.departureTime,
+            arrivalTime: lastSeg.arrivalTime,
+            duration: formatDuration(totalDurationMin),
+            durationMinutes: totalDurationMin,
+            stops: totalStops,
 
             price,
             currency,
@@ -127,39 +113,37 @@ export function normalizeAmadeusOffer(
 
             segments: allSegments,
 
-            cabinClass,
-            refundable,
-            seatsRemaining: rawOffer.numberOfBookableSeats,
-            validatingAirline: rawOffer.validatingAirlineCodes?.[0],
-            lastTicketDate: rawOffer.lastTicketingDate,
+            cabinClass: primaryCabinClass as CabinClass,
+            refundable: rawOffer.conditions?.refund_before_departure?.allowed === true,
 
-            checkedBags,
-            weightPerBag,
-            brandName,
-            fareType: fareTypes[0],
+            // Seats remaining not always provided by Duffel
+            seatsRemaining: undefined,
+            validatingAirline: rawOffer.owner?.iata_code,
+            lastTicketDate: rawOffer.expires_at,
+
+            checkedBags: checkedBags,
+            fareType: rawOffer.conditions?.refund_before_departure?.allowed ? 'Refundable' : 'Non-refundable',
             resultIndex: rawOffer.id,
 
-            // Preserve the full raw Amadeus offer for booking
+            // Preserve the full raw Duffel offer for booking
             _rawOffer: rawOffer,
         };
     } catch (err) {
-        console.error('[normalizeFlight] Failed to normalize Amadeus offer:', err);
+        console.error('[normalizeFlight] Failed to normalize Duffel offer:', err);
         return null;
     }
 }
 
 /**
- * Normalize a batch of Amadeus offers.
+ * Normalize a batch of Duffel offers.
  */
-export function normalizeAmadeusResponse(
+export function normalizeDuffelResponse(
     // deno-lint-ignore no-explicit-any
     data: any[],
-    // deno-lint-ignore no-explicit-any
-    dictionaries?: Record<string, any>,
 ): NormalizedFlight[] {
     const results: NormalizedFlight[] = [];
     for (const raw of data) {
-        const offer = normalizeAmadeusOffer(raw, dictionaries);
+        const offer = normalizeDuffelOffer(raw);
         if (offer) results.push(offer);
     }
     return results;
@@ -170,16 +154,26 @@ export function normalizeAmadeusResponse(
 let _mystiflyCounter = 0;
 
 /**
- * Normalize a single Mystifly fare itinerary (from Search/Flight v1).
- *
- * Mystifly nests data under FareItinerary.AirItineraryFareInfo and
- * OriginDestinationOptions with deeply nested FlightSegment objects.
+ * Normalize a single Mystifly fare itinerary.
+ * Supports both v1 (nested) and v2 (summarized/dictionary) formats.
  */
 export function normalizeMystiflyOffer(
     // deno-lint-ignore no-explicit-any
     fareItinerary: any,
+    // deno-lint-ignore no-explicit-any
+    dataContext?: any, // Full 'Data' object for v2 summarized lookups
 ): NormalizedFlight | null {
     try {
+        // ── Detect V2 Summarized vs V1 Nested ──
+        const isV2 = fareItinerary.FareRef !== undefined && dataContext?.FlightFaresList;
+
+        if (isV2) {
+            console.log('[normalizeFlight] Mystifly V2 (Summarized) detected');
+            return normalizeMystiflyV2(fareItinerary, dataContext);
+        }
+        console.log('[normalizeFlight] Mystifly V1 (Legacy) detected');
+
+        // V1/Legacy Path
         // V2 may nest under .FareItinerary, V1 may be flat
         const itinerary = fareItinerary?.FareItinerary ?? fareItinerary;
         const fareInfo = itinerary?.AirItineraryFareInfo ?? itinerary?.AirItineraryPricingInfo;
@@ -246,6 +240,7 @@ export function normalizeMystiflyOffer(
                     arrivalTerminal: fs.ArrivalTerminal,
                     aircraft: fs.Equipment?.AirEquipType,
                     cabinClass: mapCabinClass(fs.CabinClassCode ?? 'Y'),
+                    bookingClass: fs.ResBookDesigCode ?? fs.CabinClassCode,
                 });
             }
         }
@@ -303,7 +298,7 @@ export function normalizeMystiflyOffer(
 
         return {
             id,
-            provider: 'mystifly',
+            provider: FlightProvider.MYSTIFLY,
 
             airline: firstSeg.airline,
             airlineName: firstSeg.airlineName,
@@ -348,13 +343,134 @@ export function normalizeMystiflyOffer(
 export function normalizeMystiflyResponse(
     // deno-lint-ignore no-explicit-any
     fareItineraries: any[],
+    // deno-lint-ignore no-explicit-any
+    dataContext?: any,
 ): NormalizedFlight[] {
     const results: NormalizedFlight[] = [];
     for (const fi of fareItineraries) {
-        const offer = normalizeMystiflyOffer(fi);
+        const offer = normalizeMystiflyOffer(fi, dataContext);
         if (offer) results.push(offer);
     }
     return results;
+}
+
+/**
+ * Internal helper to normalize v2 summarized Mystifly itineraries.
+ */
+function normalizeMystiflyV2(
+    // deno-lint-ignore no-explicit-any
+    itin: any,
+    // deno-lint-ignore no-explicit-any
+    data: any,
+): NormalizedFlight | null {
+    try {
+        // Find fare by FareRef ID (not index)
+        const fare = data.FlightFaresList?.find((f: any) => f.FareRef === itin.FareRef);
+        if (!fare) return null;
+
+        const fareSourceCode: string = itin.FareSourceCode ?? '';
+
+        // ── Price ──
+        const currency: string = fare.Currency ?? 'USD';
+        let totalPrice = 0;
+        let totalBase = 0;
+        let pricePerAdult = 0;
+
+        const passengerFares: any[] = fare.PassengerFare ?? [];
+        for (const pf of passengerFares) {
+            const paxTotal = parseFloat(pf.TotalFare) || 0;
+            const paxBase = parseFloat(pf.BaseFare) || 0;
+            const qty = Number(pf.Quantity) || 1;
+
+            totalPrice += paxTotal * qty;
+            totalBase += paxBase * qty;
+
+            if (pf.PaxType === 'ADT') {
+                pricePerAdult = paxTotal;
+            }
+        }
+
+        if (pricePerAdult === 0) pricePerAdult = totalPrice;
+        const taxes = Math.max(0, totalPrice - totalBase);
+
+        // ── Segments ──
+        const allSegments: NormalizedSegment[] = [];
+        let totalDurationMin = 0;
+        let totalStops = 0;
+
+        const odos: any[] = itin.OriginDestinations ?? [];
+        for (const odo of odos) {
+            // Find segment by SegmentRef ID (not index)
+            const seg = data.FlightSegmentList?.find((s: any) => s.SegmentRef === odo.SegmentRef);
+            if (!seg) continue;
+
+            const airlineCode: string =
+                seg.OperatingCarrierCode ?? seg.MarketingCarriercode ?? '';
+            const flightNum: string =
+                seg.OperatingFlightNumber ?? seg.MarketingFlightNumber ?? '';
+
+            const depTime: string = seg.DepartureDateTime ?? '';
+            const arrTime: string = seg.ArrivalDateTime ?? '';
+            const duration = Number(seg.JourneyDuration) || calculateDuration(depTime, arrTime);
+
+            totalDurationMin += duration;
+            totalStops += Number(seg.stops) || 0;
+
+            allSegments.push({
+                airline: airlineCode,
+                airlineName: getAirlineName(airlineCode),
+                flightNumber: `${airlineCode}${flightNum}`,
+                origin: seg.DepartureAirportLocationCode ?? '',
+                destination: seg.ArrivalAirportLocationCode ?? '',
+                departureTime: depTime,
+                arrivalTime: arrTime,
+                duration,
+                terminal: seg.DepartureTerminal,
+                arrivalTerminal: seg.ArrivalTerminal,
+                aircraft: seg.Equipment,
+                cabinClass: mapCabinClass(seg.CabinClassCode ?? 'Y'),
+                bookingClass: seg.ResBookDesigCode ?? seg.CabinClassCode,
+            });
+        }
+
+        if (!allSegments.length) return null;
+
+        const firstSeg = allSegments[0];
+        const lastSeg = allSegments[allSegments.length - 1];
+
+        _mystiflyCounter++;
+        const id = `mystifly_${Date.now()}_${_mystiflyCounter}`;
+
+        return {
+            id,
+            provider: FlightProvider.MYSTIFLY,
+            airline: firstSeg.airline,
+            airlineName: firstSeg.airlineName,
+            flightNumber: firstSeg.flightNumber,
+            origin: firstSeg.origin,
+            destination: lastSeg.destination,
+            departureTime: firstSeg.departureTime,
+            arrivalTime: lastSeg.arrivalTime,
+            duration: formatDuration(totalDurationMin),
+            durationMinutes: totalDurationMin,
+            stops: totalStops,
+            price: totalPrice,
+            currency,
+            baseFare: totalBase,
+            taxes,
+            pricePerAdult,
+            segments: allSegments,
+            cabinClass: firstSeg.cabinClass,
+            refundable: fare.FareType === 'Public',
+            checkedBags: 0,
+            weightPerBag: undefined,
+            brandName: fare.FareType,
+            traceId: fareSourceCode,
+        };
+    } catch (err) {
+        console.error('[normalizeFlight] Failed to normalize Mystifly V2 offer:', err);
+        return null;
+    }
 }
 
 // ─── Shared Helpers ─────────────────────────────────────────────────
@@ -374,18 +490,6 @@ export function parsePTDuration(pt: string | undefined | null): number {
     return (parseInt(match[1] ?? '0', 10) * 60) + parseInt(match[2] ?? '0', 10);
 }
 
-/** Map Amadeus cabin string to our CabinClass enum. */
-const AMADEUS_CABIN_MAP: Record<string, CabinClass> = {
-    ECONOMY: 'economy',
-    PREMIUM_ECONOMY: 'premium_economy',
-    BUSINESS: 'business',
-    FIRST: 'first',
-};
-
-export function mapAmadeusCabin(cabin: string): CabinClass {
-    return AMADEUS_CABIN_MAP[cabin?.toUpperCase()] ?? 'economy';
-}
-
 /** Map Mystifly cabin code to our CabinClass enum. */
 const MYSTIFLY_CABIN_MAP: Record<string, CabinClass> = {
     Y: 'economy',
@@ -396,18 +500,6 @@ const MYSTIFLY_CABIN_MAP: Record<string, CabinClass> = {
 
 export function mapCabinClass(code: string): CabinClass {
     return MYSTIFLY_CABIN_MAP[code] ?? 'economy';
-}
-
-/** Map our CabinClass to Amadeus travelClass query param. */
-const CABIN_TO_AMADEUS: Record<string, string> = {
-    economy: 'ECONOMY',
-    premium_economy: 'PREMIUM_ECONOMY',
-    business: 'BUSINESS',
-    first: 'FIRST',
-};
-
-export function toAmadeusCabin(cabin: string): string {
-    return CABIN_TO_AMADEUS[cabin] ?? 'ECONOMY';
 }
 
 /** Well-known airline names by IATA code. */
@@ -421,7 +513,7 @@ const AIRLINES: Record<string, string> = {
     TG: 'Thai Airways', FD: 'Thai AirAsia', VN: 'Vietnam Airlines', VJ: 'VietJet',
     GA: 'Garuda Indonesia', CX: 'Cathay Pacific', HX: 'Hong Kong Airlines',
     CA: 'Air China', MU: 'China Eastern', CZ: 'China Southern',
-    CI: 'China Airlines', BR: 'EVA Air',
+    CI: 'China Airlines', BR: 'EVA Air', YP: 'Air Premia',
     // Middle East
     EK: 'Emirates', EY: 'Etihad Airways', QR: 'Qatar Airways',
     SV: 'Saudia', GF: 'Gulf Air', WY: 'Oman Air',

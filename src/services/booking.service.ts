@@ -244,7 +244,7 @@ export interface FlightBookingRecord {
   id: string;
   user_id: string;
   pnr: string;
-  provider: 'amadeus' | 'mystifly';
+  provider: 'duffel' | 'mystifly';
   total_price: number;
   status: 'booked' | 'ticketed' | 'cancelled' | 'failed';
   created_at: string;

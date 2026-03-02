@@ -26,7 +26,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const rawTab = searchParams.get('tab');
+  const rawTab = searchParams?.get('tab');
   const activeTab: TabValue = VALID_TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';
 
   const [visibleCount, setVisibleCount] = useState(10);
@@ -45,7 +45,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
       : initialData.bookings;
 
   const handleTabChange = useCallback((tab: TabValue) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || '');
     if (tab === 'upcoming') {
       params.delete('tab');
     } else {
@@ -158,12 +158,19 @@ export function TripsContent({ initialData }: TripsContentProps) {
         ) : (
           <div className="space-y-2 sm:space-y-2.5 md:space-y-3">
             {displayedBookings.slice(0, visibleCount).map((booking, index) => (
-              <BookingCard
-                key={booking.id}
-                booking={booking}
-                onBookingUpdated={refetch}
-                index={index}
-              />
+              isFlight(booking) ? (
+                <FlightBookingCard
+                  key={booking.id}
+                  booking={booking}
+                />
+              ) : (
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  onBookingUpdated={refetch}
+                  index={index}
+                />
+              )
             ))}
             {visibleCount < displayedBookings.length && (
               <div className="flex justify-center pt-3 sm:pt-4 md:pt-6">

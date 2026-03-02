@@ -85,6 +85,9 @@ export function useFlightBooking() {
                     departureTime: seg.departure.time,
                     arrivalTime: seg.arrival.time,
                     cabinClass: seg.cabinClass,
+                    bookingClass: (seg as any).bookingClass,
+                    fareBasis: (seg as any).fareBasis,
+                    itineraryIndex: (seg as any).itineraryIndex,
                 })),
             };
 

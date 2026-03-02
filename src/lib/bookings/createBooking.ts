@@ -165,12 +165,12 @@ function getServiceClient() {
  * const result = await createBooking({
  *   type: 'flight',
  *   userId: user.id,
- *   provider: 'amadeus',
+ *   provider: 'duffel',
  *   externalId: 'ABC123',
  *   totalPrice: 450,
  *   currency: 'USD',
  *   metadata: {
- *     offerId: 'amadeus_1234',
+ *     offerId: 'duffel_1234',
  *     route: { origin: 'MNL', destination: 'ICN', departureDate: '2026-03-15' },
  *     passengers: [{ firstName: 'John', lastName: 'Doe', type: 'adult' }],
  *     cabinClass: 'economy',

@@ -6,12 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeftRight, SlidersHorizontal, ArrowUpDown, Loader2, AlertTriangle, Search, Plane } from 'lucide-react';
 import { FlightCard } from '@/components/flights/FlightCard';
 import BackButton from '@/components/common/BackButton';
-import { useUserCurrency } from '@/stores/searchStore';
+import { useSearchStore } from '@/stores/searchStore';
 import type { FlightOffer, FlightSearchRequest, CabinClass } from '@/lib/flights';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
-type SortMode = 'cheapest' | 'fastest' | 'best';
+type SortMode = 'recommended' | 'cheapest' | 'fastest' | 'best';
 type StopFilter = 'any' | 'nonstop' | '1stop' | '2plus';
 
 interface SearchResult {
@@ -26,7 +26,18 @@ interface SearchResult {
 export default function FlightSearchContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const userCurrency = useUserCurrency();
+    const { userCurrency, setUserCurrency, setUserCountry } = useSearchStore(); // Modified: Replaced useUserCurrency with useSearchStore
+
+    // SYNC: Ensure store matches URL on load/change
+    useEffect(() => {
+        const urlCurrency = searchParams?.get('currency');
+        if (urlCurrency && urlCurrency !== userCurrency) {
+            setUserCurrency(urlCurrency);
+            // Default mapping for labels
+            const country = urlCurrency === 'PHP' ? 'PH' : urlCurrency === 'KRW' ? 'KR' : 'US';
+            setUserCountry(country);
+        }
+    }, [searchParams, userCurrency, setUserCurrency, setUserCountry]);
 
     // Search state
     const [results, setResults] = useState<SearchResult | null>(null);
@@ -34,20 +45,28 @@ export default function FlightSearchContent() {
     const [error, setError] = useState<string | null>(null);
 
     // Filter/sort state
-    const [sortMode, setSortMode] = useState<SortMode>('cheapest');
+    const [sortMode, setSortMode] = useState<SortMode>('recommended');
     const [stopFilter, setStopFilter] = useState<StopFilter>('any');
     const [airlineFilter, setAirlineFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
 
+    // Pagination state
+    const [displayLimit, setDisplayLimit] = useState(20);
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setDisplayLimit(20);
+    }, [sortMode, stopFilter, airlineFilter]);
+
     // Parse search params
     const searchRequest = useMemo((): FlightSearchRequest | null => {
-        const origin0 = searchParams.get('origin0');
-        const dest0 = searchParams.get('dest0');
-        const date0 = searchParams.get('date0');
+        const origin0 = searchParams?.get('origin0');
+        const dest0 = searchParams?.get('dest0');
+        const date0 = searchParams?.get('date0');
 
         if (!origin0 || !dest0 || !date0) return null;
 
-        const tripType = (searchParams.get('tripType') || 'one-way') as 'one-way' | 'round-trip' | 'multi-city';
+        const tripType = (searchParams?.get('tripType') || 'one-way') as 'one-way' | 'round-trip' | 'multi-city';
         const segments = [{
             origin: origin0,
             destination: dest0,
@@ -55,7 +74,7 @@ export default function FlightSearchContent() {
         }];
 
         // Round-trip return segment
-        const date1 = searchParams.get('date1');
+        const date1 = searchParams?.get('date1');
         if ((tripType === 'round-trip') && date1) {
             segments.push({
                 origin: dest0,
@@ -67,26 +86,29 @@ export default function FlightSearchContent() {
         // Multi-city additional segments
         if (tripType === 'multi-city') {
             let idx = 1;
-            while (searchParams.get(`origin${idx}`) && searchParams.get(`dest${idx}`) && searchParams.get(`date${idx}`)) {
+            while (searchParams?.get(`origin${idx}`) && searchParams?.get(`dest${idx}`) && searchParams?.get(`date${idx}`)) {
                 segments.push({
-                    origin: searchParams.get(`origin${idx}`)!,
-                    destination: searchParams.get(`dest${idx}`)!,
-                    departureDate: searchParams.get(`date${idx}`)!.split('T')[0],
+                    origin: searchParams?.get(`origin${idx}`)!,
+                    destination: searchParams?.get(`dest${idx}`)!,
+                    departureDate: searchParams?.get(`date${idx}`)!.split('T')[0],
                 });
                 idx++;
             }
         }
 
+        const urlCurrency = searchParams?.get('currency');
+        const effectiveCurrency = urlCurrency || userCurrency || 'PHP';
+
         return {
             tripType,
             segments,
             passengers: {
-                adults: Number(searchParams.get('adults')) || 1,
-                children: Number(searchParams.get('children')) || 0,
-                infants: Number(searchParams.get('infants')) || 0,
+                adults: Number(searchParams?.get('adults')) || 1,
+                children: Number(searchParams?.get('children')) || 0,
+                infants: Number(searchParams?.get('infants')) || 0,
             },
-            cabinClass: (searchParams.get('cabin') as CabinClass) || 'economy',
-            currency: userCurrency,
+            cabinClass: (searchParams?.get('cabin') as CabinClass) || 'economy',
+            currency: effectiveCurrency,
         };
     }, [searchParams, userCurrency]);
 
@@ -157,9 +179,13 @@ export default function FlightSearchContent() {
         }
 
         // Sort
-        if (sortMode === 'cheapest') offers.sort((a, b) => a.price.total - b.price.total);
-        else if (sortMode === 'fastest') offers.sort((a, b) => a.totalDuration - b.totalDuration);
-        else {
+        if (sortMode === 'recommended') {
+            // Already interleaved/sorted by server
+        } else if (sortMode === 'cheapest') {
+            offers.sort((a, b) => a.price.total - b.price.total);
+        } else if (sortMode === 'fastest') {
+            offers.sort((a, b) => a.totalDuration - b.totalDuration);
+        } else {
             // "Best" = weighted score of price + duration
             offers.sort((a, b) => {
                 const scoreA = a.price.total * 0.6 + a.totalDuration * 2;
@@ -172,14 +198,14 @@ export default function FlightSearchContent() {
     }, [results, stopFilter, airlineFilter, sortMode]);
 
     // Route summary
-    const originName = searchParams.get('originName0') || searchParams.get('origin0') || '';
-    const destName = searchParams.get('destName0') || searchParams.get('dest0') || '';
-    const tripType = searchParams.get('tripType') || 'one-way';
+    const originName = searchParams?.get('originName0') || searchParams?.get('origin0') || '';
+    const destName = searchParams?.get('destName0') || searchParams?.get('dest0') || '';
+    const tripType = searchParams?.get('tripType') || 'one-way';
 
     // ─── Loading State ───────────────────────────────────────────────
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-8 pb-12 lg:pb-16">
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-8 pb-12 lg:pb-16">
                 <div className="max-w-4xl mx-auto px-3 lg:px-4">
                     <div className="flex flex-col items-center justify-center py-12 lg:py-20 gap-3 lg:gap-4">
                         <div className="relative">
@@ -203,7 +229,7 @@ export default function FlightSearchContent() {
     // ─── Error State ─────────────────────────────────────────────────
     if (error) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-8 pb-12 lg:pb-16">
+            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-8 pb-12 lg:pb-16">
                 <div className="max-w-4xl mx-auto px-3 lg:px-4">
                     <div className="flex flex-col items-center justify-center py-12 lg:py-20 gap-3 lg:gap-4">
                         <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -227,7 +253,7 @@ export default function FlightSearchContent() {
 
     // ─── Results ─────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 pt-3 lg:pt-8 pb-8 lg:pb-16">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-8 pb-8 lg:pb-16">
             <div className="max-w-4xl mx-auto px-2.5 lg:px-4">
                 {/* ─── Header ─── */}
                 <div className="mb-2.5 lg:mb-6">
@@ -241,8 +267,8 @@ export default function FlightSearchContent() {
                         </h1>
                     </div>
                     <p className="text-[9px] lg:text-sm text-slate-500 dark:text-slate-400 mt-0.5 lg:mt-1 capitalize">
-                        {tripType.replace('-', ' ')} · {searchParams.get('cabin') || 'economy'} · {
-                            Number(searchParams.get('adults') || 1) + Number(searchParams.get('children') || 0)
+                        {tripType.replace('-', ' ')} · {searchParams?.get('cabin') || 'economy'} · {
+                            Number(searchParams?.get('adults') || 1) + Number(searchParams?.get('children') || 0)
                         } traveler(s)
                     </p>
                 </div>
@@ -251,7 +277,7 @@ export default function FlightSearchContent() {
                 <div className="flex items-center gap-1.5 lg:gap-3 flex-wrap mb-2 lg:mb-4">
                     {/* Sort */}
                     <div className="flex items-center bg-white dark:bg-slate-800 rounded-md lg:rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-[10px] lg:text-sm">
-                        {(['cheapest', 'fastest', 'best'] as SortMode[]).map((mode) => (
+                        {(['recommended', 'cheapest', 'fastest', 'best'] as SortMode[]).map((mode) => (
                             <button
                                 key={mode}
                                 onClick={() => setSortMode(mode)}
@@ -357,7 +383,11 @@ export default function FlightSearchContent() {
                         {results.providers.map(p => (
                             <span key={p.name} className="px-1 lg:px-2 py-px lg:py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                                 {p.name} ({p.offerCount})
-                                {p.error && <span className="text-red-400 ml-1">⚠</span>}
+                                {p.error && (
+                                    <span className="text-red-400 ml-1 cursor-help" title={p.error}>
+                                        ⚠
+                                    </span>
+                                )}
                             </span>
                         ))}
                     </div>
@@ -376,18 +406,32 @@ export default function FlightSearchContent() {
                             </div>
                         </div>
                     ) : (
-                        <AnimatePresence>
-                            {displayOffers.map((offer) => (
-                                <FlightCard
-                                    key={offer.offerId}
-                                    offer={offer}
-                                    onSelect={(selected) => {
-                                        sessionStorage.setItem('selectedFlight', JSON.stringify(selected));
-                                        router.push('/flights/book');
-                                    }}
-                                />
-                            ))}
-                        </AnimatePresence>
+                        <>
+                            <AnimatePresence>
+                                {displayOffers.slice(0, displayLimit).map((offer, i) => (
+                                    <FlightCard
+                                        key={offer.offerId}
+                                        offer={offer}
+                                        index={i}
+                                        onSelect={(selected) => {
+                                            sessionStorage.setItem('selectedFlight', JSON.stringify(selected));
+                                            router.push('/flights/book');
+                                        }}
+                                    />
+                                ))}
+                            </AnimatePresence>
+
+                            {displayLimit < displayOffers.length && (
+                                <div className="flex justify-center pt-4 lg:pt-6 pb-2">
+                                    <button
+                                        onClick={() => setDisplayLimit(prev => prev + 20)}
+                                        className="px-6 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm flex items-center gap-2"
+                                    >
+                                        Load More Flights ({displayOffers.length - displayLimit} remaining)
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

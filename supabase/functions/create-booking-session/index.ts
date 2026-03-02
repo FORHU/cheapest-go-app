@@ -55,7 +55,7 @@ interface BookingSessionContact {
 
 interface CreateBookingSessionBody {
     userId: string;
-    provider: 'mystifly' | 'amadeus';
+    provider: 'mystifly' | 'duffel';
     flight: Record<string, unknown>;
     passengers: BookingSessionPassenger[];
     contact: BookingSessionContact;
@@ -80,8 +80,8 @@ Deno.serve(async (req: Request) => {
         if (!body.userId) {
             return jsonResponse(corsHeaders, { success: false, error: 'userId is required' }, 400);
         }
-        if (!body.provider || !['mystifly', 'amadeus'].includes(body.provider)) {
-            return jsonResponse(corsHeaders, { success: false, error: 'provider must be "mystifly" or "amadeus"' }, 400);
+        if (!body.provider || !['mystifly', 'duffel'].includes(body.provider)) {
+            return jsonResponse(corsHeaders, { success: false, error: 'provider must be "mystifly" or "duffel"' }, 400);
         }
         if (!body.flight || typeof body.flight !== 'object') {
             return jsonResponse(corsHeaders, { success: false, error: 'flight object is required' }, 400);
