@@ -26,7 +26,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const rawTab = searchParams.get('tab');
+  const rawTab = searchParams?.get('tab');
   const activeTab: TabValue = VALID_TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';
 
   const [visibleCount, setVisibleCount] = useState(10);
@@ -45,7 +45,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
       : initialData.bookings;
 
   const handleTabChange = useCallback((tab: TabValue) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() || '');
     if (tab === 'upcoming') {
       params.delete('tab');
     } else {

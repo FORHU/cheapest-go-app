@@ -50,15 +50,23 @@ export default function FlightSearchContent() {
     const [airlineFilter, setAirlineFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
 
+    // Pagination state
+    const [displayLimit, setDisplayLimit] = useState(20);
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setDisplayLimit(20);
+    }, [sortMode, stopFilter, airlineFilter]);
+
     // Parse search params
     const searchRequest = useMemo((): FlightSearchRequest | null => {
-        const origin0 = searchParams.get('origin0');
-        const dest0 = searchParams.get('dest0');
-        const date0 = searchParams.get('date0');
+        const origin0 = searchParams?.get('origin0');
+        const dest0 = searchParams?.get('dest0');
+        const date0 = searchParams?.get('date0');
 
         if (!origin0 || !dest0 || !date0) return null;
 
-        const tripType = (searchParams.get('tripType') || 'one-way') as 'one-way' | 'round-trip' | 'multi-city';
+        const tripType = (searchParams?.get('tripType') || 'one-way') as 'one-way' | 'round-trip' | 'multi-city';
         const segments = [{
             origin: origin0,
             destination: dest0,
@@ -66,7 +74,7 @@ export default function FlightSearchContent() {
         }];
 
         // Round-trip return segment
-        const date1 = searchParams.get('date1');
+        const date1 = searchParams?.get('date1');
         if ((tripType === 'round-trip') && date1) {
             segments.push({
                 origin: dest0,
@@ -78,28 +86,28 @@ export default function FlightSearchContent() {
         // Multi-city additional segments
         if (tripType === 'multi-city') {
             let idx = 1;
-            while (searchParams.get(`origin${idx}`) && searchParams.get(`dest${idx}`) && searchParams.get(`date${idx}`)) {
+            while (searchParams?.get(`origin${idx}`) && searchParams?.get(`dest${idx}`) && searchParams?.get(`date${idx}`)) {
                 segments.push({
-                    origin: searchParams.get(`origin${idx}`)!,
-                    destination: searchParams.get(`dest${idx}`)!,
-                    departureDate: searchParams.get(`date${idx}`)!.split('T')[0],
+                    origin: searchParams?.get(`origin${idx}`)!,
+                    destination: searchParams?.get(`dest${idx}`)!,
+                    departureDate: searchParams?.get(`date${idx}`)!.split('T')[0],
                 });
                 idx++;
             }
         }
 
-        const urlCurrency = searchParams.get('currency');
+        const urlCurrency = searchParams?.get('currency');
         const effectiveCurrency = urlCurrency || userCurrency || 'PHP';
 
         return {
             tripType,
             segments,
             passengers: {
-                adults: Number(searchParams.get('adults')) || 1,
-                children: Number(searchParams.get('children')) || 0,
-                infants: Number(searchParams.get('infants')) || 0,
+                adults: Number(searchParams?.get('adults')) || 1,
+                children: Number(searchParams?.get('children')) || 0,
+                infants: Number(searchParams?.get('infants')) || 0,
             },
-            cabinClass: (searchParams.get('cabin') as CabinClass) || 'economy',
+            cabinClass: (searchParams?.get('cabin') as CabinClass) || 'economy',
             currency: effectiveCurrency,
         };
     }, [searchParams, userCurrency]);
@@ -190,9 +198,9 @@ export default function FlightSearchContent() {
     }, [results, stopFilter, airlineFilter, sortMode]);
 
     // Route summary
-    const originName = searchParams.get('originName0') || searchParams.get('origin0') || '';
-    const destName = searchParams.get('destName0') || searchParams.get('dest0') || '';
-    const tripType = searchParams.get('tripType') || 'one-way';
+    const originName = searchParams?.get('originName0') || searchParams?.get('origin0') || '';
+    const destName = searchParams?.get('destName0') || searchParams?.get('dest0') || '';
+    const tripType = searchParams?.get('tripType') || 'one-way';
 
     // ─── Loading State ───────────────────────────────────────────────
     if (loading) {
@@ -259,8 +267,8 @@ export default function FlightSearchContent() {
                         </h1>
                     </div>
                     <p className="text-[9px] lg:text-sm text-slate-500 dark:text-slate-400 mt-0.5 lg:mt-1 capitalize">
-                        {tripType.replace('-', ' ')} · {searchParams.get('cabin') || 'economy'} · {
-                            Number(searchParams.get('adults') || 1) + Number(searchParams.get('children') || 0)
+                        {tripType.replace('-', ' ')} · {searchParams?.get('cabin') || 'economy'} · {
+                            Number(searchParams?.get('adults') || 1) + Number(searchParams?.get('children') || 0)
                         } traveler(s)
                     </p>
                 </div>
@@ -398,19 +406,32 @@ export default function FlightSearchContent() {
                             </div>
                         </div>
                     ) : (
-                        <AnimatePresence>
-                            {displayOffers.map((offer, i) => (
-                                <FlightCard
-                                    key={offer.offerId}
-                                    offer={offer}
-                                    index={i}
-                                    onSelect={(selected) => {
-                                        sessionStorage.setItem('selectedFlight', JSON.stringify(selected));
-                                        router.push('/flights/book');
-                                    }}
-                                />
-                            ))}
-                        </AnimatePresence>
+                        <>
+                            <AnimatePresence>
+                                {displayOffers.slice(0, displayLimit).map((offer, i) => (
+                                    <FlightCard
+                                        key={offer.offerId}
+                                        offer={offer}
+                                        index={i}
+                                        onSelect={(selected) => {
+                                            sessionStorage.setItem('selectedFlight', JSON.stringify(selected));
+                                            router.push('/flights/book');
+                                        }}
+                                    />
+                                ))}
+                            </AnimatePresence>
+
+                            {displayLimit < displayOffers.length && (
+                                <div className="flex justify-center pt-4 lg:pt-6 pb-2">
+                                    <button
+                                        onClick={() => setDisplayLimit(prev => prev + 20)}
+                                        className="px-6 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm flex items-center gap-2"
+                                    >
+                                        Load More Flights ({displayOffers.length - displayLimit} remaining)
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

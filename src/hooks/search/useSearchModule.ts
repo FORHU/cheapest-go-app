@@ -86,14 +86,14 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         // Reset loading state when navigation completes
         setIsSearching(false);
 
-        const destParam = searchParams.get('destination');
-        const checkInParam = searchParams.get('checkIn');
-        const checkOutParam = searchParams.get('checkOut');
-        const adultsParam = searchParams.get('adults');
-        const childrenParam = searchParams.get('children');
-        const roomsParam = searchParams.get('rooms');
-        const countryCodeParam = searchParams.get('countryCode');
-        const placeIdParam = searchParams.get('placeId');
+        const destParam = searchParams?.get('destination');
+        const checkInParam = searchParams?.get('checkIn');
+        const checkOutParam = searchParams?.get('checkOut');
+        const adultsParam = searchParams?.get('adults');
+        const childrenParam = searchParams?.get('children');
+        const roomsParam = searchParams?.get('rooms');
+        const countryCodeParam = searchParams?.get('countryCode');
+        const placeIdParam = searchParams?.get('placeId');
 
         if (destParam) {
             setDestinationQuery(destParam);

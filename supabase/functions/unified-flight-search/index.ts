@@ -19,7 +19,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 declare const Deno: any;
 
-import type { NormalizedFlight, FlightProvider } from '../_shared/types.ts';
+import { FlightProvider } from '../_shared/types.ts';
+import type { NormalizedFlight } from '../_shared/types.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
 
@@ -45,13 +46,13 @@ interface ProviderConfig {
 
 const PROVIDERS: ProviderConfig[] = [
     {
-        name: 'amadeus',
-        functionName: 'amadeus-search',
+        name: FlightProvider.DUFFEL,
+        functionName: 'duffel-search',
         enabled: true,
         timeoutMs: 15_000,
     },
     {
-        name: 'mystifly',
+        name: FlightProvider.MYSTIFLY,
         functionName: 'mystifly-search',
         enabled: true,
         timeoutMs: 20_000,
@@ -127,9 +128,9 @@ Deno.serve(async (req: Request) => {
 
         // ── Merge all flights ──
         const allFlights: NormalizedFlight[] = providerResults.flatMap((r) => r.flights);
-        const amadeusCount = providerResults.find(r => r.name === 'amadeus')?.flights.length ?? 0;
-        const mystiflyCount = providerResults.find(r => r.name === 'mystifly')?.flights.length ?? 0;
-        console.log(`[unified-flight-search] Raw counts - Amadeus: ${amadeusCount}, Mystifly: ${mystiflyCount}`);
+        const duffelCount = providerResults.find(r => r.name === FlightProvider.DUFFEL)?.flights.length ?? 0;
+        const mystiflyCount = providerResults.find(r => r.name === FlightProvider.MYSTIFLY)?.flights.length ?? 0;
+        console.log(`[unified-flight-search] Raw counts - Duffel: ${duffelCount}, Mystifly: ${mystiflyCount}`);
 
         // ── Deduplicate (same flight from multiple GDS) ──
         const deduped = deduplicateFlights(allFlights);
@@ -260,41 +261,58 @@ async function callProvider(
 
 /**
  * MED-2 FIX: Improved deduplication for multi-segment itineraries.
- * SENIOR-LEVEL: Prefer Amadeus if prices are virtually identical (< 1% diff).
+ * SENIOR-LEVEL: Prefer Duffel if prices are virtually identical (< 1% diff).
  */
 function deduplicateFlights(flights: NormalizedFlight[]): NormalizedFlight[] {
-    const seen = new Map<string, NormalizedFlight>();
+    // Group identical physical itineraries
+    const itineraryGroups = new Map<string, NormalizedFlight[]>();
 
     for (const flight of flights) {
         const segmentKeys = (flight.segments ?? []).map(
             (seg) => `${seg.flightNumber}_${(seg.departureTime || '').slice(0, 16)}`,
         );
-        const key = segmentKeys.length > 0
+        const physicalKey = segmentKeys.length > 0
             ? segmentKeys.join('|')
             : `${flight.flightNumber}_${(flight.departureTime || '').slice(0, 16)}`;
 
-        const existing = seen.get(key);
-
-        if (!existing) {
-            seen.set(key, flight);
-            continue;
+        if (!itineraryGroups.has(physicalKey)) {
+            itineraryGroups.set(physicalKey, []);
         }
-
-        // PRICE TIE-BREAKER: If prices are close (< 1% diff), prefer Amadeus for reliability/inclusions
-        const priceDiff = Math.abs(flight.price - existing.price);
-        const threshold = Math.min(existing.price, flight.price) * 0.01;
-        const isNearTie = priceDiff <= threshold || priceDiff < 2;
-
-        if (isNearTie) {
-            if (flight.provider === 'amadeus' && existing.provider !== 'amadeus') {
-                seen.set(key, flight);
-            }
-        } else if (flight.price < existing.price) {
-            seen.set(key, flight);
-        }
+        itineraryGroups.get(physicalKey)!.push(flight);
     }
 
-    return Array.from(seen.values());
+    const deduped: NormalizedFlight[] = [];
+
+    for (const group of itineraryGroups.values()) {
+        // Sort lowest price first
+        group.sort((a, b) => a.price - b.price);
+
+        const kept: NormalizedFlight[] = [];
+
+        for (const flight of group) {
+            // Check if we already kept a functionally identical offer for this plane
+            // (Same cabin class, and price difference < 2% or < $2 fixed)
+            const idx = kept.findIndex(k => {
+                const sameCabin = k.cabinClass === flight.cabinClass;
+                const priceDiff = Math.abs(k.price - flight.price);
+                const isSimilarPrice = priceDiff < (k.price * 0.02) || priceDiff < 2;
+                return sameCabin && isSimilarPrice;
+            });
+
+            if (idx === -1) {
+                // Meaningful variation (e.g. different fare brand with >2% price diff) -> Keep it
+                kept.push(flight);
+            } else {
+                // It's a duplicate. TIE-BREAKER: Prefer Duffel for direct booking reliability
+                if (flight.provider === FlightProvider.DUFFEL && kept[idx].provider !== FlightProvider.DUFFEL) {
+                    kept[idx] = flight;
+                }
+            }
+        }
+        deduped.push(...kept);
+    }
+
+    return deduped;
 }
 
 /**
@@ -305,40 +323,48 @@ function deduplicateFlights(flights: NormalizedFlight[]): NormalizedFlight[] {
  * Uses a 3:1 ratio to ensure the secondary provider is always visible.
  */
 function smartSort(flights: NormalizedFlight[]): NormalizedFlight[] {
-    const amadeus = flights.filter(f => f.provider === 'amadeus').sort((a, b) => a.price - b.price);
-    const mystifly = flights.filter(f => f.provider === 'mystifly').sort((a, b) => a.price - b.price);
+    const duffel = flights.filter(f => f.provider === FlightProvider.DUFFEL).sort((a, b) => a.price - b.price);
+    const mystifly = flights.filter(f => f.provider === FlightProvider.MYSTIFLY).sort((a, b) => a.price - b.price);
 
-    if (amadeus.length === 0) return mystifly;
-    if (mystifly.length === 0) return amadeus;
+    if (duffel.length === 0) return mystifly;
+    if (mystifly.length === 0) return duffel;
 
     const result: NormalizedFlight[] = [];
-    let aIdx = 0;
+    let dIdx = 0;
     let mIdx = 0;
 
     // Determine primary provider (whoever has the cheapest overall flight)
     const mCheapest = mystifly[0].price;
-    const aCheapest = amadeus[0].price;
+    const dCheapest = duffel[0].price;
 
-    console.log(`[unified-flight-search] Interleaving ${amadeus.length} Amadeus and ${mystifly.length} Mystifly. Primary: ${mCheapest <= aCheapest ? 'mystifly' : 'amadeus'}`);
+    console.log(`[unified-flight-search] Interleaving ${duffel.length} Duffel and ${mystifly.length} Mystifly. Primary: ${mCheapest <= dCheapest ? 'mystifly' : 'duffel'}`);
 
-    while (aIdx < amadeus.length || mIdx < mystifly.length) {
-        if (mCheapest <= aCheapest) {
-            // Case 1: Mystifly is overall cheaper. Pattern: [3 Mystifly, 1 Amadeus]
+    while (dIdx < duffel.length || mIdx < mystifly.length) {
+        if (mCheapest <= dCheapest) {
+            // Case 1: Mystifly is overall cheaper. Pattern: [3 Mystifly, 1 Duffel]
             for (let k = 0; k < 3 && mIdx < mystifly.length; k++) {
                 result.push(mystifly[mIdx++]);
             }
-            if (aIdx < amadeus.length) {
-                result.push(amadeus[aIdx++]);
+            if (dIdx < duffel.length) {
+                result.push(duffel[dIdx++]);
             }
         } else {
-            // Case 2: Amadeus is overall cheaper. Pattern: [3 Amadeus, 1 Mystifly]
-            for (let k = 0; k < 3 && aIdx < amadeus.length; k++) {
-                result.push(amadeus[aIdx++]);
+            // Case 2: Duffel is overall cheaper. Pattern: [3 Duffel, 1 Mystifly]
+            for (let k = 0; k < 3 && dIdx < duffel.length; k++) {
+                result.push(duffel[dIdx++]);
             }
             if (mIdx < mystifly.length) {
                 result.push(mystifly[mIdx++]);
             }
         }
+    }
+
+    // Append any remaining flights if one array was longer than the interleaved ratio
+    while (mIdx < mystifly.length) {
+        result.push(mystifly[mIdx++]);
+    }
+    while (dIdx < duffel.length) {
+        result.push(duffel[dIdx++]);
     }
 
     return result;

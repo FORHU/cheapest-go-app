@@ -22,7 +22,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 declare const Deno: any;
 
 import { ticketFlight, MystiflyError } from '../_shared/mystiflyClient.ts';
-import { amadeusRequest, AmadeusError } from '../_shared/amadeusClient.ts';
+import { getDuffelOrder } from '../_shared/duffelClient.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
 
@@ -43,7 +43,7 @@ interface FlightBooking {
     id: string;
     user_id: string;
     pnr: string;
-    provider: 'mystifly' | 'amadeus';
+    provider: 'mystifly' | 'duffel';
     total_price: number;
     status: string;
     amadeus_order_id?: string;
@@ -126,9 +126,9 @@ Deno.serve(async (req: Request) => {
 
         if (fb.provider === 'mystifly') {
             result = await ticketWithMystifly(fb.pnr);
-        } else if (fb.provider === 'amadeus') {
-            // HIGH-5 FIX: Use amadeus_order_id (not airline PNR) for Amadeus API calls
-            result = await ticketWithAmadeus(fb.amadeus_order_id ?? fb.pnr);
+        } else if (fb.provider === 'duffel') {
+            // Duffel orders are retrieved by their order ID, which we saved in amadeus_order_id column
+            result = await ticketWithDuffel(fb.amadeus_order_id ?? fb.pnr);
         } else {
             return jsonResponse(corsHeaders,
                 { success: false, error: `Unknown provider: ${fb.provider}` },
@@ -190,8 +190,7 @@ Deno.serve(async (req: Request) => {
 
         const status =
             err instanceof MystiflyError ? Math.max(err.status, 400) :
-            err instanceof AmadeusError ? Math.max(err.status, 400) :
-            500;
+                500;
 
         return jsonResponse(getCorsHeaders(req),
             { success: false, error: err.message || 'Ticketing failed' },
@@ -247,44 +246,29 @@ function extractTicketNumbers(data: Record<string, any>): string[] {
     return [];
 }
 
-// ─── Amadeus Ticketing ──────────────────────────────────────────────
+// ─── Duffel Ticketing ───────────────────────────────────────────────
 
-/**
- * HIGH-5 FIX: Uses the Amadeus order ID (not the airline PNR) to retrieve the order.
- * Amadeus Flight Orders are typically auto-ticketed on creation.
- */
-async function ticketWithAmadeus(orderId: string): Promise<TicketResult> {
-    const raw: any = await amadeusRequest(`/v1/booking/flight-orders/${orderId}`);
+async function ticketWithDuffel(orderId: string): Promise<TicketResult> {
+    const raw = await getDuffelOrder(orderId);
 
     const order = raw.data;
     if (!order) {
-        throw new Error('Amadeus order not found');
+        throw new Error('Duffel order not found');
     }
 
     const ticketNumbers: string[] = [];
 
-    const travelers = order.travelers ?? [];
-    for (const traveler of travelers) {
-        const docs = traveler.documents ?? [];
-        for (const doc of docs) {
-            if (doc.documentType === 'ETICKET' && doc.number) {
-                ticketNumbers.push(doc.number);
-            }
+    const documents = order.documents ?? [];
+    for (const doc of documents) {
+        if (doc.type === 'electronic_ticket' && doc.unique_identifier) {
+            // Document might be tied to multiple passengers or single, but usually 1:1 for tickets
+            ticketNumbers.push(doc.unique_identifier);
         }
     }
 
-    if (ticketNumbers.length === 0) {
-        const records = order.associatedRecords ?? [];
-        for (const rec of records) {
-            if (rec.reference && rec.originSystemCode === 'GDS') {
-                ticketNumbers.push(rec.reference);
-            }
-        }
-    }
-
-    const ticketing = order.ticketingAgreement;
-    const isTicketed = ticketing?.option === 'CONFIRM'
-        || order.type === 'flight-order';
+    // If tickets aren't issued yet, Duffel status might still show payment/ticketing pending.
+    // However, instant orders are usually ticketed immediately.
+    const isTicketed = ticketNumbers.length > 0;
 
     return {
         ticketNumbers,

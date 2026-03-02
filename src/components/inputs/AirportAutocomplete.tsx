@@ -73,7 +73,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen, onToggle]);
 
-    // ── Debounced fetch (Amadeus → local fallback) ───────────────
+    // ── Debounced fetch (Duffel → local fallback) ───────────────
     useEffect(() => {
         if (!query || query.length < 1) {
             setResults([]);

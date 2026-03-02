@@ -1,6 +1,9 @@
 // ─── Enums & Primitives ─────────────────────────────────────────────
 
-export type FlightProvider = 'amadeus' | 'mystifly';
+export enum FlightProvider {
+    MYSTIFLY = 'mystifly',
+    DUFFEL = 'duffel',
+}
 
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
 

@@ -173,6 +173,20 @@ Deno.serve(async (req: Request) => {
         // ── Handle "flights not found" gracefully ──
         if (!raw.Success) {
             const msg: string = raw.Message ?? '';
+            const isEmptyResult = msg.toLowerCase().includes('not found')
+                || msg.toLowerCase().includes('no flights')
+                || msg.toLowerCase().includes('no result');
+
+            if (isEmptyResult) {
+                console.log('[mystifly-search] No flights found for this route — returning empty result');
+                return jsonResponse(corsHeaders, {
+                    provider: 'mystifly',
+                    flights: [],
+                    totalResults: 0,
+                    durationMs: Date.now() - startMs,
+                });
+            }
+
             throw new MystiflyError(
                 `Mystifly search failed: ${msg}`,
                 'CLIENT',

@@ -189,7 +189,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         <div className="text-center">
                             <div className="text-base lg:text-lg font-bold text-slate-900 dark:text-white leading-tight">{formatTime(last.arrival.time)}</div>
                             <div className="text-[9px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                                {offer.segments.length > 1 && offer.segments[0].origin === offer.segments[offer.segments.length - 1].destination
+                                {offer.segments.length > 1 && offer.segments[0].departure.airport === offer.segments[offer.segments.length - 1].arrival.airport
                                     ? offer.segments[Math.floor(offer.segments.length / 2)].departure.airport // Destination
                                     : last.arrival.airport
                                 }

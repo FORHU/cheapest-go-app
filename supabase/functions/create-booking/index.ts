@@ -22,9 +22,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 declare const Deno: any;
 
-import { bookFlight, revalidateFare, MystiflyError, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
-
-import { amadeusRequest, AmadeusError } from '../_shared/amadeusClient.ts';
+import { bookFlight, revalidateFare, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { createDuffelOrder } from '../_shared/duffelClient.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
 
@@ -97,7 +96,7 @@ interface BookingSession {
 
 interface ProviderBookingResult {
     pnr: string;
-    amadeusOrderId?: string;
+    providerOrderId?: string;
     providerStatus: string;
     rawPrice?: number;
     rawCurrency?: string;
@@ -200,8 +199,8 @@ Deno.serve(async (req: Request) => {
 
         if (bs.provider === 'mystifly') {
             result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact);
-        } else if (bs.provider === 'amadeus') {
-            result = await bookWithAmadeus(bs.flight, bs.passengers, bs.contact);
+        } else if (bs.provider === 'duffel') {
+            result = await bookWithDuffel(bs.flight, bs.passengers, bs.contact);
         } else {
             return jsonResponse(corsHeaders, { success: false, error: `Unknown provider: ${bs.provider}` }, 400);
         }
@@ -227,8 +226,8 @@ Deno.serve(async (req: Request) => {
                 // LOW-3 FIX: Store currency alongside price
                 currency: bookingCurrency,
                 status: finalStatus,
-                // HIGH-5 FIX: Store Amadeus order ID separately for ticket retrieval
-                ...(result.amadeusOrderId ? { amadeus_order_id: result.amadeusOrderId } : {}),
+                // Store Duffel order ID separately for ticket/order retrieval
+                ...(result.providerOrderId ? { amadeus_order_id: result.providerOrderId } : {}),
             })
             .select('id')
             .single();
@@ -305,8 +304,7 @@ Deno.serve(async (req: Request) => {
 
         const status =
             err instanceof MystiflyError ? Math.max(err.status, 400) :
-                err instanceof AmadeusError ? Math.max(err.status, 400) :
-                    500;
+                500;
 
         return jsonResponse(getCorsHeaders(req),
             { success: false, error: err.message || 'Booking failed' },
@@ -508,221 +506,72 @@ async function bookWithMystifly(
     };
 }
 
-// ─── Amadeus Booking ────────────────────────────────────────────────
+// ─── Duffel Booking ──────────────────────────────────────────────────
 
-async function bookWithAmadeus(
+async function bookWithDuffel(
     flight: SessionFlight,
     passengers: SessionPassenger[],
     contact: SessionContact,
 ): Promise<ProviderBookingResult> {
-    // ── CRITICAL-2 FIX: Reuse original offer if possible to preserve segment integrity ──
-    const baseOffer = (flight._rawOffer as any) || buildAmadeusFlightOffer(flight, passengers);
-
-    console.log('[create-booking] Using Amadeus offer for pricing:', baseOffer.id);
-
-
-    // ── SENIOR-LEVEL PRECISION: Synchronize travelers between pricing and booking ──
-    // This ensures inventory is locked for the exact passenger mix (ADT, CHD, INF)
-    const TRAVELER_TYPE_MAP: Record<string, string> = {
-        ADT: 'ADULT',
-        CHD: 'CHILD',
-        INF: 'HELD_INFANT',
-    };
-
-    const pricingTravelers = passengers.map((pax, idx) => ({
-        id: String(idx + 1),
-        travelerType: TRAVELER_TYPE_MAP[pax.type] ?? 'ADULT',
-    }));
-
-    // Confirm pricing via Amadeus Flight Offers Price API
-    // This is REQUIRED — prices change between search and booking
-    console.log('[create-booking] Confirming price with Amadeus...');
-    const priceResponse: any = await amadeusRequest('/v1/shopping/flight-offers/pricing', {
-        method: 'POST',
-        body: {
-            data: {
-                type: 'flight-offers-pricing',
-                flightOffers: [baseOffer],
-                travelers: pricingTravelers,
-            },
-        },
-    });
-
-
-    const pricedOffer = priceResponse.data?.flightOffers?.[0];
-    if (!pricedOffer) {
-        throw new Error('Amadeus pricing confirmation failed: no priced offer returned');
+    const rawOffer = flight._rawOffer as any;
+    if (!rawOffer || !rawOffer.id) {
+        throw new Error('Duffel offer missing or expired from session');
     }
 
-    console.log('[create-booking] Confirmed price:', pricedOffer.price?.grandTotal, pricedOffer.price?.currency);
+    const offerId = rawOffer.id;
+    const duffelPassengers = rawOffer.passengers || [];
 
-    // Build booking request with the priced offer
+    // Ensure we have matching passengers
+    if (passengers.length > duffelPassengers.length) {
+        throw new Error(`Passenger count mismatch: provided ${passengers.length}, offer requires ${duffelPassengers.length}`);
+    }
+
     const phoneNumber = contact.phone.replace(/\D/g, '');
-    const countryCallingCode = contact.countryCode || '82';
+    const countryCallingCode = contact.countryCode ? contact.countryCode.replace('+', '') : '82';
+    const formattedPhone = `+${countryCallingCode}${phoneNumber}`;
 
-    const travelers = passengers.map((pax, idx) => {
-        // MED-3 FIX: Normalize dates
+    const orderPassengers = passengers.map((pax, idx) => {
+        const duffelPax = duffelPassengers[idx];
         const birthDate = normalizeDate(pax.birthDate);
-        const passportExpiry = pax.passportExpiry ? normalizeDate(pax.passportExpiry) : '2030-01-01';
-
-        // HIGH-6 FIX: Derive passport issuance date from expiry (10 years before expiry is standard)
-        const expiryParts = passportExpiry.split('-');
-        const issuanceYear = Math.max(2015, parseInt(expiryParts[0], 10) - 10);
-        const issuanceDate = `${issuanceYear}-${expiryParts[1] || '01'}-${expiryParts[2] || '01'}`;
 
         return {
-            id: String(idx + 1),
-            dateOfBirth: birthDate,
-            name: {
-                firstName: pax.firstName.toUpperCase(),
-                lastName: pax.lastName.toUpperCase(),
-            },
-            gender: pax.gender === 'M' || pax.gender === 'male' ? 'MALE' : 'FEMALE',
-            contact: {
-                emailAddress: contact.email,
-                phones: [{
-                    deviceType: 'MOBILE',
-                    countryCallingCode,
-                    number: phoneNumber,
-                }],
-            },
-            documents: [{
-                documentType: 'PASSPORT',
-                birthPlace: contact.city,
-                issuanceLocation: contact.city,
-                issuanceDate,
-                number: pax.passport,
-                expiryDate: passportExpiry,
-                issuanceCountry: pax.nationality || 'KR',
-                validityCountry: pax.nationality || 'KR',
-                nationality: pax.nationality || 'KR',
-                holder: true,
-            }],
+            id: duffelPax.id,
+            title: GENDER_TO_TITLE[pax.gender]?.toLowerCase() || 'mr',
+            given_name: pax.firstName.toUpperCase(),
+            family_name: pax.lastName.toUpperCase(),
+            born_on: birthDate,
+            email: contact.email,
+            phone_number: formattedPhone,
+            gender: pax.gender === 'M' || pax.gender === 'male' ? 'm' : 'f',
         };
     });
 
-    const body = {
-        data: {
-            type: 'flight-order',
-            flightOffers: [pricedOffer],
-            travelers,
-            contacts: [{
-                addresseeName: {
-                    firstName: passengers[0].firstName.toUpperCase(),
-                    lastName: passengers[0].lastName.toUpperCase(),
-                },
-                purpose: 'STANDARD',
-                emailAddress: contact.email,
-                phones: [{
-                    deviceType: 'MOBILE',
-                    countryCallingCode,
-                    number: phoneNumber,
-                }],
-                address: {
-                    lines: [contact.addressLine || 'N/A'],
-                    postalCode: contact.postalCode || '00000',
-                    cityName: contact.city || 'N/A',
-                    countryCode: contact.country || 'KR',
-                },
-            }],
-        },
-    };
-
-    const raw: any = await amadeusRequest('/v1/booking/flight-orders', {
-        method: 'POST',
-        body,
-    });
-
-    const order = raw.data;
-    if (!order?.id) {
-        throw new Error('Amadeus booking failed: no order ID returned');
-    }
-
-    // HIGH-5 FIX: Store BOTH the Amadeus order ID and the airline PNR separately
-    const amadeusOrderId = order.id;
-    const airlinePnr = order.associatedRecords?.[0]?.reference ?? order.id;
-
-    return {
-        pnr: airlinePnr,
-        amadeusOrderId,
-        providerStatus: 'confirmed',
-        rawPrice: parseFloat(order.flightOffers?.[0]?.price?.grandTotal ?? '0') || undefined,
-        rawCurrency: order.flightOffers?.[0]?.price?.currency ?? undefined,
-    };
-}
-
-/**
- * Build a minimal Amadeus flight-offer object from our normalized flight data.
- * CRITICAL-2 FIX: This is now the ONLY path — rawOffer from client is never used.
- */
-function buildAmadeusFlightOffer(
-    flight: SessionFlight,
-    passengers: SessionPassenger[],
-): Record<string, any> {
-    const cabinMap: Record<string, string> = {
-        economy: 'ECONOMY',
-        premium_economy: 'PREMIUM_ECONOMY',
-        business: 'BUSINESS',
-        first: 'FIRST',
-    };
-
-    // HIGH-3 FIX: Correct Amadeus traveler type mapping
-    const TRAVELER_TYPE_MAP: Record<string, string> = {
-        ADT: 'ADULT',
-        CHD: 'CHILD',           // FIX: Was incorrectly 'HELD_INFANT'
-        INF: 'HELD_INFANT',     // FIX: Infants on lap = HELD_INFANT (not SEATED_INFANT)
-    };
-
-    const mainAirline = flight.validatingAirline ?? flight.segments?.[0]?.airline ?? '';
-
-    const fareDetailsBySegment = (flight.segments ?? []).map((seg, idx) => ({
-        segmentId: String(idx + 1),
-        cabin: cabinMap[seg.cabinClass ?? 'economy'] ?? 'ECONOMY',
-        class: seg.bookingClass || 'Y',
-        ...(seg.fareBasis ? { fareBasis: seg.fareBasis } : {}),
-    }));
-
-    const itineraryMap: Record<number, any[]> = {};
-    (flight.segments ?? []).forEach((seg, idx) => {
-        const itinIdx = seg.itineraryIndex ?? 0;
-        if (!itineraryMap[itinIdx]) itineraryMap[itinIdx] = [];
-        itineraryMap[itinIdx].push({ ...seg, _origIdx: idx });
-    });
-
-    const itineraries = Object.keys(itineraryMap)
-        .sort((a, b) => Number(a) - Number(b))
-        .map((k) => {
-            const segs = itineraryMap[Number(k)];
-            return {
-                segments: segs.map((seg) => ({
-                    departure: { iataCode: seg.origin, at: seg.departureTime },
-                    arrival: { iataCode: seg.destination, at: seg.arrivalTime },
-                    carrierCode: seg.airline,
-                    number: seg.flightNumber.replace(seg.airline, ''),
-                    id: String(seg._origIdx + 1),
-                    numberOfStops: 0,
-                })),
-            };
+    try {
+        console.log('[create-booking] Creating Duffel Order for offer:', offerId);
+        const orderResponse = await createDuffelOrder({
+            type: 'instant',
+            selected_offers: [offerId],
+            passengers: orderPassengers,
         });
 
-    return {
-        type: 'flight-offer',
-        id: flight.resultIndex ?? '1',
-        source: 'GDS',
-        validatingAirlineCodes: [mainAirline],
-        itineraries,
-        price: {
-            currency: flight.currency ?? 'USD',
-            total: String(flight.price ?? 0),
-            grandTotal: String(flight.price ?? 0),
-        },
-        travelerPricings: passengers.map((pax, idx) => ({
-            travelerId: String(idx + 1),
-            fareOption: 'STANDARD',
-            travelerType: TRAVELER_TYPE_MAP[pax.type] ?? 'ADULT',
-            fareDetailsBySegment,
-        })),
-    };
+        const order = orderResponse.data;
+        if (!order || !order.id) {
+            throw new Error('Duffel booking failed: no order ID returned');
+        }
+
+        const airlinePnr = order.booking_reference ?? order.id;
+
+        return {
+            pnr: airlinePnr,
+            providerOrderId: order.id,
+            providerStatus: 'confirmed',
+            rawPrice: parseFloat(order.total_amount ?? '0') || undefined,
+            rawCurrency: order.total_currency ?? undefined,
+        };
+    } catch (e: any) {
+        console.error('[create-booking] Duffel Order Error:', e);
+        throw e;
+    }
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
