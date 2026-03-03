@@ -28,3 +28,5 @@ out
 *.sw?
 nul
 .env
+
+/src/generated/prisma
