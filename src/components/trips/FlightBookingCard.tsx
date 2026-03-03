@@ -39,112 +39,162 @@ export default function FlightBookingCard({ booking }: FlightBookingCardProps) {
         formatDate(new Date(iso), { hour: '2-digit', minute: '2-digit', hour12: false }, 'en-US').split(', ')[1] || new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex flex-col md:flex-row">
+        <div className="bg-white dark:bg-slate-900 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all group cursor-default">
+
+            {/* ── MOBILE layout: compact horizontal list ── */}
+            <div className="flex flex-row md:hidden min-h-[96px]">
                 {/* Visual Header */}
-                <div className="relative w-full md:w-48 h-40 md:h-auto flex-shrink-0 bg-indigo-50 dark:bg-indigo-950 flex flex-col items-center justify-center p-4">
-                    <Plane className="w-10 h-10 text-indigo-400 mb-2" />
+                <div className="relative w-24 min-h-[96px] flex-shrink-0 bg-indigo-50 dark:bg-indigo-950 flex flex-col items-center justify-center rounded-l-lg border-r border-slate-100 dark:border-slate-800">
+                    <Plane className="w-6 h-6 text-indigo-400 mb-1" />
                     {firstSegment && (
-                        <div className="text-center">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white uppercase">{firstSegment.airline}</span>
+                        <div className="text-center px-1">
+                            <span className="text-[clamp(0.6rem,1.5vw,0.7rem)] font-bold text-slate-900 dark:text-white uppercase truncate block w-full">{firstSegment.airline}</span>
                         </div>
                     )}
                     {/* Status Badge */}
-                    <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-semibold ${flightStatusColors[booking.status] || flightStatusColors.booked}`}>
-                        {flightStatusLabels[booking.status] || 'Unknown'}
+                    <div className="absolute top-1 left-1 flex flex-col gap-1">
+                        <span className={`text-[clamp(0.5rem,1.5vw,0.5625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${flightStatusColors[booking.status] || flightStatusColors.booked}`}>
+                            {flightStatusLabels[booking.status] || 'Unknown'}
+                        </span>
                     </div>
                 </div>
 
-                {/* Booking Details */}
-                <div className="flex-1 p-4 md:p-5">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-                        <div className="flex-1">
-                            {/* Route text */}
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-3">
-                                {firstSegment ? `${firstSegment.origin} to ${lastSegment.destination}` : 'Flight Booking'}
-                            </h3>
+                {/* Content */}
+                <div className="flex-1 p-2.5 flex flex-col min-w-0">
+                    <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white mb-0.5 leading-tight truncate">
+                        {firstSegment ? `${firstSegment.origin} to ${lastSegment.destination}` : 'Flight Booking'}
+                    </h3>
 
-                            {/* Info Grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                                {/* Date and Airports */}
-                                {firstSegment && (
-                                    <div className="flex items-start gap-2 text-slate-600 dark:text-slate-300">
-                                        <Calendar className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="font-medium">{fmtDate(firstSegment.departure)}</p>
-                                            <div className="flex items-center gap-1.5 mt-1">
-                                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{fmtTime(firstSegment.departure)}</span>
-                                                <span className="text-[10px] text-slate-400">({firstSegment.origin})</span>
-                                                <span className="text-slate-400">→</span>
-                                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{fmtTime(lastSegment.arrival)}</span>
-                                                <span className="text-[10px] text-slate-400">({lastSegment.destination})</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                    {firstSegment && (
+                        <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1 truncate">
+                            {fmtDate(firstSegment.departure)} · {fmtTime(firstSegment.departure)} → {fmtTime(lastSegment.arrival)}
+                        </div>
+                    )}
 
-                                {/* PNR */}
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                    <span className="text-indigo-500 font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-[10px] uppercase border border-indigo-100 dark:border-indigo-800 shrink-0 mt-0.5">PNR</span>
-                                    <span className="font-mono font-medium">{booking.pnr}</span>
+                    <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1.5 flex flex-wrap gap-2">
+                        <span className="font-mono">{booking.pnr}</span>
+                        <span>·</span>
+                        <span>{booking.passengers?.length || 0} pax</span>
+                    </div>
+
+                    <div className="mt-auto flex items-center justify-between">
+                        <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
+                            {formatCurrency(booking.total_price, 'USD')}
+                        </span>
+                        {isUpcoming && booking.status === 'ticketed' && (
+                            <span className="text-[clamp(0.5rem,1.5vw,0.5625rem)] text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
+                                Upcoming
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* ── DESKTOP layout: compact horizontal list ── */}
+            <div className="hidden md:flex flex-row min-h-[112px]">
+                {/* Visual Header */}
+                <div className="relative w-32 min-h-[112px] lg:w-36 lg:min-h-[112px] flex-shrink-0 bg-indigo-50 dark:bg-indigo-950 flex flex-col items-center justify-center rounded-l-lg border-r border-slate-100 dark:border-slate-800 transition-colors">
+                    <Plane className="w-8 h-8 text-indigo-400 mb-1.5 group-hover:scale-110 transition-transform duration-300" />
+                    {firstSegment && (
+                        <div className="text-center px-2 relative z-10 w-full">
+                            <span className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white uppercase truncate block w-full text-center px-2">{firstSegment.airline}</span>
+                        </div>
+                    )}
+                    {/* Status Badge */}
+                    <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-20">
+                        <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${flightStatusColors[booking.status] || flightStatusColors.booked}`}>
+                            {flightStatusLabels[booking.status] || 'Unknown'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 p-3 flex flex-col min-w-0">
+                    <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                        {firstSegment ? `${firstSegment.origin} to ${lastSegment.destination}` : 'Flight Booking'}
+                    </h3>
+
+                    <div className="flex flex-wrap items-start gap-4 text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-2">
+                        {/* Dates / Times */}
+                        {firstSegment && (
+                            <div className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <div>
+                                    <span className="font-medium text-slate-700 dark:text-slate-300 mr-1.5">{fmtDate(firstSegment.departure)}</span>
+                                    <span>
+                                        {fmtTime(firstSegment.departure)} <span className="text-[10px]">({firstSegment.origin})</span> → {fmtTime(lastSegment.arrival)} <span className="text-[10px]">({lastSegment.destination})</span>
+                                    </span>
                                 </div>
-
-                                {/* E-Tickets */}
-                                {booking.status === 'ticketed' && booking.passengers && booking.passengers.some(p => p.ticket_number) && (
-                                    <div className="flex flex-col gap-1 text-slate-600 dark:text-slate-300">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-emerald-500 font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-900/30 text-[10px] uppercase border border-emerald-100 dark:border-emerald-800 shrink-0 mt-0.5">E-TKT</span>
-                                            <span className="font-medium text-xs">Issued Tickets</span>
-                                        </div>
-                                        <div className="pl-8 flex flex-col gap-0.5">
-                                            {booking.passengers.filter(p => p.ticket_number).map((p, idx) => (
-                                                <div key={idx} className="flex justify-between items-center text-[11px]">
-                                                    <span className="truncate mr-2 text-slate-500">{p.first_name} {p.last_name}</span>
-                                                    <span className="font-mono text-slate-700 dark:text-slate-300">{p.ticket_number}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Passengers */}
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                    <Users className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                                    <span>{booking.passengers?.length || 0} passenger{(booking.passengers?.length || 0) !== 1 && 's'}</span>
-                                </div>
-
-                                {/* Stops info */}
-                                {segments.length > 0 && (
-                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                        <Clock className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" />
-                                        <span>{segments.length === 1 ? 'Nonstop' : `${segments.length - 1} stop(s)`}</span>
-                                    </div>
-                                )}
                             </div>
+                        )}
+
+                        {/* PNR */}
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-indigo-500 font-bold px-1 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-[9px] uppercase border border-indigo-100 dark:border-indigo-800 shrink-0">PNR</span>
+                            <span className="font-mono font-medium">{booking.pnr}</span>
                         </div>
 
-                        {/* Price & Status */}
-                        <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-white/5">
-                            <div className="text-right">
-                                <p className="text-xs text-slate-400 dark:text-slate-500">Total paid</p>
-                                <p className="text-xl font-bold text-slate-900 dark:text-white">
-                                    {formatCurrency(booking.total_price, 'USD')}
-                                </p>
-                            </div>
-
-                            {isUpcoming && booking.status === 'ticketed' && (
-                                <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full">
-                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                                    Upcoming Flight
-                                </span>
-                            )}
-
-                            {isPast && booking.status === 'ticketed' && (
-                                <span className="text-xs text-slate-400">
-                                    Flight completed
-                                </span>
-                            )}
+                        {/* Passengers */}
+                        <div className="flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                            <span>{booking.passengers?.length || 0} passenger{(booking.passengers?.length || 0) !== 1 && 's'}</span>
                         </div>
+
+                        {/* Stops */}
+                        {segments.length > 0 && (
+                            <div className="flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                                <span>{segments.length === 1 ? 'Nonstop' : `${segments.length - 1} stop(s)`}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* eTickets bottom section */}
+                    <div className="mt-auto">
+                        {booking.status === 'ticketed' && booking.passengers && booking.passengers.some(p => p.ticket_number) && (
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-emerald-500 font-bold px-1 py-0.5 rounded bg-emerald-50 dark:bg-emerald-900/30 text-[9px] uppercase border border-emerald-100 dark:border-emerald-800 shrink-0">E-TKT</span>
+                                    <span className="font-medium text-[11px] text-slate-600 dark:text-slate-300">Issued Tickets</span>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-[10px]">
+                                    {booking.passengers.filter(p => p.ticket_number).map((p, idx) => (
+                                        <span key={idx} className="text-slate-500">
+                                            {p.first_name} {p.last_name} <span className="text-slate-300 dark:text-slate-600">|</span> <span className="font-mono text-slate-700 dark:text-slate-300">{p.ticket_number}</span>
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right panel — status & price */}
+                <div className="flex flex-col items-end justify-center w-[120px] lg:w-[140px] p-3 border-l border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                    <div className="text-right w-full mb-1">
+                        <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400 mb-0.5">Total paid</div>
+                        <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
+                            {formatCurrency(booking.total_price, 'USD')}
+                        </span>
+                    </div>
+
+                    <div className="mt-1 flex flex-col items-end gap-1 w-full">
+                        {isUpcoming && booking.status === 'ticketed' && (
+                            <span className="inline-flex items-center justify-end w-full gap-1 text-[clamp(0.5625rem,1.5vw,0.625rem)] text-emerald-600 dark:text-emerald-400 whitespace-nowrap font-medium">
+                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" />
+                                Upcoming Flight
+                            </span>
+                        )}
+                        {isPast && booking.status === 'ticketed' && (
+                            <span className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-400 whitespace-nowrap">
+                                Flight completed
+                            </span>
+                        )}
+                        {booking.status === 'cancelled' && (
+                            <span className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-red-500 dark:text-red-400 whitespace-nowrap">
+                                Cancelled
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>

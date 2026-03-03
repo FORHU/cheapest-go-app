@@ -11,7 +11,7 @@ import type { FlightOffer, FlightSearchRequest, CabinClass } from '@/lib/flights
 
 // ─── Types ───────────────────────────────────────────────────────────
 
-type SortMode = 'recommended' | 'cheapest' | 'fastest' | 'best';
+type SortMode = 'recommended' | 'cheapest' | 'fastest' | 'best' | 'branded';
 type StopFilter = 'any' | 'nonstop' | '1stop' | '2plus';
 
 interface SearchResult {
@@ -185,6 +185,16 @@ export default function FlightSearchContent() {
             offers.sort((a, b) => a.price.total - b.price.total);
         } else if (sortMode === 'fastest') {
             offers.sort((a, b) => a.totalDuration - b.totalDuration);
+        } else if (sortMode === 'branded') {
+            offers.sort((a, b) => {
+                const hasBrandA = a.brandedFare?.brandName ? 1 : 0;
+                const hasBrandB = b.brandedFare?.brandName ? 1 : 0;
+                if (hasBrandA !== hasBrandB) {
+                    return hasBrandB - hasBrandA; // Branded flights come first
+                }
+                // If both are branded (or neither), sub-sort by cheapest price
+                return a.price.total - b.price.total;
+            });
         } else {
             // "Best" = weighted score of price + duration
             offers.sort((a, b) => {
@@ -277,7 +287,7 @@ export default function FlightSearchContent() {
                 <div className="flex items-center gap-1.5 lg:gap-3 flex-wrap mb-2 lg:mb-4">
                     {/* Sort */}
                     <div className="flex items-center bg-white dark:bg-slate-800 rounded-md lg:rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-[10px] lg:text-sm">
-                        {(['recommended', 'cheapest', 'fastest', 'best'] as SortMode[]).map((mode) => (
+                        {(['recommended', 'cheapest', 'fastest', 'best', 'branded'] as SortMode[]).map((mode) => (
                             <button
                                 key={mode}
                                 onClick={() => setSortMode(mode)}

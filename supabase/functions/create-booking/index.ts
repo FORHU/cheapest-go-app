@@ -86,7 +86,7 @@ interface SessionFlight {
 interface BookingSession {
     id: string;
     user_id: string;
-    provider: 'mystifly' | 'amadeus';
+    provider: 'mystifly' | 'amadeus' | 'duffel' | 'mystifly_v2';
     flight: SessionFlight;
     passengers: SessionPassenger[];
     contact: SessionContact;
@@ -192,12 +192,14 @@ Deno.serve(async (req: Request) => {
             provider: bs.provider,
             userId: bs.user_id,
             passengerCount: bs.passengers.length,
+            hasRawOffer: !!bs.flight._rawOffer,
+            rawOfferType: typeof bs.flight._rawOffer,
         });
 
         // ── 2. Call Provider to Book ──
         let result: ProviderBookingResult;
 
-        if (bs.provider === 'mystifly') {
+        if (bs.provider === 'mystifly' || bs.provider === 'mystifly_v2') {
             result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact);
         } else if (bs.provider === 'duffel') {
             result = await bookWithDuffel(bs.flight, bs.passengers, bs.contact);
@@ -526,8 +528,11 @@ async function bookWithDuffel(
         throw new Error(`Passenger count mismatch: provided ${passengers.length}, offer requires ${duffelPassengers.length}`);
     }
 
-    const phoneNumber = contact.phone.replace(/\D/g, '');
-    const countryCallingCode = contact.countryCode ? contact.countryCode.replace('+', '') : '82';
+    // Duffel strictly validates E.164 phone numbers (e.g. +821012345678)
+    const countryCallingCode = contact.countryCode ? contact.countryCode.replace(/\D/g, '') : '82';
+    // Remove all non-digits, and also strip any leading '0' which is common but invalid in E.164
+    const phoneNumber = contact.phone.replace(/\D/g, '').replace(/^0+/, '');
+
     const formattedPhone = `+${countryCallingCode}${phoneNumber}`;
 
     const orderPassengers = passengers.map((pax, idx) => {
@@ -552,6 +557,13 @@ async function bookWithDuffel(
             type: 'instant',
             selected_offers: [offerId],
             passengers: orderPassengers,
+            payments: [
+                {
+                    type: 'balance',
+                    amount: rawOffer.total_amount,
+                    currency: rawOffer.total_currency,
+                }
+            ],
         });
 
         const order = orderResponse.data;
@@ -561,12 +573,21 @@ async function bookWithDuffel(
 
         const airlinePnr = order.booking_reference ?? order.id;
 
+        // Extract Duffel tickets
+        const documents = order.documents || [];
+        const ticketNumbers = documents
+            .filter((doc: any) => doc.type === 'electronic_ticket')
+            .map((doc: any) => doc.unique_identifier);
+
+        const isTicketed = ticketNumbers.length > 0 || !!order.booking_reference;
+
         return {
             pnr: airlinePnr,
             providerOrderId: order.id,
-            providerStatus: 'confirmed',
+            providerStatus: isTicketed ? 'ticketed' : 'confirmed',
             rawPrice: parseFloat(order.total_amount ?? '0') || undefined,
             rawCurrency: order.total_currency ?? undefined,
+            ticketNumbers: ticketNumbers.length > 0 ? ticketNumbers : undefined,
         };
     } catch (e: any) {
         console.error('[create-booking] Duffel Order Error:', e);
