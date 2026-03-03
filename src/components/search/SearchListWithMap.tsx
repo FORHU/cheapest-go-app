@@ -64,7 +64,7 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
 
     const handleViewDetails = useCallback(
         (id: string) => {
-            const params = new URLSearchParams(searchParams.toString());
+            const params = new URLSearchParams(searchParams?.toString() || '');
             params.delete('view');
             router.push(`/property/${id}?${params.toString()}`);
         },

@@ -1,0 +1,132 @@
+/**
+ * Duffel Flight Search — Supabase Edge Function
+ *
+ * POST /functions/v1/duffel-search
+ */
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createDuffelOfferRequest } from '../_shared/duffelClient.ts';
+import { normalizeDuffelResponse } from '../_shared/normalizeFlight.ts';
+
+declare const Deno: any;
+
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+
+function getCorsHeaders(req: Request) {
+    const origin = req.headers.get('Origin') ?? '';
+    const allowedOrigin = ALLOWED_ORIGINS.length > 0
+        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+        : '*';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
+
+// ─── Request Body ───────────────────────────────────────────────────
+
+interface SearchBody {
+    origin: string;
+    destination: string;
+    departureDate: string;
+    returnDate?: string;
+    adults: number;
+    children?: number;
+    infants?: number;
+    cabinClass?: string;
+    nonStopOnly?: boolean;
+}
+
+// ─── Duffel Mapper ──────────────────────────────────────────────────
+
+function toDuffelCabin(cabin: string): string {
+    const map: Record<string, string> = {
+        economy: 'economy',
+        premium_economy: 'premium_economy',
+        business: 'business',
+        first: 'first',
+    };
+    return map[cabin] ?? 'economy';
+}
+
+// ─── Handler ────────────────────────────────────────────────────────
+
+Deno.serve(async (req: Request) => {
+    const corsHeaders = getCorsHeaders(req);
+
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders });
+    }
+
+    try {
+        const body: SearchBody = JSON.parse(await req.text());
+
+        if (!body.origin || !body.destination || !body.departureDate || !body.adults) {
+            return new Response(JSON.stringify({ error: 'Missing required search params' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
+        console.log('[duffel-search] Starting search:', JSON.stringify(body));
+
+        let cabinClass = body.cabinClass ? toDuffelCabin(body.cabinClass) : 'economy';
+
+        const passengers: any[] = [];
+        for (let i = 0; i < body.adults; i++) passengers.push({ type: 'adult' });
+        for (let i = 0; i < (body.children || 0); i++) passengers.push({ type: 'child' });
+        for (let i = 0; i < (body.infants || 0); i++) passengers.push({ type: 'infant_without_seat' });
+
+        const slices: any[] = [
+            {
+                origin: body.origin,
+                destination: body.destination,
+                departure_date: body.departureDate,
+            }
+        ];
+
+        if (body.returnDate) {
+            slices.push({
+                origin: body.destination,
+                destination: body.origin,
+                departure_date: body.returnDate,
+            });
+        }
+
+        const payload = {
+            slices,
+            passengers,
+            cabin_class: cabinClass,
+            // nonStopOnly is typically mapped via filters or parsing responses,
+            // Duffel doesn't have a direct "non-stop only" flag in create offer request,
+            // but we can filter max_connections in the request payload:
+            ...(body.nonStopOnly && { max_connections: 0 }),
+            return_offers: true,
+        };
+
+        const response = await createDuffelOfferRequest(payload);
+
+        if (!response.data || !response.data.offers) {
+            console.log('[duffel-search] No offers found.');
+            return new Response(JSON.stringify({ success: true, flights: [] }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
+        const offers = response.data.offers;
+        let flights = normalizeDuffelResponse(offers);
+
+        console.log(`[duffel-search] Returned ${flights.length} mapped flights`);
+
+        return new Response(JSON.stringify({ success: true, flights }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+
+    } catch (err: any) {
+        console.error('[duffel-search] Handler error:', err.message);
+        return new Response(JSON.stringify({ error: err.message, flights: [] }), {
+            status: err.status || 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+    }
+});

@@ -1,6 +1,10 @@
 // ─── Enums & Primitives ─────────────────────────────────────────────
 
-export type FlightProvider = 'amadeus' | 'mystifly';
+export enum FlightProvider {
+    MYSTIFLY = 'mystifly',
+    MYSTIFLY_V2 = 'mystifly_v2', // Added for v2
+    DUFFEL = 'duffel',
+}
 
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
 
@@ -46,6 +50,9 @@ export interface NormalizedSegment {
     arrivalTerminal?: string;
     aircraft?: string;
     cabinClass: CabinClass;
+    bookingClass?: string; // RBD
+    fareBasis?: string;
+    itineraryIndex?: number;
 }
 
 export interface NormalizedFlight {

@@ -1,5 +1,4 @@
 import type { IFlightProvider } from '../providers/flightProvider.interface';
-import { AmadeusProvider } from '../providers/amadeusProvider';
 import { MystiflyProvider } from '../providers/mystiflyProvider';
 
 // ─── Provider Toggle Map ─────────────────────────────────────────────
@@ -14,7 +13,6 @@ export type ProviderMap = Record<string, ProviderToggle>;
 
 // Default configuration — change these at runtime via resolverInstance.set()
 const DEFAULT_PROVIDER_MAP: ProviderMap = {
-    amadeus: { enabled: true, priority: 1 },
     mystifly: { enabled: true, priority: 2 },
 };
 
@@ -23,7 +21,6 @@ const DEFAULT_PROVIDER_MAP: ProviderMap = {
 // Maps provider name → constructor.
 // Add new providers here when integrating a new source.
 const PROVIDER_FACTORIES: Record<string, () => IFlightProvider> = {
-    amadeus: () => new AmadeusProvider(),
     mystifly: () => new MystiflyProvider(),
 };
 

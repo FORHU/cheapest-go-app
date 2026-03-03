@@ -200,6 +200,8 @@ function normalizeOffer(fareItinerary: any): FlightOffer | null {
                         name: getAirlineName(airlineCode),
                     },
                     flightNumber: `${airlineCode}${flightNum}`,
+                    origin: (fs.DepartureAirportLocationCode as string) || '',
+                    destination: (fs.ArrivalAirportLocationCode as string) || '',
                     departure: {
                         airport: (fs.DepartureAirportLocationCode as string) || '',
                         terminal: fs.DepartureTerminal as string | undefined,

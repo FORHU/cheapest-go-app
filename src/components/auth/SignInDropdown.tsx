@@ -29,11 +29,11 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
 
     // Helper to build redirect URL
     const getRedirectLink = (base: string = '/login', mode?: string) => {
-        const fullPath = pathname + searchParams.toString();
+        const fullPath = pathname + (searchParams?.toString() || '');
         const params = new URLSearchParams();
         if (mode) params.set('mode', mode);
         if (pathname !== '/' && pathname !== '/login') {
-            params.set('redirect', pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ''));
+            params.set('redirect', pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : ''));
         }
         const queryString = params.toString();
         return queryString ? `${base}?${queryString}` : base;

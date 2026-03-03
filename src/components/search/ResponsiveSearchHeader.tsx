@@ -17,10 +17,10 @@ export const ResponsiveSearchHeader = () => {
     const filters = useSearchFilters();
     const searchActions = useSearchActions();
 
-    const destination = searchParams.get('destination') || 'Anywhere';
-    const checkIn = searchParams.get('checkIn');
-    const checkOut = searchParams.get('checkOut');
-    const adults = searchParams.get('adults') || '2';
+    const destination = searchParams?.get('destination') || 'Anywhere';
+    const checkIn = searchParams?.get('checkIn');
+    const checkOut = searchParams?.get('checkOut');
+    const adults = searchParams?.get('adults') || '2';
 
     let dateStr = 'Any week';
     if (checkIn && checkOut) {

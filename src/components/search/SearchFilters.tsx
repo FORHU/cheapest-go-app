@@ -51,19 +51,19 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         initializedRef.current = true;
 
         const urlFilters = {
-            hotelName: searchParams.get('hotelName') || '',
-            starRating: searchParams.get('starRating')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
-            minRating: Number(searchParams.get('minRating')) || 0,
-            minReviewsCount: Number(searchParams.get('minReviewsCount')) || 0,
-            facilities: searchParams.get('facilities')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
-            strictFacilityFiltering: searchParams.get('strictFacilityFiltering') === 'true',
+            hotelName: searchParams?.get('hotelName') || '',
+            starRating: searchParams?.get('starRating')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
+            minRating: Number(searchParams?.get('minRating')) || 0,
+            minReviewsCount: Number(searchParams?.get('minReviewsCount')) || 0,
+            facilities: searchParams?.get('facilities')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
+            strictFacilityFiltering: searchParams?.get('strictFacilityFiltering') === 'true',
         };
         setFilters(urlFilters);
     }, [searchParams, setFilters]);
 
     // URL update helper
     const updateURL = useCallback((params: Record<string, string | null>) => {
-        const current = new URLSearchParams(searchParams.toString());
+        const current = new URLSearchParams(searchParams?.toString() || '');
         Object.entries(params).forEach(([key, value]) => {
             if (value === null || value === '' || value === '0') {
                 current.delete(key);
@@ -116,7 +116,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
 
     const handleResetFilters = useCallback(() => {
         resetFilters();
-        const current = new URLSearchParams(searchParams.toString());
+        const current = new URLSearchParams(searchParams?.toString() || '');
         ['hotelName', 'starRating', 'minRating', 'minReviewsCount', 'facilities', 'strictFacilityFiltering'].forEach(key => {
             current.delete(key);
         });

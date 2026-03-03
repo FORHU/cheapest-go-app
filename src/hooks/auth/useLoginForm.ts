@@ -50,7 +50,7 @@ export function useLoginForm(): UseLoginFormReturn {
 
     // Compute initial mode from URL
     const initialMode = useMemo((): AuthMode => {
-        const urlMode = searchParams.get('mode');
+        const urlMode = searchParams?.get('mode');
         return urlMode === 'signup' ? 'signup' : 'signin';
     }, [searchParams]);
 
@@ -70,7 +70,7 @@ export function useLoginForm(): UseLoginFormReturn {
     // Redirect when user is authenticated
     useEffect(() => {
         if (user && !prevUserRef.current) {
-            const redirectTo = searchParams.get('redirect') || '/';
+            const redirectTo = searchParams?.get('redirect') || '/';
             router.push(redirectTo);
         }
         prevUserRef.current = user;
