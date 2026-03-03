@@ -56,22 +56,34 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
         const state = useSearchStore.getState();
         const { flightState } = state;
 
+        // ─── Map Segments by Trip Type ───────────────────────────
+        const isRoundTrip = flightState.tripType === 'round-trip';
+
+        const segmentsToSearch = flightState.tripType === 'one-way'
+            ? [flightState.flights[0]]
+            : isRoundTrip
+                ? [
+                    flightState.flights[0],
+                    {
+                        ...flightState.flights[1],
+                        origin: flightState.flights[0]?.destination || null,
+                        destination: flightState.flights[0]?.origin || null,
+                    }
+                ]
+                : flightState.flights;
+
         // ─── Validation ──────────────────────────────────────────
         const missingFields: string[] = [];
 
-        const firstSegment = flightState.flights[0];
-        if (!firstSegment.origin) missingFields.push('origin');
-        if (!firstSegment.destination) missingFields.push('destination');
-        if (!firstSegment.date) missingFields.push('departure date');
-
-        if (flightState.tripType === 'round-trip') {
-            const returnSegment = flightState.flights[1];
-            if (!returnSegment?.date) missingFields.push('return date');
-        }
+        segmentsToSearch.forEach((segment, index) => {
+            if (!segment?.origin) missingFields.push(isRoundTrip && index === 1 ? 'return origin' : `segment ${index + 1} origin`);
+            if (!segment?.destination) missingFields.push(isRoundTrip && index === 1 ? 'return destination' : `segment ${index + 1} destination`);
+            if (!segment?.date) missingFields.push(isRoundTrip && index === 1 ? 'return date' : `segment ${index + 1} date`);
+        });
 
         if (missingFields.length > 0) {
-            toast.error(`Please select ${missingFields.join(', ')}`, {
-                description: 'Required fields missing for flight search',
+            toast.error(`Missing information`, {
+                description: `Please select ${missingFields[0]}`,
             });
             return;
         }
@@ -89,7 +101,7 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
         params.set('infants', flightState.passengers.infants.toString());
 
         // Serialize segments
-        flightState.flights.forEach((segment, index) => {
+        segmentsToSearch.forEach((segment, index) => {
             if (segment.origin?.code) params.set(`origin${index}`, segment.origin.code);
             if (segment.origin?.title) params.set(`originName${index}`, segment.origin.title);
             if (segment.destination?.code) params.set(`dest${index}`, segment.destination.code);

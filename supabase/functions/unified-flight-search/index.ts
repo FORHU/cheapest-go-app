@@ -68,10 +68,8 @@ const PROVIDERS: ProviderConfig[] = [
 // ─── Request Body ───────────────────────────────────────────────────
 
 interface UnifiedSearchBody {
-    origin: string;
-    destination: string;
-    departureDate: string;
-    returnDate?: string;
+    segments: { origin: string; destination: string; departureDate: string }[];
+    tripType: 'one-way' | 'round-trip' | 'multi-city';
     adults: number;
     children?: number;
     infants?: number;
@@ -105,9 +103,9 @@ Deno.serve(async (req: Request) => {
         // ── Parse & Validate ──
         const body: UnifiedSearchBody = JSON.parse(await req.text());
 
-        if (!body.origin || !body.destination || !body.departureDate || !body.adults) {
+        if (!Array.isArray(body.segments) || body.segments.length === 0 || !body.adults) {
             return jsonResponse(corsHeaders,
-                { success: false, error: 'Required: origin, destination, departureDate, adults', flights: [] },
+                { success: false, error: 'Required: segments array and adults count', flights: [] },
                 400,
             );
         }
@@ -116,9 +114,8 @@ Deno.serve(async (req: Request) => {
 
         console.log('[unified-flight-search] Searching:', {
             providers: enabledProviders.map((p) => p.name),
-            origin: body.origin,
-            destination: body.destination,
-            departureDate: body.departureDate,
+            tripType: body.tripType,
+            segmentCount: body.segments.length,
             adults: body.adults,
         });
 

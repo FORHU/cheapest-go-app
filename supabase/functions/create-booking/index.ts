@@ -66,6 +66,7 @@ interface SessionFlight {
     resultIndex?: string;
     price: number;
     currency: string;
+    tripType?: string;
     validatingAirline?: string;
     segments: {
         airline: string;
@@ -86,7 +87,7 @@ interface SessionFlight {
 interface BookingSession {
     id: string;
     user_id: string;
-    provider: 'mystifly' | 'amadeus' | 'duffel' | 'mystifly_v2';
+    provider: 'mystifly' | 'duffel' | 'mystifly_v2';
     flight: SessionFlight;
     passengers: SessionPassenger[];
     contact: SessionContact;
@@ -225,11 +226,18 @@ Deno.serve(async (req: Request) => {
                 pnr: result.pnr,
                 provider: bs.provider,
                 total_price: bookingPrice,
-                // LOW-3 FIX: Store currency alongside price
                 currency: bookingCurrency,
                 status: finalStatus,
-                // Store Duffel order ID separately for ticket/order retrieval
-                ...(result.providerOrderId ? { amadeus_order_id: result.providerOrderId } : {}),
+                // Store the trip type so /trips can display it correctly
+                trip_type: bs.flight.tripType ?? (
+                    bs.flight.segments?.length === 1 ? 'one-way'
+                        : bs.flight.segments?.length === 2
+                            && bs.flight.segments[0].origin === bs.flight.segments[1].destination
+                            ? 'round-trip'
+                            : bs.flight.segments?.length > 2 ? 'multi-city' : 'one-way'
+                ),
+                ...(result.providerOrderId ? { provider_order_id: result.providerOrderId } : {}),
+                session_id: sessionId,
             })
             .select('id')
             .single();

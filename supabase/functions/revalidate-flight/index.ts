@@ -29,7 +29,6 @@ declare const Deno: any;
 
 import type { FlightProvider } from '../_shared/types.ts';
 import { revalidateFare, MystiflyError } from '../_shared/mystiflyClient.ts';
-import { amadeusRequest, AmadeusError } from '../_shared/amadeusClient.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
 
@@ -99,7 +98,7 @@ Deno.serve(async (req: Request) => {
             }, 400);
         }
 
-        if (body.provider !== 'mystifly' && body.provider !== 'amadeus') {
+        if (body.provider !== 'mystifly' && body.provider !== 'mystifly_v2' && body.provider !== 'duffel') {
             return jsonResponse(corsHeaders, {
                 success: false,
                 error: `Unknown provider: ${body.provider}`,
@@ -113,10 +112,20 @@ Deno.serve(async (req: Request) => {
         // ── Route to provider ──
         let result: RevalidateResult;
 
-        if (body.provider === 'mystifly') {
+        if (body.provider === 'mystifly' || body.provider === 'mystifly_v2') {
             result = await revalidateMystifly(body, oldPrice, startMs);
         } else {
-            result = await revalidateAmadeus(body, oldPrice, startMs);
+            // Duffel revalidation to be implemented if needed, currently bypasses
+            result = {
+                success: true,
+                priceChanged: false,
+                oldPrice: oldPrice,
+                newPrice: oldPrice,
+                seatsAvailable: true,
+                provider: body.provider,
+                validatedFlight: { price: oldPrice, baseFare: oldPrice, taxes: 0, currency: body.flightPayload.currency || 'USD', pricePerAdult: oldPrice },
+                durationMs: Date.now() - startMs,
+            }
         }
 
         console.log(`[revalidate-flight] Done: available=${result.seatsAvailable}, priceChanged=${result.priceChanged}, new=${result.newPrice} in ${result.durationMs}ms`);
@@ -240,94 +249,6 @@ async function revalidateMystifly(
     };
 }
 
-// ─── Amadeus Revalidation ───────────────────────────────────────────
-
-/**
- * Amadeus uses POST /v1/shopping/flight-offers/pricing to confirm
- * an offer's price and availability.
- *
- * Requires the full flight-offer object from the original search.
- */
-async function revalidateAmadeus(
-    body: RevalidateBody,
-    oldPrice: number,
-    startMs: number,
-): Promise<RevalidateResult> {
-    const flightOffer = body.flightPayload.flight;
-
-    if (!flightOffer) {
-        return {
-            success: false,
-            priceChanged: false,
-            oldPrice,
-            newPrice: 0,
-            seatsAvailable: false,
-            provider: 'amadeus',
-            validatedFlight: { price: 0, baseFare: 0, taxes: 0, currency: 'USD', pricePerAdult: 0 },
-            error: 'flightPayload.flight (full Amadeus offer) is required for Amadeus revalidation',
-            durationMs: Date.now() - startMs,
-        };
-    }
-
-    // POST /v1/shopping/flight-offers/pricing
-    const raw: any = await amadeusRequest('/v1/shopping/flight-offers/pricing', {
-        method: 'POST',
-        body: {
-            data: {
-                type: 'flight-offers-pricing',
-                flightOffers: [flightOffer],
-            },
-        },
-    });
-
-    const pricedOffers: any[] = raw.data?.flightOffers ?? [];
-
-    if (!pricedOffers.length) {
-        return {
-            success: true,
-            priceChanged: false,
-            oldPrice,
-            newPrice: 0,
-            seatsAvailable: false,
-            provider: 'amadeus',
-            validatedFlight: { price: 0, baseFare: 0, taxes: 0, currency: 'USD', pricePerAdult: 0 },
-            error: 'Flight offer no longer available',
-            durationMs: Date.now() - startMs,
-        };
-    }
-
-    const offer = pricedOffers[0];
-    const newPrice = parseFloat(offer.price?.grandTotal ?? offer.price?.total ?? '0');
-    const baseFare = parseFloat(offer.price?.base ?? '0');
-    const currency: string = offer.price?.currency ?? body.flightPayload.currency ?? 'USD';
-    const taxes = Math.max(0, newPrice - baseFare);
-
-    // Per-adult price
-    const adultPricing = offer.travelerPricings?.find((tp: any) => tp.travelerType === 'ADULT');
-    const pricePerAdult = adultPricing
-        ? parseFloat(adultPricing.price?.total ?? '0')
-        : newPrice;
-
-    const seatsAvailable = (offer.numberOfBookableSeats ?? 0) > 0
-        || pricedOffers.length > 0; // if pricing succeeds, seats exist
-
-    return {
-        success: true,
-        priceChanged: Math.abs(newPrice - oldPrice) > 0.01,
-        oldPrice,
-        newPrice,
-        seatsAvailable,
-        provider: 'amadeus',
-        validatedFlight: {
-            price: newPrice,
-            baseFare,
-            taxes,
-            currency,
-            pricePerAdult,
-        },
-        durationMs: Date.now() - startMs,
-    };
-}
 
 // ─── Helpers ────────────────────────────────────────────────────────
 

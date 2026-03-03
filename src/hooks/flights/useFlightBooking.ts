@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -8,7 +6,7 @@ import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/l
 import type { FlightOffer } from '@/lib/flights/types';
 import { createClient } from '@/utils/supabase/client';
 
-export type BookingStep = 'form' | 'submitting' | 'success' | 'error';
+export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
 export function useFlightBooking() {
     const router = useRouter();
@@ -16,13 +14,16 @@ export function useFlightBooking() {
     const [step, setStep] = useState<BookingStep>('form');
     const [errorMsg, setErrorMsg] = useState('');
     const [bookingResult, setBookingResult] = useState<{
-        bookingId: string;
-        pnr: string;
+        bookingId?: string;
+        pnr?: string;
         tickets?: { name: string; number: string }[];
     } | null>(null);
+    const [clientSecret, setClientSecret] = useState('');
 
     // HIGH-2 FIX: Idempotency key to prevent double bookings
     const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+    // Tracks the booking session ID after Stripe payment, for PNR polling
+    const bookingSessionIdRef = useRef<string | null>(null);
 
     const [passengers, setPassengers] = useState<FlightPassengerForm[]>(() => {
         if (typeof window !== 'undefined') {
@@ -103,6 +104,7 @@ export function useFlightBooking() {
                 resultIndex: (offer as any).resultIndex ?? offer.offerId,
                 price: offer.price.total,
                 currency: offer.price.currency,
+                tripType: (offer as any).tripType ?? 'one-way',
                 validatingAirline: offer.validatingAirline ?? offer.segments[0]?.airline.code,
                 segments: offer.segments.map(seg => ({
                     airline: seg.airline.code,
@@ -148,10 +150,21 @@ export function useFlightBooking() {
             setErrorMsg('');
         },
         onSuccess: (data) => {
+            // If Stripe PaymentIntent client_secret is returned, transition to embedded payment UI
+            if (data.clientSecret) {
+                setClientSecret(data.clientSecret);
+                setStep('payment');
+                // Store the session ID so we can poll for PNR after webhook processes
+                bookingSessionIdRef.current = data.sessionId;
+                setBookingResult({ bookingId: data.sessionId });
+                return;
+            }
+
+            // Fallback (e.g. for free bookings or bypassed payments)
             setBookingResult({
                 bookingId: data.bookingId,
                 pnr: data.pnr,
-                tickets: data.tickets
+                tickets: data.tickets,
             });
             setStep('success');
 
@@ -181,6 +194,65 @@ export function useFlightBooking() {
         }
     });
 
+    // ─── Poll for PNR after async Stripe webhook ─────────────────────
+    // Stay in 'submitting' (loading) until the webhook creates the booking.
+    // Only transition to 'success' once we have the PNR.
+    const pollForBooking = useCallback(async () => {
+        const sessionId = bookingSessionIdRef.current;
+        if (!sessionId) {
+            setStep('success');
+            return;
+        }
+
+        // Show a loading state while waiting for the webhook
+        setStep('submitting');
+
+        // Clear session storage now that payment is done
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('flightPassengers');
+            sessionStorage.removeItem('flightContact');
+            sessionStorage.removeItem('selectedFlight');
+        }
+
+        const supabase = createClient();
+        let attempts = 0;
+        const maxAttempts = 15; // Poll for up to ~15 seconds
+
+        const poll = async () => {
+            attempts++;
+            try {
+                const { data, error } = await supabase
+                    .from('flight_bookings')
+                    .select('id, pnr, status')
+                    .eq('session_id', sessionId)
+                    .maybeSingle();
+
+                if (!error && data?.pnr) {
+                    // Got the PNR — show success with it immediately
+                    setBookingResult(prev => ({
+                        ...prev,
+                        bookingId: data.id,
+                        pnr: data.pnr,
+                    }));
+                    setStep('success');
+                    return;
+                }
+            } catch (e) {
+                console.warn('[pollForBooking] Query error:', e);
+            }
+
+            if (attempts < maxAttempts) {
+                setTimeout(poll, 1000);
+            } else {
+                // Timed out — show success anyway; user can check Trips for PNR
+                setStep('success');
+            }
+        };
+
+        // Start polling immediately (webhook often fires within 1-2s)
+        poll();
+    }, []);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!offer) return;
@@ -200,8 +272,10 @@ export function useFlightBooking() {
     return {
         offer,
         step,
+        setStep, // Exported to allow manual transition if needed
         errorMsg,
         bookingResult,
+        clientSecret, // Exported for Stripe Elements provider
         passengers,
         contact,
         updatePassenger,
@@ -209,6 +283,7 @@ export function useFlightBooking() {
         removePassenger,
         setContact,
         handleSubmit,
+        pollForBooking, // Called by StripeEmbeddedCheckout onSuccess to start PNR polling
         router,
     };
 }
