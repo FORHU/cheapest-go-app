@@ -1,29 +1,15 @@
 export interface FlightSearchRequest {
-    /** Trip type */
     tripType: 'one-way' | 'round-trip' | 'multi-city';
-
-    /** Flight segments (1 for one-way, 2 for round-trip, N for multi-city) */
     segments: FlightSearchSegment[];
-
-    /** Passenger counts */
     passengers: FlightPassengers;
-
-    /** Cabin class preference */
     cabinClass: CabinClass;
-
-    /** Currency for pricing (ISO 4217) */
     currency?: string;
-
-    /** Maximum number of offers to return per provider */
     maxOffers?: number;
 }
 
 export interface FlightSearchSegment {
-    /** Origin airport IATA code */
     origin: string;
-    /** Destination airport IATA code */
     destination: string;
-    /** Departure date (ISO 8601 date string YYYY-MM-DD) */
     departureDate: string;
 }
 
@@ -33,23 +19,18 @@ export interface FlightPassengers {
     infants: number;
 }
 
+export type FlightProvider = 'mystifly' | 'duffel';
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
 
 // ─── Search Response ─────────────────────────────────────────────────
 
 export interface FlightSearchResponse {
-    /** List of bookable flight offers */
     offers: FlightOffer[];
 
-    /** Metadata about the search */
     metadata: {
-        /** Which provider returned these results */
         provider: string;
-        /** Unique search session ID (for repricing / booking) */
         searchId: string;
-        /** When the search was performed */
         timestamp: string;
-        /** Number of results before any filtering */
         totalResults: number;
     };
 }
@@ -57,139 +38,86 @@ export interface FlightSearchResponse {
 // ─── Flight Offer ────────────────────────────────────────────────────
 
 export interface FlightOffer {
-    /** Unique offer ID (prefixed with provider name, e.g. "amadeus_abc123") */
     offerId: string;
-
-    /** Provider that returned this offer */
     provider: string;
-
-    /** Price breakdown */
     price: FlightPrice;
-
-    /** Ordered list of flight segments (legs) */
     segments: FlightSegmentDetail[];
-
-    /** Total journey duration in minutes (all segments combined) */
     totalDuration: number;
-
-    /** Number of stops (across all segments) */
     totalStops: number;
-
-    /** Whether this offer is refundable */
     refundable: boolean;
 
-    /** Baggage allowance summary */
     baggage?: {
-        /** Checked bags included per passenger */
         checkedBags: number;
-        /** Weight limit per bag in kg */
         weightPerBag?: number;
-        /** Cabin baggage info */
         cabinBag?: string;
     };
 
-    /** Seats remaining (if available from provider) */
     seatsRemaining?: number;
 
-    /** Branded fare information (Mystifly V2) */
     brandedFare?: {
-        /** Brand name (e.g. "Economy Saver", "Flex Plus") */
         brandName?: string;
-        /** Brand ID from provider */
         brandId?: string;
-        /** Brand tier (higher = more features) */
         brandTier?: number;
-        /** Fare type: WebFare, PublishedFare, or BrandedFare */
         fareType?: string;
     };
 
-    /** Validating airline code */
     validatingAirline?: string;
-
-    /** Last date to issue ticket (ISO date string) */
     lastTicketDate?: string;
-
-    /** @deprecated Raw provider data — never sent to client. Server rebuilds offers during booking. */
     _raw?: unknown;
 }
 
 // ─── Price ───────────────────────────────────────────────────────────
 
 export interface FlightPrice {
-    /** Total price for all passengers */
     total: number;
-    /** Base fare before taxes */
     base: number;
-    /** Total taxes and fees */
     taxes: number;
-    /** ISO 4217 currency code */
     currency: string;
-    /** Price per adult (for display) */
     pricePerAdult: number;
 }
 
 // ─── Segment Detail ──────────────────────────────────────────────────
 
 export interface FlightSegmentDetail {
-    /** Segment index within the offer */
     segmentIndex: number;
-
-    /** Operating airline */
     airline: {
-        code: string;   // IATA airline code (e.g. "KE")
-        name: string;   // Full airline name (e.g. "Korean Air")
+        code: string;
+        name: string;
     };
-
-    /** Flight number (e.g. "KE623") */
+    origin: string;
+    destination: string;
     flightNumber: string;
 
-    /** Departure info */
     departure: {
-        airport: string;    // IATA code
+        airport: string;
         terminal?: string;
-        time: string;       // ISO 8601 datetime
+        time: string;
     };
 
-    /** Arrival info */
     arrival: {
-        airport: string;    // IATA code
+        airport: string;
         terminal?: string;
-        time: string;       // ISO 8601 datetime
+        time: string;
     };
-
-    /** Duration of this segment in minutes */
     duration: number;
-
-    /** Number of stops within this segment */
     stops: number;
-
-    /** Aircraft type (e.g. "Boeing 777-300ER") */
     aircraft?: string;
-
-    /** Cabin class for this segment */
     cabinClass: CabinClass;
+    bookingClass?: string;
+    fareBasis?: string;
 }
 
 // ─── Booking ─────────────────────────────────────────────────────────
 
 export interface FlightBookingRequest {
-    /** Offer ID from search results */
     offerId: string;
-
-    /** Provider name (extracted from offerId prefix) */
     provider: string;
-
-    /** Passenger details */
     passengers: FlightBookingPassenger[];
-
-    /** Contact information */
     contact: {
         email: string;
         phone: string;
         countryCode: string;
     };
-
-    /** Payment details */
     payment?: {
         method: 'credit_card';
         cardNumber: string;
@@ -200,15 +128,15 @@ export interface FlightBookingRequest {
 }
 
 export interface FlightBookingPassenger {
-    type: 'adult' | 'child' | 'infant';
+    type: 'ADT' | 'CHD' | 'INF';
     title: 'Mr' | 'Mrs' | 'Ms' | 'Miss';
     firstName: string;
     lastName: string;
-    dateOfBirth: string;    // YYYY-MM-DD
-    nationality: string;    // ISO country code
+    dateOfBirth: string;
+    nationality: string;
     passport?: {
         number: string;
-        expiryDate: string; // YYYY-MM-DD
+        expiryDate: string;
         issuingCountry: string;
     };
 }
@@ -217,7 +145,7 @@ export interface FlightBookingResponse {
     success: boolean;
     data?: {
         bookingId: string;
-        pnr: string;              // Passenger Name Record
+        pnr: string;
         status: 'confirmed' | 'pending' | 'ticketed' | 'failed';
         ticketNumbers?: string[];
         totalPaid: number;
@@ -229,7 +157,6 @@ export interface FlightBookingResponse {
 // ─── Airline Database (for display) ──────────────────────────────────
 
 export const AIRLINES: Record<string, string> = {
-    // Asia-Pacific
     'KE': 'Korean Air', 'OZ': 'Asiana Airlines', '7C': 'Jeju Air', 'TW': 'T\'way Air',
     'LJ': 'Jin Air', 'ZE': 'Eastar Jet', 'BX': 'Air Busan', 'RS': 'Air Seoul',
     'PR': 'Philippine Airlines', '5J': 'Cebu Pacific', 'Z2': 'AirAsia Philippines',

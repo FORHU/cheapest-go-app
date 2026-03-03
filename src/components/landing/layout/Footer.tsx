@@ -66,7 +66,7 @@ const MinimalFooter = () => (
 const FooterContent = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isMapView = pathname === '/search' && searchParams.get('view') === 'map';
+  const isMapView = pathname === '/search' && searchParams?.get('view') === 'map';
 
   if (isMapView) return null; // Hide completely in map view to maximize screen space
   return <StandardFooter />;

@@ -78,14 +78,14 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
     // ── Handlers ────────────────────────────────────────────
 
     const handleBackToList = useCallback(() => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(searchParams?.toString() || '');
         params.delete('view');
         router.push(`/search?${params.toString()}`);
     }, [router, searchParams]);
 
     const handleViewDetails = useCallback(
         (id: string) => {
-            const params = new URLSearchParams(searchParams.toString());
+            const params = new URLSearchParams(searchParams?.toString() || '');
             params.delete('view');
             router.push(`/property/${id}?${params.toString()}`);
         },

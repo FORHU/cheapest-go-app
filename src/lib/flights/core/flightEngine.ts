@@ -243,10 +243,10 @@ export class FlightEngine {
     // Issue tickets on the originating provider.
     async issueTicket(params: IssueTicketParams): Promise<IssueTicketResult> {
         const bookingPrefix = params.bookingId.substring(0, 3).toLowerCase();
-        // Amadeus bookings start with "ABK", Mystifly with "FBK", etc.
+        // Duffel bookings start with "DBK", Mystifly with "FBK", etc.
         // Fall back to first available provider if prefix doesn't match.
         let provider = this.providers.find(p => {
-            if (bookingPrefix === 'abk') return p.name === 'amadeus';
+            if (bookingPrefix === 'dbk') return p.name === 'duffel';
             if (bookingPrefix === 'fbk') return p.name === 'mystifly';
             return false;
         });

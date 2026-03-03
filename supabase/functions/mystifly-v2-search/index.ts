@@ -1,15 +1,15 @@
 /**
- * Mystifly Flight Search — Supabase Edge Function
+ * Mystifly V2 Flight Search — Supabase Edge Function
  *
- * POST /functions/v1/mystifly-search
+ * POST /functions/v1/mystifly-v2-search
  *
- * Searches Mystifly lowest-fare via Search/Flight v1 and returns
+ * Searches Mystifly Branded Fares via Search/Flight v2 and returns
  * normalized NormalizedFlight[] results. Automatically creates a
  * session if one doesn't exist.
  *
  * POST body:
  *   { origin, destination, departureDate, returnDate?, adults,
- *     children?, infants?, cabinClass?, tripType?, maxOffers?, nonStopOnly? }
+ *     children?, infants?, cabinClass?, tripType?, maxOffers?, nonStopOnly?, currency? }
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -17,11 +17,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 declare const Deno: any;
 
 import type { NormalizedFlight, CabinClass, TripType } from '../_shared/types.ts';
-import { searchFlights, createSession, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
-import { normalizeMystiflyResponse } from '../_shared/normalizeFlight.ts';
+import { searchBrandedFlights, createSession, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
+import { normalizeMystiflyV2Response } from '../_shared/normalizeFlight.ts';
 
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
+const NATIONALITY = Deno.env.get('MYSTIFLY_NATIONALITY') ?? 'US';
+const PRICING_SOURCE_TYPE = Deno.env.get('MYSTIFLY_PRICING_SOURCE_TYPE') ?? 'All';
 
 function getCorsHeaders(req: Request) {
     const origin = req.headers.get('Origin') ?? '';
@@ -80,7 +82,7 @@ Deno.serve(async (req: Request) => {
             );
         }
 
-        console.log('[mystifly-search] Request:', {
+        console.log('[mystifly-v2-search] Request:', {
             origin: body.origin,
             destination: body.destination,
             departureDate: body.departureDate,
@@ -135,8 +137,11 @@ Deno.serve(async (req: Request) => {
         const mystiflyBody = {
             OriginDestinationInformations: originDestinations,
             PassengerTypeQuantities: passengerTypes,
+            PricingSourceType: PRICING_SOURCE_TYPE,
+            Nationalities: [NATIONALITY],
+            Nationality: NATIONALITY,
             NearByAirports: true,
-            Target: 'Production', // Based on user documentation image for V1 Search
+            Target: MYSTIFLY_TARGET(),
             ConversationId: '',
             CurrencyCode: body.currency,
             TravelPreferences: {
@@ -150,23 +155,24 @@ Deno.serve(async (req: Request) => {
                         PreferenceLevel: 'Preferred',
                     },
                 },
-                CurrencyCode: body.currency,
+                VendorPreferenceCodes: null,
+                VendorExcludeCodes: null,
             },
             RequestOptions: getRequestOptions(body.maxOffers),
         };
 
-        console.log('[mystifly-search] Final Mystifly Body keys:', Object.keys(mystiflyBody));
-        console.log('[mystifly-search] First OriginDest:', JSON.stringify(mystiflyBody.OriginDestinationInformations[0]));
+        console.log('[mystifly-v2-search] Final Mystifly Body keys:', Object.keys(mystiflyBody));
+        console.log('[mystifly-v2-search] First OriginDest:', JSON.stringify(mystiflyBody.OriginDestinationInformations[0]));
 
-        // ── Call Mystifly Search ──
-        const raw = await searchFlights(mystiflyBody, sessionId, conversationId);
+        // ── Call Mystifly V2 Search ──
+        const raw = await searchBrandedFlights(mystiflyBody, sessionId, conversationId);
 
         const itinData = raw.Data?.PricedItineraries ?? raw.Data?.FareItineraries ?? [];
-        console.log('[mystifly-search] Itineraries count:', itinData.length);
+        console.log('[mystifly-v2-search] Itineraries count:', itinData.length);
         if (itinData.length > 0) {
-            console.log('[mystifly-search] Itineraries found in raw response.');
+            console.log('[mystifly-v2-search] Itineraries found in raw response.');
         }
-        if (!raw.Success) console.log('[mystifly-search] Raw Message:', raw.Message);
+        if (!raw.Success) console.log('[mystifly-v2-search] Raw Message:', raw.Message);
 
 
 
@@ -178,9 +184,9 @@ Deno.serve(async (req: Request) => {
                 || msg.toLowerCase().includes('no result');
 
             if (isEmptyResult) {
-                console.log('[mystifly-search] No flights found for this route — returning empty result');
+                console.log('[mystifly-v2-search] No flights found for this route — returning empty result');
                 return jsonResponse(corsHeaders, {
-                    provider: 'mystifly',
+                    provider: 'mystifly-v2',
                     flights: [],
                     totalResults: 0,
                     durationMs: Date.now() - startMs,
@@ -188,17 +194,18 @@ Deno.serve(async (req: Request) => {
             }
 
             throw new MystiflyError(
-                `Mystifly search failed: ${msg}`,
+                `Mystifly V2 search failed: ${msg}`,
                 'CLIENT',
                 400,
             );
         }
 
         // ── Normalize ──
-        const flights = normalizeMystiflyResponse(itinData, raw.Data);
+        // Data context is required for V2 to map Segments, Brands and Prices
+        const flights = normalizeMystiflyV2Response(itinData, raw.Data);
 
         if (flights.length === 0) {
-            console.log('[mystifly-search] Mystifly returned 0 itineraries');
+            console.log('[mystifly-v2-search] Mystifly V2 returned 0 itineraries');
         }
 
         // Inject our tunneled traceId (FareSourceCode|ConversationId|SessionId)
@@ -208,17 +215,15 @@ Deno.serve(async (req: Request) => {
             }
         });
 
-        console.log(`[mystifly-search] Mystifly returned ${flights.length} raw itineraries`);
+        console.log(`[mystifly-v2-search] Mystifly V2 returned ${flights.length} raw itineraries`);
 
         // Sort by price ascending
         flights.sort((a, b) => a.price - b.price);
         // ── Currency Fallback Conversion ──
-        // Some Mystifly fare sources ignore CurrencyCode. We force convert to requested currency.
         const targetCurrency = body.currency || 'USD';
         const convertedFlights = flights.map(f => {
             if (f.currency === targetCurrency) return f;
 
-            // Simple conversion logic (based on lib/currency.ts)
             const rates: Record<string, number> = { 'USD': 1, 'PHP': 58.0, 'KRW': 1350.0 };
             const fromRate = rates[f.currency.toUpperCase()] || 1;
             const toRate = rates[targetCurrency.toUpperCase()] || 1;
@@ -239,11 +244,11 @@ Deno.serve(async (req: Request) => {
 
         const durationMs = Date.now() - startMs;
 
-        console.log(`[mystifly-search] Normalized ${convertedFlights.length} flights (converted to ${targetCurrency}) in ${durationMs}ms`);
+        console.log(`[mystifly-v2-search] Normalized ${convertedFlights.length} V2 flights (converted to ${targetCurrency}) in ${durationMs}ms`);
 
         // ── Response — clean, frontend-friendly JSON ──
         return jsonResponse(corsHeaders, {
-            provider: 'mystifly',
+            provider: 'mystifly_v2', // Differentiating from v1
             flights: convertedFlights,
             totalResults: convertedFlights.length,
             durationMs,
@@ -253,17 +258,17 @@ Deno.serve(async (req: Request) => {
     } catch (err: any) {
         const durationMs = Date.now() - startMs;
 
-        console.error('[mystifly-search] Error:', err.message);
+        console.error('[mystifly-v2-search] Error:', err.message);
 
         const status = err instanceof MystiflyError ? Math.max(err.status, 400) : 500;
 
         return jsonResponse(corsHeaders,
             {
-                provider: 'mystifly',
+                provider: 'mystifly-v2',
                 flights: [],
                 totalResults: 0,
                 durationMs,
-                error: err.message || 'Mystifly search failed',
+                error: err.message || 'Mystifly V2 search failed',
             },
             status,
         );
@@ -284,4 +289,3 @@ function getRequestOptions(maxOffers?: number): string {
     if (maxOffers <= 100) return 'Hundred';
     return 'TwoHundred';
 }
-

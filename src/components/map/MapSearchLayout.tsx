@@ -69,7 +69,7 @@ function MapSearchLayout({ properties, title }: MapSearchLayoutProps) {
 
     const handleViewDetails = useCallback(
         (id: string) => {
-            const params = new URLSearchParams(searchParams.toString());
+            const params = new URLSearchParams(searchParams?.toString() || '');
             router.push(`/property/${id}?${params.toString()}`);
         },
         [router, searchParams]

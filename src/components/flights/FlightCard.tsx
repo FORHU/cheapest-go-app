@@ -8,8 +8,10 @@ import { getAirlineName } from '@/lib/flights/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-function formatTime(iso: string): string {
+function formatTime(iso: string | undefined): string {
+    if (!iso) return '--:--';
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return '--:--';
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
@@ -44,10 +46,11 @@ const AIRLINE_COLORS: Record<string, string> = {
     'NH': 'bg-blue-500', 'TG': 'bg-purple-600', 'VN': 'bg-teal-600', 'GA': 'bg-sky-700',
 };
 
-function AirlineLogo({ code }: { code: string }) {
+function AirlineLogo({ code }: { code: string | undefined }) {
+    const c = code || '??';
     return (
-        <div className={`w-7 h-7 lg:w-10 lg:h-10 rounded-md lg:rounded-lg ${AIRLINE_COLORS[code] || 'bg-slate-600'} flex items-center justify-center text-white font-bold text-[10px] lg:text-sm shrink-0`}>
-            {code}
+        <div className={`w-7 h-7 lg:w-10 lg:h-10 rounded-md lg:rounded-lg ${AIRLINE_COLORS[c] || 'bg-slate-600'} flex items-center justify-center text-white font-bold text-[10px] lg:text-sm shrink-0`}>
+            {c}
         </div>
     );
 }
@@ -124,14 +127,13 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
         : [];
 
     const primary = offer.segments[0];
-    const last = outbound[outbound.length - 1];
+    const last = outbound[outbound.length - 1] || primary;
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.1 }}
-            transition={{ delay: index * 0.04, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.03, duration: 0.25 }}
             className={`
                 group relative bg-white dark:bg-slate-900
                 rounded-xl overflow-hidden border transition-all duration-200
@@ -186,7 +188,12 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
 
                         <div className="text-center">
                             <div className="text-base lg:text-lg font-bold text-slate-900 dark:text-white leading-tight">{formatTime(last.arrival.time)}</div>
-                            <div className="text-[9px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-medium">{last.arrival.airport}</div>
+                            <div className="text-[9px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                                {offer.segments.length > 1 && offer.segments[0].departure.airport === offer.segments[offer.segments.length - 1].arrival.airport
+                                    ? offer.segments[Math.floor(offer.segments.length / 2)].departure.airport // Destination
+                                    : last.arrival.airport
+                                }
+                            </div>
                         </div>
                     </div>
 
@@ -195,7 +202,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         {offer.baggage && (
                             <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                                 <Luggage className="w-2 h-2 lg:w-3 lg:h-3" />
-                                {offer.baggage.checkedBags > 0 ? `${offer.baggage.checkedBags} bag(s)` : 'No bag'}
+                                {Number(offer.baggage.checkedBags || 0) > 0 ? `${offer.baggage.checkedBags} bag(s)` : 'No bag'}
                             </span>
                         )}
                         {offer.refundable && (
@@ -205,11 +212,17 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             </span>
                         )}
                         <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 capitalize">
-                            {primary.cabinClass.replace('_', ' ')}
+                            {(primary.cabinClass || 'economy').replace('_', ' ')}
                         </span>
                         <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
                             {offer.provider}
                         </span>
+                        {primary.aircraft && (
+                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+                                <Plane className="w-2 h-2 lg:w-3 lg:h-3" />
+                                {primary.aircraft}
+                            </span>
+                        )}
                     </div>
                 </div>
 

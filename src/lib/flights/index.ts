@@ -21,16 +21,8 @@ export type { OrchestratorResult } from './orchestrator';
 
 import { ProviderRegistry } from './provider';
 import { FlightSearchOrchestrator } from './orchestrator';
-import { AmadeusProvider } from './providers/amadeus';
 
-/**
- * Global provider registry — singleton.
- * Providers self-disable when credentials are missing.
- */
 const registry = new ProviderRegistry();
-
-// Always register Amadeus first (self-disables if no credentials)
-registry.register(new AmadeusProvider());
 
 /**
  * Global flight search orchestrator — singleton.
