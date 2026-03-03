@@ -24,15 +24,39 @@ export function useFlightBooking() {
     // HIGH-2 FIX: Idempotency key to prevent double bookings
     const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
-    const [passengers, setPassengers] = useState<FlightPassengerForm[]>([{
-        type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
-        nationality: 'KR', passport: '', passportExpiry: '',
-    }]);
-
-    const [contact, setContact] = useState<FlightContactForm>({
-        email: '', phone: '', countryCode: '82',
-        addressLine: '', city: '', postalCode: '', country: 'KR',
+    const [passengers, setPassengers] = useState<FlightPassengerForm[]>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('flightPassengers');
+            if (saved) {
+                try { return JSON.parse(saved); } catch (e) { console.error('Error parsing saved passengers:', e); }
+            }
+        }
+        return [{
+            type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
+            nationality: 'KR', passport: '', passportExpiry: '',
+        }];
     });
+
+    const [contact, setContact] = useState<FlightContactForm>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('flightContact');
+            if (saved) {
+                try { return JSON.parse(saved); } catch (e) { console.error('Error parsing saved contact:', e); }
+            }
+        }
+        return {
+            email: '', phone: '', countryCode: '82',
+            addressLine: '', city: '', postalCode: '', country: 'KR',
+        };
+    });
+
+    // Effect to persist passengers and contact to sessionStorage
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('flightPassengers', JSON.stringify(passengers));
+            sessionStorage.setItem('flightContact', JSON.stringify(contact));
+        }
+    }, [passengers, contact]);
 
     useEffect(() => {
         const raw = sessionStorage.getItem('selectedFlight');
@@ -124,13 +148,30 @@ export function useFlightBooking() {
             setErrorMsg('');
         },
         onSuccess: (data) => {
-            setBookingResult({ bookingId: data.bookingId, pnr: data.pnr, tickets: data.tickets });
+            setBookingResult({
+                bookingId: data.bookingId,
+                pnr: data.pnr,
+                tickets: data.tickets
+            });
             setStep('success');
+
+            // Clear session storage on success
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('flightPassengers');
+                sessionStorage.removeItem('flightContact');
+            }
             sessionStorage.removeItem('selectedFlight');
         },
         onError: (error) => {
             if (error.message === "unauthenticated") {
-                router.push('/login');
+                setErrorMsg("You need to sign in to complete your booking.");
+                setStep('form'); // CRITICAL FIX: reset loading state
+                if (typeof window !== 'undefined') {
+                    // Import the store and open the modal
+                    import('@/stores/authStore').then(({ useAuthStore }) => {
+                        useAuthStore.getState().openAuthModal('email');
+                    });
+                }
             } else {
                 setErrorMsg(error.message || 'Booking failed. Please try again.');
                 setStep('error');
