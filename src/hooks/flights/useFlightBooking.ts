@@ -15,7 +15,11 @@ export function useFlightBooking() {
     const [offer, setOffer] = useState<FlightOffer | null>(null);
     const [step, setStep] = useState<BookingStep>('form');
     const [errorMsg, setErrorMsg] = useState('');
-    const [bookingResult, setBookingResult] = useState<{ bookingId: string; pnr: string } | null>(null);
+    const [bookingResult, setBookingResult] = useState<{
+        bookingId: string;
+        pnr: string;
+        tickets?: { name: string; number: string }[];
+    } | null>(null);
 
     // HIGH-2 FIX: Idempotency key to prevent double bookings
     const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
@@ -89,6 +93,10 @@ export function useFlightBooking() {
                     fareBasis: (seg as any).fareBasis,
                     itineraryIndex: (seg as any).itineraryIndex,
                 })),
+                // CRITICAL FIX: Only Duffel require the raw offer to complete booking
+                ...(offer.provider === 'duffel' ? {
+                    _rawOffer: (offer as any)._rawOffer || (offer as any).rawOffer || offer,
+                } : {}),
             };
 
             // CRITICAL-3 FIX: Don't send userId — server extracts it from JWT
@@ -116,7 +124,7 @@ export function useFlightBooking() {
             setErrorMsg('');
         },
         onSuccess: (data) => {
-            setBookingResult({ bookingId: data.bookingId, pnr: data.pnr });
+            setBookingResult({ bookingId: data.bookingId, pnr: data.pnr, tickets: data.tickets });
             setStep('success');
             sessionStorage.removeItem('selectedFlight');
         },

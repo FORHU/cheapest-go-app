@@ -55,7 +55,7 @@ interface BookingSessionContact {
 
 interface CreateBookingSessionBody {
     userId: string;
-    provider: 'mystifly' | 'duffel';
+    provider: 'mystifly' | 'duffel' | 'mystifly_v2';
     flight: Record<string, unknown>;
     passengers: BookingSessionPassenger[];
     contact: BookingSessionContact;
@@ -80,8 +80,8 @@ Deno.serve(async (req: Request) => {
         if (!body.userId) {
             return jsonResponse(corsHeaders, { success: false, error: 'userId is required' }, 400);
         }
-        if (!body.provider || !['mystifly', 'duffel'].includes(body.provider)) {
-            return jsonResponse(corsHeaders, { success: false, error: 'provider must be "mystifly" or "duffel"' }, 400);
+        if (!body.provider || !['mystifly', 'duffel', 'mystifly_v2'].includes(body.provider)) {
+            return jsonResponse(corsHeaders, { success: false, error: 'invalid provider string passed' }, 400);
         }
         if (!body.flight || typeof body.flight !== 'object') {
             return jsonResponse(corsHeaders, { success: false, error: 'flight object is required' }, 400);
@@ -167,7 +167,8 @@ Deno.serve(async (req: Request) => {
         // NOTE: We MUST preserve it for Amadeus to ensure segment integrity,
         // but it remains sanitized for Mystifly as a legacy safeguard.
         const sanitizedFlight = { ...body.flight } as Record<string, unknown>;
-        if (body.provider === 'mystifly') {
+
+        if (body.provider === 'mystifly' || body.provider === 'mystifly_v2') {
             delete sanitizedFlight.rawOffer;
             delete sanitizedFlight._raw;
             delete sanitizedFlight._rawOffer;
