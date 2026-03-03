@@ -2,6 +2,7 @@
 
 export enum FlightProvider {
     MYSTIFLY = 'mystifly',
+    MYSTIFLY_V2 = 'mystifly_v2', // Added for v2
     DUFFEL = 'duffel',
 }
 

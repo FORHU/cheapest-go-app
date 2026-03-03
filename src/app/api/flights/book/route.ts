@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
         const userId = user.id;
 
         // ── Validate ──
-        if (!provider || !['duffel', 'mystifly'].includes(provider)) {
-            return NextResponse.json({ success: false, error: 'provider must be "duffel" or "mystifly"' }, { status: 400 });
+        if (!provider || !['duffel', 'mystifly', 'mystifly_v2'].includes(provider)) {
+            return NextResponse.json({ success: false, error: 'invalid provider string passed' }, { status: 400 });
         }
         if (!flight || typeof flight !== 'object') {
             return NextResponse.json({ success: false, error: 'flight object is required' }, { status: 400 });
@@ -60,11 +60,13 @@ export async function POST(req: NextRequest) {
             'Authorization': `Bearer ${serviceRoleKey}`,
         };
 
-        // CRITICAL-2 FIX: Strip rawOffer from flight data — server will rebuild/revalidate
+        // CRITICAL-2 FIX: Strip rawOffer from flight data ONLY FOR MYSTIFLY
         const sanitizedFlight = { ...flight };
-        delete sanitizedFlight.rawOffer;
-        delete sanitizedFlight._raw;
-        delete sanitizedFlight._rawOffer;
+        if (provider === 'mystifly' || provider === 'mystifly_v2') {
+            delete sanitizedFlight.rawOffer;
+            delete sanitizedFlight._raw;
+            delete sanitizedFlight._rawOffer;
+        }
 
         // ── Step 1: Create Booking Session ──
         // HIGH-2 FIX: Pass idempotencyKey for duplicate detection

@@ -131,10 +131,23 @@ export default function FlightBookContent() {
                                     : `${primary.departure.airport} → ${last.arrival.airport}`}
                             </span>
                         </div>
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
                             <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">Total</span>
                             <span className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency)}</span>
                         </div>
+                        {bookingResult.tickets && bookingResult.tickets.length > 0 && (
+                            <div className="flex justify-between items-start pt-1">
+                                <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400 mt-1">E-Tickets</span>
+                                <div className="flex flex-col items-end gap-1">
+                                    {bookingResult.tickets.map((t, i) => (
+                                        <div key={i} className="text-[10px] lg:text-sm flex items-center gap-2">
+                                            <span className="text-slate-500 dark:text-slate-400">{t.name}</span>
+                                            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">{t.number}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
 
                     <motion.div
@@ -420,8 +433,8 @@ export default function FlightBookContent() {
                         const isPending = errorMsg?.toLowerCase().includes('pending');
                         return (
                             <div className={`flex items-center gap-1.5 lg:gap-2 p-2.5 lg:p-4 rounded-lg lg:rounded-xl border ${isPending
-                                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
-                                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
+                                ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+                                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
                                 } text-[11px] lg:text-sm`}>
                                 {isPending ? (
                                     <Info className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
