@@ -18,4 +18,5 @@ export {
   SparkleEffect,
   Shimmer,
 } from "./Animations";
+export * from "./Table";
 

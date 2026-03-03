@@ -5,10 +5,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
 // Routes that require authentication
-const protectedRoutes = ['/checkout', '/trips', '/account'];
+const protectedRoutes = ['/checkout', '/trips', '/account', '/admin'];
 
 // Routes that should redirect to home if already authenticated
-const authRoutes = ['/login'];
+const authRoutes = ['/login', '/register'];
 
 export const updateSession = async (request: NextRequest) => {
     const { pathname } = request.nextUrl;
@@ -45,7 +45,25 @@ export const updateSession = async (request: NextRequest) => {
         data: { user },
     } = await supabase.auth.getUser();
 
-    // Protected routes — redirect to login if not authenticated
+    // 1. Path Protection: Admin Routes (Specific Role Check)
+    if (pathname.startsWith('/admin')) {
+        if (!user) {
+            return NextResponse.redirect(new URL('/login', request.url));
+        }
+
+        // Check for admin role in profiles table
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (profile?.role !== 'admin') {
+            return NextResponse.redirect(new URL('/', request.url));
+        }
+    }
+
+    // 2. Protected routes — redirect to login if not authenticated
     if (protectedRoutes.some((route) => pathname.startsWith(route))) {
         if (!user) {
             const redirectUrl = new URL('/login', request.url);
@@ -54,7 +72,7 @@ export const updateSession = async (request: NextRequest) => {
         }
     }
 
-    // Auth routes — redirect to home if already authenticated
+    // 3. Auth routes — redirect to home if already authenticated
     if (authRoutes.some((route) => pathname.startsWith(route)) && user) {
         return NextResponse.redirect(new URL('/', request.url));
     }

@@ -70,6 +70,12 @@ export function useLoginForm(): UseLoginFormReturn {
     // Redirect when user is authenticated
     useEffect(() => {
         if (user && !prevUserRef.current) {
+            // Admin users always go to dashboard immediately
+            if (user.role === 'admin') {
+                router.push('/admin');
+                return;
+            }
+
             const redirectTo = searchParams?.get('redirect') || '/';
             router.push(redirectTo);
         }
