@@ -58,9 +58,12 @@ const PROVIDERS: ProviderConfig[] = [
         timeoutMs: 20_000,
     },
     {
-        name: FlightProvider.MYSTIFLY_V2, // V2 Branded Fares
+        name: FlightProvider.MYSTIFLY_V2, // V2 Branded Fares — only in production
         functionName: 'mystifly-v2-search',
-        enabled: true,
+        // Enable V2 only when MYSTIFLY_ENV=production.
+        // In sandbox (unset/test), V2 FareSourceCodes are not bookable, so exclude them.
+        // This reads the same env var used in mystiflyClient.getMystiflyTarget() — single source of truth.
+        enabled: Deno.env.get('MYSTIFLY_ENV') === 'production',
         timeoutMs: 20_000,
     },
 ];

@@ -26,54 +26,28 @@ const USERNAME = () => env('MYSTIFLY_USERNAME');
 const PASSWORD = () => env('MYSTIFLY_PASSWORD');
 const ACCOUNT_NUMBER = () => env('MYSTIFLY_ACCOUNT_NUMBER');
 
-/** 
- * Centralized Mystifly Target (Test/Production). 
- * 
- * Logic Priority: 
- * 1. Code Prefix (T- for Test, P- for Production)
- * 2. URL detection (demo -> Test, otherwise Production)
- * 3. Environment Variable override (MYSTIFLY_ENV)
+/**
+ * Centralized Target resolver — single source of truth for BOTH V1 and V2.
+ *
+ * V1 search, V1 revalidate, V1 book all use this value.
+ * V2 search, V2 revalidate, V2 book all use this value.
+ * No per-function overrides. No cross-version switching.
+ *
+ * MYSTIFLY_ENV=production  → 'Production'
+ * MYSTIFLY_ENV=test        → 'Test'
+ * unset                    → 'Production' (safe default; preserves demo V1 behavior)
  */
-/** 
- * Centralized Mystifly Target (Test/Production). 
- * 
- * Logic Priority (Safety First): 
- * 1. URL detection (demo -> MUST be Test)
- * 2. Environment Variable override (MYSTIFLY_ENV)
- * 3. Code Prefix (T- for Test, P- for Production)
- */
-export const MYSTIFLY_TARGET = (id?: string, bodyTarget?: string) => {
-    // 1. Explicit body target has highest priority (Doc match)
-    if (bodyTarget === 'Production') return 'Production';
-    if (bodyTarget === 'Test') return 'Test';
-
-    // 2. Manual Env Override 
+export function getMystiflyTarget(): 'Production' | 'Test' {
     const envVal = env('MYSTIFLY_ENV', '').toLowerCase();
-    if (envVal === 'production') return 'Production';
-    if (envVal === 'test') return 'Test';
-
-    // 3. Detect from Code Prefix
-    const fareSourceCode = extractFareSourceCode(id);
-    if (fareSourceCode?.startsWith('T-')) return 'Test';
-    if (fareSourceCode?.startsWith('P-')) return 'Production';
-
-    // 4. URL detection (demo -> v1 wants Production, v2 wants Test)
-    const url = BASE_URL();
-    if (url.includes('demo')) {
-        // Based on user documentation snapshots: 
-        // V1 Search/Book uses "Production"
-        // V2 Search/Book uses "Test"
-        return 'Production';
-    }
-
-    return 'Production';
-};
+    return envVal === 'test' ? 'Test' : 'Production';
+}
 
 /** Helper to extract original FareSourceCode from tunneled traceId (Code|UUID|Sid). */
 export function extractFareSourceCode(id?: string): string {
     if (!id) return '';
     return id.split('|')[0];
 }
+
 
 
 
@@ -199,8 +173,9 @@ export async function mystiflyRequest<T = any>(
 
     const url = `${BASE_URL()}${endpoint}`;
 
-    // Target detection logic
-    const target = MYSTIFLY_TARGET(body.FareSourceCode, body.Target);
+    // Use explicitly-passed Target, or fall back to centralized env resolver.
+    // Callers MUST pass the correct Target — no cross-version override here.
+    const target = body.Target ?? getMystiflyTarget();
 
     const finalBody = {
         ...body,
@@ -280,19 +255,9 @@ export async function mystiflyRequest<T = any>(
         );
     }
 
-    // ── Handle Business Errors (Retries) ───────────────────────────
-
-    const errorMsg = json.Message || (json.Data?.Errors?.[0]?.Message) || '';
-    const isMismatch = errorMsg.includes('ERBUK103') || errorMsg.includes('API version mismatch');
-
-    if (!json.Success && isMismatch) {
-        // If we haven't already retried this specific mismatch
-        if (!body.__retriedMismatch) {
-            const altTarget = target === 'Production' ? 'Test' : 'Production';
-            console.warn(`[Mystifly] Business Mismatch (${target}) on ${endpoint}. Retrying with ${altTarget}...`);
-            return await mystiflyRequest(endpoint, { ...body, Target: altTarget, __retriedMismatch: true }, sessionId, conversationId);
-        }
-    }
+    // No cross-version retry — FareSourceCode is version-locked.
+    // If you see an API version mismatch here, the search and book are using
+    // different providers (mystifly vs mystifly_v2). Check routing in create-booking.
 
     return json as T;
 }
@@ -301,9 +266,10 @@ export async function mystiflyRequest<T = any>(
 
 export { createSession };
 
+// ─── V1 Search ───────────────────────────────────────────────────────
+
 /**
- * Search flights via Mystifly v1.
- * Wraps mystiflyRequest with the search endpoint.
+ * Search flights via Mystifly v1 (ASHR 1.0).
  */
 export async function searchFlights(
     body: any,
@@ -327,121 +293,129 @@ export async function searchBrandedFlights(
 
 /**
  * Revalidate a fare using its FareSourceCode.
- * SMART VERSIONING: If v1 (Production target) fails with mismatch, retries with v2 (Test target).
+// ─── V1 Revalidate ──────────────────────────────────────────────────
+
+/**
+ * Revalidate a V1 FareSourceCode — V1 ONLY, no cross-version fallback.
+ * Must only be called for flights obtained from mystifly (V1) search.
+ * Uses the centralized getMystiflyTarget() target.
  */
 export async function revalidateFare(
     fareSourceCode: string,
     sessionId?: string,
     conversationId?: string,
 ) {
-    console.log('[mystiflyClient] Revalidating attempt (v1/Production)...');
-    const res = await mystiflyRequest('/api/v1/Revalidate/Flight', {
+    const target = getMystiflyTarget();
+    console.log(`[mystiflyClient] V1 Revalidate. Target: ${target}`);
+    return mystiflyRequest('/api/v1/Revalidate/Flight', {
         FareSourceCode: fareSourceCode,
-        Target: 'Production',
+        Target: target,
     }, sessionId, conversationId);
-
-    const errorMsg = res.Message || (res.Data?.Errors?.[0]?.Message) || '';
-    const isMismatch = errorMsg.includes('ERBUK103') || errorMsg.includes('API version mismatch');
-
-    if (!res.Success && isMismatch) {
-        console.warn('[mystiflyClient] Revalidation mismatch. Retrying with V2 (Test target)...');
-        // V2 revalidation often uses the same v1 endpoint but with Target: Test or V2 endpoint
-        // Let's try the V2 endpoint first as it's cleaner for V2 tokens
-        try {
-            return await mystiflyRequest('/api/v2/Revalidate/Flight', {
-                FareSourceCode: fareSourceCode,
-                Target: 'Test',
-            }, sessionId, conversationId);
-        } catch (v2Err) {
-            console.error('[mystiflyClient] V2 revalidate endpoint failed. Fallback to v1 with Target: Test...');
-            return await mystiflyRequest('/api/v1/Revalidate/Flight', {
-                FareSourceCode: fareSourceCode,
-                Target: 'Test',
-            }, sessionId, conversationId);
-        }
-    }
-
-    return res;
 }
 
+// ─── V2 Revalidate ──────────────────────────────────────────────────
+
 /**
- * Book a flight using a revalidated FareSourceCode.
- *
- * SMART VERSIONING: If v1 fails with "API version mismatch", we automatically retry with v2.
+ * Revalidate a V2 FareSourceCode — V2 ONLY, no cross-version fallback.
+ * Must only be called for flights obtained from mystifly_v2 search.
+ * Uses the centralized getMystiflyTarget() target.
+ */
+export async function revalidateFareV2(
+    fareSourceCode: string,
+    sessionId?: string,
+    conversationId?: string,
+) {
+    const target = getMystiflyTarget();
+    console.log(`[mystiflyClient] V2 Revalidate. Target: ${target}`);
+    return mystiflyRequest('/api/v2/Revalidate/Flight', {
+        FareSourceCode: fareSourceCode,
+        Target: target,
+    }, sessionId, conversationId);
+}
+
+// ─── V1 Book ────────────────────────────────────────────────────────
+
+/**
+ * Book a V1 flight — V1 ONLY, no cross-version retry.
+ * Must only be called for flights obtained from mystifly (V1) search.
+ * Uses the centralized getMystiflyTarget() target.
  */
 export async function bookFlight(
     body: any,
     sessionId?: string,
     conversationId?: string,
 ) {
-    console.log('[mystiflyClient] Booking attempt (v1)... Custom Target:', body.Target);
-    const res = await mystiflyRequest('/api/v1/Book/Flight', body, sessionId, conversationId);
+    const target = getMystiflyTarget();
+    console.log(`[mystiflyClient] V1 Book. Target: ${target}`);
+    return mystiflyRequest('/api/v1/Book/Flight', {
+        ...body,
+        Target: target,
+    }, sessionId, conversationId);
+}
 
-    // Check for business error "API version mismatch" (ERBUK103)
-    const errorMsg = res.Message || (res.Data?.Errors?.[0]?.Message) || '';
-    const isMismatch = errorMsg.includes('ERBUK103') || errorMsg.includes('API version mismatch');
+// ─── V2 Book ────────────────────────────────────────────────────────
 
-    if (!res.Success && isMismatch) {
-        console.warn('[mystiflyClient] ERBUK103 mismatch detected in v1 response. Converting body to V2 and retrying...');
-        const v2Body = convertToV2BookRequest(body);
-        // ASHR 2.0 (v2) documentation shows "Target": "Test"
-        v2Body.Target = 'Test';
+/**
+ * Book a V2 flight — V2 ONLY, no cross-version retry.
+ * Must only be called for flights obtained from mystifly_v2 search.
+ * Converts V1-style flat body to V2 nested Passport format internally.
+ * Calls /api/v2/OnePoint/Book with the centralized getMystiflyTarget() target.
+ */
+export async function bookFlightV2(
+    v1StyleBody: any,
+    sessionId?: string,
+    conversationId?: string,
+) {
+    const target = getMystiflyTarget();
+    console.log(`[mystiflyClient] V2 Book. Target: ${target}`);
 
-        // Some v2 environments use /api/v2/Book/Flight, others use /api/v1/Book/Flight with Target: Test
-        // Since /api/v2/Book/Flight gave 404, we'll try /api/v1/Book/Flight with explicit Test target (though v2Body is the key)
-        try {
-            console.log('[mystiflyClient] Retrying v2 booking on /api/v1/Book/Flight since /api/v2/ gave 404...');
-            return await mystiflyRequest('/api/v1/Book/Flight', v2Body, sessionId, conversationId);
-        } catch (v2Err) {
-            console.error('[mystiflyClient] V2 retry on v1 endpoint failed. Final attempt on /api/v2/OnePoint/Book (possible real v2 path)...');
-            return await mystiflyRequest('/api/v2/OnePoint/Book', v2Body, sessionId, conversationId);
-        }
-    }
-
-    return res;
+    // Convert V1-flat body to V2 nested Passport format
+    const v2Body = buildV2BookBody(v1StyleBody, target);
+    return mystiflyRequest('/api/v2/OnePoint/Book', v2Body, sessionId, conversationId);
 }
 
 /**
- * Internal helper to convert a V1 book request body to V2 format.
- * - Nests Passport fields
- * - Adds PassengerNationality
- * - Uses .000Z date format
+ * Build V2 book request body from V1-style flat passenger data.
+ * V2 requires:
+ *   - Nested Passport: { PassportNumber, ExpiryDate, Country }
+ *   - PassengerNationality field
+ *   - DateOfBirth in .000Z format
+ *   - No leftover flat V1 passport fields
  */
-function convertToV2BookRequest(v1Body: any) {
-    if (!v1Body.TravelerInfo?.AirTravelers) return v1Body;
+function buildV2BookBody(v1Body: any, target: string): any {
+    if (!v1Body.TravelerInfo?.AirTravelers) return { ...v1Body, Target: target };
 
-    try {
-        const v2Body = JSON.parse(JSON.stringify(v1Body)); // deep clone
-        v2Body.TravelerInfo.AirTravelers = v2Body.TravelerInfo.AirTravelers.map((pax: any) => {
-            const v2Pax = { ...pax };
+    const v2Body = JSON.parse(JSON.stringify(v1Body)); // deep clone
+    v2Body.Target = target;
 
-            // 1. Move flat passport fields to nested Passport object
-            v2Pax.Passport = {
-                PassportNumber: pax.PassportNumber || pax.Passport?.PassportNumber || 'NOSPPT',
-                ExpiryDate: pax.ExpiryDate ? pax.ExpiryDate.replace(/T00:00:00$/, 'T00:00:00.000Z') : '2030-01-01T00:00:00.000Z',
-                Country: pax.Country || pax.Passport?.Country || 'KR',
-            };
+    v2Body.TravelerInfo.AirTravelers = v2Body.TravelerInfo.AirTravelers.map((pax: any) => {
+        const v2Pax = { ...pax };
 
-            // 2. Add PassengerNationality (V2 required key)
-            v2Pax.PassengerNationality = pax.Nationality || pax.Country || 'KR';
+        // 1. Nest passport fields (V2 requires Passport object)
+        v2Pax.Passport = {
+            PassportNumber: pax.PassportNumber || 'NOSPPT',
+            ExpiryDate: (pax.ExpiryDate ?? '2030-01-01T00:00:00')
+                .replace(/T00:00:00$/, 'T00:00:00.000Z'),
+            Country: pax.Country || 'KR',
+        };
 
-            // 3. Fix DateOfBirth format
-            if (v2Pax.DateOfBirth) {
-                v2Pax.DateOfBirth = v2Pax.DateOfBirth.replace(/T00:00:00$/, 'T00:00:00.000Z');
-            }
+        // 2. PassengerNationality is required by V2
+        v2Pax.PassengerNationality = pax.PassengerNationality || pax.Nationality || pax.Country || 'KR';
 
-            // Cleanup v1 fields
-            delete v2Pax.PassportNumber;
-            delete v2Pax.ExpiryDate;
-            delete v2Pax.Nationality;
+        // 3. DateOfBirth must be .000Z format
+        if (v2Pax.DateOfBirth) {
+            v2Pax.DateOfBirth = v2Pax.DateOfBirth.replace(/T00:00:00$/, 'T00:00:00.000Z');
+        }
 
-            return v2Pax;
-        });
-        return v2Body;
-    } catch (e) {
-        console.error('[mystiflyClient] Error converting to V2 body:', e);
-        return v1Body; // fallback to original
-    }
+        // 4. Remove flat V1-only passport fields
+        delete v2Pax.PassportNumber;
+        delete v2Pax.ExpiryDate;
+        delete v2Pax.Nationality; // V2 uses PassengerNationality
+
+        return v2Pax;
+    });
+
+    return v2Body;
 }
 
 /**
@@ -458,6 +432,7 @@ export async function ticketFlight(
         FareSourceCode: fareSourceCode,
     }, sessionId, conversationId);
 }
+
 
 
 // ─── Fetch Helpers ──────────────────────────────────────────────────

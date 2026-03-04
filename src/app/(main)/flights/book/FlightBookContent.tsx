@@ -63,9 +63,54 @@ export default function FlightBookContent() {
     const primary = offer.segments[0];
     const last = offer.segments[offer.segments.length - 1];
 
+    // ─── Booking Failed State ─────────────────────────────────────────
+
+    if (step === 'error') {
+        const isPending = errorMsg?.toLowerCase().includes('pending');
+        return (
+            <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50/60 via-white/40 to-orange-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-red-950/60 px-4">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.4, type: 'spring', bounce: 0.3 }}
+                    className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 lg:p-10 rounded-2xl shadow-2xl max-w-md w-full text-center border border-white/50 dark:border-white/10"
+                >
+                    <div className={`w-16 h-16 mx-auto mb-5 rounded-full flex items-center justify-center shadow-lg ${isPending ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                        {isPending
+                            ? <Clock className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+                            : <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+                        }
+                    </div>
+                    <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                        {isPending ? 'Flight Unavailable' : 'Booking Failed'}
+                    </h1>
+                    <p className={`text-sm mb-2 ${isPending ? 'text-amber-700 dark:text-amber-400' : 'text-red-700 dark:text-red-400'}`}>
+                        {errorMsg || 'Your booking could not be completed.'}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+                        Your card has <strong>not</strong> been charged. Please try a different flight or date.
+                    </p>
+                    <button
+                        onClick={() => router.push('/flights/search')}
+                        className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors"
+                    >
+                        Search Again
+                    </button>
+                    <button
+                        onClick={() => router.back()}
+                        className="w-full mt-2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                    >
+                        Go Back
+                    </button>
+                </motion.div>
+            </main>
+        );
+    }
+
     // ─── Success State ───────────────────────────────────────────────
 
     if (step === 'success' && bookingResult) {
+
         return (
             <main className="min-h-screen pt-6 lg:pt-24 pb-20 px-3 lg:px-4 flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-emerald-50/60 via-white/40 to-indigo-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-emerald-950/60">
                 {/* Celebration Effects */}
@@ -467,7 +512,7 @@ export default function FlightBookContent() {
                         </div>
 
                         {/* Status/Error Message */}
-                        {(errorMsg || step === 'error') && (() => {
+                        {errorMsg && (() => {
                             const isPending = errorMsg?.toLowerCase().includes('pending');
                             return (
                                 <div className={`flex items-center gap-1.5 lg:gap-2 p-2.5 lg:p-4 rounded-lg lg:rounded-xl border ${isPending

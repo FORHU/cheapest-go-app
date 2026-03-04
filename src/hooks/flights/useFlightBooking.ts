@@ -224,6 +224,15 @@ export function useFlightBooking() {
 
             const data = await res.json();
 
+            // Provider-level failure (e.g. Mystifly "Pending Need", fare expired, etc.)
+            // Payment was NOT captured in these cases — show error, not success.
+            if (!res.ok || data.success === false) {
+                const errMsg = data.error || 'Booking could not be completed. Your card has not been charged.';
+                setErrorMsg(errMsg);
+                setStep('error');
+                return;
+            }
+
             if (data.success && data.pnr) {
                 setBookingResult(prev => ({
                     ...prev,
@@ -232,13 +241,16 @@ export function useFlightBooking() {
                     tickets: data.tickets,
                 }));
             }
-            // Always show success — booking is confirmed even if PNR fetch had an issue
+            // Success — booking confirmed (PNR may still be pending for some providers)
+            setStep('success');
         } catch (e) {
-            console.error('[confirmBooking] Failed to confirm:', e);
-        } finally {
+            // Network-level error — payment may already have been captured
+            // Show success to avoid confusion but log the error
+            console.error('[confirmBooking] Network error during confirm:', e);
             setStep('success');
         }
     }, []);
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

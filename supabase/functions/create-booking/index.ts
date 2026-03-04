@@ -22,7 +22,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 declare const Deno: any;
 
-import { bookFlight, revalidateFare, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { bookFlight, bookFlightV2, revalidateFare, revalidateFareV2, MystiflyError } from '../_shared/mystiflyClient.ts';
 import { createDuffelOrder } from '../_shared/duffelClient.ts';
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
@@ -270,7 +270,7 @@ Deno.serve(async (req: Request) => {
 
         if (isMystifly) {
             try {
-                result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact, (raw) => { mystiflyRawData = raw; });
+                result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact, bs.provider, (raw) => { mystiflyRawData = raw; });
             } catch (mystiflyErr: any) {
                 // Mystifly booking failed — immediately cancel the authorized PaymentIntent.
                 // The card was only held (requires_capture), never charged. Release the hold.
@@ -522,8 +522,13 @@ async function bookWithMystifly(
     flight: SessionFlight,
     passengers: SessionPassenger[],
     contact: SessionContact,
+    provider: 'mystifly' | 'duffel' | 'mystifly_v2',
     onRawData?: (raw: any) => void,
 ): Promise<ProviderBookingResult> {
+    // Route strictly by provider — FareSourceCode must never cross API versions
+    const isV2Provider = provider === 'mystifly_v2';
+    console.log(`[create-booking] Mystifly routing: provider=${provider} → ${isV2Provider ? 'V2' : 'V1'} revalidate+book`);
+
     let fareSourceCode = flight.traceId;
     let conversationId: string | undefined = undefined;
     let sessionId: string | undefined = undefined;
@@ -541,9 +546,10 @@ async function bookWithMystifly(
         throw new Error('Flight traceId (fareSourceCode) is missing for Mystifly booking');
     }
 
-    // ── CRITICAL-1 FIX: Revalidate fare before booking ──
-    console.log('[create-booking] Revalidating Mystifly fare before booking...');
-    const revalResult = await revalidateFare(fareSourceCode, sessionId, conversationId);
+    // ── STEP: Revalidate fare before booking ── version-paired, no fallback ──
+    const revalidateFn = isV2Provider ? revalidateFareV2 : revalidateFare;
+    console.log(`[create-booking] Revalidating with ${isV2Provider ? 'V2' : 'V1'} function...`);
+    const revalResult = await revalidateFn(fareSourceCode, sessionId, conversationId);
 
 
     if (!revalResult.Success) {
@@ -685,7 +691,10 @@ async function bookWithMystifly(
     }
 
 
-    const raw = await bookFlight(mystiflyBody, sessionId, conversationId);
+    // ── STEP: Book — version-paired, no cross-version retry ──
+    const bookFn = isV2Provider ? bookFlightV2 : bookFlight;
+    console.log(`[create-booking] Booking with ${isV2Provider ? 'V2' : 'V1'} function. FareSourceCode[:20]: ${fareSourceCode?.slice(0, 20)}`);
+    const raw = await bookFn(mystiflyBody, sessionId, conversationId);
 
 
     if (!raw.Success) {

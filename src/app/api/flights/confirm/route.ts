@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createClient } from '@supabase/supabase-js';
+import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,6 +143,12 @@ export async function POST(req: NextRequest) {
                 console.log(ticketData.success ? '[/confirm] Duffel ticketing OK' : `[/confirm] Duffel ticketing failed: ${ticketData.error}`);
             }
 
+            // Send confirmation email if this is a fresh booking (webhook didn't run)
+            if (!bookingData.alreadyBooked) {
+                fireBookingConfirmationEmail(supabase, sessionId, bookingData, provider)
+                    .catch(e => console.error('[/confirm] Email error:', e));
+            }
+
             return NextResponse.json({
                 success: true,
                 bookingId: bookingData.bookingId,
@@ -152,12 +159,11 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // Booking explicitly failed (e.g. Mystifly returned no PNR — payment cancelled)
+        // Booking explicitly failed
         return NextResponse.json({
             success: false,
             error: bookingData.error || 'Booking failed — your card has not been charged.',
-        }, { status: 502 });
-
+        }, { status: 400 });
     } catch (err) {
         console.error('[/confirm] Error:', err);
         return NextResponse.json(
@@ -165,4 +171,50 @@ export async function POST(req: NextRequest) {
             { status: 500 },
         );
     }
+}
+// ─── Email Helper ─────────────────────────────────────────────────────────────
+
+/**
+ * Query the booking session + segments and fire a confirmation email.
+ * Must not throw — always call with .catch().
+ */
+async function fireBookingConfirmationEmail(
+    // deno-lint-ignore no-explicit-any
+    supabase: any,
+    sessionId: string,
+    bookingData: { bookingId?: string; pnr?: string; confirmedPrice?: number; confirmedCurrency?: string },
+    provider: string,
+) {
+    if (!bookingData.bookingId || !bookingData.pnr) return;
+
+    const [{ data: session }, { data: segments }] = await Promise.all([
+        supabase.from('booking_sessions').select('contact, passengers').eq('id', sessionId).single(),
+        supabase.from('flight_segments').select('*').eq('booking_id', bookingData.bookingId),
+    ]);
+
+    const email = (session as any)?.contact?.email;
+    if (!email) { console.warn('[Email] No contact email in session', sessionId); return; }
+
+    const pax0 = (session as any)?.passengers?.[0];
+    const passengerName = pax0 ? `${pax0.firstName} ${pax0.lastName}` : 'Traveler';
+
+    const result = await sendFlightBookingConfirmationEmail({
+        bookingId: bookingData.bookingId,
+        pnr: bookingData.pnr,
+        email,
+        passengerName,
+        provider,
+        segments: ((segments as any[]) ?? []).map((s: any) => ({
+            airline: s.airline,
+            flightNumber: s.flight_number,
+            origin: s.origin,
+            destination: s.destination,
+            departureTime: s.departure,
+            arrivalTime: s.arrival,
+        })),
+        totalPrice: bookingData.confirmedPrice ?? 0,
+        currency: bookingData.confirmedCurrency ?? 'USD',
+    });
+
+    console.log('[Email] Confirmation sent:', result.success, result.error ?? '');
 }

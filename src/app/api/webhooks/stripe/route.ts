@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-    apiVersion: '2025-01-27.acacia' as any,
-});
+// Lazy-initialize Stripe to avoid module-level crash during Vercel build
+// (env vars aren't available at build time when Next.js collects page data)
+let _stripe: import('stripe').default | null = null;
+function getStripe() {
+    if (!_stripe) {
+        const key = process.env.STRIPE_SECRET_KEY;
+        if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
+        _stripe = new Stripe(key, { apiVersion: '2025-01-27.acacia' as any });
+    }
+    return _stripe;
+}
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
 
 /**
  * Stripe Webhook Handler
@@ -33,7 +43,7 @@ export async function POST(req: NextRequest) {
     let event: Stripe.Event;
 
     try {
-        event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+        event = getStripe().webhooks.constructEvent(payload, signature, webhookSecret);
     } catch (err: any) {
         console.error('Webhook signature verification failed.', err.message);
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
@@ -52,6 +62,10 @@ export async function POST(req: NextRequest) {
         console.error('[Stripe Webhook] Missing Supabase env vars');
         return NextResponse.json({ received: true });
     }
+
+    // Create supabase client once — used in both Mystifly and Duffel handlers
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // ── Mystifly: manual capture → amount_capturable_updated ────────────────
     if (event.type === 'payment_intent.amount_capturable_updated') {
@@ -72,8 +86,6 @@ export async function POST(req: NextRequest) {
 
         try {
             // Mark session as payment_authorized before calling create-booking
-            const { createClient } = await import('@supabase/supabase-js');
-            const supabase = createClient(supabaseUrl, serviceRoleKey);
             await supabase
                 .from('booking_sessions')
                 .update({ status: 'payment_authorized' })
@@ -90,6 +102,9 @@ export async function POST(req: NextRequest) {
 
             if (bookingData.success) {
                 console.log(`[Webhook] Mystifly booking complete. PNR: ${bookingData.pnr} Status: ${bookingData.status}`);
+                // Send confirmation email — fire-and-forget (webhook fires exactly once)
+                fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, pi.metadata?.provider ?? 'mystifly')
+                    .catch(e => console.error('[Webhook] Mystifly email error:', e));
             } else {
                 // create-booking handles the cancel + DB failure update internally
                 console.error('[Webhook] Mystifly create-booking failed:', bookingData.error);
@@ -147,7 +162,11 @@ export async function POST(req: NextRequest) {
 
             console.log(`[Webhook] Duffel booking complete. PNR: ${bookingData.pnr}, alreadyBooked: ${bookingData.alreadyBooked}`);
 
-            // TODO: Send booking confirmation email here
+            // Send confirmation email — fire-and-forget, only on fresh booking
+            if (!bookingData.alreadyBooked) {
+                fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, 'duffel')
+                    .catch(e => console.error('[Webhook] Duffel email error:', e));
+            }
 
         } catch (err) {
             console.error('[Webhook] Duffel booking error:', err);
@@ -161,4 +180,51 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ received: true });
+}
+
+// ─── Email Helper ─────────────────────────────────────────────────────────────
+
+/**
+ * Query the booking session + segments and fire a confirmation email.
+ * Must not throw — always call with .catch().
+ */
+async function fireBookingConfirmationEmail(
+    // deno-lint-ignore no-explicit-any
+    supabase: any,
+    sessionId: string,
+    bookingData: { bookingId?: string; pnr?: string; confirmedPrice?: number; confirmedCurrency?: string },
+    provider: string,
+) {
+    if (!bookingData.bookingId || !bookingData.pnr) return;
+
+    const [{ data: session }, { data: segments }] = await Promise.all([
+        supabase.from('booking_sessions').select('contact, passengers').eq('id', sessionId).single(),
+        supabase.from('flight_segments').select('*').eq('booking_id', bookingData.bookingId),
+    ]);
+
+    const email = (session as any)?.contact?.email;
+    if (!email) { console.warn('[Email] No contact email in session', sessionId); return; }
+
+    const pax0 = (session as any)?.passengers?.[0];
+    const passengerName = pax0 ? `${pax0.firstName} ${pax0.lastName}` : 'Traveler';
+
+    const result = await sendFlightBookingConfirmationEmail({
+        bookingId: bookingData.bookingId,
+        pnr: bookingData.pnr,
+        email,
+        passengerName,
+        provider,
+        segments: ((segments as any[]) ?? []).map((s: any) => ({
+            airline: s.airline,
+            flightNumber: s.flight_number,
+            origin: s.origin,
+            destination: s.destination,
+            departureTime: s.departure,
+            arrivalTime: s.arrival,
+        })),
+        totalPrice: bookingData.confirmedPrice ?? 0,
+        currency: bookingData.confirmedCurrency ?? 'USD',
+    });
+
+    console.log('[Email] Confirmation sent:', result.success, result.error ?? '');
 }
