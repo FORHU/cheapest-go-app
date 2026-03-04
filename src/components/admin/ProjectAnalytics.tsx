@@ -2,25 +2,44 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, MousePointer2 } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
-interface ChartData {
+export interface ChartData {
     day: string;
     value: number;
+    displayValue: number;
     type: 'actual' | 'projected';
 }
 
-const data: ChartData[] = [
-    { day: 'S', value: 65, type: 'projected' },
-    { day: 'M', value: 85, type: 'actual' },
-    { day: 'T', value: 74, type: 'actual' },
-    { day: 'W', value: 95, type: 'actual' },
-    { day: 'T', value: 80, type: 'projected' },
-    { day: 'F', value: 60, type: 'projected' },
-    { day: 'S', value: 85, type: 'projected' },
+interface ProjectAnalyticsProps {
+    data?: ChartData[];
+    isLoading?: boolean;
+}
+
+const mockData: ChartData[] = [
+    { day: 'S', value: 65, displayValue: 65, type: 'projected' },
+    { day: 'M', value: 85, displayValue: 85, type: 'actual' },
+    { day: 'T', value: 74, displayValue: 74, type: 'actual' },
+    { day: 'W', value: 95, displayValue: 95, type: 'actual' },
+    { day: 'T', value: 80, displayValue: 80, type: 'projected' },
+    { day: 'F', value: 60, displayValue: 60, type: 'projected' },
+    { day: 'S', value: 85, displayValue: 85, type: 'projected' },
 ];
 
-export function ProjectAnalytics() {
+export function ProjectAnalytics({ data = mockData, isLoading }: ProjectAnalyticsProps) {
+    if (isLoading) {
+        return (
+            <div className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2rem] p-8 shadow-xl h-full animate-pulse">
+                <div className="h-8 w-48 bg-slate-200 dark:bg-white/5 rounded-lg mb-12" />
+                <div className="flex items-end justify-between h-48 gap-2 px-2">
+                    {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                        <div key={i} className="flex-1 h-32 bg-slate-100 dark:bg-white/5 rounded-full" />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -30,11 +49,11 @@ export function ProjectAnalytics() {
             <div className="flex items-center justify-between mb-12">
                 <div>
                     <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Project Analytics</h3>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Weekly Performance</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Weekly Bookings</p>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400">
                     <TrendingUp size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">+14.2%</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider">Live</span>
                 </div>
             </div>
 
@@ -45,11 +64,11 @@ export function ProjectAnalytics() {
                             {/* Bar Column */}
                             <motion.div
                                 initial={{ height: 0 }}
-                                animate={{ height: `${item.value}%` }}
+                                animate={{ height: `${item.displayValue}%` }}
                                 transition={{ delay: 0.2 + (i * 0.1), type: 'spring', stiffness: 100 }}
                                 className={`w-full max-w-[3.5rem] rounded-full relative overflow-hidden transition-all duration-500 hover:scale-105 active:scale-95 cursor-pointer ${item.type === 'actual'
-                                        ? i === 3 ? 'bg-blue-900' : i === 1 ? 'bg-blue-700' : 'bg-blue-500'
-                                        : 'bg-slate-200 dark:bg-white/10'
+                                    ? i === data.length - 1 ? 'bg-blue-900' : 'bg-blue-600'
+                                    : 'bg-slate-200 dark:bg-white/10'
                                     }`}
                             >
                                 {/* Striped Overlays for Projected */}
@@ -57,33 +76,18 @@ export function ProjectAnalytics() {
                                     <div className="absolute inset-0 bg-diagonal-stripe opacity-40 dark:opacity-20" />
                                 )}
 
-                                {/* Actual color for striped projected effect (S, T, F, S) */}
-                                {item.type === 'projected' && (
-                                    <div className="absolute inset-0 opacity-10 bg-blue-600" />
-                                )}
-
                                 {/* Hover Glow */}
                                 <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/bar:opacity-100 transition-opacity" />
 
-                                {/* Tooltip for T (index 2) as in UI */}
-                                {i === 2 && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 1.5 }}
-                                        className="absolute -top-12 left-1/2 -translate-x-1/2 z-20"
-                                    >
-                                        <div className="bg-white dark:bg-slate-800 shadow-xl border border-slate-100 dark:border-white/10 rounded-lg px-2 py-1 flex flex-col items-center">
-                                            <span className="text-[10px] font-black text-slate-900 dark:text-white whitespace-nowrap">{item.value}%</span>
-                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 shadow-glow shadow-blue-500/50" />
-                                            {/* Tooltip Arrow */}
-                                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white dark:bg-slate-800 border-r border-b border-slate-100 dark:border-white/10 rotate-45" />
-                                        </div>
-                                    </motion.div>
-                                )}
+                                {/* Tooltip on hover */}
+                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none">
+                                    <div className="bg-slate-900 text-white text-[10px] font-black px-2 py-1 rounded shadow-xl">
+                                        {item.value}
+                                    </div>
+                                </div>
                             </motion.div>
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${item.day === 'T' && i === 2 ? 'text-blue-600' : 'text-slate-400'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${i === data.length - 1 ? 'text-blue-600' : 'text-slate-400'}`}>
                             {item.day}
                         </span>
                     </div>

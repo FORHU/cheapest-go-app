@@ -8,10 +8,25 @@ import {
     User,
     Sun,
     Moon,
-    Command
+    Command,
+    LogOut
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useTheme } from '@/components/context/ThemeContext';
+
+import { useAuthStore } from '@/stores/authStore';
+
+import { useRouter } from 'next/navigation';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogTrigger,
+    DialogClose,
+} from '@/components/ui/Dialog';
 
 interface TopNavProps {
     onMenuClick?: () => void;
@@ -19,6 +34,21 @@ interface TopNavProps {
 
 export function TopNav({ onMenuClick }: TopNavProps) {
     const { theme, toggleTheme } = useTheme();
+    const router = useRouter();
+    const user = useAuthStore((s) => s.user);
+    const logout = useAuthStore((s) => s.logout);
+    const [isLogoutOpen, setIsLogoutOpen] = React.useState(false);
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            setIsLogoutOpen(false);
+            // Use window.location.href for a full refresh to clear all caches/state
+            window.location.href = '/login';
+        } catch (error) {
+            console.error('Logout failed:', error);
+        }
+    };
 
     return (
         <header className="h-20 flex items-center justify-between px-6 sm:px-8 border-b border-slate-100 dark:border-white/5 bg-transparent relative z-20">
@@ -75,13 +105,61 @@ export function TopNav({ onMenuClick }: TopNavProps) {
 
                 <div className="flex items-center gap-3 pl-2 cursor-pointer group">
                     <div className="text-right hidden sm:block">
-                        <p className="text-sm font-black text-slate-900 dark:text-white leading-none group-hover:text-blue-600 transition-colors">Billy Admin</p>
-                        <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Administrator</p>
+                        <p className="text-sm font-black text-slate-900 dark:text-white leading-none group-hover:text-blue-600 transition-colors">
+                            {user ? `${user.firstName} ${user.lastName}` : 'Guest User'}
+                        </p>
+                        <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
+                            {user?.role === 'admin' ? 'Administrator' : 'Standard User'}
+                        </p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-600/20 ring-2 ring-white dark:ring-white/10 ring-offset-2 dark:ring-offset-transparent overflow-hidden transition-transform group-hover:scale-105">
-                        <img src="https://ui-avatars.com/api/?name=Billy+Admin&background=2563eb&color=fff" alt="Profile" className="w-full h-full object-cover" />
+                        {user?.avatar ? (
+                            <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                            <User size={20} />
+                        )}
                     </div>
                 </div>
+
+                <div className="h-10 w-[1px] bg-slate-100 dark:bg-white/5 mx-2 hidden sm:block" />
+
+                <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+                    <DialogTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-10 h-10 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                            title="Sign Out"
+                        >
+                            <LogOut size={20} />
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[400px]">
+                        <DialogHeader>
+                            <DialogTitle>Confirm Sign Out</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to sign out? You will need to log in again to access the admin dashboard.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="sm:justify-start gap-3 mt-6">
+                            <Button
+                                variant="destructive"
+                                onClick={handleLogout}
+                                className="rounded-2xl font-black px-6"
+                            >
+                                Sign Out
+                            </Button>
+                            <DialogClose asChild>
+                                <Button
+                                    variant="ghost"
+                                    className="rounded-2xl font-bold border border-slate-200 dark:border-white/10"
+                                >
+                                    Cancel
+                                </Button>
+                            </DialogClose>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </header>
     );

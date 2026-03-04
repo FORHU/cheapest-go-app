@@ -25,7 +25,7 @@ interface NavItem {
 }
 
 const navItems = [
-    { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { label: 'Dashboard', href: '/admin/overview', icon: LayoutDashboard },
     { label: 'Bookings', href: '/admin/bookings', icon: CalendarRange },
     { label: 'Customers', href: '/admin/customers', icon: Users },
     { label: 'Suppliers', href: '/admin/suppliers', icon: Building2 },
@@ -129,10 +129,6 @@ export function Sidebar({ onClose }: SidebarProps) {
 
             {/* Bottom Actions */}
             <div className="p-6 mt-auto border-t border-slate-100 dark:border-white/5">
-                <Button variant="ghost" className="w-full justify-start gap-3 text-slate-400 hover:text-rose-500 hover:bg-rose-500/5 transition-all py-6 rounded-2xl group focus:ring-0">
-                    <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-sm font-bold">Logout</span>
-                </Button>
             </div>
         </aside>
     );

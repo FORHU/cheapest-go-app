@@ -61,6 +61,9 @@ export const updateSession = async (request: NextRequest) => {
         if (profile?.role !== 'admin') {
             return NextResponse.redirect(new URL('/', request.url));
         }
+
+        // Prevent caching for admin pages to block back-button access after logout
+        supabaseResponse.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
     }
 
     // 2. Protected routes — redirect to login if not authenticated
