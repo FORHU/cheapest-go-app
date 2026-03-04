@@ -1,0 +1,168 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { stripe } from '@/lib/stripe/server';
+import { getAuthenticatedUser } from '@/lib/server/auth';
+import { createClient } from '@supabase/supabase-js';
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * POST /api/flights/confirm
+ *
+ * Architecture: Webhook is PRIMARY. This endpoint is a UX fallback only.
+ *
+ * Mystifly (manual capture):
+ *   Checks paymentIntent.status === 'requires_capture'
+ *   → DB first: webhook already booked? Return PNR
+ *   → Fallback: call create-booking (which captures/cancels Stripe after Mystifly responds)
+ *
+ * Duffel (automatic capture):
+ *   Checks paymentIntent.status === 'succeeded'
+ *   → DB first: webhook already booked? Return PNR
+ *   → Fallback: call create-booking + issue-ticket
+ *
+ * Body: { paymentIntentId: string, sessionId: string }
+ */
+export async function POST(req: NextRequest) {
+    try {
+        const { user, error: authError } = await getAuthenticatedUser();
+        if (authError || !user) {
+            return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+        }
+
+        const { paymentIntentId, sessionId } = await req.json();
+
+        if (!paymentIntentId || !sessionId) {
+            return NextResponse.json(
+                { success: false, error: 'paymentIntentId and sessionId are required' },
+                { status: 400 },
+            );
+        }
+
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (!supabaseUrl || !serviceRoleKey) {
+            throw new Error('Supabase environment variables not set');
+        }
+
+        const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+        // ── Step 1: Verify payment server-side (never trust the client) ──────
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+        const provider = paymentIntent.metadata?.provider ?? '';
+        const isMystifly = provider === 'mystifly' || provider === 'mystifly_v2';
+
+        // Validate this PaymentIntent belongs to this session
+        if (paymentIntent.metadata?.bookingSessionId !== sessionId) {
+            return NextResponse.json({ success: false, error: 'Session/payment mismatch' }, { status: 403 });
+        }
+
+        // ── Step 2: DB-first check — webhook may have already processed it ─
+        // If booking exists, return it immediately regardless of PI status.
+        // (Webhook may have already captured → PI is now 'succeeded' for Mystifly too)
+        const { data: existingBooking } = await supabase
+            .from('flight_bookings')
+            .select('id, pnr, status, payment_intent_id')
+            .eq('session_id', sessionId)
+            .maybeSingle();
+
+        if (existingBooking?.pnr) {
+            // Security: prevent session-swapping attacks.
+            // Verify the payment_intent_id stored at booking time matches the one in this request.
+            // An attacker who steals a sessionId cannot redeem it with a different payment.
+            if (existingBooking.payment_intent_id && existingBooking.payment_intent_id !== paymentIntentId) {
+                console.error('[/confirm] payment_intent_id mismatch — possible session swap attack', {
+                    stored: existingBooking.payment_intent_id,
+                    received: paymentIntentId,
+                    sessionId,
+                });
+                return NextResponse.json({ success: false, error: 'Payment mismatch' }, { status: 403 });
+            }
+
+            console.log('[/confirm] Webhook already ran, returning existing booking. PNR:', existingBooking.pnr);
+            return NextResponse.json({
+                success: true,
+                bookingId: existingBooking.id,
+                pnr: existingBooking.pnr,
+                status: existingBooking.status,
+                source: 'webhook',
+            });
+        }
+
+        // ── Step 3: Strict per-provider status check (fallback path only) ───
+        // Webhook hasn't run yet — validate the PI is in the correct state
+        // before we trigger booking manually.
+        if (isMystifly) {
+            // Mystifly: card must be authorized (held) but not yet captured
+            if (paymentIntent.status !== 'requires_capture') {
+                return NextResponse.json(
+                    { success: false, error: `Payment not authorized for Mystifly (status: ${paymentIntent.status})` },
+                    { status: 402 },
+                );
+            }
+        } else {
+            // Duffel: payment must be fully captured
+            if (paymentIntent.status !== 'succeeded') {
+                return NextResponse.json(
+                    { success: false, error: `Payment not completed for Duffel (status: ${paymentIntent.status})` },
+                    { status: 402 },
+                );
+            }
+        }
+
+        // ── Step 4: Webhook hasn't run yet — trigger booking as fallback ────
+        // create-booking handles:
+        //   Mystifly: calls supplier → if PNR → captures Stripe; if no PNR → cancels Stripe
+        //   Duffel:   creates order (payment already captured)
+        console.log('[/confirm] Booking not in DB, calling create-booking as fallback. Session:', sessionId);
+
+        const edgeFnHeaders = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${serviceRoleKey}`,
+        };
+
+        const bookingRes = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
+            method: 'POST',
+            headers: edgeFnHeaders,
+            body: JSON.stringify({ sessionId }),
+        });
+
+        const bookingData = await bookingRes.json();
+        console.log('[/confirm] create-booking response:', JSON.stringify(bookingData));
+
+        if (bookingData.success) {
+            // Duffel: auto-ticket if needed
+            if (!isMystifly && bookingData.status !== 'ticketed' && !bookingData.alreadyBooked && bookingData.bookingId) {
+                console.log('[/confirm] Auto-ticketing Duffel order:', bookingData.bookingId);
+                const ticketRes = await fetch(`${supabaseUrl}/functions/v1/issue-ticket`, {
+                    method: 'POST',
+                    headers: edgeFnHeaders,
+                    body: JSON.stringify({ bookingId: bookingData.bookingId }),
+                });
+                const ticketData = await ticketRes.json();
+                console.log(ticketData.success ? '[/confirm] Duffel ticketing OK' : `[/confirm] Duffel ticketing failed: ${ticketData.error}`);
+            }
+
+            return NextResponse.json({
+                success: true,
+                bookingId: bookingData.bookingId,
+                pnr: bookingData.pnr,
+                status: bookingData.status,
+                ticketStatus: bookingData.ticketStatus,
+                source: 'confirm-fallback',
+            });
+        }
+
+        // Booking explicitly failed (e.g. Mystifly returned no PNR — payment cancelled)
+        return NextResponse.json({
+            success: false,
+            error: bookingData.error || 'Booking failed — your card has not been charged.',
+        }, { status: 502 });
+
+    } catch (err) {
+        console.error('[/confirm] Error:', err);
+        return NextResponse.json(
+            { success: false, error: err instanceof Error ? err.message : 'Confirmation failed' },
+            { status: 500 },
+        );
+    }
+}

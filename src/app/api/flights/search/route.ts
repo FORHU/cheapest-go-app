@@ -107,7 +107,9 @@ export async function POST(req: NextRequest) {
 
         // ─── Transform NormalizedFlight[] → FlightOffer[] ─────────
 
-        const offers: FlightOffer[] = (edgeData.flights ?? []).map(normalizedToFlightOffer);
+        const offers: FlightOffer[] = (edgeData.flights ?? []).map(
+            (nf: any) => normalizedToFlightOffer(nf, trip as FlightOffer['tripType']),
+        );
 
         return NextResponse.json({
             success: true,
@@ -136,7 +138,7 @@ export async function POST(req: NextRequest) {
 
 // ─── Transform NormalizedFlight → FlightOffer ────────────────────────
 
-function normalizedToFlightOffer(nf: any): FlightOffer {
+function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripType']): FlightOffer {
     const segments: FlightSegmentDetail[] = (nf.segments ?? []).map((seg: any, idx: number) => ({
         segmentIndex: idx,
         airline: {
@@ -187,6 +189,7 @@ function normalizedToFlightOffer(nf: any): FlightOffer {
         } : undefined,
         validatingAirline: nf.validatingAirline,
         lastTicketDate: nf.lastTicketDate,
+        tripType: tripType ?? 'one-way',
         // Provider-specific IDs needed for booking
         resultIndex: nf.resultIndex,   // Original Duffel offer ID
         traceId: nf.traceId,           // Mystifly fareSourceCode

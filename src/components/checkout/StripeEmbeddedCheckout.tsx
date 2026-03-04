@@ -7,29 +7,28 @@ import { Loader2 } from 'lucide-react';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-function CheckoutForm({ clientSecret, onSuccess }: { clientSecret: string, onSuccess: () => void }) {
+function CheckoutForm({ clientSecret, onSuccess }: {
+    clientSecret: string;
+    onSuccess: (paymentIntentId: string) => void;
+}) {
     const stripe = useStripe();
     const elements = useElements();
 
     const [message, setMessage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!stripe || !elements) {
-            return;
-        }
+        if (!stripe || !elements) return;
 
         setIsLoading(true);
+        setSubmitted(true); // Permanently disable after first click
 
         const { error, paymentIntent } = await stripe.confirmPayment({
             elements,
             confirmParams: {
-                // Since this is embedded, we do NOT want it to redirect automatically.
-                // We'll handle the success state ourselves if redirect is 'if_required'.
-                // If 'always', the page will definitely redirect. 
-                // However, `confirmPayment` defaults to redirect 'always' for certain methods.
                 return_url: `${window.location.origin}/trips?payment=success`,
             },
             redirect: 'if_required',
@@ -38,10 +37,14 @@ function CheckoutForm({ clientSecret, onSuccess }: { clientSecret: string, onSuc
         if (error) {
             setMessage(error.message || "An unexpected error occurred.");
             setIsLoading(false);
-        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-            onSuccess();
+        } else if (paymentIntent && (
+            paymentIntent.status === 'succeeded' ||          // Duffel: automatic capture
+            paymentIntent.status === 'requires_capture'      // Mystifly: manual capture (card held, not yet charged)
+        )) {
+            // Pass the PaymentIntent ID up so the parent can verify server-side
+            // /api/flights/confirm handles both statuses correctly
+            onSuccess(paymentIntent.id);
         } else {
-            // Can be 'processing' or other states.
             setMessage("Payment is processing...");
             setIsLoading(false);
         }
@@ -54,7 +57,7 @@ function CheckoutForm({ clientSecret, onSuccess }: { clientSecret: string, onSuc
             <PaymentElement className="mb-6" />
 
             <button
-                disabled={isLoading || !stripe || !elements}
+                disabled={isLoading || submitted || !stripe || !elements}
                 className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white font-semibold flex items-center justify-center gap-2"
             >
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Pay Now'}
@@ -65,7 +68,10 @@ function CheckoutForm({ clientSecret, onSuccess }: { clientSecret: string, onSuc
     );
 }
 
-export default function StripeEmbeddedCheckout({ clientSecret, onSuccess }: { clientSecret: string, onSuccess: () => void }) {
+export default function StripeEmbeddedCheckout({ clientSecret, onSuccess }: {
+    clientSecret: string;
+    onSuccess: (paymentIntentId: string) => void;
+}) {
     if (!clientSecret) return null;
 
     return (

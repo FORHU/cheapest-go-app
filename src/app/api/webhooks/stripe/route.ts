@@ -7,6 +7,17 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+/**
+ * Stripe Webhook Handler
+ *
+ * Mystifly flow (manual capture):
+ *   payment_intent.amount_capturable_updated → card authorized → book with Mystifly
+ *   create-booking: if PNR received → capture payment
+ *                   if no PNR      → cancel payment intent
+ *
+ * Duffel flow (automatic capture):
+ *   payment_intent.succeeded → book with Duffel (existing flow, unchanged)
+ */
 export async function POST(req: NextRequest) {
     if (!webhookSecret) {
         return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
@@ -28,83 +39,125 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
     }
 
-    console.log(`[Stripe Webhook] Received event: ${event.type}`);
+    console.log(`[Stripe Webhook] Event: ${event.type}`);
 
-    // Handle the event
-    switch (event.type) {
-        case 'payment_intent.succeeded':
-            const paymentIntent = event.data.object as Stripe.PaymentIntent;
-            console.log('[Stripe Webhook] PaymentIntent succeeded:', paymentIntent.id);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+    };
 
-            const { bookingSessionId, provider, contactEmail, passengerName } = paymentIntent.metadata || {};
+    if (!supabaseUrl || !serviceRoleKey) {
+        console.error('[Stripe Webhook] Missing Supabase env vars');
+        return NextResponse.json({ received: true });
+    }
 
-            if (!bookingSessionId) {
-                console.error('[Stripe Webhook] No bookingSessionId found in metadata!', paymentIntent.id);
-                break;
+    // ── Mystifly: manual capture → amount_capturable_updated ────────────────
+    if (event.type === 'payment_intent.amount_capturable_updated') {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const { bookingSessionId, provider } = pi.metadata ?? {};
+
+        if (!bookingSessionId) {
+            console.error('[Webhook] amount_capturable_updated missing bookingSessionId', pi.id);
+            return NextResponse.json({ received: true });
+        }
+
+        if (provider !== 'mystifly' && provider !== 'mystifly_v2') {
+            // Only Mystifly uses manual capture — ignore for other providers
+            return NextResponse.json({ received: true });
+        }
+
+        console.log(`[Webhook] Mystifly card authorized. Booking session: ${bookingSessionId}`);
+
+        try {
+            // Mark session as payment_authorized before calling create-booking
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabase = createClient(supabaseUrl, serviceRoleKey);
+            await supabase
+                .from('booking_sessions')
+                .update({ status: 'payment_authorized' })
+                .eq('id', bookingSessionId)
+                .eq('status', 'initiated');
+
+            const bookingRes = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ sessionId: bookingSessionId }),
+            });
+
+            const bookingData = await bookingRes.json();
+
+            if (bookingData.success) {
+                console.log(`[Webhook] Mystifly booking complete. PNR: ${bookingData.pnr} Status: ${bookingData.status}`);
+            } else {
+                // create-booking handles the cancel + DB failure update internally
+                console.error('[Webhook] Mystifly create-booking failed:', bookingData.error);
+            }
+        } catch (err) {
+            console.error('[Webhook] Mystifly booking error:', err);
+        }
+    }
+
+    // ── Duffel: automatic capture → payment_intent.succeeded ────────────────
+    else if (event.type === 'payment_intent.succeeded') {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const { bookingSessionId, provider } = pi.metadata ?? {};
+
+        if (!bookingSessionId) {
+            console.error('[Webhook] payment_intent.succeeded missing bookingSessionId', pi.id);
+            return NextResponse.json({ received: true });
+        }
+
+        // skip Mystifly here — it's handled by amount_capturable_updated above
+        if (provider === 'mystifly' || provider === 'mystifly_v2') {
+            return NextResponse.json({ received: true });
+        }
+
+        console.log(`[Webhook] Duffel payment succeeded. Session: ${bookingSessionId}`);
+
+        try {
+            // Idempotent: create-booking returns existing booking if /confirm already ran
+            const bookingRes = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ sessionId: bookingSessionId }),
+            });
+
+            const bookingData = await bookingRes.json();
+
+            if (!bookingData.success) {
+                throw new Error(bookingData.error || 'create-booking failed');
             }
 
-            console.log(`[Stripe Webhook] Processing booking session: ${bookingSessionId} via ${provider}`);
-
-            try {
-                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-                const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-                if (!supabaseUrl || !serviceRoleKey) {
-                    throw new Error('Supabase environment variables not configured');
-                }
-
-                const headers = {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${serviceRoleKey}`,
-                };
-
-                // 1. Create the official booking (generates PNR)
-                console.log(`[Stripe Webhook] Calling create-booking edge function...`);
-                const bookingRes = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
+            // Auto-ticket Duffel orders
+            if (bookingData.status !== 'ticketed' && !bookingData.alreadyBooked && bookingData.bookingId) {
+                console.log(`[Webhook] Auto-ticketing Duffel order: ${bookingData.bookingId}`);
+                const ticketRes = await fetch(`${supabaseUrl}/functions/v1/issue-ticket`, {
                     method: 'POST',
                     headers,
-                    body: JSON.stringify({ sessionId: bookingSessionId }),
+                    body: JSON.stringify({ bookingId: bookingData.bookingId }),
                 });
-
-                const bookingData = await bookingRes.json();
-                if (!bookingData.success) {
-                    throw new Error(bookingData.error || 'Failed to create booking in edge function');
-                }
-
-                let finalStatus = bookingData.status || 'confirmed';
-                let pnr = bookingData.pnr;
-                let bookingId = bookingData.bookingId;
-
-                // 2. Auto-ticket if Duffel
-                if (provider === 'duffel' && finalStatus !== 'ticketed') {
-                    console.log(`[Stripe Webhook] Triggering auto-ticketing for Duffel booking: ${bookingId}`);
-                    const ticketRes = await fetch(`${supabaseUrl}/functions/v1/issue-ticket`, {
-                        method: 'POST',
-                        headers,
-                        body: JSON.stringify({ bookingId: bookingId }),
-                    });
-                    const ticketResult = await ticketRes.json();
-                    if (ticketResult.success) {
-                        finalStatus = 'ticketed';
-                        console.log(`[Stripe Webhook] Duffel auto-ticketing successful!`);
-                    } else {
-                        console.warn(`[Stripe Webhook] Duffel auto-ticketing failed:`, ticketResult.error);
-                    }
-                }
-
-                console.log(`[Stripe Webhook] Booking fully processed! PNR: ${pnr} Status: ${finalStatus}`);
-
-                // Note: Email sending logic can be added here, similar to how it was in the book route.
-
-            } catch (err) {
-                console.error('[Stripe Webhook] Critical error processing booking:', err);
-                // We don't return a 500 here because we want Stripe to know we *received* the event
-                // If we return 500, Stripe will keep retrying and we might double-book. 
-                // In production, you'd send an alert to an admin dashboard here!
+                const ticketData = await ticketRes.json();
+                console.log(ticketData.success
+                    ? `[Webhook] Duffel ticketing OK`
+                    : `[Webhook] Duffel ticketing failed: ${ticketData.error}`
+                );
             }
 
-            break;
-        default:
-            console.log(`[Stripe Webhook] Unhandled event type ${event.type}`);
+            console.log(`[Webhook] Duffel booking complete. PNR: ${bookingData.pnr}, alreadyBooked: ${bookingData.alreadyBooked}`);
+
+            // TODO: Send booking confirmation email here
+
+        } catch (err) {
+            console.error('[Webhook] Duffel booking error:', err);
+            // DO NOT return 5xx — that causes Stripe to retry and may double-book.
+            // Alert on-call team in production.
+        }
+    }
+
+    else {
+        console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });

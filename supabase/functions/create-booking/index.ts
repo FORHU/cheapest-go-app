@@ -93,6 +93,8 @@ interface BookingSession {
     contact: SessionContact;
     status: string;
     expires_at: string;
+    payment_intent_id?: string | null;  // Set by /api/flights/book after PaymentIntent creation
+    capture_method?: string;
 }
 
 interface ProviderBookingResult {
@@ -170,8 +172,71 @@ Deno.serve(async (req: Request) => {
 
         const bs = session as BookingSession;
 
-        // Validate status
-        if (bs.status !== 'pending') {
+        // ── Atomic status claim — prevents double-booking when webhook and
+        //    /api/flights/confirm race each other. Only one UPDATE will succeed.
+        //
+        //    Strategy: use the already-read bs.status as the optimistic lock value.
+        //    If another process changed the status between our SELECT and this UPDATE,
+        //    the WHERE clause won't match → 0 rows returned → we lost the race.
+        //
+        //    Claimable statuses:
+        //      'pending'            — Duffel: session untouched
+        //      'initiated'          — Mystifly: /book updated session after PaymentIntent created
+        //      'payment_authorized' — Mystifly: Stripe webhook set before calling us
+        const claimableStatuses = ['pending', 'initiated', 'payment_authorized'];
+
+        if (!claimableStatuses.includes(bs.status)) {
+            // Fast-path: session is already terminal — no point trying to UPDATE
+            const { data: existingBooking } = await supabase
+                .from('flight_bookings')
+                .select('id, pnr, status')
+                .eq('session_id', sessionId)
+                .maybeSingle();
+
+            if (existingBooking) {
+                return jsonResponse(corsHeaders, {
+                    success: true,
+                    bookingId: existingBooking.id,
+                    pnr: existingBooking.pnr,
+                    status: existingBooking.status,
+                    alreadyBooked: true,
+                });
+            }
+
+            return jsonResponse(corsHeaders,
+                { success: false, error: `Session already processed (status: ${bs.status})` },
+                409,
+            );
+        }
+
+        // Optimistic-lock UPDATE: only succeeds if status hasn't changed since our SELECT
+        const { data: claimedRows, error: claimError } = await supabase
+            .from('booking_sessions')
+            .update({ status: 'processing' })
+            .eq('id', sessionId)
+            .eq('status', bs.status)   // ← optimistic lock on the exact status we read
+            .select('id');
+
+        console.log('[create-booking] Claim result:', { claimed: claimedRows?.length, sessionStatus: bs.status, claimError });
+
+        if (!claimedRows || claimedRows.length === 0) {
+            // Race condition: another call already claimed this session
+            const { data: existingBooking } = await supabase
+                .from('flight_bookings')
+                .select('id, pnr, status')
+                .eq('session_id', sessionId)
+                .maybeSingle();
+
+            if (existingBooking) {
+                return jsonResponse(corsHeaders, {
+                    success: true,
+                    bookingId: existingBooking.id,
+                    pnr: existingBooking.pnr,
+                    status: existingBooking.status,
+                    alreadyBooked: true,
+                });
+            }
+
             return jsonResponse(corsHeaders,
                 { success: false, error: `Session already processed (status: ${bs.status})` },
                 409,
@@ -197,21 +262,190 @@ Deno.serve(async (req: Request) => {
             rawOfferType: typeof bs.flight._rawOffer,
         });
 
+        const isMystifly = bs.provider === 'mystifly' || bs.provider === 'mystifly_v2';
+
         // ── 2. Call Provider to Book ──
         let result: ProviderBookingResult;
+        let mystiflyRawData: any = null;
 
-        if (bs.provider === 'mystifly' || bs.provider === 'mystifly_v2') {
-            result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact);
+        if (isMystifly) {
+            try {
+                result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact, (raw) => { mystiflyRawData = raw; });
+            } catch (mystiflyErr: any) {
+                // Mystifly booking failed — immediately cancel the authorized PaymentIntent.
+                // The card was only held (requires_capture), never charged. Release the hold.
+                const paymentIntentId = bs.payment_intent_id;
+                if (paymentIntentId) {
+                    try {
+                        const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')!;
+                        const cancelRes = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}/cancel`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Basic ${btoa(stripeKey + ':')}`,
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                        });
+                        const cancelData = await cancelRes.json();
+                        console.log('[create-booking] PaymentIntent cancelled after Mystifly error:', cancelData.status);
+                    } catch (cancelErr) {
+                        console.error('[create-booking] Failed to cancel PaymentIntent after Mystifly error:', cancelErr);
+                    }
+                }
+
+                // Mark session as failed so retries don't attempt the booking again
+                await supabase.from('booking_sessions').update({ status: 'failed' }).eq('id', sessionId);
+
+                console.error('[create-booking] Mystifly booking error — PaymentIntent cancelled, session marked failed:', mystiflyErr.message);
+                return jsonResponse(corsHeaders, {
+                    success: false,
+                    error: mystiflyErr.message || 'Mystifly booking failed. Your card has not been charged.',
+                }, 502);
+            }
         } else if (bs.provider === 'duffel') {
             result = await bookWithDuffel(bs.flight, bs.passengers, bs.contact);
         } else {
             return jsonResponse(corsHeaders, { success: false, error: `Unknown provider: ${bs.provider}` }, 400);
         }
 
+        // ── 3. Mystifly: check PNR and handle payment capture / cancel ──
+        // STEP 6: PNR received from Mystifly → safe to capture Stripe payment now
+        if (isMystifly) {
+            const paymentIntentId = bs.payment_intent_id;
+
+            if (!result.pnr) {
+                // Case A: No PNR returned — booking failed
+                // NEVER charge the user for a failed booking.
+                console.error('[create-booking] Mystifly returned no PNR — cancelling PaymentIntent');
+
+                if (paymentIntentId) {
+                    try {
+                        const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+                        const cancelRes = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}/cancel`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Basic ${btoa(stripeSecretKey + ':')}`,
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                        });
+                        const cancelData = await cancelRes.json();
+                        console.log('[create-booking] PaymentIntent cancelled:', cancelData.status);
+                    } catch (cancelErr) {
+                        console.error('[create-booking] Failed to cancel PaymentIntent:', cancelErr);
+                    }
+                }
+
+                // Mark session as failed
+                await supabase
+                    .from('booking_sessions')
+                    .update({ status: 'failed' })
+                    .eq('id', sessionId);
+
+                return jsonResponse(corsHeaders, {
+                    success: false,
+                    error: 'Mystifly did not return a PNR. Booking failed. Your card has not been charged.',
+                }, 502);
+            }
+
+            // Case B & C: PNR received — evaluate ticket status then capture
+            const ticketStatus = mystiflyRawData?.TicketStatus
+                ?? mystiflyRawData?.Status
+                ?? result.providerStatus
+                ?? 'pending';
+
+            const isTicketed = ticketStatus.toLowerCase() === 'ticketed'
+                || (result.ticketNumbers && result.ticketNumbers.length > 0);
+
+            // Extract Mystifly TimeLimit for background polling
+            const rawTimeLimit = mystiflyRawData?.TimeLimit
+                ?? mystiflyRawData?.BookingTimeLimit
+                ?? mystiflyRawData?.TicketTimeLimit;
+            const ticketTimeLimit = rawTimeLimit ? new Date(rawTimeLimit).toISOString() : null;
+
+            // Capture the authorized Stripe payment now that PNR is secured
+            if (paymentIntentId) {
+                try {
+                    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+                    const captureRes = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}/capture`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Basic ${btoa(stripeSecretKey + ':')}`,
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                    });
+                    const captureData = await captureRes.json();
+                    if (captureData.status === 'succeeded') {
+                        console.log(`[create-booking] Stripe payment captured. PNR: ${result.pnr}`);
+                    } else {
+                        console.error('[create-booking] Stripe capture failed:', captureData);
+                    }
+                } catch (captureErr) {
+                    // Log but do NOT throw — PNR exists so booking is real
+                    console.error('[create-booking] Stripe capture error (manual follow-up needed):', captureErr);
+                }
+            }
+
+            // STEP 7A: Map to internal status
+            // isTicketed → 'ticketed'
+            // Pending/OnHold → 'awaiting_ticket' (poll later via poll-pending-tickets)
+            const internalStatus = isTicketed ? 'ticketed' : 'awaiting_ticket';
+            console.log(`[create-booking] Mystifly ticket status: ${ticketStatus} → internal: ${internalStatus}`);
+
+            // Insert flight_booking record
+            const bookingPrice = result.rawPrice ?? bs.flight.price ?? 0;
+            const bookingCurrency = result.rawCurrency ?? bs.flight.currency ?? 'USD';
+
+            const { data: booking, error: insertError } = await supabase
+                .from('flight_bookings')
+                .insert({
+                    user_id: bs.user_id,
+                    pnr: result.pnr,
+                    provider: bs.provider,
+                    total_price: bookingPrice,
+                    currency: bookingCurrency,
+                    status: internalStatus,
+                    payment_intent_id: paymentIntentId ?? null,
+                    ticket_time_limit: ticketTimeLimit,
+                    trip_type: bs.flight.tripType ?? (
+                        bs.flight.segments?.length === 1 ? 'one-way'
+                            : bs.flight.segments?.length === 2
+                                && bs.flight.segments[0].origin === bs.flight.segments[1].destination
+                                ? 'round-trip'
+                                : bs.flight.segments?.length > 2 ? 'multi-city' : 'one-way'
+                    ),
+                    session_id: sessionId,
+                })
+                .select('id')
+                .single();
+
+            if (insertError || !booking) {
+                throw new Error(`Failed to save booking: ${insertError?.message}`);
+            }
+
+            const bookingId = booking.id;
+
+            // Save segments and passengers (same for all providers)
+            await insertSegmentsAndPassengers(supabase, bookingId, bs, result);
+
+            // Mark session complete
+            await supabase.from('booking_sessions').update({ status: 'booked' }).eq('id', sessionId);
+
+            const durationMs = Date.now() - startMs;
+            console.log(`[create-booking] Mystifly complete. BookingId: ${bookingId} PNR: ${result.pnr} Status: ${internalStatus} in ${durationMs}ms`);
+
+            return jsonResponse(corsHeaders, {
+                success: true,
+                bookingId,
+                pnr: result.pnr,
+                status: internalStatus,
+                ticketStatus,
+                confirmedPrice: bookingPrice,
+                confirmedCurrency: bookingCurrency,
+            });
+        }
+
+        // ── 4. Duffel path (automatic capture — payment already charged) ──
         console.log('[create-booking] Provider returned PNR:', result.pnr);
 
-        // ── 3. Save to flight_bookings ──
-        // HIGH-1 FIX: Always use server-confirmed price from provider, not client-supplied
         const bookingPrice = result.rawPrice ?? bs.flight.price ?? 0;
         const bookingCurrency = result.rawCurrency ?? bs.flight.currency ?? 'USD';
 
@@ -228,7 +462,6 @@ Deno.serve(async (req: Request) => {
                 total_price: bookingPrice,
                 currency: bookingCurrency,
                 status: finalStatus,
-                // Store the trip type so /trips can display it correctly
                 trip_type: bs.flight.tripType ?? (
                     bs.flight.segments?.length === 1 ? 'one-way'
                         : bs.flight.segments?.length === 2
@@ -249,48 +482,9 @@ Deno.serve(async (req: Request) => {
 
         const bookingId = booking.id;
 
-        // ── 4. Save flight_segments ──
-        const segments = (bs.flight.segments ?? []).map((seg) => ({
-            booking_id: bookingId,
-            airline: seg.airline,
-            flight_number: seg.flightNumber,
-            origin: seg.origin,
-            destination: seg.destination,
-            departure: seg.departureTime,
-            arrival: seg.arrivalTime,
-        }));
+        await insertSegmentsAndPassengers(supabase, bookingId, bs, result);
 
-        if (segments.length > 0) {
-            const { error: segError } = await supabase
-                .from('flight_segments')
-                .insert(segments);
-
-            if (segError) {
-                console.error('[create-booking] Segments insert error:', segError);
-            }
-        }
-
-        // ── 5. Save passengers ──
-        const passengers = bs.passengers.map((pax, idx) => ({
-            booking_id: bookingId,
-            first_name: pax.firstName,
-            last_name: pax.lastName,
-            type: pax.type,
-            passport: pax.passport ?? null,
-            ticket_number: result.ticketNumbers?.[idx] ?? null,
-        }));
-
-        if (passengers.length > 0) {
-            const { error: paxError } = await supabase
-                .from('passengers')
-                .insert(passengers);
-
-            if (paxError) {
-                console.error('[create-booking] Passengers insert error:', paxError);
-            }
-        }
-
-        // ── 6. Mark session as booked ──
+        // Mark session as booked
         await supabase
             .from('booking_sessions')
             .update({ status: 'booked' })
@@ -299,7 +493,6 @@ Deno.serve(async (req: Request) => {
         const durationMs = Date.now() - startMs;
         console.log(`[create-booking] Completed: ${bookingId} / PNR ${result.pnr} in ${durationMs}ms`);
 
-        // HIGH-1 FIX: Return server-confirmed price so the API route can use it
         return jsonResponse(corsHeaders, {
             success: true,
             bookingId,
@@ -329,6 +522,7 @@ async function bookWithMystifly(
     flight: SessionFlight,
     passengers: SessionPassenger[],
     contact: SessionContact,
+    onRawData?: (raw: any) => void,
 ): Promise<ProviderBookingResult> {
     let fareSourceCode = flight.traceId;
     let conversationId: string | undefined = undefined;
@@ -363,8 +557,8 @@ async function bookWithMystifly(
     const revalData = revalResult.Data ?? {};
     const revalFareInfo = revalData.FareItinerary?.AirItineraryFareInfo ?? revalData;
     if (revalFareInfo.FareSourceCode || revalData.FareSourceCode) {
-        fareSourceCode = revalFareInfo.FareSourceCode ?? revalData.FareSourceCode ?? (fareSourceCode as string);
-        console.log('[create-booking] Updated FareSourceCode from revalidation:', fareSourceCode.slice(0, 50) + '...');
+        fareSourceCode = revalFareInfo.FareSourceCode ?? revalData.FareSourceCode ?? fareSourceCode!;
+        console.log('[create-booking] Updated FareSourceCode from revalidation:', fareSourceCode!.slice(0, 50) + '...');
     }
 
     // ── Support V2 Summarized vs V1 Nested ──
@@ -502,6 +696,10 @@ async function bookWithMystifly(
     const data = raw.Data ?? {};
     const providerStatus = String(data.Status ?? 'confirmed').toLowerCase();
 
+    // Invoke the callback with the raw response data so the caller can extract
+    // TicketStatus, TimeLimit, etc. without re-parsing the whole response
+    if (onRawData) onRawData(data);
+
     let ticketNumbers: string[] = [];
     if (providerStatus === 'ticketed' || data.TktNumbers || data.TicketInfo || data.TravelItinerary?.TicketInfo) {
         ticketNumbers = extractTicketNumbers(data);
@@ -604,6 +802,46 @@ async function bookWithDuffel(
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
+
+/**
+ * Shared helper: inserts flight_segments and passengers rows for a booking.
+ * Called by both the Mystifly and Duffel paths.
+ */
+async function insertSegmentsAndPassengers(
+    supabase: any,
+    bookingId: string,
+    bs: BookingSession,
+    result: ProviderBookingResult,
+): Promise<void> {
+    const segments = (bs.flight.segments ?? []).map((seg) => ({
+        booking_id: bookingId,
+        airline: seg.airline,
+        flight_number: seg.flightNumber,
+        origin: seg.origin,
+        destination: seg.destination,
+        departure: seg.departureTime,
+        arrival: seg.arrivalTime,
+    }));
+
+    if (segments.length > 0) {
+        const { error: segError } = await supabase.from('flight_segments').insert(segments);
+        if (segError) console.error('[create-booking] Segments insert error:', segError);
+    }
+
+    const passengers = bs.passengers.map((pax: SessionPassenger, idx: number) => ({
+        booking_id: bookingId,
+        first_name: pax.firstName,
+        last_name: pax.lastName,
+        type: pax.type,
+        passport: pax.passport ?? null,
+        ticket_number: result.ticketNumbers?.[idx] ?? null,
+    }));
+
+    if (passengers.length > 0) {
+        const { error: paxError } = await supabase.from('passengers').insert(passengers);
+        if (paxError) console.error('[create-booking] Passengers insert error:', paxError);
+    }
+}
 
 function jsonResponse(corsHeaders: Record<string, string>, body: Record<string, unknown>, status = 200): Response {
     return new Response(

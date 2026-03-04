@@ -92,31 +92,47 @@ export async function POST(req: NextRequest) {
 
         const sessionId = sessionData.sessionId;
 
-        // ── Step 2: Create Stripe PaymentIntent (Embedded Checkout) ──
-        // Calculate price in smallest currency unit (cents)
+        // ── Step 2: Create Stripe PaymentIntent ──
+        // STEP 3: Create Stripe PaymentIntent with manual capture for Mystifly
+        // DO NOT capture money yet. Mystifly requires PNR first.
+        // Duffel: automatic capture (money taken when payment succeeds).
+        const isMystifly = provider === 'mystifly' || provider === 'mystifly_v2';
         const unitAmount = Math.round((flight.price || 10) * 100);
 
         const paymentIntent = await stripe.paymentIntents.create({
             amount: unitAmount,
             currency: (flight.currency || 'USD').toLowerCase(),
+            // Manual capture for Mystifly: authorizes card but does NOT charge yet.
+            // Money is only captured after the supplier confirms the booking (PNR received).
+            ...(isMystifly ? { capture_method: 'manual' } : {}),
             description: `Flight Booking: ${flight.segments?.[0]?.origin} to ${flight.segments?.[flight.segments.length - 1]?.destination} with ${provider}`,
             metadata: {
-                // Pass the vital internal session ID so the webhook knows what to book!
                 bookingSessionId: sessionId,
                 provider: provider,
                 contactEmail: contact.email,
-                passengerName: passengers[0] ? `${passengers[0].firstName} ${passengers[0].lastName}` : 'Traveler'
+                passengerName: passengers[0] ? `${passengers[0].firstName} ${passengers[0].lastName}` : 'Traveler',
             },
         });
 
-
-
+        // ── Step 3: Store PaymentIntent ID in booking session ──
+        // create-booking needs this to capture or cancel payment after supplier responds.
+        const supabase = (await import('@supabase/supabase-js')).createClient(supabaseUrl, serviceRoleKey);
+        await supabase
+            .from('booking_sessions')
+            .update({
+                payment_intent_id: paymentIntent.id,
+                capture_method: isMystifly ? 'manual' : 'automatic',
+                status: 'initiated',
+            })
+            .eq('id', sessionId);
 
         return NextResponse.json({
             success: true,
             data: {
-                clientSecret: paymentIntent.client_secret, // Return the PaymentIntent secret to the frontend
+                clientSecret: paymentIntent.client_secret,
                 sessionId: sessionId,
+                paymentIntentId: paymentIntent.id,
+                captureMethod: isMystifly ? 'manual' : 'automatic',
             },
         });
     } catch (err) {

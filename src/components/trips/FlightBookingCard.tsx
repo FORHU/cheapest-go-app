@@ -12,6 +12,8 @@ interface FlightBookingCardProps {
 
 const flightStatusColors: Record<string, string> = {
     booked: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    pnr_created: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    awaiting_ticket: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
     ticketed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
     failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
     cancelled: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-400',
@@ -19,6 +21,8 @@ const flightStatusColors: Record<string, string> = {
 
 const flightStatusLabels: Record<string, string> = {
     booked: 'Processing',
+    pnr_created: 'Booked',
+    awaiting_ticket: 'Ticketing',
     ticketed: 'Confirmed',
     failed: 'Failed',
     cancelled: 'Cancelled',

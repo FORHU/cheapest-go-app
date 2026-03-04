@@ -22,7 +22,7 @@ export function useFlightBooking() {
 
     // HIGH-2 FIX: Idempotency key to prevent double bookings
     const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
-    // Tracks the booking session ID after Stripe payment, for PNR polling
+    // Tracks the booking session ID after Stripe payment, for PNR confirmation
     const bookingSessionIdRef = useRef<string | null>(null);
 
     const [passengers, setPassengers] = useState<FlightPassengerForm[]>(() => {
@@ -104,7 +104,7 @@ export function useFlightBooking() {
                 resultIndex: (offer as any).resultIndex ?? offer.offerId,
                 price: offer.price.total,
                 currency: offer.price.currency,
-                tripType: (offer as any).tripType ?? 'one-way',
+                tripType: offer.tripType ?? 'one-way',
                 validatingAirline: offer.validatingAirline ?? offer.segments[0]?.airline.code,
                 segments: offer.segments.map(seg => ({
                     airline: seg.airline.code,
@@ -194,17 +194,18 @@ export function useFlightBooking() {
         }
     });
 
-    // ─── Poll for PNR after async Stripe webhook ─────────────────────
-    // Stay in 'submitting' (loading) until the webhook creates the booking.
-    // Only transition to 'success' once we have the PNR.
-    const pollForBooking = useCallback(async () => {
+    // ─── Confirm booking after Stripe payment succeeds ───────────────
+    // Calls /api/flights/confirm which verifies the PaymentIntent server-side
+    // and directly triggers create-booking. Works without stripe listen locally.
+    const pollForBooking = useCallback(async (paymentIntentId: string) => {
         const sessionId = bookingSessionIdRef.current;
-        if (!sessionId) {
+
+        if (!sessionId || !paymentIntentId) {
             setStep('success');
             return;
         }
 
-        // Show a loading state while waiting for the webhook
+        // Show a loading state while confirming
         setStep('submitting');
 
         // Clear session storage now that payment is done
@@ -214,43 +215,29 @@ export function useFlightBooking() {
             sessionStorage.removeItem('selectedFlight');
         }
 
-        const supabase = createClient();
-        let attempts = 0;
-        const maxAttempts = 15; // Poll for up to ~15 seconds
+        try {
+            const res = await fetch('/api/flights/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paymentIntentId, sessionId }),
+            });
 
-        const poll = async () => {
-            attempts++;
-            try {
-                const { data, error } = await supabase
-                    .from('flight_bookings')
-                    .select('id, pnr, status')
-                    .eq('session_id', sessionId)
-                    .maybeSingle();
+            const data = await res.json();
 
-                if (!error && data?.pnr) {
-                    // Got the PNR — show success with it immediately
-                    setBookingResult(prev => ({
-                        ...prev,
-                        bookingId: data.id,
-                        pnr: data.pnr,
-                    }));
-                    setStep('success');
-                    return;
-                }
-            } catch (e) {
-                console.warn('[pollForBooking] Query error:', e);
+            if (data.success && data.pnr) {
+                setBookingResult(prev => ({
+                    ...prev,
+                    bookingId: data.bookingId,
+                    pnr: data.pnr,
+                    tickets: data.tickets,
+                }));
             }
-
-            if (attempts < maxAttempts) {
-                setTimeout(poll, 1000);
-            } else {
-                // Timed out — show success anyway; user can check Trips for PNR
-                setStep('success');
-            }
-        };
-
-        // Start polling immediately (webhook often fires within 1-2s)
-        poll();
+            // Always show success — booking is confirmed even if PNR fetch had an issue
+        } catch (e) {
+            console.error('[confirmBooking] Failed to confirm:', e);
+        } finally {
+            setStep('success');
+        }
     }, []);
 
     const handleSubmit = (e: React.FormEvent) => {

@@ -81,12 +81,12 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
             if (!segment?.date) missingFields.push(isRoundTrip && index === 1 ? 'return date' : `segment ${index + 1} date`);
         });
 
-        if (missingFields.length > 0) {
+       if (missingFields.length > 0) {
             toast.error(`Missing information`, {
                 description: `Please select ${missingFields[0]}`,
             });
             return;
-        }
+        } 
 
         setIsSearching(true);
         setActiveDropdown(null);
