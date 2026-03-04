@@ -165,7 +165,7 @@ export async function sendBookingConfirmationEmail(
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        from: 'CheapestGo <onboarding@resend.dev>',
+                        from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
                         to: [email],
                         subject: `Booking Confirmed - ${hotelName}`,
                         html: emailHtml,
@@ -362,7 +362,7 @@ export async function sendFlightBookingConfirmationEmail(
 
         if (resendApiKey) {
             const payload = {
-                from: 'CheapestGo <onboarding@resend.dev>',
+                from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
                 to: [email],
                 subject: `Flight Booking Confirmed - PNR ${pnr} (${route})`,
                 html: emailHtml,
