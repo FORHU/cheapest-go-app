@@ -114,7 +114,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     };
 
     return (
-        <div className="flex-1 min-w-0 relative h-16 group">
+        <div className={`flex-1 min-w-0 relative h-16 group ${isOpen ? 'z-50' : 'z-auto'}`}>
             <div
                 className="w-full h-full flex items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
                 onClick={() => onToggle(!isOpen)}

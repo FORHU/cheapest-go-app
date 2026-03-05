@@ -86,7 +86,7 @@ interface SearchState {
     recentSearches: Destination[];
 
     // UI Actions
-    activeDropdown: 'destination' | 'dates' | 'travelers' | 'flight-origin' | 'flight-destination' | 'flight-dates' | 'flight-dates-depart' | 'flight-dates-return' | 'flight-passengers' | null;
+    activeDropdown: string | null;
     setActiveDropdown: (dropdown: SearchState['activeDropdown']) => void;
 
     // Loading state (reusable across components)
@@ -278,24 +278,45 @@ export const useSearchStore = create<SearchState>()(
                 const newFlights = [...state.flightState.flights];
                 if (newFlights[index]) {
                     newFlights[index] = { ...newFlights[index], ...segment };
+
+                    // Date order auto-validation: enforce chronological order
+                    if (segment.date) {
+                        for (let i = index + 1; i < newFlights.length; i++) {
+                            if (newFlights[i].date && newFlights[i].date! < segment.date!) {
+                                newFlights[i].date = segment.date;
+                            }
+                        }
+                        for (let i = index - 1; i >= 0; i--) {
+                            if (newFlights[i].date && newFlights[i].date! > segment.date!) {
+                                newFlights[i].date = segment.date;
+                            }
+                        }
+                    }
                 }
                 return { flightState: { ...state.flightState, flights: newFlights } };
             }),
-            addFlightSegment: () => set((state) => ({
-                flightState: {
-                    ...state.flightState,
-                    flights: [
-                        ...state.flightState.flights,
-                        { id: Math.random().toString(), origin: null, destination: null, date: null }
-                    ]
-                }
-            })),
-            removeFlightSegment: (index) => set((state) => ({
-                flightState: {
-                    ...state.flightState,
-                    flights: state.flightState.flights.filter((_, i) => i !== index)
-                }
-            })),
+            addFlightSegment: () => set((state) => {
+                if (state.flightState.flights.length >= 4) return state;
+                const lastDate = state.flightState.flights[state.flightState.flights.length - 1]?.date;
+                return {
+                    flightState: {
+                        ...state.flightState,
+                        flights: [
+                            ...state.flightState.flights,
+                            { id: Math.random().toString(), origin: null, destination: null, date: lastDate || null }
+                        ]
+                    }
+                };
+            }),
+            removeFlightSegment: (index) => set((state) => {
+                if (state.flightState.flights.length <= 1) return state;
+                return {
+                    flightState: {
+                        ...state.flightState,
+                        flights: state.flightState.flights.filter((_, i) => i !== index)
+                    }
+                };
+            }),
             setFlightPassengers: (passengers) => set((state) => ({
                 flightState: {
                     ...state.flightState,

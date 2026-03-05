@@ -39,10 +39,7 @@ function getCorsHeaders(req: Request) {
 // ─── Request Body ───────────────────────────────────────────────────
 
 interface MystiflySearchBody {
-    origin: string;
-    destination: string;
-    departureDate: string;        // YYYY-MM-DD
-    returnDate?: string;          // YYYY-MM-DD
+    segments: { origin: string; destination: string; departureDate: string }[];
     adults: number;
     children?: number;
     infants?: number;
@@ -68,53 +65,46 @@ Deno.serve(async (req: Request) => {
         // ── Parse & Validate ──
         const body: MystiflySearchBody = JSON.parse(await req.text());
 
-        if (!body.origin || !body.destination || !body.departureDate || !body.adults) {
+        if (!Array.isArray(body.segments) || body.segments.length === 0 || !body.adults) {
             return jsonResponse(corsHeaders,
-                { success: false, error: 'Required: origin, destination, departureDate, adults' },
-                400,
-            );
-        }
-
-        if (!/^[A-Z]{3}$/.test(body.origin) || !/^[A-Z]{3}$/.test(body.destination)) {
-            return jsonResponse(corsHeaders,
-                { success: false, error: 'origin and destination must be 3-letter IATA codes' },
+                { success: false, error: 'Required: segments array and adults count' },
                 400,
             );
         }
 
         console.log('[mystifly-v2-search] Request:', {
-            origin: body.origin,
-            destination: body.destination,
-            departureDate: body.departureDate,
-            returnDate: body.returnDate,
+            segmentCount: body.segments.length,
             adults: body.adults,
             cabinClass: body.cabinClass,
+            tripType: body.tripType,
         });
 
         // ── Infer trip type ──
+        // NOTE: a 2-segment multi-city search MUST use the explicit tripType from the body
+        // to avoid incorrectly inferring 'round-trip'.
         const tripType: TripType = body.tripType
-            ?? (body.returnDate ? 'round-trip' : 'one-way');
+            ?? (body.segments.length === 2 ? 'round-trip' : body.segments.length > 2 ? 'multi-city' : 'one-way');
 
-        // ── Build Mystifly request body ──
-        const originDestinations: {
-            DepartureDateTime: string;
-            OriginLocationCode: string;
-            DestinationLocationCode: string;
-        }[] = [
-                {
-                    DepartureDateTime: `${body.departureDate}T00:00:00`,
-                    OriginLocationCode: body.origin.toUpperCase(),
-                    DestinationLocationCode: body.destination.toUpperCase(),
-                },
-            ];
-
-        if (body.returnDate) {
-            originDestinations.push({
-                DepartureDateTime: `${body.returnDate}T00:00:00`,
-                OriginLocationCode: body.destination.toUpperCase(),
-                DestinationLocationCode: body.origin.toUpperCase(),
+        // ── Mystifly does not support multi-city itineraries ──
+        // Return empty results gracefully instead of a 400 Validation Error.
+        if (tripType === 'multi-city') {
+            console.log('[mystifly-v2-search] Multi-city not supported by Mystifly v2, skipping.');
+            return jsonResponse(corsHeaders, {
+                success: true,
+                flights: [],
+                searchId: crypto.randomUUID(),
+                durationMs: 0,
+                provider: 'mystifly_v2',
+                info: 'Mystifly does not support multi-city itineraries.',
             });
         }
+
+        // ── Build Mystifly request body ──
+        const originDestinations = body.segments.map(s => ({
+            DepartureDateTime: `${s.departureDate}T00:00:00`,
+            OriginLocationCode: s.origin.toUpperCase(),
+            DestinationLocationCode: s.destination.toUpperCase(),
+        }));
 
         const passengerTypes: { Code: string; Quantity: number }[] = [];
         if (body.adults > 0) {

@@ -117,17 +117,20 @@ export interface FlightCardProps {
 export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSelect, isSelected = false }) => {
     const [expanded, setExpanded] = useState(false);
 
-    const outbound = offer.segments.filter((_, i) => {
-        if (offer.segments.length <= 1) return true;
-        return i < Math.ceil(offer.segments.length / 2);
+    // Group segments by their logical segment index (each search leg)
+    const legGroups: { [key: number]: FlightSegmentDetail[] } = {};
+    offer.segments.forEach((seg, i) => {
+        // Fallback to array split if segmentIndex is mysteriously missing from older APIs
+        const groupIndex = seg.segmentIndex ?? (offer.segments.length > 1 && i >= Math.ceil(offer.segments.length / 2) ? 1 : 0);
+        if (!legGroups[groupIndex]) legGroups[groupIndex] = [];
+        legGroups[groupIndex].push(seg);
     });
 
-    const returnSegs = offer.segments.length > 1
-        ? offer.segments.filter((_, i) => i >= Math.ceil(offer.segments.length / 2))
-        : [];
+    const routeIndices = Object.keys(legGroups).map(Number).sort((a, b) => a - b);
 
+    // Primary metrics for the collapsed card view
     const primary = offer.segments[0];
-    const last = outbound[outbound.length - 1] || primary;
+    const last = offer.segments[offer.segments.length - 1];
 
     return (
         <motion.div
@@ -189,10 +192,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         <div className="text-center">
                             <div className="text-base lg:text-lg font-bold text-slate-900 dark:text-white leading-tight">{formatTime(last.arrival.time)}</div>
                             <div className="text-[9px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                                {offer.segments.length > 1 && offer.segments[0].departure.airport === offer.segments[offer.segments.length - 1].arrival.airport
-                                    ? offer.segments[Math.floor(offer.segments.length / 2)].departure.airport // Destination
-                                    : last.arrival.airport
-                                }
+                                {last.arrival.airport}
                             </div>
                         </div>
                     </div>
@@ -269,18 +269,24 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     exit={{ height: 0, opacity: 0 }}
                     className="px-2.5 lg:px-5 pb-2 lg:pb-4 border-t border-slate-100 dark:border-slate-800 space-y-0.5 lg:space-y-1"
                 >
-                    {outbound.length > 0 && (
-                        <div className="pt-3">
-                            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Outbound</div>
-                            {outbound.map((seg, i) => <SegmentRow key={i} segment={seg} />)}
-                        </div>
-                    )}
-                    {returnSegs.length > 0 && (
-                        <div className="pt-2">
-                            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Return</div>
-                            {returnSegs.map((seg, i) => <SegmentRow key={i} segment={seg} />)}
-                        </div>
-                    )}
+                    {routeIndices.map((idx, routeIndex) => {
+                        const legSegments = legGroups[idx];
+                        if (!legSegments || legSegments.length === 0) return null;
+
+                        let label = `Leg ${routeIndex + 1}`;
+                        if (routeIndices.length === 2) {
+                            label = routeIndex === 0 ? 'Outbound' : 'Return';
+                        }
+
+                        return (
+                            <div className="pt-3" key={idx}>
+                                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                                    {label}
+                                </div>
+                                {legSegments.map((seg, i) => <SegmentRow key={`${idx}-${i}`} segment={seg} />)}
+                            </div>
+                        );
+                    })}
                 </motion.div>
             )}
         </motion.div>
