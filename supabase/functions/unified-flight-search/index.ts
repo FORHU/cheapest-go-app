@@ -52,8 +52,14 @@ const PROVIDERS: ProviderConfig[] = [
         timeoutMs: 15_000,
     },
     {
-        name: FlightProvider.MYSTIFLY,
+        name: FlightProvider.MYSTIFLY, // V1 Lowest Fares
         functionName: 'mystifly-search',
+        enabled: true,
+        timeoutMs: 20_000,
+    },
+    {
+        name: FlightProvider.MYSTIFLY_V2, // V2 Branded Fares
+        functionName: 'mystifly-v2-search',
         enabled: true,
         timeoutMs: 20_000,
     },
@@ -129,7 +135,7 @@ Deno.serve(async (req: Request) => {
         // ── Merge all flights ──
         const allFlights: NormalizedFlight[] = providerResults.flatMap((r) => r.flights);
         const duffelCount = providerResults.find(r => r.name === FlightProvider.DUFFEL)?.flights.length ?? 0;
-        const mystiflyCount = providerResults.find(r => r.name === FlightProvider.MYSTIFLY)?.flights.length ?? 0;
+        const mystiflyCount = providerResults.filter(r => r.name === FlightProvider.MYSTIFLY).reduce((acc, r) => acc + r.flights.length, 0);
         console.log(`[unified-flight-search] Raw counts - Duffel: ${duffelCount}, Mystifly: ${mystiflyCount}`);
 
         // ── Deduplicate (same flight from multiple GDS) ──

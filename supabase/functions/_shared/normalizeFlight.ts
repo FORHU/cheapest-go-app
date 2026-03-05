@@ -393,10 +393,13 @@ function normalizeMystiflyV2(
         if (pricePerAdult === 0) pricePerAdult = totalPrice;
         const taxes = Math.max(0, totalPrice - totalBase);
 
-        // ── Segments ──
+        // ── Segments & Branded Info ──
         const allSegments: NormalizedSegment[] = [];
         let totalDurationMin = 0;
         let totalStops = 0;
+        let brandName: string | undefined = undefined;
+        let checkedBags = 0;
+        let cabinBag = '';
 
         const odos: any[] = itin.OriginDestinations ?? [];
         for (const odo of odos) {
@@ -416,6 +419,28 @@ function normalizeMystiflyV2(
             totalDurationMin += duration;
             totalStops += Number(seg.stops) || 0;
 
+            // Get baggage & brand info from ItineraryRef
+            const iref = data.ItineraryReferenceList?.find((i: any) => i.ItineraryRef === odo.ItineraryRef);
+            let segCabinBag = '';
+
+            if (iref) {
+                if (!brandName) brandName = iref.FareFamily;
+
+                // Parse checked baggage
+                const chkBags = iref.CheckinBaggage?.find((b: any) => b.Type === 'ADT')?.Value || '';
+                if (chkBags) {
+                    const match = chkBags.match(/(\d+)/);
+                    if (match) checkedBags = Math.max(checkedBags, parseInt(match[1], 10));
+                }
+
+                // Parse cabin baggage
+                const cabBags = iref.CabinBaggage?.find((b: any) => b.Type === 'ADT')?.Value || '';
+                if (cabBags) {
+                    segCabinBag = cabBags.toUpperCase() === 'SB' ? 'Small Bag' : cabBags;
+                    cabinBag = segCabinBag; // take the last or most prominent
+                }
+            }
+
             allSegments.push({
                 airline: airlineCode,
                 airlineName: getAirlineName(airlineCode),
@@ -428,8 +453,9 @@ function normalizeMystiflyV2(
                 terminal: seg.DepartureTerminal,
                 arrivalTerminal: seg.ArrivalTerminal,
                 aircraft: seg.Equipment,
-                cabinClass: mapCabinClass(seg.CabinClassCode ?? 'Y'),
-                bookingClass: seg.ResBookDesigCode ?? seg.CabinClassCode,
+                cabinClass: mapCabinClass(iref?.CabinClassCode ?? seg.CabinClassCode ?? 'Y'),
+                bookingClass: iref?.RBD ?? seg.ResBookDesigCode ?? seg.CabinClassCode,
+                fareBasis: iref?.FareBasisCodes,
             });
         }
 
@@ -443,7 +469,7 @@ function normalizeMystiflyV2(
 
         return {
             id,
-            provider: FlightProvider.MYSTIFLY,
+            provider: FlightProvider.MYSTIFLY_V2,
             airline: firstSeg.airline,
             airlineName: firstSeg.airlineName,
             flightNumber: firstSeg.flightNumber,
@@ -462,15 +488,34 @@ function normalizeMystiflyV2(
             segments: allSegments,
             cabinClass: firstSeg.cabinClass,
             refundable: fare.FareType === 'Public',
-            checkedBags: 0,
-            weightPerBag: undefined,
-            brandName: fare.FareType,
+            checkedBags: checkedBags || undefined,
+            cabinBag: cabinBag || undefined,
+            brandName: brandName || fare.FareType,
             traceId: fareSourceCode,
         };
     } catch (err) {
         console.error('[normalizeFlight] Failed to normalize Mystifly V2 offer:', err);
         return null;
     }
+}
+
+/**
+ * Normalize a batch of Mystifly V2 fare itineraries.
+ */
+export function normalizeMystiflyV2Response(
+    // deno-lint-ignore no-explicit-any
+    fareItineraries: any[],
+    // deno-lint-ignore no-explicit-any
+    dataContext?: any,
+): NormalizedFlight[] {
+    const results: NormalizedFlight[] = [];
+    if (!fareItineraries) return results;
+
+    for (const itin of fareItineraries) {
+        const offer = normalizeMystiflyV2(itin, dataContext);
+        if (offer) results.push(offer);
+    }
+    return results;
 }
 
 // ─── Shared Helpers ─────────────────────────────────────────────────

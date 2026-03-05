@@ -192,6 +192,9 @@ function normalizedToFlightOffer(nf: any): FlightOffer {
         // Provider-specific IDs needed for booking
         resultIndex: nf.resultIndex,   // Original Duffel offer ID
         traceId: nf.traceId,           // Mystifly fareSourceCode
-        // CRITICAL-2 FIX: _rawOffer never sent to client — server rebuilds/revalidates during booking
+        // CRITICAL-2 FIX: _rawOffer is strictly required for Duffel to book
+        ...(nf.provider === 'duffel' ? {
+            _rawOffer: nf._rawOffer || nf.rawOffer,
+        } : {}),
     } as FlightOffer;
 }

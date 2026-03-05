@@ -314,6 +314,18 @@ export async function searchFlights(
 }
 
 /**
+ * Search flights via Mystifly v2 (Branded Fares).
+ * Supports the highly normalized FlightFaresList schema.
+ */
+export async function searchBrandedFlights(
+    body: any,
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/v2/Search/Flight', body, sessionId, conversationId);
+}
+
+/**
  * Revalidate a fare using its FareSourceCode.
  * SMART VERSIONING: If v1 (Production target) fails with mismatch, retries with v2 (Test target).
  */
