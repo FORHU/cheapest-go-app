@@ -47,6 +47,11 @@ export const updateSession = async (request: NextRequest) => {
 
     // 1. Path Protection: Admin Routes (Specific Role Check)
     if (pathname.startsWith('/admin')) {
+        // Allow access to the admin login page
+        if (pathname === '/admin/login') {
+            return supabaseResponse;
+        }
+
         if (!user) {
             return NextResponse.redirect(new URL('/login', request.url));
         }
@@ -77,6 +82,11 @@ export const updateSession = async (request: NextRequest) => {
 
     // 3. Auth routes — redirect to home if already authenticated
     if (authRoutes.some((route) => pathname.startsWith(route)) && user) {
+        // Redirect admins to dashboard, regular users to home
+        const role = user.user_metadata?.role || 'user';
+        if (role === 'admin') {
+            return NextResponse.redirect(new URL('/admin/overview', request.url));
+        }
         return NextResponse.redirect(new URL('/', request.url));
     }
 

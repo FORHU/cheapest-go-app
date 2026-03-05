@@ -53,7 +53,7 @@ export function AdminLayoutClient({
     }, [pathname]);
 
     return (
-        <div className="flex h-screen bg-[#F3F4F6] dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 overflow-hidden font-sans">
+        <div className="flex h-screen bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px] overflow-hidden font-sans">
             <GlobalSparkle />
 
             {/* Mobile Sidebar overlay */}

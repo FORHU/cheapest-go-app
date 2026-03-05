@@ -20,7 +20,7 @@ import { Badge, Button } from '@/components/ui';
 import { HeaderTitle } from '@/components/admin/HeaderTitle';
 import { StatCard } from '@/components/admin/StatCard';
 import { formatCurrency } from '@/lib/utils';
-import type { AdvancedAnalyticsData } from '@/lib/server/adminActions';
+import type { AdvancedAnalyticsData } from '@/types/admin';
 
 interface AnalyticsClientProps {
     data: AdvancedAnalyticsData;
