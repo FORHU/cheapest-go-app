@@ -144,7 +144,7 @@ export function BookingsClient({ initialBookings }: BookingsClientProps) {
         <div className="space-y-10 pb-20">
             <HeaderTitle
                 title="Bookings"
-                subtitle="Universal platform bookings and supplier tracking"
+                subtitle="Platform bookings and supplier tracking"
                 actions={
                     <div className="flex items-center gap-3">
                         <Button variant="outline" className="rounded-2xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-normal h-12 px-6 hover:bg-slate-50 transition-all gap-2">
@@ -161,10 +161,10 @@ export function BookingsClient({ initialBookings }: BookingsClientProps) {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2rem] shadow-xl overflow-hidden"
+                className="bg-white dark:bg-obsidian rounded-b-[2rem] shadow-xl overflow-hidden"
             >
                 {/* Search and Quick Filters */}
-                <div className="p-4 border-b border-slate-200 dark:border-white/5 flex flex-col gap-4">
+                <div className="p-4 flex flex-col gap-4">
                     <div className="flex flex-col sm:flex-row gap-4 items-center">
                         <div className="relative flex-1 w-full">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -420,7 +420,7 @@ export function BookingsClient({ initialBookings }: BookingsClientProps) {
                     </div>
                 )}
 
-                <div className="p-6 border-t border-slate-100 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <p className="text-xs font-normal uppercase tracking-wider text-slate-400 order-2 sm:order-1">
                         Total {filteredBookings.length} Bookings
                     </p>
@@ -436,29 +436,36 @@ export function BookingsClient({ initialBookings }: BookingsClientProps) {
                         </Button>
 
                         <div className="flex items-center gap-1 mx-2">
-                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                // Simple pagination logic for demo - can be expanded for more pages
-                                let pageNum = i + 1;
-                                if (totalPages > 5 && currentPage > 3) {
-                                    pageNum = currentPage - 2 + i;
-                                    if (pageNum > totalPages) pageNum = totalPages - 4 + i;
+                            {(() => {
+                                const pages = [];
+                                const maxVisible = 5;
+                                let start = Math.max(1, currentPage - 2);
+                                let end = Math.min(totalPages, start + maxVisible - 1);
+
+                                if (end - start + 1 < maxVisible) {
+                                    start = Math.max(1, end - maxVisible + 1);
                                 }
 
-                                const isActive = currentPage === pageNum;
+                                for (let i = start; i <= end; i++) {
+                                    pages.push(i);
+                                }
 
-                                return (
-                                    <button
-                                        key={pageNum}
-                                        onClick={() => setCurrentPage(pageNum)}
-                                        className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm transition-all ${isActive
-                                            ? "bg-blue-600 text-white font-normal"
-                                            : "text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5"
-                                            }`}
-                                    >
-                                        {pageNum}
-                                    </button>
-                                );
-                            })}
+                                return pages.map((pageNum) => {
+                                    const isActive = currentPage === pageNum;
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            onClick={() => setCurrentPage(pageNum)}
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm transition-all ${isActive
+                                                ? "bg-blue-600 text-white font-normal"
+                                                : "text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5"
+                                                }`}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                });
+                            })()}
                         </div>
 
                         <Button
