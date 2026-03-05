@@ -336,6 +336,8 @@ body {
   --sidebar-accent-foreground: #2563eb;
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: #3b82f6;
+
+  --image-radius: 1rem;
 }
 
 .dark {

@@ -63,7 +63,7 @@ export default function AdminSuppliersPage() {
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-b border-slate-100 dark:border-white/5 bg-transparent hover:bg-transparent">
+                            <TableRow className="bg-transparent hover:bg-transparent border-none">
                                 <TableHead className="py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 pl-6">Supplier / Property</TableHead>
                                 <TableHead className="py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Location</TableHead>
                                 <TableHead className="py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Type</TableHead>

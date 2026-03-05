@@ -193,7 +193,7 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="border-b border-slate-100 dark:border-white/5 bg-transparent hover:bg-transparent">
+                            <tr className="bg-transparent hover:bg-transparent border-none">
                                 <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Timestamp</th>
                                 <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Function</th>
                                 <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Error Message</th>

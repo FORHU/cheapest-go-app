@@ -32,7 +32,7 @@ export const flashDeals: Deal[] = [
         discount: '35% OFF',
         originalPrice: 2499,
         salePrice: 1624,
-        image: 'https://picsum.photos/seed/tokyo/400/300',
+        image: 'https://picsum.photos/seed/tokyo-tower/400/300',
         endsIn: '2d 14h',
         tag: 'Flash Sale'
     },
@@ -43,7 +43,7 @@ export const flashDeals: Deal[] = [
         discount: '25% OFF',
         originalPrice: 1899,
         salePrice: 1424,
-        image: 'https://picsum.photos/seed/paris/400/300',
+        image: 'https://picsum.photos/seed/eiffel-tower/400/300',
         endsIn: '1d 8h'
     },
     {
@@ -53,7 +53,7 @@ export const flashDeals: Deal[] = [
         discount: '40% OFF',
         originalPrice: 2199,
         salePrice: 1319,
-        image: 'https://picsum.photos/seed/bali/400/300',
+        image: 'https://picsum.photos/seed/bali-temple/400/300',
         endsIn: '3d 2h',
         tag: 'Best Value'
     },
@@ -64,7 +64,7 @@ export const flashDeals: Deal[] = [
         discount: '30% OFF',
         originalPrice: 3299,
         salePrice: 2309,
-        image: 'https://picsum.photos/seed/swiss/400/300',
+        image: 'https://picsum.photos/seed/matterhorn/400/300',
         endsIn: '4d 6h'
     },
     {
@@ -74,7 +74,7 @@ export const flashDeals: Deal[] = [
         discount: '20% OFF',
         originalPrice: 2799,
         salePrice: 2239,
-        image: 'https://picsum.photos/seed/dubai/400/300',
+        image: 'https://picsum.photos/seed/burj-khalifa/400/300',
         endsIn: '5d 12h',
         tag: 'Premium'
     }
@@ -90,7 +90,7 @@ export const weekendDeals: WeekendDeal[] = [
         reviews: 2341,
         originalPrice: 8500,
         salePrice: 5990,
-        image: 'https://picsum.photos/seed/seda/400/300',
+        image: 'https://picsum.photos/seed/cebu-monument/400/300',
         badge: 'Exceptional',
     },
     {
@@ -101,7 +101,7 @@ export const weekendDeals: WeekendDeal[] = [
         reviews: 1892,
         originalPrice: 6200,
         salePrice: 4340,
-        image: 'https://picsum.photos/seed/oakwood/400/300',
+        image: 'https://picsum.photos/seed/manila-skyline/400/300',
     },
     {
         id: 3,
@@ -111,7 +111,7 @@ export const weekendDeals: WeekendDeal[] = [
         reviews: 3156,
         originalPrice: 14999,
         salePrice: 11250,
-        image: 'https://picsum.photos/seed/shangri/400/300',
+        image: 'https://picsum.photos/seed/boracay-sunset/400/300',
         badge: 'VIP Access',
     },
     {
@@ -122,7 +122,7 @@ export const weekendDeals: WeekendDeal[] = [
         reviews: 1540,
         originalPrice: 7500,
         salePrice: 5872,
-        image: 'https://picsum.photos/seed/alpha/400/300',
+        image: 'https://picsum.photos/seed/bgc-cityscape/400/300',
         badge: 'Exceptional',
     },
 ];
@@ -182,7 +182,7 @@ export const packages: VacationPackage[] = [
         reviews: 780,
         originalPrice: 25344,
         salePrice: 21369,
-        image: "https://picsum.photos/seed/blossom/400/300",
+        image: 'https://picsum.photos/seed/danang-bridge/400/300',
         includes: ["4★ hotel", "Free cancellation"],
     },
     {
@@ -193,7 +193,7 @@ export const packages: VacationPackage[] = [
         reviews: 1250,
         originalPrice: 31469,
         salePrice: 28700,
-        image: "https://picsum.photos/seed/golden/400/300",
+        image: 'https://picsum.photos/seed/phuquoc-island/400/300',
         includes: ["5★ hotel", "Breakfast included"],
     },
     {
@@ -204,7 +204,7 @@ export const packages: VacationPackage[] = [
         reviews: 920,
         originalPrice: 22200,
         salePrice: 20700,
-        image: "https://picsum.photos/seed/miamia/400/300",
+        image: 'https://picsum.photos/seed/danang-beach/400/300',
         includes: ["4★ hotel", "Airport transfer"],
     },
     {
@@ -215,7 +215,7 @@ export const packages: VacationPackage[] = [
         reviews: 650,
         originalPrice: 35000,
         salePrice: 32770,
-        image: "https://picsum.photos/seed/premium/400/300",
+        image: 'https://picsum.photos/seed/danang-bay/400/300',
         includes: ["5★ hotel", "Spa access"],
     },
 ];
