@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
 import { getAuthenticatedUser } from '@/lib/server/auth';
+import { stripe } from '@/lib/stripe/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,90 +92,47 @@ export async function POST(req: NextRequest) {
 
         const sessionId = sessionData.sessionId;
 
-        // ── Step 2: Create Booking (calls provider API + saves to DB) ──
-        const bookingRes = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ sessionId }),
+        // ── Step 2: Create Stripe PaymentIntent ──
+        // STEP 3: Create Stripe PaymentIntent with manual capture for Mystifly
+        // DO NOT capture money yet. Mystifly requires PNR first.
+        // Duffel: automatic capture (money taken when payment succeeds).
+        const isMystifly = provider === 'mystifly' || provider === 'mystifly_v2';
+        const unitAmount = Math.round((flight.price || 10) * 100);
+
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: unitAmount,
+            currency: (flight.currency || 'USD').toLowerCase(),
+            // Manual capture for Mystifly: authorizes card but does NOT charge yet.
+            // Money is only captured after the supplier confirms the booking (PNR received).
+            ...(isMystifly ? { capture_method: 'manual' } : {}),
+            description: `Flight Booking: ${flight.segments?.[0]?.origin} to ${flight.segments?.[flight.segments.length - 1]?.destination} with ${provider}`,
+            metadata: {
+                bookingSessionId: sessionId,
+                provider: provider,
+                contactEmail: contact.email,
+                passengerName: passengers[0] ? `${passengers[0].firstName} ${passengers[0].lastName}` : 'Traveler',
+            },
         });
 
-        const bookingData = await bookingRes.json();
-
-        if (!bookingData.success) {
-            throw new Error(bookingData.error || 'Booking failed');
-        }
-
-        // HIGH-1 FIX: Use server-confirmed price from edge function, not client-supplied
-        const confirmedPrice = bookingData.confirmedPrice ?? flight.price ?? 0;
-        const confirmedCurrency = bookingData.confirmedCurrency ?? flight.currency ?? 'USD';
-
-        let finalBookingStatus = bookingData.status ?? 'confirmed';
-        let confirmedTickets = (bookingData.passengers ?? [])
-            .filter((p: any) => p.ticket_number)
-            .map((p: any) => ({ name: `${p.first_name} ${p.last_name}`, number: p.ticket_number }));
-
-        // ── Step 3: Automate Ticketing for Duffel ──
-        // Duffel confirms the PNR first. To match Mystifly's instant-ticket feel,
-        // we automatically trigger the ticketing function if it's not already ticketed.
-        if (provider === 'duffel' && finalBookingStatus !== 'ticketed') {
-            try {
-                console.log('[FlightBook] Automating Duffel ticketing for:', bookingData.bookingId);
-                const ticketRes = await fetch(`${supabaseUrl}/functions/v1/issue-ticket`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ bookingId: bookingData.bookingId }),
-                });
-
-                const ticketResult = await ticketRes.json();
-                if (ticketResult.success) {
-                    finalBookingStatus = 'ticketed';
-                    if (ticketResult.ticketNumbers?.length) {
-                        // Re-fetch or map tickets if successful
-                        confirmedTickets = ticketResult.ticketNumbers.map((num: string, idx: number) => ({
-                            name: passengers[idx] ? `${passengers[idx].firstName} ${passengers[idx].lastName}` : 'Traveler',
-                            number: num
-                        }));
-                    }
-                    console.log('[FlightBook] Duffel ticketing successful');
-                } else {
-                    console.warn('[FlightBook] Duffel auto-ticketing failed (background):', ticketResult.error);
-                }
-            } catch (ticketErr) {
-                console.error('[FlightBook] Duffel auto-ticketing error:', ticketErr);
-                // We don't throw here — the PNR is already created, so we return success for the booking part
-            }
-        }
-
-        // ── Send confirmation email ──
-        const passengerName = passengers[0]
-            ? `${passengers[0].firstName} ${passengers[0].lastName}`
-            : 'Traveler';
-
-        try {
-            const emailResult = await sendFlightBookingConfirmationEmail({
-                bookingId: bookingData.bookingId,
-                pnr: bookingData.pnr,
-                email: contact.email,
-                passengerName,
-                provider,
-                segments: sanitizedFlight.segments ?? [],
-                tickets: confirmedTickets,
-                totalPrice: confirmedPrice,
-                currency: confirmedCurrency,
-            });
-            console.log('[FlightBook] Email result:', emailResult);
-        } catch (emailErr) {
-            console.error('[FlightBook] Email send failed:', emailErr);
-        }
+        // ── Step 3: Store PaymentIntent ID in booking session ──
+        // create-booking needs this to capture or cancel payment after supplier responds.
+        const supabase = (await import('@supabase/supabase-js')).createClient(supabaseUrl, serviceRoleKey);
+        await supabase
+            .from('booking_sessions')
+            .update({
+                payment_intent_id: paymentIntent.id,
+                capture_method: isMystifly ? 'manual' : 'automatic',
+                status: 'initiated',
+            })
+            .eq('id', sessionId);
 
         return NextResponse.json({
             success: true,
             data: {
-                bookingId: bookingData.bookingId,
-                pnr: bookingData.pnr,
-                status: finalBookingStatus,
-                totalPaid: confirmedPrice,
-                currency: confirmedCurrency,
+                clientSecret: paymentIntent.client_secret,
+                sessionId: sessionId,
+                paymentIntentId: paymentIntent.id,
+                captureMethod: isMystifly ? 'manual' : 'automatic',
             },
         });
     } catch (err) {

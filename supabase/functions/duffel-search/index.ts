@@ -26,10 +26,8 @@ function getCorsHeaders(req: Request) {
 // ─── Request Body ───────────────────────────────────────────────────
 
 interface SearchBody {
-    origin: string;
-    destination: string;
-    departureDate: string;
-    returnDate?: string;
+    segments: { origin: string; destination: string; departureDate: string }[];
+    tripType: string;
     adults: number;
     children?: number;
     infants?: number;
@@ -61,7 +59,7 @@ Deno.serve(async (req: Request) => {
     try {
         const body: SearchBody = JSON.parse(await req.text());
 
-        if (!body.origin || !body.destination || !body.departureDate || !body.adults) {
+        if (!Array.isArray(body.segments) || body.segments.length === 0 || !body.adults) {
             return new Response(JSON.stringify({ error: 'Missing required search params' }), {
                 status: 400,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -77,21 +75,11 @@ Deno.serve(async (req: Request) => {
         for (let i = 0; i < (body.children || 0); i++) passengers.push({ type: 'child' });
         for (let i = 0; i < (body.infants || 0); i++) passengers.push({ type: 'infant_without_seat' });
 
-        const slices: any[] = [
-            {
-                origin: body.origin,
-                destination: body.destination,
-                departure_date: body.departureDate,
-            }
-        ];
-
-        if (body.returnDate) {
-            slices.push({
-                origin: body.destination,
-                destination: body.origin,
-                departure_date: body.returnDate,
-            });
-        }
+        const slices = body.segments.map(s => ({
+            origin: s.origin,
+            destination: s.destination,
+            departure_date: s.departureDate,
+        }));
 
         const payload = {
             slices,

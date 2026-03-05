@@ -246,7 +246,9 @@ export interface FlightBookingRecord {
   pnr: string;
   provider: 'duffel' | 'mystifly';
   total_price: number;
-  status: 'booked' | 'ticketed' | 'cancelled' | 'failed';
+  currency?: string;
+  trip_type?: 'one-way' | 'round-trip' | 'multi-city';
+  status: 'booked' | 'pnr_created' | 'awaiting_ticket' | 'ticketed' | 'cancelled' | 'failed';
   created_at: string;
 
   // Joined relation fields
