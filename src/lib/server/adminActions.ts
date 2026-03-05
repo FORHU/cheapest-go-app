@@ -1,85 +1,20 @@
+"use server";
+
 import { createAdminClient } from '@/utils/supabase/admin';
-
-export interface DashboardStats {
-    totalBookings: number;
-    revenue: number;
-    pendingBookings: number;
-    cancelledBookings: number;
-}
-
-export interface AnalyticsData {
-    day: string;
-    value: number;
-    displayValue: number;
-    type: 'actual' | 'projected';
-}
-
-export interface SupplierBreakdown {
-    name: string;
-    value: number; // percentage
-    count: number; // absolute count
-    color: string;
-    bg: string;
-}
-
-export interface RecentActivity {
-    id: string;
-    user: string;
-    action: string;
-    time: string;
-    amount: string;
-    type: string;
-}
-
-export interface AdvancedAnalyticsData {
-    providerSuccess: {
-        name: string;
-        success: number;
-        failure: number;
-    }[];
-    ticketingLatency: {
-        day: string;
-        avgSeconds: number;
-    }[];
-    errorLogs: {
-        id: string;
-        timestamp: string;
-        functionName: string;
-        message: string;
-        status: number;
-    }[];
-}
-
-export interface RevenueTrend {
-    date: string;
-    revenue: number;
-}
-
-export interface ConversionFunnel {
-    searches: number;
-    quotes: number;
-    confirmed: number;
-}
-
-export interface RouteMetric {
-    destination: string;
-    count: number;
-    revenue: number;
-}
-
-export interface DashboardData {
-    stats: DashboardStats;
-    analytics: AnalyticsData[];
-    supplierBreakdown: SupplierBreakdown[];
-    recentActivity: RecentActivity[];
-    revenueTrend: {
-        daily: RevenueTrend[];
-        weekly: RevenueTrend[];
-        monthly: RevenueTrend[];
-    };
-    conversionFunnel: ConversionFunnel;
-    topRoutes: RouteMetric[];
-}
+import {
+    DashboardStats,
+    AnalyticsData,
+    SupplierBreakdown,
+    RecentActivity,
+    AdvancedAnalyticsData,
+    RevenueTrend,
+    ConversionFunnel,
+    RouteMetric,
+    DashboardData,
+    Booking,
+    Customer,
+    Notification
+} from '@/types/admin';
 
 export async function getDashboardData(): Promise<DashboardData> {
     const supabase = createAdminClient();
@@ -95,16 +30,18 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     // Revenue Calculation (Confirmed/Ticketed)
     const [unifiedRev, legacyHotelRev, legacyFlightRev] = await Promise.all([
-        supabase.from('unified_bookings').select('total_price').in('status', ['confirmed', 'ticketed']),
-        supabase.from('bookings').select('total_price').in('status', ['confirmed', 'ticketed']),
+        supabase.from('unified_bookings').select('total_price, currency').in('status', ['confirmed', 'ticketed']),
+        supabase.from('bookings').select('total_price, currency').in('status', ['confirmed', 'ticketed']),
         supabase.from('flight_bookings').select('total_price').in('status', ['booked', 'ticketed'])
     ]);
 
+    const PHP_RATE = 56; // Mock conversion rate
+
     const revenue = [
-        ...(unifiedRev.data || []),
-        ...(legacyHotelRev.data || []),
-        ...(legacyFlightRev.data || [])
-    ].reduce((acc, curr) => acc + Number(curr.total_price), 0);
+        ...(unifiedRev.data || []).map(b => Number(b.total_price) * (b.currency === 'USD' ? PHP_RATE : 1)),
+        ...(legacyHotelRev.data || []).map(b => Number(b.total_price) * (b.currency === 'USD' ? PHP_RATE : 1)),
+        ...(legacyFlightRev.data || []).map(b => Number(b.total_price) * PHP_RATE) // Legacy flights were USD
+    ].reduce((acc, curr) => acc + curr, 0);
 
     // Round revenue if it's large to keep UI clean
     const displayRevenue = revenue > 1000 ? Math.floor(revenue) : revenue;
@@ -141,31 +78,40 @@ export async function getDashboardData(): Promise<DashboardData> {
         ...(legacyFlightAnalytics.data || [])
     ];
 
-    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const chartData: AnalyticsData[] = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (6 - i));
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 is Sunday, 1 is Monday...
+    const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    const labels = ['M', 'T', 'W', 'TH', 'F'];
+    const chartData: AnalyticsData[] = labels.map((label, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
         return {
-            day: days[d.getDay()],
+            day: label,
             value: 0,
             displayValue: 0,
-            type: 'actual' as const
+            type: d <= now ? 'actual' as const : 'projected' as const
         };
     });
 
     allDates.forEach(booking => {
         const date = new Date(booking.created_at);
-        const diffDays = Math.floor((new Date().getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays < 7) {
-            const index = 6 - diffDays;
-            if (index >= 0) chartData[index].value += 1;
+        // Normalize date to compare with monday
+        const bookingDate = new Date(date);
+        bookingDate.setHours(0, 0, 0, 0);
+        const dayDiff = Math.floor((bookingDate.getTime() - monday.getTime()) / (1000 * 60 * 60 * 24));
+        if (dayDiff >= 0 && dayDiff < 5) {
+            chartData[dayDiff].value += 1;
         }
     });
 
     const maxVal = Math.max(...chartData.map(d => d.value), 1);
     const analytics = chartData.map(d => ({
         ...d,
-        displayValue: Math.round((d.value / maxVal) * 80) + 20
+        displayValue: Math.round((d.value / maxVal) * 60) + 20 // Adjusted scale for 5 days
     }));
 
     // 3. Fetch Supplier Breakdown
@@ -256,28 +202,28 @@ export async function getDashboardData(): Promise<DashboardData> {
         legacyFlightSegments,
         quotesCountRes
     ] = await Promise.all([
-        supabase.from('unified_bookings').select('total_price, created_at, status, type, metadata').in('status', ['confirmed', 'ticketed']),
-        supabase.from('bookings').select('total_price, created_at, status, property_name').in('status', ['confirmed', 'ticketed']),
+        supabase.from('unified_bookings').select('total_price, created_at, status, type, metadata, currency').in('status', ['confirmed', 'ticketed']),
+        supabase.from('bookings').select('total_price, created_at, status, property_name, currency').in('status', ['confirmed', 'ticketed']),
         supabase.from('flight_bookings').select('id, total_price, created_at, status').in('status', ['booked', 'ticketed']),
         supabase.from('flight_segments').select('booking_id, destination'),
         supabase.from('booking_sessions').select('*', { count: 'exact', head: true })
     ]);
 
     const allConfirmed = [
-        ...(unifiedTrendData.data || []).map(b => ({
-            price: Number(b.total_price),
+        ...(unifiedTrendData.data || []).map((b: any) => ({
+            price: Number(b.total_price) * (b.currency === 'USD' ? PHP_RATE : 1),
             date: b.created_at,
             destination: (b.metadata as any)?.destination || (b.metadata as any)?.city || (b.metadata as any)?.segments?.[0]?.arrival_airport || 'Unknown'
         })),
-        ...(legacyHotelTrendData.data || []).map(b => ({
-            price: Number(b.total_price),
+        ...(legacyHotelTrendData.data || []).map((b: any) => ({
+            price: Number(b.total_price) * (b.currency === 'USD' ? PHP_RATE : 1),
             date: b.created_at,
             destination: b.property_name || 'Legacy Hotel'
         })),
-        ...(legacyFlightTrendData.data || []).map(b => {
+        ...(legacyFlightTrendData.data || []).map((b: any) => {
             const segment = (legacyFlightSegments.data || []).find(s => s.booking_id === b.id);
             return {
-                price: Number(b.total_price),
+                price: Number(b.total_price) * PHP_RATE,
                 date: b.created_at,
                 destination: segment?.destination || 'Legacy Flight'
             };
@@ -333,8 +279,8 @@ export async function getDashboardData(): Promise<DashboardData> {
         recentActivity: aggregatedActivity,
         revenueTrend: {
             daily: getTrendData(7),
-            weekly: getTrendData(30),
-            monthly: getTrendData(90)
+            weekly: getTrendData(14),
+            monthly: getTrendData(30)
         },
         conversionFunnel: {
             // Estimate searches based on quotes if not logged
@@ -346,23 +292,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     };
 }
 
-export interface Booking {
-    id: string;
-    bookingRef: string;
-    type: "flight" | "hotel";
-    supplier: string;
-    customerName: string;
-    email: string;
-    totalAmount: number;
-    currency: string;
-    status: string;
-    paymentStatus: string;
-    createdAt: string;
-    ticketIds: string[];
-    ticketStatus: string;
-    pnr: string;
-    paymentIntentId: string;
-}
 
 export async function getBookingsList(): Promise<Booking[]> {
     const supabase = createAdminClient();
@@ -459,17 +388,6 @@ export async function getBookingsList(): Promise<Booking[]> {
     return list;
 }
 
-export interface Customer {
-    id: string;
-    name: string;
-    email: string;
-    loyaltyTier: 'platinum' | 'gold' | 'silver' | 'bronze';
-    status: 'active' | 'inactive' | 'banned';
-    joined: string;
-    totalSpend: number;
-    totalBookings: number;
-    lastBooking: string;
-}
 
 export async function getCustomersList(): Promise<Customer[]> {
     const supabase = createAdminClient();
@@ -639,4 +557,55 @@ export async function getAdvancedAnalytics(): Promise<AdvancedAnalyticsData> {
         ticketingLatency,
         errorLogs
     };
+}
+
+export async function getNotifications(): Promise<Notification[]> {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    if (error) {
+        console.error('Error fetching notifications:', error);
+        return [];
+    }
+
+    return (data || []).map(n => ({
+        id: n.id,
+        title: n.title,
+        description: n.description,
+        type: n.type as 'booking' | 'system' | 'alert',
+        read: n.read,
+        created_at: n.created_at
+    }));
+}
+
+export async function markNotificationAsRead(id: string): Promise<boolean> {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', id);
+
+    if (error) {
+        console.error('Error marking notification as read:', error);
+        return false;
+    }
+    return true;
+}
+
+export async function markAllNotificationsAsRead(): Promise<boolean> {
+    const supabase = createAdminClient();
+    const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('read', false);
+
+    if (error) {
+        console.error('Error marking all notifications as read:', error);
+        return false;
+    }
+    return true;
 }

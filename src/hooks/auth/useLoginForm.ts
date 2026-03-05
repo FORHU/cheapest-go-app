@@ -69,18 +69,25 @@ export function useLoginForm(): UseLoginFormReturn {
 
     // Redirect when user is authenticated
     useEffect(() => {
-        if (user && !prevUserRef.current) {
-            // Admin users always go to dashboard immediately
+        if (user) {
+            // Admin users are NOT allowed to login through the standard user login page
             if (user.role === 'admin') {
-                router.push('/admin');
+                const logoutAndError = async () => {
+                    await useAuthStore.getState().logout();
+                    setErrors({ general: 'Administrators must use the dedicated admin login portal.' });
+                };
+                logoutAndError();
                 return;
             }
 
-            const redirectTo = searchParams?.get('redirect') || '/';
-            router.push(redirectTo);
+            // Standard redirect for non-admins navigating to login
+            if (!prevUserRef.current) {
+                const redirectTo = searchParams?.get('redirect') || '/';
+                router.push(redirectTo);
+            }
         }
         prevUserRef.current = user;
-    }, [user, searchParams, router]);
+    }, [user, searchParams, router, setErrors]);
 
     // Sync mode with authStep changes
     useEffect(() => {

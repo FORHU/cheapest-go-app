@@ -1,4 +1,4 @@
-export { usePasswordValidation, useLoginForm } from './auth';
+export { usePasswordValidation, useLoginForm, useAdminLoginForm } from './auth';
 export type { PasswordRequirement, AuthMode } from './auth';
 
 // Search page hooks

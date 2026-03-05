@@ -29,7 +29,7 @@ import {
 } from '@/components/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Booking } from '@/lib/server/adminActions';
+import { Booking } from '@/types/admin';
 
 interface BookingsClientProps {
     initialBookings: Booking[];
@@ -158,7 +158,7 @@ export function BookingsClient({ initialBookings }: BookingsClientProps) {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-obsidian rounded-[2rem] shadow-xl overflow-hidden"
+                className=" p-6 bg-white dark:bg-obsidian rounded-[2rem] shadow-xl overflow-hidden"
             >
                 {/* Search and Quick Filters */}
                 <div className="p-4 flex flex-col gap-4">

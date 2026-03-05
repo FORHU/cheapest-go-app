@@ -17,7 +17,7 @@ import {
 } from '@/components/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate, getInitials, formatCurrency, cn } from '@/lib/utils';
-import { Customer } from '@/lib/server/adminActions';
+import { Customer } from '@/types/admin';
 import { X } from 'lucide-react';
 
 interface CustomersClientProps {

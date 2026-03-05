@@ -20,7 +20,6 @@ interface RevenueChartProps {
 }
 
 export function RevenueChart({ data }: RevenueChartProps) {
-    const [isCollapsed, setIsCollapsed] = useState(false);
     const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
     const currentData = data[timeframe];
 
@@ -47,153 +46,135 @@ export function RevenueChart({ data }: RevenueChartProps) {
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group transition-all duration-500"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2.5rem] p-8 shadow-md relative overflow-hidden group transition-all duration-500"
         >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 relative z-10">
                 <div className="flex-1">
-                    <div className="flex items-center justify-between md:justify-start gap-3 mb-2">
+                    <div className="flex items-center justify-between md:justify-start gap-4 mb-2">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 transition-colors">
                                 <TrendingUp size={20} />
                             </div>
                             <h3 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white transition-colors">Revenue Trend</h3>
                         </div>
-                        <button
-                            onClick={() => setIsCollapsed(!isCollapsed)}
-                            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-400"
-                        >
-                            {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
-                        </button>
                     </div>
-                    {!isCollapsed && <p className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 transition-colors">Financial Performance Overview</p>}
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 transition-colors">Financial Performance Overview</p>
                 </div>
 
-                {!isCollapsed && (
-                    <div className="flex items-center p-1.5 bg-slate-50 dark:bg-white/5 rounded-2xl gap-1 transition-colors">
-                        {(['daily', 'weekly', 'monthly'] as const).map((t) => (
-                            <button
-                                key={t}
-                                onClick={() => setTimeframe(t)}
-                                className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${timeframe === t
-                                    ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-white shadow-sm ring-1 ring-slate-200/50 dark:ring-0'
-                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                                    }`}
-                            >
-                                {t}
-                            </button>
-                        ))}
-                    </div>
-                )}
+                <div className="flex items-center p-1.5 bg-slate-50 dark:bg-white/5 rounded-2xl gap-1 transition-colors">
+                    {(['daily', 'weekly', 'monthly'] as const).map((t) => (
+                        <button
+                            key={t}
+                            onClick={() => setTimeframe(t)}
+                            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${timeframe === t
+                                ? 'bg-white dark:bg-white/10 text-blue-600 dark:text-white shadow-sm ring-1 ring-slate-200/50 dark:ring-0'
+                                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                }`}
+                        >
+                            {t === 'daily' ? '7 Days' : t === 'weekly' ? '14 Days' : '30 Days'}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            <AnimatePresence>
-                {!isCollapsed && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.4 }}
-                        className="overflow-hidden"
-                    >
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
-                            <div className="md:col-span-1 space-y-1">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] transition-colors">Total Revenue</p>
-                                <div className="flex items-baseline gap-2">
-                                    <h4 className="text-3xl font-black text-slate-900 dark:text-white transition-colors">{formatCurrency(totalRevenue)}</h4>
-                                </div>
-                            </div>
+            <div className="overflow-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
+                    <div className="md:col-span-1 space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] transition-colors">Total Revenue</p>
+                        <div className="flex items-baseline gap-2">
+                            <h4 className="text-3xl font-black text-slate-900 dark:text-white transition-colors">{formatCurrency(totalRevenue)}</h4>
                         </div>
+                    </div>
+                </div>
 
-                        <div className="relative h-[300px] w-full">
-                            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
-                                <defs>
-                                    <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                                        <stop offset="0%" stopColor="#3b82f6" />
-                                        <stop offset="100%" stopColor="#8b5cf6" />
-                                    </linearGradient>
-                                    <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
-                                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                                    </linearGradient>
-                                </defs>
+                <div className="relative h-[300px] w-full">
+                    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+                        <defs>
+                            <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stopColor="#3b82f6" />
+                                <stop offset="100%" stopColor="#8b5cf6" />
+                            </linearGradient>
+                            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
+                                <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                            </linearGradient>
+                        </defs>
 
-                                {/* Grid Lines */}
-                                {[0, 0.25, 0.5, 0.75, 1].map((p) => (
-                                    <line
-                                        key={p}
-                                        x1={padding}
-                                        y1={padding + (height - padding * 2) * p}
-                                        x2={width - padding}
-                                        y2={padding + (height - padding * 2) * p}
-                                        stroke="currentColor"
-                                        strokeWidth="1"
-                                        strokeDasharray="4 4"
-                                        className="text-slate-100 dark:text-white/5 transition-colors"
-                                    />
-                                ))}
+                        {/* Grid Lines */}
+                        {[0, 0.25, 0.5, 0.75, 1].map((p) => (
+                            <line
+                                key={p}
+                                x1={padding}
+                                y1={padding + (height - padding * 2) * p}
+                                x2={width - padding}
+                                y2={padding + (height - padding * 2) * p}
+                                stroke="currentColor"
+                                strokeWidth="1"
+                                strokeDasharray="4 4"
+                                className="text-slate-100 dark:text-white/5 transition-colors"
+                            />
+                        ))}
 
-                                <AnimatePresence mode="wait">
+                        <AnimatePresence mode="wait">
+                            <motion.g
+                                key={timeframe}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.5 }}
+                            >
+                                {/* Area Fill */}
+                                <motion.path
+                                    d={areaPath}
+                                    fill="url(#areaGradient)"
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.8, ease: "easeOut" }}
+                                />
+
+                                {/* Line Path */}
+                                <motion.path
+                                    d={linePath}
+                                    fill="none"
+                                    stroke="url(#lineGradient)"
+                                    strokeWidth="4"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    initial={{ pathLength: 0, opacity: 0 }}
+                                    animate={{ pathLength: 1, opacity: 1 }}
+                                    transition={{ duration: 1.2, ease: "easeInOut" }}
+                                />
+
+                                {/* Data Points */}
+                                {points.map((point, i) => (
                                     <motion.g
-                                        key={timeframe}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ duration: 0.5 }}
+                                        key={i}
+                                        initial={{ scale: 0, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        transition={{ delay: 0.8 + i * 0.05 }}
                                     >
-                                        {/* Area Fill */}
-                                        <motion.path
-                                            d={areaPath}
-                                            fill="url(#areaGradient)"
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ duration: 0.8, ease: "easeOut" }}
+                                        <circle
+                                            cx={point.x}
+                                            cy={point.y}
+                                            r="6"
+                                            className="fill-white dark:fill-obsidian stroke-blue-600 transition-all stroke-[3px]"
                                         />
-
-                                        {/* Line Path */}
-                                        <motion.path
-                                            d={linePath}
-                                            fill="none"
-                                            stroke="url(#lineGradient)"
-                                            strokeWidth="4"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            initial={{ pathLength: 0, opacity: 0 }}
-                                            animate={{ pathLength: 1, opacity: 1 }}
-                                            transition={{ duration: 1.2, ease: "easeInOut" }}
+                                        {/* Tooltip Hover Area */}
+                                        <circle
+                                            cx={point.x}
+                                            cy={point.y}
+                                            r="20"
+                                            className="fill-transparent cursor-pointer group/point"
                                         />
-
-                                        {/* Data Points */}
-                                        {points.map((point, i) => (
-                                            <motion.g
-                                                key={i}
-                                                initial={{ scale: 0, opacity: 0 }}
-                                                animate={{ scale: 1, opacity: 1 }}
-                                                transition={{ delay: 0.8 + i * 0.05 }}
-                                            >
-                                                <circle
-                                                    cx={point.x}
-                                                    cy={point.y}
-                                                    r="6"
-                                                    className="fill-white dark:fill-obsidian stroke-blue-600 transition-all stroke-[3px]"
-                                                />
-                                                {/* Tooltip Hover Area */}
-                                                <circle
-                                                    cx={point.x}
-                                                    cy={point.y}
-                                                    r="20"
-                                                    className="fill-transparent cursor-pointer group/point"
-                                                />
-                                            </motion.g>
-                                        ))}
                                     </motion.g>
-                                </AnimatePresence>
-                            </svg>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                ))}
+                            </motion.g>
+                        </AnimatePresence>
+                    </svg>
+                </div>
+            </div>
 
             {/* Decoration */}
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/5 blur-[80px] rounded-full pointer-events-none transition-all duration-700" />

@@ -97,7 +97,7 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
     );
 
     return (
-        <aside className={`${isCollapsed ? 'w-24' : 'w-72'} h-screen flex flex-col bg-slate-100 dark:bg-obsidian border-r border-slate-100 dark:border-white/5 relative z-50 transition-all duration-300`}>
+        <aside className={`${isCollapsed ? 'w-24' : 'w-72'} h-screen flex flex-col bg-white dark:bg-obsidian border-r border-slate-100 dark:border-white/5 relative z-50 transition-all duration-300`}>
             {/* Logo Section */}
             <div className={`p-8 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
                 <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
