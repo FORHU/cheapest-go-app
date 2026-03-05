@@ -151,9 +151,6 @@ export function BookingsClient({ initialBookings }: BookingsClientProps) {
                             <Download size={18} />
                             Export
                         </Button>
-                        <Button className="bg-blue-600 hover:bg-blue-500 rounded-2xl font-normal h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0">
-                            New Booking
-                        </Button>
                     </div>
                 }
             />
@@ -161,7 +158,7 @@ export function BookingsClient({ initialBookings }: BookingsClientProps) {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-obsidian rounded-b-[2rem] shadow-xl overflow-hidden"
+                className="bg-white dark:bg-obsidian rounded-[2rem] shadow-xl overflow-hidden"
             >
                 {/* Search and Quick Filters */}
                 <div className="p-4 flex flex-col gap-4">
@@ -185,6 +182,23 @@ export function BookingsClient({ initialBookings }: BookingsClientProps) {
                                 <Filter size={16} className="mr-2" />
                                 {showFilters ? "Hide" : "Filter"}
                             </Button>
+
+                            {(searchTerm || statusFilter !== 'all' || supplierFilter !== 'all' || paymentFilter !== 'all' || typeFilter !== 'all') && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setSearchTerm('');
+                                        setStatusFilter('all');
+                                        setSupplierFilter('all');
+                                        setPaymentFilter('all');
+                                        setTypeFilter('all');
+                                    }}
+                                    className="text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                                >
+                                    Reset
+                                </Button>
+                            )}
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -293,7 +307,7 @@ export function BookingsClient({ initialBookings }: BookingsClientProps) {
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
-                            <TableRow className="bg-transparent hover:bg-transparent">
+                            <TableRow className="bg-transparent hover:bg-transparent border-none">
                                 {visibleColumns.has('bookingRef') && <TableHead className="py-4 text-sm font-normal uppercase tracking-widest text-slate-400">Ref / PNR</TableHead>}
                                 {visibleColumns.has('customer') && <TableHead className="py-4 text-sm font-normal uppercase tracking-widest text-slate-400">Customer</TableHead>}
                                 {visibleColumns.has('ticketId') && <TableHead className="py-4 text-sm font-normal uppercase tracking-widest text-slate-400">Ticket ID</TableHead>}

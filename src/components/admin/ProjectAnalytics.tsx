@@ -1,8 +1,8 @@
 "use client";
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { TrendingUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 
 export interface ChartData {
     day: string;
@@ -27,6 +27,8 @@ const mockData: ChartData[] = [
 ];
 
 export function ProjectAnalytics({ data = mockData, isLoading }: ProjectAnalyticsProps) {
+    const [isCollapsed, setIsCollapsed] = React.useState(false);
+
     if (isLoading) {
         return (
             <div className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2rem] p-8 shadow-xl h-full animate-pulse">
@@ -44,59 +46,83 @@ export function ProjectAnalytics({ data = mockData, isLoading }: ProjectAnalytic
         <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2rem] p-8 shadow-xl h-full relative overflow-hidden group"
+            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2rem] p-8 shadow-xl h-full relative overflow-hidden group transition-all duration-500"
         >
-            <div className="flex items-center justify-between mb-12">
-                <div>
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Project Analytics</h3>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Weekly Bookings</p>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400">
-                    <TrendingUp size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-wider">Live</span>
-                </div>
-            </div>
-
-            <div className="flex items-end justify-between h-48 gap-2 px-2">
-                {data.map((item, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-4 group/bar h-full justify-end">
-                        <div className="relative w-full h-full flex items-end justify-center">
-                            {/* Bar Column */}
-                            <motion.div
-                                initial={{ height: 0 }}
-                                animate={{ height: `${item.displayValue}%` }}
-                                transition={{ delay: 0.2 + (i * 0.1), type: 'spring', stiffness: 100 }}
-                                className={`w-full max-w-[3.5rem] rounded-full relative overflow-hidden transition-all duration-500 hover:scale-105 active:scale-95 cursor-pointer ${item.type === 'actual'
-                                    ? i === data.length - 1 ? 'bg-blue-900' : 'bg-blue-600'
-                                    : 'bg-slate-200 dark:bg-white/10'
-                                    }`}
-                            >
-                                {/* Striped Overlays for Projected */}
-                                {item.type === 'projected' && (
-                                    <div className="absolute inset-0 bg-diagonal-stripe opacity-40 dark:opacity-20" />
-                                )}
-
-                                {/* Hover Glow */}
-                                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/bar:opacity-100 transition-opacity" />
-
-                                {/* Tooltip on hover */}
-                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none">
-                                    <div className="bg-slate-900 text-white text-[10px] font-black px-2 py-1 rounded shadow-xl">
-                                        {item.value}
-                                    </div>
-                                </div>
-                            </motion.div>
+            <div className={`flex items-center justify-between ${isCollapsed ? '' : 'mb-12'} relative z-10`}>
+                <div className="flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <h3 className="text-xl font-black tracking-tight text-slate-900 dark:text-white transition-colors">Project Analytics</h3>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 transition-colors">Weekly Bookings</p>
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${i === data.length - 1 ? 'text-blue-600' : 'text-slate-400'}`}>
-                            {item.day}
-                        </span>
+                        <button
+                            onClick={() => setIsCollapsed(!isCollapsed)}
+                            className="p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-white/10 transition-colors text-slate-400"
+                        >
+                            {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                        </button>
                     </div>
-                ))}
+                </div>
+                {!isCollapsed && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400 transition-colors ml-4">
+                        <TrendingUp size={14} />
+                        <span className="text-[10px] font-black uppercase tracking-wider">Live</span>
+                    </div>
+                )}
             </div>
+
+            <AnimatePresence>
+                {!isCollapsed && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className="overflow-hidden h-full flex flex-col pt-4"
+                    >
+                        <div className="flex items-end justify-between h-48 gap-2 px-2 relative z-10">
+                            {data.map((item, i) => (
+                                <div key={i} className="flex-1 flex flex-col items-center gap-4 group/bar h-full justify-end">
+                                    <div className="relative w-full h-full flex items-end justify-center">
+                                        {/* Bar Column */}
+                                        <motion.div
+                                            initial={{ height: 0 }}
+                                            animate={{ height: `${item.displayValue}%` }}
+                                            transition={{ delay: 0.2 + (i * 0.1), type: 'spring', stiffness: 100 }}
+                                            className={`w-full max-w-[3.5rem] rounded-full relative overflow-hidden transition-all duration-500 hover:scale-105 active:scale-95 cursor-pointer ${item.type === 'actual'
+                                                ? i === data.length - 1 ? 'bg-blue-900' : 'bg-blue-600'
+                                                : 'bg-slate-200 dark:bg-white/10'
+                                                }`}
+                                        >
+                                            {/* Striped Overlays for Projected */}
+                                            {item.type === 'projected' && (
+                                                <div className="absolute inset-0 bg-diagonal-stripe opacity-40 dark:opacity-20" />
+                                            )}
+
+                                            {/* Hover Glow */}
+                                            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover/bar:opacity-100 transition-opacity" />
+
+                                            {/* Tooltip on hover */}
+                                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none">
+                                                <div className="bg-slate-900 text-white text-[10px] font-black px-2 py-1 rounded shadow-xl transition-colors">
+                                                    {item.value}
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </div>
+                                    <span className={`text-[10px] font-black uppercase tracking-wider transition-colors ${i === data.length - 1 ? 'text-blue-600' : 'text-slate-400'}`}>
+                                        {item.day}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Background Decoration */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none group-hover:bg-blue-500/10 transition-colors duration-700" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-500/5 blur-2xl rounded-full -ml-12 -mb-12 pointer-events-none group-hover:bg-blue-500/10 transition-colors duration-700" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none transition-colors duration-700" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-500/5 blur-2xl rounded-full -ml-12 -mb-12 pointer-events-none transition-colors duration-700" />
         </motion.div>
     );
 }

@@ -30,9 +30,10 @@ import {
 
 interface TopNavProps {
     onMenuClick?: () => void;
+    isCollapsed?: boolean;
 }
 
-export function TopNav({ onMenuClick }: TopNavProps) {
+export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
     const { theme, toggleTheme } = useTheme();
     const router = useRouter();
     const user = useAuthStore((s) => s.user);
@@ -51,7 +52,7 @@ export function TopNav({ onMenuClick }: TopNavProps) {
     };
 
     return (
-        <header className="h-20 flex items-center justify-between px-6 sm:px-8 border-b border-slate-100 dark:border-white/5 bg-transparent relative z-20">
+        <header className="h-20 flex items-center justify-between px-6 sm:px-8 border-b border-slate-100 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl sticky top-0 settlement-header z-20">
             {/* Left: Menu & Search */}
             <div className="flex items-center gap-6 flex-1 bg-white/10">
                 <Button
