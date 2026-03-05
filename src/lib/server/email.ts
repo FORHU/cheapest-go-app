@@ -399,3 +399,203 @@ export async function sendFlightBookingConfirmationEmail(
         };
     }
 }
+
+// ═════════════════════════════════════════════════════════════════════
+//  FLIGHT AWAITING TICKET EMAIL  (Email 1 for pending Mystifly bookings)
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendFlightAwaitingTicketEmailParams {
+    bookingId: string;
+    pnr: string;
+    email: string;
+    passengerName: string;
+    segments: FlightSegmentEmail[];
+    totalPrice: number;
+    currency: string;
+}
+
+export async function sendFlightAwaitingTicketEmail(
+    params: SendFlightAwaitingTicketEmailParams,
+): Promise<SendFlightBookingEmailResult> {
+    const { bookingId, pnr, email, passengerName, segments, totalPrice, currency } = params;
+    if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
+
+    try {
+        const formattedPrice = new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(totalPrice);
+        const firstSeg = segments[0];
+        const lastSeg = segments[segments.length - 1];
+        const route = firstSeg && lastSeg ? `${firstSeg.origin} → ${lastSeg.destination}` : 'N/A';
+
+        const segmentRows = segments.map((seg) => {
+            const depStr = new Date(seg.departureTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+            const arrStr = new Date(seg.arrivalTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+            return `
+            <tr>
+                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.airlineName || seg.airline)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(seg.flightNumber)}</span></td>
+                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.origin)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(depStr)}</span></td>
+                <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;color:#9ca3af;">→</td>
+                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.destination)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(arrStr)}</span></td>
+            </tr>`;
+        }).join('');
+
+        const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Booking Received</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+    <div style="background:linear-gradient(135deg,#d97706 0%,#b45309 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+        <h1 style="color:white;margin:0;font-size:28px;">✈️ Booking Confirmed</h1>
+        <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">E-Ticket Pending — ${escapeHtml(route)}</p>
+    </div>
+    <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+        <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
+        <p style="margin:0 0 20px 0;">Your seat is reserved and your payment of <strong>${formattedPrice}</strong> has been captured. The airline is currently processing your e-ticket — this usually takes a few minutes to a few hours.</p>
+        <p style="margin:0 0 20px 0;">We'll send you another email as soon as your e-ticket number is issued. No action is needed from you.</p>
+
+        <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
+            <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Booking Reference</h2>
+            <table style="width:100%;border-collapse:collapse;">
+                <tr><td style="padding:8px 0;color:#6b7280;">PNR:</td><td style="padding:8px 0;font-weight:700;font-family:monospace;font-size:18px;color:#d97706;">${escapeHtml(pnr)}</td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(bookingId)}</td></tr>
+                <tr style="border-top:1px solid #e5e7eb;"><td style="padding:12px 0 8px 0;color:#6b7280;font-weight:600;">Total Charged:</td><td style="padding:12px 0 8px 0;font-weight:700;font-size:18px;color:#059669;">${formattedPrice}</td></tr>
+            </table>
+        </div>
+
+        <div style="margin:20px 0;">
+            <h3 style="margin:0 0 10px 0;font-size:16px;color:#374151;">Flight Itinerary</h3>
+            <table style="width:100%;border-collapse:collapse;">${segmentRows}</table>
+        </div>
+
+        <div style="background:#fffbeb;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #d97706;">
+            <p style="margin:0;color:#92400e;font-size:14px;">
+                <strong>What happens next?</strong><br>
+                Your PNR (<strong>${escapeHtml(pnr)}</strong>) is your booking reference. The airline is finalizing ticketing. You'll receive a second email with your e-ticket number once it's issued. If ticketing fails for any reason, you will be fully refunded automatically.
+            </p>
+        </div>
+    </div>
+    <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
+        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+    </div>
+</body>
+</html>`;
+
+        const resendApiKey = process.env.RESEND_API_KEY;
+        console.log('[sendFlightAwaitingTicketEmail] Sending to:', email, '| PNR:', pnr);
+
+        if (resendApiKey) {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    to: [email],
+                    subject: `Booking Received – PNR ${pnr} (${route}) — E-Ticket Pending`,
+                    html: emailHtml,
+                }),
+            });
+            const text = await res.text();
+            console.log('[sendFlightAwaitingTicketEmail] Resend response:', res.status, text);
+            if (res.ok) return { success: true };
+            return { success: false, error: `Resend ${res.status}: ${text}` };
+        }
+
+        console.warn('[sendFlightAwaitingTicketEmail] RESEND_API_KEY not set');
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendFlightAwaitingTicketEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  FLIGHT REFUND EMAIL  (Email 2B — ticketing failed, refund initiated)
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendFlightRefundEmailParams {
+    bookingId: string;
+    pnr: string;
+    email: string;
+    passengerName: string;
+    segments: FlightSegmentEmail[];
+    totalPrice: number;
+    currency: string;
+    /** Stripe refund ID if available */
+    refundId?: string;
+}
+
+export async function sendFlightRefundEmail(
+    params: SendFlightRefundEmailParams,
+): Promise<SendFlightBookingEmailResult> {
+    const { bookingId, pnr, email, passengerName, segments, totalPrice, currency, refundId } = params;
+    if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
+
+    try {
+        const formattedPrice = new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(totalPrice);
+        const firstSeg = segments[0];
+        const lastSeg = segments[segments.length - 1];
+        const route = firstSeg && lastSeg ? `${firstSeg.origin} → ${lastSeg.destination}` : 'N/A';
+
+        const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Refund Initiated</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+    <div style="background:linear-gradient(135deg,#475569 0%,#334155 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+        <h1 style="color:white;margin:0;font-size:28px;">Booking Update</h1>
+        <p style="color:rgba(255,255,255,0.85);margin:10px 0 0 0;">Refund Initiated — ${escapeHtml(route)}</p>
+    </div>
+    <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+        <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
+        <p style="margin:0 0 20px 0;">We're sorry to inform you that the airline was unable to confirm the e-ticket for your booking <strong>${escapeHtml(pnr)}</strong> (${escapeHtml(route)}). This can happen occasionally due to seat availability changes after reservation.</p>
+        <p style="margin:0 0 20px 0;">A <strong>full refund of ${formattedPrice}</strong> has been initiated to your original payment method.</p>
+
+        <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
+            <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Refund Details</h2>
+            <table style="width:100%;border-collapse:collapse;">
+                <tr><td style="padding:8px 0;color:#6b7280;">PNR:</td><td style="padding:8px 0;font-weight:700;font-family:monospace;">${escapeHtml(pnr)}</td></tr>
+                <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(bookingId)}</td></tr>
+                ${refundId ? `<tr><td style="padding:8px 0;color:#6b7280;">Refund ID:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(refundId)}</td></tr>` : ''}
+                <tr style="border-top:1px solid #e5e7eb;"><td style="padding:12px 0 8px 0;color:#6b7280;font-weight:600;">Refund Amount:</td><td style="padding:12px 0 8px 0;font-weight:700;font-size:18px;color:#4f46e5;">${formattedPrice}</td></tr>
+            </table>
+        </div>
+
+        <div style="background:#fef2f2;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #ef4444;">
+            <p style="margin:0;color:#991b1b;font-size:14px;">
+                <strong>When will I see my refund?</strong><br>
+                Refunds typically appear on your statement within <strong>5–10 business days</strong>, depending on your bank or card issuer. If you haven't received it after 10 days, please contact your bank with the Refund ID above.
+            </p>
+        </div>
+
+        <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">We apologize for the inconvenience. You're welcome to search for alternative flights at any time.</p>
+    </div>
+    <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
+        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+    </div>
+</body>
+</html>`;
+
+        const resendApiKey = process.env.RESEND_API_KEY;
+        console.log('[sendFlightRefundEmail] Sending to:', email, '| PNR:', pnr);
+
+        if (resendApiKey) {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    to: [email],
+                    subject: `Refund Initiated – ${route} (PNR ${pnr})`,
+                    html: emailHtml,
+                }),
+            });
+            const text = await res.text();
+            console.log('[sendFlightRefundEmail] Resend response:', res.status, text);
+            if (res.ok) return { success: true };
+            return { success: false, error: `Resend ${res.status}: ${text}` };
+        }
+
+        console.warn('[sendFlightRefundEmail] RESEND_API_KEY not set');
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendFlightRefundEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}

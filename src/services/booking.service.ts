@@ -248,7 +248,7 @@ export interface FlightBookingRecord {
   total_price: number;
   currency?: string;
   trip_type?: 'one-way' | 'round-trip' | 'multi-city';
-  status: 'booked' | 'ticketed' | 'cancelled' | 'failed';
+  status: 'booked' | 'pnr_created' | 'awaiting_ticket' | 'ticketed' | 'cancelled' | 'failed';
   created_at: string;
 
   // Joined relation fields

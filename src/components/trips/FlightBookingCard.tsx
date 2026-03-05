@@ -153,6 +153,12 @@ export default function FlightBookingCard({ booking }: FlightBookingCardProps) {
                                 Upcoming
                             </span>
                         )}
+                        {booking.status === 'awaiting_ticket' && (
+                            <span className="inline-flex items-center gap-1 text-[clamp(0.5rem,1.5vw,0.5625rem)] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
+                                <span className="w-1 h-1 bg-amber-500 rounded-full animate-pulse shrink-0" />
+                                Pending
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>
@@ -253,6 +259,12 @@ export default function FlightBookingCard({ booking }: FlightBookingCardProps) {
                             <span className="inline-flex items-center justify-end w-full gap-1 text-[clamp(0.5625rem,1.5vw,0.625rem)] text-emerald-600 dark:text-emerald-400 whitespace-nowrap font-medium">
                                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" />
                                 Upcoming Flight
+                            </span>
+                        )}
+                        {booking.status === 'awaiting_ticket' && (
+                            <span className="inline-flex items-center justify-end w-full gap-1 text-[clamp(0.5625rem,1.5vw,0.625rem)] text-amber-600 dark:text-amber-400 whitespace-nowrap font-medium">
+                                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />
+                                Awaiting Confirmation
                             </span>
                         )}
                         {isPast && booking.status === 'ticketed' && (

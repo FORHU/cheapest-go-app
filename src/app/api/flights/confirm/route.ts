@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createClient } from '@supabase/supabase-js';
-import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
+import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -143,9 +143,10 @@ export async function POST(req: NextRequest) {
                 console.log(ticketData.success ? '[/confirm] Duffel ticketing OK' : `[/confirm] Duffel ticketing failed: ${ticketData.error}`);
             }
 
-            // Send confirmation email if this is a fresh booking (webhook didn't run)
+            // Send the right email based on whether the ticket was issued immediately
+            // or is still awaiting confirmation from the airline.
             if (!bookingData.alreadyBooked) {
-                fireBookingConfirmationEmail(supabase, sessionId, bookingData, provider)
+                fireBookingEmail(supabase, sessionId, bookingData, provider)
                     .catch(e => console.error('[/confirm] Email error:', e));
             }
 
@@ -172,17 +173,17 @@ export async function POST(req: NextRequest) {
         );
     }
 }
-// ─── Email Helper ─────────────────────────────────────────────────────────────
+// ─── Email Helpers ─────────────────────────────────────────────────────────────
 
 /**
- * Query the booking session + segments and fire a confirmation email.
+ * Routes to the correct email (awaiting vs confirmed) based on booking status.
  * Must not throw — always call with .catch().
  */
-async function fireBookingConfirmationEmail(
+async function fireBookingEmail(
     // deno-lint-ignore no-explicit-any
     supabase: any,
     sessionId: string,
-    bookingData: { bookingId?: string; pnr?: string; confirmedPrice?: number; confirmedCurrency?: string },
+    bookingData: { bookingId?: string; pnr?: string; status?: string; confirmedPrice?: number; confirmedCurrency?: string },
     provider: string,
 ) {
     if (!bookingData.bookingId || !bookingData.pnr) return;
@@ -198,23 +199,41 @@ async function fireBookingConfirmationEmail(
     const pax0 = (session as any)?.passengers?.[0];
     const passengerName = pax0 ? `${pax0.firstName} ${pax0.lastName}` : 'Traveler';
 
-    const result = await sendFlightBookingConfirmationEmail({
-        bookingId: bookingData.bookingId,
-        pnr: bookingData.pnr,
-        email,
-        passengerName,
-        provider,
-        segments: ((segments as any[]) ?? []).map((s: any) => ({
-            airline: s.airline,
-            flightNumber: s.flight_number,
-            origin: s.origin,
-            destination: s.destination,
-            departureTime: s.departure,
-            arrivalTime: s.arrival,
-        })),
-        totalPrice: bookingData.confirmedPrice ?? 0,
-        currency: bookingData.confirmedCurrency ?? 'USD',
-    });
+    const mappedSegments = ((segments as any[]) ?? []).map((s: any) => ({
+        airline: s.airline,
+        flightNumber: s.flight_number,
+        origin: s.origin,
+        destination: s.destination,
+        departureTime: s.departure,
+        arrivalTime: s.arrival,
+    }));
 
-    console.log('[Email] Confirmation sent:', result.success, result.error ?? '');
+    const isAwaiting = bookingData.status === 'awaiting_ticket';
+
+    if (isAwaiting) {
+        // Email 1: amber — seat held, e-ticket still processing
+        const result = await sendFlightAwaitingTicketEmail({
+            bookingId: bookingData.bookingId,
+            pnr: bookingData.pnr,
+            email,
+            passengerName,
+            segments: mappedSegments,
+            totalPrice: bookingData.confirmedPrice ?? 0,
+            currency: bookingData.confirmedCurrency ?? 'USD',
+        });
+        console.log('[Email] Awaiting-ticket email sent:', result.success, result.error ?? '');
+    } else {
+        // Email 2A: green — e-ticket issued immediately
+        const result = await sendFlightBookingConfirmationEmail({
+            bookingId: bookingData.bookingId,
+            pnr: bookingData.pnr,
+            email,
+            passengerName,
+            provider,
+            segments: mappedSegments,
+            totalPrice: bookingData.confirmedPrice ?? 0,
+            currency: bookingData.confirmedCurrency ?? 'USD',
+        });
+        console.log('[Email] Confirmation email sent:', result.success, result.error ?? '');
+    }
 }
