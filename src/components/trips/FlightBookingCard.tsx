@@ -12,6 +12,8 @@ interface FlightBookingCardProps {
 
 const flightStatusColors: Record<string, string> = {
     booked: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    pnr_created: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    awaiting_ticket: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
     ticketed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
     failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
     cancelled: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-400',
@@ -19,6 +21,8 @@ const flightStatusColors: Record<string, string> = {
 
 const flightStatusLabels: Record<string, string> = {
     booked: 'Processing',
+    pnr_created: 'Booked',
+    awaiting_ticket: 'Ticketing',
     ticketed: 'Confirmed',
     failed: 'Failed',
     cancelled: 'Cancelled',
@@ -31,6 +35,68 @@ export default function FlightBookingCard({ booking }: FlightBookingCardProps) {
 
     const isUpcoming = firstSegment && new Date(firstSegment.departure) > new Date();
     const isPast = lastSegment && new Date(lastSegment.arrival) < new Date();
+
+    let tripType = 'One-way';
+    let mainDestination = lastSegment?.destination;
+    const origin = firstSegment?.origin;
+
+    // Use the authoritative trip_type stored in DB; fall back to segment inference for older records
+    if (booking.trip_type) {
+        const map: Record<string, string> = {
+            'one-way': 'One-way',
+            'round-trip': 'Round-trip',
+            'multi-city': 'Multi-city',
+        };
+        tripType = map[booking.trip_type] ?? 'One-way';
+
+        // For round-trip, find the turnaround destination
+        if (booking.trip_type === 'round-trip' && segments.length > 1 && origin) {
+            let maxLayover = -1;
+            let turnAroundSegment = segments[0];
+            for (let i = 0; i < segments.length - 1; i++) {
+                const layover = new Date(segments[i + 1].departure).getTime() - new Date(segments[i].arrival).getTime();
+                if (layover > maxLayover) {
+                    maxLayover = layover;
+                    turnAroundSegment = segments[i];
+                }
+            }
+            mainDestination = turnAroundSegment?.destination || mainDestination;
+        }
+    } else if (segments.length > 1 && origin && lastSegment) {
+        if (origin === lastSegment.destination) {
+            tripType = 'Round-trip';
+
+            // Find turnaround point by finding the longest layover
+            let maxLayover = -1;
+            let turnAroundSegment = segments[0];
+
+            for (let i = 0; i < segments.length - 1; i++) {
+                const layover = new Date(segments[i + 1].departure).getTime() - new Date(segments[i].arrival).getTime();
+                if (layover > maxLayover) {
+                    maxLayover = layover;
+                    turnAroundSegment = segments[i];
+                }
+            }
+            mainDestination = turnAroundSegment?.destination || mainDestination;
+        } else {
+            // Check if it's Multi-city (gap in airports or layover > 24h)
+            let hasLongLayoverOrGap = false;
+            for (let i = 0; i < segments.length - 1; i++) {
+                if (segments[i].destination !== segments[i + 1].origin) {
+                    hasLongLayoverOrGap = true;
+                    break;
+                }
+                const layover = new Date(segments[i + 1].departure).getTime() - new Date(segments[i].arrival).getTime();
+                if (layover > 24 * 60 * 60 * 1000) {
+                    hasLongLayoverOrGap = true;
+                    break;
+                }
+            }
+            if (hasLongLayoverOrGap) {
+                tripType = 'Multi-city';
+            }
+        }
+    }
 
     const fmtDate = (iso: string) =>
         formatDate(new Date(iso), { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
@@ -62,12 +128,13 @@ export default function FlightBookingCard({ booking }: FlightBookingCardProps) {
                 {/* Content */}
                 <div className="flex-1 p-2.5 flex flex-col min-w-0">
                     <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white mb-0.5 leading-tight truncate">
-                        {firstSegment ? `${firstSegment.origin} to ${lastSegment.destination}` : 'Flight Booking'}
+                        {firstSegment ? `${origin} to ${mainDestination}` : 'Flight Booking'}
                     </h3>
 
-                    {firstSegment && (
-                        <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1 truncate">
-                            {fmtDate(firstSegment.departure)} · {fmtTime(firstSegment.departure)} → {fmtTime(lastSegment.arrival)}
+                    {firstSegment && lastSegment && (
+                        <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1.5 truncate">
+                            <span className="bg-slate-100 dark:bg-slate-800 px-1 rounded font-medium shrink-0">{tripType}</span>
+                            <span className="truncate">{fmtDate(firstSegment.departure)} · {fmtTime(firstSegment.departure)} → {fmtTime(lastSegment.arrival)}</span>
                         </div>
                     )}
 
@@ -84,6 +151,12 @@ export default function FlightBookingCard({ booking }: FlightBookingCardProps) {
                         {isUpcoming && booking.status === 'ticketed' && (
                             <span className="text-[clamp(0.5rem,1.5vw,0.5625rem)] text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
                                 Upcoming
+                            </span>
+                        )}
+                        {booking.status === 'awaiting_ticket' && (
+                            <span className="inline-flex items-center gap-1 text-[clamp(0.5rem,1.5vw,0.5625rem)] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
+                                <span className="w-1 h-1 bg-amber-500 rounded-full animate-pulse shrink-0" />
+                                Pending
                             </span>
                         )}
                     </div>
@@ -110,9 +183,12 @@ export default function FlightBookingCard({ booking }: FlightBookingCardProps) {
 
                 {/* Content */}
                 <div className="flex-1 p-3 flex flex-col min-w-0">
-                    <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                        {firstSegment ? `${firstSegment.origin} to ${lastSegment.destination}` : 'Flight Booking'}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0">{tripType}</span>
+                        <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                            {firstSegment ? `${origin} to ${mainDestination}` : 'Flight Booking'}
+                        </h3>
+                    </div>
 
                     <div className="flex flex-wrap items-start gap-4 text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-2">
                         {/* Dates / Times */}
@@ -183,6 +259,12 @@ export default function FlightBookingCard({ booking }: FlightBookingCardProps) {
                             <span className="inline-flex items-center justify-end w-full gap-1 text-[clamp(0.5625rem,1.5vw,0.625rem)] text-emerald-600 dark:text-emerald-400 whitespace-nowrap font-medium">
                                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" />
                                 Upcoming Flight
+                            </span>
+                        )}
+                        {booking.status === 'awaiting_ticket' && (
+                            <span className="inline-flex items-center justify-end w-full gap-1 text-[clamp(0.5625rem,1.5vw,0.625rem)] text-amber-600 dark:text-amber-400 whitespace-nowrap font-medium">
+                                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />
+                                Awaiting Confirmation
                             </span>
                         )}
                         {isPast && booking.status === 'ticketed' && (

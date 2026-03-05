@@ -2,8 +2,8 @@
 
 export enum FlightProvider {
     MYSTIFLY = 'mystifly',
-    MYSTIFLY_V2 = 'mystifly_v2', // Added for v2
     DUFFEL = 'duffel',
+    MYSTIFLY_V2 = 'mystifly_v2'
 }
 
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
@@ -289,23 +289,6 @@ export interface MystiflyBookResponse {
     };
 }
 
-// ── Amadeus ─────────────────────────────────────────────────────────
-
-export interface AmadeusTokenResponse {
-    access_token: string;
-    token_type: string;
-    expires_in: number;
-}
-
-export interface AmadeusSearchResponse {
-    meta?: { count: number };
-    data?: unknown[];
-    dictionaries?: {
-        carriers?: Record<string, string>;
-        aircraft?: Record<string, string>;
-        locations?: Record<string, { cityCode: string; countryCode: string }>;
-    };
-}
 
 // ═════════════════════════════════════════════════════════════════════
 //  ERROR
@@ -332,7 +315,7 @@ export function formatDuration(minutes: number): string {
     if (minutes <= 0) return '0m';
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    if (h === 0) return `${m}m`;
-    if (m === 0) return `${h}h`;
-    return `${h}h ${m}m`;
+    if (h === 0) return `${m} m`;
+    if (m === 0) return `${h} h`;
+    return `${h}h ${m} m`;
 }

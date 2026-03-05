@@ -24,24 +24,34 @@ export async function POST(req: NextRequest) {
         // Support both flat format and segments format
         const hasSegments = Array.isArray(body.segments) && body.segments.length > 0;
 
-        const origin = hasSegments ? body.segments[0].origin : body.origin;
-        const destination = hasSegments ? body.segments[0].destination : body.destination;
-        const departureDate = hasSegments ? body.segments[0].departureDate : body.departureDate;
-        const returnDate = hasSegments && body.segments[1]
-            ? body.segments[1].departureDate
-            : body.returnDate;
         const { passengers, cabinClass, tripType, currency } = body;
 
-        // Origin / Destination
-        const org = String(origin ?? '').toUpperCase();
-        const dst = String(destination ?? '').toUpperCase();
-        if (!IATA_RE.test(org)) return badRequest('origin must be a 3-letter IATA code');
-        if (!IATA_RE.test(dst)) return badRequest('destination must be a 3-letter IATA code');
-        if (org === dst) return badRequest('origin and destination must differ');
+        let segments = body.segments || [];
+        if (!hasSegments && body.origin && body.destination && body.departureDate) {
+            segments = [{ origin: body.origin, destination: body.destination, departureDate: body.departureDate }];
+            if (body.returnDate) {
+                segments.push({ origin: body.destination, destination: body.origin, departureDate: body.returnDate });
+            }
+        }
 
-        // Departure date
-        if (!departureDate || !DATE_RE.test(departureDate)) {
-            return badRequest('departureDate is required (YYYY-MM-DD)');
+        if (segments.length === 0) {
+            return badRequest('No valid flight segments provided');
+        }
+
+        // Validate segments
+        for (const seg of segments) {
+            seg.origin = String(seg.origin ?? '').toUpperCase();
+            seg.destination = String(seg.destination ?? '').toUpperCase();
+
+            if (!IATA_RE.test(seg.origin) || !IATA_RE.test(seg.destination)) {
+                return badRequest('origins and destinations must be 3-letter IATA codes');
+            }
+            if (seg.origin === seg.destination) {
+                return badRequest('origin and destination must differ within a segment');
+            }
+            if (!seg.departureDate || !DATE_RE.test(seg.departureDate)) {
+                return badRequest('departureDate is required for all segments (YYYY-MM-DD)');
+            }
         }
 
         // Passengers
@@ -56,18 +66,8 @@ export async function POST(req: NextRequest) {
         if (!VALID_CABIN.has(cabin)) return badRequest(`invalid cabinClass: ${cabin}`);
 
         // Trip type
-        const trip = (tripType ?? (returnDate ? 'round-trip' : 'one-way')) as string;
+        const trip = (tripType ?? (segments.length === 2 ? 'round-trip' : segments.length > 2 ? 'multi-city' : 'one-way')) as string;
         if (!VALID_TRIP.has(trip)) return badRequest(`invalid tripType: ${trip}`);
-
-        // Return date validation for round-trip
-        if (trip === 'round-trip') {
-            if (!returnDate || !DATE_RE.test(returnDate)) {
-                return badRequest('returnDate is required for round-trip (YYYY-MM-DD)');
-            }
-            if (returnDate < departureDate) {
-                return badRequest('returnDate must be on or after departureDate');
-            }
-        }
 
         // ─── Call unified-flight-search Edge Function ─────────────
 
@@ -87,10 +87,8 @@ export async function POST(req: NextRequest) {
                 'Authorization': `Bearer ${supabaseKey}`,
             },
             body: JSON.stringify({
-                origin: org,
-                destination: dst,
-                departureDate,
-                returnDate: trip === 'round-trip' ? returnDate : undefined,
+                segments,
+                tripType: trip,
                 adults,
                 children: children || undefined,
                 infants: infants || undefined,
@@ -109,7 +107,9 @@ export async function POST(req: NextRequest) {
 
         // ─── Transform NormalizedFlight[] → FlightOffer[] ─────────
 
-        const offers: FlightOffer[] = (edgeData.flights ?? []).map(normalizedToFlightOffer);
+        const offers: FlightOffer[] = (edgeData.flights ?? []).map(
+            (nf: any) => normalizedToFlightOffer(nf, trip as FlightOffer['tripType']),
+        );
 
         return NextResponse.json({
             success: true,
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
 
 // ─── Transform NormalizedFlight → FlightOffer ────────────────────────
 
-function normalizedToFlightOffer(nf: any): FlightOffer {
+function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripType']): FlightOffer {
     const segments: FlightSegmentDetail[] = (nf.segments ?? []).map((seg: any, idx: number) => ({
         segmentIndex: idx,
         airline: {
@@ -189,6 +189,7 @@ function normalizedToFlightOffer(nf: any): FlightOffer {
         } : undefined,
         validatingAirline: nf.validatingAirline,
         lastTicketDate: nf.lastTicketDate,
+        tripType: tripType ?? 'one-way',
         // Provider-specific IDs needed for booking
         resultIndex: nf.resultIndex,   // Original Duffel offer ID
         traceId: nf.traceId,           // Mystifly fareSourceCode

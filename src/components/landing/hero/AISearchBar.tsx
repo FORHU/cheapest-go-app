@@ -220,10 +220,10 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
 
                         {/* Unified Search Container */}
                         {searchMode !== 'ai' ? (
-                            <div className="flex flex-col sm:flex-row bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-white/5 h-auto sm:h-16">
+                            <div className={`flex flex-col ${searchMode === 'flights' && flightState.tripType === 'multi-city' ? '' : 'sm:flex-row'} bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-white/5 h-auto ${searchMode === 'flights' && flightState.tripType === 'multi-city' ? '' : 'sm:h-16'}`}>
 
                                 {/* Inputs Area - overflow-hidden + min-w-0 forces text truncation */}
-                                <div className="flex-1 flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5 min-w-0">
+                                <div className={`flex-1 flex flex-col ${searchMode === 'flights' && flightState.tripType === 'multi-city' ? '' : 'sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5'} min-w-0`}>
                                     <AnimatePresence mode="wait">
                                         {searchMode === 'hotels' && (
                                             <motion.div
@@ -245,7 +245,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
-                                                className="contents"
+                                                className={flightState.tripType === 'multi-city' ? 'flex flex-col w-full' : 'contents'}
                                             >
                                                 <FlightSearchForm />
                                             </motion.div>
@@ -254,7 +254,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                 </div>
 
                                 {/* Search Button - shrink-0 ensures it never gets squeezed */}
-                                <div className="shrink-0 p-1 flex items-center justify-center border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-white/5">
+                                <div className={`shrink-0 p-1 flex items-center justify-center border-t ${searchMode === 'flights' && flightState.tripType === 'multi-city' ? '' : 'sm:border-t-0 sm:border-l'} border-slate-200 dark:border-white/5`}>
                                     <MagneticButton
                                         onClick={handleMainSearchClick}
                                         isLoading={isSearching}

@@ -63,6 +63,7 @@ export interface FlightOffer {
 
     validatingAirline?: string;
     lastTicketDate?: string;
+    tripType?: 'one-way' | 'round-trip' | 'multi-city';
     _raw?: unknown;
 }
 

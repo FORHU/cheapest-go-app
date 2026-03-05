@@ -29,7 +29,7 @@ export {
 export { autocompleteDestinations } from './search';
 
 // Email
-export { sendBookingConfirmationEmail, sendFlightBookingConfirmationEmail } from './email';
+export { sendBookingConfirmationEmail, sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail, sendFlightRefundEmail } from './email';
 
 // Policy normalizer
 export { normalizeLiteApiPolicy, type NormalizedPolicy } from './policy-normalizer';

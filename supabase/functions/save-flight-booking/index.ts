@@ -4,7 +4,7 @@
  * POST /functions/v1/save-flight-booking
  *
  * Persists a flight booking to the unified_bookings table after a
- * successful provider booking (Amadeus or Mystifly).
+ * successful provider booking (Mystifly or Duffel).
  *
  * Uses the Supabase service role key for direct database writes
  * (bypasses RLS — the function validates userId).

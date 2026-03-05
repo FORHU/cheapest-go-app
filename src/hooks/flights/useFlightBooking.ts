@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -8,7 +6,7 @@ import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/l
 import type { FlightOffer } from '@/lib/flights/types';
 import { createClient } from '@/utils/supabase/client';
 
-export type BookingStep = 'form' | 'submitting' | 'success' | 'error';
+export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
 export function useFlightBooking() {
     const router = useRouter();
@@ -16,23 +14,50 @@ export function useFlightBooking() {
     const [step, setStep] = useState<BookingStep>('form');
     const [errorMsg, setErrorMsg] = useState('');
     const [bookingResult, setBookingResult] = useState<{
-        bookingId: string;
-        pnr: string;
+        bookingId?: string;
+        pnr?: string;
         tickets?: { name: string; number: string }[];
     } | null>(null);
+    const [clientSecret, setClientSecret] = useState('');
 
     // HIGH-2 FIX: Idempotency key to prevent double bookings
     const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+    // Tracks the booking session ID after Stripe payment, for PNR confirmation
+    const bookingSessionIdRef = useRef<string | null>(null);
 
-    const [passengers, setPassengers] = useState<FlightPassengerForm[]>([{
-        type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
-        nationality: 'KR', passport: '', passportExpiry: '',
-    }]);
-
-    const [contact, setContact] = useState<FlightContactForm>({
-        email: '', phone: '', countryCode: '82',
-        addressLine: '', city: '', postalCode: '', country: 'KR',
+    const [passengers, setPassengers] = useState<FlightPassengerForm[]>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('flightPassengers');
+            if (saved) {
+                try { return JSON.parse(saved); } catch (e) { console.error('Error parsing saved passengers:', e); }
+            }
+        }
+        return [{
+            type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
+            nationality: 'KR', passport: '', passportExpiry: '',
+        }];
     });
+
+    const [contact, setContact] = useState<FlightContactForm>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('flightContact');
+            if (saved) {
+                try { return JSON.parse(saved); } catch (e) { console.error('Error parsing saved contact:', e); }
+            }
+        }
+        return {
+            email: '', phone: '', countryCode: '82',
+            addressLine: '', city: '', postalCode: '', country: 'KR',
+        };
+    });
+
+    // Effect to persist passengers and contact to sessionStorage
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('flightPassengers', JSON.stringify(passengers));
+            sessionStorage.setItem('flightContact', JSON.stringify(contact));
+        }
+    }, [passengers, contact]);
 
     useEffect(() => {
         const raw = sessionStorage.getItem('selectedFlight');
@@ -79,6 +104,7 @@ export function useFlightBooking() {
                 resultIndex: (offer as any).resultIndex ?? offer.offerId,
                 price: offer.price.total,
                 currency: offer.price.currency,
+                tripType: offer.tripType ?? 'one-way',
                 validatingAirline: offer.validatingAirline ?? offer.segments[0]?.airline.code,
                 segments: offer.segments.map(seg => ({
                     airline: seg.airline.code,
@@ -124,13 +150,41 @@ export function useFlightBooking() {
             setErrorMsg('');
         },
         onSuccess: (data) => {
-            setBookingResult({ bookingId: data.bookingId, pnr: data.pnr, tickets: data.tickets });
+            // If Stripe PaymentIntent client_secret is returned, transition to embedded payment UI
+            if (data.clientSecret) {
+                setClientSecret(data.clientSecret);
+                setStep('payment');
+                // Store the session ID so we can poll for PNR after webhook processes
+                bookingSessionIdRef.current = data.sessionId;
+                setBookingResult({ bookingId: data.sessionId });
+                return;
+            }
+
+            // Fallback (e.g. for free bookings or bypassed payments)
+            setBookingResult({
+                bookingId: data.bookingId,
+                pnr: data.pnr,
+                tickets: data.tickets,
+            });
             setStep('success');
+
+            // Clear session storage on success
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('flightPassengers');
+                sessionStorage.removeItem('flightContact');
+            }
             sessionStorage.removeItem('selectedFlight');
         },
         onError: (error) => {
             if (error.message === "unauthenticated") {
-                router.push('/login');
+                setErrorMsg("You need to sign in to complete your booking.");
+                setStep('form'); // CRITICAL FIX: reset loading state
+                if (typeof window !== 'undefined') {
+                    // Import the store and open the modal
+                    import('@/stores/authStore').then(({ useAuthStore }) => {
+                        useAuthStore.getState().openAuthModal('email');
+                    });
+                }
             } else {
                 setErrorMsg(error.message || 'Booking failed. Please try again.');
                 setStep('error');
@@ -139,6 +193,64 @@ export function useFlightBooking() {
             }
         }
     });
+
+    // ─── Confirm booking after Stripe payment succeeds ───────────────
+    // Calls /api/flights/confirm which verifies the PaymentIntent server-side
+    // and directly triggers create-booking. Works without stripe listen locally.
+    const pollForBooking = useCallback(async (paymentIntentId: string) => {
+        const sessionId = bookingSessionIdRef.current;
+
+        if (!sessionId || !paymentIntentId) {
+            setStep('success');
+            return;
+        }
+
+        // Show a loading state while confirming
+        setStep('submitting');
+
+        // Clear session storage now that payment is done
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('flightPassengers');
+            sessionStorage.removeItem('flightContact');
+            sessionStorage.removeItem('selectedFlight');
+        }
+
+        try {
+            const res = await fetch('/api/flights/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paymentIntentId, sessionId }),
+            });
+
+            const data = await res.json();
+
+            // Provider-level failure (e.g. Mystifly "Pending Need", fare expired, etc.)
+            // Payment was NOT captured in these cases — show error, not success.
+            if (!res.ok || data.success === false) {
+                const errMsg = data.error || 'Booking could not be completed. Your card has not been charged.';
+                setErrorMsg(errMsg);
+                setStep('error');
+                return;
+            }
+
+            if (data.success && data.pnr) {
+                setBookingResult(prev => ({
+                    ...prev,
+                    bookingId: data.bookingId,
+                    pnr: data.pnr,
+                    tickets: data.tickets,
+                }));
+            }
+            // Success — booking confirmed (PNR may still be pending for some providers)
+            setStep('success');
+        } catch (e) {
+            // Network-level error — payment may already have been captured
+            // Show success to avoid confusion but log the error
+            console.error('[confirmBooking] Network error during confirm:', e);
+            setStep('success');
+        }
+    }, []);
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -159,8 +271,10 @@ export function useFlightBooking() {
     return {
         offer,
         step,
+        setStep, // Exported to allow manual transition if needed
         errorMsg,
         bookingResult,
+        clientSecret, // Exported for Stripe Elements provider
         passengers,
         contact,
         updatePassenger,
@@ -168,6 +282,7 @@ export function useFlightBooking() {
         removePassenger,
         setContact,
         handleSubmit,
+        pollForBooking, // Called by StripeEmbeddedCheckout onSuccess to start PNR polling
         router,
     };
 }
