@@ -8,6 +8,7 @@ import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout
 import { Confetti, Balloons } from '@/components/ui/Animations';
 import { formatTime, formatDuration, formatPrice } from '@/lib/flights/utils';
 import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
+import { useFlightSearch } from '@/hooks/search/useFlightSearch';
 import type { FarePolicy } from '@/lib/flights/types';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
@@ -104,6 +105,7 @@ export default function FlightBookContent() {
         setStep,
         pollForBooking,
     } = useFlightBooking();
+    const { handleFlightSearch } = useFlightSearch();
 
     // ─── Loading ─────────────────────────────────────────────────────
 
@@ -166,7 +168,7 @@ export default function FlightBookContent() {
                         Your card has <strong>not</strong> been charged. Please try a different flight or date.
                     </p>
                     <button
-                        onClick={() => router.push('/flights/search')}
+                        onClick={handleFlightSearch}
                         className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors"
                     >
                         Search Again

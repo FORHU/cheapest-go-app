@@ -29,7 +29,7 @@ declare const Deno: any;
 
 import type { FlightProvider } from '../_shared/types.ts';
 import { FlightProvider as FP } from '../_shared/types.ts';
-import { revalidateFare, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { revalidateFare, revalidateFareV2, MystiflyError } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyV1Policy, normalizeMystiflyV2Policy } from '../_shared/farePolicy.ts';
 import type { NormalizedFarePolicy } from '../_shared/types.ts';
 
@@ -203,8 +203,9 @@ async function revalidateMystifly(
         };
     }
 
-    const raw = await revalidateFare(traceId, sessionId, conversationId);
-
+    const raw = body.provider === 'mystifly_v2'
+        ? await revalidateFareV2(traceId, sessionId, conversationId)
+        : await revalidateFare(traceId, sessionId, conversationId);
 
     // ── Handle failure / unavailable ──
     if (!raw.Success) {
@@ -228,40 +229,63 @@ async function revalidateMystifly(
     const revalData = raw.Data ?? {};
     const priceChanged = revalData.PriceChanged === true;
 
-    const itinerary = revalData.FareItinerary ?? revalData;
-    const fareInfo = itinerary.AirItineraryFareInfo ?? revalData;
+    // Mystifly Sandbox occasionally uses 'Itinerary' or an array 'PricedItineraries' instead of 'FareItinerary' when PriceChanged is true.
+    const itinerary = revalData.FareItinerary ?? revalData.Itinerary ??
+        (revalData.PricedItineraries && revalData.PricedItineraries.length > 0 ? revalData.PricedItineraries[0] : revalData);
+
+    const fareInfo = itinerary.AirItineraryFareInfo ?? itinerary.AirItineraryPricingInfo ?? revalData;
     const itinFare = fareInfo.ItinTotalFare;
 
-    const currency: string = itinFare?.TotalFare?.CurrencyCode ?? body.flightPayload.currency ?? 'USD';
-    const newPrice = Number(itinFare?.TotalFare?.Amount) || 0;
-    const baseFare = Number(itinFare?.BaseFare?.Amount) || 0;
-    const taxes = Number(itinFare?.TotalTax?.Amount) || 0;
+    let currency: string;
+    let newPrice = 0;
+    let baseFare = 0;
+    let taxes = 0;
+    let pricePerAdult = 0;
 
-    // Per-adult price
-    let pricePerAdult = newPrice;
-    const fareBreakdown: any[] = fareInfo.FareBreakdown ?? [];
-    for (const fb of fareBreakdown) {
-        if (fb?.PassengerTypeQuantity?.Code === 'ADT') {
-            pricePerAdult = Number(fb?.PassengerFare?.TotalFare?.Amount) || newPrice;
-            break;
-        }
-    }
-
-    // Updated traceId if FareSourceCode changed
-    const newTraceId: string | undefined =
-        fareInfo.FareSourceCode ?? revalData.FareSourceCode ?? traceId;
-
-    // Extract fresh policy from the fresher revalidation response
-    const freshItinerary = revalData.FareItinerary ?? revalData;
+    let newTraceId = traceId;
     let freshFarePolicy: NormalizedFarePolicy;
 
-    if (body.provider === 'mystifly_v2') {
+    // V2 Pricing Structure (FlightFaresList)
+    if (body.provider === 'mystifly_v2' && (revalData.FlightFaresList ?? []).length > 0) {
+        const fare = revalData.FlightFaresList[0];
+        currency = fare.Currency ?? body.flightPayload.currency ?? 'USD';
+        const passengerFares: any[] = fare.PassengerFare ?? [];
+        for (const pf of passengerFares) {
+            const paxTotal = parseFloat(pf.TotalFare) || 0;
+            const paxBase = parseFloat(pf.BaseFare) || 0;
+            const qty = Number(pf.Quantity) || 1;
+            newPrice += paxTotal * qty;
+            baseFare += paxBase * qty;
+            if (pf.PaxType === 'ADT') pricePerAdult = paxTotal;
+        }
+        if (pricePerAdult === 0) pricePerAdult = newPrice;
+        taxes = Math.max(0, newPrice - baseFare);
+
+        newTraceId = fare.FareSourceCode ?? revalData.FareSourceCode ?? traceId;
         freshFarePolicy = {
-            ...normalizeMystiflyV2Policy(freshItinerary),
+            ...normalizeMystiflyV2Policy(fare),
             policyVersion: 'revalidated',
             policySource: 'mystifly_v2',
         };
     } else {
+        // V1 Pricing Structure
+        currency = itinFare?.TotalFare?.CurrencyCode ?? body.flightPayload.currency ?? 'USD';
+        newPrice = Number(itinFare?.TotalFare?.Amount) || 0;
+        baseFare = Number(itinFare?.BaseFare?.Amount) || 0;
+        taxes = Number(itinFare?.TotalTax?.Amount) || 0;
+
+        pricePerAdult = newPrice;
+        const fareBreakdown: any[] = fareInfo.FareBreakdown ?? [];
+        for (const fb of fareBreakdown) {
+            if (fb?.PassengerTypeQuantity?.Code === 'ADT') {
+                pricePerAdult = Number(fb?.PassengerFare?.TotalFare?.Amount) || newPrice;
+                break;
+            }
+        }
+
+        newTraceId = fareInfo.FareSourceCode ?? revalData.FareSourceCode ?? traceId;
+        const freshItinerary = revalData.FareItinerary ?? revalData.Itinerary ?? revalData;
+
         freshFarePolicy = {
             ...normalizeMystiflyV1Policy(freshItinerary),
             policyVersion: 'revalidated',
@@ -278,6 +302,7 @@ async function revalidateMystifly(
         newPrice,
         seatsAvailable: true,
         provider: body.provider,
+        debugRaw: revalData,
         validatedFlight: {
             price: newPrice,
             baseFare,

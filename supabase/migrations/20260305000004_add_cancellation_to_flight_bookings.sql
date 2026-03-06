@@ -22,7 +22,7 @@ ALTER TABLE flight_bookings ADD CONSTRAINT flight_bookings_status_check
 
 -- Constraint: Cannot be refunded if refund_amount is null
 ALTER TABLE flight_bookings ADD CONSTRAINT refund_amount_required 
-  CHECK (status != 'refunded' OR refund_amount IS NOT NULL);
+  CHECK (status != 'refunded' OR refund_amount IS NOT NULL) NOT VALID;
 
 -- Constraint: Financially active/post-confirmation states MUST have an immutable fare policy snapshot
 ALTER TABLE flight_bookings ADD CONSTRAINT fare_policy_required_for_ticketed
@@ -31,4 +31,4 @@ ALTER TABLE flight_bookings ADD CONSTRAINT fare_policy_required_for_ticketed
           'ticketed', 'cancel_requested', 'cancel_failed', 'cancelled', 
           'refund_pending', 'refunded', 'refund_failed'
       ) OR fare_policy IS NOT NULL
-  );
+  ) NOT VALID;

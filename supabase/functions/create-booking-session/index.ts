@@ -208,10 +208,13 @@ Deno.serve(async (req: Request) => {
                 ...(body.idempotencyKey ? { idempotency_key: body.idempotencyKey } : {}),
                 // Fare policy — indicative at this stage, locked=false
                 ...(body.farePolicy ? {
-                    fare_policy: { ...body.farePolicy, policyVersion: 'search' },
+                    fare_policy: {
+                        ...body.farePolicy,
+                        policyVersion: body.farePolicy.policyVersion === 'revalidated' ? 'revalidated' : 'search'
+                    },
                     policy_source: body.farePolicy.policySource ?? null,
-                    policy_version: 'search',
-                    policy_locked: false,
+                    policy_version: body.farePolicy.policyVersion === 'revalidated' ? 'revalidated' : 'search',
+                    policy_locked: body.farePolicy.policyVersion === 'revalidated',
                 } : { policy_locked: false }),
             });
 

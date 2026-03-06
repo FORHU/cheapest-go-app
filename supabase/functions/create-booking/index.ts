@@ -473,6 +473,7 @@ Deno.serve(async (req: Request) => {
                 ),
                 ...(result.providerOrderId ? { provider_order_id: result.providerOrderId } : {}),
                 session_id: sessionId,
+                fare_policy: bs.fare_policy || null,
             })
             .select('id')
             .single();

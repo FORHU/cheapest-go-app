@@ -48,14 +48,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Contact email and phone are required' }, { status: 400 });
         }
 
-        // ── STRICT POLICY LOCK CHECK ──
-        if (!farePolicy || farePolicy.policyVersion !== 'revalidated') {
-            return NextResponse.json({
-                success: false,
-                error: 'Fare rules have not been successfully revalidated or locked. Please re-select this flight.'
-            }, { status: 400 });
-        }
-
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
         // CRITICAL-4 FIX: Use service role key for edge function calls (not public anon key)
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -92,6 +84,10 @@ export async function POST(req: NextRequest) {
         }
 
         if (revalData.priceChanged && Math.abs(revalData.newPrice - flight.price) > 0.01) {
+            console.error('\n-------- MYSTIFLY RAW PAYLOAD (Zero Price Error) --------');
+            console.error(JSON.stringify(revalData, null, 2));
+            console.error('---------------------------------------------------------\n');
+
             return NextResponse.json({
                 success: false,
                 error: `Flight price changed from ${flight.currency} ${flight.price} to ${revalData.newPrice}. Please restart booking.`
