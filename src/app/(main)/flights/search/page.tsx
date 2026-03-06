@@ -3,7 +3,10 @@ import FlightSearchContent from './FlightSearchContent';
 
 export const dynamic = 'force-dynamic';
 
-export default function FlightSearchPage() {
+export default async function FlightSearchPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+    // Next.js 15+ searchParams is a Promise
+    const resolvedSearchParams = await searchParams;
+
     return (
         <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center">
@@ -13,7 +16,7 @@ export default function FlightSearchPage() {
                 </div>
             </div>
         }>
-            <FlightSearchContent />
+            <FlightSearchContent serverSearchParams={resolvedSearchParams} />
         </Suspense>
     );
 }
