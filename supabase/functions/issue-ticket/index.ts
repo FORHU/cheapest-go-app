@@ -5,7 +5,7 @@
  *
  * Issues an airline e-ticket for a confirmed booking.
  *   1. Retrieves the booking from flight_bookings
- *   2. Calls Mystifly or Amadeus ticketing endpoint
+ *   2. Calls Mystifly or Duffel ticketing endpoint
  *   3. Updates booking status to "ticketed"
  *   4. Saves e-ticket numbers to passengers
  *
@@ -46,7 +46,7 @@ interface FlightBooking {
     provider: 'mystifly' | 'duffel';
     total_price: number;
     status: string;
-    amadeus_order_id?: string;
+    provider_order_id?: string;
 }
 
 interface TicketResult {
@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
         // ── 1. Get Booking from Database ──
         const { data: booking, error: fetchError } = await supabase
             .from('flight_bookings')
-            .select('id, user_id, pnr, provider, total_price, status, amadeus_order_id')
+            .select('id, user_id, pnr, provider, total_price, status, provider_order_id')
             .eq('id', bookingId)
             .single();
 
@@ -127,8 +127,8 @@ Deno.serve(async (req: Request) => {
         if (fb.provider === 'mystifly') {
             result = await ticketWithMystifly(fb.pnr);
         } else if (fb.provider === 'duffel') {
-            // Duffel orders are retrieved by their order ID, which we saved in amadeus_order_id column
-            result = await ticketWithDuffel(fb.amadeus_order_id ?? fb.pnr);
+            // Duffel orders are retrieved by their order ID, which we saved in provider_order_id column
+            result = await ticketWithDuffel(fb.provider_order_id ?? fb.pnr);
         } else {
             return jsonResponse(corsHeaders,
                 { success: false, error: `Unknown provider: ${fb.provider}` },

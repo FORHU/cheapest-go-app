@@ -25,7 +25,7 @@ export interface UseSearchModuleReturn {
     isSearching: boolean;
 
     // Derived
-    activeDropdown: 'destination' | 'dates' | 'travelers' | 'flight-origin' | 'flight-destination' | 'flight-dates' | 'flight-dates-depart' | 'flight-dates-return' | 'flight-passengers' | null;
+    activeDropdown: string | null;
 
     // Actions
     setDestinationQuery: (query: string) => void;
@@ -36,7 +36,7 @@ export interface UseSearchModuleReturn {
     setAdults: (count: number) => void;
     setChildren: (count: number) => void;
     setRooms: (count: number) => void;
-    setActiveDropdown: (dropdown: 'destination' | 'dates' | 'travelers' | 'flight-origin' | 'flight-destination' | 'flight-dates' | 'flight-dates-depart' | 'flight-dates-return' | 'flight-passengers' | null) => void;
+    setActiveDropdown: (dropdown: string | null) => void;
 
     // Search Action
     handleSearch: () => void;

@@ -2,8 +2,8 @@
 
 export enum FlightProvider {
     MYSTIFLY = 'mystifly',
-    MYSTIFLY_V2 = 'mystifly_v2', // Added for v2
     DUFFEL = 'duffel',
+    MYSTIFLY_V2 = 'mystifly_v2'
 }
 
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
@@ -30,6 +30,33 @@ export type ProviderErrorCode =
     | 'TICKETING_FAILED'
     | 'PROVIDER_ERROR'
     | 'NETWORK_ERROR';
+
+// ═════════════════════════════════════════════════════════════════════
+//  FARE POLICY — normalized cancellation/change policy model
+// ═════════════════════════════════════════════════════════════════════
+
+/**
+ * Normalized fare policy returned by both search and revalidation.
+ *
+ * policyVersion:
+ *   'search'      → indicative only, sourced during flight search
+ *   'revalidated' → locked, confirmed just before payment
+ *
+ * Do NOT show "Free cancellation" when refundPenaltyAmount is null.
+ * null means "refundable but penalty amount unknown" → show "Refundable (fees may apply)"
+ */
+export interface NormalizedFarePolicy {
+    isRefundable: boolean;
+    isChangeable: boolean;
+    refundPenaltyAmount?: number | null;   // null = may apply, amount unknown
+    refundPenaltyCurrency?: string | null;
+    changePenaltyAmount?: number | null;
+    changePenaltyCurrency?: string | null;
+    /** 'search' = indicative only. 'revalidated' = locked before payment. */
+    policyVersion: 'search' | 'revalidated';
+    policySource: 'duffel' | 'mystifly_v1' | 'mystifly_v2';
+    rawSupplierPolicy?: unknown;
+}
 
 // ═════════════════════════════════════════════════════════════════════
 //  NORMALIZED FLIGHT — the unified model returned to the frontend
@@ -87,7 +114,10 @@ export interface NormalizedFlight {
     // ── Fare Attributes ─────────────────────────────────────────────
 
     cabinClass: CabinClass;
+    /** @deprecated Use farePolicy.isRefundable instead. Kept for backwards compat. */
     refundable: boolean;
+    /** Normalized fare policy with penalty details. policyVersion='search' at this stage. */
+    farePolicy?: NormalizedFarePolicy;
     seatsRemaining?: number;
     validatingAirline?: string;
     lastTicketDate?: string;
@@ -106,6 +136,7 @@ export interface NormalizedFlight {
     /** Raw provider offer for booking (not displayed, passed through to booking API) */
     _rawOffer?: unknown;
 }
+
 
 // ═════════════════════════════════════════════════════════════════════
 //  SEARCH
@@ -176,6 +207,8 @@ export interface RevalidateResponse {
     taxes: number;
     priceChanged: boolean;
     traceId?: string;
+    farePolicy?: NormalizedFarePolicy;
+    revalidatedAt?: string; // ISO string representing exact time of snapshot
     error?: string;
 }
 
@@ -289,23 +322,6 @@ export interface MystiflyBookResponse {
     };
 }
 
-// ── Amadeus ─────────────────────────────────────────────────────────
-
-export interface AmadeusTokenResponse {
-    access_token: string;
-    token_type: string;
-    expires_in: number;
-}
-
-export interface AmadeusSearchResponse {
-    meta?: { count: number };
-    data?: unknown[];
-    dictionaries?: {
-        carriers?: Record<string, string>;
-        aircraft?: Record<string, string>;
-        locations?: Record<string, { cityCode: string; countryCode: string }>;
-    };
-}
 
 // ═════════════════════════════════════════════════════════════════════
 //  ERROR
@@ -332,7 +348,7 @@ export function formatDuration(minutes: number): string {
     if (minutes <= 0) return '0m';
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    if (h === 0) return `${m}m`;
-    if (m === 0) return `${h}h`;
-    return `${h}h ${m}m`;
+    if (h === 0) return `${m} m`;
+    if (m === 0) return `${h} h`;
+    return `${h}h ${m} m`;
 }
