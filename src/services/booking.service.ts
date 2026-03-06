@@ -248,8 +248,14 @@ export interface FlightBookingRecord {
   total_price: number;
   currency?: string;
   trip_type?: 'one-way' | 'round-trip' | 'multi-city';
-  status: 'booked' | 'pnr_created' | 'awaiting_ticket' | 'ticketed' | 'cancelled' | 'failed';
+  status: 'booked' | 'pnr_created' | 'awaiting_ticket' | 'ticketed' | 'failed' | 'cancel_requested' | 'cancelled' | 'cancel_failed' | 'refund_pending' | 'refund_failed' | 'refunded';
   created_at: string;
+
+  fare_policy?: any;
+  cancellation_log?: any[];
+  refund_amount?: number;
+  refund_penalty_amount?: number;
+  refund_currency?: string;
 
   // Joined relation fields
   flight_segments?: FlightSegmentRecord[];
