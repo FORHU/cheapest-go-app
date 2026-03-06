@@ -28,7 +28,12 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 declare const Deno: any;
 
 import type { FlightProvider } from '../_shared/types.ts';
+import { FlightProvider as FP } from '../_shared/types.ts';
 import { revalidateFare, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { normalizeMystiflyV1Policy, normalizeMystiflyV2Policy } from '../_shared/farePolicy.ts';
+import type { NormalizedFarePolicy } from '../_shared/types.ts';
+
+
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
 
@@ -58,6 +63,7 @@ interface RevalidateBody {
 }
 
 interface RevalidateResult {
+    [key: string]: unknown; // index signature for jsonResponse compat
     success: boolean;
     priceChanged: boolean;
     oldPrice: number;
@@ -72,6 +78,8 @@ interface RevalidateResult {
         pricePerAdult: number;
         traceId?: string;
     };
+    /** Locked fare policy with policyVersion='revalidated'. */
+    farePolicy?: NormalizedFarePolicy;
     error?: string;
     durationMs: number;
 }
@@ -115,7 +123,18 @@ Deno.serve(async (req: Request) => {
         if (body.provider === 'mystifly' || body.provider === 'mystifly_v2') {
             result = await revalidateMystifly(body, oldPrice, startMs);
         } else {
-            // Duffel revalidation to be implemented if needed, currently bypasses
+            // Duffel — re-read policy from the stored flight offer in the booking session.
+            // NOTE: Duffel order creation may return updated conditions; callers should
+            // re-extract policy from the Order response and overwrite this if changed.
+            const storedFlight = body.flightPayload?.flight as any;
+            let farePolicy: NormalizedFarePolicy | undefined;
+            if (storedFlight?.conditions) {
+                const { normalizeDuffelPolicy } = await import('../_shared/farePolicy.ts');
+                farePolicy = { ...normalizeDuffelPolicy(storedFlight), policyVersion: 'revalidated', policySource: 'duffel' };
+            }
+
+            const nowIso = new Date().toISOString();
+
             result = {
                 success: true,
                 priceChanged: false,
@@ -124,8 +143,10 @@ Deno.serve(async (req: Request) => {
                 seatsAvailable: true,
                 provider: body.provider,
                 validatedFlight: { price: oldPrice, baseFare: oldPrice, taxes: 0, currency: body.flightPayload.currency || 'USD', pricePerAdult: oldPrice },
+                farePolicy,
+                revalidatedAt: nowIso,
                 durationMs: Date.now() - startMs,
-            }
+            };
         }
 
         console.log(`[revalidate-flight] Done: available=${result.seatsAvailable}, priceChanged=${result.priceChanged}, new=${result.newPrice} in ${result.durationMs}ms`);
@@ -140,7 +161,7 @@ Deno.serve(async (req: Request) => {
             oldPrice: 0,
             newPrice: 0,
             seatsAvailable: false,
-            provider: 'mystifly',
+            provider: FP.MYSTIFLY,
             validatedFlight: { price: 0, baseFare: 0, taxes: 0, currency: 'USD', pricePerAdult: 0 },
             error: err.message || 'Revalidation failed',
             durationMs: Date.now() - startMs,
@@ -175,7 +196,7 @@ async function revalidateMystifly(
             oldPrice,
             newPrice: 0,
             seatsAvailable: false,
-            provider: 'mystifly',
+            provider: FP.MYSTIFLY,
             validatedFlight: { price: 0, baseFare: 0, taxes: 0, currency: 'USD', pricePerAdult: 0 },
             error: 'traceId (fareSourceCode) is required for Mystifly revalidation',
             durationMs: Date.now() - startMs,
@@ -196,7 +217,7 @@ async function revalidateMystifly(
             oldPrice,
             newPrice: 0,
             seatsAvailable: false,
-            provider: 'mystifly',
+            provider: FP.MYSTIFLY,
             validatedFlight: { price: 0, baseFare: 0, taxes: 0, currency: 'USD', pricePerAdult: 0 },
             error: isUnavailable ? 'Flight no longer available' : msg,
             durationMs: Date.now() - startMs,
@@ -230,13 +251,33 @@ async function revalidateMystifly(
     const newTraceId: string | undefined =
         fareInfo.FareSourceCode ?? revalData.FareSourceCode ?? traceId;
 
+    // Extract fresh policy from the fresher revalidation response
+    const freshItinerary = revalData.FareItinerary ?? revalData;
+    let freshFarePolicy: NormalizedFarePolicy;
+
+    if (body.provider === 'mystifly_v2') {
+        freshFarePolicy = {
+            ...normalizeMystiflyV2Policy(freshItinerary),
+            policyVersion: 'revalidated',
+            policySource: 'mystifly_v2',
+        };
+    } else {
+        freshFarePolicy = {
+            ...normalizeMystiflyV1Policy(freshItinerary),
+            policyVersion: 'revalidated',
+            policySource: 'mystifly_v1',
+        };
+    }
+
+    const nowIso = new Date().toISOString();
+
     return {
         success: true,
         priceChanged: priceChanged || Math.abs(newPrice - oldPrice) > 0.01,
         oldPrice,
         newPrice,
         seatsAvailable: true,
-        provider: 'mystifly',
+        provider: body.provider,
         validatedFlight: {
             price: newPrice,
             baseFare,
@@ -245,6 +286,8 @@ async function revalidateMystifly(
             pricePerAdult,
             traceId: newTraceId,
         },
+        farePolicy: freshFarePolicy,
+        revalidatedAt: nowIso,
         durationMs: Date.now() - startMs,
     };
 }

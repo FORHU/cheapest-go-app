@@ -95,6 +95,7 @@ interface BookingSession {
     expires_at: string;
     payment_intent_id?: string | null;  // Set by /api/flights/book after PaymentIntent creation
     capture_method?: string;
+    fare_policy?: Record<string, unknown> | null;
 }
 
 interface ProviderBookingResult {
@@ -413,6 +414,7 @@ Deno.serve(async (req: Request) => {
                                 : bs.flight.segments?.length > 2 ? 'multi-city' : 'one-way'
                     ),
                     session_id: sessionId,
+                    fare_policy: bs.fare_policy || null,
                 })
                 .select('id')
                 .single();
@@ -602,7 +604,7 @@ async function bookWithMystifly(
             const newCode = pricingInfo?.FareSourceCode || pricedItin.FareSourceCode;
             if (newCode) {
                 fareSourceCode = newCode;
-                console.log('[create-booking] Refreshed FareSourceCode from PricedItineraries:', fareSourceCode.slice(0, 50) + '...');
+                console.log('[create-booking] Refreshed FareSourceCode from PricedItineraries:', fareSourceCode!.slice(0, 50) + '...');
             }
         }
     } else {
@@ -619,7 +621,7 @@ async function bookWithMystifly(
             const newCode = itin.FareSourceCode || (itin.AirItineraryFareInfo as any)?.FareSourceCode;
             if (newCode) {
                 fareSourceCode = newCode;
-                console.log('[create-booking] Refreshed FareSourceCode from FareItinerary:', fareSourceCode.slice(0, 50) + '...');
+                console.log('[create-booking] Refreshed FareSourceCode from FareItinerary:', fareSourceCode!.slice(0, 50) + '...');
             }
         } else {
             console.warn('[create-booking] V1 Revalidation structure unexpected. Keys:', Object.keys(itin));

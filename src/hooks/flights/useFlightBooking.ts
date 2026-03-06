@@ -65,11 +65,72 @@ export function useFlightBooking() {
             router.replace('/');
             return;
         }
+
+        let parsedOffer: FlightOffer;
         try {
-            setOffer(JSON.parse(raw));
+            parsedOffer = JSON.parse(raw);
         } catch {
             router.replace('/');
+            return;
         }
+
+        if (parsedOffer.farePolicy?.policyVersion === 'revalidated') {
+            setOffer(parsedOffer);
+            return;
+        }
+
+        // Auto-revalidate the flight
+        let isMounted = true;
+        const revalidate = async () => {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+
+            try {
+                const { data, error } = await supabase.functions.invoke('revalidate-flight', {
+                    body: {
+                        provider: parsedOffer.provider,
+                        userId: user?.id || 'anonymous',
+                        flightPayload: {
+                            oldPrice: parsedOffer.price.total,
+                            currency: parsedOffer.price.currency,
+                            traceId: parsedOffer.provider.startsWith('mystifly') ? parsedOffer.offerId : undefined,
+                            flight: parsedOffer.provider === 'duffel'
+                                ? ((parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
+                                : undefined,
+                        }
+                    }
+                });
+
+                if (error) throw error;
+                if (!data.success) throw new Error(data.error || 'Revalidation failed');
+
+                const revalidatedOffer = {
+                    ...parsedOffer,
+                    price: {
+                        ...parsedOffer.price,
+                        total: data.newPrice || parsedOffer.price.total,
+                    },
+                    farePolicy: data.farePolicy,
+                    policyChanged: data.priceChanged || (JSON.stringify(parsedOffer.farePolicy) !== JSON.stringify(data.farePolicy)),
+                };
+
+                if (isMounted) {
+                    sessionStorage.setItem('selectedFlight', JSON.stringify(revalidatedOffer));
+                    setOffer(revalidatedOffer);
+                }
+            } catch (err) {
+                console.error('[useFlightBooking] Revalidation failed:', err);
+                if (isMounted) {
+                    setErrorMsg('This flight is no longer available or its fare rules have expired. Please search again.');
+                    setStep('error');
+                    setOffer(parsedOffer); // Set old offer just so the error UI renders
+                }
+            }
+        };
+
+        revalidate();
+
+        return () => { isMounted = false; };
     }, [router]);
 
     const updatePassenger = (idx: number, field: keyof FlightPassengerForm, value: string) => {
@@ -135,6 +196,7 @@ export function useFlightBooking() {
                     passengers,
                     contact,
                     idempotencyKey: idempotencyKeyRef.current,
+                    farePolicy: offer.farePolicy,
                 }),
             });
 

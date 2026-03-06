@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plane, Clock, ArrowRight, Luggage, AlertCircle, ChevronDown, ChevronUp, Shield } from 'lucide-react';
-import type { FlightOffer, FlightSegmentDetail } from '@/lib/flights/types';
+import { Plane, Clock, ArrowRight, Luggage, AlertCircle, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign } from 'lucide-react';
+import type { FlightOffer, FlightSegmentDetail, FarePolicy } from '@/lib/flights/types';
 import { getAirlineName } from '@/lib/flights/types';
+
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -205,12 +206,42 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                 {Number(offer.baggage.checkedBags || 0) > 0 ? `${offer.baggage.checkedBags} bag(s)` : 'No bag'}
                             </span>
                         )}
-                        {offer.refundable && (
-                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
-                                <Shield className="w-2 h-2 lg:w-3 lg:h-3" />
-                                Refundable
-                            </span>
-                        )}
+                        {/* ─── Tristate refundability badge (always visible) ─── */}
+                        {(() => {
+                            const fp = offer.farePolicy;
+                            // Use farePolicy if available, fall back to legacy refundable bool
+                            const isRefundable = fp ? fp.isRefundable : offer.refundable;
+                            const penalty = fp?.refundPenaltyAmount;
+
+                            if (isRefundable && penalty === 0) {
+                                // 🟢 Free cancellation
+                                return (
+                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
+                                        <Shield className="w-2 h-2 lg:w-3 lg:h-3" />
+                                        Free cancellation
+                                    </span>
+                                );
+                            } else if (isRefundable) {
+                                // 🟡 Refundable with fee OR unknown penalty amount
+                                const feeLabel = penalty != null && penalty > 0
+                                    ? `Refundable (fee: ${fp?.refundPenaltyCurrency ?? ''}${penalty})`
+                                    : 'Refundable (fees may apply)';
+                                return (
+                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400">
+                                        <BadgeDollarSign className="w-2 h-2 lg:w-3 lg:h-3" />
+                                        {feeLabel}
+                                    </span>
+                                );
+                            } else {
+                                // 🔴 Non-refundable
+                                return (
+                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400">
+                                        <XCircle className="w-2 h-2 lg:w-3 lg:h-3" />
+                                        Non-refundable
+                                    </span>
+                                );
+                            }
+                        })()}
                         <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 capitalize">
                             {(primary.cabinClass || 'economy').replace('_', ' ')}
                         </span>

@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { provider, flight, passengers, contact, idempotencyKey } = body;
+        const { provider, flight, passengers, contact, idempotencyKey, farePolicy } = body;
 
         // Use server-verified user ID, never trust client-supplied userId
         const userId = user.id;
@@ -48,6 +48,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Contact email and phone are required' }, { status: 400 });
         }
 
+        // ── STRICT POLICY LOCK CHECK ──
+        if (!farePolicy || farePolicy.policyVersion !== 'revalidated') {
+            return NextResponse.json({
+                success: false,
+                error: 'Fare rules have not been successfully revalidated or locked. Please re-select this flight.'
+            }, { status: 400 });
+        }
+
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
         // CRITICAL-4 FIX: Use service role key for edge function calls (not public anon key)
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -60,6 +68,38 @@ export async function POST(req: NextRequest) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${serviceRoleKey}`,
         };
+
+        // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
+        // Never trust the frontend's fare rules. Revalidate immediately 
+        // before saving the session to enforce price and availability.
+        const revalRes = await fetch(`${supabaseUrl}/functions/v1/revalidate-flight`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                userId,
+                provider,
+                flightPayload: { ...flight, oldPrice: flight.price },
+            }),
+        });
+
+        const revalData = await revalRes.json();
+
+        if (!revalData.success || !revalData.seatsAvailable) {
+            return NextResponse.json({
+                success: false,
+                error: revalData.error || 'This flight is no longer available from the supplier. Please return to search.'
+            }, { status: 409 });
+        }
+
+        if (revalData.priceChanged && Math.abs(revalData.newPrice - flight.price) > 0.01) {
+            return NextResponse.json({
+                success: false,
+                error: `Flight price changed from ${flight.currency} ${flight.price} to ${revalData.newPrice}. Please restart booking.`
+            }, { status: 409 });
+        }
+
+        // Overwrite frontend policy with the immutable server-validated snapshot
+        const serverFarePolicy = revalData.farePolicy || farePolicy;
 
         // CRITICAL-2 FIX: Strip rawOffer from flight data ONLY FOR MYSTIFLY
         const sanitizedFlight = { ...flight };
@@ -81,6 +121,7 @@ export async function POST(req: NextRequest) {
                 passengers,
                 contact,
                 idempotencyKey: idempotencyKey || undefined,
+                farePolicy: serverFarePolicy,
             }),
         });
 

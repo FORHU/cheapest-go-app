@@ -13,6 +13,8 @@ import type {
     CabinClass,
 } from './types.ts';
 import { formatDuration } from './types.ts';
+import { normalizeDuffelPolicy, normalizeMystiflyV1Policy, normalizeMystiflyV2Policy } from './farePolicy.ts';
+
 
 // ─── Duffel Normalization ──────────────────────────────────────────
 
@@ -90,6 +92,8 @@ export function normalizeDuffelOffer(
         const airlineCode = rawOffer.owner?.iata_code ?? firstSeg.airline;
         const airlineName = rawOffer.owner?.name ?? firstSeg.airlineName;
 
+        const farePol = normalizeDuffelPolicy(rawOffer);
+
         return {
             id: `duffel_${rawOffer.id}`,
             provider: FlightProvider.DUFFEL,
@@ -114,7 +118,8 @@ export function normalizeDuffelOffer(
             segments: allSegments,
 
             cabinClass: primaryCabinClass as CabinClass,
-            refundable: rawOffer.conditions?.refund_before_departure?.allowed === true,
+            refundable: farePol.isRefundable,
+            farePolicy: { ...farePol, policyVersion: 'search', policySource: 'duffel' },
 
             // Seats remaining not always provided by Duffel
             seatsRemaining: undefined,
@@ -199,9 +204,6 @@ export function normalizeMystiflyOffer(
             }
         }
 
-        // Refundable from IsRefundable or FareType
-        const refundable = itinerary.IsRefundable === true
-            || itinerary.IsRefundable === 'Yes';
 
         // ── Segments ──
         const originDestOptions: any[] = itinerary.OriginDestinationOptions ?? [];
@@ -296,6 +298,8 @@ export function normalizeMystiflyOffer(
         _mystiflyCounter++;
         const id = `mystifly_${Date.now()}_${_mystiflyCounter}`;
 
+        const farePol = normalizeMystiflyV1Policy(itinerary);
+
         return {
             id,
             provider: FlightProvider.MYSTIFLY,
@@ -320,7 +324,8 @@ export function normalizeMystiflyOffer(
             segments: allSegments,
 
             cabinClass: firstSeg.cabinClass,
-            refundable,
+            refundable: farePol.isRefundable,
+            farePolicy: { ...farePol, policyVersion: 'search', policySource: 'mystifly_v1' },
             seatsRemaining,
 
             checkedBags,
@@ -467,6 +472,8 @@ function normalizeMystiflyV2(
         _mystiflyCounter++;
         const id = `mystifly_${Date.now()}_${_mystiflyCounter}`;
 
+        const farePol = normalizeMystiflyV2Policy(fare);
+
         return {
             id,
             provider: FlightProvider.MYSTIFLY_V2,
@@ -487,7 +494,8 @@ function normalizeMystiflyV2(
             pricePerAdult,
             segments: allSegments,
             cabinClass: firstSeg.cabinClass,
-            refundable: fare.FareType === 'Public',
+            refundable: farePol.isRefundable,
+            farePolicy: { ...farePol, policyVersion: 'search', policySource: 'mystifly_v2' },
             checkedBags: checkedBags || undefined,
             cabinBag: cabinBag || undefined,
             brandName: brandName || fare.FareType,
