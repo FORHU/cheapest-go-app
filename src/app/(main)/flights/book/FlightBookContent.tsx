@@ -2,14 +2,90 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock } from 'lucide-react';
+import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw } from 'lucide-react';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
 import { formatTime, formatDuration, formatPrice } from '@/lib/flights/utils';
 import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
+import { useFlightSearch } from '@/hooks/search/useFlightSearch';
+import type { FarePolicy } from '@/lib/flights/types';
+
+// ─── Fare Policy Panel ───────────────────────────────────────────────
+
+interface FarePolicyPanelProps {
+    policy: FarePolicy;
+    policyChanged?: boolean;
+}
+
+function FarePolicyPanel({ policy, policyChanged }: FarePolicyPanelProps) {
+    const isRefundable = policy.isRefundable;
+    const penalty = policy.refundPenaltyAmount;
+    const isLocked = policy.policyVersion === 'revalidated';
+
+    let badge: React.ReactNode;
+    if (isRefundable && penalty === 0) {
+        badge = (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                <Shield className="w-3 h-3" /> Free cancellation
+            </span>
+        );
+    } else if (isRefundable) {
+        const feeLabel = penalty != null && penalty > 0
+            ? `Refundable (fee: ${policy.refundPenaltyCurrency ?? ''}${penalty})`
+            : 'Refundable (fees may apply)';
+        badge = (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
+                <BadgeDollarSign className="w-3 h-3" /> {feeLabel}
+            </span>
+        );
+    } else {
+        badge = (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
+                <XCircle className="w-3 h-3" /> Non-refundable
+            </span>
+        );
+    }
+
+    return (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 lg:p-5 mb-3 lg:mb-6 shadow-sm space-y-2">
+            {/* Policy downgrade warning */}
+            {policyChanged && (
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>
+                        <strong>Fare policy updated.</strong> The refundability of this fare has changed since you selected it. Please review before proceeding.
+                    </span>
+                </div>
+            )}
+            <div className="flex items-center justify-between">
+                <h3 className="text-xs lg:text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <RefreshCw className="w-3.5 h-3.5 text-indigo-500" />
+                    Fare Policy
+                </h3>
+                {isLocked && (
+                    <span className="text-[9px] lg:text-xs text-emerald-600 dark:text-emerald-400 font-medium">✓ Airline confirmed</span>
+                )}
+            </div>
+            <div className="flex flex-wrap gap-1.5 items-center">
+                {badge}
+                {policy.isChangeable && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400">
+                        Changes allowed
+                    </span>
+                )}
+            </div>
+            <p className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
+                {isLocked
+                    ? 'Final fare rules confirmed by airline during booking.'
+                    : 'Indicative only — final policy confirmed at payment stage.'}
+            </p>
+        </div>
+    );
+}
 
 // ─── Component ───────────────────────────────────────────────────────
+
 
 export default function FlightBookContent() {
     const {
@@ -29,6 +105,7 @@ export default function FlightBookContent() {
         setStep,
         pollForBooking,
     } = useFlightBooking();
+    const { handleFlightSearch } = useFlightSearch();
 
     // ─── Loading ─────────────────────────────────────────────────────
 
@@ -91,7 +168,7 @@ export default function FlightBookContent() {
                         Your card has <strong>not</strong> been charged. Please try a different flight or date.
                     </p>
                     <button
-                        onClick={() => router.push('/flights/search')}
+                        onClick={handleFlightSearch}
                         className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors"
                     >
                         Search Again
@@ -297,6 +374,14 @@ export default function FlightBookContent() {
                         </div>
                     </div>
                 </div>
+
+                {/* Fare Policy Panel — shown from search-stage policy, updated after revalidation */}
+                {offer.farePolicy && (
+                    <FarePolicyPanel
+                        policy={offer.farePolicy}
+                        policyChanged={(offer as any).policyChanged === true}
+                    />
+                )}
 
                 {/* Booking Flow: Passenger Form OR Payment Element */}
                 {step === 'payment' && clientSecret ? (

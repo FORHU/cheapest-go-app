@@ -32,6 +32,33 @@ export type ProviderErrorCode =
     | 'NETWORK_ERROR';
 
 // ═════════════════════════════════════════════════════════════════════
+//  FARE POLICY — normalized cancellation/change policy model
+// ═════════════════════════════════════════════════════════════════════
+
+/**
+ * Normalized fare policy returned by both search and revalidation.
+ *
+ * policyVersion:
+ *   'search'      → indicative only, sourced during flight search
+ *   'revalidated' → locked, confirmed just before payment
+ *
+ * Do NOT show "Free cancellation" when refundPenaltyAmount is null.
+ * null means "refundable but penalty amount unknown" → show "Refundable (fees may apply)"
+ */
+export interface NormalizedFarePolicy {
+    isRefundable: boolean;
+    isChangeable: boolean;
+    refundPenaltyAmount?: number | null;   // null = may apply, amount unknown
+    refundPenaltyCurrency?: string | null;
+    changePenaltyAmount?: number | null;
+    changePenaltyCurrency?: string | null;
+    /** 'search' = indicative only. 'revalidated' = locked before payment. */
+    policyVersion: 'search' | 'revalidated';
+    policySource: 'duffel' | 'mystifly_v1' | 'mystifly_v2';
+    rawSupplierPolicy?: unknown;
+}
+
+// ═════════════════════════════════════════════════════════════════════
 //  NORMALIZED FLIGHT — the unified model returned to the frontend
 // ═════════════════════════════════════════════════════════════════════
 
@@ -87,7 +114,10 @@ export interface NormalizedFlight {
     // ── Fare Attributes ─────────────────────────────────────────────
 
     cabinClass: CabinClass;
+    /** @deprecated Use farePolicy.isRefundable instead. Kept for backwards compat. */
     refundable: boolean;
+    /** Normalized fare policy with penalty details. policyVersion='search' at this stage. */
+    farePolicy?: NormalizedFarePolicy;
     seatsRemaining?: number;
     validatingAirline?: string;
     lastTicketDate?: string;
@@ -106,6 +136,7 @@ export interface NormalizedFlight {
     /** Raw provider offer for booking (not displayed, passed through to booking API) */
     _rawOffer?: unknown;
 }
+
 
 // ═════════════════════════════════════════════════════════════════════
 //  SEARCH
@@ -176,6 +207,8 @@ export interface RevalidateResponse {
     taxes: number;
     priceChanged: boolean;
     traceId?: string;
+    farePolicy?: NormalizedFarePolicy;
+    revalidatedAt?: string; // ISO string representing exact time of snapshot
     error?: string;
 }
 
