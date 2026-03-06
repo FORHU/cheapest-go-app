@@ -30,7 +30,7 @@ declare const Deno: any;
 import type { FlightProvider } from '../_shared/types.ts';
 import { FlightProvider as FP } from '../_shared/types.ts';
 import { revalidateFare, revalidateFareV2, MystiflyError } from '../_shared/mystiflyClient.ts';
-import { normalizeMystiflyV1Policy, normalizeMystiflyV2Policy } from '../_shared/farePolicy.ts';
+import { normalizeMystiflyV1Policy, normalizeMystiflyV2Policy, normalizeDuffelPolicy } from '../_shared/farePolicy.ts';
 import type { NormalizedFarePolicy } from '../_shared/types.ts';
 
 
@@ -129,7 +129,6 @@ Deno.serve(async (req: Request) => {
             const storedFlight = body.flightPayload?.flight as any;
             let farePolicy: NormalizedFarePolicy | undefined;
             if (storedFlight?.conditions) {
-                const { normalizeDuffelPolicy } = await import('../_shared/farePolicy.ts');
                 farePolicy = { ...normalizeDuffelPolicy(storedFlight), policyVersion: 'revalidated', policySource: 'duffel' };
             }
 
