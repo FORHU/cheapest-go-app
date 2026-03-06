@@ -23,10 +23,10 @@ interface SearchResult {
 
 // ─── Component ───────────────────────────────────────────────────────
 
-export default function FlightSearchContent() {
+export default function FlightSearchContent({ serverSearchParams }: { serverSearchParams?: { [key: string]: string | string[] | undefined } }) {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { userCurrency, setUserCurrency, setUserCountry } = useSearchStore(); // Modified: Replaced useUserCurrency with useSearchStore
+    const { userCurrency, setUserCurrency, setUserCountry } = useSearchStore();
 
     // SYNC: Ensure store matches URL on load/change
     useEffect(() => {
@@ -58,15 +58,23 @@ export default function FlightSearchContent() {
         setDisplayLimit(20);
     }, [sortMode, stopFilter, airlineFilter]);
 
-    // Parse search params
+    // Parse search params using robust SSR values first, falling back to client-side
     const searchRequest = useMemo((): FlightSearchRequest | null => {
-        const origin0 = searchParams?.get('origin0');
-        const dest0 = searchParams?.get('dest0');
-        const date0 = searchParams?.get('date0');
+        // Safe getter function to retrieve from either SSR or client hook
+        const getParam = (key: string): string | null => {
+            if (serverSearchParams && typeof serverSearchParams[key] === 'string') {
+                return serverSearchParams[key] as string;
+            }
+            return searchParams?.get(key);
+        };
+
+        const origin0 = getParam('origin0');
+        const dest0 = getParam('dest0');
+        const date0 = getParam('date0');
 
         if (!origin0 || !dest0 || !date0) return null;
 
-        const tripType = (searchParams?.get('tripType') || 'one-way') as 'one-way' | 'round-trip' | 'multi-city';
+        const tripType = (getParam('tripType') || 'one-way') as 'one-way' | 'round-trip' | 'multi-city';
         const segments = [{
             origin: origin0,
             destination: dest0,
@@ -74,7 +82,7 @@ export default function FlightSearchContent() {
         }];
 
         // Round-trip return segment
-        const date1 = searchParams?.get('date1');
+        const date1 = getParam('date1');
         if ((tripType === 'round-trip') && date1) {
             segments.push({
                 origin: dest0,
@@ -86,31 +94,31 @@ export default function FlightSearchContent() {
         // Multi-city additional segments
         if (tripType === 'multi-city') {
             let idx = 1;
-            while (searchParams?.get(`origin${idx}`) && searchParams?.get(`dest${idx}`) && searchParams?.get(`date${idx}`)) {
+            while (getParam(`origin${idx}`) && getParam(`dest${idx}`) && getParam(`date${idx}`)) {
                 segments.push({
-                    origin: searchParams?.get(`origin${idx}`)!,
-                    destination: searchParams?.get(`dest${idx}`)!,
-                    departureDate: searchParams?.get(`date${idx}`)!.split('T')[0],
+                    origin: getParam(`origin${idx}`)!,
+                    destination: getParam(`dest${idx}`)!,
+                    departureDate: getParam(`date${idx}`)!.split('T')[0],
                 });
                 idx++;
             }
         }
 
-        const urlCurrency = searchParams?.get('currency');
+        const urlCurrency = getParam('currency');
         const effectiveCurrency = urlCurrency || userCurrency || 'PHP';
 
         return {
             tripType,
             segments,
             passengers: {
-                adults: Number(searchParams?.get('adults')) || 1,
-                children: Number(searchParams?.get('children')) || 0,
-                infants: Number(searchParams?.get('infants')) || 0,
+                adults: Number(getParam('adults')) || 1,
+                children: Number(getParam('children')) || 0,
+                infants: Number(getParam('infants')) || 0,
             },
-            cabinClass: (searchParams?.get('cabin') as CabinClass) || 'economy',
+            cabinClass: (getParam('cabin') as CabinClass) || 'economy',
             currency: effectiveCurrency,
         };
-    }, [searchParams, userCurrency]);
+    }, [searchParams, serverSearchParams, userCurrency]);
 
     // Fetch results
     const fetchResults = useCallback(async () => {
