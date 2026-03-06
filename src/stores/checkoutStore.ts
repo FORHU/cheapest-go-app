@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 import { CheckoutFormData, BookingForType } from '@/components/checkout/types';
 import type { AppliedVoucher, AvailablePromo } from '@/types/voucher';
@@ -92,120 +93,138 @@ export interface CheckoutState {
     resetForm: () => void;
 }
 
-export const useCheckoutStore = create<CheckoutState>()((set, get) => ({
-    // Initial state
-    formData: { ...DEFAULT_FORM_DATA },
-    bookingFor: 'myself',
-    isWorkTravel: false,
-    specialRequests: '',
-    payeeFirstName: '',
-    payeeLastName: '',
-    phoneCountryCode: '+63',
-    selectedCurrency: 'PHP',
-    isSuccess: false,
-    emailSent: false,
-    formErrors: {},
+export const useCheckoutStore = create<CheckoutState>()(
+    persist(
+        (set, get) => ({
+            // Initial state
+            formData: { ...DEFAULT_FORM_DATA },
+            bookingFor: 'myself',
+            isWorkTravel: false,
+            specialRequests: '',
+            payeeFirstName: '',
+            payeeLastName: '',
+            phoneCountryCode: '+63',
+            selectedCurrency: 'PHP',
+            isSuccess: false,
+            emailSent: false,
+            formErrors: {},
 
-    // Voucher initial state
-    voucherCode: '',
-    appliedVoucher: null,
-    availablePromos: [],
-    voucherLoading: false,
-    voucherError: null,
-    promosLoading: false,
+            // Voucher initial state
+            voucherCode: '',
+            appliedVoucher: null,
+            availablePromos: [],
+            voucherLoading: false,
+            voucherError: null,
+            promosLoading: false,
 
-    // Form data actions
-    setFormData: (data) => set((state) => ({
-        formData: { ...state.formData, ...data }
-    })),
+            // Form data actions
+            setFormData: (data) => set((state) => ({
+                formData: { ...state.formData, ...data }
+            })),
 
-    setFormField: (name, value) => set((state) => ({
-        formData: { ...state.formData, [name]: value }
-    })),
+            setFormField: (name, value) => set((state) => ({
+                formData: { ...state.formData, [name]: value }
+            })),
 
-    // Booking options
-    setBookingFor: (value) => set({ bookingFor: value }),
-    setIsWorkTravel: (value) => set({ isWorkTravel: value }),
-    setSpecialRequests: (value) => set({ specialRequests: value }),
+            // Booking options
+            setBookingFor: (value) => set({ bookingFor: value }),
+            setIsWorkTravel: (value) => set({ isWorkTravel: value }),
+            setSpecialRequests: (value) => set({ specialRequests: value }),
 
-    // Payee info
-    setPayeeFirstName: (value) => set({ payeeFirstName: value }),
-    setPayeeLastName: (value) => set({ payeeLastName: value }),
+            // Payee info
+            setPayeeFirstName: (value) => set({ payeeFirstName: value }),
+            setPayeeLastName: (value) => set({ payeeLastName: value }),
 
-    // Phone/currency
-    setPhoneCountryCode: (value) => set({ phoneCountryCode: value }),
-    setSelectedCurrency: (value) => set({ selectedCurrency: value }),
+            // Phone/currency
+            setPhoneCountryCode: (value) => set({ phoneCountryCode: value }),
+            setSelectedCurrency: (value) => set({ selectedCurrency: value }),
 
-    // UI state
-    setIsSuccess: (value) => set({ isSuccess: value }),
-    setEmailSent: (value) => set({ emailSent: value }),
-    setFormErrors: (formErrors) => set({ formErrors }),
-    clearFormErrors: () => set({ formErrors: {} }),
+            // UI state
+            setIsSuccess: (value) => set({ isSuccess: value }),
+            setEmailSent: (value) => set({ emailSent: value }),
+            setFormErrors: (formErrors) => set({ formErrors }),
+            clearFormErrors: () => set({ formErrors: {} }),
 
-    // Voucher actions
-    setVoucherCode: (code) => set({ voucherCode: code, voucherError: null }),
-    setAppliedVoucher: (voucher) => set({ appliedVoucher: voucher, voucherError: null }),
-    setAvailablePromos: (promos) => set({ availablePromos: promos }),
-    setVoucherLoading: (loading) => set({ voucherLoading: loading }),
-    setVoucherError: (error) => set({ voucherError: error }),
-    setPromosLoading: (loading) => set({ promosLoading: loading }),
-    removeVoucher: () => set({
-        appliedVoucher: null,
-        voucherCode: '',
-        voucherError: null,
-    }),
+            // Voucher actions
+            setVoucherCode: (code) => set({ voucherCode: code, voucherError: null }),
+            setAppliedVoucher: (voucher) => set({ appliedVoucher: voucher, voucherError: null }),
+            setAvailablePromos: (promos) => set({ availablePromos: promos }),
+            setVoucherLoading: (loading) => set({ voucherLoading: loading }),
+            setVoucherError: (error) => set({ voucherError: error }),
+            setPromosLoading: (loading) => set({ promosLoading: loading }),
+            removeVoucher: () => set({
+                appliedVoucher: null,
+                voucherCode: '',
+                voucherError: null,
+            }),
 
-    // Composite actions
-    handleInputChange: (name, value) => {
-        const state = get();
+            // Composite actions
+            handleInputChange: (name, value) => {
+                const state = get();
 
-        // Update form field
-        if (name in state.formData) {
-            set((s) => ({
-                formData: { ...s.formData, [name]: value }
-            }));
+                // Update form field
+                if (name in state.formData) {
+                    set((s) => ({
+                        formData: { ...s.formData, [name]: value }
+                    }));
+                }
+
+                // Auto-switch currency based on billing country
+                if (name === 'cardCountry' && COUNTRY_CURRENCY_MAP[value]) {
+                    set({ selectedCurrency: COUNTRY_CURRENCY_MAP[value] });
+                }
+            },
+
+            autoFillFromUser: (user) => {
+                if (!user) return;
+
+                set((state) => ({
+                    formData: {
+                        ...state.formData,
+                        firstName: state.formData.firstName || user.firstName || '',
+                        lastName: state.formData.lastName || user.lastName || '',
+                        email: state.formData.email || user.email || '',
+                    }
+                }));
+            },
+
+            resetForm: () => set({
+                formData: { ...DEFAULT_FORM_DATA },
+                bookingFor: 'myself',
+                isWorkTravel: false,
+                specialRequests: '',
+                payeeFirstName: '',
+                payeeLastName: '',
+                phoneCountryCode: '+63',
+                selectedCurrency: 'PHP',
+                isSuccess: false,
+                emailSent: false,
+                formErrors: {},
+                // Reset voucher state too
+                voucherCode: '',
+                appliedVoucher: null,
+                availablePromos: [],
+                voucherLoading: false,
+                voucherError: null,
+                promosLoading: false,
+            }),
+        }),
+        {
+            name: 'hotel-checkout-storage',
+            storage: createJSONStorage(() => sessionStorage),
+            partialize: (state) => ({
+                formData: state.formData,
+                bookingFor: state.bookingFor,
+                isWorkTravel: state.isWorkTravel,
+                specialRequests: state.specialRequests,
+                payeeFirstName: state.payeeFirstName,
+                payeeLastName: state.payeeLastName,
+                phoneCountryCode: state.phoneCountryCode,
+                selectedCurrency: state.selectedCurrency,
+            }),
         }
-
-        // Auto-switch currency based on billing country
-        if (name === 'cardCountry' && COUNTRY_CURRENCY_MAP[value]) {
-            set({ selectedCurrency: COUNTRY_CURRENCY_MAP[value] });
-        }
-    },
-
-    autoFillFromUser: (user) => {
-        if (!user) return;
-
-        set((state) => ({
-            formData: {
-                ...state.formData,
-                firstName: state.formData.firstName || user.firstName || '',
-                lastName: state.formData.lastName || user.lastName || '',
-                email: state.formData.email || user.email || '',
-            }
-        }));
-    },
-
-    resetForm: () => set({
-        formData: { ...DEFAULT_FORM_DATA },
-        bookingFor: 'myself',
-        isWorkTravel: false,
-        specialRequests: '',
-        payeeFirstName: '',
-        payeeLastName: '',
-        phoneCountryCode: '+63',
-        selectedCurrency: 'PHP',
-        isSuccess: false,
-        emailSent: false,
-        formErrors: {},
-        // Reset voucher state too
-        voucherCode: '',
-        appliedVoucher: null,
-        availablePromos: [],
-        voucherLoading: false,
-        voucherError: null,
-        promosLoading: false,
-    }),
-}));
+    )
+);
 
 // Granular selectors for performance optimization
 

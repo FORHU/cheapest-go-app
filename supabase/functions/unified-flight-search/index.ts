@@ -58,9 +58,12 @@ const PROVIDERS: ProviderConfig[] = [
         timeoutMs: 20_000,
     },
     {
-        name: FlightProvider.MYSTIFLY_V2, // V2 Branded Fares
+        name: FlightProvider.MYSTIFLY_V2, // V2 Branded Fares — only in production
         functionName: 'mystifly-v2-search',
-        enabled: true,
+        // Enable V2 only when MYSTIFLY_ENV=production.
+        // In sandbox (unset/test), V2 FareSourceCodes are not bookable, so exclude them.
+        // This reads the same env var used in mystiflyClient.getMystiflyTarget() — single source of truth.
+        enabled: Deno.env.get('MYSTIFLY_ENV') === 'production',
         timeoutMs: 20_000,
     },
 ];
@@ -68,10 +71,8 @@ const PROVIDERS: ProviderConfig[] = [
 // ─── Request Body ───────────────────────────────────────────────────
 
 interface UnifiedSearchBody {
-    origin: string;
-    destination: string;
-    departureDate: string;
-    returnDate?: string;
+    segments: { origin: string; destination: string; departureDate: string }[];
+    tripType: 'one-way' | 'round-trip' | 'multi-city';
     adults: number;
     children?: number;
     infants?: number;
@@ -105,9 +106,9 @@ Deno.serve(async (req: Request) => {
         // ── Parse & Validate ──
         const body: UnifiedSearchBody = JSON.parse(await req.text());
 
-        if (!body.origin || !body.destination || !body.departureDate || !body.adults) {
+        if (!Array.isArray(body.segments) || body.segments.length === 0 || !body.adults) {
             return jsonResponse(corsHeaders,
-                { success: false, error: 'Required: origin, destination, departureDate, adults', flights: [] },
+                { success: false, error: 'Required: segments array and adults count', flights: [] },
                 400,
             );
         }
@@ -116,9 +117,8 @@ Deno.serve(async (req: Request) => {
 
         console.log('[unified-flight-search] Searching:', {
             providers: enabledProviders.map((p) => p.name),
-            origin: body.origin,
-            destination: body.destination,
-            departureDate: body.departureDate,
+            tripType: body.tripType,
+            segmentCount: body.segments.length,
             adults: body.adults,
         });
 
