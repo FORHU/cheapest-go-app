@@ -32,14 +32,26 @@ const extractUserProfile = (supabaseUser: SupabaseUser): User => {
     };
 };
 
-const buildRedirectUrl = (path = '/auth/callback') => {
+const buildRedirectUrl = (path = '/auth/callback', explicitRedirect?: string) => {
     const searchParams = new URLSearchParams(window.location.search);
-    const existingRedirect = searchParams.get('redirect') || searchParams.get('next');
+    let targetPath = explicitRedirect || searchParams.get('redirect') || searchParams.get('next');
 
-    // If we already have a redirect target in the current URL, use it
-    let targetPath = existingRedirect || window.location.pathname + window.location.search;
+    // If no target provided, fallback to current page
+    if (!targetPath) {
+        targetPath = window.location.pathname + window.location.search;
+    }
 
-    // Only include safe relative paths in the redirect
+    // Handle absolute URLs from the same origin
+    if (targetPath.startsWith(window.location.origin)) {
+        targetPath = targetPath.substring(window.location.origin.length);
+    }
+
+    // Safety check: if we are already on login/auth pages, don't redirect back to them
+    if (targetPath.includes('/login') || targetPath.includes('/auth/')) {
+        targetPath = '/';
+    }
+
+    // Only include safe relative paths in the redirect (must start with /, but not //)
     const safePath = targetPath.startsWith('/') && !targetPath.startsWith('//') ? targetPath : '/';
 
     return `${window.location.origin}${path}?next=${encodeURIComponent(safePath)}`;
@@ -54,12 +66,13 @@ interface AuthState {
     session: Session | null;
     authStep: AuthStep;
     email: string;
+    redirectTo: string | null;
     isLoading: boolean;
     isAuthModalOpen: boolean;
 
     setAuthStep: (step: AuthStep) => void;
     setEmail: (email: string) => void;
-    openAuthModal: (step?: AuthStep) => void;
+    openAuthModal: (step?: AuthStep, redirectTo?: string) => void;
     closeAuthModal: () => void;
     syncSession: (session: Session | null) => void;
 
@@ -88,13 +101,18 @@ export const useAuthStore = create<AuthState>((set, get) => {
         session: null,
         authStep: 'email',
         email: '',
+        redirectTo: null,
         isLoading: true,
         isAuthModalOpen: false,
 
         setAuthStep: (authStep) => set({ authStep }),
         setEmail: (email) => set({ email }),
-        openAuthModal: (step = 'email') => set({ isAuthModalOpen: true, authStep: step }),
-        closeAuthModal: () => set({ isAuthModalOpen: false }),
+        openAuthModal: (step = 'email', redirectTo = null) => set({
+            isAuthModalOpen: true,
+            authStep: step,
+            redirectTo: redirectTo || (get().redirectTo)
+        }),
+        closeAuthModal: () => set({ isAuthModalOpen: false, redirectTo: null }),
 
         syncSession: (session) => {
             set(session?.user
@@ -126,7 +144,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
                     email: data.email,
                     password: data.password,
                     options: {
-                        emailRedirectTo: buildRedirectUrl(),
+                        emailRedirectTo: buildRedirectUrl('/auth/callback', get().redirectTo || undefined),
                         data: {
                             first_name: data.firstName,
                             last_name: data.lastName,
@@ -154,7 +172,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
             set({ isLoading: true });
             const { error } = await supabase.auth.signInWithOAuth({
                 provider,
-                options: { redirectTo: buildRedirectUrl() },
+                options: { redirectTo: buildRedirectUrl('/auth/callback', get().redirectTo || undefined) },
             });
             if (error) {
                 set({ isLoading: false });

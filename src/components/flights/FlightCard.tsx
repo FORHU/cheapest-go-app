@@ -7,6 +7,9 @@ import type { FlightOffer, FlightSegmentDetail, FarePolicy } from '@/lib/flights
 import { getAirlineName } from '@/lib/flights/types';
 
 
+import { useUserCurrency } from '@/stores/searchStore';
+import { EXCHANGE_RATES } from '@/lib/currency';
+
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function formatTime(iso: string | undefined): string {
@@ -22,13 +25,34 @@ function formatDuration(minutes: number): string {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function formatPrice(amount: number, currency: string): string {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(amount);
+
+function formatPrice(amount: number, currency: string, targetCurrency?: string): string {
+    const from = currency?.toUpperCase();
+    const to = targetCurrency?.toUpperCase();
+
+    let displayAmount = amount;
+    let displayCurrency = from;
+
+    if (to && from !== to) {
+        const rateFrom = EXCHANGE_RATES[from] || 1;
+        const rateTo = EXCHANGE_RATES[to] || 1;
+        displayAmount = (amount * rateFrom) / rateTo;
+        displayCurrency = to;
+    }
+
+    // Special case for PHP/KRW if Intl is flaky in some environments
+    try {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: displayCurrency || 'USD',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(displayAmount);
+    } catch (e) {
+        const symbols: Record<string, string> = { 'PHP': '₱', 'KRW': '₩', 'USD': '$' };
+        const symbol = symbols[displayCurrency] || displayCurrency;
+        return `${symbol}${Math.round(displayAmount).toLocaleString()}`;
+    }
 }
 
 function stopsLabel(stops: number): string {
@@ -117,6 +141,7 @@ export interface FlightCardProps {
 
 export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSelect, isSelected = false }) => {
     const [expanded, setExpanded] = useState(false);
+    const targetCurrency = useUserCurrency();
 
     // Group segments by their logical segment index (each search leg)
     const legGroups: { [key: number]: FlightSegmentDetail[] } = {};
@@ -135,6 +160,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
 
     return (
         <motion.div
+            layout
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03, duration: 0.25 }}
@@ -248,6 +274,12 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
                             {offer.provider}
                         </span>
+                        {offer.alternatives && offer.alternatives.length > 0 && (
+                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-600 text-white font-bold animate-pulse shadow-sm shadow-indigo-500/50">
+                                <BadgeDollarSign className="w-2 h-2 lg:w-3 lg:h-3" />
+                                {offer.alternatives.length + 1} brands available
+                            </span>
+                        )}
                         {primary.aircraft && (
                             <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
                                 <Plane className="w-2 h-2 lg:w-3 lg:h-3" />
@@ -261,10 +293,10 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                 <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-1.5 lg:gap-2 lg:w-[180px] px-2.5 py-2 lg:p-5 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                     <div className="lg:text-right">
                         <div className="text-base lg:text-xl font-bold text-slate-900 dark:text-white leading-tight">
-                            {formatPrice(offer.price.total, offer.price.currency)}
+                            {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
                         </div>
                         <div className="text-xs lg:text-sm text-slate-500 dark:text-slate-400">
-                            {formatPrice(offer.price.pricePerAdult, offer.price.currency)}/person
+                            {formatPrice(offer.price.pricePerAdult, offer.price.currency, targetCurrency)}/person
                         </div>
                         <div className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500 hidden sm:block">
                             includes taxes & fees
@@ -288,36 +320,97 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     className="flex items-center gap-0.5 px-2.5 lg:px-5 pb-1.5 lg:pb-3 text-xs lg:text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
                 >
                     {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    {expanded ? 'Hide details' : 'Show all segments'}
+                    {expanded ? 'Hide details' : (offer.alternatives && offer.alternatives.length > 0 ? `Compare ${offer.alternatives.length + 1} options` : 'Show all segments')}
                 </button>
             )}
 
-            {/* ─── Expanded Segments ─── */}
+            {/* ─── Expanded View (Details + Alternatives) ─── */}
             {expanded && (
                 <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="px-2.5 lg:px-5 pb-2 lg:pb-4 border-t border-slate-100 dark:border-slate-800 space-y-0.5 lg:space-y-1"
+                    className="border-t border-slate-100 dark:border-slate-800"
                 >
-                    {routeIndices.map((idx, routeIndex) => {
-                        const legSegments = legGroups[idx];
-                        if (!legSegments || legSegments.length === 0) return null;
-
-                        let label = `Leg ${routeIndex + 1}`;
-                        if (routeIndices.length === 2) {
-                            label = routeIndex === 0 ? 'Outbound' : 'Return';
-                        }
-
-                        return (
-                            <div className="pt-3" key={idx}>
-                                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                                    {label}
+                    {/* Alternatives / Brands Section */}
+                    {offer.alternatives && offer.alternatives.length > 0 && (
+                        <div className="bg-slate-50/50 dark:bg-slate-800/20 px-2.5 lg:px-5 py-3 border-b border-slate-100 dark:border-slate-800">
+                            <h4 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <BadgeDollarSign className="w-3.5 h-3.5 text-indigo-500" />
+                                Available Fare Options
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {/* Current main offer as one of the options */}
+                                <div className="flex flex-col p-2.5 rounded-lg border-2 border-indigo-500 bg-white dark:bg-slate-900 shadow-sm">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 rounded uppercase">
+                                            {offer.brandedFare?.brandName || offer.brandedFare?.fareType || 'Standard'}
+                                        </span>
+                                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                            {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
+                                        {(offer.segments[0].cabinClass || 'economy').replace('_', ' ')} · Best value
+                                    </p>
+                                    <button
+                                        disabled
+                                        className="mt-auto py-1 px-3 rounded bg-indigo-600 text-white text-[10px] font-bold opacity-50 cursor-default"
+                                    >
+                                        Currently Selected
+                                    </button>
                                 </div>
-                                {legSegments.map((seg, i) => <SegmentRow key={`${idx}-${i}`} segment={seg} />)}
+
+                                {/* Alternatives */}
+                                {offer.alternatives.map((alt) => (
+                                    <div key={alt.offerId} className="flex flex-col p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300 transition-colors">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded uppercase">
+                                                {alt.brandedFare?.brandName || alt.brandedFare?.fareType || 'Option'}
+                                            </span>
+                                            <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                                {formatPrice(alt.price.total, alt.price.currency, targetCurrency)}
+                                            </span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
+                                            {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')} · {alt.provider}
+                                        </p>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onSelect?.(alt);
+                                            }}
+                                            className="mt-auto py-1 px-3 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-700 dark:text-slate-300 text-[10px] font-bold transition-colors"
+                                        >
+                                            Select {alt.brandedFare?.brandName || alt.brandedFare?.fareType || 'this'}
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
-                        );
-                    })}
+                        </div>
+                    )}
+
+                    {/* Flight Detail Segments */}
+                    <div className="px-2.5 lg:px-5 pb-2 lg:pb-4 space-y-0.5 lg:space-y-1">
+                        {routeIndices.map((idx, routeIndex) => {
+                            const legSegments = legGroups[idx];
+                            if (!legSegments || legSegments.length === 0) return null;
+
+                            let label = `Leg ${routeIndex + 1}`;
+                            if (routeIndices.length === 2) {
+                                label = routeIndex === 0 ? 'Outbound' : 'Return';
+                            }
+
+                            return (
+                                <div className="pt-3" key={idx}>
+                                    <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                                        {label}
+                                    </div>
+                                    {legSegments.map((seg, i) => <SegmentRow key={`${idx}-${i}`} segment={seg} />)}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </motion.div>
             )}
         </motion.div>

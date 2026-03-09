@@ -190,6 +190,11 @@ function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripType']): F
         validatingAirline: nf.validatingAirline,
         lastTicketDate: nf.lastTicketDate,
         tripType: tripType ?? 'one-way',
+
+        // Sorting & Normalization
+        normalizedPriceUsd: nf.normalizedPriceUsd ?? 0,
+        bestScore: nf.bestScore ?? 0,
+        physicalFlightId: nf.physicalFlightId ?? nf.id,
         // Provider-specific IDs needed for booking
         resultIndex: nf.resultIndex,   // Original Duffel offer ID
         traceId: nf.traceId,           // Mystifly fareSourceCode

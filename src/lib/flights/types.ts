@@ -93,6 +93,12 @@ export interface FlightOffer {
     lastTicketDate?: string;
     tripType?: 'one-way' | 'round-trip' | 'multi-city';
     _raw?: unknown;
+
+    // ── Sorting & Normalization (Computed on server) ────────────────
+    normalizedPriceUsd: number;
+    bestScore: number;
+    physicalFlightId: string;
+    alternatives?: FlightOffer[];
 }
 
 

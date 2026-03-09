@@ -294,9 +294,26 @@ async function revalidateMystifly(
 
     const nowIso = new Date().toISOString();
 
+    // ── Currency Normalization for comparison ──
+    // Providers often return prices in USD/EUR even if the search was in PHP/KRW.
+    // We must normalize to the oldPrice's currency (provided in flightPayload)
+    // for an accurate delta check.
+    const searchCurrency = (body.flightPayload.currency || 'USD').toUpperCase();
+    const revalCurrency = (currency || 'USD').toUpperCase();
+
+    let normalizedNewPrice = newPrice;
+    if (searchCurrency !== revalCurrency) {
+        // Simple fixed rates for major production currencies to avoid false 409s
+        const rates: Record<string, number> = { 'PHP': 58, 'KRW': 1350, 'USD': 1 };
+        const rateToUsd = rates[revalCurrency] || 1;
+        const rateFromUsd = rates[searchCurrency] || 1;
+        normalizedNewPrice = (newPrice / rateToUsd) * rateFromUsd;
+        console.log(`[revalidate-flight] Normalizing ${newPrice} ${revalCurrency} to ${normalizedNewPrice} ${searchCurrency} for comparison.`);
+    }
+
     return {
         success: true,
-        priceChanged: priceChanged || Math.abs(newPrice - oldPrice) > 0.01,
+        priceChanged: priceChanged || Math.abs(normalizedNewPrice - oldPrice) > 1.0, // Increased tolerance to $1/58PHP to avoid micro-rounding noise
         oldPrice,
         newPrice,
         seatsAvailable: true,

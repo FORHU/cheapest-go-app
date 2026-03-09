@@ -6,24 +6,24 @@
  */
 
 export const EXCHANGE_RATES: Record<string, number> = {
-    'USD': 1,           // Base currency
-    'PHP': 58.0,        // Philippine Peso
-    'KRW': 1350.0,      // South Korean Won
-    'JPY': 150.0,       // Japanese Yen
-    'EUR': 0.92,        // Euro
-    'GBP': 0.79,        // British Pound
-    'AUD': 1.52,        // Australian Dollar
-    'SGD': 1.35,        // Singapore Dollar
-    'MYR': 4.75,        // Malaysian Ringgit
-    'THB': 36.0,        // Thai Baht
-    'VND': 25450.0,     // Vietnamese Dong
-    'IDR': 16100.0,     // Indonesian Rupiah
-    'CNY': 7.23,        // Chinese Yuan
-    'TWD': 32.5,        // New Taiwan Dollar
-    'HKD': 7.83,        // Hong Kong Dollar
-    'INR': 83.5,        // Indian Rupee
-    'AED': 3.67,        // UAE Dirham
-    'CAD': 1.37,        // Canadian Dollar
+    'USD': 1.0,         // Base currency
+    'PHP': 0.018,       // Philippine Peso (USD per 1 PHP)
+    'KRW': 0.00075,     // South Korean Won (USD per 1 KRW)
+    'JPY': 0.0067,      // Japanese Yen
+    'EUR': 1.087,       // Euro
+    'GBP': 1.266,       // British Pound
+    'AUD': 0.658,       // Australian Dollar
+    'SGD': 0.74,        // Singapore Dollar
+    'MYR': 0.21,        // Malaysian Ringgit
+    'THB': 0.027,       // Thai Baht
+    'VND': 0.0000392,   // Vietnamese Dong
+    'IDR': 0.0000621,   // Indonesian Rupiah
+    'CNY': 0.138,       // Chinese Yuan
+    'TWD': 0.0307,      // New Taiwan Dollar
+    'HKD': 0.127,       // Hong Kong Dollar
+    'INR': 0.012,       // Indian Rupee
+    'AED': 0.272,       // UAE Dirham
+    'CAD': 0.73,        // Canadian Dollar
 };
 
 /**
@@ -45,10 +45,10 @@ export function convertCurrency(amount: number, fromCurrency: string, toCurrency
         return amount; // Fallback to original amount
     }
 
-    // Convert: Amount / FromRate * ToRate
-    // e.g. 100 PHP -> USD: 100 / 58 * 1 = 1.72
-    // e.g. 100 USD -> PHP: 100 / 1 * 58 = 5800
-    return (amount / fromRate) * toRate;
+    // Convert: (Amount * FromRate) / ToRate
+    // e.g. 5800 PHP -> USD: 5800 * 0.018 / 1 = 104.4
+    // e.g. 100 USD -> PHP: 100 * 1 / 0.018 = 5555.5
+    return (amount * fromRate) / toRate;
 }
 
 /**

@@ -45,7 +45,7 @@ export default function FlightSearchContent({ serverSearchParams }: { serverSear
     const [error, setError] = useState<string | null>(null);
 
     // Filter/sort state
-    const [sortMode, setSortMode] = useState<SortMode>('recommended');
+    const [sortMode, setSortMode] = useState<SortMode>('cheapest');
     const [stopFilter, setStopFilter] = useState<StopFilter>('any');
     const [airlineFilter, setAirlineFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
@@ -62,10 +62,11 @@ export default function FlightSearchContent({ serverSearchParams }: { serverSear
     const searchRequest = useMemo((): FlightSearchRequest | null => {
         // Safe getter function to retrieve from either SSR or client hook
         const getParam = (key: string): string | null => {
-            if (serverSearchParams && typeof serverSearchParams[key] === 'string') {
-                return serverSearchParams[key] as string;
+            if (serverSearchParams) {
+                const val = serverSearchParams[key];
+                if (typeof val === 'string') return val;
             }
-            return searchParams?.get(key);
+            return searchParams?.get(key) ?? null;
         };
 
         const origin0 = getParam('origin0');
@@ -168,7 +169,6 @@ export default function FlightSearchContent({ serverSearchParams }: { serverSear
         return Array.from(airlines.entries()).sort((a, b) => a[1].localeCompare(b[1]));
     }, [results]);
 
-    // Filtered + sorted offers
     const displayOffers = useMemo(() => {
         if (!results) return [];
 
@@ -190,7 +190,7 @@ export default function FlightSearchContent({ serverSearchParams }: { serverSear
         if (sortMode === 'recommended') {
             // Already interleaved/sorted by server
         } else if (sortMode === 'cheapest') {
-            offers.sort((a, b) => a.price.total - b.price.total);
+            offers.sort((a, b) => a.normalizedPriceUsd - b.normalizedPriceUsd);
         } else if (sortMode === 'fastest') {
             offers.sort((a, b) => a.totalDuration - b.totalDuration);
         } else if (sortMode === 'branded') {
@@ -201,18 +201,37 @@ export default function FlightSearchContent({ serverSearchParams }: { serverSear
                     return hasBrandB - hasBrandA; // Branded flights come first
                 }
                 // If both are branded (or neither), sub-sort by cheapest price
-                return a.price.total - b.price.total;
+                return a.normalizedPriceUsd - b.normalizedPriceUsd;
             });
         } else {
-            // "Best" = weighted score of price + duration
-            offers.sort((a, b) => {
-                const scoreA = a.price.total * 0.6 + a.totalDuration * 2;
-                const scoreB = b.price.total * 0.6 + b.totalDuration * 2;
-                return scoreA - scoreB;
+            // "Best" = deterministic score from server
+            offers.sort((a, b) => a.bestScore - b.bestScore);
+        }
+
+        // ── Group by physical flight ────────
+        const groups = new Map<string, FlightOffer[]>();
+        for (const offer of offers) {
+            const key = offer.physicalFlightId;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(offer);
+        }
+
+        // ── Map back to a list, keeping the "best" one per group ──
+        const result: (FlightOffer & { alternatives: FlightOffer[] })[] = [];
+        const seenGroups = new Set<string>();
+
+        for (const offer of offers) {
+            if (seenGroups.has(offer.physicalFlightId)) continue;
+            seenGroups.add(offer.physicalFlightId);
+
+            const group = groups.get(offer.physicalFlightId) || [];
+            result.push({
+                ...offer,
+                alternatives: group.filter(o => o.offerId !== offer.offerId), // Other brands/fares
             });
         }
 
-        return offers;
+        return result;
     }, [results, stopFilter, airlineFilter, sortMode]);
 
     // Route summary
@@ -425,19 +444,21 @@ export default function FlightSearchContent({ serverSearchParams }: { serverSear
                         </div>
                     ) : (
                         <>
-                            <AnimatePresence>
-                                {displayOffers.slice(0, displayLimit).map((offer, i) => (
-                                    <FlightCard
-                                        key={offer.offerId}
-                                        offer={offer}
-                                        index={i}
-                                        onSelect={(selected) => {
-                                            sessionStorage.setItem('selectedFlight', JSON.stringify(selected));
-                                            router.push('/flights/book');
-                                        }}
-                                    />
-                                ))}
-                            </AnimatePresence>
+                            <motion.div layout className="space-y-2 lg:space-y-3">
+                                <AnimatePresence mode="popLayout">
+                                    {displayOffers.slice(0, displayLimit).map((offer, i) => (
+                                        <FlightCard
+                                            key={offer.offerId}
+                                            offer={offer}
+                                            index={i}
+                                            onSelect={(selected) => {
+                                                sessionStorage.setItem('selectedFlight', JSON.stringify(selected));
+                                                router.push('/flights/book');
+                                            }}
+                                        />
+                                    ))}
+                                </AnimatePresence>
+                            </motion.div>
 
                             {displayLimit < displayOffers.length && (
                                 <div className="flex justify-center pt-4 lg:pt-6 pb-2">
