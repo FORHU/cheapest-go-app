@@ -5,6 +5,8 @@ import { TripsContent } from '@/components/trips';
 import { Skeleton } from '@/components/shared/Skeleton';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 
+export const dynamic = 'force-dynamic';
+
 function TripsSkeleton() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-6">
