@@ -248,7 +248,7 @@ export interface FlightBookingRecord {
   total_price: number;
   currency?: string;
   trip_type?: 'one-way' | 'round-trip' | 'multi-city';
-  status: 'booked' | 'pnr_created' | 'awaiting_ticket' | 'ticketed' | 'failed' | 'cancel_requested' | 'cancelled' | 'cancel_failed' | 'refund_pending' | 'refund_failed' | 'refunded';
+  status: 'booked' | 'pnr_created' | 'awaiting_ticket' | 'ticketed' | 'failed' | 'cancel_requested' | 'cancelled' | 'cancel_failed' | 'refund_pending' | 'refund_failed' | 'refunded' | 'cancelled_provider_missing';
   created_at: string;
 
   fare_policy?: any;
