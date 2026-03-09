@@ -1,7 +1,9 @@
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import { fetchTripsData } from '@/lib/trips';
 import { TripsContent } from '@/components/trips';
 import { Skeleton } from '@/components/shared/Skeleton';
+import { getAuthenticatedUser } from '@/lib/server/auth';
 
 function TripsSkeleton() {
   return (
@@ -25,7 +27,13 @@ async function TripsLoader() {
   return <TripsContent initialData={initialData} />;
 }
 
-export default function TripsPage() {
+export default async function TripsPage() {
+  const { user } = await getAuthenticatedUser();
+
+  if (!user) {
+    redirect('/');
+  }
+
   return (
     <Suspense fallback={<TripsSkeleton />}>
       <TripsLoader />
