@@ -142,9 +142,8 @@ Deno.serve(async (req: Request) => {
         const deduped = deduplicateFlights(allFlights);
         console.log(`[unified-flight-search] After dedup: ${deduped.length} flights`);
 
-        // ── Smart Multi-Provider Sorting ──
-        // Ensures variety at the top so users don't have to scroll for Amadeus results
-        const flights = smartSort(deduped);
+        // ── Sort by Best Score (Default/Recommended) ──
+        const flights = deduped.sort((a, b) => a.bestScore - b.bestScore);
 
         const searchDurationMs = Date.now() - searchStart;
 
@@ -290,8 +289,8 @@ function deduplicateFlights(flights: NormalizedFlight[]): NormalizedFlight[] {
     const deduped: NormalizedFlight[] = [];
 
     for (const group of itineraryGroups.values()) {
-        // Sort lowest price first
-        group.sort((a, b) => a.price - b.price);
+        // Sort lowest price first using normalized USD price
+        group.sort((a, b) => a.normalizedPriceUsd - b.normalizedPriceUsd);
 
         const kept: NormalizedFlight[] = [];
 
@@ -300,8 +299,8 @@ function deduplicateFlights(flights: NormalizedFlight[]): NormalizedFlight[] {
             // (Same cabin class, and price difference < 2% or < $2 fixed)
             const idx = kept.findIndex(k => {
                 const sameCabin = k.cabinClass === flight.cabinClass;
-                const priceDiff = Math.abs(k.price - flight.price);
-                const isSimilarPrice = priceDiff < (k.price * 0.02) || priceDiff < 2;
+                const priceDiff = Math.abs(k.normalizedPriceUsd - flight.normalizedPriceUsd);
+                const isSimilarPrice = priceDiff < (k.normalizedPriceUsd * 0.02) || priceDiff < 2;
                 return sameCabin && isSimilarPrice;
             });
 
@@ -328,53 +327,15 @@ function deduplicateFlights(flights: NormalizedFlight[]): NormalizedFlight[] {
  * Ensures provider variety throughout the results list via interleaving.
  * Uses a 3:1 ratio to ensure the secondary provider is always visible.
  */
-function smartSort(flights: NormalizedFlight[]): NormalizedFlight[] {
-    const duffel = flights.filter(f => f.provider === FlightProvider.DUFFEL).sort((a, b) => a.price - b.price);
-    const mystifly = flights.filter(f => f.provider === FlightProvider.MYSTIFLY).sort((a, b) => a.price - b.price);
-
-    if (duffel.length === 0) return mystifly;
-    if (mystifly.length === 0) return duffel;
-
-    const result: NormalizedFlight[] = [];
-    let dIdx = 0;
-    let mIdx = 0;
-
-    // Determine primary provider (whoever has the cheapest overall flight)
-    const mCheapest = mystifly[0].price;
-    const dCheapest = duffel[0].price;
-
-    console.log(`[unified-flight-search] Interleaving ${duffel.length} Duffel and ${mystifly.length} Mystifly. Primary: ${mCheapest <= dCheapest ? 'mystifly' : 'duffel'}`);
-
-    while (dIdx < duffel.length || mIdx < mystifly.length) {
-        if (mCheapest <= dCheapest) {
-            // Case 1: Mystifly is overall cheaper. Pattern: [3 Mystifly, 1 Duffel]
-            for (let k = 0; k < 3 && mIdx < mystifly.length; k++) {
-                result.push(mystifly[mIdx++]);
-            }
-            if (dIdx < duffel.length) {
-                result.push(duffel[dIdx++]);
-            }
-        } else {
-            // Case 2: Duffel is overall cheaper. Pattern: [3 Duffel, 1 Mystifly]
-            for (let k = 0; k < 3 && dIdx < duffel.length; k++) {
-                result.push(duffel[dIdx++]);
-            }
-            if (mIdx < mystifly.length) {
-                result.push(mystifly[mIdx++]);
-            }
-        }
-    }
-
-    // Append any remaining flights if one array was longer than the interleaved ratio
-    while (mIdx < mystifly.length) {
-        result.push(mystifly[mIdx++]);
-    }
-    while (dIdx < duffel.length) {
-        result.push(duffel[dIdx++]);
-    }
-
-    return result;
+/**
+ * Sorting for the "Recommended" view.
+ * Uses the pre-calculated bestScore which combines price, duration, and stops.
+ */
+function sortRecommended(flights: NormalizedFlight[]): NormalizedFlight[] {
+    return flights.sort((a, b) => a.bestScore - b.bestScore);
 }
+// smartSort is deprecated in favor of sortRecommended
+const smartSort = sortRecommended;
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
