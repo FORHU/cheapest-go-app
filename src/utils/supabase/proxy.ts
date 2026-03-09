@@ -5,10 +5,10 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
 // Routes that require authentication
-const protectedRoutes = ['/checkout', '/trips', '/account'];
+const protectedRoutes = ['/checkout', '/trips', '/account', '/profile'];
 
 // Routes that should redirect to home if already authenticated
-const authRoutes = ['/login'];
+const authRoutes = ['/login', '/signup'];
 
 export const updateSession = async (request: NextRequest) => {
     const { pathname } = request.nextUrl;
