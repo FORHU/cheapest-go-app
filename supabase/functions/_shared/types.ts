@@ -135,6 +135,11 @@ export interface NormalizedFlight {
 
     /** Raw provider offer for booking (not displayed, passed through to booking API) */
     _rawOffer?: unknown;
+
+    // ── Sorting & Normalization (Computed on server) ────────────────
+    normalizedPriceUsd: number;
+    bestScore: number;
+    physicalFlightId: string;    // Stable ID shared by all brands of the same flight
 }
 
 
@@ -207,6 +212,9 @@ export interface RevalidateResponse {
     taxes: number;
     priceChanged: boolean;
     traceId?: string;
+    normalizedPriceUsd: number;  // Price in USD using fixed conversion rates
+    bestScore: number;           // Weighted score for "Recommended" sorting
+    physicalFlightId: string;    // Stable ID shared by all brands of the same flight
     farePolicy?: NormalizedFarePolicy;
     revalidatedAt?: string; // ISO string representing exact time of snapshot
     error?: string;

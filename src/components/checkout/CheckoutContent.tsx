@@ -142,7 +142,8 @@ export function CheckoutContent() {
     // Complete booking handler
     const handleCompleteBooking = useCallback(async () => {
         if (!user) {
-            openAuthModal('email');
+            const redirectPath = window.location.pathname + window.location.search;
+            openAuthModal('email', redirectPath);
             return;
         }
 
@@ -302,7 +303,10 @@ export function CheckoutContent() {
                                     </p>
                                 </div>
                                 <button
-                                    onClick={() => openAuthModal('email')}
+                                    onClick={() => {
+                                        const redirectPath = window.location.pathname + window.location.search;
+                                        openAuthModal('email', redirectPath);
+                                    }}
                                     className="px-4 py-2 min-h-[44px] bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors w-full sm:w-auto"
                                 >
                                     Sign In

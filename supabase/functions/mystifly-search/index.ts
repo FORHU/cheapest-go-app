@@ -17,7 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 declare const Deno: any;
 
 import type { NormalizedFlight, CabinClass, TripType } from '../_shared/types.ts';
-import { searchFlights, createSession, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
+import { searchFlights, createSession, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, getMystiflyTarget } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyResponse } from '../_shared/normalizeFlight.ts';
 
 
@@ -126,7 +126,7 @@ Deno.serve(async (req: Request) => {
             OriginDestinationInformations: originDestinations,
             PassengerTypeQuantities: passengerTypes,
             NearByAirports: true,
-            Target: 'Production', // Based on user documentation image for V1 Search
+            Target: getMystiflyTarget(), // Use dynamic target based on env
             ConversationId: '',
             CurrencyCode: body.currency,
             TravelPreferences: {
@@ -200,8 +200,8 @@ Deno.serve(async (req: Request) => {
 
         console.log(`[mystifly-search] Mystifly returned ${flights.length} raw itineraries`);
 
-        // Sort by price ascending
-        flights.sort((a, b) => a.price - b.price);
+        // Sort by normalized price ascending
+        flights.sort((a, b) => a.normalizedPriceUsd - b.normalizedPriceUsd);
         // ── Currency Fallback Conversion ──
         // Some Mystifly fare sources ignore CurrencyCode. We force convert to requested currency.
         const targetCurrency = body.currency || 'USD';

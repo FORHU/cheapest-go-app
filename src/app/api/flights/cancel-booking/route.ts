@@ -412,13 +412,30 @@ async function cancelDuffel(booking: any, supabaseUrl: string, serviceRoleKey: s
         const cancellationData = await cancellationRes.json();
         if (!cancellationRes.ok) {
             const duffelError = cancellationData?.errors?.[0]?.message ?? '';
+            const status = cancellationRes.status;
+
+            // Scenario 4 Fix: Handle 422 for non-refundable tickets
+            // If the ticket is strictly non-refundable, Duffel might throw 422 on cancellation attempts.
+            // We intercept this to allow an "internal cancellation" so the user can clear their dashboard.
+            const isNonRefundableError = status === 422 || duffelError.toLowerCase().includes('non-refundable') || duffelError.toLowerCase().includes('cannot be cancelled');
+
+            if (isNonRefundableError) {
+                console.warn('[cancel-booking] Duffel 422/Non-refundable error — internal cancellation only:', duffelError);
+                return {
+                    success: true,
+                    refundAmount: 0,
+                    penaltyAmount: booking.total_price || 0,
+                    currency: booking.currency || 'USD',
+                    error: 'Ticket is non-refundable. Cancelled internally.'
+                };
+            }
 
             // Sandbox/test fallback: if Duffel rejects due to invalid token or test order,
             // treat as a successful mock cancellation so dev/staging flows complete.
             const isAuthOrTestError = duffelError.toLowerCase().includes('access token')
                 || duffelError.toLowerCase().includes('not a valid')
-                || cancellationRes.status === 401
-                || cancellationRes.status === 403;
+                || status === 401
+                || status === 403;
 
             if (isAuthOrTestError) {
                 console.warn('[cancel-booking] Duffel auth/test error — sandbox mock cancellation:', duffelError);
