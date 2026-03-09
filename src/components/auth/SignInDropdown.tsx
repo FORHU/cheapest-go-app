@@ -257,9 +257,9 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                             {/* Logout */}
                             <div className="border-t border-slate-100 dark:border-white/5 p-2">
                                 <button
-                                    onClick={() => {
-                                        logout();
-                                        handleNav();
+                                    onClick={async () => {
+                                        await logout();
+                                        window.location.href = '/';
                                     }}
                                     className="w-full flex items-center gap-3 px-3 py-2.5 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
                                 >

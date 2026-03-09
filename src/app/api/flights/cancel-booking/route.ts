@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
         // ── Step 1: Load booking ──────────────────────────────────────
         const { data: booking, error: fetchErr } = await supabase
             .from('flight_bookings')
-            .select('id, user_id, status, provider, pnr, payment_intent_id, created_at, cancellation_log, session_id, total_price, payment_currency')
+            .select('id, user_id, status, provider, pnr, payment_intent_id, created_at, cancellation_log, session_id, total_price, payment_currency, refund_amount')
             .eq('id', bookingId)
             .single();
 
@@ -159,24 +159,37 @@ export async function POST(req: NextRequest) {
 
         // ── Step 6: Handle supplier response ──────────────────────────
         if (!supplierSuccess) {
+            const isProviderMissing = (supplierError?.toLowerCase().includes('not found') ||
+                supplierError?.toLowerCase().includes('does not exist') ||
+                supplierError?.toLowerCase().includes('could not find'));
+
+            const finalStatus = isProviderMissing ? 'cancelled_provider_missing' : 'cancel_failed';
+
             const failLog = {
                 at: new Date().toISOString(),
                 oldStatus: 'cancel_requested',
-                newStatus: 'cancel_failed',
+                newStatus: finalStatus,
                 supplierError,
+                isProviderMissing,
             };
 
             await supabase
                 .from('flight_bookings')
                 .update({
-                    status: 'cancel_failed',
+                    status: finalStatus,
                     cancellation_log: [...(booking.cancellation_log ?? []), logEntry, failLog],
+                    refund_amount: isProviderMissing ? 0 : booking.refund_amount,
                 })
                 .eq('id', bookingId);
 
             return NextResponse.json(
-                { success: false, error: supplierError || 'Supplier rejected the cancellation request' },
-                { status: 422 },
+                {
+                    success: isProviderMissing, // Treat provider missing as a "handled success"
+                    status: finalStatus,
+                    error: supplierError || 'Supplier rejected the cancellation request',
+                    providerMissing: isProviderMissing
+                },
+                { status: isProviderMissing ? 200 : 422 },
             );
         }
 
@@ -326,6 +339,7 @@ interface CancelResult {
     currency?: string;
     cancellationId?: string;
     error?: string;
+    providerMissing?: boolean;
 }
 
 async function cancelMystifly(booking: any, supabaseUrl: string, serviceRoleKey: string): Promise<CancelResult> {
@@ -419,14 +433,16 @@ async function cancelDuffel(booking: any, supabaseUrl: string, serviceRoleKey: s
             // We intercept this to allow an "internal cancellation" so the user can clear their dashboard.
             const isNonRefundableError = status === 422 || duffelError.toLowerCase().includes('non-refundable') || duffelError.toLowerCase().includes('cannot be cancelled');
 
-            if (isNonRefundableError) {
-                console.warn('[cancel-booking] Duffel 422/Non-refundable error — internal cancellation only:', duffelError);
+            if (isNonRefundableError || status === 404) {
+                const isNotFound = status === 404 || duffelError.toLowerCase().includes('not found') || duffelError.toLowerCase().includes('does not exist');
+                console.warn(`[cancel-booking] Duffel ${status} error — ${isNotFound ? 'resource missing' : 'non-refundable'}:`, duffelError);
                 return {
-                    success: true,
+                    success: false, // Return false but with enough info for the handler to decide
+                    providerMissing: isNotFound,
                     refundAmount: 0,
                     penaltyAmount: booking.total_price || 0,
                     currency: booking.currency || 'USD',
-                    error: 'Ticket is non-refundable. Cancelled internally.'
+                    error: isNotFound ? 'Supplier record not found. Cancelled internally.' : 'Ticket is non-refundable. Cancelled internally.'
                 };
             }
 

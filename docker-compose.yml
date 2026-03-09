@@ -1,0 +1,15 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        # These are pulled from your .env file and passed to the Dockerfile
+        - NEXT_PUBLIC_SUPABASE_URL
+        - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+        - NEXT_PUBLIC_MAPBOX_TOKEN
+        - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: always

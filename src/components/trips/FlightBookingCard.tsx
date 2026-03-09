@@ -25,6 +25,7 @@ const flightStatusColors: Record<string, string> = {
     refund_pending: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
     refund_failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
     refunded: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+    cancelled_provider_missing: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-400',
 };
 
 const flightStatusLabels: Record<string, string> = {
@@ -39,6 +40,7 @@ const flightStatusLabels: Record<string, string> = {
     refund_pending: 'Refund Pending',
     refund_failed: 'Refund Failed',
     refunded: 'Refunded',
+    cancelled_provider_missing: 'Cancelled',
 };
 
 // Statuses that allow initiating (or retrying) a cancellation request
@@ -275,8 +277,15 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         if (isPast && localStatus === 'ticketed') {
             return <span className="text-[10px] text-slate-400 whitespace-nowrap">Flight completed</span>;
         }
-        if (localStatus === 'cancelled') {
-            return <span className="text-[10px] text-red-500 dark:text-red-400 whitespace-nowrap">Cancelled</span>;
+        if (localStatus === 'cancelled' || localStatus === 'cancelled_provider_missing') {
+            return (
+                <div className="flex flex-col items-end">
+                    <span className="text-[10px] text-red-500 dark:text-red-400 whitespace-nowrap">Cancelled</span>
+                    {localStatus === 'cancelled_provider_missing' && (
+                        <span className="text-[8px] text-slate-400 whitespace-nowrap mt-0.5">Supplier record not found</span>
+                    )}
+                </div>
+            );
         }
         return null;
     };
