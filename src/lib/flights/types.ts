@@ -19,7 +19,7 @@ export interface FlightPassengers {
     infants: number;
 }
 
-export type FlightProvider = 'mystifly' | 'duffel';
+export type FlightProvider = 'mystifly' | 'mystifly_v2' | 'duffel';
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
 
 // ─── Search Response ─────────────────────────────────────────────────
