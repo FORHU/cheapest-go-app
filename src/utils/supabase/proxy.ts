@@ -26,38 +26,28 @@ export const updateSession = async (request: NextRequest) => {
                     return request.cookies.getAll();
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value }) =>
+                    cookiesToSet.forEach(({ name, value, options }) =>
                         request.cookies.set(name, value)
                     );
                     supabaseResponse = NextResponse.next({
                         request,
                     });
                     cookiesToSet.forEach(({ name, value, options }) =>
-                        supabaseResponse.cookies.set(name, value, options)
+                        supabaseResponse.cookies.set(name, value, {
+                            ...options,
+                            sameSite: 'lax', // Production safety
+                            secure: process.env.NODE_ENV === 'production',
+                        })
                     );
                 },
             },
         }
     );
 
-    // Refreshing the auth token
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    // Protected routes — redirect to login if not authenticated
-    if (protectedRoutes.some((route) => pathname.startsWith(route))) {
-        if (!user) {
-            const redirectUrl = new URL('/login', request.url);
-            redirectUrl.searchParams.set('returnTo', pathname);
-            return NextResponse.redirect(redirectUrl);
-        }
-    }
-
-    // Auth routes — redirect to home if already authenticated
-    if (authRoutes.some((route) => pathname.startsWith(route)) && user) {
-        return NextResponse.redirect(new URL('/', request.url));
-    }
+    // Protected routes — let the Page (Server Component) handle the redirect
+    // to avoid clashing with SSR and to allow better control over the next path.
+    // We only use this for session refreshing.
+    await supabase.auth.getUser();
 
     return supabaseResponse;
 };
