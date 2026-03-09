@@ -6,6 +6,11 @@ import type {
     CabinClass,
 } from '../types';
 import { getAirlineName } from '../types';
+import {
+    calculateNormalizedPriceUsd,
+    calculateBestScore,
+    generatePhysicalFlightId
+} from '../utils';
 import type {
     IFlightProvider,
     SearchFlightsParams,
@@ -233,6 +238,10 @@ function normalizeOffer(fareItinerary: any): FlightOffer | null {
         const totalDuration = allSegments.reduce((sum, s) => sum + s.duration, 0);
         const seatsRemaining = getMinSeats(originDestOptions);
 
+        const normalizedPriceUsd = calculateNormalizedPriceUsd(total, currency);
+        const bestScore = calculateBestScore(normalizedPriceUsd, totalDuration, totalStops);
+        const physicalFlightId = generatePhysicalFlightId('mystifly', allSegments);
+
         const offer: FlightOffer = {
             offerId,
             provider: 'mystifly',
@@ -242,6 +251,9 @@ function normalizeOffer(fareItinerary: any): FlightOffer | null {
             totalStops,
             refundable: fareInfo.IsRefundable === true,
             seatsRemaining,
+            normalizedPriceUsd,
+            bestScore,
+            physicalFlightId,
         };
 
         // Extract baggage if available
