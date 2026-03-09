@@ -33,7 +33,7 @@ export default async function TripsPage() {
   const { user } = await getAuthenticatedUser();
 
   if (!user) {
-    redirect('/');
+    redirect('/login?next=/trips');
   }
 
   return (
