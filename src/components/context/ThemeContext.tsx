@@ -22,7 +22,20 @@ export const ThemeProvider: React.FC<BaseProps> = ({ children }) => {
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
-      <Toaster theme={theme} richColors closeButton position="top-center" />
+      <Toaster
+        theme={theme}
+        closeButton
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: 'rgb(37 99 235)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '1rem',
+          },
+          className: "font-sans font-medium",
+        }}
+      />
     </ThemeContext.Provider>
   );
 };

@@ -24,7 +24,10 @@ export async function POST(req: NextRequest) {
         // Support both flat format and segments format
         const hasSegments = Array.isArray(body.segments) && body.segments.length > 0;
 
-        const { passengers, cabinClass, tripType, currency } = body;
+        const passengers = body.passengers || { adults: 1, children: 0, infants: 0 };
+        const adults = Math.max(1, Number(passengers.adults) || 1);
+        const children = Math.max(0, Number(passengers.children) || 0);
+        const infants = Math.max(0, Number(passengers.infants) || 0);
 
         let segments = body.segments || [];
         if (!hasSegments && body.origin && body.destination && body.departureDate) {
@@ -54,19 +57,13 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Passengers
-        const adults = Math.max(1, Number(passengers?.adults) || 1);
-        const children = Math.max(0, Number(passengers?.children) || 0);
-        const infants = Math.max(0, Number(passengers?.infants) || 0);
-        if (infants > adults) return badRequest('infants cannot exceed adults');
-        if (adults + children + infants > 9) return badRequest('maximum 9 passengers allowed');
-
         // Cabin class
-        const cabin = (cabinClass ?? 'economy') as CabinClass;
+        const cabin = (body.cabinClass ?? 'economy') as CabinClass;
         if (!VALID_CABIN.has(cabin)) return badRequest(`invalid cabinClass: ${cabin}`);
 
         // Trip type
-        const trip = (tripType ?? (segments.length === 2 ? 'round-trip' : segments.length > 2 ? 'multi-city' : 'one-way')) as string;
+        const rawTrip = String(body.tripType ?? '').toLowerCase().replace(/\s+/g, '-');
+        const trip = (VALID_TRIP.has(rawTrip) ? rawTrip : (segments.length === 2 ? 'round-trip' : segments.length > 2 ? 'multi-city' : 'one-way')) as string;
         if (!VALID_TRIP.has(trip)) return badRequest(`invalid tripType: ${trip}`);
 
         // ─── Call unified-flight-search Edge Function ─────────────
@@ -95,7 +92,7 @@ export async function POST(req: NextRequest) {
                 cabinClass: cabin,
                 maxOffers: Number(body.maxOffers) || 200,
                 nonStopOnly: body.nonStopOnly === true,
-                currency: currency,
+                currency: body.currency,
             }),
         });
 

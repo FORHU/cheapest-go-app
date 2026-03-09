@@ -66,7 +66,9 @@ export default function FlightSearchContent() {
 
         if (!origin0 || !dest0 || !date0) return null;
 
-        const tripType = (searchParams?.get('tripType') || 'one-way') as 'one-way' | 'round-trip' | 'multi-city';
+        const rawTripType = searchParams?.get('tripType') || 'one-way';
+        const tripType = rawTripType.toLowerCase().replace(/\s+/g, '-') as 'one-way' | 'round-trip' | 'multi-city';
+
         const segments = [{
             origin: origin0,
             destination: dest0,
@@ -103,9 +105,9 @@ export default function FlightSearchContent() {
             tripType,
             segments,
             passengers: {
-                adults: Number(searchParams?.get('adults')) || 1,
-                children: Number(searchParams?.get('children')) || 0,
-                infants: Number(searchParams?.get('infants')) || 0,
+                adults: Math.max(1, Number(searchParams?.get('adults')) || 1),
+                children: Math.max(0, Number(searchParams?.get('children')) || 0),
+                infants: Math.max(0, Number(searchParams?.get('infants')) || 0),
             },
             cabinClass: (searchParams?.get('cabin') as CabinClass) || 'economy',
             currency: effectiveCurrency,

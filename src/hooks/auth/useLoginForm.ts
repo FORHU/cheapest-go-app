@@ -39,20 +39,26 @@ interface UseLoginFormReturn {
     validateEmail: (email: string) => boolean;
 }
 
+interface UseLoginFormOptions {
+    isAdminMode?: boolean;
+}
+
 /**
  * Hook to manage all login/signup form state and logic.
  * Handles auth redirects, mode syncing, and form validation.
  */
-export function useLoginForm(): UseLoginFormReturn {
-    const { register, login, isLoading, authStep, setAuthStep, user } = useAuthStore();
+export function useLoginForm(options: UseLoginFormOptions = {}): UseLoginFormReturn {
+    const { isAdminMode = false } = options;
+    const { register, login, logout, isLoading, authStep, setAuthStep, user } = useAuthStore();
     const searchParams = useSearchParams();
     const router = useRouter();
 
     // Compute initial mode from URL
     const initialMode = useMemo((): AuthMode => {
+        if (isAdminMode) return 'signin';
         const urlMode = searchParams?.get('mode');
         return urlMode === 'signup' ? 'signup' : 'signin';
-    }, [searchParams]);
+    }, [searchParams, isAdminMode]);
 
     // Form state
     const [mode, setMode] = useState<AuthMode>(initialMode);
@@ -70,10 +76,25 @@ export function useLoginForm(): UseLoginFormReturn {
     // Redirect when user is authenticated
     useEffect(() => {
         if (user) {
-            // Admin users are NOT allowed to login through the standard user login page
+            // Admin mode redirection logic
+            if (isAdminMode) {
+                if (user.role === 'admin') {
+                    router.push('/admin/overview');
+                } else {
+                    // Not an admin, sign out
+                    const logoutAndError = async () => {
+                        await logout();
+                        setErrors({ general: 'Access Denied: You do not have administrative privileges.' });
+                    };
+                    logoutAndError();
+                }
+                return;
+            }
+
+            // Normal user mode redirection logic
             if (user.role === 'admin') {
                 const logoutAndError = async () => {
-                    await useAuthStore.getState().logout();
+                    await logout();
                     setErrors({ general: 'Administrators must use the dedicated admin login portal.' });
                 };
                 logoutAndError();
@@ -87,7 +108,7 @@ export function useLoginForm(): UseLoginFormReturn {
             }
         }
         prevUserRef.current = user;
-    }, [user, searchParams, router, setErrors]);
+    }, [user, searchParams, router, setErrors, isAdminMode, logout]);
 
     // Sync mode with authStep changes
     useEffect(() => {
@@ -100,6 +121,13 @@ export function useLoginForm(): UseLoginFormReturn {
         }
         prevAuthStepRef.current = authStep;
     }, [authStep, mode]);
+
+    // Lock mode to signin for admin
+    useEffect(() => {
+        if (isAdminMode && mode !== 'signin') {
+            setMode('signin');
+        }
+    }, [isAdminMode, mode]);
 
     // Set authStep when mode changes on mount
     useEffect(() => {

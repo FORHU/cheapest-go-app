@@ -117,3 +117,30 @@ export interface Notification {
     read: boolean;
     created_at: string;
 }
+
+/**
+ * Full unified_bookings row returned by admin recovery tools
+ */
+export interface BookingRawData {
+    id: string;
+    user_id: string;
+    type: 'flight' | 'hotel';
+    provider: string;
+    external_id: string | null;
+    status: string;
+    total_price: number;
+    currency: string;
+    metadata: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
+}
+
+/**
+ * Result of an admin recovery action
+ */
+export interface RecoveryActionResult {
+    success: boolean;
+    message: string;
+    newStatus?: string;
+    data?: Record<string, unknown>;
+}

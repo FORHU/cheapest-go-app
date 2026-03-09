@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { AdminLoginContent } from '@/components/admin/auth/AdminLoginContent';
+import { LoginContent } from '@/components/login';
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 
@@ -28,7 +28,7 @@ export default async function AdminLoginPage() {
                 <div className="h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
         }>
-            <AdminLoginContent />
+            <LoginContent isAdmin={true} />
         </Suspense>
     );
 }

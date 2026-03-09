@@ -21,7 +21,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
     className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[280px] lg:w-[300px] landscape-compact-card snap-start flex flex-col cursor-pointer"
   >
     <TiltCard className="h-full">
-      <div className="relative h-full bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg group">
+      <div className="relative h-full bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg group">
         {/* Image — responsive height */}
         <div className="relative h-24 sm:h-32 md:h-40 landscape-compact-img landscape-img overflow-hidden flex-shrink-0">
           <motion.div
