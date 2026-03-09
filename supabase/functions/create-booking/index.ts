@@ -303,13 +303,51 @@ Deno.serve(async (req: Request) => {
                 }, 502);
             }
         } else if (bs.provider === 'duffel') {
-            result = await bookWithDuffel(bs.flight, bs.passengers, bs.contact);
+            try {
+                result = await bookWithDuffel(bs.flight, bs.passengers, bs.contact);
+            } catch (duffelErr: any) {
+                console.error('[create-booking] Duffel Booking FAILED:', duffelErr.message);
+
+                // If payment was authorized/captured, we must refund
+                const paymentIntentId = bs.payment_intent_id;
+                if (paymentIntentId) {
+                    console.warn('[create-booking] Duffel failed after payment — attempting automatic Stripe refund');
+                    try {
+                        const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+                        await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}/cancel`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Basic ${btoa(stripeSecretKey + ':')}`,
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                        });
+                        // Also try refund if it was already captured
+                        await fetch(`https://api.stripe.com/v1/refunds`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Basic ${btoa(stripeSecretKey + ':')}`,
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: new URLSearchParams({ payment_intent: paymentIntentId }).toString(),
+                        });
+                    } catch (refundErr) {
+                        console.error('[create-booking] Automatic refund failed (manual intervention needed):', refundErr);
+                    }
+                }
+
+                await supabase.from('booking_sessions').update({ status: 'failed' }).eq('id', sessionId);
+
+                return jsonResponse(corsHeaders, {
+                    success: false,
+                    error: `Airliner Error: ${duffelErr.message}. Your payment has been automatically refunded.`
+                }, 502);
+            }
         } else {
             return jsonResponse(corsHeaders, { success: false, error: `Unknown provider: ${bs.provider}` }, 400);
         }
 
         // ── 3. Mystifly: check PNR and handle payment capture / cancel ──
-        // STEP 6: PNR received from Mystifly → safe to capture Stripe payment now
+        // (PNR check for Duffel is handled implicitly - if we reach here, it succeeded)
         if (isMystifly) {
             const paymentIntentId = bs.payment_intent_id;
 

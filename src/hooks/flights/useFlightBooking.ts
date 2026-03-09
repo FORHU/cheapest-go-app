@@ -268,7 +268,8 @@ export function useFlightBooking() {
                 if (typeof window !== 'undefined') {
                     // Import the store and open the modal
                     import('@/stores/authStore').then(({ useAuthStore }) => {
-                        useAuthStore.getState().openAuthModal('email');
+                        const redirectPath = window.location.pathname + window.location.search;
+                        useAuthStore.getState().openAuthModal('email', redirectPath);
                     });
                 }
             } else {
