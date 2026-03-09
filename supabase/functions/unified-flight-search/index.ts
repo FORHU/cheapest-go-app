@@ -58,12 +58,10 @@ const PROVIDERS: ProviderConfig[] = [
         timeoutMs: 20_000,
     },
     {
-        name: FlightProvider.MYSTIFLY_V2, // V2 Branded Fares — only in production
+        name: FlightProvider.MYSTIFLY_V2, // V2 Branded Fares
         functionName: 'mystifly-v2-search',
-        // Enable V2 only when MYSTIFLY_ENV=production.
-        // In sandbox (unset/test), V2 FareSourceCodes are not bookable, so exclude them.
-        // This reads the same env var used in mystiflyClient.getMystiflyTarget() — single source of truth.
-        enabled: Deno.env.get('MYSTIFLY_ENV') === 'production',
+        // Enable V2 for both production and test environments.
+        enabled: true,
         timeoutMs: 20_000,
     },
 ];
@@ -135,8 +133,9 @@ Deno.serve(async (req: Request) => {
         // ── Merge all flights ──
         const allFlights: NormalizedFlight[] = providerResults.flatMap((r) => r.flights);
         const duffelCount = providerResults.find(r => r.name === FlightProvider.DUFFEL)?.flights.length ?? 0;
-        const mystiflyCount = providerResults.filter(r => r.name === FlightProvider.MYSTIFLY).reduce((acc, r) => acc + r.flights.length, 0);
-        console.log(`[unified-flight-search] Raw counts - Duffel: ${duffelCount}, Mystifly: ${mystiflyCount}`);
+        const v1Count = providerResults.find(r => r.name === FlightProvider.MYSTIFLY)?.flights.length ?? 0;
+        const v2Count = providerResults.find(r => r.name === FlightProvider.MYSTIFLY_V2)?.flights.length ?? 0;
+        console.log(`[unified-flight-search] Raw counts - Duffel: ${duffelCount}, Mystifly V1: ${v1Count}, Mystifly V2: ${v2Count}`);
 
         // ── Deduplicate (same flight from multiple GDS) ──
         const deduped = deduplicateFlights(allFlights);
@@ -308,8 +307,14 @@ function deduplicateFlights(flights: NormalizedFlight[]): NormalizedFlight[] {
                 // Meaningful variation (e.g. different fare brand with >2% price diff) -> Keep it
                 kept.push(flight);
             } else {
-                // It's a duplicate. TIE-BREAKER: Prefer Duffel for direct booking reliability
-                if (flight.provider === FlightProvider.DUFFEL && kept[idx].provider !== FlightProvider.DUFFEL) {
+                // It's a duplicate. TIE-BREAKER: 
+                // 1. Prefer Duffel (direct) 
+                // 2. Prefer Mystifly V2 (branded) over V1 (lowest fare)
+                const current = kept[idx];
+                const betterToDuffel = flight.provider === FlightProvider.DUFFEL && current.provider !== FlightProvider.DUFFEL;
+                const betterToV2 = flight.provider === FlightProvider.MYSTIFLY_V2 && current.provider === FlightProvider.MYSTIFLY;
+
+                if (betterToDuffel || betterToV2) {
                     kept[idx] = flight;
                 }
             }
