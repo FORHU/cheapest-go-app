@@ -242,6 +242,10 @@ function normalizeOffer(fareItinerary: any): FlightOffer | null {
             totalStops,
             refundable: fareInfo.IsRefundable === true,
             seatsRemaining,
+            // ADD THESE MISSING PROPERTIES:
+            normalizedPriceUsd: total, // or calculate actual USD conversion
+            bestScore: 0, 
+            physicalFlightId: offerId, // or a unique flight ID
         };
 
         // Extract baggage if available
