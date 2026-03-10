@@ -23,11 +23,6 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 
 import { useRouter } from 'next/navigation';
-import {
-    getNotifications,
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-} from '@/lib/server/adminActions';
 import { Notification } from '@/types/admin';
 import {
     Dialog,
@@ -57,9 +52,17 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
 
     const fetchNotifications = React.useCallback(async () => {
         setIsLoading(true);
-        const data = await getNotifications();
-        setNotifications(data);
-        setIsLoading(false);
+        try {
+            const res = await fetch('/api/admin/notifications');
+            if (res.ok) {
+                const data = await res.json();
+                setNotifications(data);
+            }
+        } catch (e) {
+            console.error('Failed to fetch notifications', e);
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
 
     React.useEffect(() => {
@@ -70,18 +73,34 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
     }, [fetchNotifications]);
 
     const markAllAsRead = async () => {
-        const success = await markAllNotificationsAsRead();
-        if (success) {
-            setNotifications(notifications.map(n => ({ ...n, read: true })));
+        try {
+            const res = await fetch('/api/admin/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'markAllRead' })
+            });
+            if (res.ok) {
+                setNotifications(notifications.map(n => ({ ...n, read: true })));
+            }
+        } catch (e) {
+            console.error('Failed to mark all as read', e);
         }
     };
 
     const handleMarkAsRead = async (id: string) => {
-        const success = await markNotificationAsRead(id);
-        if (success) {
-            setNotifications(notifications.map(n =>
-                n.id === id ? { ...n, read: true } : n
-            ));
+        try {
+            const res = await fetch('/api/admin/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'markRead', id })
+            });
+            if (res.ok) {
+                setNotifications(notifications.map(n =>
+                    n.id === id ? { ...n, read: true } : n
+                ));
+            }
+        } catch (e) {
+            console.error('Failed to mark notification as read', e);
         }
     };
 
@@ -132,7 +151,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                     <input
                         type="text"
                         placeholder="Search tasks..."
-                        className="w-full bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl py-2.5 pl-11 pr-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-400"
+                        className="w-full bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg py-2.5 pl-11 pr-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-400"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 dark:bg-white/10 rounded-lg text-[10px] font-bold text-slate-400">
                         <Command size={10} />
@@ -158,7 +177,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="w-10 h-10 rounded-xl text-slate-500 hover:bg-white dark:hover:bg-white/5 border border-transparent hover:border-slate-100 dark:hover:border-white/10"
+                                className="w-10 h-10 rounded-md text-slate-500 hover:bg-white dark:hover:bg-white/5 border border-transparent hover:border-slate-100 dark:hover:border-white/10"
                             >
                                 <Bell size={20} />
                             </Button>
@@ -167,7 +186,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                             )}
                         </div>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[320px] rounded-[2rem] border-slate-100 dark:border-white/10 dark:bg-obsidian p-2 shadow-2xl">
+                    <DropdownMenuContent align="end" className="w-[320px] rounded-2xl border-slate-100 dark:border-white/10 dark:bg-obsidian p-2 shadow-2xl">
                         <div className="p-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
                             <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Notifications</h4>
                             <Button
@@ -185,7 +204,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                                     <DropdownMenuItem
                                         key={n.id}
                                         onClick={() => handleMarkAsRead(n.id)}
-                                        className={`flex flex-col items-start gap-1 p-4 rounded-2xl mb-1 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'hover:bg-slate-50 dark:hover:bg-white/5'}`}
+                                        className={`flex flex-col items-start gap-1 p-4 rounded-xl mb-1 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'hover:bg-slate-50 dark:hover:bg-white/5'}`}
                                     >
                                         <div className="flex items-center justify-between w-full">
                                             <span className={`text-[10px] font-black uppercase tracking-widest ${n.type === 'booking' ? 'text-emerald-500' : n.type === 'system' ? 'text-blue-500' : 'text-amber-500'}`}>
@@ -248,30 +267,38 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                             <LogOut size={20} />
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[400px]">
-                        <DialogHeader>
-                            <DialogTitle>Confirm Sign Out</DialogTitle>
-                            <DialogDescription>
-                                Are you sure you want to sign out? You will need to log in again to access the admin dashboard.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter className="sm:justify-start gap-3 mt-6">
-                            <Button
-                                variant="destructive"
-                                onClick={handleLogout}
-                                className="rounded-2xl font-black px-6"
-                            >
-                                Sign Out
-                            </Button>
-                            <DialogClose asChild>
+                    <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-none shadow-2xl">
+                        <div className="bg-white dark:bg-obsidian">
+                            <div className="px-8 pt-8 pb-4">
+                                <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500 mb-6">
+                                    <LogOut size={24} />
+                                </div>
+                                <DialogHeader className="space-y-2">
+                                    <DialogTitle className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Confirm Sign Out</DialogTitle>
+                                    <DialogDescription className="text-slate-500 dark:text-slate-400 font-medium text-base leading-relaxed">
+                                        Are you sure you want to sign out? You will need to log in again to access the admin dashboard.
+                                    </DialogDescription>
+                                </DialogHeader>
+                            </div>
+
+                            <DialogFooter className="px-8 pb-8 pt-4 flex flex-col-reverse sm:flex-row gap-3">
+                                <DialogClose asChild>
+                                    <Button
+                                        variant="ghost"
+                                        className="flex-1 rounded-xl font-bold h-12 text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 border border-slate-100 dark:border-white/10"
+                                    >
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
                                 <Button
-                                    variant="ghost"
-                                    className="rounded-2xl font-bold border border-slate-200 dark:border-white/10"
+                                    variant="destructive"
+                                    onClick={handleLogout}
+                                    className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black h-12 shadow-lg shadow-rose-600/20 px-6 border-0"
                                 >
-                                    Cancel
+                                    Sign Out
                                 </Button>
-                            </DialogClose>
-                        </DialogFooter>
+                            </DialogFooter>
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>

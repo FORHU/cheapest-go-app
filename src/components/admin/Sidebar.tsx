@@ -65,7 +65,7 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
                                 {isActive && (
                                     <motion.div
                                         layoutId="sidebar-marker"
-                                        className="absolute left-0 w-1.5 h-6 bg-blue-500 rounded-r-full"
+                                        className="absolute left-0 w-1.5 h-6 bg-blue-500 rounded-r-md"
                                     />
                                 )}
 

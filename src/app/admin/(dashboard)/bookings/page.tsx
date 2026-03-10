@@ -1,4 +1,4 @@
-import { getBookingsList } from '@/lib/server/adminActions';
+import { getBookingsList } from '@/lib/server/admin';
 import { BookingsClient } from './BookingsClient';
 
 export const dynamic = 'force-dynamic';

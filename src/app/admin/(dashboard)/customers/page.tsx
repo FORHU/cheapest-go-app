@@ -1,4 +1,4 @@
-import { getCustomersList } from '@/lib/server/adminActions';
+import { getCustomersList } from '@/lib/server/admin';
 import { CustomersClient } from './CustomersClient';
 
 export const dynamic = 'force-dynamic';

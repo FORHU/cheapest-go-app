@@ -5,7 +5,7 @@ import { CalendarCheck, DollarSign, Clock, XCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { StatCard } from '@/components/admin/StatCard';
 import { formatCurrency } from '@/lib/utils';
-import type { DashboardData } from '@/lib/server/adminActions';
+import type { DashboardData } from '@/types/admin';
 
 interface StatsGridProps {
     liveStats: DashboardData['stats'];
@@ -75,7 +75,6 @@ export function StatsGrid({ liveStats }: StatsGridProps) {
                     key={stat.title}
                     title={stat.title}
                     value={stat.value}
-                    trend={stat.trend}
                     variant={stat.color as any}
                     icon={() => (
                         <div className="w-full h-full flex items-center justify-center">
@@ -86,7 +85,7 @@ export function StatsGrid({ liveStats }: StatsGridProps) {
                                             {getCurrencyIcon(currency)}
                                         </button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="rounded-2xl border-slate-100 dark:border-white/10 dark:bg-obsidian p-2 shadow-2xl">
+                                    <DropdownMenuContent align="end" className="rounded-xl border-slate-100 dark:border-white/10 dark:bg-obsidian p-2 shadow-2xl">
                                         <DropdownMenuItem onClick={() => setCurrency('PHP')} className="text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer">PHP (₱)</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => setCurrency('USD')} className="text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer">USD ($)</DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => setCurrency('KRW')} className="text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer">KRW (₩)</DropdownMenuItem>

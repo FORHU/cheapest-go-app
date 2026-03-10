@@ -13,7 +13,7 @@ export default function AdminSettingsPage() {
                 title="Settings"
                 subtitle="Configure platform-wide preferences and security"
                 actions={
-                    <Button className="bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0 gap-2">
+                    <Button className="bg-blue-600 hover:bg-blue-500 rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0 gap-2">
                         <Save size={18} />
                         Save Changes
                     </Button>
@@ -34,13 +34,13 @@ export default function AdminSettingsPage() {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: i * 0.05 }}
-                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer group ${item.active
+                            className={`p-6 rounded-xl border transition-all cursor-pointer group ${item.active
                                 ? 'bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-500/20'
                                 : 'bg-white dark:bg-obsidian border-slate-100 dark:border-white/10 hover:border-blue-500/30'
                                 }`}
                         >
                             <div className="flex items-center gap-4">
-                                <div className={`p-3 rounded-2xl ${item.active ? 'bg-white/10' : 'bg-slate-100 dark:bg-white/5 text-slate-400 group-hover:text-blue-500'}`}>
+                                <div className={`p-3 rounded-xl ${item.active ? 'bg-white/10' : 'bg-slate-100 dark:bg-white/5 text-slate-400 group-hover:text-blue-500'}`}>
                                     <item.icon size={20} />
                                 </div>
                                 <div>
@@ -59,7 +59,7 @@ export default function AdminSettingsPage() {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2rem] shadow-xl p-8"
+                        className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-xl shadow-xl p-8"
                     >
                         <div className="flex items-center gap-4 mb-10">
                             <div className="w-1.5 h-8 bg-blue-600 rounded-full" />
@@ -115,7 +115,7 @@ export default function AdminSettingsPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-[2rem] shadow-xl"
+                        className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-xl"
                     >
                         <div className="flex items-center gap-4 mb-10">
                             <div className="w-1.5 h-8 bg-blue-600 rounded-full" />
@@ -151,7 +151,7 @@ export default function AdminSettingsPage() {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="bg-white/50 dark:bg-obsidian/50 backdrop-blur-xl border border-white/20 dark:border-white/10 p-6 rounded-2xl shadow-sm space-y-6"
+                        className="bg-white/50 dark:bg-obsidian/50 backdrop-blur-xl border border-white/20 dark:border-white/10 p-6 rounded-xl shadow-sm space-y-6"
                     >
                         <h3 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-200 dark:border-white/5 pb-4 flex items-center gap-2">
                             <Shield size={18} className="text-blue-500" />

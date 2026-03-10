@@ -22,7 +22,7 @@ export function TopRoutes({ routes }: TopRoutesProps) {
         <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2.5rem] p-8 shadow-md h-full flex flex-col group transition-all duration-500"
+            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-xl p-8 shadow-md h-full flex flex-col group transition-all duration-500"
         >
             <div className="flex items-center justify-between mb-10 relative z-10">
                 <div className="flex-1">
@@ -33,7 +33,7 @@ export function TopRoutes({ routes }: TopRoutesProps) {
                         </div>
                     </div>
                 </div>
-                <div className="ml-4 w-10 h-10 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-600 transition-colors">
+                <div className="ml-4 w-10 h-10 rounded-lg bg-blue-600/10 flex items-center justify-center text-blue-600 transition-colors">
                     <MapPin size={20} />
                 </div>
             </div>
@@ -50,7 +50,7 @@ export function TopRoutes({ routes }: TopRoutesProps) {
                         >
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 group-hover/item:bg-blue-600 group-hover/item:text-white transition-all transform group-hover/item:scale-110">
+                                    <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 group-hover/item:bg-blue-600 group-hover/item:text-white transition-all transform group-hover/item:scale-110">
                                         {route.destination.includes('Airport') || route.destination.length === 3 ? <Plane size={24} /> : <MapPin size={24} />}
                                     </div>
                                     <div>

@@ -25,7 +25,7 @@ export function ConversionFunnel({ data }: ConversionFunnelProps) {
         <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2.5rem] p-8 shadow-md flex flex-col h-full overflow-hidden relative group transition-all duration-500"
+            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-xl p-8 shadow-md flex flex-col h-full overflow-hidden relative group transition-all duration-500"
         >
             <div className="flex items-center justify-between mb-8 relative z-10">
                 <div className="flex-1">

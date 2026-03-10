@@ -48,13 +48,13 @@ export function RevenueChart({ data }: RevenueChartProps) {
         <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2.5rem] p-8 shadow-md relative overflow-hidden group transition-all duration-500"
+            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-md flex flex-col group transition-all duration-500 min-h-[450px]"
         >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 relative z-10">
                 <div className="flex-1">
                     <div className="flex items-center justify-between md:justify-start gap-4 mb-2">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 transition-colors">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 transition-colors">
                                 <TrendingUp size={20} />
                             </div>
                             <h3 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white transition-colors">Revenue Trend</h3>
@@ -63,7 +63,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 transition-colors">Financial Performance Overview</p>
                 </div>
 
-                <div className="flex items-center p-1.5 bg-slate-50 dark:bg-white/5 rounded-2xl gap-1 transition-colors">
+                <div className="flex items-center p-1.5 bg-slate-50 dark:bg-white/5 rounded-xl gap-1 transition-colors">
                     {(['daily', 'weekly', 'monthly'] as const).map((t) => (
                         <button
                             key={t}

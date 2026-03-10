@@ -83,7 +83,7 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
                 title="Customers"
                 subtitle="Manage customer profiles and booking history"
                 actions={
-                    <Button className="bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0 gap-2">
+                    <Button className="bg-blue-600 hover:bg-blue-500 rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0 gap-2">
                         <UserPlus size={18} />
                         Add Customer
                     </Button>
@@ -122,7 +122,8 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2rem] shadow-xl overflow-hidden"
+                transition={{ duration: 0.4 }}
+                className="p-6 bg-white dark:bg-obsidian rounded-xl shadow-xl overflow-hidden border border-slate-200/50 dark:border-white/5"
             >
                 <div className="p-4 border-b border-slate-200 dark:border-white/5 flex flex-col gap-4">
                     <div className="flex flex-col sm:flex-row gap-4 items-center">
@@ -266,12 +267,12 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
                                     <TableCell className="py-5">
                                         <Badge
                                             variant={getStatusVariant(customer.status) as any}
-                                            className={`font-black uppercase text-[9px] px-3 py-1 rounded-lg border-none ${customer.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' :
+                                            className={`font-black capitalize text-[9px] px-3 py-1 rounded-lg border-none ${customer.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' :
                                                 customer.status === 'inactive' ? 'bg-slate-500/10 text-slate-600' :
                                                     'bg-rose-500/10 text-rose-600'
                                                 }`}
                                         >
-                                            {customer.status}
+                                            {customer.status.toLowerCase()}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="py-5 text-right pr-6">

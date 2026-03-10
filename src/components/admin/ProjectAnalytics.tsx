@@ -27,7 +27,7 @@ const mockData: ChartData[] = [
 export function ProjectAnalytics({ data = mockData, isLoading }: ProjectAnalyticsProps) {
     if (isLoading) {
         return (
-            <div className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2rem] p-8 shadow-md h-full animate-pulse">
+            <div className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-md group transition-all duration-500 h-full flex flex-col">
                 <div className="h-8 w-48 bg-slate-200 dark:bg-white/5 rounded-lg mb-12" />
                 <div className="flex items-end justify-between h-48 gap-2 px-2">
                     {[1, 2, 3, 4, 5, 6, 7].map((i) => (

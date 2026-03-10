@@ -44,7 +44,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                 subtitle='Platform Overview'
                 actions={
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" className="bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0">
+                        <Button variant="outline" className="bg-blue-600 hover:bg-blue-500 rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0">
                             <FileDown size={18} />
                             Download Report
                         </Button>
@@ -126,7 +126,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.98 }}
                                     animate={{ opacity: 1, scale: 1 }}
-                                    className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-[2rem] shadow-md flex flex-col group transition-all duration-500"
+                                    className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-md flex flex-col group transition-all duration-500"
                                 >
                                     <div className="flex items-center justify-between mb-8 relative z-10">
                                         <div>
@@ -141,7 +141,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                                                     <MoreHorizontal size={20} />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="rounded-2xl border-slate-100 dark:border-white/10 dark:bg-obsidian p-2 shadow-lg">
+                                            <DropdownMenuContent align="end" className="rounded-xl border-slate-100 dark:border-white/10 dark:bg-obsidian p-2 shadow-lg">
                                                 <DropdownMenuItem onClick={() => setGraphType('market')} className="text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer">Donut Chart</DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => setGraphType('volume')} className="text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer">Bar Comparison</DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => setGraphType('list')} className="text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer">Detailed List</DropdownMenuItem>
@@ -295,7 +295,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-[2rem] shadow-md flex flex-col group transition-all duration-500"
+                                className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-md flex flex-col group transition-all duration-500"
                             >
                                 <div className="flex items-center justify-between mb-8">
                                     <div>
@@ -316,9 +316,9 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                                             initial={{ opacity: 0, x: -10 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: i * 0.1 }}
-                                            className="flex items-center gap-5 p-2 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all group/item"
+                                            className="flex items-center gap-5 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all group/item"
                                         >
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border border-transparent transition-all group-hover/item:scale-110 ${activity.type === 'flight' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' :
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border border-transparent transition-all group-hover/item:scale-110 ${activity.type === 'flight' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' :
                                                 activity.type === 'hotel' ? 'bg-blue-50 text-blue-500 dark:bg-blue-900/20 dark:text-blue-300' :
                                                     activity.type === 'cancel' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400' :
                                                         'bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400'

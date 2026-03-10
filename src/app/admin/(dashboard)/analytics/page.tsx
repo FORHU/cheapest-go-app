@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnalyticsClient } from './AnalyticsClient';
-import { getAdvancedAnalytics } from '@/lib/server/adminActions';
+import { getAdvancedAnalytics } from '@/lib/server/admin';
 
 export default async function AdminAnalyticsPage() {
     const data = await getAdvancedAnalytics();

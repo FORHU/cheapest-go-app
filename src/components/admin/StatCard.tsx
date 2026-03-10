@@ -36,7 +36,7 @@ export function StatCard({
             animate={{ opacity: 1, y: 0 }}
             className="h-full"
         >
-            <div className={`p-8 rounded-[2rem] relative h-full overflow-hidden group border transition-all duration-500 ${isBlue
+            <div className={`p-8 rounded-xl relative h-full overflow-hidden group border transition-all duration-500 ${isBlue
                 ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20'
                 : 'bg-white dark:bg-obsidian border-slate-100 dark:border-white/10 shadow-md'
                 } ${className}`}>

@@ -43,3 +43,12 @@ export {
   AlertDialogAction,
   AlertDialogCancel,
 } from "./AlertDialog";
+export {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetFooter,
+  SheetTitle,
+  SheetDescription,
+} from "./Sheet";

@@ -32,7 +32,7 @@ export default function AdminSuppliersPage() {
                 title="Suppliers"
                 subtitle="Manage property owners, hotels, and partners"
                 actions={
-                    <Button className="bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0 gap-2">
+                    <Button className="bg-blue-600 hover:bg-blue-500 rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0 gap-2">
                         <Plus size={18} />
                         Add Supplier
                     </Button>
@@ -42,7 +42,7 @@ export default function AdminSuppliersPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-[2rem] shadow-xl overflow-hidden"
+                className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-xl shadow-xl overflow-hidden"
             >
                 <div className="p-6 border-b border-slate-100 dark:border-white/5 flex flex-col sm:flex-row gap-4 items-center">
                     <div className="relative flex-1 w-full">
@@ -85,14 +85,14 @@ export default function AdminSuppliersPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-5">
-                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-tight leading-none">
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 capitalize tracking-tight leading-none">
                                             <MapPin size={12} className="text-blue-500" />
-                                            <span className="line-clamp-1">{supplier.location}</span>
+                                            <span className="line-clamp-1">{supplier.location.toLowerCase()}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-5">
-                                        <Badge className="bg-blue-500/10 text-blue-600 border-none font-black uppercase text-[9px] px-3 py-1 rounded-lg">
-                                            {supplier.type}
+                                        <Badge className="bg-blue-500/10 text-blue-600 border-none font-black capitalize text-[9px] px-3 py-1 rounded-lg">
+                                            {supplier.type.toLowerCase()}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="py-5 font-black text-slate-900 dark:text-white">{formatCurrency(supplier.price, 'PHP')}</TableCell>
@@ -103,8 +103,8 @@ export default function AdminSuppliersPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-5">
-                                        <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-black uppercase text-[9px] px-3 py-1 rounded-lg">
-                                            Active
+                                        <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-black capitalize text-[9px] px-3 py-1 rounded-lg">
+                                            active
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="py-5 text-right pr-6">
@@ -126,7 +126,7 @@ export default function AdminSuppliersPage() {
                     </Table>
                 </div>
 
-                <div className="p-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <div className="p-4 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[10px] font-black capitalize tracking-widest text-slate-400">
                     <p>Total {filteredSuppliers.length} active suppliers</p>
                 </div>
             </motion.div>

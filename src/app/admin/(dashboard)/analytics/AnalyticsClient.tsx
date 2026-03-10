@@ -35,7 +35,7 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                 title="Analytics"
                 subtitle="Detailed insights into platform performance and growth"
                 actions={
-                    <Button variant="outline" className="rounded-2xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-bold h-12 px-6 hover:bg-slate-50 transition-all gap-2">
+                    <Button variant="outline" className="rounded-xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-bold h-12 px-6 hover:bg-slate-50 transition-all gap-2">
                         <BarChart3 size={18} />
                         Generating Report
                     </Button>
@@ -65,14 +65,14 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-[2rem] shadow-xl"
+                    className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-xl"
                 >
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h3 className="text-xl font-black text-slate-900 dark:text-white">Provider Success Rates</h3>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">mystifly vs duffel search effectiveness</p>
                         </div>
-                        <div className="p-3 bg-blue-500/10 text-blue-500 rounded-2xl">
+                        <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl">
                             <Zap size={20} />
                         </div>
                     </div>
@@ -120,14 +120,14 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.1 }}
-                    className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-[2rem] shadow-xl"
+                    className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-xl"
                 >
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h3 className="text-xl font-black text-slate-900 dark:text-white">Ticketing Latency</h3>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Pending to Ticketed Time (Avg)</p>
                         </div>
-                        <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-2xl">
+                        <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl">
                             <Clock size={20} />
                         </div>
                     </div>
@@ -158,7 +158,7 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                         })}
                     </div>
 
-                    <div className="mt-10 p-6 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex items-center gap-4">
+                    <div className="mt-10 p-6 rounded-xl bg-indigo-500/5 border border-indigo-500/10 flex items-center gap-4">
                         <Activity className="text-indigo-600" size={24} />
                         <div>
                             <p className="text-sm font-black text-slate-900 dark:text-white">Service Health: Stable</p>
@@ -173,11 +173,11 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-[2rem] shadow-xl"
+                className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-xl"
             >
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-rose-500/10 text-rose-500 rounded-2xl shadow-inner">
+                        <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl shadow-inner">
                             <ShieldAlert size={20} />
                         </div>
                         <div>
@@ -208,7 +208,7 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                                             <span className="text-xs font-black text-slate-900 dark:text-white">
                                                 {new Date(log.timestamp).toLocaleTimeString()}
                                             </span>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                            <span className="text-[10px] font-bold text-slate-400 capitalize">
                                                 {new Date(log.timestamp).toLocaleDateString()}
                                             </span>
                                         </div>
@@ -225,7 +225,7 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                                     <td className="py-5 text-right pr-6">
                                         <Badge
                                             variant="destructive"
-                                            className="bg-rose-500/10 text-rose-500 border-none font-black uppercase text-[9px] px-3 py-1 rounded-lg"
+                                            className="bg-rose-500/10 text-rose-500 border-none font-black capitalize text-[9px] px-3 py-1 rounded-lg"
                                         >
                                             {log.status}
                                         </Badge>
@@ -236,7 +236,7 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                     </table>
                 </div>
 
-                <Button variant="ghost" className="w-full mt-8 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-rose-500 hover:bg-rose-500/5 rounded-2xl border-t border-slate-50 dark:border-white/5 pt-8">
+                <Button variant="ghost" className="w-full mt-8 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-rose-500 hover:bg-rose-500/5 rounded-xl border-t border-slate-50 dark:border-white/5 pt-8">
                     Enter Debug Console
                 </Button>
             </motion.div>

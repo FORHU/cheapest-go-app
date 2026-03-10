@@ -1,4 +1,4 @@
-import { getDashboardData } from '@/lib/server/adminActions';
+import { getDashboardData } from '@/lib/server/admin';
 import AdminDashboardClient from './AdminDashboardClient';
 
 export const metadata = {
