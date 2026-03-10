@@ -9,3 +9,6 @@ export * from './api';
 
 // Booking policy types
 export * from './booking-policy';
+
+// Flight types
+export * from './flights';

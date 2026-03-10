@@ -3,7 +3,9 @@ import { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const DUFFEL_ACCESS_TOKEN = process.env.DUFFEL_ACCESS_TOKEN || '';
+import { env } from '@/utils/env';
+
+const DUFFEL_ACCESS_TOKEN = env.DUFFEL_TOKEN || '';
 const DUFFEL_VERSION = 'beta';
 
 // ─── Duffel Places Search ──────────────────────────────────────────

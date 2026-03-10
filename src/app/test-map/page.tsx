@@ -39,6 +39,8 @@ interface MapDetailToggle {
 
 // ── Constants ──────────────────────────────────────────
 
+import { env } from '@/utils/env';
+
 const HOTELS: HotelMarker[] = [
     {
         id: 1,
@@ -244,7 +246,7 @@ function PlaceSearchBar({
 
         setIsLoading(true);
         try {
-            const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+            const token = env.MAPBOX_TOKEN;
             const res = await fetch(
                 `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(text)}.json?access_token=${token}&limit=5&types=place,locality,neighborhood,address,poi`
             );

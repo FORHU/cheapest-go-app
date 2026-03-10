@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { env } from "@/utils/env";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -144,8 +145,8 @@ export interface CreateBookingResult {
 // ─── Supabase Service Client ─────────────────────────────────────────
 
 function getServiceClient() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const url = env.SUPABASE_URL;
+    const key = env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) {
         throw new Error('Missing Supabase service credentials');
     }

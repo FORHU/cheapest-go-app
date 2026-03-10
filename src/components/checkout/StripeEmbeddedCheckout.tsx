@@ -5,7 +5,9 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Loader2 } from 'lucide-react';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+import { env } from '@/utils/env';
+
+const stripePromise = loadStripe(env.STRIPE_PUBLIC_KEY!);
 
 function CheckoutForm({ clientSecret, onSuccess }: {
     clientSecret: string;
