@@ -1,8 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+import { env } from "@/utils/env";
 
 // Routes that require authentication
 const protectedRoutes = ['/checkout', '/trips', '/account', '/profile'];
@@ -18,8 +16,8 @@ export const updateSession = async (request: NextRequest) => {
     });
 
     const supabase = createServerClient(
-        supabaseUrl!,
-        supabaseKey!,
+        env.getRequired('supabaseUrl'),
+        env.getRequired('supabaseAnonKey'),
         {
             cookies: {
                 getAll() {
