@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
 import { env } from '@/utils/env';
+import { FlightOffer, FarePolicy } from '@/types/flights';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,14 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { provider, flight, passengers, contact, idempotencyKey, farePolicy } = body;
+        const { provider, flight, passengers, contact, idempotencyKey, farePolicy } = body as {
+            provider: string;
+            flight: FlightOffer;
+            passengers: any[];
+            contact: { email: string; phone: string };
+            idempotencyKey: string;
+            farePolicy: FarePolicy;
+        };
 
         // Use server-verified user ID
         const userId = user.id;
@@ -110,7 +118,7 @@ export async function POST(req: NextRequest) {
                 userId: userId,
                 passengerEmail: contact.email,
             },
-            description: `Flight Booking: ${flight.segments[0].origin} to ${flight.segments[flight.segments.length - 1].destination}`,
+            description: `Flight Booking: ${flight.segments[0]?.origin} to ${flight.segments[flight.segments.length - 1]?.destination}`,
         });
 
         // ── Step 3: Store PaymentIntent ID in booking session ──

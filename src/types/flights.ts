@@ -19,10 +19,8 @@ export interface FlightSearch {
   created_at: string;
 }
 
-export interface FlightResultCache {
-  id: string;
-  search_id?: string;
-  provider: 'duffel' | 'mystifly';
+export interface FlightResult {
+  provider: string;
   offer_id: string;
   price: number;
   currency: string;
@@ -33,6 +31,11 @@ export interface FlightResultCache {
   stops: number;
   remaining_seats: number | null;
   raw: any; // Original provider response
+}
+
+export interface FlightResultCache extends FlightResult {
+  id: string;
+  search_id?: string;
   created_at?: string;
 }
 

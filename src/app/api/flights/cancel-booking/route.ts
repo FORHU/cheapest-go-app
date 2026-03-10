@@ -380,7 +380,7 @@ async function cancelDuffel(booking: any): Promise<CancelResult> {
     let orderId: string | undefined = booking.provider_order_id;
 
     if (!orderId) {
-        const { data: session } = await createServiceClient(supabaseUrl, serviceRoleKey)
+        const { data: session } = await supabase
             .from('booking_sessions')
             .select('flight')
             .eq('id', booking.session_id)
