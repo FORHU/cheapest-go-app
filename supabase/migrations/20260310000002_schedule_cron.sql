@@ -17,8 +17,8 @@ SELECT cron.schedule(
     $$
     SELECT
       net.http_post(
-        url:='https://<PROJECT_REF>.supabase.co/functions/v1/refresh-popular-flights',
-        headers:='{"Content-Type": "application/json", "Authorization": "Bearer <SERVICE_ROLE_KEY>"}'::jsonb
+        url:='https://bjhokdrgjyqhhccpuoaa.supabase.co/functions/v1/refresh-popular-flights',
+        headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqaG9rZHJnanlxaGhjY3B1b2FhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODg5MDI4OCwiZXhwIjoyMDg0NDY2Mjg4fQ.CNNPLs8GsF1KT-iYRRQ6vGcJuYH70bHAsfrpWaqzA3U"}'::jsonb
       ) as request_id;
     $$
 );

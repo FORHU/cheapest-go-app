@@ -1,3 +1,5 @@
+"use client";
+
 import { Input, Button } from "@/components/ui";
 import { CabinClass, FlightSearchParams } from "@/types/flights";
 import { useState } from "react";

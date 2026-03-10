@@ -5,3 +5,7 @@ export const supabase = createBrowserClient(
     env.SUPABASE_URL,
     env.SUPABASE_ANON_KEY,
 );
+
+export function createClient() {
+    return supabase;
+}

@@ -4,10 +4,13 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plane } from 'lucide-react';
 import { TabList, HorizontalScroll } from '@/components/ui';
-import { packages, packageTabs } from '@/data';
+import { VacationPackage, packages as mockPackages, packageTabs as mockPackageTabs } from '@/data';
 
-export const ExploreVacationPackages: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(packageTabs[0]);
+export const ExploreVacationPackages: React.FC<{ 
+  packages?: VacationPackage[], 
+  tabs?: string[] 
+}> = ({ packages = mockPackages, tabs = mockPackageTabs }) => {
+  const [activeTab, setActiveTab] = useState(tabs[0]);
 
   return (
     <section className="w-full py-4 md:py-8 lg:py-10 landscape:py-3 landscape-compact-py">
@@ -26,7 +29,7 @@ export const ExploreVacationPackages: React.FC = () => {
         </p>
 
         <TabList
-          tabs={packageTabs}
+          tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           className="mb-4 landscape:mb-2"
