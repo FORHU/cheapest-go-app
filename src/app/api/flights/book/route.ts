@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { provider, flight, passengers, contact, idempotencyKey } = body;
+        const { provider, flight, passengers, contact, idempotencyKey, farePolicy } = body;
 
         // Use server-verified user ID, never trust client-supplied userId
         const userId = user.id;
@@ -61,6 +61,42 @@ export async function POST(req: NextRequest) {
             'Authorization': `Bearer ${serviceRoleKey}`,
         };
 
+        // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
+        // Never trust the frontend's fare rules. Revalidate immediately 
+        // before saving the session to enforce price and availability.
+        const revalRes = await fetch(`${supabaseUrl}/functions/v1/revalidate-flight`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                userId,
+                provider,
+                flightPayload: { ...flight, oldPrice: flight.price },
+            }),
+        });
+
+        const revalData = await revalRes.json();
+
+        if (!revalData.success || !revalData.seatsAvailable) {
+            return NextResponse.json({
+                success: false,
+                error: revalData.error || 'This flight is no longer available from the supplier. Please return to search.'
+            }, { status: 409 });
+        }
+
+        if (revalData.priceChanged && Math.abs(revalData.newPrice - flight.price) > 0.01) {
+            console.error('\n-------- MYSTIFLY RAW PAYLOAD (Zero Price Error) --------');
+            console.error(JSON.stringify(revalData, null, 2));
+            console.error('---------------------------------------------------------\n');
+
+            return NextResponse.json({
+                success: false,
+                error: `Flight price changed from ${flight.currency} ${flight.price} to ${revalData.newPrice}. Please restart booking.`
+            }, { status: 409 });
+        }
+
+        // Overwrite frontend policy with the immutable server-validated snapshot
+        const serverFarePolicy = revalData.farePolicy || farePolicy;
+
         // CRITICAL-2 FIX: Strip rawOffer from flight data ONLY FOR MYSTIFLY
         const sanitizedFlight = { ...flight };
         if (provider === 'mystifly' || provider === 'mystifly_v2') {
@@ -81,6 +117,7 @@ export async function POST(req: NextRequest) {
                 passengers,
                 contact,
                 idempotencyKey: idempotencyKey || undefined,
+                farePolicy: serverFarePolicy,
             }),
         });
 

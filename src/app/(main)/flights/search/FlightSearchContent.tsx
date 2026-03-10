@@ -23,10 +23,10 @@ interface SearchResult {
 
 // ─── Component ───────────────────────────────────────────────────────
 
-export default function FlightSearchContent() {
+export default function FlightSearchContent({ serverSearchParams }: { serverSearchParams?: { [key: string]: string | string[] | undefined } }) {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { userCurrency, setUserCurrency, setUserCountry } = useSearchStore(); // Modified: Replaced useUserCurrency with useSearchStore
+    const { userCurrency, setUserCurrency, setUserCountry } = useSearchStore();
 
     // SYNC: Ensure store matches URL on load/change
     useEffect(() => {
@@ -45,7 +45,7 @@ export default function FlightSearchContent() {
     const [error, setError] = useState<string | null>(null);
 
     // Filter/sort state
-    const [sortMode, setSortMode] = useState<SortMode>('recommended');
+    const [sortMode, setSortMode] = useState<SortMode>('cheapest');
     const [stopFilter, setStopFilter] = useState<StopFilter>('any');
     const [airlineFilter, setAirlineFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
@@ -58,17 +58,24 @@ export default function FlightSearchContent() {
         setDisplayLimit(20);
     }, [sortMode, stopFilter, airlineFilter]);
 
-    // Parse search params
+    // Parse search params using robust SSR values first, falling back to client-side
     const searchRequest = useMemo((): FlightSearchRequest | null => {
-        const origin0 = searchParams?.get('origin0');
-        const dest0 = searchParams?.get('dest0');
-        const date0 = searchParams?.get('date0');
+        // Safe getter function to retrieve from either SSR or client hook
+        const getParam = (key: string): string | null => {
+            if (serverSearchParams) {
+                const val = serverSearchParams[key];
+                if (typeof val === 'string') return val;
+            }
+            return searchParams?.get(key) ?? null;
+        };
+
+        const origin0 = getParam('origin0');
+        const dest0 = getParam('dest0');
+        const date0 = getParam('date0');
 
         if (!origin0 || !dest0 || !date0) return null;
 
-        const rawTripType = searchParams?.get('tripType') || 'one-way';
-        const tripType = rawTripType.toLowerCase().replace(/\s+/g, '-') as 'one-way' | 'round-trip' | 'multi-city';
-
+        const tripType = (getParam('tripType') || 'one-way') as 'one-way' | 'round-trip' | 'multi-city';
         const segments = [{
             origin: origin0,
             destination: dest0,
@@ -76,7 +83,7 @@ export default function FlightSearchContent() {
         }];
 
         // Round-trip return segment
-        const date1 = searchParams?.get('date1');
+        const date1 = getParam('date1');
         if ((tripType === 'round-trip') && date1) {
             segments.push({
                 origin: dest0,
@@ -88,31 +95,31 @@ export default function FlightSearchContent() {
         // Multi-city additional segments
         if (tripType === 'multi-city') {
             let idx = 1;
-            while (searchParams?.get(`origin${idx}`) && searchParams?.get(`dest${idx}`) && searchParams?.get(`date${idx}`)) {
+            while (getParam(`origin${idx}`) && getParam(`dest${idx}`) && getParam(`date${idx}`)) {
                 segments.push({
-                    origin: searchParams?.get(`origin${idx}`)!,
-                    destination: searchParams?.get(`dest${idx}`)!,
-                    departureDate: searchParams?.get(`date${idx}`)!.split('T')[0],
+                    origin: getParam(`origin${idx}`)!,
+                    destination: getParam(`dest${idx}`)!,
+                    departureDate: getParam(`date${idx}`)!.split('T')[0],
                 });
                 idx++;
             }
         }
 
-        const urlCurrency = searchParams?.get('currency');
+        const urlCurrency = getParam('currency');
         const effectiveCurrency = urlCurrency || userCurrency || 'PHP';
 
         return {
             tripType,
             segments,
             passengers: {
-                adults: Math.max(1, Number(searchParams?.get('adults')) || 1),
-                children: Math.max(0, Number(searchParams?.get('children')) || 0),
-                infants: Math.max(0, Number(searchParams?.get('infants')) || 0),
+                adults: Number(getParam('adults')) || 1,
+                children: Number(getParam('children')) || 0,
+                infants: Number(getParam('infants')) || 0,
             },
-            cabinClass: (searchParams?.get('cabin') as CabinClass) || 'economy',
+            cabinClass: (getParam('cabin') as CabinClass) || 'economy',
             currency: effectiveCurrency,
         };
-    }, [searchParams, userCurrency]);
+    }, [searchParams, serverSearchParams, userCurrency]);
 
     // Fetch results
     const fetchResults = useCallback(async () => {
@@ -162,7 +169,6 @@ export default function FlightSearchContent() {
         return Array.from(airlines.entries()).sort((a, b) => a[1].localeCompare(b[1]));
     }, [results]);
 
-    // Filtered + sorted offers
     const displayOffers = useMemo(() => {
         if (!results) return [];
 
@@ -184,7 +190,7 @@ export default function FlightSearchContent() {
         if (sortMode === 'recommended') {
             // Already interleaved/sorted by server
         } else if (sortMode === 'cheapest') {
-            offers.sort((a, b) => a.price.total - b.price.total);
+            offers.sort((a, b) => a.normalizedPriceUsd - b.normalizedPriceUsd);
         } else if (sortMode === 'fastest') {
             offers.sort((a, b) => a.totalDuration - b.totalDuration);
         } else if (sortMode === 'branded') {
@@ -195,18 +201,37 @@ export default function FlightSearchContent() {
                     return hasBrandB - hasBrandA; // Branded flights come first
                 }
                 // If both are branded (or neither), sub-sort by cheapest price
-                return a.price.total - b.price.total;
+                return a.normalizedPriceUsd - b.normalizedPriceUsd;
             });
         } else {
-            // "Best" = weighted score of price + duration
-            offers.sort((a, b) => {
-                const scoreA = a.price.total * 0.6 + a.totalDuration * 2;
-                const scoreB = b.price.total * 0.6 + b.totalDuration * 2;
-                return scoreA - scoreB;
+            // "Best" = deterministic score from server
+            offers.sort((a, b) => a.bestScore - b.bestScore);
+        }
+
+        // ── Group by physical flight ────────
+        const groups = new Map<string, FlightOffer[]>();
+        for (const offer of offers) {
+            const key = offer.physicalFlightId;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(offer);
+        }
+
+        // ── Map back to a list, keeping the "best" one per group ──
+        const result: (FlightOffer & { alternatives: FlightOffer[] })[] = [];
+        const seenGroups = new Set<string>();
+
+        for (const offer of offers) {
+            if (seenGroups.has(offer.physicalFlightId)) continue;
+            seenGroups.add(offer.physicalFlightId);
+
+            const group = groups.get(offer.physicalFlightId) || [];
+            result.push({
+                ...offer,
+                alternatives: group.filter(o => o.offerId !== offer.offerId), // Other brands/fares
             });
         }
 
-        return offers;
+        return result;
     }, [results, stopFilter, airlineFilter, sortMode]);
 
     // Route summary
@@ -419,19 +444,21 @@ export default function FlightSearchContent() {
                         </div>
                     ) : (
                         <>
-                            <AnimatePresence>
-                                {displayOffers.slice(0, displayLimit).map((offer, i) => (
-                                    <FlightCard
-                                        key={offer.offerId}
-                                        offer={offer}
-                                        index={i}
-                                        onSelect={(selected) => {
-                                            sessionStorage.setItem('selectedFlight', JSON.stringify(selected));
-                                            router.push('/flights/book');
-                                        }}
-                                    />
-                                ))}
-                            </AnimatePresence>
+                            <motion.div layout className="space-y-2 lg:space-y-3">
+                                <AnimatePresence mode="popLayout">
+                                    {displayOffers.slice(0, displayLimit).map((offer, i) => (
+                                        <FlightCard
+                                            key={offer.offerId}
+                                            offer={offer}
+                                            index={i}
+                                            onSelect={(selected) => {
+                                                sessionStorage.setItem('selectedFlight', JSON.stringify(selected));
+                                                router.push('/flights/book');
+                                            }}
+                                        />
+                                    ))}
+                                </AnimatePresence>
+                            </motion.div>
 
                             {displayLimit < displayOffers.length && (
                                 <div className="flex justify-center pt-4 lg:pt-6 pb-2">

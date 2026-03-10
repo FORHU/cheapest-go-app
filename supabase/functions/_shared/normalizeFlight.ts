@@ -13,6 +13,8 @@ import type {
     CabinClass,
 } from './types.ts';
 import { formatDuration } from './types.ts';
+import { normalizeDuffelPolicy, normalizeMystiflyV1Policy, normalizeMystiflyV2Policy } from './farePolicy.ts';
+
 
 // ─── Duffel Normalization ──────────────────────────────────────────
 
@@ -90,8 +92,14 @@ export function normalizeDuffelOffer(
         const airlineCode = rawOffer.owner?.iata_code ?? firstSeg.airline;
         const airlineName = rawOffer.owner?.name ?? firstSeg.airlineName;
 
+        const farePol = normalizeDuffelPolicy(rawOffer);
+
+        const normalizedPriceUsd = calculateNormalizedPriceUsd(price, currency);
+        const bestScore = calculateBestScore(normalizedPriceUsd, totalDurationMin, totalStops);
+        const stableId = generateUniqueOfferId(FlightProvider.DUFFEL, allSegments, rawOffer.total_amount, rawOffer.fare_type);
+
         return {
-            id: `duffel_${rawOffer.id}`,
+            id: stableId,
             provider: FlightProvider.DUFFEL,
 
             airline: airlineCode,
@@ -114,7 +122,13 @@ export function normalizeDuffelOffer(
             segments: allSegments,
 
             cabinClass: primaryCabinClass as CabinClass,
-            refundable: rawOffer.conditions?.refund_before_departure?.allowed === true,
+            refundable: farePol.isRefundable,
+            farePolicy: { ...farePol, policyVersion: 'search', policySource: 'duffel' },
+
+            // Sorting & Normalization fields
+            normalizedPriceUsd,
+            bestScore,
+            physicalFlightId: generatePhysicalFlightId(FlightProvider.DUFFEL, allSegments),
 
             // Seats remaining not always provided by Duffel
             seatsRemaining: undefined,
@@ -199,9 +213,6 @@ export function normalizeMystiflyOffer(
             }
         }
 
-        // Refundable from IsRefundable or FareType
-        const refundable = itinerary.IsRefundable === true
-            || itinerary.IsRefundable === 'Yes';
 
         // ── Segments ──
         const originDestOptions: any[] = itinerary.OriginDestinationOptions ?? [];
@@ -296,8 +307,14 @@ export function normalizeMystiflyOffer(
         _mystiflyCounter++;
         const id = `mystifly_${Date.now()}_${_mystiflyCounter}`;
 
+        const farePol = normalizeMystiflyV1Policy(itinerary);
+
+        const normalizedPriceUsd = calculateNormalizedPriceUsd(price, currency);
+        const bestScore = calculateBestScore(normalizedPriceUsd, totalDurationMin, totalStops);
+        const stableId = generateUniqueOfferId(FlightProvider.MYSTIFLY, allSegments, String(price), brandId || brandName);
+
         return {
-            id,
+            id: stableId,
             provider: FlightProvider.MYSTIFLY,
 
             airline: firstSeg.airline,
@@ -320,8 +337,13 @@ export function normalizeMystiflyOffer(
             segments: allSegments,
 
             cabinClass: firstSeg.cabinClass,
-            refundable,
+            refundable: farePol.isRefundable,
+            farePolicy: { ...farePol, policyVersion: 'search', policySource: 'mystifly_v1' },
             seatsRemaining,
+
+            normalizedPriceUsd,
+            bestScore,
+            physicalFlightId: generatePhysicalFlightId(FlightProvider.MYSTIFLY, allSegments),
 
             checkedBags,
             weightPerBag,
@@ -467,8 +489,14 @@ function normalizeMystiflyV2(
         _mystiflyCounter++;
         const id = `mystifly_${Date.now()}_${_mystiflyCounter}`;
 
+        const farePol = normalizeMystiflyV2Policy(fare);
+
+        const normalizedPriceUsd = calculateNormalizedPriceUsd(totalPrice, currency);
+        const bestScore = calculateBestScore(normalizedPriceUsd, totalDurationMin, totalStops);
+        const stableId = generateUniqueOfferId(FlightProvider.MYSTIFLY_V2, allSegments, String(totalPrice), brandName || fare.FareType);
+
         return {
-            id,
+            id: stableId,
             provider: FlightProvider.MYSTIFLY_V2,
             airline: firstSeg.airline,
             airlineName: firstSeg.airlineName,
@@ -487,7 +515,13 @@ function normalizeMystiflyV2(
             pricePerAdult,
             segments: allSegments,
             cabinClass: firstSeg.cabinClass,
-            refundable: fare.FareType === 'Public',
+            refundable: farePol.isRefundable,
+            farePolicy: { ...farePol, policyVersion: 'search', policySource: 'mystifly_v2' },
+
+            normalizedPriceUsd,
+            bestScore,
+            physicalFlightId: generatePhysicalFlightId(FlightProvider.MYSTIFLY_V2, allSegments),
+
             checkedBags: checkedBags || undefined,
             cabinBag: cabinBag || undefined,
             brandName: brandName || fare.FareType,
@@ -519,6 +553,63 @@ export function normalizeMystiflyV2Response(
 }
 
 // ─── Shared Helpers ─────────────────────────────────────────────────
+
+/**
+ * physicalFlightId = provider + marketingCarrier + routeKey + origin + destination + departureTime
+ * Shared by all brands/fares for the same physical flight.
+ */
+export function generatePhysicalFlightId(provider: FlightProvider, segments: NormalizedSegment[]): string {
+    if (!segments || segments.length === 0) return `${provider}_${Date.now()}`;
+    const first = segments[0];
+    const last = segments[segments.length - 1];
+    const routeKey = segments.map(s => `${s.airline}${s.flightNumber}`).join('-');
+
+    return [
+        provider,
+        first.airline,
+        routeKey,
+        first.origin,
+        last.destination,
+        first.departureTime.replace(/[-:T]/g, '').slice(0, 12)
+    ].join('_');
+}
+
+/**
+ * uniqueOfferId = physicalFlightId + brand/fare differentiator
+ */
+export function generateUniqueOfferId(
+    provider: FlightProvider,
+    segments: NormalizedSegment[],
+    price: string,
+    brand?: string
+): string {
+    const physId = generatePhysicalFlightId(provider, segments);
+    const differentiator = (brand || price).replace(/\s+/g, '-').toLowerCase();
+    return `${physId}_${differentiator}`;
+}
+
+/**
+ * Calculate the normalized price in USD using fixed conversion rates.
+ * USD: 1.0, PHP: 0.018, KRW: 0.00075
+ */
+export function calculateNormalizedPriceUsd(amount: number, currency: string): number {
+    const rates: Record<string, number> = {
+        'USD': 1.0,
+        'PHP': 0.018,
+        'KRW': 0.00075,
+    };
+    const rate = rates[currency.toUpperCase()] || 1.0;
+    return amount * rate;
+}
+
+/**
+ * Calculate the "Best" score for deterministic sorting.
+ * Lower is better.
+ * Formula: (normalizedPriceUsd * 1.0) + (durationMinutes * 0.3) + (stops * 40)
+ */
+export function calculateBestScore(priceUsd: number, durationMin: number, stops: number): number {
+    return (priceUsd * 1.0) + (durationMin * 0.3) + (stops * 40);
+}
 
 /** Calculate flight duration in minutes from two ISO datetime strings. */
 export function calculateDuration(departure: string, arrival: string): number {
