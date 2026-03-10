@@ -1,11 +1,11 @@
-import { FlightResultCache, FlightSearchParams } from "@/types/flights";
+import { FlightResult, FlightSearchParams } from "@/types/flights";
 import { env } from "@/utils/env";
 
 /**
  * Duffel provider adapter.
  * Handles communication with the Duffel API and transforms results to our unified format.
  */
-export async function searchDuffel(params: FlightSearchParams): Promise<FlightResultCache[]> {
+export async function searchDuffel(params: FlightSearchParams): Promise<FlightResult[]> {
     const DUFFEL_API_URL = "https://api.duffel.com/air/offer_requests";
     const token = env.DUFFEL_TOKEN;
 
@@ -54,12 +54,11 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
         const offers = json.data?.offers || [];
 
         // 3. Normalize Results
-        return offers.map((offer: any): FlightResultCache => {
+        return offers.map((offer: any): FlightResult => {
             const slice = offer.slices[0];
             const segment = slice.segments[0]; // Simplification for MVP: take first segment
             
             return {
-                id: crypto.randomUUID(),
                 provider: "duffel",
                 offer_id: offer.id,
                 price: parseFloat(offer.total_amount),

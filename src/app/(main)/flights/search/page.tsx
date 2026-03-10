@@ -1,4 +1,4 @@
-import { FlightResults } from "@/components/flights/flightResults";
+import { FlightResults } from "@/components/flights/flight-results-list";
 import { saveSearch, searchFlights } from "@/lib/server/flights/search-flights";
 import { FlightSearchParams, CabinClass, FlightOffer } from "@/types/flights";
 import { Suspense } from "react";

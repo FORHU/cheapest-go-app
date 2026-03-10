@@ -1,4 +1,4 @@
-import { FlightResultCache, FlightSearchParams, FlightSearch, FlightOffer } from "@/types/flights";
+import { FlightResultCache, FlightSearchParams, FlightSearch, FlightOffer, FlightResult } from "@/types/flights";
 import { searchDuffel } from "./providers/duffel";
 import { searchMystifly } from "./providers/mystifly";
 import { createClient } from "@/utils/supabase/server"; 
@@ -41,7 +41,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
 
     // Extract results from fulfilled promises
     const allResults = settlement
-        .filter((r): r is PromiseFulfilledResult<FlightResultCache[]> => r.status === "fulfilled")
+        .filter((r): r is PromiseFulfilledResult<FlightResult[]> => r.status === "fulfilled")
         .flatMap(r => r.value);
         
     // Log failures/timeouts for observability
@@ -73,13 +73,24 @@ async function getExistingCachedResults(params: FlightSearchParams, ttlMinutes: 
     const supabase = await createClient();
     
     // Find a recent identical search record
-    const { data: recentSearches, error: searchError } = await supabase
+    let query = supabase
         .from('flight_searches')
         .select('id, created_at')
         .eq('origin', params.origin)
         .eq('destination', params.destination)
         .eq('departure_date', params.departureDate)
         .eq('cabin_class', params.cabinClass)
+        .eq('adults', params.adults)
+        .eq('children', params.children)
+        .eq('infants', params.infants);
+
+    if (params.returnDate) {
+        query = query.eq('return_date', params.returnDate);
+    } else {
+        query = query.is('return_date', null);
+    }
+
+    const { data: recentSearches, error: searchError } = await query
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -106,7 +117,7 @@ async function getExistingCachedResults(params: FlightSearchParams, ttlMinutes: 
 /**
  * Logs search demand and computed price trends to stats table.
  */
-async function logSearchAnalytics(params: FlightSearchParams, results: FlightResultCache[]): Promise<void> {
+async function logSearchAnalytics(params: FlightSearchParams, results: FlightResult[]): Promise<void> {
     if (results.length === 0) return;
 
     const supabase = await createClient();
@@ -155,13 +166,14 @@ export async function saveSearch(params: FlightSearchParams): Promise<FlightSear
 /**
  * Caches flight results for a specific search.
  */
-export async function cacheResults(searchId: string, results: FlightResultCache[]): Promise<void> {
+export async function cacheResults(searchId: string, results: FlightResult[]): Promise<void> {
     const supabase = await createClient();
 
     const { error } = await supabase
         .from('flight_results_cache')
         .insert(
             results.map(r => ({
+                id: crypto.randomUUID(),
                 search_id: searchId,
                 provider: r.provider,
                 offer_id: r.offer_id,
@@ -171,6 +183,8 @@ export async function cacheResults(searchId: string, results: FlightResultCache[
                 departure_time: r.departure_time,
                 arrival_time: r.arrival_time,
                 duration: r.duration,
+                stops: r.stops,
+                remaining_seats: r.remaining_seats,
                 raw: r.raw
             }))
         );
