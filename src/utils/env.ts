@@ -38,8 +38,15 @@ export const env = {
             const isBuild = process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'production';
             
             if (isBuild && allowMissingInBuild) {
-                console.warn(`[env] Warning: Required environment variable "${String(key)}" is missing during build. Using empty string.`);
-                return "";
+                const placeholders: Record<string, string> = {
+                    supabaseUrl: 'https://placeholder-project.supabase.co',
+                    supabaseAnonKey: 'placeholder-anon-key-for-build-safety',
+                    mapboxToken: 'pk.ey_placeholder_token_for_build',
+                    stripePublishableKey: 'pk_test_placeholder',
+                };
+                const placeholder = placeholders[key] || "placeholder";
+                console.warn(`[env] Warning: Required environment variable "${String(key)}" is missing during build. Using placeholder: ${placeholder}`);
+                return placeholder;
             }
 
             throw new Error(
