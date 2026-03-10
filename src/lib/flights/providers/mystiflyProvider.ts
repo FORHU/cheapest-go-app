@@ -25,12 +25,14 @@ import type {
 } from './flightProvider.interface';
 import { FlightProviderError } from './flightProvider.interface';
 
+import { env } from '@/utils/env';
+
 // ─── Config ──────────────────────────────────────────────────────────
 
-const MYSTIFLY_USERNAME = process.env.MYSTIFLY_USERNAME || '';
-const MYSTIFLY_PASSWORD = process.env.MYSTIFLY_PASSWORD || '';
-const MYSTIFLY_ACCOUNT_NUMBER = process.env.MYSTIFLY_ACCOUNT_NUMBER || '';
-const MYSTIFLY_BASE_URL = process.env.MYSTIFLY_BASE_URL || 'https://restapidemo.myfarebox.com';
+const MYSTIFLY_USERNAME = env.MYSTIFLY_USERNAME;
+const MYSTIFLY_PASSWORD = env.MYSTIFLY_PASSWORD;
+const MYSTIFLY_ACCOUNT_NUMBER = env.MYSTIFLY_ACCOUNT_NUMBER;
+const MYSTIFLY_BASE_URL = env.MYSTIFLY_BASE_URL;
 
 // ─── Session Cache ──────────────────────────────────────────────────
 

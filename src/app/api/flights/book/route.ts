@@ -48,9 +48,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Contact email and phone are required' }, { status: 400 });
         }
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const { env } = await import("@/utils/env");
+        const supabaseUrl = env.SUPABASE_URL;
         // CRITICAL-4 FIX: Use service role key for edge function calls (not public anon key)
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
         if (!supabaseUrl || !serviceRoleKey) {
             throw new Error('Supabase environment variables not set');

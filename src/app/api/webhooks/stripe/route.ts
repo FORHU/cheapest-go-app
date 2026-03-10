@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
+import { env } from '@/utils/env';
 
 // Lazy-initialize Stripe to avoid module-level crash during Vercel build
 // (env vars aren't available at build time when Next.js collects page data)
 let _stripe: import('stripe').default | null = null;
 function getStripe() {
     if (!_stripe) {
-        const key = process.env.STRIPE_SECRET_KEY;
+        const key = env.STRIPE_SECRET_KEY;
         if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
         _stripe = new Stripe(key, { apiVersion: '2025-01-27.acacia' as any });
     }
     return _stripe;
 }
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
 
 
 /**
@@ -51,8 +52,8 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Stripe Webhook] Event: ${event.type}`);
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = env.SUPABASE_URL;
+    const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
     const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${serviceRoleKey}`,

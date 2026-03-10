@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { env } from "@/utils/env";
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { stripe } from '@/lib/stripe/server';
@@ -37,8 +38,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'bookingId is required' }, { status: 400 });
         }
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseUrl = env.SUPABASE_URL;
+        const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
         if (!supabaseUrl || !serviceRoleKey) {
             throw new Error('Supabase environment variables not set');
         }
@@ -372,7 +373,7 @@ async function cancelMystifly(booking: any, supabaseUrl: string, serviceRoleKey:
 }
 
 async function cancelDuffel(booking: any, supabaseUrl: string, serviceRoleKey: string): Promise<CancelResult> {
-    const duffelToken = process.env.DUFFEL_ACCESS_TOKEN;
+    const duffelToken = env.DUFFEL_TOKEN;
     if (!duffelToken) {
         return { success: false, error: 'DUFFEL_ACCESS_TOKEN not configured' };
     }

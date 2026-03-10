@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { createClient } from '@supabase/supabase-js';
+import { env } from "@/utils/env";
 import {
   prebookSchema,
   bookingConfirmSchema,
@@ -207,8 +208,8 @@ export async function confirmAndSaveBooking(
   // 4. Atomic DB insert via service role + RPC
   try {
     const serviceClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      env.SUPABASE_URL,
+      env.SUPABASE_SERVICE_ROLE_KEY,
     );
 
     const bookingPayload = {

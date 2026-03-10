@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { env } from "@/utils/env";
 
 // ─── HTML Escaping (prevent XSS in email templates) ─────────────────
 
@@ -121,8 +122,8 @@ export async function sendBookingConfirmationEmail(
 </html>
     `;
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const supabaseUrl = env.SUPABASE_URL;
+        const supabaseServiceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
         // Create Supabase client if keys are available
         const supabase = supabaseUrl && supabaseServiceKey
@@ -154,7 +155,7 @@ export async function sendBookingConfirmationEmail(
         }
 
         // Try to send via Resend if API key is available
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
 
         if (resendApiKey) {
             try {
@@ -356,7 +357,7 @@ export async function sendFlightBookingConfirmationEmail(
         `;
 
         // Try to send via Resend if API key is available
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
 
         console.log('[sendFlightBookingConfirmationEmail] Sending to:', email, '| PNR:', pnr);
 
@@ -478,7 +479,7 @@ export async function sendFlightAwaitingTicketEmail(
 </body>
 </html>`;
 
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
         console.log('[sendFlightAwaitingTicketEmail] Sending to:', email, '| PNR:', pnr);
 
         if (resendApiKey) {
@@ -572,7 +573,7 @@ export async function sendFlightRefundEmail(
 </body>
 </html>`;
 
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
         console.log('[sendFlightRefundEmail] Sending to:', email, '| PNR:', pnr);
 
         if (resendApiKey) {
@@ -693,7 +694,7 @@ export async function sendFlightCancellationEmail(
 </body>
 </html>`;
 
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
         console.log('[sendFlightCancellationEmail] Sending to:', email, '| PNR:', pnr);
 
         if (resendApiKey) {
@@ -782,7 +783,7 @@ export async function sendFlightCancellationRefundEmail(
 </body>
 </html>`;
 
-        const resendApiKey = process.env.RESEND_API_KEY;
+        const resendApiKey = env.RESEND_API_KEY;
         console.log('[sendFlightCancellationRefundEmail] Sending to:', email, '| PNR:', pnr);
 
         if (resendApiKey) {

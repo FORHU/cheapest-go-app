@@ -119,6 +119,8 @@ const STANDARD_STYLE = {
     layers: [] as never[],
 };
 
+import { env } from '@/utils/env';
+
 const Map = React.forwardRef<MapRef, MapProps>(
     (
         {
@@ -222,7 +224,7 @@ const Map = React.forwardRef<MapRef, MapProps>(
             >
                 <MapboxMap
                     ref={mapRef}
-                    mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+                    mapboxAccessToken={env.MAPBOX_TOKEN}
                     mapStyle={resolvedStyle as MapboxMapProps['mapStyle']}
                     onLoad={handleLoad}
                     {...props}
