@@ -58,9 +58,9 @@ export function AccountContent({ initialUser }: AccountContentProps) {
         { id: 'help', icon: <HelpCircle size={20} />, title: 'Help and feedback', description: 'Get customer support' },
     ], []);
 
-    const handleSignOut = () => {
-        logout();
-        router.push('/');
+    const handleSignOut = async () => {
+        await logout();
+        window.location.href = '/';
     };
 
     return (

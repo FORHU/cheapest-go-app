@@ -1,14 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+import { env } from "@/utils/env";
 
 // Routes that require authentication
-const protectedRoutes = ['/checkout', '/trips', '/account', '/admin'];
+const protectedRoutes = ['/checkout', '/trips', '/account', '/profile'];
 
 // Routes that should redirect to home if already authenticated
-const authRoutes = ['/login', '/register'];
+const authRoutes = ['/login', '/signup'];
 
 export const updateSession = async (request: NextRequest) => {
     const { pathname } = request.nextUrl;
@@ -18,77 +16,36 @@ export const updateSession = async (request: NextRequest) => {
     });
 
     const supabase = createServerClient(
-        supabaseUrl!,
-        supabaseKey!,
+        env.getRequired('supabaseUrl'),
+        env.getRequired('supabaseAnonKey'),
         {
             cookies: {
                 getAll() {
                     return request.cookies.getAll();
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value }) =>
+                    cookiesToSet.forEach(({ name, value, options }) =>
                         request.cookies.set(name, value)
                     );
                     supabaseResponse = NextResponse.next({
                         request,
                     });
                     cookiesToSet.forEach(({ name, value, options }) =>
-                        supabaseResponse.cookies.set(name, value, options)
+                        supabaseResponse.cookies.set(name, value, {
+                            ...options,
+                            sameSite: 'lax', // Production safety
+                            secure: process.env.NODE_ENV === 'production',
+                        })
                     );
                 },
             },
         }
     );
 
-    // Refreshing the auth token
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    // 1. Path Protection: Admin Routes (Specific Role Check)
-    if (pathname.startsWith('/admin')) {
-        // Allow access to the admin login page
-        if (pathname === '/admin/login') {
-            return supabaseResponse;
-        }
-
-        if (!user) {
-            return NextResponse.redirect(new URL('/login', request.url));
-        }
-
-        // Check for admin role in profiles table
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-        if (profile?.role !== 'admin') {
-            return NextResponse.redirect(new URL('/', request.url));
-        }
-
-        // Prevent caching for admin pages to block back-button access after logout
-        supabaseResponse.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
-    }
-
-    // 2. Protected routes — redirect to login if not authenticated
-    if (protectedRoutes.some((route) => pathname.startsWith(route))) {
-        if (!user) {
-            const redirectUrl = new URL('/login', request.url);
-            redirectUrl.searchParams.set('returnTo', pathname);
-            return NextResponse.redirect(redirectUrl);
-        }
-    }
-
-    // 3. Auth routes — redirect to home if already authenticated
-    if (authRoutes.some((route) => pathname.startsWith(route)) && user) {
-        // Redirect admins to dashboard, regular users to home
-        const role = user.user_metadata?.role || 'user';
-        if (role === 'admin') {
-            return NextResponse.redirect(new URL('/admin/overview', request.url));
-        }
-        return NextResponse.redirect(new URL('/', request.url));
-    }
+    // Protected routes — let the Page (Server Component) handle the redirect
+    // to avoid clashing with SSR and to allow better control over the next path.
+    // We only use this for session refreshing.
+    await supabase.auth.getUser();
 
     return supabaseResponse;
 };

@@ -19,7 +19,7 @@ export interface FlightPassengers {
     infants: number;
 }
 
-export type FlightProvider = 'mystifly' | 'duffel';
+export type FlightProvider = 'mystifly' | 'mystifly_v2' | 'duffel';
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
 
 // ─── Search Response ─────────────────────────────────────────────────
@@ -35,6 +35,31 @@ export interface FlightSearchResponse {
     };
 }
 
+// ─── Fare Policy ─────────────────────────────────────────────────────
+
+/**
+ * Normalized fare policy from the search or revalidation phase.
+ *
+ * Tristate badge logic:
+ *   🟢 Free cancellation       → isRefundable && refundPenaltyAmount === 0
+ *   🟡 Refundable (fees apply) → isRefundable && (refundPenaltyAmount > 0 || refundPenaltyAmount == null)
+ *   🔴 Non-refundable          → !isRefundable
+ *
+ * IMPORTANT: null refundPenaltyAmount ≠ free refund.
+ * null means "refundable but penalty amount unknown" → always show 🟡.
+ */
+export interface FarePolicy {
+    isRefundable: boolean;
+    isChangeable: boolean;
+    refundPenaltyAmount?: number | null;
+    refundPenaltyCurrency?: string | null;
+    changePenaltyAmount?: number | null;
+    changePenaltyCurrency?: string | null;
+    /** 'search' = indicative only. 'revalidated' = locked before payment. */
+    policyVersion: 'search' | 'revalidated';
+    policySource: 'duffel' | 'mystifly_v1' | 'mystifly_v2';
+}
+
 // ─── Flight Offer ────────────────────────────────────────────────────
 
 export interface FlightOffer {
@@ -44,7 +69,10 @@ export interface FlightOffer {
     segments: FlightSegmentDetail[];
     totalDuration: number;
     totalStops: number;
+    /** @deprecated Use farePolicy.isRefundable. Kept for backwards compat. */
     refundable: boolean;
+    /** Normalized fare policy. policyVersion='search' from search results. */
+    farePolicy?: FarePolicy;
 
     baggage?: {
         checkedBags: number;
@@ -65,7 +93,14 @@ export interface FlightOffer {
     lastTicketDate?: string;
     tripType?: 'one-way' | 'round-trip' | 'multi-city';
     _raw?: unknown;
+
+    // ── Sorting & Normalization (Computed on server) ────────────────
+    normalizedPriceUsd: number;
+    bestScore: number;
+    physicalFlightId: string;
+    alternatives?: FlightOffer[];
 }
+
 
 // ─── Price ───────────────────────────────────────────────────────────
 
@@ -147,7 +182,7 @@ export interface FlightBookingResponse {
     data?: {
         bookingId: string;
         pnr: string;
-        status: 'confirmed' | 'pending' | 'ticketed' | 'failed';
+        status: 'confirmed' | 'pending' | 'ticketed' | 'booked' | 'pnr_created' | 'awaiting_ticket' | 'failed' | 'cancel_requested' | 'cancelled' | 'cancel_failed' | 'refund_pending' | 'refund_failed' | 'refunded';
         ticketNumbers?: string[];
         totalPaid: number;
         currency: string;

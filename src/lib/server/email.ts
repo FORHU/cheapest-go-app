@@ -599,3 +599,213 @@ export async function sendFlightRefundEmail(
         return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
     }
 }
+
+// ═════════════════════════════════════════════════════════════════════
+//  FLIGHT CANCELLATION EMAIL  (User-initiated cancellation confirmed)
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendFlightCancellationEmailParams {
+    bookingId: string;
+    pnr: string;
+    email: string;
+    passengerName: string;
+    segments: FlightSegmentEmail[];
+    totalPaid: number;
+    refundAmount: number;
+    penaltyAmount: number;
+    currency: string;
+}
+
+export async function sendFlightCancellationEmail(
+    params: SendFlightCancellationEmailParams,
+): Promise<SendFlightBookingEmailResult> {
+    const { bookingId, pnr, email, passengerName, segments, totalPaid, refundAmount, penaltyAmount, currency } = params;
+    if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
+
+    try {
+        const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
+        const firstSeg = segments[0];
+        const lastSeg = segments[segments.length - 1];
+        const route = firstSeg && lastSeg ? `${firstSeg.origin} → ${lastSeg.destination}` : 'N/A';
+
+        const isRefundable = refundAmount > 0;
+        const refundBanner = isRefundable
+            ? `<div style="background:#f0fdf4;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #22c55e;">
+                <p style="margin:0;color:#15803d;font-size:14px;">
+                  <strong>Refund of ${fmt(refundAmount)} is being processed.</strong><br>
+                  ${penaltyAmount > 0 ? `A cancellation fee of ${fmt(penaltyAmount)} was applied per the airline's fare rules.<br>` : ''}
+                  Please allow <strong>5–10 business days</strong> for the refund to appear on your statement.
+                </p>
+              </div>`
+            : `<div style="background:#fef2f2;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #ef4444;">
+                <p style="margin:0;color:#991b1b;font-size:14px;">
+                  <strong>This fare is non-refundable.</strong><br>
+                  No refund will be issued per the airline's fare rules.
+                </p>
+              </div>`;
+
+        const segmentRows = segments.map((seg) => {
+            const depStr = new Date(seg.departureTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+            const arrStr = new Date(seg.arrivalTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+            return `<tr>
+                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.airlineName || seg.airline)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(seg.flightNumber)}</span></td>
+                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.origin)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(depStr)}</span></td>
+                <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;color:#9ca3af;">→</td>
+                <td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${escapeHtml(seg.destination)}</strong><br><span style="color:#6b7280;font-size:13px;">${escapeHtml(arrStr)}</span></td>
+            </tr>`;
+        }).join('');
+
+        const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Booking Cancelled</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#64748b 0%,#475569 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="color:white;margin:0;font-size:28px;">Booking Cancelled</h1>
+    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(route)}</p>
+  </div>
+  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+    <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
+    <p style="margin:0 0 20px 0;">Your booking for <strong>${escapeHtml(route)}</strong> (PNR: <strong style="font-family:monospace;">${escapeHtml(pnr)}</strong>) has been successfully cancelled.</p>
+
+    <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
+      <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Cancellation Summary</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#6b7280;">PNR:</td><td style="padding:8px 0;font-weight:700;font-family:monospace;">${escapeHtml(pnr)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(bookingId)}</td></tr>
+        <tr style="border-top:1px solid #e5e7eb;"><td style="padding:8px 0;color:#6b7280;">Total Paid:</td><td style="padding:8px 0;font-weight:600;">${fmt(totalPaid)}</td></tr>
+        ${penaltyAmount > 0 ? `<tr><td style="padding:8px 0;color:#6b7280;">Cancellation Fee:</td><td style="padding:8px 0;color:#ef4444;font-weight:600;">-${fmt(penaltyAmount)}</td></tr>` : ''}
+        <tr><td style="padding:8px 0;color:#6b7280;font-weight:600;">Refund Amount:</td><td style="padding:8px 0;font-weight:700;font-size:16px;color:${isRefundable ? '#059669' : '#ef4444'};">${isRefundable ? fmt(refundAmount) : 'Non-refundable'}</td></tr>
+      </table>
+    </div>
+
+    <div style="margin:20px 0;">
+      <h3 style="margin:0 0 10px 0;font-size:16px;color:#374151;">Cancelled Itinerary</h3>
+      <table style="width:100%;border-collapse:collapse;">${segmentRows}</table>
+    </div>
+
+    ${refundBanner}
+
+    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">If you have any questions about your cancellation or refund, please contact our support team.</p>
+  </div>
+  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+  </div>
+</body>
+</html>`;
+
+        const resendApiKey = process.env.RESEND_API_KEY;
+        console.log('[sendFlightCancellationEmail] Sending to:', email, '| PNR:', pnr);
+
+        if (resendApiKey) {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    to: [email],
+                    subject: `Booking Cancelled – PNR ${pnr} (${route})`,
+                    html: emailHtml,
+                }),
+            });
+            const text = await res.text();
+            console.log('[sendFlightCancellationEmail] Resend response:', res.status, text);
+            if (res.ok) return { success: true };
+            return { success: false, error: `Resend ${res.status}: ${text}` };
+        }
+
+        console.warn('[sendFlightCancellationEmail] RESEND_API_KEY not set');
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendFlightCancellationEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  FLIGHT CANCELLATION REFUND CONFIRMED EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendFlightCancellationRefundEmailParams {
+    bookingId: string;
+    pnr: string;
+    email: string;
+    passengerName: string;
+    route: string;
+    refundAmount: number;
+    currency: string;
+    stripeRefundId?: string;
+}
+
+export async function sendFlightCancellationRefundEmail(
+    params: SendFlightCancellationRefundEmailParams,
+): Promise<SendFlightBookingEmailResult> {
+    const { bookingId, pnr, email, passengerName, route, refundAmount, currency, stripeRefundId } = params;
+    if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
+
+    try {
+        const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(n);
+
+        const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Refund Confirmed</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="color:white;margin:0;font-size:28px;">✅ Refund Confirmed</h1>
+    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(route)}</p>
+  </div>
+  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+    <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(passengerName)}</strong>,</p>
+    <p style="margin:0 0 20px 0;">Great news — your refund of <strong>${fmt(refundAmount)}</strong> for booking <strong style="font-family:monospace;">${escapeHtml(pnr)}</strong> has been successfully processed and is on its way back to your original payment method.</p>
+
+    <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
+      <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Refund Details</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#6b7280;">PNR:</td><td style="padding:8px 0;font-weight:700;font-family:monospace;">${escapeHtml(pnr)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(bookingId)}</td></tr>
+        ${stripeRefundId ? `<tr><td style="padding:8px 0;color:#6b7280;">Refund Reference:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(stripeRefundId)}</td></tr>` : ''}
+        <tr style="border-top:1px solid #e5e7eb;"><td style="padding:12px 0 8px 0;color:#6b7280;font-weight:600;">Refund Amount:</td><td style="padding:12px 0 8px 0;font-weight:700;font-size:20px;color:#059669;">${fmt(refundAmount)}</td></tr>
+      </table>
+    </div>
+
+    <div style="background:#f0fdf4;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #22c55e;">
+      <p style="margin:0;color:#15803d;font-size:14px;">
+        <strong>When will I see it?</strong><br>
+        Refunds typically appear on your statement within <strong>3–5 business days</strong> for credit cards, or up to 10 business days for debit cards, depending on your bank. If you haven't received it after 10 days, please contact your bank with the Refund Reference above.
+      </p>
+    </div>
+
+    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing CheapestGo. We hope to serve you again soon.</p>
+  </div>
+  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+  </div>
+</body>
+</html>`;
+
+        const resendApiKey = process.env.RESEND_API_KEY;
+        console.log('[sendFlightCancellationRefundEmail] Sending to:', email, '| PNR:', pnr);
+
+        if (resendApiKey) {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    to: [email],
+                    subject: `Refund Confirmed – ${fmt(refundAmount)} for PNR ${pnr}`,
+                    html: emailHtml,
+                }),
+            });
+            const text = await res.text();
+            console.log('[sendFlightCancellationRefundEmail] Resend response:', res.status, text);
+            if (res.ok) return { success: true };
+            return { success: false, error: `Resend ${res.status}: ${text}` };
+        }
+
+        console.warn('[sendFlightCancellationRefundEmail] RESEND_API_KEY not set');
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendFlightCancellationRefundEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}

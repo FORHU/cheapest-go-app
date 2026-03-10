@@ -35,7 +35,7 @@ function getCorsHeaders(req: Request) {
     };
 }
 
-const SESSION_TTL_MINUTES = 30;
+const SESSION_TTL_MINUTES = 15;
 
 // ─── Request Body ───────────────────────────────────────────────────
 
@@ -60,6 +60,17 @@ interface CreateBookingSessionBody {
     passengers: BookingSessionPassenger[];
     contact: BookingSessionContact;
     idempotencyKey?: string;
+    /** Indicative fare policy from search stage. Will be overwritten after revalidation. */
+    farePolicy?: {
+        isRefundable?: boolean;
+        isChangeable?: boolean;
+        refundPenaltyAmount?: number | null;
+        refundPenaltyCurrency?: string | null;
+        changePenaltyCurrency?: string | null;
+        policySource?: string;
+        policyVersion?: string;
+        rawSupplierPolicy?: unknown;
+    };
 }
 
 // ─── Handler ────────────────────────────────────────────────────────
@@ -195,6 +206,16 @@ Deno.serve(async (req: Request) => {
                 created_at: now.toISOString(),
                 updated_at: now.toISOString(),
                 ...(body.idempotencyKey ? { idempotency_key: body.idempotencyKey } : {}),
+                // Fare policy — indicative at this stage, locked=false
+                ...(body.farePolicy ? {
+                    fare_policy: {
+                        ...body.farePolicy,
+                        policyVersion: body.farePolicy.policyVersion === 'revalidated' ? 'revalidated' : 'search'
+                    },
+                    policy_source: body.farePolicy.policySource ?? null,
+                    policy_version: body.farePolicy.policyVersion === 'revalidated' ? 'revalidated' : 'search',
+                    policy_locked: body.farePolicy.policyVersion === 'revalidated',
+                } : { policy_locked: false }),
             });
 
         if (dbError) {

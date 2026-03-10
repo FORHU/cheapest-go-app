@@ -10,7 +10,9 @@ A full-stack travel booking platform built with **Next.js 16**, **Supabase**, an
 - **Multi-provider search** — Duffel Airways + Mystifly (V1 & V2 branded fares) aggregated in parallel
 - **All trip types** — One-way, Round-trip, Multi-city
 - **Smart sorting & filtering** — By price, duration, stops, airline
+- **Normalized Fare Policy Architecture** — Unified refundability and penalty policies shared across all suppliers
 - **Production-grade booking flow** — Passenger details → Stripe authorization → PNR confirmation
+- **Backend Revalidation System** — Server-side price lock and API schema shift resiliency
 - **Manual capture for Mystifly** — Card held until PNR is secured; never charged on failure
 - **E-ticket issuance** — Auto-ticketing via Duffel after payment
 - **Background ticket polling** — `poll-pending-tickets` auto-refunds if Mystifly ticketing fails
@@ -192,6 +194,9 @@ stripe listen --forward-to localhost:3000/api/webhooks/stripe
 ### Deploy Supabase Edge Functions
 
 ```bash
+# Push environment variables to Supabase Cloud (CRITICAL FOR PRODUCTION)
+npx supabase secrets set --env-file .env
+
 # Deploy all functions
 npx supabase functions deploy --no-verify-jwt
 
@@ -199,6 +204,7 @@ npx supabase functions deploy --no-verify-jwt
 npx supabase functions deploy create-booking --no-verify-jwt
 npx supabase functions deploy poll-pending-tickets --no-verify-jwt
 ```
+> **Note on Deno Deploy:** Do not use `await import()` for dynamic local file imports inside Edge Functions. Supabase Cloud deployment bundles will eagerly strip dynamic internal paths and throw 500 errors gracefully resolved via static imports at the top of the file.
 
 ### Database Migrations
 

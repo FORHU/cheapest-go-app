@@ -81,12 +81,12 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
             if (!segment?.date) missingFields.push(isRoundTrip && index === 1 ? 'return date' : `segment ${index + 1} date`);
         });
 
-       if (missingFields.length > 0) {
+        if (missingFields.length > 0) {
             toast.error(`Missing information`, {
                 description: `Please select ${missingFields[0]}`,
             });
             return;
-        } 
+        }
 
         setIsSearching(true);
         setActiveDropdown(null);
@@ -106,7 +106,7 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
             if (segment.origin?.title) params.set(`originName${index}`, segment.origin.title);
             if (segment.destination?.code) params.set(`dest${index}`, segment.destination.code);
             if (segment.destination?.title) params.set(`destName${index}`, segment.destination.title);
-            if (segment.date) params.set(`date${index}`, segment.date.toISOString());
+            params.set(`date${index}`, segment.date ? segment.date.toISOString() : '');
         });
 
         // ─── Navigate to results page ────────────────────────────
