@@ -1,7 +1,8 @@
-import { FlightResultCache, FlightSearchParams, FlightSearch } from "@/types/flights";
+import { FlightResultCache, FlightSearchParams, FlightSearch, FlightOffer } from "@/types/flights";
 import { searchDuffel } from "./providers/duffel";
 import { searchMystifly } from "./providers/mystifly";
 import { createClient } from "@/utils/supabase/server"; 
+import { normalizedToFlightOffer } from "@/utils/flight-utils";
 
 /**
  * Helper to wrap a promise with a timeout.
@@ -17,7 +18,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, providerName: str
  * Main orchestrator for flight searches.
  * Implements caching logic and provider aggregation.
  */
-export async function searchFlights(params: FlightSearchParams): Promise<FlightResultCache[]> {
+export async function searchFlights(params: FlightSearchParams): Promise<FlightOffer[]> {
     const TIMEOUT_MS = 15000; // 15 seconds
     const TTL_MINUTES = 10;
 
@@ -25,7 +26,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightR
     const cachedResults = await getExistingCachedResults(params, TTL_MINUTES);
     if (cachedResults && cachedResults.length > 0) {
         console.log(`[Cache] Found valid hit for ${params.origin}->${params.destination} (TTL: ${TTL_MINUTES}m)`);
-        return cachedResults;
+        return cachedResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
     }
 
     // 2. Fetch from providers in parallel with resilience (allSettled)
@@ -62,7 +63,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightR
     }
 
     // 5. Return aggregated and unified results
-    return allResults;
+    return allResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
 }
 
 /**

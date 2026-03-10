@@ -1,6 +1,6 @@
-import FlightResultsList from "@/components/flights/flight-results-list";
+import { FlightResults } from "@/components/flights/flightResults";
 import { saveSearch, searchFlights } from "@/lib/server/flights/search-flights";
-import { FlightSearchParams, CabinClass } from "@/types/flights";
+import { FlightSearchParams, CabinClass, FlightOffer } from "@/types/flights";
 import { Suspense } from "react";
 import { SectionHeader } from "@/components/ui";
 
@@ -63,8 +63,10 @@ async function SearchResultsOrchestrator({ params }: { params: FlightSearchParam
         
         // 2. Perform search (Parallel provider fetch + Cache update)
         const results = await searchFlights({ ...params, searchId: savedSearch.id });
+        
+        const offers: FlightOffer[] = results;
 
-        return <FlightResultsList initialResults={results} />;
+        return <FlightResults offers={offers} loading={false} />;
     } catch (error: any) {
         return (
             <div className="bg-red-50 p-6 rounded-2xl border border-red-100 text-red-600">

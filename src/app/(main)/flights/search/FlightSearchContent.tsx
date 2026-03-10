@@ -4,10 +4,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeftRight, SlidersHorizontal, ArrowUpDown, Loader2, AlertTriangle, Search, Plane } from 'lucide-react';
-import { FlightCard } from '@/components/flights/FlightCard';
+import { FlightCard } from '@/components/flights/flightCard';
 import BackButton from '@/components/common/BackButton';
 import { useSearchStore } from '@/stores/searchStore';
-import type { FlightOffer, FlightSearchRequest, CabinClass } from '@/lib/flights';
+import type { FlightOffer, FlightSearchRequest, CabinClass } from '@/types/flights';
 
 // ─── Types ───────────────────────────────────────────────────────────
 

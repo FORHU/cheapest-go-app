@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { FlightOffer, FlightSegmentDetail, CabinClass } from '@/lib/flights/types';
-import { getAirlineName } from '@/lib/flights/types';
+import type { FlightOffer, FlightSegmentDetail, CabinClass } from '@/types/flights';
+import { getAirlineName, normalizedToFlightOffer } from '@/utils/flight-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,20 +72,17 @@ export async function POST(req: NextRequest) {
         // ─── Call unified-flight-search Edge Function ─────────────
 
         const { env } = await import("@/utils/env");
-        const supabaseUrl = env.SUPABASE_URL;
-        const supabaseKey = env.SUPABASE_ANON_KEY;
-
-        if (!supabaseUrl || !supabaseKey) {
-            throw new Error('Supabase environment variables not set');
+        if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
+            return NextResponse.json({ success: false, error: 'Server misconfiguration' }, { status: 500 });
         }
 
-        const edgeFnUrl = `${supabaseUrl}/functions/v1/unified-flight-search`;
+        const edgeFnUrl = `${env.SUPABASE_URL}/functions/v1/unified-flight-search`;
 
         const edgeRes = await fetch(edgeFnUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseKey}`,
+                'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`,
             },
             body: JSON.stringify({
                 segments,
@@ -137,71 +134,3 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// ─── Transform NormalizedFlight → FlightOffer ────────────────────────
-
-function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripType']): FlightOffer {
-    const segments: FlightSegmentDetail[] = (nf.segments ?? []).map((seg: any, idx: number) => ({
-        segmentIndex: idx,
-        airline: {
-            code: seg.airline ?? '',
-            name: seg.airlineName || getAirlineName(seg.airline ?? ''),
-        },
-        flightNumber: seg.flightNumber ?? '',
-        departure: {
-            airport: seg.origin ?? '',
-            terminal: seg.terminal,
-            time: seg.departureTime ?? '',
-        },
-        arrival: {
-            airport: seg.destination ?? '',
-            terminal: seg.arrivalTerminal,
-            time: seg.arrivalTime ?? '',
-        },
-        duration: seg.duration ?? 0,
-        stops: 0,
-        aircraft: seg.aircraft,
-        cabinClass: (seg.cabinClass ?? 'economy') as CabinClass,
-    }));
-
-    return {
-        offerId: nf.id ?? '',
-        provider: nf.provider ?? '',
-        price: {
-            total: nf.price ?? 0,
-            base: nf.baseFare ?? 0,
-            taxes: nf.taxes ?? 0,
-            currency: nf.currency ?? 'USD',
-            pricePerAdult: nf.pricePerAdult ?? nf.price ?? 0,
-        },
-        segments,
-        totalDuration: nf.durationMinutes ?? 0,
-        totalStops: nf.stops ?? 0,
-        refundable: nf.refundable ?? false,
-        baggage: nf.checkedBags != null ? {
-            checkedBags: nf.checkedBags,
-            weightPerBag: nf.weightPerBag,
-            cabinBag: nf.cabinBag,
-        } : undefined,
-        seatsRemaining: nf.seatsRemaining,
-        brandedFare: nf.brandName ? {
-            brandName: nf.brandName,
-            brandId: nf.brandId,
-            fareType: nf.fareType,
-        } : undefined,
-        validatingAirline: nf.validatingAirline,
-        lastTicketDate: nf.lastTicketDate,
-        tripType: tripType ?? 'one-way',
-
-        // Sorting & Normalization
-        normalizedPriceUsd: nf.normalizedPriceUsd ?? 0,
-        bestScore: nf.bestScore ?? 0,
-        physicalFlightId: nf.physicalFlightId ?? nf.id,
-        // Provider-specific IDs needed for booking
-        resultIndex: nf.resultIndex,   // Original Duffel offer ID
-        traceId: nf.traceId,           // Mystifly fareSourceCode
-        // CRITICAL-2 FIX: _rawOffer is strictly required for Duffel to book
-        ...(nf.provider === 'duffel' ? {
-            _rawOffer: nf._rawOffer || nf.rawOffer,
-        } : {}),
-    } as FlightOffer;
-}

@@ -38,14 +38,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'bookingId is required' }, { status: 400 });
         }
 
-        const supabaseUrl = env.SUPABASE_URL;
-        const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
-        if (!supabaseUrl || !serviceRoleKey) {
-            throw new Error('Supabase environment variables not set');
-        }
-
         // Service-role client for all DB operations (bypasses RLS)
-        const supabase = createServiceClient(supabaseUrl, serviceRoleKey);
+        const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
 
         // ── Step 1: Load booking ──────────────────────────────────────
@@ -135,7 +129,7 @@ export async function POST(req: NextRequest) {
 
         try {
             if (isMystifly) {
-                const result = await cancelMystifly(booking, supabaseUrl, serviceRoleKey);
+                const result = await cancelMystifly(booking);
                 supplierSuccess = result.success;
                 // SECURITY: Cap refund amount at the total price to prevent supplier bugs from triggering excess refunds
                 refundAmount = Math.min(result.refundAmount ?? 0, booking.total_price);
@@ -145,7 +139,7 @@ export async function POST(req: NextRequest) {
                 supplierCancellationId = result.cancellationId;
             } else {
                 // Duffel cancellation
-                const result = await cancelDuffel(booking, supabaseUrl, serviceRoleKey);
+                const result = await cancelDuffel(booking);
                 supplierSuccess = result.success;
                 // SECURITY: Cap refund amount
                 refundAmount = Math.min(result.refundAmount ?? 0, booking.total_price);
@@ -343,9 +337,10 @@ interface CancelResult {
     providerMissing?: boolean;
 }
 
-async function cancelMystifly(booking: any, supabaseUrl: string, serviceRoleKey: string): Promise<CancelResult> {
+async function cancelMystifly(booking: any): Promise<CancelResult> {
+    const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
     // Load traceId / fareSourceCode from booking sessions or metadata
-    const { data: session } = await createServiceClient(supabaseUrl, serviceRoleKey)
+    const { data: session } = await supabase
         .from('booking_sessions')
         .select('flight')
         .eq('id', booking.session_id)
@@ -372,7 +367,8 @@ async function cancelMystifly(booking: any, supabaseUrl: string, serviceRoleKey:
     };
 }
 
-async function cancelDuffel(booking: any, supabaseUrl: string, serviceRoleKey: string): Promise<CancelResult> {
+async function cancelDuffel(booking: any): Promise<CancelResult> {
+    const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
     const duffelToken = env.DUFFEL_TOKEN;
     if (!duffelToken) {
         return { success: false, error: 'DUFFEL_ACCESS_TOKEN not configured' };

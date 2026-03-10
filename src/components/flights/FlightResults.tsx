@@ -3,9 +3,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plane, Search } from 'lucide-react';
-import { FlightCard } from './FlightCard';
+import { FlightCard } from './flightCard';
 import { Skeleton } from '@/components/shared/Skeleton/Skeleton';
-import type { FlightOffer } from '@/lib/flights/types';
+import type { FlightOffer } from '@/types/flights';
 
 // ─── Skeleton Card ───────────────────────────────────────────────────
 

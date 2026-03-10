@@ -26,6 +26,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
     try {
         const { user, error: authError } = await getAuthenticatedUser();
+        const { env } = await import("@/utils/env");
         if (authError || !user) {
             return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
         }
@@ -39,14 +40,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { env } = await import("@/utils/env");
-        const supabaseUrl = env.SUPABASE_URL;
-        const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
-        if (!supabaseUrl || !serviceRoleKey) {
-            throw new Error('Supabase environment variables not set');
-        }
-
-        const supabase = createClient(supabaseUrl, serviceRoleKey);
+        // Service-role client for all DB operations
+        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
         // ── Step 1: Verify payment server-side (never trust the client) ──────
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
@@ -119,10 +114,10 @@ export async function POST(req: NextRequest) {
 
         const edgeFnHeaders = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${serviceRoleKey}`,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
         };
 
-        const bookingRes = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
+        const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
             method: 'POST',
             headers: edgeFnHeaders,
             body: JSON.stringify({ sessionId }),
@@ -135,7 +130,7 @@ export async function POST(req: NextRequest) {
             // Duffel: auto-ticket if needed
             if (!isMystifly && bookingData.status !== 'ticketed' && !bookingData.alreadyBooked && bookingData.bookingId) {
                 console.log('[/confirm] Auto-ticketing Duffel order:', bookingData.bookingId);
-                const ticketRes = await fetch(`${supabaseUrl}/functions/v1/issue-ticket`, {
+                const ticketRes = await fetch(`${env.SUPABASE_URL}/functions/v1/issue-ticket`, {
                     method: 'POST',
                     headers: edgeFnHeaders,
                     body: JSON.stringify({ bookingId: bookingData.bookingId }),

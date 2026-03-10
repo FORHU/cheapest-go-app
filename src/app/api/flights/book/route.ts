@@ -1,37 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
+import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
 
-// ─── POST /api/flights/book ──────────────────────────────────────────
-//
-// Two-step booking flow via Supabase Edge Functions:
-//   1. create-booking-session  →  stores flight + passengers temporarily
-//   2. create-booking          →  calls provider API, saves to DB
-//
-// SECURITY: Requires authenticated user (JWT verified server-side).
-// Uses service role key for edge function calls to prevent direct abuse.
-// Client-supplied rawOffer is stripped — server rebuilds/revalidates.
-//
-
 export async function POST(req: NextRequest) {
     try {
-        // ── CRITICAL-3 FIX: Server-side authentication ──
         const { user, error: authError } = await getAuthenticatedUser();
-
         if (authError || !user) {
-            return NextResponse.json(
-                { success: false, error: 'Authentication required' },
-                { status: 401 },
-            );
+            return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
         }
 
         const body = await req.json();
         const { provider, flight, passengers, contact, idempotencyKey, farePolicy } = body;
 
-        // Use server-verified user ID, never trust client-supplied userId
+        // Use server-verified user ID
         const userId = user.id;
 
         // ── Validate ──
@@ -48,30 +32,24 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Contact email and phone are required' }, { status: 400 });
         }
 
-        const { env } = await import("@/utils/env");
-        const supabaseUrl = env.SUPABASE_URL;
-        // CRITICAL-4 FIX: Use service role key for edge function calls (not public anon key)
-        const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
-
-        if (!supabaseUrl || !serviceRoleKey) {
-            throw new Error('Supabase environment variables not set');
+        if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error('[/book] Missing Supabase env variables');
+            return NextResponse.json({ success: false, error: 'Server misconfiguration' }, { status: 500 });
         }
 
-        const headers = {
+        const edgeFnHeaders = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${serviceRoleKey}`,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
         };
 
         // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
-        // Never trust the frontend's fare rules. Revalidate immediately 
-        // before saving the session to enforce price and availability.
-        const revalRes = await fetch(`${supabaseUrl}/functions/v1/revalidate-flight`, {
+        const revalRes = await fetch(`${env.SUPABASE_URL}/functions/v1/revalidate-flight`, {
             method: 'POST',
-            headers,
+            headers: edgeFnHeaders,
             body: JSON.stringify({
                 userId,
                 provider,
-                flightPayload: { ...flight, oldPrice: flight.price },
+                flightPayload: { ...flight, oldPrice: flight.price.total },
             }),
         });
 
@@ -84,46 +62,36 @@ export async function POST(req: NextRequest) {
             }, { status: 409 });
         }
 
-        if (revalData.priceChanged && Math.abs(revalData.newPrice - flight.price) > 0.01) {
-            console.error('\n-------- MYSTIFLY RAW PAYLOAD (Zero Price Error) --------');
-            console.error(JSON.stringify(revalData, null, 2));
-            console.error('---------------------------------------------------------\n');
-
+        if (revalData.priceChanged && Math.abs(revalData.newPrice - flight.price.total) > 0.01) {
             return NextResponse.json({
                 success: false,
-                error: `Flight price changed from ${flight.currency} ${flight.price} to ${revalData.newPrice}. Please restart booking.`
+                error: `Flight price changed. Please restart booking.`
             }, { status: 409 });
         }
 
-        // Overwrite frontend policy with the immutable server-validated snapshot
         const serverFarePolicy = revalData.farePolicy || farePolicy;
-
-        // CRITICAL-2 FIX: Strip rawOffer from flight data ONLY FOR MYSTIFLY
         const sanitizedFlight = { ...flight };
         if (provider === 'mystifly' || provider === 'mystifly_v2') {
-            delete sanitizedFlight.rawOffer;
-            delete sanitizedFlight._raw;
-            delete sanitizedFlight._rawOffer;
+            delete (sanitizedFlight as any).rawOffer;
+            delete (sanitizedFlight as any)._rawOffer;
         }
 
         // ── Step 1: Create Booking Session ──
-        // HIGH-2 FIX: Pass idempotencyKey for duplicate detection
-        const sessionRes = await fetch(`${supabaseUrl}/functions/v1/create-booking-session`, {
+        const sessionRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking-session`, {
             method: 'POST',
-            headers,
+            headers: edgeFnHeaders,
             body: JSON.stringify({
                 userId,
                 provider,
                 flight: sanitizedFlight,
                 passengers,
                 contact,
-                idempotencyKey: idempotencyKey || undefined,
+                idempotencyKey,
                 farePolicy: serverFarePolicy,
             }),
         });
 
         const sessionData = await sessionRes.json();
-
         if (!sessionData.success) {
             throw new Error(sessionData.error || 'Failed to create booking session');
         }
@@ -131,53 +99,42 @@ export async function POST(req: NextRequest) {
         const sessionId = sessionData.sessionId;
 
         // ── Step 2: Create Stripe PaymentIntent ──
-        // STEP 3: Create Stripe PaymentIntent with manual capture for Mystifly
-        // DO NOT capture money yet. Mystifly requires PNR first.
-        // Duffel: automatic capture (money taken when payment succeeds).
         const isMystifly = provider === 'mystifly' || provider === 'mystifly_v2';
-        const unitAmount = Math.round((flight.price || 10) * 100);
-
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: unitAmount,
-            currency: (flight.currency || 'USD').toLowerCase(),
-            // Manual capture for Mystifly: authorizes card but does NOT charge yet.
-            // Money is only captured after the supplier confirms the booking (PNR received).
-            ...(isMystifly ? { capture_method: 'manual' } : {}),
-            description: `Flight Booking: ${flight.segments?.[0]?.origin} to ${flight.segments?.[flight.segments.length - 1]?.destination} with ${provider}`,
+            amount: Math.round(flight.price.total * 100),
+            currency: flight.price.currency.toLowerCase(),
+            capture_method: isMystifly ? 'manual' : 'automatic',
             metadata: {
                 bookingSessionId: sessionId,
                 provider: provider,
-                contactEmail: contact.email,
-                passengerName: passengers[0] ? `${passengers[0].firstName} ${passengers[0].lastName}` : 'Traveler',
+                userId: userId,
+                passengerEmail: contact.email,
             },
+            description: `Flight Booking: ${flight.segments[0].origin} to ${flight.segments[flight.segments.length - 1].destination}`,
         });
 
         // ── Step 3: Store PaymentIntent ID in booking session ──
-        // create-booking needs this to capture or cancel payment after supplier responds.
-        const supabase = (await import('@supabase/supabase-js')).createClient(supabaseUrl, serviceRoleKey);
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
         await supabase
             .from('booking_sessions')
             .update({
                 payment_intent_id: paymentIntent.id,
-                capture_method: isMystifly ? 'manual' : 'automatic',
-                status: 'initiated',
+                status: 'payment_initiated'
             })
             .eq('id', sessionId);
 
         return NextResponse.json({
             success: true,
-            data: {
-                clientSecret: paymentIntent.client_secret,
-                sessionId: sessionId,
-                paymentIntentId: paymentIntent.id,
-                captureMethod: isMystifly ? 'manual' : 'automatic',
-            },
+            clientSecret: paymentIntent.client_secret,
+            sessionId: sessionId
         });
-    } catch (err) {
-        console.error('[FlightBook] Error:', err);
-        return NextResponse.json(
-            { success: false, error: err instanceof Error ? err.message : 'Booking failed. Please try again.' },
-            { status: 500 },
-        );
+
+    } catch (err: any) {
+        console.error('[/book] Error:', err);
+        return NextResponse.json({
+            success: false,
+            error: err.message || 'An unexpected error occurred'
+        }, { status: 500 });
     }
 }

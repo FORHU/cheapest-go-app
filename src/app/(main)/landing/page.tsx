@@ -1,4 +1,4 @@
-import FlightSearchForm from "@/components/flights/flight-search-form";
+import FlightSearchForm from "@/components/flights/flightSearchForm";
 import { SectionHeader } from "@/components/ui";
 
 /**

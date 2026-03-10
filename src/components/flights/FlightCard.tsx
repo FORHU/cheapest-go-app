@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plane, Clock, ArrowRight, Luggage, AlertCircle, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign } from 'lucide-react';
-import type { FlightOffer, FlightSegmentDetail, FarePolicy } from '@/lib/flights/types';
-import { getAirlineName } from '@/lib/flights/types';
+import type { FlightOffer, FlightSegmentDetail, FarePolicy } from '@/types/flights';
+import { getAirlineName } from '@/utils/flight-utils';
 
 
 import { useUserCurrency } from '@/stores/searchStore';
