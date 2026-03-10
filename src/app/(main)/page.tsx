@@ -1,27 +1,35 @@
-import React from 'react';
-import {
-  Hero,
-  RecentlyViewed,
-  DealsSection,
-  YourRecentSearches,
-  LastMinuteWeekendDeals,
-  StaysForEveryStyle,
-  ExploreVacationPackages,
-  ExploreUniqueStays,
-  AppBanner,
-} from '@/components/landing';
+import { Hero } from "@/components/landing/hero";
+import { 
+  RecentlyViewed, 
+  YourRecentSearches, 
+  DealsSection, 
+  StaysForEveryStyle, 
+  ExploreVacationPackages, 
+  ExploreUniqueStays, 
+  LastMinuteWeekendDeals 
+} from "@/components/landing/sections";
+import { AppBanner } from "@/components/landing/layout";
+import { getLandingData } from "@/lib/server/landing/get-landing-data";
 
-export default function Home() {
+export default async function Home() {
+  const { cheapFlights, trendingRoutes } = await getLandingData();
+
   return (
-    <main className="overflow-x-clip">
+    <main className="flex min-h-screen flex-col items-center justify-between pb-20">
       <Hero />
-      <RecentlyViewed />
-      <YourRecentSearches />
-      <DealsSection />
-      <StaysForEveryStyle />
-      <ExploreVacationPackages />
-      <ExploreUniqueStays />
-      <LastMinuteWeekendDeals />
+      
+      <div className="w-full space-y-2 sm:space-y-4">
+        <div className="max-w-[1400px] mx-auto w-full">
+          <YourRecentSearches searches={trendingRoutes} />
+          <RecentlyViewed />
+          <DealsSection deals={cheapFlights} />
+          <StaysForEveryStyle />
+          <ExploreVacationPackages />
+          <ExploreUniqueStays />
+          <LastMinuteWeekendDeals />
+        </div>
+      </div>
+      
       <AppBanner />
     </main>
   );

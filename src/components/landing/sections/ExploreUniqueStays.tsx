@@ -4,10 +4,23 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Star } from 'lucide-react';
 import { TabList, SparkleEffect, HorizontalScroll } from '@/components/ui';
-import { uniqueStays, uniqueTabs } from '@/data';
+import { uniqueStays as mockUniqueStays, uniqueTabs as mockUniqueTabs } from '@/data';
 
-export const ExploreUniqueStays: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(uniqueTabs[0]);
+// Add type if missing in data/index.ts or import it properly
+interface UniqueStay {
+    id: number;
+    name: string;
+    location: string;
+    price: number;
+    image: string;
+    badge: string;
+}
+
+export const ExploreUniqueStays: React.FC<{
+    stays?: UniqueStay[],
+    tabs?: string[]
+}> = ({ stays = mockUniqueStays, tabs = mockUniqueTabs }) => {
+  const [activeTab, setActiveTab] = useState(tabs[0]);
 
   return (
     <section className="relative w-full py-4 md:py-8 lg:py-10 landscape:py-3 landscape-compact-py overflow-hidden">
@@ -40,14 +53,14 @@ export const ExploreUniqueStays: React.FC = () => {
         </motion.p>
 
         <TabList
-          tabs={uniqueTabs}
+          tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           className="mb-4 landscape:mb-2"
         />
 
         <HorizontalScroll gap={4} scrollAmount={320}>
-          {uniqueStays.map((stay, i) => (
+          {stays.map((stay, i) => (
             <motion.div
               key={stay.id}
               initial={{ opacity: 0, y: 20, scale: 0.98 }}

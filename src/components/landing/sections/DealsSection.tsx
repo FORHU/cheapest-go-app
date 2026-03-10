@@ -78,7 +78,13 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
   </motion.div>
 );
 
-const DealsSection = () => {
+interface DealsSectionProps {
+  deals?: Deal[];
+}
+
+const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
+  const displayDeals = deals && deals.length > 0 ? deals : flashDeals;
+
   return (
     <section className="w-full py-4 md:py-8 lg:py-10 landscape-compact-py overflow-hidden">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
@@ -89,7 +95,7 @@ const DealsSection = () => {
         />
 
         <HorizontalScroll>
-          {flashDeals.map((deal, i) => (
+          {displayDeals.map((deal, i) => (
             <DealCard key={deal.id} deal={deal} index={i} />
           ))}
         </HorizontalScroll>

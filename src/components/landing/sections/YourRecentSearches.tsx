@@ -2,10 +2,12 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { recentSearches } from '@/data';
+import { RecentSearch, recentSearches as mockRecentSearches } from '@/data';
 import { SectionHeader } from '@/components/ui';
 
-export const YourRecentSearches: React.FC = () => {
+export const YourRecentSearches: React.FC<{ searches?: RecentSearch[] }> = ({ searches }) => {
+  const displaySearches = searches && searches.length > 0 ? searches : mockRecentSearches;
+
   return (
     <section className="w-full pb-4">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 mt-6 sm:mt-8 landscape-compact:mt-2">
@@ -15,7 +17,7 @@ export const YourRecentSearches: React.FC = () => {
         />
 
         <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-          {recentSearches.map((search, i) => (
+          {displaySearches.map((search, i) => (
             <motion.div
               key={search.id}
               initial={{ opacity: 0, x: 20 }}
