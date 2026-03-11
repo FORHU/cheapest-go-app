@@ -144,3 +144,19 @@ export interface RecoveryActionResult {
     newStatus?: string;
     data?: Record<string, unknown>;
 }
+
+export interface MonitoringData {
+    failedBookings: any[];
+    mismatches: {
+        id: string;
+        provider: string;
+        payment_intent_id: string;
+        created_at: string;
+        status: string;
+        customer: string;
+    }[];
+    stats: {
+        failedCount: number;
+        mismatchCount: number;
+    };
+}

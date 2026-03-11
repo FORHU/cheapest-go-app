@@ -16,6 +16,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    Input,
 } from '@/components/ui';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { Booking, BookingRawData, RecoveryActionResult } from '@/types/admin';
@@ -52,6 +53,9 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
     const [confirmAction, setConfirmAction] = useState<'cancel' | 'refund' | 'restore' | null>(null);
     const [isPending, startTransition] = useTransition();
     const [copied, setCopied] = useState(false);
+    const [refundHistory, setRefundHistory] = useState<any[]>([]);
+    const [refundHistoryLoading, setRefundHistoryLoading] = useState(false);
+    const [refundReason, setRefundReason] = useState("");
 
     // Fetch raw data when toggling the raw data section
     const handleToggleRaw = async () => {
@@ -140,11 +144,13 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                 const res = await fetch('/api/admin/bookings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'refund', bookingId: booking.id })
+                    body: JSON.stringify({ action: 'refund', bookingId: booking.id, reason: refundReason })
                 });
                 const result = await res.json();
                 if (result.success) {
                     toast.success(result.message || 'Refund processing requested');
+                    setRefundReason("");
+                    fetchRefundHistory();
                     router.refresh();
                 } else {
                     toast.error(result.error || result.message || 'Failed to force refund');
@@ -154,6 +160,32 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
             }
         });
     };
+
+    const fetchRefundHistory = async () => {
+        if (!booking) return;
+        setRefundHistoryLoading(true);
+        try {
+            const res = await fetch('/api/admin/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'refund_history', bookingId: booking.id })
+            });
+            const result = await res.json();
+            if (result.success) {
+                setRefundHistory(result.data || []);
+            }
+        } catch (e) {
+            console.error('Failed to fetch refund history:', e);
+        } finally {
+            setRefundHistoryLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        if (booking) {
+            fetchRefundHistory();
+        }
+    }, [booking?.id]);
 
     const handleRestoreBooking = () => {
         if (!booking) return;
@@ -228,6 +260,34 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                             </div>
                         </div>
 
+                        {/* Hotel Specific Details (Phase 3) */}
+                        {booking.type === 'hotel' && (
+                            <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400/80">Hotel Reservation Details</h3>
+                                <div className="grid grid-cols-2 gap-y-6 gap-x-6">
+                                    <InfoItem
+                                        label="Cancellation Deadline"
+                                        value={(booking as any).metadata?.cancellationDeadline ? formatDate((booking as any).metadata.cancellationDeadline) : '—'}
+                                        className="text-rose-500 font-bold"
+                                    />
+                                    <InfoItem
+                                        label="Supplier Confirmation"
+                                        value={(booking as any).metadata?.supplierConfirmationNumber || (booking as any).metadata?.confirmationNumber || '—'}
+                                        mono
+                                    />
+                                    <InfoItem
+                                        label="Commission Amount"
+                                        value={(booking as any).metadata?.commissionAmount ? formatCurrency((booking as any).metadata.commissionAmount, (booking as any).metadata.commissionCurrency || 'USD') : '—'}
+                                    />
+                                    <InfoItem
+                                        label="Payout Status"
+                                        value={(booking as any).metadata?.payoutStatus || 'Pending'}
+                                        className="capitalize"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         {/* Ticket IDs */}
                         {booking.ticketIds.length > 0 && (
                             <div className="space-y-3">
@@ -300,6 +360,63 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                             </div>
                         </div>
 
+                        {/* Refund History */}
+                        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400/80">Refund History</h3>
+                                {refundHistoryLoading && <Loader2 size={12} className="animate-spin text-slate-400" />}
+                            </div>
+
+                            {refundHistory.length > 0 ? (
+                                <div className="space-y-3">
+                                    {refundHistory.map((log: any) => (
+                                        <div key={log.id} className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-101 dark:border-white/5 space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Badge variant="outline" className={`text-[10px] font-bold uppercase h-5 rounded-md px-1.5 ${log.processed_by === 'admin' ? 'bg-amber-500/10 text-amber-600 border-amber-200/50' : 'bg-blue-500/10 text-blue-600 border-blue-200/50'
+                                                    }`}>
+                                                    {log.processed_by === 'admin' ? 'Admin Triggered' : 'Auto/System'}
+                                                </Badge>
+                                                <span className="text-[10px] text-slate-400 font-medium">
+                                                    {formatDate(log.processed_at || log.requested_at)}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                                    {formatCurrency(log.approved_amount || log.requested_amount, log.currency)}
+                                                </span>
+                                                <span className={`text-[10px] font-bold uppercase ${log.status === 'processed' ? 'text-emerald-500' : 'text-amber-500'
+                                                    }`}>
+                                                    {log.status}
+                                                </span>
+                                            </div>
+                                            {log.status_reason && (
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed italic">
+                                                    "{log.status_reason}"
+                                                </p>
+                                            )}
+                                            {log.external_ref && (
+                                                <div className="pt-1 flex items-center justify-between border-t border-slate-100 dark:border-white/5 mt-1">
+                                                    <span className="text-[10px] text-slate-400 font-mono">ID: {log.external_ref.slice(0, 20)}...</span>
+                                                    {log.external_ref.startsWith('re_') && (
+                                                        <a
+                                                            href={`https://dashboard.stripe.com/refunds/${log.external_ref}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-[10px] text-blue-500 hover:underline font-bold"
+                                                        >
+                                                            View Stripe
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : !refundHistoryLoading ? (
+                                <p className="text-xs text-slate-400 italic px-2">No refund sessions recorded for this booking.</p>
+                            ) : null}
+                        </div>
+
                         {/* Raw API Data */}
                         <div className="pt-4 border-t border-slate-100 dark:border-white/5 pb-8">
                             <button
@@ -336,7 +453,8 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                 </div>
 
                 {/* Confirmation Modal */}
-                <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+                < AlertDialog open={!!confirmAction
+                } onOpenChange={(open) => !open && setConfirmAction(null)}>
                     <AlertDialogContent className="max-w-md rounded-xl">
                         <AlertDialogHeader>
                             <AlertDialogTitle className="text-lg font-black">
@@ -349,6 +467,18 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                                 {confirmAction === 'refund' && "Are you sure you want to force a refund state? This will mark the booking as refunded. Note: This action does NOT trigger an automatic gateway refund."}
                                 {confirmAction === 'restore' && "Are you sure you want to restore this booking? This will move it back to 'confirmed' (hotel) or 'booked' (flight) status."}
                             </AlertDialogDescription>
+
+                            {confirmAction === 'refund' && (
+                                <div className="mt-4">
+                                    <Input
+                                        label="Refund Reason"
+                                        placeholder="e.g. Manual override via Stripe dashboard"
+                                        value={refundReason}
+                                        onChange={(e) => setRefundReason(e.target.value)}
+                                        className="h-10 rounded-xl"
+                                    />
+                                </div>
+                            )}
                         </AlertDialogHeader>
                         <AlertDialogFooter className="mt-6 gap-3">
                             <AlertDialogCancel className="rounded-xl h-11 px-6 font-bold">Cancel</AlertDialogCancel>

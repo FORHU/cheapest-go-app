@@ -6,7 +6,7 @@ export async function invokeEdgeFunction<T = any>(
     // Use direct HTTP fetch to bypass Supabase client auth issues on server side
     // Edge functions can be called directly with the anon key in the Authorization header
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
     const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
     const method = options?.method || 'POST';

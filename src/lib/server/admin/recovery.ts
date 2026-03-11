@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin';
-import { RecoveryActionResult } from '@/types/admin';
+import { RecoveryActionResult, MonitoringData } from '@/types/admin';
 
 // ============================================================================
 // Booking Recovery Tools
@@ -264,7 +264,7 @@ export async function adminCancelBooking(bookingId: string): Promise<RecoveryAct
  * Admin force-refund a booking. Searches across all booking tables.
  * Note: Actual payment refund must be done manually via Stripe/provider dashboard.
  */
-export async function adminForceRefund(bookingId: string): Promise<RecoveryActionResult> {
+export async function adminForceRefund(bookingId: string, reason?: string): Promise<RecoveryActionResult> {
     try {
         const supabase = createAdminClient();
 
@@ -311,9 +311,35 @@ export async function adminForceRefund(bookingId: string): Promise<RecoveryActio
             return { success: false, message: `Failed to update: ${updateError.message}` };
         }
 
+        // Create a refund log entry for audit purposes
+        const { error: logError } = await supabase
+            .from('refund_logs')
+            .insert({
+                booking_id: sourceTable === 'bookings' ? booking.booking_id : booking.id,
+                user_id: booking.user_id,
+                refund_type: 'policy_override',
+                requested_amount: booking.total_price || booking.totalAmount || 0,
+                approved_amount: booking.total_price || booking.totalAmount || 0,
+                currency: booking.currency || 'USD',
+                status: 'processed',
+                status_reason: reason || 'Admin forced refund',
+                processed_at: now,
+                processed_by: 'admin'
+            });
+
+        if (logError) {
+            console.error('[adminForceRefund] Failed to create refund log:', logError);
+            // We still return success:true for the main operation, but warn about the log
+            return {
+                success: true,
+                message: `Booking marked as refunded (was "${booking.status}"), but audit log failed: ${logError.message}. Remember to process actual payment refund manually.`,
+                newStatus: 'refunded',
+            };
+        }
+
         return {
             success: true,
-            message: `Booking marked as refunded (was "${booking.status}", table: ${sourceTable}). Remember to process the actual payment refund via the provider dashboard.`,
+            message: `Booking marked as refunded (was "${booking.status}", table: ${sourceTable}). ${reason ? `Reason: ${reason}. ` : ''}Remember to process the actual payment refund via the provider dashboard.`,
             newStatus: 'refunded',
         };
     } catch (err) {
@@ -385,5 +411,122 @@ export async function adminRestoreBooking(bookingId: string): Promise<RecoveryAc
     } catch (err) {
         console.error('[adminRestoreBooking] Error:', err);
         return { success: false, message: err instanceof Error ? err.message : 'Unexpected error' };
+    }
+}
+
+/**
+ * Fetch monitoring data for the admin dashboard.
+ * Includes failed bookings and payment-webhook mismatches.
+ */
+export async function getMonitoringData(): Promise<MonitoringData> {
+    const supabase = createAdminClient();
+
+    // 1. Failed Flight Bookings (from flight_bookings table)
+    const { data: failedBookings, error: fbError } = await supabase
+        .from('flight_bookings')
+        .select('*')
+        .eq('status', 'failed')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+    // 2. Failed Unified Bookings
+    const { data: failedUnified, error: fuError } = await supabase
+        .from('unified_bookings')
+        .select('*')
+        .eq('status', 'failed')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+    // 3. Payment-Webhook Mismatches
+    // Logic: Session has payment_intent_id but no booking was created within 5 minutes.
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+    // Fetch sessions with payment but not 'booked' or 'expired'
+    const { data: potentialMismatches, error: pmError } = await supabase
+        .from('booking_sessions')
+        .select('*')
+        .not('payment_intent_id', 'is', null)
+        .not('status', 'eq', 'booked')
+        .not('status', 'eq', 'expired')
+        .lt('created_at', fiveMinutesAgo)
+        .order('created_at', { ascending: false });
+
+    // Filter out sessions that DO have a booking (just in case status didn't update)
+    const sessionIds = (potentialMismatches || []).map(s => s.id);
+    const { data: existingBookings } = await supabase
+        .from('flight_bookings')
+        .select('session_id')
+        .in('session_id', sessionIds);
+
+    const existingUnified = await supabase
+        .from('unified_bookings')
+        .select('id')
+        .filter('metadata->>bookingSessionId', 'in', `(${sessionIds.join(',')})`);
+
+    const bookedSessionIds = new Set([
+        ...(existingBookings || []).map(b => b.session_id),
+        // Unified might be harder to filter by session_id in a single query reliably without GIN index optimization
+    ]);
+
+    const mismatches = (potentialMismatches || []).filter(s => !bookedSessionIds.has(s.id));
+
+    return {
+        failedBookings: [
+            ...(failedBookings || []).map(b => ({ ...b, type: 'flight' })),
+            ...(failedUnified || []).map(b => ({ ...b, type: b.type }))
+        ],
+        mismatches: mismatches.map(s => ({
+            id: s.id,
+            provider: s.provider,
+            payment_intent_id: s.payment_intent_id,
+            created_at: s.created_at,
+            status: s.status,
+            customer: (s.contact as any)?.email || 'Unknown'
+        })),
+        stats: {
+            failedCount: (failedBookings?.length || 0) + (failedUnified?.length || 0),
+            mismatchCount: mismatches.length
+        }
+    };
+}
+
+/**
+ * Manually retry a Duffel/Mystifly booking from a session.
+ */
+export async function adminRetryBooking(sessionId: string): Promise<RecoveryActionResult> {
+    try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!supabaseUrl || !serviceRoleKey) {
+            return { success: false, message: 'Server configuration error (missing keys)' };
+        }
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${serviceRoleKey}`,
+            },
+            body: JSON.stringify({ sessionId }),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            return {
+                success: true,
+                message: `Retry successful! PNR: ${data.pnr || 'N/A'}. Booking ID: ${data.bookingId || 'N/A'}`,
+                newStatus: data.status
+            };
+        } else {
+            return {
+                success: false,
+                message: `Retry failed: ${data.error || 'Unknown error'}`
+            };
+        }
+    } catch (err) {
+        console.error('[adminRetryBooking] Error:', err);
+        return { success: false, message: err instanceof Error ? err.message : 'Unexpected error during retry' };
     }
 }
