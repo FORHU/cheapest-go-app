@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 
 /**
  * Unified PropertyCard component variants

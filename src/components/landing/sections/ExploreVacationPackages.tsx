@@ -4,12 +4,12 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plane } from 'lucide-react';
 import { TabList, HorizontalScroll } from '@/components/ui';
-import { VacationPackage, packages as mockPackages, packageTabs as mockPackageTabs } from '@/data';
+import { type VacationPackage, packageTabs } from '@/types';
 
-export const ExploreVacationPackages: React.FC<{ 
-  packages?: VacationPackage[], 
-  tabs?: string[] 
-}> = ({ packages = mockPackages, tabs = mockPackageTabs }) => {
+export const ExploreVacationPackages: React.FC<{
+  destinations?: VacationPackage[],
+  tabs?: string[]
+}> = ({ destinations = [], tabs = packageTabs }) => {
   const [activeTab, setActiveTab] = useState(tabs[0]);
 
   return (
@@ -36,8 +36,10 @@ export const ExploreVacationPackages: React.FC<{
         />
 
         <HorizontalScroll gap={4} scrollAmount={320}>
-          {packages.map((pkg, i) => {
-            const discount = Math.round((1 - pkg.salePrice / pkg.originalPrice) * 100);
+          {destinations.map((pkg: VacationPackage, i: number) => {
+            const discount = pkg.originalPrice > 0
+              ? Math.round((1 - pkg.salePrice / pkg.originalPrice) * 100)
+              : 0;
             return (
               <motion.div
                 key={pkg.id}
@@ -84,10 +86,10 @@ export const ExploreVacationPackages: React.FC<{
                       transition={{ delay: i * 0.08 + 0.2 }}
                     >
                       <span className="text-[8px] sm:text-xs landscape:text-[8px] text-slate-400 line-through mr-0.5 sm:mr-1">
-                        ₱{pkg.originalPrice.toLocaleString()}
+                        ₱{(pkg.originalPrice || 0).toLocaleString()}
                       </span>
                       <span className="text-[9px] sm:text-sm md:text-base landscape:text-[9px] font-bold text-slate-900 dark:text-white">
-                        ₱{pkg.salePrice.toLocaleString()}
+                        ₱{(pkg.salePrice || 0).toLocaleString()}
                       </span>
                     </motion.div>
                   </div>

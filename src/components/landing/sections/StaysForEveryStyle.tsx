@@ -3,19 +3,20 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { TabList, GradientBackground, HorizontalScroll } from '@/components/ui';
+import { styleTabs } from '@/types';
 
-// Travel styles data
-const travelStyles = [
-  { id: 1, title: 'Beachfront Villa', location: 'Boracay, Philippines', price: 25899, image: 'https://picsum.photos/seed/villa/400/300' },
-  { id: 2, title: 'Mountain Retreat', location: 'Batanes, Philippines', price: 18499, image: 'https://picsum.photos/seed/mountain/400/300' },
-  { id: 3, title: 'City View Suite', location: 'Makati, Philippines', price: 32450, image: 'https://picsum.photos/seed/city/400/300' },
-  { id: 4, title: 'Lux Hotels', location: 'Cebu, Philippines', price: 51709, image: 'https://picsum.photos/seed/luxury/400/300' },
-];
+// Types for travel styles
+export interface TravelStyle {
+  id: number | string;
+  title: string;
+  location: string;
+  price: number;
+  image: string;
+}
 
-const styleTabs = ['Beach', 'Kid-Friendly', 'Ski', 'Romantic', 'Wellness and Relaxation'];
-
-export const StaysForEveryStyle: React.FC = () => {
+export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ styles }) => {
   const [activeTab, setActiveTab] = useState(styleTabs[0]);
+  const displayStyles = styles || [];
 
   return (
     <GradientBackground className="w-full py-4 md:py-8 lg:py-10 landscape:py-3 landscape-compact-py">
@@ -47,7 +48,7 @@ export const StaysForEveryStyle: React.FC = () => {
         />
 
         <HorizontalScroll gap={4} scrollAmount={320}>
-          {travelStyles.map((style, i) => (
+          {displayStyles.map((style, i) => (
             <motion.div
               key={style.id}
               initial={{ opacity: 0, y: 20 }}
@@ -83,7 +84,7 @@ export const StaysForEveryStyle: React.FC = () => {
                     transition={{ delay: i * 0.08 + 0.2 }}
                   >
                     <span className="text-[9px] sm:text-sm md:text-base landscape:text-[9px] font-bold text-slate-900 dark:text-white">
-                      ₱{style.price.toLocaleString()}
+                      ₱{(style.price || 0).toLocaleString()}
                     </span>
                   </motion.div>
                 </div>

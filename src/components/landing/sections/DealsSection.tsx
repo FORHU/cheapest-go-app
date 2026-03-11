@@ -4,7 +4,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Clock, Sparkles } from 'lucide-react';
 import { SectionHeader, HorizontalScroll, Badge, PriceDisplay, TiltCard } from '@/components/ui';
-import { flashDeals, type Deal } from '@/data';
+import { type Deal } from '@/types';
 
 interface DealCardProps {
   deal: Deal;
@@ -45,10 +45,10 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
           {/* Price tag floating */}
           <div className="absolute bottom-1.5 left-1.5 sm:bottom-3 sm:left-3 px-1.5 py-1 sm:px-3 sm:py-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded sm:rounded-lg shadow-lg">
             <span className="text-[8px] sm:text-xs text-slate-400 line-through mr-1">
-              ${deal.originalPrice.toLocaleString()}
+              ${(deal.originalPrice || 0).toLocaleString()}
             </span>
             <span className="text-[9px] sm:text-sm md:text-base font-bold text-slate-900 dark:text-white">
-              ${deal.salePrice.toLocaleString()}
+              ${(deal.salePrice || 0).toLocaleString()}
             </span>
           </div>
         </div>
@@ -83,7 +83,7 @@ interface DealsSectionProps {
 }
 
 const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
-  const displayDeals = deals && deals.length > 0 ? deals : flashDeals;
+  const displayDeals = deals || [];
 
   return (
     <section className="w-full py-4 md:py-8 lg:py-10 landscape-compact-py overflow-hidden">

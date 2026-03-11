@@ -4,9 +4,10 @@ import React from 'react';
 import { Sparkles } from 'lucide-react';
 import { SectionHeader, HorizontalScroll } from '@/components/ui';
 import { PropertyCard } from '@/components/shared';
-import { weekendDeals } from '@/data';
+import { type WeekendDeal } from '@/types';
 
-export const LastMinuteWeekendDeals: React.FC = () => {
+export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ deals }) => {
+  const displayDeals = deals || [];
   return (
     <section className="w-full py-4 md:py-8 lg:py-10 landscape-compact-py">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
@@ -18,7 +19,7 @@ export const LastMinuteWeekendDeals: React.FC = () => {
         />
 
         <HorizontalScroll gap={4} scrollAmount={320}>
-          {weekendDeals.map((deal, i) => (
+          {displayDeals.map((deal: WeekendDeal, i: number) => (
             <div
               key={deal.id}
               className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape-compact-card snap-start flex flex-col"

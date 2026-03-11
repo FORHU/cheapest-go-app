@@ -2,11 +2,13 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { RecentSearch, recentSearches as mockRecentSearches } from '@/data';
 import { SectionHeader } from '@/components/ui';
+import { type RecentSearch } from '@/types';
 
 export const YourRecentSearches: React.FC<{ searches?: RecentSearch[] }> = ({ searches }) => {
-  const displaySearches = searches && searches.length > 0 ? searches : mockRecentSearches;
+  const displaySearches = searches || [];
+  
+  if (displaySearches.length === 0) return null;
 
   return (
     <section className="w-full pb-4">

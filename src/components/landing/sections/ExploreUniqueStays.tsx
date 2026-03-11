@@ -4,23 +4,11 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Star } from 'lucide-react';
 import { TabList, SparkleEffect, HorizontalScroll } from '@/components/ui';
-import { uniqueStays as mockUniqueStays, uniqueTabs as mockUniqueTabs } from '@/data';
+import { type SimpleProperty, uniqueTabs } from '@/types';
 
-// Add type if missing in data/index.ts or import it properly
-interface UniqueStay {
-    id: number;
-    name: string;
-    location: string;
-    price: number;
-    image: string;
-    badge: string;
-}
-
-export const ExploreUniqueStays: React.FC<{
-    stays?: UniqueStay[],
-    tabs?: string[]
-}> = ({ stays = mockUniqueStays, tabs = mockUniqueTabs }) => {
-  const [activeTab, setActiveTab] = useState(tabs[0]);
+export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ stays }) => {
+  const [activeTab, setActiveTab] = useState(uniqueTabs[0]);
+  const displayStays = stays || [];
 
   return (
     <section className="relative w-full py-4 md:py-8 lg:py-10 landscape:py-3 landscape-compact-py overflow-hidden">
@@ -53,14 +41,14 @@ export const ExploreUniqueStays: React.FC<{
         </motion.p>
 
         <TabList
-          tabs={tabs}
+          tabs={uniqueTabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           className="mb-4 landscape:mb-2"
         />
 
         <HorizontalScroll gap={4} scrollAmount={320}>
-          {stays.map((stay, i) => (
+          {displayStays.map((stay, i) => (
             <motion.div
               key={stay.id}
               initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -106,7 +94,7 @@ export const ExploreUniqueStays: React.FC<{
                   <p className="text-[9px] sm:text-xs landscape:text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">{stay.location}</p>
                   <p className="text-[11px] sm:text-base landscape:text-[10px] font-bold mt-auto pt-1 sm:pt-1.5 landscape:pt-0.5">
                     <span className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                      ₱{stay.price.toLocaleString()}
+                      ₱{(stay.price || 0).toLocaleString()}
                     </span>
                     <span className="font-normal text-slate-400 text-[8px] sm:text-sm landscape:text-[8px]">/night</span>
                   </p>

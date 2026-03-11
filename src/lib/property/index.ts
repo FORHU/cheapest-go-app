@@ -1,7 +1,6 @@
 // Property page server utilities
 export {
     fetchPropertyData,
-    getMockProperty,
     formatDate,
     sanitizeDate,
     getDefaultDates,

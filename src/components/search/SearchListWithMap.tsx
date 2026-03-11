@@ -9,7 +9,7 @@ import { MapMarker } from '@/components/map/MapMarker';
 import { MapPopup } from '@/components/map/MapPopup';
 import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
-import type { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { MapModal } from '@/components/map/MapModal';
 import { MapPin } from 'lucide-react';
 

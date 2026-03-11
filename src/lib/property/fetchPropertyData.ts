@@ -3,27 +3,11 @@
  * These are pure functions that can be used in server components.
  */
 
-import { baguioProperties } from '@/data/mockProperties';
 import { preBook, getHotelDetails } from '@/utils/supabase/functions';
+import { type Property } from '@/types';
+export type PropertyData = Property;
 
 // Types
-export interface PropertyData {
-    id: string;
-    name: string;
-    location: string;
-    description: string;
-    rating: number;
-    reviews: number;
-    price: number;
-    originalPrice?: number;
-    image: string;
-    images: string[];
-    amenities: string[];
-    badges: string[];
-    type: 'hotel' | 'apartment' | 'resort' | 'villa';
-    coordinates: { lat: number; lng: number };
-}
-
 export interface SearchParamsInput {
     checkIn?: string;
     checkOut?: string;
@@ -38,11 +22,6 @@ export interface FetchPropertyResult {
     property: PropertyData | null;
     fetchedDetails: any;
     preBookResult: any;
-}
-
-// Helper to get mock property
-export function getMockProperty(id: string) {
-    return baguioProperties.find(p => p.id === id);
 }
 
 // Format date as YYYY-MM-DD
@@ -163,31 +142,29 @@ export async function fetchPropertyData(
         }
     }
 
-    // 2. Fetch hotel details if not a mock property
-    if (!getMockProperty(id)) {
-        try {
-            const targetHotelId = preBookResult?.data?.hotelId || id;
-            const defaults = getDefaultDates();
-            const checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
-            const checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+    // 2. Fetch hotel details (Strictly backend)
+    try {
+        const targetHotelId = preBookResult?.data?.hotelId || id;
+        const defaults = getDefaultDates();
+        const checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
+        const checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
 
-            fetchedDetails = await getHotelDetails(targetHotelId, {
-                checkIn,
-                checkOut,
-                adults: Number(searchParams.adults || 2),
-                children: Number(searchParams.children || 0),
-                rooms: Number(searchParams.rooms || 1),
-                currency: searchParams.currency
-            });
-        } catch (error) {
-            console.error('Failed to fetch property details:', error);
-        }
+        fetchedDetails = await getHotelDetails(targetHotelId, {
+            checkIn,
+            checkOut,
+            adults: Number(searchParams.adults || 2),
+            children: Number(searchParams.children || 0),
+            rooms: Number(searchParams.rooms || 1),
+            currency: searchParams.currency
+        });
+    } catch (error) {
+        console.error('Failed to fetch property details:', error);
     }
 
     // 3. Build property data
-    let property = getMockProperty(id) as PropertyData | null;
+    let property: PropertyData | null = null;
 
-    if (!property && fetchedDetails) {
+    if (fetchedDetails) {
         const roomImages = collectRoomImages(fetchedDetails.roomTypes);
         const allImages = combineImages(
             fetchedDetails.thumbnailUrl,
@@ -195,7 +172,7 @@ export async function fetchPropertyData(
             roomImages
         );
         property = transformFetchedToProperty(id, fetchedDetails, preBookResult, allImages);
-    } else if (!property && (preBookResult || searchParams.offerId)) {
+    } else if (preBookResult || searchParams.offerId) {
         property = createFallbackProperty(id, preBookResult);
     }
 

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { useViewingRoom, useBookingActions } from '@/stores/bookingStore';
 import { useRoomGrouping } from '@/hooks';
 import { RoomType } from '@/lib/room';

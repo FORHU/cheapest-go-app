@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { MapPin, X, Bed, User, Check } from 'lucide-react';
 import { useViewingRoom, useBookingActions } from '@/stores/bookingStore';
 import { calculateNights } from '@/lib/utils';

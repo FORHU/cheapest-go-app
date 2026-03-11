@@ -12,7 +12,7 @@ export default function LandingPage() {
             <section className="relative h-[600px] flex items-center justify-center bg-slate-900 text-white px-4 overflow-hidden">
                 {/* Simplified background for now */}
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-slate-900 to-black opacity-90" />
-                
+
                 <div className="relative max-w-5xl w-full space-y-8 text-center">
                     <div className="space-y-4">
                         <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-tight">
@@ -25,7 +25,7 @@ export default function LandingPage() {
                     </div>
 
                     <div className="w-full max-w-4xl mx-auto pt-4">
-                        <FlightSearchForm onSearch={(params) => console.log("Search initiated:", params)} />
+                        <FlightSearchForm />
                     </div>
                 </div>
             </section>
@@ -33,7 +33,7 @@ export default function LandingPage() {
             {/* Marketing Sections */}
             <section className="py-24 px-4 bg-slate-50">
                 <div className="max-w-6xl mx-auto space-y-16">
-                    <SectionHeader 
+                    <SectionHeader
                         title="Why Choose CheapestGo?"
                         subtitle="Professional grade flight searching for the savvy traveler."
                         className="flex-col items-center text-center [&>div]:items-center"
@@ -67,7 +67,7 @@ export default function LandingPage() {
                         <div className="space-y-4">
                             <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200">
                                 <svg className="text-white h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                 </svg>
                             </div>
                             <h3 className="text-xl font-bold text-slate-900">Secure Booking</h3>

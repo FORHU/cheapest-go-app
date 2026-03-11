@@ -3,7 +3,7 @@
  * These are pure functions that can be used in server components.
  */
 
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { searchLiteApi } from '@/utils/supabase/functions';
 
 // Types

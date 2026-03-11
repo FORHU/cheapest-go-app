@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { History, Clock } from 'lucide-react';
 import { SectionHeader, Badge, PriceDisplay } from '@/components/ui';
 import { useRecentSearches } from '@/stores';
-import { recentlyViewedItems, type RecentItem } from '@/data';
+import { type RecentItem } from '@/types';
 
 interface RecentCardProps {
   item: RecentItem;
@@ -64,7 +64,7 @@ const RecentlyViewed = () => {
       image: `https://picsum.photos/seed/${search.title.toLowerCase().replace(/\s/g, '')}/200/150`,
       price: 0,
     }))
-    : recentlyViewedItems;
+    : [];
 
   if (displayItems.length === 0) return null;
 

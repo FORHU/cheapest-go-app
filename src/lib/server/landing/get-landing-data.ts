@@ -1,45 +1,99 @@
 import { createClient } from "@/utils/supabase/server";
-import { type Deal, type VacationPackage, type RecentSearch } from "@/data";
+import { cache } from "react";
+import { type Deal, type VacationPackage } from "@/types";
 
-export async function getLandingData() {
+export const getLandingData = cache(async () => {
     const supabase = await createClient();
 
-    // Fetch Flight Deals
+    // 1. Fetch Flight Deals
     const { data: flightDeals } = await supabase
         .from("flight_deals")
         .select("*")
-        .limit(8);
+        .limit(6);
 
-    // Fetch Trending Routes (mapped to RecentSearch for now or handled separately)
-    const { data: trendingRoutes } = await supabase
-        .from("flight_trending_routes")
+    // 2. Fetch Weekend Deals
+    const { data: weekendDeals } = await supabase
+        .from("weekend_flight_deals")
         .select("*")
         .limit(6);
 
-    // Map DB deals to the 'Deal' interface expected by the UI
-    const mappedDeals: Deal[] = flightDeals?.map(d => ({
-        id: String(d.id),
-        title: d.title,
-        subtitle: d.subtitle || "",
-        discount: d.discount || "",
-        originalPrice: Number(d.original_price),
-        salePrice: Number(d.sale_price),
-        image: d.image || "https://picsum.photos/seed/travel/400/300",
-        endsIn: d.ends_in || "Limited Time",
-        tag: d.tag || undefined
-    })) || [];
+    // 3. Fetch Popular Destinations
+    const { data: popularDestinations } = await supabase
+        .from("popular_destinations")
+        .select("*")
+        .limit(8);
 
-    // Map Trending Routes to 'RecentSearch' interface
-    const mappedRecentSearches: RecentSearch[] = trendingRoutes?.map(r => ({
-        id: r.id,
-        destination: `${r.origin} → ${r.destination}`,
-        dates: "Best flexible fares",
-        travelers: "Round trip",
-        rooms: r.price ? `From $${r.price}` : "Check fares"
-    })) || [];
+    // 4. Fetch Unique Stays
+    const { data: uniqueStays } = await supabase
+        .from("unique_stays")
+        .select("*")
+        .limit(6);
+
+    // 5. Fetch Travel Styles
+    const { data: travelStyles } = await supabase
+        .from("travel_styles")
+        .select("*")
+        .limit(4);
+
+    // Mapping with defensive fallbacks
+    const mappedFlightDeals: Deal[] = flightDeals?.map(d => ({
+        id: String(d.id),
+        title: `${d.origin} → ${d.destination}`,
+        subtitle: d.airline || "Best flexible fares",
+        discount: d.discount_tag || "",
+        originalPrice: Number(d.original_price || 0),
+        salePrice: Number(d.price || 0),
+        image: d.image_url || "https://picsum.photos/seed/travel/400/300",
+        endsIn: d.ends_in || "Limited Time",
+    })) ?? [];
+
+    const mappedWeekendDeals = weekendDeals?.map(d => ({
+        id: d.id,
+        name: d.name,
+        location: d.location,
+        rating: Number(d.rating || 0),
+        reviews: Number(d.reviews || 0),
+        originalPrice: Number(d.original_price || 0),
+        salePrice: Number(d.sale_price || 0),
+        image: d.image_url || "https://picsum.photos/seed/stay/400/300",
+        badge: d.badge
+    })) ?? [];
+
+    const mappedDestinations: VacationPackage[] = popularDestinations?.map(d => ({
+        id: d.id,
+        name: d.city,
+        location: d.country,
+        image: d.image_url || "https://picsum.photos/seed/dest/400/300",
+        originalPrice: Number(d.average_price || 0) * 1.2,
+        salePrice: Number(d.average_price || 0),
+        includes: ["Flight + Hotel", "Free Baggage"],
+        rating: 4.8, // Mock for UI
+        reviews: 1240 // Mock for UI
+    })) ?? [];
+
+    const mappedUniqueStays = uniqueStays?.map(d => ({
+        id: d.id,
+        name: d.name,
+        location: d.location,
+        rating: Number(d.rating || 0),
+        price: Number(d.price || 0),
+        image: d.image_url || "https://picsum.photos/seed/unique/400/300",
+        badge: d.badge
+    })) ?? [];
+
+    const mappedTravelStyles = travelStyles?.map(d => ({
+        id: d.id,
+        title: d.title,
+        location: d.location,
+        price: Number(d.price || 0),
+        image: d.image_url || "https://picsum.photos/seed/style/400/300"
+    })) ?? [];
 
     return {
-        cheapFlights: mappedDeals,
-        trendingRoutes: mappedRecentSearches
+        flightDeals: mappedFlightDeals,
+        weekendDeals: mappedWeekendDeals,
+        popularDestinations: mappedDestinations,
+        uniqueStays: mappedUniqueStays,
+        travelStyles: mappedTravelStyles
     };
-}
+});

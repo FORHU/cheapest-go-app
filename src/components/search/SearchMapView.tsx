@@ -6,7 +6,7 @@ import { MapPropertyCard } from '@/components/map/MapPropertyCard';
 import { MapModal } from '@/components/map/MapModal';
 import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
-import type { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { ArrowLeft, MapPin, ChevronDown, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, cn } from '@/lib/utils';

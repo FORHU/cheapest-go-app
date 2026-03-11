@@ -1,4 +1,4 @@
-import type { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 
 export interface MappableProperty extends Property {

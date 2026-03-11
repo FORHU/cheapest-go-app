@@ -12,7 +12,13 @@ import { AppBanner } from "@/components/landing/layout";
 import { getLandingData } from "@/lib/server/landing/get-landing-data";
 
 export default async function Home() {
-  const { cheapFlights, trendingRoutes } = await getLandingData();
+  const { 
+    flightDeals, 
+    weekendDeals, 
+    popularDestinations,
+    uniqueStays,
+    travelStyles
+  } = await getLandingData();
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between pb-20">
@@ -20,13 +26,13 @@ export default async function Home() {
       
       <div className="w-full space-y-2 sm:space-y-4">
         <div className="max-w-[1400px] mx-auto w-full">
-          <YourRecentSearches searches={trendingRoutes} />
+          <YourRecentSearches />
           <RecentlyViewed />
-          <DealsSection deals={cheapFlights} />
-          <StaysForEveryStyle />
-          <ExploreVacationPackages />
-          <ExploreUniqueStays />
-          <LastMinuteWeekendDeals />
+          <DealsSection deals={flightDeals} />
+          <StaysForEveryStyle styles={travelStyles} />
+          <ExploreVacationPackages destinations={popularDestinations} />
+          <ExploreUniqueStays stays={uniqueStays} />
+          <LastMinuteWeekendDeals deals={weekendDeals} />
         </div>
       </div>
       
