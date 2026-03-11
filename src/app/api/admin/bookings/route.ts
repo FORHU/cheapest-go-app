@@ -5,6 +5,8 @@ import {
     adminCancelBooking,
     adminForceRefund,
     adminRestoreBooking,
+    getMonitoringData,
+    adminRetryBooking,
 } from '@/lib/server/admin';
 import { createClient } from '@/utils/supabase/server';
 
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { action, bookingId } = body;
+        const { action, bookingId, reason } = body;
 
         switch (action) {
             case 'raw':
@@ -41,11 +43,24 @@ export async function POST(req: Request) {
                 const cancelResult = await adminCancelBooking(bookingId);
                 return NextResponse.json(cancelResult);
             case 'refund':
-                const refundResult = await adminForceRefund(bookingId);
+                const refundResult = await adminForceRefund(bookingId, reason);
                 return NextResponse.json(refundResult);
+            case 'refund_history':
+                const historyRes = await supabase
+                    .from('refund_logs')
+                    .select('*')
+                    .or(`booking_id.eq.${bookingId},booking_id.eq.${bookingId.slice(0, 8).toUpperCase()}`)
+                    .order('requested_at', { ascending: false });
+                return NextResponse.json({ success: true, data: historyRes.data || [] });
             case 'restore':
                 const restoreResult = await adminRestoreBooking(bookingId);
                 return NextResponse.json(restoreResult);
+            case 'monitoring':
+                const monitorData = await getMonitoringData();
+                return NextResponse.json({ success: true, data: monitorData });
+            case 'retry_booking':
+                const retryResult = await adminRetryBooking(bookingId);
+                return NextResponse.json(retryResult);
             default:
                 return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
         }

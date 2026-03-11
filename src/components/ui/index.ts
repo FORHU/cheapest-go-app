@@ -51,4 +51,4 @@ export {
   SheetFooter,
   SheetTitle,
   SheetDescription,
-} from "./Sheet";
+} from "./sheet";

@@ -1,21 +1,52 @@
 import * as React from "react"
-
+import { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
-  return (
-    <input
-      type={type}
-      data-slot="input"
-      className={cn(
-        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-        "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-        className
-      )}
-      {...props}
-    />
-  )
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  icon?: LucideIcon;
+  error?: string;
 }
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, label, icon: Icon, error, ...props }, ref) => {
+    return (
+      <div className="w-full space-y-1.5">
+        {label && (
+          <label
+            htmlFor={props.id}
+            className="text-[10px] font-bold uppercase tracking-widest text-slate-400/80 ml-1"
+          >
+            {label}
+          </label>
+        )}
+        <div className="relative group">
+          {Icon && (
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none">
+              <Icon size={18} />
+            </div>
+          )}
+          <input
+            type={type}
+            className={cn(
+              "flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:border-white/10 dark:bg-white/5 dark:ring-offset-slate-950 dark:placeholder:text-slate-400",
+              Icon && "pl-10",
+              error && "border-rose-500 focus-visible:ring-rose-500/20 focus-visible:border-rose-500",
+              className
+            )}
+            ref={ref}
+            {...props}
+          />
+        </div>
+        {error && (
+          <p className="text-[10px] font-bold text-rose-500 ml-1 animate-in fade-in slide-in-from-top-1">
+            {error}
+          </p>
+        )}
+      </div>
+    )
+  }
+)
+Input.displayName = "Input"
 
 export { Input }
