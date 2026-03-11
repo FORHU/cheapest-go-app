@@ -83,9 +83,9 @@ ALTER TABLE travel_styles ENABLE ROW LEVEL SECURITY;
 -- Seed Initial Marketing Data
 INSERT INTO flight_deals (origin, destination, price, original_price, airline, image_url, departure_date, return_date, discount_tag, ends_in)
 VALUES 
-('MNL', 'Tokyo', 1624, 2499, 'Japan Airlines', 'https://picsum.photos/seed/tokyo/400/300', '2026-04-10', '2026-04-15', '35% OFF', '2d 14h'),
-('MNL', 'Paris', 1424, 1899, 'Air France', 'https://picsum.photos/seed/paris/400/300', '2026-05-20', '2026-05-24', '25% OFF', '1d 8h'),
-('MNL', 'Bali', 1319, 2199, 'AirAsia', 'https://picsum.photos/seed/bali/400/300', '2026-06-01', '2026-06-08', '40% OFF', '3d 2h');
+('MNL', 'NRT', 1624, 2499, 'Japan Airlines', 'https://picsum.photos/seed/tokyo/400/300', '2026-04-10', '2026-04-15', '35% OFF', '2d 14h'),
+('MNL', 'CDG', 1424, 1899, 'Air France', 'https://picsum.photos/seed/paris/400/300', '2026-05-20', '2026-05-24', '25% OFF', '1d 8h'),
+('MNL', 'DPS', 1319, 2199, 'AirAsia', 'https://picsum.photos/seed/bali/400/300', '2026-06-01', '2026-06-08', '40% OFF', '3d 2h');
 
 INSERT INTO weekend_flight_deals (name, location, rating, reviews, original_price, sale_price, image_url, badge)
 VALUES 

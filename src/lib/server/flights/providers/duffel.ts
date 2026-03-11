@@ -8,6 +8,7 @@ import { env } from "@/utils/env";
 export async function searchDuffel(params: FlightSearchParams): Promise<FlightResult[]> {
     const DUFFEL_API_URL = "https://api.duffel.com/air/offer_requests";
     const token = env.DUFFEL_TOKEN;
+    console.log(`[Duffel] Starting search: ${params.origin} -> ${params.destination} (${params.departureDate})`);
 
     // 1. Prepare Passengers
     const passengers = [
@@ -17,19 +18,20 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
     ];
 
     // 2. Prepare Request Body
+    const slices: { origin: string; destination: string; departure_date: string }[] = [
+        { origin: params.origin, destination: params.destination, departure_date: params.departureDate },
+    ];
+    if (params.returnDate) {
+        slices.push({ origin: params.destination, destination: params.origin, departure_date: params.returnDate });
+    }
+
     const body = {
         data: {
-            slices: [
-                {
-                    origin: params.origin,
-                    destination: params.destination,
-                    departure_date: params.departureDate
-                }
-            ],
+            slices,
             passengers,
-            cabin_class: params.cabinClass === "premium_economy" ? "premium_economy" : 
-                         params.cabinClass === "business" ? "business" :
-                         params.cabinClass === "first" ? "first" : "economy",
+            cabin_class: params.cabinClass === "premium_economy" ? "premium_economy" :
+                params.cabinClass === "business" ? "business" :
+                    params.cabinClass === "first" ? "first" : "economy",
             return_offers: true
         }
     };
@@ -39,7 +41,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${token}`,
-                "Duffel-Version": "v1", // Standard Duffel version header
+                "Duffel-Version": "2021-12-01",
                 "Content-Type": "application/json"
             },
             body: JSON.stringify(body)
@@ -57,7 +59,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
         return offers.map((offer: any): FlightResult => {
             const slice = offer.slices[0];
             const segment = slice.segments[0]; // Simplification for MVP: take first segment
-            
+
             return {
                 provider: "duffel",
                 offer_id: offer.id,
@@ -85,10 +87,10 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
 function parseDuffelDuration(duration: string): number {
     const matches = duration.match(/P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?/);
     if (!matches) return 0;
-    
+
     const days = parseInt(matches[1] || '0');
     const hours = parseInt(matches[2] || '0');
     const minutes = parseInt(matches[3] || '0');
-    
+
     return (days * 24 * 60) + (hours * 60) + minutes;
 }

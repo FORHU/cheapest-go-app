@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { toast } from 'sonner';
 import { Sparkles } from 'lucide-react';
 import { SectionHeader, HorizontalScroll } from '@/components/ui';
 import { PropertyCard } from '@/components/shared';
@@ -19,25 +20,31 @@ export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ de
         />
 
         <HorizontalScroll gap={4} scrollAmount={320}>
-          {displayDeals.map((deal: WeekendDeal, i: number) => (
-            <div
-              key={deal.id}
-              className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape-compact-card snap-start flex flex-col"
-            >
-              <PropertyCard
-                image={deal.image}
-                name={deal.name}
-                location={deal.location}
-                rating={deal.rating}
-                reviews={deal.reviews}
-                originalPrice={deal.originalPrice}
-                price={deal.salePrice}
-                badge={deal.badge}
-                badgeColor="green"
-                className="h-full flex flex-col flex-1"
-              />
-            </div>
-          ))}
+          {displayDeals.map((deal: WeekendDeal) => (
+              <div
+                key={deal.id}
+                onClick={() => toast.info(deal.name, { description: 'Live hotel search will be available at launch.' })}
+                className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape-compact-card snap-start flex flex-col cursor-pointer"
+              >
+                <div className="h-full block relative">
+                  <PropertyCard
+                    image={deal.image}
+                    name={deal.name}
+                    location={deal.location}
+                    rating={deal.rating}
+                    reviews={deal.reviews}
+                    originalPrice={deal.originalPrice}
+                    price={deal.salePrice}
+                    badge={deal.badge}
+                    badgeColor="green"
+                    className="h-full flex flex-col flex-1"
+                  />
+                  <span className="absolute bottom-2 right-2 text-[8px] text-slate-400 italic pointer-events-none">
+                    Prices may change
+                  </span>
+                </div>
+              </div>
+            ))}
         </HorizontalScroll>
       </div>
     </section>

@@ -1,136 +1,101 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { FlightOffer, FlightSegmentDetail, CabinClass } from '@/types/flights';
-import { getAirlineName, normalizedToFlightOffer } from '@/utils/flight-utils';
+import type { CabinClass, FlightSearchParams } from '@/types/flights';
+import { searchFlights, saveSearch } from '@/lib/server/flights/search-flights';
 
 export const dynamic = 'force-dynamic';
 
-// ─── Validation ──────────────────────────────────────────────────────
+// ─── Validation ───────────────────────────────────────────────────────────────
 
 function badRequest(error: string) {
     return NextResponse.json({ success: false, error }, { status: 400 });
 }
 
-const VALID_CABIN: Set<string> = new Set(['economy', 'premium_economy', 'business', 'first']);
-const VALID_TRIP: Set<string> = new Set(['one-way', 'round-trip', 'multi-city']);
+const VALID_CABIN = new Set(['economy', 'premium_economy', 'business', 'first']);
+const VALID_TRIP = new Set(['one-way', 'round-trip', 'multi-city']);
 const IATA_RE = /^[A-Z]{3}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// ─── POST /api/flights/search ────────────────────────────────────────
+// ─── POST /api/flights/search ─────────────────────────────────────────────────
+//
+// Calls the server-side searchFlights lib directly (Duffel + Mystifly in
+// parallel with 15s timeouts) instead of going through the Edge Function chain.
+// This avoids the cloud round-trip latency and ECONNRESET from slow providers.
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
 
-        // Support both flat format and segments format
-        const hasSegments = Array.isArray(body.segments) && body.segments.length > 0;
-
-        const { passengers, cabinClass, tripType, currency } = body;
-
+        // ── Parse segments ──────────────────────────────────────────────────
         let segments = body.segments || [];
-        if (!hasSegments && body.origin && body.destination && body.departureDate) {
+        if (segments.length === 0 && body.origin && body.destination && body.departureDate) {
             segments = [{ origin: body.origin, destination: body.destination, departureDate: body.departureDate }];
             if (body.returnDate) {
                 segments.push({ origin: body.destination, destination: body.origin, departureDate: body.returnDate });
             }
         }
+        if (segments.length === 0) return badRequest('No valid flight segments provided');
 
-        if (segments.length === 0) {
-            return badRequest('No valid flight segments provided');
-        }
-
-        // Validate segments
+        // ── Validate segments ───────────────────────────────────────────────
         for (const seg of segments) {
             seg.origin = String(seg.origin ?? '').toUpperCase();
             seg.destination = String(seg.destination ?? '').toUpperCase();
-
-            if (!IATA_RE.test(seg.origin) || !IATA_RE.test(seg.destination)) {
+            if (!IATA_RE.test(seg.origin) || !IATA_RE.test(seg.destination))
                 return badRequest('origins and destinations must be 3-letter IATA codes');
-            }
-            if (seg.origin === seg.destination) {
-                return badRequest('origin and destination must differ within a segment');
-            }
-            if (!seg.departureDate || !DATE_RE.test(seg.departureDate)) {
-                return badRequest('departureDate is required for all segments (YYYY-MM-DD)');
-            }
+            if (seg.origin === seg.destination)
+                return badRequest('origin and destination must differ');
+            if (!seg.departureDate || !DATE_RE.test(seg.departureDate))
+                return badRequest('departureDate required (YYYY-MM-DD)');
         }
 
-        // Passengers
+        // ── Passengers ──────────────────────────────────────────────────────
+        const { passengers } = body;
         const adults = Math.max(1, Number(passengers?.adults) || 1);
         const children = Math.max(0, Number(passengers?.children) || 0);
         const infants = Math.max(0, Number(passengers?.infants) || 0);
         if (infants > adults) return badRequest('infants cannot exceed adults');
-        if (adults + children + infants > 9) return badRequest('maximum 9 passengers allowed');
+        if (adults + children + infants > 9) return badRequest('max 9 passengers');
 
-        // Cabin class
-        const cabin = (cabinClass ?? 'economy') as CabinClass;
+        // ── Cabin / trip ────────────────────────────────────────────────────
+        const cabin = (body.cabinClass ?? 'economy') as CabinClass;
         if (!VALID_CABIN.has(cabin)) return badRequest(`invalid cabinClass: ${cabin}`);
+        const tripType = (body.tripType ?? (segments.length > 1 ? 'round-trip' : 'one-way')) as string;
+        if (!VALID_TRIP.has(tripType)) return badRequest(`invalid tripType: ${tripType}`);
 
-        // Trip type
-        const trip = (tripType ?? (segments.length === 2 ? 'round-trip' : segments.length > 2 ? 'multi-city' : 'one-way')) as string;
-        if (!VALID_TRIP.has(trip)) return badRequest(`invalid tripType: ${trip}`);
+        // ── Build FlightSearchParams from first segment ──────────────────────
+        const first = segments[0];
+        const last = segments[segments.length - 1];
 
-        // ─── Call unified-flight-search Edge Function ─────────────
+        const params: FlightSearchParams = {
+            origin: first.origin,
+            destination: first.destination,
+            departureDate: first.departureDate,
+            returnDate: segments.length > 1 ? last.departureDate : undefined,
+            adults,
+            children,
+            infants,
+            cabinClass: cabin,
+        };
 
-        const { env } = await import("@/utils/env");
-        if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
-            return NextResponse.json({ success: false, error: 'Server misconfiguration' }, { status: 500 });
-        }
+        // ── Save search record (for caching / analytics) ─────────────────────
+        // Fire-and-forget — don't block the response on this
+        const savedSearch = await saveSearch(params).catch(() => ({ id: undefined }));
+        const searchParams = { ...params, searchId: (savedSearch as any).id };
 
-        const edgeFnUrl = `${env.SUPABASE_URL}/functions/v1/unified-flight-search`;
-
-        const edgeRes = await fetch(edgeFnUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({
-                segments,
-                tripType: trip,
-                adults,
-                children: children || undefined,
-                infants: infants || undefined,
-                cabinClass: cabin,
-                maxOffers: Number(body.maxOffers) || 200,
-                nonStopOnly: body.nonStopOnly === true,
-                currency: currency,
-            }),
-        });
-
-        const edgeData = await edgeRes.json();
-
-        if (!edgeData.success) {
-            throw new Error(edgeData.error || 'Edge function search failed');
-        }
-
-        // ─── Transform NormalizedFlight[] → FlightOffer[] ─────────
-
-        const offers: FlightOffer[] = (edgeData.flights ?? []).map(
-            (nf: any) => normalizedToFlightOffer(nf, trip as FlightOffer['tripType']),
-        );
+        // ── Search providers in parallel (15s timeout each) ─────────────────
+        const offers = await searchFlights(searchParams);
 
         return NextResponse.json({
             success: true,
             data: {
                 offers,
-                providers: (edgeData.providers ?? []).map((p: any) => ({
-                    name: p.name,
-                    offerCount: p.count ?? 0,
-                    searchId: p.name,
-                    error: p.error,
-                })),
-                totalResults: edgeData.totalResults ?? offers.length,
+                totalResults: offers.length,
                 searchTimestamp: new Date().toISOString(),
-                searchDurationMs: edgeData.searchDurationMs ?? 0,
+                searchDurationMs: 0,
             },
         });
     } catch (err) {
         console.error('[POST /api/flights/search]', err);
         const message = err instanceof Error ? err.message : 'Flight search failed';
-        return NextResponse.json(
-            { success: false, error: message },
-            { status: 500 },
-        );
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 }
-

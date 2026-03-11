@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plane, Search } from 'lucide-react';
-import { FlightCard } from './flight-card';
+import { FlightCard } from './flightCard';
 import { Skeleton } from '@/components/shared/Skeleton/Skeleton';
 import type { FlightOffer } from '@/types/flights';
 

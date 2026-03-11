@@ -103,8 +103,63 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         : undefined;
 
     // countryCode comes from destination selection (autocomplete → URL param)
-    const countryCode = typeof params.countryCode === 'string' && params.countryCode
+    let countryCode = typeof params.countryCode === 'string' && params.countryCode
         ? params.countryCode : '';
+
+    // ── Fallback: derive countryCode from known city names when it's missing ──
+    // This ensures LiteAPI always gets at least (cityName + countryCode) instead of
+    // cityName alone, which causes a 400 "bad request" error for smaller cities.
+    if (!countryCode && destination) {
+        const CITY_COUNTRY: Record<string, string> = {
+            // Vietnam
+            'da nang': 'VN', 'danang': 'VN', 'ho chi minh': 'VN', 'saigon': 'VN',
+            'hanoi': 'VN', 'hoi an': 'VN', 'hue': 'VN', 'nha trang': 'VN',
+            'phu quoc': 'VN', 'vung tau': 'VN', 'ha long': 'VN',
+            // Philippines
+            'manila': 'PH', 'cebu': 'PH', 'cebu city': 'PH', 'boracay': 'PH',
+            'boracay island': 'PH', 'palawan': 'PH', 'el nido': 'PH',
+            'davao': 'PH', 'bohol': 'PH', 'baguio': 'PH', 'siargao': 'PH',
+            'pasig': 'PH', 'pasig city': 'PH', 'makati': 'PH', 'taguig': 'PH',
+            'quezon city': 'PH',
+            // Japan
+            'tokyo': 'JP', 'osaka': 'JP', 'kyoto': 'JP', 'sapporo': 'JP',
+            'fukuoka': 'JP', 'nara': 'JP', 'hiroshima': 'JP', 'okinawa': 'JP',
+            // South Korea
+            'seoul': 'KR', 'busan': 'KR', 'jeju': 'KR', 'incheon': 'KR',
+            // Thailand
+            'bangkok': 'TH', 'phuket': 'TH', 'pattaya': 'TH', 'chiang mai': 'TH',
+            'koh samui': 'TH', 'krabi': 'TH',
+            // Singapore / Malaysia
+            'singapore': 'SG', 'kuala lumpur': 'MY', 'penang': 'MY', 'langkawi': 'MY',
+            'kota kinabalu': 'MY', 'johor bahru': 'MY',
+            // Indonesia
+            'bali': 'ID', 'jakarta': 'ID', 'lombok': 'ID', 'yogyakarta': 'ID',
+            'surabaya': 'ID', 'bandung': 'ID',
+            // Middle East / India
+            'dubai': 'AE', 'abu dhabi': 'AE', 'doha': 'QA', 'istanbul': 'TR',
+            'delhi': 'IN', 'new delhi': 'IN', 'mumbai': 'IN', 'goa': 'IN',
+            'colombo': 'LK', 'kathmandu': 'NP',
+            // Europe
+            'london': 'GB', 'paris': 'FR', 'amsterdam': 'NL', 'frankfurt': 'DE',
+            'munich': 'DE', 'berlin': 'DE', 'rome': 'IT', 'milan': 'IT',
+            'madrid': 'ES', 'barcelona': 'ES', 'zurich': 'CH', 'vienna': 'AT',
+            'athens': 'GR', 'lisbon': 'PT', 'brussels': 'BE', 'prague': 'CZ',
+            'budapest': 'HU', 'warsaw': 'PL', 'stockholm': 'SE', 'oslo': 'NO',
+            'copenhagen': 'DK', 'helsinki': 'FI',
+            // Americas
+            'new york': 'US', 'los angeles': 'US', 'san francisco': 'US',
+            'miami': 'US', 'chicago': 'US', 'toronto': 'CA', 'vancouver': 'CA',
+            'cancun': 'MX', 'mexico city': 'MX',
+            // Oceania
+            'sydney': 'AU', 'melbourne': 'AU', 'auckland': 'NZ',
+        };
+        const key = destination.toLowerCase().trim();
+        // Direct lookup first, then strip common suffixes (City, Island, Province, etc.)
+        countryCode = CITY_COUNTRY[key]
+            || CITY_COUNTRY[key.replace(/\s+(city|island|province|metro|town)$/i, '')]
+            || '';
+    }
+
     const placeId = typeof params.placeId === 'string' ? params.placeId : undefined;
 
     // Currency comes from the user's locale preference (URL param), NOT the destination
@@ -139,6 +194,7 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
 
     return queryParams;
 }
+
 
 // Extract price from hotel room types
 function extractPrice(hotel: any): { price: number; originalPrice?: number } {

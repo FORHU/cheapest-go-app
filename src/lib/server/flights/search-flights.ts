@@ -1,8 +1,9 @@
 import { FlightResultCache, FlightSearchParams, FlightSearch, FlightOffer, FlightResult } from "@/types/flights";
 import { searchDuffel } from "./providers/duffel";
 import { searchMystifly } from "./providers/mystifly";
-import { createClient } from "@/utils/supabase/server"; 
+import { createClient } from "@/utils/supabase/server";
 import { normalizedToFlightOffer } from "@/utils/flight-utils";
+import { env } from "@/utils/env";
 
 /**
  * Helper to wrap a promise with a timeout.
@@ -52,18 +53,77 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
         }
     });
 
-    // 3. Update cache with new results
+    // 3. Fallback: if direct providers returned nothing, try the Edge Function orchestrator
+    // which has real Mystifly V1/V2 implementations (the Next.js Mystifly provider is stubbed)
+    if (allResults.length === 0) {
+        console.log(`[Search] Direct providers returned 0 results — trying Edge Function fallback`);
+        const edgeResults = await searchViaEdgeFunction(params).catch((err: Error) => {
+            console.error("[Search] Edge Function fallback failed:", err.message);
+            return [] as FlightOffer[];
+        });
+        if (edgeResults.length > 0) {
+            return edgeResults;
+        }
+    }
+
+    // 4. Update cache with new results
     if (allResults.length > 0 && params.searchId) {
         await cacheResults(params.searchId, allResults);
-        
-        // 4. Log Analytics (Phase 11) - Fire and forget
-        logSearchAnalytics(params, allResults).catch(err => 
+
+        // 5. Log Analytics (Phase 11) - Fire and forget
+        logSearchAnalytics(params, allResults).catch(err =>
             console.error("[Analytics] Logging failed:", err.message)
         );
     }
 
-    // 5. Return aggregated and unified results
+    // 6. Return aggregated and unified results
     return allResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
+}
+
+/**
+ * Fallback: call the unified-flight-search Edge Function (Duffel + Mystifly V1 + V2).
+ * Used when direct provider calls return 0 results.
+ */
+async function searchViaEdgeFunction(params: FlightSearchParams): Promise<FlightOffer[]> {
+    const supabaseUrl = env.SUPABASE_URL;
+    const anonKey = env.SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !anonKey) {
+        console.warn("[Search] Missing SUPABASE_URL or ANON_KEY for Edge Function fallback");
+        return [];
+    }
+
+    const segments: { origin: string; destination: string; departureDate: string }[] = [
+        { origin: params.origin, destination: params.destination, departureDate: params.departureDate },
+    ];
+    if (params.returnDate) {
+        segments.push({ origin: params.destination, destination: params.origin, departureDate: params.returnDate });
+    }
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/unified-flight-search`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({
+            segments,
+            tripType: params.returnDate ? "round-trip" : "one-way",
+            adults: params.adults,
+            children: params.children,
+            infants: params.infants,
+            cabinClass: params.cabinClass,
+        }),
+        signal: AbortSignal.timeout(20_000),
+    });
+
+    const data = await res.json();
+    if (!data.success || !Array.isArray(data.flights) || data.flights.length === 0) {
+        return [];
+    }
+
+    console.log(`[Search] Edge Function fallback returned ${data.flights.length} flights`);
+    const tripType = params.returnDate ? "round-trip" : "one-way";
+    return data.flights.map((f: any) => normalizedToFlightOffer(f, tripType));
 }
 
 /**

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 import { env } from '@/utils/env';
 
 const DUFFEL_ACCESS_TOKEN = env.DUFFEL_TOKEN || '';
-const DUFFEL_VERSION = 'beta';
+const DUFFEL_VERSION = 'v2';
 
 // ─── Duffel Places Search ──────────────────────────────────────────
 

@@ -10,6 +10,13 @@ export interface Deal {
     image: string;
     endsIn: string;
     tag?: string;
+    // Search routing fields (from flight_deals table)
+    origin?: string;
+    destination?: string;
+    departure_date?: string;
+    return_date?: string;
+    // Live price metadata — set by cron job
+    lastRefreshedAt?: string;
 }
 
 export interface WeekendDeal {
@@ -42,6 +49,8 @@ export interface VacationPackage {
     salePrice: number;
     image: string;
     includes: string[];
+    // Optional IATA city code for search routing
+    destinationCode?: string;
 }
 
 export const packageTabs = [
