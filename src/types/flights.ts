@@ -30,6 +30,7 @@ export interface FlightResult {
   duration: number; // In minutes
   stops: number;
   remaining_seats: number | null;
+  traceId?: string;
   raw: any; // Original provider response
 }
 

@@ -116,7 +116,7 @@ export function useFlightBooking() {
                         flightPayload: {
                             oldPrice: parsedOffer.price.total,
                             currency: parsedOffer.price.currency,
-                            traceId: parsedOffer.provider.startsWith('mystifly') ? parsedOffer.offerId : undefined,
+                            traceId: parsedOffer.provider.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
                             flight: parsedOffer.provider === 'duffel'
                                 ? ((parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
                                 : undefined,
@@ -126,6 +126,7 @@ export function useFlightBooking() {
 
                 if (error) throw error;
                 if (!data.success) throw new Error(data.error || 'Revalidation failed');
+                if (!data.seatsAvailable) throw new Error(data.error || 'Flight is no longer available. Please search again.');
 
                 const revalidatedOffer = {
                     ...parsedOffer,

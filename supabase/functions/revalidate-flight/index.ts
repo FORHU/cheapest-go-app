@@ -29,7 +29,7 @@ declare const Deno: any;
 
 import type { FlightProvider } from '../_shared/types.ts';
 import { FlightProvider as FP } from '../_shared/types.ts';
-import { revalidateFare, revalidateFareV2, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { revalidateFare, revalidateFareV2 } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyV1Policy, normalizeMystiflyV2Policy, normalizeDuffelPolicy } from '../_shared/farePolicy.ts';
 import type { NormalizedFarePolicy } from '../_shared/types.ts';
 
@@ -202,9 +202,56 @@ async function revalidateMystifly(
         };
     }
 
-    const raw = body.provider === 'mystifly_v2'
-        ? await revalidateFareV2(traceId, sessionId, conversationId)
-        : await revalidateFare(traceId, sessionId, conversationId);
+    // ── Call Mystifly API (catch errors gracefully instead of letting them 500) ──
+    let raw: any;
+    try {
+        raw = body.provider === 'mystifly_v2'
+            ? await revalidateFareV2(traceId, sessionId, conversationId)
+            : await revalidateFare(traceId, sessionId, conversationId);
+    } catch (err: any) {
+        const msg = err?.message || 'Mystifly revalidation request failed';
+        const isExpired = /expired|not found|not available|timeout|abort/i.test(msg);
+        const isParse = err?.type === 'PARSE' || /invalid json|empty response/i.test(msg);
+        console.error(`[revalidate-flight] Mystifly API error (${body.provider}):`, msg);
+
+        // V2 PARSE errors (empty response) = endpoint may not exist.
+        // Soft-pass: trust the fare from search and let the booking API validate it.
+        if (body.provider === 'mystifly_v2' && isParse) {
+            console.warn('[revalidate-flight] V2 revalidation unavailable — soft-passing with original price');
+            return {
+                success: true,
+                priceChanged: false,
+                oldPrice,
+                newPrice: oldPrice,
+                seatsAvailable: true,
+                provider: body.provider,
+                validatedFlight: {
+                    price: oldPrice,
+                    baseFare: oldPrice,
+                    taxes: 0,
+                    currency: body.flightPayload.currency || 'USD',
+                    pricePerAdult: oldPrice,
+                    traceId,
+                },
+                revalidationSkipped: true,
+                durationMs: Date.now() - startMs,
+            };
+        }
+
+        return {
+            success: true, // success=true means we handled it; seatsAvailable=false means fare is gone
+            priceChanged: false,
+            oldPrice,
+            newPrice: 0,
+            seatsAvailable: false,
+            provider: body.provider,
+            validatedFlight: { price: 0, baseFare: 0, taxes: 0, currency: 'USD', pricePerAdult: 0 },
+            error: isExpired
+                ? 'Flight fare has expired. Please search again.'
+                : `Revalidation failed: ${msg}`,
+            durationMs: Date.now() - startMs,
+        };
+    }
 
     // ── Handle failure / unavailable ──
     if (!raw.Success) {

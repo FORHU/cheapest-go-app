@@ -58,7 +58,7 @@ serve(async (req) => {
                     const duffelRes = await fetch(`https://api.duffel.com/air/orders/${booking.provider_order_id}`, {
                         headers: {
                             "Accept": "application/json",
-                            "Duffel-Version": "v1",
+                            "Duffel-Version": "v2",
                             "Authorization": `Bearer ${duffelToken}`
                         }
                     });
