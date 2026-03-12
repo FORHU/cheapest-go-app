@@ -10,7 +10,19 @@ export async function createClient() {
         env.SUPABASE_ANON_KEY,
         {
             cookies: {
-                get: (name) => cookieStore.get(name)?.value,
+                getAll() {
+                    return cookieStore.getAll();
+                },
+                setAll(cookiesToSet) {
+                    try {
+                        cookiesToSet.forEach(({ name, value, options }) => {
+                            cookieStore.set(name, value, options);
+                        });
+                    } catch {
+                        // Called from a Server Component — cookies are read-only.
+                        // The middleware handles token refresh instead.
+                    }
+                },
             },
         }
     );
