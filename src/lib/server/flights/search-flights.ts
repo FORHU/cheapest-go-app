@@ -187,8 +187,6 @@ export async function cacheResults(searchId: string, results: FlightResult[]): P
                 departure_time: r.departure_time,
                 arrival_time: r.arrival_time,
                 duration: r.duration,
-                stops: r.stops,
-                remaining_seats: r.remaining_seats,
                 raw: r.raw
             }))
         );

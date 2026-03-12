@@ -47,7 +47,7 @@ export async function searchMystifly(params: FlightSearchParams): Promise<Flight
                 infants: params.infants || 0,
                 cabinClass: params.cabinClass || 'economy',
                 currency: 'USD',
-                maxOffers: 100
+                maxOffers: 200
             }),
             signal: AbortSignal.timeout(20000)
         });
