@@ -5,25 +5,38 @@ import { type Deal, type VacationPackage } from "@/types";
 export const getLandingData = cache(async () => {
     const supabase = await createClient();
 
-    const [
-        { data: flightDeals, error: e1 },
-        { data: weekendDeals, error: e2 },
-        { data: popularDestinations, error: e3 },
-        { data: uniqueStays, error: e4 },
-        { data: travelStyles, error: e5 },
-    ] = await Promise.all([
-        supabase.from("flight_deals").select("*").limit(10),
-        supabase.from("weekend_flight_deals").select("*").limit(10),
-        supabase.from("popular_destinations").select("*").limit(12),
-        supabase.from("unique_stays").select("*").limit(10),
-        supabase.from("travel_styles").select("*").limit(10),
+    // Helper: query with one retry on network errors (TypeError: fetch failed)
+    async function query(table: string, limit: number): Promise<{ data: any[] | null; error: any }> {
+        const result = await supabase.from(table).select("*").limit(limit);
+        if (result.error?.message?.includes("fetch failed")) {
+            await new Promise(r => setTimeout(r, 100));
+            return supabase.from(table).select("*").limit(limit);
+        }
+        return result;
+    }
+
+    // Run in two batches to avoid concurrent connection limits
+    const [r1, r2] = await Promise.all([
+        query("flight_deals", 10),
+        query("weekend_flight_deals", 10),
+    ]);
+    const [r3, r4, r5] = await Promise.all([
+        query("popular_destinations", 12),
+        query("unique_stays", 10),
+        query("travel_styles", 10),
     ]);
 
-    if (e1) console.error("[Landing] flight_deals error:", e1.message);
-    if (e2) console.error("[Landing] weekend_flight_deals error:", e2.message);
-    if (e3) console.error("[Landing] popular_destinations error:", e3.message);
-    if (e4) console.error("[Landing] unique_stays error:", e4.message);
-    if (e5) console.error("[Landing] travel_styles error:", e5.message);
+    const flightDeals = r1.data;
+    const weekendDeals = r2.data;
+    const popularDestinations = r3.data;
+    const uniqueStays = r4.data;
+    const travelStyles = r5.data;
+
+    if (r1.error) console.error("[Landing] flight_deals error:", r1.error.message);
+    if (r2.error) console.error("[Landing] weekend_flight_deals error:", r2.error.message);
+    if (r3.error) console.error("[Landing] popular_destinations error:", r3.error.message);
+    if (r4.error) console.error("[Landing] unique_stays error:", r4.error.message);
+    if (r5.error) console.error("[Landing] travel_styles error:", r5.error.message);
 
     console.log(`[Landing] Fetched: flights=${flightDeals?.length ?? 0}, weekend=${weekendDeals?.length ?? 0}, destinations=${popularDestinations?.length ?? 0}, stays=${uniqueStays?.length ?? 0}, styles=${travelStyles?.length ?? 0}`);
     const mappedFlightDeals: Deal[] = flightDeals?.map(d => ({

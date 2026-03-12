@@ -63,29 +63,45 @@ export function getAirlineName(code: string): string {
  * Transforms a raw flight result (as stored in cache/DB) back into a UI-ready FlightOffer.
  */
 export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripType']): FlightOffer {
-    const segments: FlightSegmentDetail[] = (nf.segments ?? []).map((seg: any, idx: number) => ({
+    let rawSegments = nf.segments;
+    
+    // Resilience: If segments are missing but we have basic flight info, create a synthetic segment
+    if ((!rawSegments || rawSegments.length === 0) && nf.departure_time && nf.arrival_time) {
+        rawSegments = [{
+            airline: nf.airline,
+            origin: nf.origin || '---',
+            destination: nf.destination || '---',
+            flightNumber: nf.flightNumber || '---',
+            departureTime: nf.departure_time,
+            arrivalTime: nf.arrival_time,
+            duration: nf.duration || 0,
+            cabinClass: nf.cabinClass || 'economy'
+        }];
+    }
+
+    const segments: FlightSegmentDetail[] = (rawSegments ?? []).map((seg: any, idx: number) => ({
         segmentIndex: idx,
         airline: {
-            code: seg.airline ?? '',
-            name: seg.airlineName || getAirlineName(seg.airline ?? ''),
+            code: (typeof seg.airline === 'object' ? seg.airline.code : seg.airline) ?? nf.airline ?? '',
+            name: (typeof seg.airline === 'object' ? seg.airline.name : (seg.airlineName || getAirlineName(seg.airline ?? nf.airline ?? ''))),
         },
-        origin: seg.origin ?? '',
-        destination: seg.destination ?? '',
-        flightNumber: seg.flightNumber ?? '',
+        origin: seg.origin ?? nf.origin ?? '',
+        destination: seg.destination ?? nf.destination ?? '',
+        flightNumber: seg.flightNumber ?? nf.flightNumber ?? '',
         departure: {
-            airport: seg.origin ?? '',
+            airport: seg.origin ?? nf.origin ?? '',
             terminal: seg.terminal,
-            time: seg.departureTime ?? '',
+            time: seg.departureTime ?? nf.departure_time ?? '',
         },
         arrival: {
-            airport: seg.destination ?? '',
+            airport: seg.destination ?? nf.destination ?? '',
             terminal: seg.arrivalTerminal,
-            time: seg.arrivalTime ?? '',
+            time: seg.arrivalTime ?? nf.arrival_time ?? '',
         },
-        duration: seg.duration ?? 0,
+        duration: seg.duration ?? nf.duration ?? 0,
         stops: 0,
         aircraft: seg.aircraft,
-        cabinClass: (seg.cabinClass ?? 'economy') as CabinClass,
+        cabinClass: (seg.cabinClass ?? nf.cabinClass ?? 'economy') as CabinClass,
     }));
 
     return {
