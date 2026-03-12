@@ -1,13 +1,23 @@
 -- ============================================================================
--- Add baseline_price and last_refreshed_at to flight_deals
+-- Add baseline_price, original_price, and last_refreshed_at to flight_deals
 -- baseline_price = the reference "was" price for discount % calculation.
 -- It is set once (from original_price) and stays fixed unless manually changed.
 -- The cron job only updates: price, airline, discount_tag, ends_in, last_refreshed_at
 -- ============================================================================
 
+-- Ensure all required columns exist (the refactor migration may have been
+-- skipped by IF NOT EXISTS if the table was created by an earlier migration)
 ALTER TABLE flight_deals
-    ADD COLUMN IF NOT EXISTS baseline_price  DECIMAL(10, 2),
-    ADD COLUMN IF NOT EXISTS last_refreshed_at TIMESTAMPTZ;
+    ADD COLUMN IF NOT EXISTS original_price   DECIMAL(10, 2),
+    ADD COLUMN IF NOT EXISTS baseline_price   DECIMAL(10, 2),
+    ADD COLUMN IF NOT EXISTS last_refreshed_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS currency         TEXT DEFAULT 'USD',
+    ADD COLUMN IF NOT EXISTS airline          TEXT,
+    ADD COLUMN IF NOT EXISTS image_url        TEXT,
+    ADD COLUMN IF NOT EXISTS departure_date   DATE,
+    ADD COLUMN IF NOT EXISTS return_date      DATE,
+    ADD COLUMN IF NOT EXISTS discount_tag     TEXT,
+    ADD COLUMN IF NOT EXISTS ends_in          TEXT;
 
 -- Seed baseline_price from existing original_price values
 UPDATE flight_deals

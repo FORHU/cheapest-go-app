@@ -5,37 +5,27 @@ import { type Deal, type VacationPackage } from "@/types";
 export const getLandingData = cache(async () => {
     const supabase = await createClient();
 
-    // 1. Fetch Flight Deals
-    const { data: flightDeals } = await supabase
-        .from("flight_deals")
-        .select("*")
-        .limit(6);
+    const [
+        { data: flightDeals, error: e1 },
+        { data: weekendDeals, error: e2 },
+        { data: popularDestinations, error: e3 },
+        { data: uniqueStays, error: e4 },
+        { data: travelStyles, error: e5 },
+    ] = await Promise.all([
+        supabase.from("flight_deals").select("*").limit(10),
+        supabase.from("weekend_flight_deals").select("*").limit(10),
+        supabase.from("popular_destinations").select("*").limit(12),
+        supabase.from("unique_stays").select("*").limit(10),
+        supabase.from("travel_styles").select("*").limit(10),
+    ]);
 
-    // 2. Fetch Weekend Deals
-    const { data: weekendDeals } = await supabase
-        .from("weekend_flight_deals")
-        .select("*")
-        .limit(6);
+    if (e1) console.error("[Landing] flight_deals error:", e1.message);
+    if (e2) console.error("[Landing] weekend_flight_deals error:", e2.message);
+    if (e3) console.error("[Landing] popular_destinations error:", e3.message);
+    if (e4) console.error("[Landing] unique_stays error:", e4.message);
+    if (e5) console.error("[Landing] travel_styles error:", e5.message);
 
-    // 3. Fetch Popular Destinations
-    const { data: popularDestinations } = await supabase
-        .from("popular_destinations")
-        .select("*")
-        .limit(8);
-
-    // 4. Fetch Unique Stays
-    const { data: uniqueStays } = await supabase
-        .from("unique_stays")
-        .select("*")
-        .limit(6);
-
-    // 5. Fetch Travel Styles
-    const { data: travelStyles } = await supabase
-        .from("travel_styles")
-        .select("*")
-        .limit(4);
-
-    // Mapping with defensive fallbacks
+    console.log(`[Landing] Fetched: flights=${flightDeals?.length ?? 0}, weekend=${weekendDeals?.length ?? 0}, destinations=${popularDestinations?.length ?? 0}, stays=${uniqueStays?.length ?? 0}, styles=${travelStyles?.length ?? 0}`);
     const mappedFlightDeals: Deal[] = flightDeals?.map(d => ({
         id: String(d.id),
         title: `${d.origin} → ${d.destination}`,
@@ -45,12 +35,10 @@ export const getLandingData = cache(async () => {
         salePrice: Number(d.price || 0),
         image: d.image_url || "https://picsum.photos/seed/travel/400/300",
         endsIn: d.ends_in || "Limited Time",
-        // Search routing fields
         origin: d.origin || undefined,
         destination: d.destination || undefined,
         departure_date: d.departure_date || undefined,
         return_date: d.return_date || undefined,
-        // Live price metadata
         lastRefreshedAt: d.last_refreshed_at || undefined,
     })) ?? [];
 

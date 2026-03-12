@@ -50,6 +50,17 @@ export async function POST(req: NextRequest) {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
         };
 
+        // Resolve price/currency — client sends flat format (price: number, currency: string)
+        // but Stripe and revalidation expect separate values
+        const flightTotal = typeof flight.price === 'number'
+            ? flight.price as number
+            : flight.price?.total ?? 0;
+        const flightCurrency = (
+            (typeof flight.price === 'object' ? flight.price?.currency : undefined)
+            || (flight as any).currency
+            || 'USD'
+        ).toLowerCase();
+
         // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
         const revalRes = await fetch(`${env.SUPABASE_URL}/functions/v1/revalidate-flight`, {
             method: 'POST',
@@ -57,7 +68,7 @@ export async function POST(req: NextRequest) {
             body: JSON.stringify({
                 userId,
                 provider,
-                flightPayload: { ...flight, oldPrice: flight.price.total },
+                flightPayload: { ...flight, oldPrice: flightTotal },
             }),
         });
 
@@ -70,7 +81,7 @@ export async function POST(req: NextRequest) {
             }, { status: 409 });
         }
 
-        if (revalData.priceChanged && Math.abs(revalData.newPrice - flight.price.total) > 0.01) {
+        if (revalData.priceChanged && Math.abs(revalData.newPrice - flightTotal) > 0.01) {
             return NextResponse.json({
                 success: false,
                 error: `Flight price changed. Please restart booking.`
@@ -109,8 +120,8 @@ export async function POST(req: NextRequest) {
         // ── Step 2: Create Stripe PaymentIntent ──
         const isMystifly = provider === 'mystifly' || provider === 'mystifly_v2';
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(flight.price.total * 100),
-            currency: flight.price.currency.toLowerCase(),
+            amount: Math.round(flightTotal * 100),
+            currency: flightCurrency,
             capture_method: isMystifly ? 'manual' : 'automatic',
             metadata: {
                 bookingSessionId: sessionId,

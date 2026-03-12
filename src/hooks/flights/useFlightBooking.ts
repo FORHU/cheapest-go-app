@@ -227,7 +227,7 @@ export function useFlightBooking() {
                 throw new Error(data.error || 'Booking failed');
             }
 
-            return data.data;
+            return data.data ?? data;
         },
         onMutate: () => {
             setStep('submitting');

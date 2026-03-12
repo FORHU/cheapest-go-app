@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { FlightResults } from '@/components/flights/flightResultsList';
+import FlightFilters, { type FilterState } from '@/components/flights/filters';
 import type { FlightOffer, CabinClass } from '@/types/flights';
 
 // ─── City name → IATA code lookup ─────────────────────────────────────────────
@@ -59,6 +61,104 @@ type SearchState =
 /** Hard client-side timeout. User sees an actionable state instead of infinite loading. */
 const SEARCH_TIMEOUT_MS = 25_000;
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getAirlineName(o: FlightOffer): string {
+    return o.validatingAirline || o.segments[0]?.airline?.name || o.segments[0]?.airline?.code || o.provider;
+}
+
+function getAirlines(offers: FlightOffer[]): string[] {
+    const set = new Set<string>();
+    for (const o of offers) {
+        const airline = getAirlineName(o);
+        if (airline) set.add(airline);
+    }
+    return Array.from(set).sort();
+}
+
+function getProviderCounts(offers: FlightOffer[]): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const o of offers) {
+        counts[o.provider] = (counts[o.provider] || 0) + 1;
+    }
+    return counts;
+}
+
+function applyFilters(offers: FlightOffer[], filters: FilterState): FlightOffer[] {
+    let filtered = [...offers];
+
+    // Stops filter
+    if (filters.maxStops !== null) {
+        filtered = filtered.filter(o => o.totalStops <= filters.maxStops!);
+    }
+
+    // Airlines filter
+    if (filters.selectedAirlines.length > 0) {
+        filtered = filtered.filter(o => {
+            const airline = getAirlineName(o);
+            return filters.selectedAirlines.includes(airline);
+        });
+    }
+
+    // Sort
+    switch (filters.sortBy) {
+        case 'price':
+            filtered.sort((a, b) => a.price.total - b.price.total);
+            break;
+        case 'duration':
+            filtered.sort((a, b) => a.totalDuration - b.totalDuration);
+            break;
+        case 'departure': {
+            filtered.sort((a, b) => {
+                const aTime = a.segments[0]?.departure?.time || '';
+                const bTime = b.segments[0]?.departure?.time || '';
+                return aTime.localeCompare(bTime);
+            });
+            break;
+        }
+    }
+
+    return filtered;
+}
+
+// ─── Provider Status Badge ────────────────────────────────────────────────────
+
+function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: boolean }) {
+    const providerCounts = useMemo(() => getProviderCounts(offers), [offers]);
+    const entries = Object.entries(providerCounts);
+
+    if (loading) {
+        return (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span className="inline-flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    Fetching from providers...
+                </span>
+            </div>
+        );
+    }
+
+    if (entries.length === 0) return null;
+
+    return (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-slate-400 font-medium">Sources:</span>
+            {entries.map(([provider, count]) => (
+                <span
+                    key={provider}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium"
+                >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    {provider}: {count}
+                </span>
+            ))}
+            <span className="text-slate-400">
+                ({offers.length} total)
+            </span>
+        </div>
+    );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function SearchFetcher({
@@ -71,8 +171,19 @@ export function SearchFetcher({
     infants,
     cabinClass,
 }: SearchFetcherProps) {
+    const router = useRouter();
     const [state, setState] = useState<SearchState>({ status: 'loading' });
+    const [filters, setFilters] = useState<FilterState>({
+        sortBy: 'price',
+        selectedAirlines: [],
+        maxStops: null,
+    });
     const abortRef = useRef<AbortController | null>(null);
+
+    const handleSelect = useCallback((offer: FlightOffer) => {
+        sessionStorage.setItem('selectedFlight', JSON.stringify(offer));
+        router.push('/flights/book');
+    }, [router]);
 
     useEffect(() => {
         // Cancel any previous in-flight request
@@ -145,27 +256,27 @@ export function SearchFetcher({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [origin, destination, departureDate, returnDate, adults, children, infants, cabinClass]);
 
-    // ─── Render ──────────────────────────────────────────────────────────────
+    // ─── Derived data ─────────────────────────────────────────────────────────
+    const rawOffers = state.status === 'success' ? state.offers : [];
+    const airlines = useMemo(() => getAirlines(rawOffers), [rawOffers]);
+    const filteredOffers = useMemo(() => applyFilters(rawOffers, filters), [rawOffers, filters]);
+    const isLoading = state.status === 'loading';
+    const hasResults = state.status === 'success';
 
-    if (state.status === 'loading') {
-        return <FlightResults offers={[]} loading={true} />;
-    }
+    // ─── Non-result states (full-width, no sidebar) ───────────────────────────
 
-    if (state.status === 'success') {
-        return <FlightResults offers={state.offers} loading={false} />;
-    }
-
-    if (state.status === 'empty') {
+    if (state.status === 'needs_input') {
         return (
-            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl p-10 text-center space-y-4">
                 <div className="text-5xl">✈️</div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">No flights found</h2>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Refine your search</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                    We couldn't find any flights for this route and date. Try different dates or another airport.
+                    We couldn&apos;t resolve <strong>{state.originRaw}</strong> or <strong>{state.destinationRaw}</strong> to an airport code.
+                    Use the search bar to pick airports directly.
                 </p>
                 <a href="/"
-                    className="inline-block px-6 py-2.5 mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-full transition-colors">
-                    New Search
+                    className="inline-block px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-full transition-colors">
+                    Search with Airport Picker
                 </a>
             </div>
         );
@@ -194,32 +305,53 @@ export function SearchFetcher({
         );
     }
 
-    if (state.status === 'needs_input') {
+    if (state.status === 'error') {
         return (
-            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl p-10 text-center space-y-4">
-                <div className="text-5xl">✈️</div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Refine your search</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                    We couldn't resolve <strong>{state.originRaw}</strong> or <strong>{state.destinationRaw}</strong> to an airport code.
-                    Use the search bar to pick airports directly.
-                </p>
+            <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-8 rounded-2xl text-center space-y-3">
+                <p className="text-lg font-bold text-red-700 dark:text-red-400">Search Error</p>
+                <p className="text-sm text-red-600 dark:text-red-300">{state.message}</p>
                 <a href="/"
-                    className="inline-block px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-full transition-colors">
-                    Search with Airport Picker
+                    className="block mt-2 text-sm font-semibold text-red-700 dark:text-red-400 hover:underline">
+                    Try another search
                 </a>
             </div>
         );
     }
 
-    // error
+    // ─── Loading + Results layout (with sidebar) ──────────────────────────────
+
     return (
-        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-8 rounded-2xl text-center space-y-3">
-            <p className="text-lg font-bold text-red-700 dark:text-red-400">Search Error</p>
-            <p className="text-sm text-red-600 dark:text-red-300">{(state as any).message}</p>
-            <a href="/"
-                className="block mt-2 text-sm font-semibold text-red-700 dark:text-red-400 hover:underline">
-                Try another search
-            </a>
+        <div className="space-y-4">
+            {/* Provider status bar */}
+            <ProviderStatus offers={rawOffers} loading={isLoading} />
+
+            <div className="flex flex-col lg:flex-row gap-6">
+                {/* Filters sidebar */}
+                <div className="w-full lg:w-72 shrink-0">
+                    <div className={isLoading ? 'opacity-50 pointer-events-none' : ''}>
+                        <FlightFilters
+                            airlines={airlines}
+                            onFilterChange={setFilters}
+                        />
+                    </div>
+                </div>
+
+                {/* Main results area */}
+                <div className="flex-1 min-w-0">
+                    {hasResults && filteredOffers.length === 0 && rawOffers.length > 0 ? (
+                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center space-y-3">
+                            <p className="text-lg font-bold text-slate-700 dark:text-slate-300">No flights match your filters</p>
+                            <p className="text-sm text-slate-500">Try adjusting your filter criteria.</p>
+                        </div>
+                    ) : (
+                        <FlightResults
+                            offers={filteredOffers}
+                            loading={isLoading}
+                            onSelect={handleSelect}
+                        />
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

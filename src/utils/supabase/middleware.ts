@@ -1,12 +1,10 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/utils/env";
 
 export async function updateSession(request: NextRequest) {
-    let response = NextResponse.next({
-        request: {
-            headers: request.headers,
-        },
+    let supabaseResponse = NextResponse.next({
+        request,
     });
 
     const supabase = createServerClient(
@@ -14,48 +12,28 @@ export async function updateSession(request: NextRequest) {
         env.SUPABASE_ANON_KEY,
         {
             cookies: {
-                get(name: string) {
-                    return request.cookies.get(name)?.value;
+                getAll() {
+                    return request.cookies.getAll();
                 },
-                set(name: string, value: string, options: CookieOptions) {
-                    request.cookies.set({
-                        name,
-                        value,
-                        ...options,
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value }) =>
+                        request.cookies.set(name, value)
+                    );
+                    supabaseResponse = NextResponse.next({
+                        request,
                     });
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    });
-                    response.cookies.set({
-                        name,
-                        value,
-                        ...options,
-                    });
-                },
-                remove(name: string, options: CookieOptions) {
-                    request.cookies.set({
-                        name,
-                        value: "",
-                        ...options,
-                    });
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    });
-                    response.cookies.set({
-                        name,
-                        value: "",
-                        ...options,
-                    });
+                    cookiesToSet.forEach(({ name, value, options }) =>
+                        supabaseResponse.cookies.set(name, value, options)
+                    );
                 },
             },
         }
     );
 
+    // Refresh the auth token — this is critical.
+    // Do NOT use getSession() here; getUser() sends a request to the Supabase Auth
+    // server every time to revalidate the token and is more secure.
     await supabase.auth.getUser();
 
-    return response;
+    return supabaseResponse;
 }

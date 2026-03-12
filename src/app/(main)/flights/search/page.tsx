@@ -19,10 +19,17 @@ export default async function SearchPage({
     // Await searchParams (required in Next.js 15+)
     const sp = await searchParams;
 
-    const origin = (sp.origin as string) || "";
-    const destination = (sp.destination as string) || "";
-    const departure = (sp.departure as string) || "";
-    const returnDate = (sp.return as string) || undefined;
+    // Accept both URL formats:
+    //   Simple form:   ?origin=BKK&destination=SIN&departure=2026-04-10
+    //   Landing search: ?origin0=BKK&dest0=SIN&date0=2026-04-10T...
+    const origin = (sp.origin as string) || (sp.origin0 as string) || "";
+    const destination = (sp.destination as string) || (sp.dest0 as string) || "";
+    const departure = (sp.departure as string)
+        || ((sp.date0 as string)?.slice(0, 10)) // ISO string → YYYY-MM-DD
+        || "";
+    const returnDate = (sp.return as string)
+        || ((sp.date1 as string)?.slice(0, 10))
+        || undefined;
     const adults = Math.max(1, parseInt(sp.adults as string) || 1);
     const children = Math.max(0, parseInt(sp.children as string) || 0);
     const infants = Math.max(0, parseInt(sp.infants as string) || 0);
