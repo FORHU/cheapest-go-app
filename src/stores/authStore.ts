@@ -39,6 +39,7 @@ const extractUserProfile = (supabaseUser: SupabaseUser): User => {
             meta.name?.split(" ").slice(1).join(" ") ||
             "",
         avatar: meta.avatar_url || meta.picture,
+        role: meta.role || 'user',
     };
 };
 
@@ -105,6 +106,7 @@ interface AuthState {
         currentPassword: string,
         newPassword: string,
     ) => Promise<void>;
+    syncProfile: (profile: Partial<User>) => void;
 }
 
 // --- Store ---
@@ -280,6 +282,17 @@ export const useAuthStore = create<AuthState>((set, get) => {
                 });
                 if (error) throw error;
             });
+        },
+        syncProfile: (profile) => {
+            const { user } = get();
+            if (user) {
+                set({
+                    user: {
+                        ...user,
+                        ...profile
+                    }
+                });
+            }
         },
     };
 });

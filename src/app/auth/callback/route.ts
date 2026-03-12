@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import { getUserProfile } from '@/lib/server/auth';
 import { NextResponse } from 'next/server';
 import { type EmailOtpType } from '@supabase/supabase-js';
 
@@ -8,6 +9,22 @@ function validateRedirectUrl(url: string): string {
         return '/';
     }
     return url;
+}
+
+/** Determines the redirect target based on user role and requested 'next' path. */
+async function getRedirectTarget(user: any, next: string): Promise<string> {
+    // 1. Check metadata (fastest)
+    if (user?.user_metadata?.role === 'admin' || user?.app_metadata?.role === 'admin') {
+        return '/admin';
+    }
+
+    // 2. Check database (reliable fallback)
+    const profile = await getUserProfile(user.id);
+    if (profile?.role === 'admin') {
+        return '/admin';
+    }
+
+    return next;
 }
 
 export async function GET(request: Request) {
@@ -42,7 +59,8 @@ export async function GET(request: Request) {
         });
 
         if (!verifyError && data.session) {
-            return NextResponse.redirect(`${origin}${next}`);
+            const redirectTarget = await getRedirectTarget(data.session.user, next);
+            return NextResponse.redirect(`${origin}${redirectTarget}`);
         }
 
         console.error('Email verification error:', verifyError?.message);
@@ -54,7 +72,8 @@ export async function GET(request: Request) {
         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
         if (!exchangeError && data.session) {
-            return NextResponse.redirect(`${origin}${next}`);
+            const redirectTarget = await getRedirectTarget(data.session.user, next);
+            return NextResponse.redirect(`${origin}${redirectTarget}`);
         }
 
         console.error('Code exchange error:', exchangeError?.message);
