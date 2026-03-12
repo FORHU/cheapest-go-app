@@ -93,11 +93,7 @@ export function useLoginForm(options: UseLoginFormOptions = {}): UseLoginFormRet
 
             // Normal user mode redirection logic
             if (user.role === 'admin') {
-                const logoutAndError = async () => {
-                    await logout();
-                    setErrors({ general: 'Administrators must use the dedicated admin login portal.' });
-                };
-                logoutAndError();
+                router.push('/admin/overview');
                 return;
             }
 

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin';
 import { Booking } from '@/types/admin';
+import { checkRefundability } from './recovery';
 
 export interface BookingsListParams {
     page?: number;
@@ -35,7 +36,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
     // 1. Build queries for each table
     const unifiedQuery = supabase.from('unified_bookings').select('*', { count: 'exact' });
     const legacyHotelQuery = supabase.from('bookings').select('*', { count: 'exact' });
-    const legacyFlightQuery = supabase.from('flight_bookings').select('*', { count: 'exact' });
+    const legacyFlightQuery = supabase.from('flight_bookings').select('*, booking_sessions(contact)', { count: 'exact' });
 
     // 2. Apply Type Filter
     if (type !== 'all') {
@@ -113,8 +114,11 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
                 type: item.type as "flight" | "hotel",
                 supplier: item.provider,
                 customerName: name.trim() || 'Anonymous User',
-                email: meta?.holder?.email || meta?.email || '',
+                email: meta?.holder?.email || meta?.email || meta?.contact_email || meta?.contactDetails?.email || meta?.contact_details?.email || meta?.customer_email || meta?.passengers?.[0]?.email || '',
                 totalAmount: Number(item.total_price),
+                supplierCost: Number(item.supplier_cost || 0),
+                markupAmount: Number(item.markup_amount || 0),
+                profit: Number(item.profit || 0),
                 currency: item.currency,
                 status: item.status,
                 paymentStatus: (item.status === 'confirmed' || item.status === 'ticketed') ? 'paid' :
@@ -124,7 +128,9 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
                 ticketIds: Array.isArray(tickets) ? tickets : [tickets].filter(Boolean),
                 ticketStatus: (item.status === 'ticketed' || tickets.length > 0) ? 'Issued' : 'N/A',
                 pnr,
-                paymentIntentId: meta?.payment_intent_id || meta?.paymentIntentId || ''
+                paymentIntentId: meta?.payment_intent_id || meta?.paymentIntentId || '',
+                isRefundable: checkRefundability(item, 'unified_bookings').refundable,
+                metadata: meta
             };
         }),
         ...(legacyHotelRes.data || []).map(item => ({
@@ -135,6 +141,9 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             customerName: `${item.holder_first_name || ''} ${item.holder_last_name || ''}`.trim() || 'Anonymous User',
             email: item.holder_email || '',
             totalAmount: Number(item.total_price),
+            supplierCost: Number(item.total_price),
+            markupAmount: 0,
+            profit: 0,
             currency: item.currency,
             status: item.status,
             paymentStatus: item.status === 'confirmed' ? 'paid' :
@@ -144,7 +153,9 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             ticketIds: [],
             ticketStatus: 'N/A',
             pnr: '',
-            paymentIntentId: ''
+            paymentIntentId: '',
+            isRefundable: checkRefundability(item, 'bookings').refundable,
+            metadata: {}
         })),
         ...(legacyFlightRes.data || []).map(item => ({
             id: item.id,
@@ -152,9 +163,12 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             type: 'flight' as const,
             supplier: item.provider,
             customerName: passengerMap[item.id]?.name || 'Anonymous User',
-            email: '',
+            email: item.booking_sessions?.contact?.email || '',
             totalAmount: Number(item.total_price),
-            currency: 'USD',
+            supplierCost: Number(item.total_price),
+            markupAmount: 0,
+            profit: 0,
+            currency: item.currency || 'USD',
             status: item.status === 'booked' ? 'confirmed' : item.status,
             paymentStatus: (item.status === 'booked' || item.status === 'ticketed') ? 'paid' :
                 item.status === 'cancelled' ? 'cancelled' :
@@ -163,7 +177,9 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             ticketIds: passengerMap[item.id]?.tickets || [],
             ticketStatus: (item.status === 'ticketed' || (passengerMap[item.id]?.tickets?.length > 0)) ? 'Issued' : 'Pending',
             pnr: item.pnr,
-            paymentIntentId: ''
+            paymentIntentId: item.payment_intent_id || '',
+            isRefundable: checkRefundability(item, 'flight_bookings').refundable,
+            metadata: {}
         }))
     ];
 

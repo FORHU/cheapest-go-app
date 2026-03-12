@@ -14,7 +14,8 @@ import {
     LogOut,
     Plane,
     ChevronRight,
-    Smartphone
+    Smartphone,
+    Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -29,6 +30,7 @@ const navItems = [
     { label: 'Bookings', href: '/admin/bookings', icon: CalendarRange },
     { label: 'Customers', href: '/admin/customers', icon: Users },
     { label: 'Suppliers', href: '/admin/suppliers', icon: Building2 },
+    { label: 'Communication', href: '/admin/communication', icon: Mail },
     { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
 ];
@@ -112,8 +114,8 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
 
             {/* Navigation Sections */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-10 thin-scrollbar">
-                <NavigationGroup title="Menu" items={navItems.slice(0, 4)} />
-                <NavigationGroup title="General" items={navItems.slice(4)} />
+                <NavigationGroup title="Menu" items={navItems.slice(0, 5)} />
+                <NavigationGroup title="General" items={navItems.slice(5)} />
 
                 {/* Sidebar Widget (Download App) - Hidden when collapsed */}
                 {!isCollapsed && (

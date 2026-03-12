@@ -29,6 +29,16 @@ export interface RecentActivity {
     type: string;
 }
 
+export interface RevenueStats {
+    dailyRevenue: number;
+    monthlyRevenue: number;
+    revenueByProvider: { provider: string; amount: number }[];
+    totalProfit: number;
+    refundRate: number;
+    failedRate: number;
+    pendingRate: number;
+}
+
 export interface AdvancedAnalyticsData {
     providerSuccess: {
         name: string;
@@ -75,6 +85,7 @@ export interface DashboardData {
         weekly: RevenueTrend[];
         monthly: RevenueTrend[];
     };
+    revenueStats: RevenueStats;
     conversionFunnel: ConversionFunnel;
     topRoutes: RouteMetric[];
 }
@@ -87,6 +98,9 @@ export interface Booking {
     customerName: string;
     email: string;
     totalAmount: number;
+    supplierCost: number;
+    markupAmount: number;
+    profit: number;
     currency: string;
     status: string;
     paymentStatus: string;
@@ -95,6 +109,8 @@ export interface Booking {
     ticketStatus: string;
     pnr: string;
     paymentIntentId: string;
+    isRefundable: boolean;
+    metadata?: Record<string, any>;
 }
 
 export interface Customer {
@@ -155,8 +171,19 @@ export interface MonitoringData {
         status: string;
         customer: string;
     }[];
+    awaitingTickets: {
+        id: string;
+        provider: string;
+        pnr: string;
+        customerName: string;
+        total_price: number;
+        currency: string;
+        created_at: string;
+        ticket_time_limit: string | null;
+    }[];
     stats: {
         failedCount: number;
         mismatchCount: number;
+        awaitingCount: number;
     };
 }

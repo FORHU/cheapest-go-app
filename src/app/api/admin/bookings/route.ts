@@ -7,6 +7,7 @@ import {
     adminRestoreBooking,
     getMonitoringData,
     adminRetryBooking,
+    adminCancelAwaitingTicket
 } from '@/lib/server/admin';
 import { createClient } from '@/utils/supabase/server';
 
@@ -61,6 +62,9 @@ export async function POST(req: Request) {
             case 'retry_booking':
                 const retryResult = await adminRetryBooking(bookingId);
                 return NextResponse.json(retryResult);
+            case 'cancel_awaiting_ticket':
+                const cancelAwaitingResult = await adminCancelAwaitingTicket(bookingId);
+                return NextResponse.json(cancelAwaitingResult);
             default:
                 return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
         }

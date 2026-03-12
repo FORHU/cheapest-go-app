@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarCheck, DollarSign, Clock, XCircle, Building2, Plane, Activity, MoreHorizontal, TrendingUp, Plus, FileDown, ArrowRight, Coins, Banknote, ChevronDown, ChevronUp } from 'lucide-react';
+import { CalendarCheck, DollarSign, Clock, XCircle, Building2, Plane, Activity, MoreHorizontal, TrendingUp, Plus, FileDown, ArrowRight, Coins, Banknote, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ProjectAnalytics } from '@/components/admin/ProjectAnalytics';
 import { Button } from '@/components/ui/Button';
@@ -30,7 +30,8 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
         supplierBreakdown,
         revenueTrend,
         conversionFunnel,
-        topRoutes
+        topRoutes,
+        revenueStats
     } = data;
     const [graphType, setGraphType] = useState<GraphType>('market');
     const [isPerformanceCollapsed, setIsPerformanceCollapsed] = useState(false);
@@ -40,8 +41,6 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
     return (
         <div className="pt-12 space-y-12 pb-20">
             <HeaderTitle
-                title='Dashboard'
-                subtitle='Platform Overview'
                 actions={
                     <div className="flex items-center gap-3">
                         <Button variant="outline" className="bg-blue-600 hover:bg-blue-500 rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0">
@@ -58,6 +57,32 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                     <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Overview</h2>
                 </div>
                 <StatsGrid liveStats={liveStats} />
+            </section>
+
+            {/* Financial Metrics Section */}
+            <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Financial Metrics</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+                    {[
+                        { label: 'Daily Revenue', value: formatCurrency(revenueStats.dailyRevenue, 'PHP'), trend: 'Today', icon: DollarSign, variant: 'blue' as const },
+                        { label: 'Monthly Revenue', value: formatCurrency(revenueStats.monthlyRevenue, 'PHP'), trend: 'This Month', icon: TrendingUp },
+                        { label: 'Total Profit', value: formatCurrency(revenueStats.totalProfit, 'PHP'), trend: 'Total Net', icon: Coins, variant: 'emerald' as const },
+                        { label: 'Refund Rate', value: `${revenueStats.refundRate}%`, trend: 'All Time', icon: RefreshCw },
+                        { label: 'Failed Bookings', value: `${revenueStats.failedRate}%`, trend: 'All Time', icon: XCircle, variant: revenueStats.failedRate > 10 ? 'rose' as const : 'white' as const },
+                        { label: 'Pending Tickets', value: `${revenueStats.pendingRate}%`, trend: 'All Time', icon: Clock, variant: revenueStats.pendingRate > 10 ? 'amber' as const : 'white' as const },
+                    ].map((stat, i) => (
+                        <StatCard
+                            key={i}
+                            title={stat.label}
+                            value={stat.value}
+                            icon={stat.icon}
+                            trend={stat.trend}
+                            variant={stat.variant || 'white'}
+                        />
+                    ))}
+                </div>
             </section>
 
             {/* Performance Section */}
@@ -263,6 +288,54 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                                 <div className="lg:col-span-2">
                                     <ProjectAnalytics data={analytics} />
                                 </div>
+
+                                {/* Revenue by Provider Card */}
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.98 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-md flex flex-col group transition-all duration-500"
+                                >
+                                    <div className="flex items-center justify-between mb-8">
+                                        <div>
+                                            <h3 className="text-xl font-black text-slate-900 dark:text-white">Revenue by Provider</h3>
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Total volume per source</p>
+                                        </div>
+                                        <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl">
+                                            <DollarSign size={20} />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        {revenueStats.revenueByProvider.map((provider) => {
+                                            const totalRev = revenueStats.revenueByProvider.reduce((sum, p) => sum + p.amount, 0) || 1;
+                                            const percentage = Math.round((provider.amount / totalRev) * 100);
+
+                                            return (
+                                                <div key={provider.provider} className="space-y-3">
+                                                    <div className="flex justify-between items-end">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-2 h-8 rounded-full bg-emerald-500" />
+                                                            <div>
+                                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">{provider.provider.replace(/_/g, ' ')}</p>
+                                                                <p className="text-[10px] font-bold text-slate-400 uppercase">{percentage}% of total</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(provider.amount, 'PHP')}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="h-4 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden flex">
+                                                        <motion.div
+                                                            initial={{ width: 0 }}
+                                                            animate={{ width: String(percentage) + '%' }}
+                                                            className="h-full bg-emerald-500 rounded-full"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </motion.div>
                             </div>
                         </motion.div>
                     )}

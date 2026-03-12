@@ -22,6 +22,9 @@ export interface UnifiedBooking {
     external_id: string | null;
     status: BookingStatus;
     total_price: number;
+    supplier_cost: number;
+    markup_amount: number;
+    profit: number;
     currency: string;
     metadata: Record<string, unknown>;
     created_at: string;
@@ -116,6 +119,8 @@ export interface CreateFlightBookingInput {
     externalId?: string;
     status?: BookingStatus;
     totalPrice: number;
+    supplierCost?: number;
+    markupAmount?: number;
     currency: string;
     metadata: FlightBookingMetadata;
 }
@@ -127,6 +132,8 @@ export interface CreateHotelBookingInput {
     externalId?: string;
     status?: BookingStatus;
     totalPrice: number;
+    supplierCost?: number;
+    markupAmount?: number;
     currency: string;
     metadata: HotelBookingMetadata;
 }
@@ -205,6 +212,9 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
             external_id: input.externalId ?? null,
             status: input.status ?? 'confirmed',
             total_price: input.totalPrice,
+            supplier_cost: input.supplierCost ?? input.totalPrice,
+            markup_amount: input.markupAmount ?? 0,
+            profit: (input.markupAmount ?? 0) || (input.totalPrice - (input.supplierCost ?? input.totalPrice)),
             currency: input.currency.toUpperCase(),
             metadata: input.metadata,
         };
