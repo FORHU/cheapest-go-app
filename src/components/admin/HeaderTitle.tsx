@@ -15,8 +15,18 @@ const styles = {
 
 export function HeaderTitle({ title, subtitle, actions }: HeaderTitleProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 min-h-[4rem]">
-      <div className="flex-1" />
+    <div className={styles.wrapper}>
+      {(title || subtitle) && (
+        <div>
+          {subtitle && (
+            <div className={styles.subtitle}>
+              <div className={styles.pulse} />
+              {subtitle}
+            </div>
+          )}
+          {title && <h1 className={styles.title}>{title}</h1>}
+        </div>
+      )}
       <div className="flex items-center gap-3">
         {actions}
       </div>

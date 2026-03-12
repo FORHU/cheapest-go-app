@@ -1,4 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin';
+import { stripe } from '@/lib/stripe/server';
+import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
 import { RecoveryActionResult, MonitoringData } from '@/types/admin';
 
 // ============================================================================
@@ -261,6 +263,49 @@ export async function adminCancelBooking(bookingId: string): Promise<RecoveryAct
 }
 
 /**
+ * Helper: determines if a booking is refundable based on its policy columns.
+ * Handles unified_bookings (metadata), bookings (policy_type), and flight_bookings (fare_policy).
+ */
+export function checkRefundability(booking: any, table: BookingTableName): { refundable: boolean; reason: string } {
+    if (table === 'unified_bookings') {
+        const metadata = booking.metadata || {};
+        if (booking.type === 'flight') {
+            const farePolicy = metadata.farePolicy || metadata.fare_policy;
+            const isRefundable = farePolicy?.isRefundable ?? farePolicy?.refundable ?? false;
+            return { 
+                refundable: !!isRefundable, 
+                reason: isRefundable ? 'Refundable flight (Fare Policy)' : 'Non-refundable flight policy' 
+            };
+        } else if (booking.type === 'hotel') {
+            // For unified hotels, liteapi policies are usually in metadata.cancellationPolicy
+            const policy = metadata.cancellationPolicy || metadata.cancellation_policy;
+            const policyType = policy?.policyType || policy?.policy_type;
+            const isRefundable = policyType && policyType !== 'non_refundable';
+            return { 
+                refundable: !!isRefundable, 
+                reason: isRefundable ? `Hotel policy: ${policyType}` : 'Non-refundable hotel policy' 
+            };
+        }
+    } else if (table === 'bookings') {
+        const policyType = booking.policy_type;
+        const isRefundable = policyType && policyType !== 'non_refundable';
+        return { 
+            refundable: isRefundable, 
+            reason: isRefundable ? `Hotel policy: ${policyType}` : 'Non-refundable hotel (Legacy)' 
+        };
+    } else if (table === 'flight_bookings') {
+        const farePolicy = booking.fare_policy;
+        const isRefundable = farePolicy?.isRefundable ?? farePolicy?.refundable ?? false;
+        return { 
+            refundable: !!isRefundable, 
+            reason: isRefundable ? 'Refundable flight (Legacy Fare Policy)' : 'Non-refundable flight (Legacy)' 
+        };
+    }
+
+    return { refundable: false, reason: 'Unknown or missing policy data' };
+}
+
+/**
  * Admin force-refund a booking. Searches across all booking tables.
  * Note: Actual payment refund must be done manually via Stripe/provider dashboard.
  */
@@ -278,6 +323,15 @@ export async function adminForceRefund(bookingId: string, reason?: string): Prom
 
         if (booking.status === 'refunded') {
             return { success: false, message: 'Booking is already marked as refunded' };
+        }
+
+        // 1. Check for refundable policy enforcement
+        const policyCheck = checkRefundability(booking, sourceTable);
+        if (!policyCheck.refundable) {
+            return { 
+                success: false, 
+                message: `Refund blocked: ${policyCheck.reason}. Refunds can only be applied to bookings with a refundable policy.` 
+            };
         }
 
         const now = new Date().toISOString();
@@ -470,6 +524,35 @@ export async function getMonitoringData(): Promise<MonitoringData> {
 
     const mismatches = (potentialMismatches || []).filter(s => !bookedSessionIds.has(s.id));
 
+    // 4. Awaiting Tickets (Mystifly async queue)
+    const { data: awaitingRes, error: awaitingErr } = await supabase
+        .from('flight_bookings')
+        .select(`
+            id, provider, pnr, total_price, currency, created_at, ticket_time_limit,
+            session_id, booking_sessions(contact, passengers)
+        `)
+        .eq('status', 'awaiting_ticket')
+        .order('ticket_time_limit', { ascending: true })
+        .limit(100);
+
+    const awaitingTickets = (awaitingRes || []).map(b => {
+        const contact = (b.booking_sessions as any)?.contact;
+        const customerName = (b.booking_sessions as any)?.passengers?.[0]
+            ? `${(b.booking_sessions as any).passengers[0].firstName} ${(b.booking_sessions as any).passengers[0].lastName}`
+            : contact?.email || 'Unknown';
+            
+        return {
+            id: b.id,
+            provider: b.provider,
+            pnr: b.pnr,
+            customerName: customerName,
+            total_price: Number(b.total_price),
+            currency: b.currency || 'USD',
+            created_at: b.created_at,
+            ticket_time_limit: b.ticket_time_limit
+        };
+    });
+
     return {
         failedBookings: [
             ...(failedBookings || []).map(b => ({ ...b, type: 'flight' })),
@@ -483,9 +566,11 @@ export async function getMonitoringData(): Promise<MonitoringData> {
             status: s.status,
             customer: (s.contact as any)?.email || 'Unknown'
         })),
+        awaitingTickets,
         stats: {
             failedCount: (failedBookings?.length || 0) + (failedUnified?.length || 0),
-            mismatchCount: mismatches.length
+            mismatchCount: mismatches.length,
+            awaitingCount: awaitingTickets.length
         }
     };
 }
@@ -528,5 +613,168 @@ export async function adminRetryBooking(sessionId: string): Promise<RecoveryActi
     } catch (err) {
         console.error('[adminRetryBooking] Error:', err);
         return { success: false, message: err instanceof Error ? err.message : 'Unexpected error during retry' };
+    }
+}
+
+/**
+ * Manually cancel a booking that is stuck in awaiting_ticket state.
+ * Triggers stripe refund and sends cancellation emails.
+ */
+export async function adminCancelAwaitingTicket(bookingId: string): Promise<RecoveryActionResult> {
+    try {
+        const supabase = createAdminClient();
+
+        const { data: booking, error: fetchErr } = await supabase
+            .from('flight_bookings')
+            .select(`
+                *,
+                flight_segments(*),
+                booking_sessions(contact, passengers)
+            `)
+            .eq('id', bookingId)
+            .single();
+
+        if (fetchErr || !booking) {
+            return { success: false, message: 'Booking not found' };
+        }
+
+        if (booking.status !== 'awaiting_ticket') {
+            return { success: false, message: `Booking status is ${booking.status}, must be awaiting_ticket to use this action.` };
+        }
+
+        const refundAmount = Number(booking.total_price);
+        const refundCurrency = booking.currency || 'USD';
+        const paymentIntentId = booking.payment_intent_id;
+        
+        const now = new Date().toISOString();
+        let stripeRefundId: string | undefined;
+
+        // 1. Run Stripe Refund/Cancel if payment intent exists
+        if (paymentIntentId && refundAmount > 0) {
+            try {
+                // First, check the status of the PaymentIntent
+                const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+                if (intent.status === 'requires_capture' || intent.status === 'requires_payment_method' || intent.status === 'requires_confirmation' || intent.status === 'requires_action') {
+                    // Payment is uncaptured, cancel the intent
+                    const canceledIntent = await stripe.paymentIntents.cancel(paymentIntentId, {
+                        cancellation_reason: 'requested_by_customer'
+                    });
+                    stripeRefundId = canceledIntent.id; // Store the intent ID as the reference
+                } else if (intent.status === 'succeeded') {
+                    // Payment was fully captured, we need to issue a refund
+                    const refundAmountCents = Math.round(refundAmount * 100);
+                    const stripeRefund = await stripe.refunds.create({
+                        payment_intent: paymentIntentId,
+                        amount: refundAmountCents,
+                        reason: 'requested_by_customer',
+                        metadata: { bookingId, provider: booking.provider, action: 'manual_cancel_awaiting_ticket' },
+                    }, {
+                        idempotencyKey: `refund-awaiting-${bookingId}`
+                    });
+                    stripeRefundId = stripeRefund.id;
+                } else if (intent.status === 'canceled') {
+                    // Already canceled, just use the intent ID and proceed to clean up DB
+                    stripeRefundId = intent.id;
+                } else {
+                    return { success: false, message: `PaymentIntent is in an unhandled state: ${intent.status}` };
+                }
+
+            } catch (stripeErr: any) {
+                console.error('[adminCancelAwaitingTicket] Stripe action failed:', stripeErr);
+                return { success: false, message: `Stripe action failed: ${stripeErr.message}` };
+            }
+        }
+
+        // 2. Update Booking Status to refunded internally (since payment is returned)
+        const logEntry = {
+            at: now,
+            oldStatus: 'awaiting_ticket',
+            newStatus: 'refunded',
+            note: 'Admin manually cancelled before expiry',
+            stripeRefundId,
+            refundAmount,
+            currency: refundCurrency
+        };
+
+        const { error: updateErr } = await supabase
+            .from('flight_bookings')
+            .update({
+                status: 'refunded', // Cancelled + Refunded 
+                refund_amount: refundAmount,
+                refund_currency: refundCurrency,
+                cancellation_log: [...(booking.cancellation_log ?? []), logEntry],
+                cancellation_requested_at: now,
+                cancellation_completed_at: now
+            })
+            .eq('id', bookingId);
+            
+        if (updateErr) {
+            return { success: false, message: `Database update failed: ${updateErr.message}` };
+        }
+
+        // 3. Fire Emails
+        try {
+            const session = booking.booking_sessions as any;
+            const email = session?.contact?.email;
+            
+            if (email) {
+                const pax0 = session?.passengers?.[0];
+                const passengerName = pax0 ? `${pax0.firstName} ${pax0.lastName}` : 'Traveler';
+
+                const segments = booking.flight_segments || [];
+                const mappedSegments = segments.map((s: any) => ({
+                    airline: s.airline,
+                    flightNumber: s.flight_number,
+                    origin: s.origin,
+                    destination: s.destination,
+                    departureTime: s.departure,
+                    arrivalTime: s.arrival,
+                }));
+
+                const firstSeg = mappedSegments[0];
+                const lastSeg = mappedSegments[mappedSegments.length - 1];
+                const route = firstSeg && lastSeg ? `${firstSeg.origin} → ${lastSeg.destination}` : 'N/A';
+
+                // Send Cancel Email
+                await sendFlightCancellationEmail({
+                    bookingId,
+                    pnr: booking.pnr,
+                    email,
+                    passengerName,
+                    segments: mappedSegments,
+                    totalPaid: refundAmount,
+                    refundAmount,
+                    penaltyAmount: 0,
+                    currency: refundCurrency,
+                });
+
+                // Send Refund Email immediately
+                if (refundAmount > 0) {
+                    await sendFlightCancellationRefundEmail({
+                        bookingId,
+                        pnr: booking.pnr,
+                        email,
+                        passengerName,
+                        route,
+                        refundAmount,
+                        currency: refundCurrency,
+                        stripeRefundId,
+                    });
+                }
+            }
+        } catch (emailErr) {
+            console.error('[adminCancelAwaitingTicket] Failed to send emails:', emailErr);
+            // Non-blocking log
+        }
+
+        return {
+            success: true,
+            message: `Booking ${booking.pnr || bookingId} cancelled and refunded successfully.`,
+            newStatus: 'refunded'
+        };
+    } catch (err) {
+        console.error('[adminCancelAwaitingTicket] Error:', err);
+        return { success: false, message: err instanceof Error ? err.message : 'Unexpected error' };
     }
 }

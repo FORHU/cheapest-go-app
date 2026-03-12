@@ -11,19 +11,28 @@ export default async function AdminLayout({
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        redirect('/admin/login');
+        redirect('/login?redirect=/admin');
     }
 
     // Secondary check for admin role
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, full_name, avatar_url')
         .eq('id', user.id)
         .single();
 
-    if (profile?.role !== 'admin') {
+    if (!profile || profile.role !== 'admin') {
         redirect('/');
     }
+    
+    // Convert DB profile to application User type shape for consistency
+    // Note: authStore expectations (firstName/lastName) are preserved here
+    const userProfile = {
+        role: profile.role,
+        firstName: profile.full_name?.split(' ')[0] || '',
+        lastName: profile.full_name?.split(' ').slice(1).join(' ') || '',
+        avatar: profile.avatar_url
+    };
 
-    return <AdminLayoutClient>{children}</AdminLayoutClient>;
+    return <AdminLayoutClient profile={userProfile}>{children}</AdminLayoutClient>;
 }

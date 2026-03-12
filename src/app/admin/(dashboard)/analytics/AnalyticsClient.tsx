@@ -14,7 +14,11 @@ import {
     TrendingUp,
     Users,
     CalendarCheck,
-    CreditCard
+    CreditCard,
+    DollarSign,
+    RefreshCw,
+    XCircle,
+    Hourglass
 } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
 import { HeaderTitle } from '@/components/admin/HeaderTitle';
@@ -32,8 +36,6 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
     return (
         <div className="space-y-10 pb-20">
             <HeaderTitle
-                title="Analytics"
-                subtitle="Detailed insights into platform performance and growth"
                 actions={
                     <Button variant="outline" className="rounded-xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-bold h-12 px-6 hover:bg-slate-50 transition-all gap-2">
                         <BarChart3 size={18} />
@@ -42,25 +44,8 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                 }
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[
-                    { label: 'Platform Health', value: '98.4%', trend: '+1.2%', icon: CreditCard },
-                    { label: 'Booking Success', value: '92.0%', trend: '+0.8%', icon: TrendingUp, variant: 'blue' as const },
-                    { label: 'Edge Latency', value: '1.2s', trend: '-4.2%', icon: Users },
-                    { label: 'Sync Efficiency', value: '99.9%', trend: '+0.1%', icon: CalendarCheck },
-                ].map((stat, i) => (
-                    <StatCard
-                        key={i}
-                        title={stat.label}
-                        value={stat.value}
-                        icon={stat.icon}
-                        trend={stat.trend}
-                        variant={stat.variant || 'white'}
-                    />
-                ))}
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Provider Success Rates */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -115,11 +100,12 @@ export function AnalyticsClient({ data }: AnalyticsClientProps) {
                     </div>
                 </motion.div>
 
+
                 {/* Ticketing Latency */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.1 }}
+                    transition={{ delay: 0.2 }}
                     className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-xl"
                 >
                     <div className="flex items-center justify-between mb-8">

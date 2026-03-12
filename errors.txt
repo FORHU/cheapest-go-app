@@ -1,0 +1,21 @@
+.next/dev/types/validator.ts(206,1): error TS2304: Cannot find name 'ge'.
+.next/dev/types/validator.ts(244,57): error TS2344: Type '"/api/admin/bookings"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(253,57): error TS2344: Type '"/api/admin/notifications"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(262,57): error TS2344: Type '"/api/airports/search"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(280,57): error TS2344: Type '"/api/booking/amend"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(289,57): error TS2344: Type '"/api/booking/backfill-policies"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(298,57): error TS2344: Type '"/api/booking/cancel"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(307,57): error TS2344: Type '"/api/booking/confirm"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(316,57): error TS2344: Type '"/api/booking/details"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(325,57): error TS2344: Type '"/api/booking/list"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(334,57): error TS2344: Type '"/api/booking/prebook"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(343,57): error TS2344: Type '"/api/booking/save"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(361,57): error TS2344: Type '"/api/flights/book"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(370,57): error TS2344: Type '"/api/flights/cancel-booking"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(379,57): error TS2344: Type '"/api/flights/confirm"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(388,57): error TS2344: Type '"/api/flights/search"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(397,57): error TS2344: Type '"/api/voucher/list"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(406,57): error TS2344: Type '"/api/voucher/record"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(415,57): error TS2344: Type '"/api/voucher/validate"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(424,57): error TS2344: Type '"/api/webhooks/flight-supplier"' does not satisfy the constraint 'AppRouteHandlerRoutes'.
+.next/dev/types/validator.ts(433,57): error TS2344: Type '"/api/webhooks/stripe"' does not satisfy the constraint 'AppRouteHandlerRoutes'.

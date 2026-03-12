@@ -80,8 +80,6 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
     return (
         <div className="space-y-10 pb-20">
             <HeaderTitle
-                title="Customers"
-                subtitle="Manage customer profiles and booking history"
                 actions={
                     <Button className="bg-blue-600 hover:bg-blue-500 rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0 gap-2">
                         <UserPlus size={18} />

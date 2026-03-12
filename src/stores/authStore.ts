@@ -106,6 +106,7 @@ interface AuthState {
         currentPassword: string,
         newPassword: string,
     ) => Promise<void>;
+    syncProfile: (profile: Partial<User>) => void;
 }
 
 // --- Store ---
@@ -281,6 +282,17 @@ export const useAuthStore = create<AuthState>((set, get) => {
                 });
                 if (error) throw error;
             });
+        },
+        syncProfile: (profile) => {
+            const { user } = get();
+            if (user) {
+                set({
+                    user: {
+                        ...user,
+                        ...profile
+                    }
+                });
+            }
         },
     };
 });

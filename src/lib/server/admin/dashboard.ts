@@ -15,12 +15,19 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     // Revenue Calculation (Confirmed/Ticketed)
     const [unifiedRev, legacyHotelRev, legacyFlightRev] = await Promise.all([
-        supabase.from('unified_bookings').select('total_price, currency').in('status', ['confirmed', 'ticketed']),
+        supabase.from('unified_bookings').select('total_price, supplier_cost, markup_amount, profit, currency').in('status', ['confirmed', 'ticketed']),
         supabase.from('bookings').select('total_price, currency').in('status', ['confirmed', 'ticketed']),
         supabase.from('flight_bookings').select('total_price').in('status', ['booked', 'ticketed'])
     ]);
 
     const PHP_RATE = 56; // Mock conversion rate
+
+    // Gather all bookings for revenue calculations
+    const allBookingsForRevenue = [
+        ...(unifiedRes.data || []).map(b => ({ ...b, source: 'unified', provider: b.provider || 'unknown' })),
+        ...(legacyHotelRes.data || []).map(b => ({ ...b, source: 'legacy_hotel', provider: 'legacy_hotel' })),
+        ...(legacyFlightRes.data || []).map(b => ({ ...b, source: 'legacy_flight', provider: b.provider || 'unknown' }))
+    ];
 
     const revenue = [
         ...(unifiedRev.data || []).map(b => Number(b.total_price) * (b.currency === 'USD' ? PHP_RATE : 1)),
@@ -259,6 +266,51 @@ export async function getDashboardData(): Promise<DashboardData> {
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5);
 
+    // 6. Revenue & Performance Stats (New)
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+    let dailyRevenue = 0;
+    let monthlyRevenue = 0;
+    let totalProfit = 0;
+    const providerMap = new Map<string, number>();
+    const providerProfitMap = new Map<string, number>();
+
+    let totalCount = allBookingsForRevenue.length || 1;
+    let refundCount = 0;
+    let failedCount = 0;
+    let pendingCount = 0;
+
+    allBookingsForRevenue.forEach(b => {
+        const isConfirmed = b.status === 'confirmed' || b.status === 'ticketed' || b.status === 'booked';
+        const isRefunded = b.status === 'refunded';
+        const isFailed = b.status === 'failed' || b.status === 'cancelled';
+        const isPending = b.status === 'pending' || b.status === 'awaiting_ticket' || b.status === 'cancel_requested';
+
+        if (isRefunded) refundCount++;
+        if (isFailed) failedCount++;
+        if (isPending) pendingCount++;
+
+        if (isConfirmed) {
+            const price = Number(b.total_price) * (b.currency === 'USD' ? PHP_RATE : 1);
+            const profitValue = Number(b.profit || 0) * (b.currency === 'USD' ? PHP_RATE : 1);
+            const bookingTime = new Date(b.created_at).getTime();
+
+            if (bookingTime >= startOfDay) dailyRevenue += price;
+            if (bookingTime >= startOfMonth) monthlyRevenue += price;
+
+            totalProfit += profitValue;
+
+            providerMap.set(b.provider, (providerMap.get(b.provider) || 0) + price);
+            providerProfitMap.set(b.provider, (providerProfitMap.get(b.provider) || 0) + profitValue);
+        }
+    });
+
+    const revenueByProvider = Array.from(providerMap.entries())
+        .map(([provider, amount]) => ({ provider, amount }))
+        .sort((a, b) => b.amount - a.amount);
+
+
     return {
         stats: {
             totalBookings,
@@ -273,6 +325,15 @@ export async function getDashboardData(): Promise<DashboardData> {
             daily: getTrendData(7),
             weekly: getTrendData(14),
             monthly: getTrendData(30)
+        },
+        revenueStats: {
+            dailyRevenue: Math.round(dailyRevenue),
+            monthlyRevenue: Math.round(monthlyRevenue),
+            revenueByProvider,
+            totalProfit: Math.round(totalProfit),
+            refundRate: Math.round((refundCount / totalCount) * 100),
+            failedRate: Math.round((failedCount / totalCount) * 100),
+            pendingRate: Math.round((pendingCount / totalCount) * 100)
         },
         conversionFunnel: {
             // Estimate searches based on quotes if not logged

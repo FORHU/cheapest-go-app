@@ -260,6 +260,34 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                             </div>
                         </div>
 
+                        {/* Financial Breakdown Section */}
+                        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5 bg-blue-50/30 dark:bg-blue-900/5 -mx-6 px-6 py-4">
+                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400/80">Financial Breakdown</h3>
+                            <div className="grid grid-cols-3 gap-6">
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400/60">Supplier Cost</span>
+                                    <p className="text-sm font-black text-slate-700 dark:text-slate-300">
+                                        {formatCurrency(booking.supplierCost, booking.currency)}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400/60">Markup</span>
+                                    <p className="text-sm font-black text-blue-600 dark:text-blue-400">
+                                        +{formatCurrency(booking.markupAmount, booking.currency)}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400/60">Net Profit</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                                            {formatCurrency(booking.profit, booking.currency)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Hotel Specific Details (Phase 3) */}
                         {booking.type === 'hotel' && (
                             <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-white/5">
@@ -333,16 +361,27 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                                 )}
 
                                 {booking.status.toLowerCase() !== 'refunded' && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={isPending}
-                                        onClick={() => setConfirmAction('refund')}
-                                        className="rounded-xl border-violet-200 dark:border-violet-500/20 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-all gap-2 h-10 px-4 font-bold text-xs"
-                                    >
-                                        <DollarSign size={14} />
-                                        Force Refund
-                                    </Button>
+                                    <div className="flex flex-col gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={isPending || !booking.isRefundable}
+                                            onClick={() => setConfirmAction('refund')}
+                                            className={cn(
+                                                "rounded-xl border-violet-200 dark:border-violet-500/20 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-all gap-2 h-10 px-4 font-bold text-xs",
+                                                !booking.isRefundable && "opacity-50 grayscale cursor-not-allowed border-slate-200 dark:border-white/10 text-slate-400 dark:text-slate-500"
+                                            )}
+                                        >
+                                            <DollarSign size={14} />
+                                            {booking.isRefundable ? "Force Refund" : "Non-Refundable"}
+                                        </Button>
+                                        {!booking.isRefundable && (
+                                            <span className="text-[9px] font-bold text-rose-500 uppercase tracking-tighter px-1">
+                                                <AlertTriangle size={10} className="inline mr-1" />
+                                                Policy: Non-Refundable
+                                            </span>
+                                        )}
+                                    </div>
                                 )}
 
                                 {isTerminal && (

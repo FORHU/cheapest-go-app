@@ -5,12 +5,24 @@ import { Sidebar } from '@/components/admin/Sidebar';
 import { TopNav } from '@/components/admin/TopNav';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { usePathname } from 'next/navigation';
+import { useAuthStore } from '@/stores/authStore';
+import { User } from '@/types/auth';
 
 export function AdminLayoutClient({
     children,
+    profile
 }: {
     children: React.ReactNode;
+    profile?: Partial<User>;
 }) {
+    const { syncProfile } = useAuthStore();
+    
+    React.useEffect(() => {
+        if (profile) {
+            syncProfile(profile);
+        }
+    }, [profile, syncProfile]);
+
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const pathname = usePathname();
