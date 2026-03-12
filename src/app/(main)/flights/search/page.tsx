@@ -56,7 +56,7 @@ export default async function SearchPage({
         .join(' · ');
 
     return (
-        <main className="min-h-screen bg-slate-50 py-12 px-4 md:py-20">
+        <main className="min-h-screen py-12 px-4 md:py-20">
             <div className="max-w-7xl mx-auto space-y-12">
                 <SectionHeader
                     title={`${origin} → ${destination}`}
