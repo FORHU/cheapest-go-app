@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { PlaneTakeoff, ArrowLeft } from 'lucide-react';
 
 interface AuthHeaderProps {
-    title: string;
+    title: React.ReactNode;
     subtitle: string;
     onBack?: () => void;
 }

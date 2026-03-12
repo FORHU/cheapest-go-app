@@ -7,6 +7,7 @@ export interface User {
     firstName: string;
     lastName: string;
     avatar?: string;
+    role?: 'user' | 'admin';
 }
 
 // Auth step in the authentication flow
