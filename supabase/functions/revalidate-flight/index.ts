@@ -32,21 +32,10 @@ import { FlightProvider as FP } from '../_shared/types.ts';
 import { revalidateFare, revalidateFareV2 } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyV1Policy, normalizeMystiflyV2Policy, normalizeDuffelPolicy } from '../_shared/farePolicy.ts';
 import type { NormalizedFarePolicy } from '../_shared/types.ts';
+import { getCorsHeaders } from '../_shared/cors.ts';
 
 
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
-
-function getCorsHeaders(req: Request) {
-    const origin = req.headers.get('Origin') ?? '';
-    const allowedOrigin = ALLOWED_ORIGINS.length > 0
-        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
-        : '*';
-    return {
-        'Access-Control-Allow-Origin': allowedOrigin,
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    };
-}
 
 // ─── Request / Response Types ───────────────────────────────────────
 
