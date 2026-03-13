@@ -22,9 +22,7 @@ export function getCorsHeaders(req: Request) {
         if (ALLOWED_ORIGINS.includes(origin)) {
             allowedOrigin = origin;
         } else {
-            // Check for subdomain matches if patterns are supported (optional enhancement)
-            // For now, default to the first allowed origin if no match, 
-            // which will cause a CORS error in the browser for unauthorized origins.
+            console.warn(`[cors] Origin mismatch. Requested: "${origin}", Allowed: ${JSON.stringify(ALLOWED_ORIGINS)}`);
             allowedOrigin = ALLOWED_ORIGINS[0];
         }
     }
