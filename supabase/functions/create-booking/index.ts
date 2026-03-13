@@ -17,6 +17,7 @@
  *   { success, bookingId, pnr, status, confirmedPrice, confirmedCurrency }
  */
 
+import { getCorsHeaders } from '../_shared/cors.ts';
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -25,18 +26,6 @@ declare const Deno: any;
 import { bookFlight, bookFlightV2, revalidateFare, revalidateFareV2, MystiflyError } from '../_shared/mystiflyClient.ts';
 import { createDuffelOrder } from '../_shared/duffelClient.ts';
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
-
-function getCorsHeaders(req: Request) {
-    const origin = req.headers.get('Origin') ?? '';
-    const allowedOrigin = ALLOWED_ORIGINS.length > 0
-        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
-        : '*';
-    return {
-        'Access-Control-Allow-Origin': allowedOrigin,
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    };
-}
 
 // ─── Types ──────────────────────────────────────────────────────────
 
