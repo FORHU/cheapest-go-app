@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { History, Clock } from 'lucide-react';
 import { SectionHeader, Badge, PriceDisplay } from '@/components/ui';
 import { useRecentSearches } from '@/stores';
-import { recentlyViewedItems, type RecentItem } from '@/data';
+import { type RecentItem } from '@/types';
 
 interface RecentCardProps {
   item: RecentItem;
@@ -22,7 +22,7 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, index }) => (
     <motion.div
       whileHover={{ scale: 1.02, y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="flex gap-2 sm:gap-3 p-2.5 sm:p-3 min-h-[88px] sm:min-h-[92px] bg-white dark:bg-slate-900/80 rounded-xl border border-alabaster-border dark:border-obsidian-border shadow-md dark:shadow-black/20 cursor-pointer group"
+      className="flex gap-2 sm:gap-3 p-2.5 sm:p-3 min-h-[88px] sm:min-h-[92px] bg-white dark:bg-slate-900/80 rounded-2xl border border-alabaster-border dark:border-obsidian-border shadow-md dark:shadow-black/20 cursor-pointer group"
     >
       {/* Thumbnail — responsive */}
       <div className="relative w-14 h-14 min-[380px]:w-[4.5rem] min-[380px]:h-[4.5rem] sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0">
@@ -64,7 +64,7 @@ const RecentlyViewed = () => {
       image: `https://picsum.photos/seed/${search.title.toLowerCase().replace(/\s/g, '')}/200/150`,
       price: 0,
     }))
-    : recentlyViewedItems;
+    : [];
 
   if (displayItems.length === 0) return null;
 

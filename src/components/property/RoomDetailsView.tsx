@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { ArrowLeft, User, Bed, MapPin, Check, Share2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useBookingActions } from '@/stores/bookingStore';
 

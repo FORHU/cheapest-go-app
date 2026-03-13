@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
+import { env } from '@/utils/env';
 
 // Lazy-initialize Stripe to avoid module-level crash during Vercel build
 // (env vars aren't available at build time when Next.js collects page data)
 let _stripe: import('stripe').default | null = null;
 function getStripe() {
     if (!_stripe) {
-        const key = process.env.STRIPE_SECRET_KEY;
+        const key = env.STRIPE_SECRET_KEY;
         if (!key) throw new Error('STRIPE_SECRET_KEY is not set');
         _stripe = new Stripe(key, { apiVersion: '2025-01-27.acacia' as any });
     }
     return _stripe;
 }
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
 
 
 /**
@@ -51,21 +52,19 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Stripe Webhook] Event: ${event.type}`);
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const headers = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceRoleKey}`,
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
     };
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
         console.error('[Stripe Webhook] Missing Supabase env vars');
         return NextResponse.json({ received: true });
     }
 
     // Create supabase client once — used in both Mystifly and Duffel handlers
     const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
     // ── Mystifly: manual capture → amount_capturable_updated ────────────────
     if (event.type === 'payment_intent.amount_capturable_updated') {
@@ -92,7 +91,7 @@ export async function POST(req: NextRequest) {
                 .eq('id', bookingSessionId)
                 .eq('status', 'initiated');
 
-            const bookingRes = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
+            const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ sessionId: bookingSessionId }),
@@ -133,7 +132,7 @@ export async function POST(req: NextRequest) {
 
         try {
             // Idempotent: create-booking returns existing booking if /confirm already ran
-            const bookingRes = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
+            const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ sessionId: bookingSessionId }),
@@ -148,7 +147,7 @@ export async function POST(req: NextRequest) {
             // Auto-ticket Duffel orders
             if (bookingData.status !== 'ticketed' && !bookingData.alreadyBooked && bookingData.bookingId) {
                 console.log(`[Webhook] Auto-ticketing Duffel order: ${bookingData.bookingId}`);
-                const ticketRes = await fetch(`${supabaseUrl}/functions/v1/issue-ticket`, {
+                const ticketRes = await fetch(`${env.SUPABASE_URL}/functions/v1/issue-ticket`, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify({ bookingId: bookingData.bookingId }),

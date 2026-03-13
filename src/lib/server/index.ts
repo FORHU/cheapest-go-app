@@ -1,7 +1,7 @@
 // Server layer barrel exports
 
 // Auth
-export { getAuthenticatedUser, type AuthResult } from './auth';
+export { getAuthenticatedUser, getUserProfile, type AuthResult } from './auth';
 
 // Bookings
 export {

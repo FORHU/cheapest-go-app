@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { PropertyCard } from '@/components/shared';
 import { ChevronDown, MapPin } from 'lucide-react';
 

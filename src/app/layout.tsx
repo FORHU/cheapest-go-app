@@ -8,12 +8,13 @@ import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthListener } from '@/components/auth/AuthListener';
 import AuthModal from '@/components/auth/AuthModal';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
+import { env } from '@/utils/env';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' });
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://k-travel-booking.vercel.app';
+const SITE_URL = env.SITE_URL;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

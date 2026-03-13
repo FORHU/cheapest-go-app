@@ -1,15 +1,25 @@
+import { env } from "@/utils/env";
+
+// Booking/prebook operations need more time than search/autocomplete
+const SLOW_FUNCTIONS = new Set([
+    'liteapi-book-v2', 'liteapi-prebook-v2', 'liteapi-cancel-booking',
+    'liteapi-amend-booking', 'liteapi-booking-details',
+    'create-booking', 'create-booking-session',
+]);
+
 export async function invokeEdgeFunction<T = any>(
     functionName: string,
     body?: any,
-    options?: { headers?: Record<string, string>; method?: 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH' }
+    options?: { headers?: Record<string, string>; method?: 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH'; timeoutMs?: number }
 ) {
     // Use direct HTTP fetch to bypass Supabase client auth issues on server side
     // Edge functions can be called directly with the anon key in the Authorization header
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_ANON_KEY;
 
     const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
     const method = options?.method || 'POST';
+    const timeout = options?.timeoutMs ?? (SLOW_FUNCTIONS.has(functionName) ? 60_000 : 15_000);
 
     const response = await fetch(functionUrl, {
         method,
@@ -19,7 +29,8 @@ export async function invokeEdgeFunction<T = any>(
             'apikey': supabaseKey,
             ...options?.headers
         },
-        body: body ? JSON.stringify(body) : undefined
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(timeout),
     });
 
     if (!response.ok) {

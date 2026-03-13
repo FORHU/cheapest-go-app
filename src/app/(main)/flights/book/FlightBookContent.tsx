@@ -6,10 +6,10 @@ import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPo
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
-import { formatTime, formatDuration, formatPrice } from '@/lib/flights/utils';
+import { formatTime, formatDuration, formatPrice } from '@/utils/flight-utils';
 import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 import { useFlightSearch } from '@/hooks/search/useFlightSearch';
-import type { FarePolicy } from '@/lib/flights/types';
+import type { FarePolicy } from '@/types/flights';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 

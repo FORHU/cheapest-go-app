@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import type { RoomType } from '@/lib/room/roomUtils';
 
 export interface Room {

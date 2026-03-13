@@ -1,15 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { env } from "@/utils/env";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-
-export const createClient = async () => {
+export async function createClient() {
     const cookieStore = await cookies();
 
     return createServerClient(
-        supabaseUrl!,
-        supabaseKey!,
+        env.SUPABASE_URL,
+        env.SUPABASE_ANON_KEY,
         {
             cookies: {
                 getAll() {
@@ -17,16 +15,15 @@ export const createClient = async () => {
                 },
                 setAll(cookiesToSet) {
                     try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        );
+                        cookiesToSet.forEach(({ name, value, options }) => {
+                            cookieStore.set(name, value, options);
+                        });
                     } catch {
-                        // The `setAll` method was called from a Server Component.
-                        // This can be ignored if you have middleware refreshing
-                        // user sessions.
+                        // Called from a Server Component — cookies are read-only.
+                        // The middleware handles token refresh instead.
                     }
                 },
             },
         }
     );
-};
+}

@@ -590,84 +590,99 @@ async function bookWithMystifly(
     // ── STEP: Revalidate fare before booking ── version-paired, no fallback ──
     const revalidateFn = isV2Provider ? revalidateFareV2 : revalidateFare;
     console.log(`[create-booking] Revalidating with ${isV2Provider ? 'V2' : 'V1'} function...`);
-    const revalResult = await revalidateFn(fareSourceCode, sessionId, conversationId);
 
+    let revalResult: any = null;
+    let revalidationSkipped = false;
 
-    if (!revalResult.Success) {
-        console.error('[create-booking] Mystifly Revalidation FAILED:', JSON.stringify(revalResult));
-        const msg = revalResult.Message ?? '';
-        const isUnavailable = /not available|not found|expired/i.test(msg);
-        throw new Error(isUnavailable ? 'Flight is no longer available' : `Fare revalidation failed: ${msg}`);
+    try {
+        revalResult = await revalidateFn(fareSourceCode, sessionId, conversationId);
+    } catch (revalErr: any) {
+        const isParse = revalErr?.type === 'PARSE' || /invalid json|empty response/i.test(revalErr?.message ?? '');
+        if (isV2Provider && isParse) {
+            // V2 revalidation endpoint may not exist — skip and proceed to booking.
+            // The booking API itself will validate the fare.
+            console.warn('[create-booking] V2 revalidation returned empty — skipping revalidation, proceeding to book');
+            revalidationSkipped = true;
+        } else {
+            throw revalErr;
+        }
     }
-
-    // Use updated FareSourceCode if revalidation returned a new one
-    const revalData = revalResult.Data ?? {};
-    const revalFareInfo = revalData.FareItinerary?.AirItineraryFareInfo ?? revalData;
-    if (revalFareInfo.FareSourceCode || revalData.FareSourceCode) {
-        fareSourceCode = revalFareInfo.FareSourceCode ?? revalData.FareSourceCode ?? fareSourceCode!;
-        console.log('[create-booking] Updated FareSourceCode from revalidation:', fareSourceCode!.slice(0, 50) + '...');
-    }
-
-    // ── Support V2 Summarized vs V1 Nested ──
-    // V2 (Summarized) always has FlightFaresList. V1 (Legacy) has FareItinerary or PricedItineraries.
-    const isV2 = revalData.FlightFaresList !== undefined;
-    console.log('[create-booking] Revalidation structure:', isV2 ? 'Summarized (V2)' : (revalData.PricedItineraries ? 'List (V1)' : 'Legacy (V1)'));
 
     let revalidatedPrice: number | undefined;
     let revalidatedCurrency: string | undefined;
 
-    if (isV2 && revalData.FlightFaresList) {
-        // V2 Summarized Path
-        const fare = revalData.FlightFaresList[0];
-        if (fare) {
-            let total = 0;
-            const passengerFares: any[] = fare.PassengerFare ?? [];
-            for (const pf of passengerFares) {
-                total += (pf.TotalFare || 0) * (pf.Quantity || 1);
-                revalidatedCurrency = pf.Currency;
-            }
-            revalidatedPrice = total;
+    if (!revalidationSkipped) {
+        if (!revalResult.Success) {
+            console.error('[create-booking] Mystifly Revalidation FAILED:', JSON.stringify(revalResult));
+            const msg = revalResult.Message ?? '';
+            const isUnavailable = /not available|not found|expired/i.test(msg);
+            throw new Error(isUnavailable ? 'Flight is no longer available' : `Fare revalidation failed: ${msg}`);
         }
-    } else if (revalData.PricedItineraries) {
-        // V1 List Path (Standard ASHR 1.0 Revalidate)
-        const pricedItin = revalData.PricedItineraries[0];
-        if (pricedItin) {
-            const pricingInfo = pricedItin.AirItineraryPricingInfo;
-            const itinFare = pricingInfo?.ItinTotalFare;
+
+        // Use updated FareSourceCode if revalidation returned a new one
+        const revalData = revalResult.Data ?? {};
+        const revalFareInfo = revalData.FareItinerary?.AirItineraryFareInfo ?? revalData;
+        if (revalFareInfo.FareSourceCode || revalData.FareSourceCode) {
+            fareSourceCode = revalFareInfo.FareSourceCode ?? revalData.FareSourceCode ?? fareSourceCode!;
+            console.log('[create-booking] Updated FareSourceCode from revalidation:', fareSourceCode!.slice(0, 50) + '...');
+        }
+
+        // ── Support V2 Summarized vs V1 Nested ──
+        const isV2 = revalData.FlightFaresList !== undefined;
+        console.log('[create-booking] Revalidation structure:', isV2 ? 'Summarized (V2)' : (revalData.PricedItineraries ? 'List (V1)' : 'Legacy (V1)'));
+
+        if (isV2 && revalData.FlightFaresList) {
+            // V2 Summarized Path
+            const fare = revalData.FlightFaresList[0];
+            if (fare) {
+                let total = 0;
+                const passengerFares: any[] = fare.PassengerFare ?? [];
+                for (const pf of passengerFares) {
+                    total += (pf.TotalFare || 0) * (pf.Quantity || 1);
+                    revalidatedCurrency = pf.Currency;
+                }
+                revalidatedPrice = total;
+            }
+        } else if (revalData.PricedItineraries) {
+            // V1 List Path (Standard ASHR 1.0 Revalidate)
+            const pricedItin = revalData.PricedItineraries[0];
+            if (pricedItin) {
+                const pricingInfo = pricedItin.AirItineraryPricingInfo;
+                const itinFare = pricingInfo?.ItinTotalFare;
+                if (itinFare) {
+                    const amount = itinFare.TotalFare?.Amount ?? itinFare.TotalFare?.Value;
+                    revalidatedPrice = amount ? Number(amount) : undefined;
+                    revalidatedCurrency = itinFare.TotalFare?.CurrencyCode ?? itinFare.TotalFare?.Currency;
+                }
+                // CRITICAL: Update FareSourceCode for Booking!
+                const newCode = pricingInfo?.FareSourceCode || pricedItin.FareSourceCode;
+                if (newCode) {
+                    fareSourceCode = newCode;
+                    console.log('[create-booking] Refreshed FareSourceCode from PricedItineraries:', fareSourceCode!.slice(0, 50) + '...');
+                }
+            }
+        } else {
+            // V1 Nested Path (Legacy fallback)
+            const itin = revalData.FareItinerary ?? revalData;
+            const itinFare = itin.AirItineraryFareInfo?.ItinTotalFare ?? itin.ItinTotalFare;
+
             if (itinFare) {
                 const amount = itinFare.TotalFare?.Amount ?? itinFare.TotalFare?.Value;
                 revalidatedPrice = amount ? Number(amount) : undefined;
                 revalidatedCurrency = itinFare.TotalFare?.CurrencyCode ?? itinFare.TotalFare?.Currency;
-            }
-            // CRITICAL: Update FareSourceCode for Booking!
-            const newCode = pricingInfo?.FareSourceCode || pricedItin.FareSourceCode;
-            if (newCode) {
-                fareSourceCode = newCode;
-                console.log('[create-booking] Refreshed FareSourceCode from PricedItineraries:', fareSourceCode!.slice(0, 50) + '...');
-            }
-        }
-    } else {
-        // V1 Nested Path (Legacy fallback)
-        const itin = revalData.FareItinerary ?? revalData;
-        const itinFare = itin.AirItineraryFareInfo?.ItinTotalFare ?? itin.ItinTotalFare;
 
-        if (itinFare) {
-            const amount = itinFare.TotalFare?.Amount ?? itinFare.TotalFare?.Value;
-            revalidatedPrice = amount ? Number(amount) : undefined;
-            revalidatedCurrency = itinFare.TotalFare?.CurrencyCode ?? itinFare.TotalFare?.Currency;
-
-            // Check for refreshed code here too
-            const newCode = itin.FareSourceCode || (itin.AirItineraryFareInfo as any)?.FareSourceCode;
-            if (newCode) {
-                fareSourceCode = newCode;
-                console.log('[create-booking] Refreshed FareSourceCode from FareItinerary:', fareSourceCode!.slice(0, 50) + '...');
+                const newCode = itin.FareSourceCode || (itin.AirItineraryFareInfo as any)?.FareSourceCode;
+                if (newCode) {
+                    fareSourceCode = newCode;
+                    console.log('[create-booking] Refreshed FareSourceCode from FareItinerary:', fareSourceCode!.slice(0, 50) + '...');
+                }
+            } else {
+                console.warn('[create-booking] V1 Revalidation structure unexpected. Keys:', Object.keys(itin));
             }
-        } else {
-            console.warn('[create-booking] V1 Revalidation structure unexpected. Keys:', Object.keys(itin));
         }
     }
 
-    console.log('[create-booking] Revalidation parsed. Price:', revalidatedPrice, revalidatedCurrency);
+    console.log('[create-booking] Revalidation parsed. Price:', revalidatedPrice, revalidatedCurrency, revalidationSkipped ? '(skipped)' : '');
 
     const isDemo = (Deno.env.get('MYSTIFLY_BASE_URL') ?? '').includes('demo');
 

@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { env } from "@/utils/env";
 
 // Lazy-initialised so Vercel's build-time page-data collection (which imports
 // every route module) doesn't throw when STRIPE_SECRET_KEY is absent.
@@ -6,7 +7,7 @@ let _stripe: Stripe | null = null;
 
 export function getStripe(): Stripe {
     if (!_stripe) {
-        const key = process.env.STRIPE_SECRET_KEY;
+        const key = env.STRIPE_SECRET_KEY;
         if (!key) throw new Error('STRIPE_SECRET_KEY is missing');
         _stripe = new Stripe(key, {
             apiVersion: '2025-02-24.acacia' as any,

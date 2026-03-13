@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, X } from 'lucide-react';
-import type { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { PropertyMapList, scrollToProperty } from './PropertyMapList';
 import { PropertyMapView } from './PropertyMapView';
 import { MapModal } from './MapModal';

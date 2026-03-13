@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { env } from '@/utils/env';
 
 /**
  * Generic Webhook Receiver for Async Flight Supplier Events
@@ -16,14 +17,7 @@ export async function POST(req: NextRequest) {
         // SECURITY: In production, verify supplier cryptographic signatures here
         // (e.g. Duffel webhook secret, or Mystifly token)
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-        if (!supabaseUrl || !serviceRoleKey) {
-            return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
-        }
-
-        const supabase = createClient(supabaseUrl, serviceRoleKey);
+        const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
         // ─── 1. Provider Parsing & Event Mapping ─────────────────────
         let provider = 'unknown';

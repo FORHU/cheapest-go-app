@@ -3,8 +3,8 @@ import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
 import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/lib/schemas/flight';
-import type { FlightOffer } from '@/lib/flights/types';
-import { createClient } from '@/utils/supabase/client';
+import type { FlightOffer } from '@/types/flights';
+import { supabase } from '@/utils/supabase/client';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
@@ -106,7 +106,6 @@ export function useFlightBooking() {
         // Auto-revalidate the flight
         let isMounted = true;
         const revalidate = async () => {
-            const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
 
             try {
@@ -117,7 +116,7 @@ export function useFlightBooking() {
                         flightPayload: {
                             oldPrice: parsedOffer.price.total,
                             currency: parsedOffer.price.currency,
-                            traceId: parsedOffer.provider.startsWith('mystifly') ? parsedOffer.offerId : undefined,
+                            traceId: parsedOffer.provider.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
                             flight: parsedOffer.provider === 'duffel'
                                 ? ((parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
                                 : undefined,
@@ -127,6 +126,7 @@ export function useFlightBooking() {
 
                 if (error) throw error;
                 if (!data.success) throw new Error(data.error || 'Revalidation failed');
+                if (!data.seatsAvailable) throw new Error(data.error || 'Flight is no longer available. Please search again.');
 
                 const revalidatedOffer = {
                     ...parsedOffer,
@@ -176,7 +176,6 @@ export function useFlightBooking() {
     const bookMutation = useMutation({
         mutationFn: async ({ offer, passengers, contact }: { offer: FlightOffer, passengers: FlightPassengerForm[], contact: FlightContactForm }) => {
             // Client-side auth check (fast-fail UX; server re-verifies via JWT)
-            const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
 
             if (!user) {
@@ -229,7 +228,7 @@ export function useFlightBooking() {
                 throw new Error(data.error || 'Booking failed');
             }
 
-            return data.data;
+            return data.data ?? data;
         },
         onMutate: () => {
             setStep('submitting');

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
-import { getAirlineName } from '@/lib/flights/types';
+import { getAirlineName } from '@/utils/flight-utils';
 
 interface FlightBookingCardProps {
     booking: FlightBookingRecord;

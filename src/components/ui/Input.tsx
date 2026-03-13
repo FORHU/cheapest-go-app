@@ -1,78 +1,52 @@
-"use client";
+import * as React from "react"
+import { LucideIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-import React, { useState } from 'react';
-import { Eye, EyeOff, LucideIcon } from 'lucide-react';
-
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-    label?: string;
-    error?: string;
-    icon?: LucideIcon;
-    rightIcon?: React.ReactNode;
-    fullWidth?: boolean;
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
+  icon?: LucideIcon;
+  error?: string;
 }
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
-    label,
-    error,
-    icon: Icon,
-    rightIcon,
-    type = 'text',
-    className = '',
-    fullWidth = true,
-    id,
-    ...props
-}, ref) => {
-    const [showPassword, setShowPassword] = useState(false);
-    const isPassword = type === 'password';
-    const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
-
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, label, icon: Icon, error, ...props }, ref) => {
     return (
-        <div className={`${fullWidth ? 'w-full' : ''} ${className}`}>
-            {label && (
-                <label htmlFor={id} className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    {label}
-                </label>
-            )}
-            <div className="relative">
-                {Icon && (
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Icon className="h-5 w-5 text-slate-400" />
-                    </div>
-                )}
-                <input
-                    ref={ref}
-                    type={inputType}
-                    id={id}
-                    className={`
-                        w-full py-3 border rounded-lg bg-white dark:bg-white/5 
-                        text-slate-900 dark:text-white placeholder-slate-400 
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors
-                        ${Icon ? 'pl-10' : 'pl-4'}
-                        ${(isPassword || rightIcon) ? 'pr-12' : 'pr-4'}
-                        ${error ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 dark:border-white/10'}
-                    `}
-                    {...props}
-                />
-
-                {isPassword ? (
-                    <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                    >
-                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                ) : rightIcon ? (
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
-                        {rightIcon}
-                    </div>
-                ) : null}
+      <div className="w-full space-y-1.5">
+        {label && (
+          <label
+            htmlFor={props.id}
+            className="text-[10px] font-bold uppercase tracking-widest text-slate-400/80 ml-1"
+          >
+            {label}
+          </label>
+        )}
+        <div className="relative group">
+          {Icon && (
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none">
+              <Icon size={18} />
             </div>
-            {error && (
-                <p className="mt-1 text-xs text-red-500">{error}</p>
+          )}
+          <input
+            type={type}
+            className={cn(
+              "flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:border-white/10 dark:bg-white/5 dark:ring-offset-slate-950 dark:placeholder:text-slate-400",
+              Icon && "pl-10",
+              error && "border-rose-500 focus-visible:ring-rose-500/20 focus-visible:border-rose-500",
+              className
             )}
+            ref={ref}
+            {...props}
+          />
         </div>
-    );
-});
+        {error && (
+          <p className="text-[10px] font-bold text-rose-500 ml-1 animate-in fade-in slide-in-from-top-1">
+            {error}
+          </p>
+        )}
+      </div>
+    )
+  }
+)
+Input.displayName = "Input"
 
-Input.displayName = 'Input';
+export { Input }
