@@ -58,7 +58,7 @@ export function SubmitBookingButton({
                         <span>Sign In to Complete Booking</span>
                     </>
                 ) : (
-                    `Complete Booking • ₱${(totalPrice || 0).toLocaleString()}`
+                    `Continue to Payment • ₱${(totalPrice || 0).toLocaleString()}`
                 )}
             </button>
 
