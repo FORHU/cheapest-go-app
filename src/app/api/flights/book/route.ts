@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
 import { env } from '@/utils/env';
 import { FlightOffer, FarePolicy } from '@/types/flights';
+import { logApiCall } from '@/lib/server/api-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +63,9 @@ export async function POST(req: NextRequest) {
         ).toLowerCase();
 
         // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
-        const revalRes = await fetch(`${env.SUPABASE_URL}/functions/v1/revalidate-flight`, {
+        const revalStart = Date.now();
+        const revalEndpoint = `${env.SUPABASE_URL}/functions/v1/revalidate-flight`;
+        const revalRes = await fetch(revalEndpoint, {
             method: 'POST',
             headers: edgeFnHeaders,
             body: JSON.stringify({
@@ -73,6 +76,13 @@ export async function POST(req: NextRequest) {
         });
 
         const revalData = await revalRes.json();
+        logApiCall({
+            provider, endpoint: revalEndpoint, durationMs: Date.now() - revalStart,
+            requestParams: { origin: flight.segments?.[0]?.origin, destination: flight.segments?.[flight.segments.length - 1]?.destination, oldPrice: flightTotal },
+            responseStatus: revalRes.status, userId,
+            responseSummary: { seatsAvailable: revalData.seatsAvailable, priceChanged: revalData.priceChanged, newPrice: revalData.newPrice },
+            errorMessage: !revalData.success ? (revalData.error || 'Revalidation failed') : undefined,
+        });
 
         if (!revalData.success || !revalData.seatsAvailable) {
             return NextResponse.json({
@@ -81,10 +91,12 @@ export async function POST(req: NextRequest) {
             }, { status: 409 });
         }
 
-        if (revalData.priceChanged && Math.abs(revalData.newPrice - flightTotal) > 0.01) {
+        // Trust the edge function's priceChanged flag — it handles currency
+        // normalization and uses a $1/equivalent tolerance to avoid false positives.
+        if (revalData.priceChanged) {
             return NextResponse.json({
                 success: false,
-                error: `Flight price changed. Please restart booking.`
+                error: `Flight price changed from ${flightTotal} to ${revalData.newPrice}. Please restart booking.`
             }, { status: 409 });
         }
 
@@ -96,7 +108,9 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Step 1: Create Booking Session ──
-        const sessionRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking-session`, {
+        const sessionStart = Date.now();
+        const sessionEndpoint = `${env.SUPABASE_URL}/functions/v1/create-booking-session`;
+        const sessionRes = await fetch(sessionEndpoint, {
             method: 'POST',
             headers: edgeFnHeaders,
             body: JSON.stringify({
@@ -111,6 +125,14 @@ export async function POST(req: NextRequest) {
         });
 
         const sessionData = await sessionRes.json();
+        logApiCall({
+            provider, endpoint: sessionEndpoint, durationMs: Date.now() - sessionStart,
+            requestParams: { origin: flight.segments?.[0]?.origin, destination: flight.segments?.[flight.segments.length - 1]?.destination, passengerCount: passengers.length },
+            responseStatus: sessionRes.status, userId,
+            responseSummary: { sessionId: sessionData.sessionId },
+            errorMessage: !sessionData.success ? (sessionData.error || 'Failed to create booking session') : undefined,
+        });
+
         if (!sessionData.success) {
             throw new Error(sessionData.error || 'Failed to create booking session');
         }
@@ -118,6 +140,7 @@ export async function POST(req: NextRequest) {
         const sessionId = sessionData.sessionId;
 
         // ── Step 2: Create Stripe PaymentIntent ──
+        const stripeStart = Date.now();
         const isMystifly = provider === 'mystifly' || provider === 'mystifly_v2';
         const paymentIntent = await stripe.paymentIntents.create({
             amount: Math.round(flightTotal * 100),
@@ -130,6 +153,12 @@ export async function POST(req: NextRequest) {
                 passengerEmail: contact.email,
             },
             description: `Flight Booking: ${flight.segments[0]?.origin} to ${flight.segments[flight.segments.length - 1]?.destination}`,
+        });
+        logApiCall({
+            provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,
+            requestParams: { amount: Math.round(flightTotal * 100), currency: flightCurrency, captureMethod: isMystifly ? 'manual' : 'automatic' },
+            responseStatus: 200, userId,
+            responseSummary: { paymentIntentId: paymentIntent.id, sessionId },
         });
 
         // ── Step 3: Store PaymentIntent ID in booking session ──

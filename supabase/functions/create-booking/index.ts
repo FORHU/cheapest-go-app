@@ -326,9 +326,16 @@ Deno.serve(async (req: Request) => {
 
                 await supabase.from('booking_sessions').update({ status: 'failed' }).eq('id', sessionId);
 
+                // Build a user-friendly error — strip raw JSON dumps
+                const isDuffel500 = duffelErr.status >= 500;
+                const friendlyError = isDuffel500
+                    ? 'The airline system is temporarily unavailable. Your payment has been automatically refunded.'
+                    : `${duffelErr.message}. Your payment has been automatically refunded.`;
+                console.error('[create-booking] Duffel error details:', duffelErr.message);
+
                 return jsonResponse(corsHeaders, {
                     success: false,
-                    error: `Airliner Error: ${duffelErr.message}. Your payment has been automatically refunded.`
+                    error: friendlyError,
                 }, 502);
             }
         } else {
@@ -813,7 +820,8 @@ async function bookWithDuffel(
 
     try {
         console.log('[create-booking] Creating Duffel Order for offer:', offerId);
-        const orderResponse = await createDuffelOrder({
+
+        const duffelPayload = {
             type: 'instant',
             selected_offers: [offerId],
             passengers: orderPassengers,
@@ -824,7 +832,21 @@ async function bookWithDuffel(
                     currency: rawOffer.total_currency,
                 }
             ],
-        });
+        };
+
+        // Retry once on Duffel 500 (transient server errors)
+        let orderResponse: any;
+        try {
+            orderResponse = await createDuffelOrder(duffelPayload);
+        } catch (firstErr: any) {
+            if (firstErr.status === 500) {
+                console.warn('[create-booking] Duffel 500, retrying once after 1s...');
+                await new Promise(r => setTimeout(r, 1000));
+                orderResponse = await createDuffelOrder(duffelPayload);
+            } else {
+                throw firstErr;
+            }
+        }
 
         const order = orderResponse.data;
         if (!order || !order.id) {

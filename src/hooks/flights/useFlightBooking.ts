@@ -136,6 +136,7 @@ export function useFlightBooking() {
                     },
                     farePolicy: data.farePolicy,
                     policyChanged: data.priceChanged || (JSON.stringify(parsedOffer.farePolicy) !== JSON.stringify(data.farePolicy)),
+                    seatsRemaining: data.seatsRemaining ?? parsedOffer.seatsRemaining,
                 };
 
                 if (isMounted) {
