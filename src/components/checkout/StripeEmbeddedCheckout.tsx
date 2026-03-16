@@ -7,7 +7,13 @@ import { Loader2 } from 'lucide-react';
 
 import { env } from '@/utils/env';
 
-const stripePromise = loadStripe(env.STRIPE_PUBLIC_KEY!);
+let stripePromise: ReturnType<typeof loadStripe> | null = null;
+function getStripe() {
+    if (!stripePromise) {
+        stripePromise = loadStripe(env.STRIPE_PUBLIC_KEY!);
+    }
+    return stripePromise;
+}
 
 function CheckoutForm({ clientSecret, onSuccess }: {
     clientSecret: string;
@@ -77,7 +83,7 @@ export default function StripeEmbeddedCheckout({ clientSecret, onSuccess }: {
     if (!clientSecret) return null;
 
     return (
-        <Elements options={{ clientSecret, appearance: { theme: 'stripe' } }} stripe={stripePromise}>
+        <Elements options={{ clientSecret, appearance: { theme: 'stripe' } }} stripe={getStripe()}>
             <CheckoutForm clientSecret={clientSecret} onSuccess={onSuccess} />
         </Elements>
     );
