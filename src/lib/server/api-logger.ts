@@ -19,28 +19,40 @@ export interface ApiLogEntry {
  * Never throws — logging must not break the main request flow.
  */
 export function logApiCall(entry: ApiLogEntry): void {
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    try {
+        const url = env.SUPABASE_URL;
+        const key = env.SUPABASE_SERVICE_ROLE_KEY;
 
-    Promise.resolve(
-        supabase
-            .from('api_logs')
-            .insert({
-                provider: entry.provider,
-                endpoint: entry.endpoint,
-                method: entry.method ?? 'POST',
-                request_params: entry.requestParams ? sanitize(entry.requestParams) : null,
-                response_status: entry.responseStatus ?? null,
-                response_summary: entry.responseSummary ?? null,
-                duration_ms: entry.durationMs,
-                error_message: entry.errorMessage ?? null,
-                user_id: entry.userId ?? null,
-                search_id: entry.searchId ?? null,
-            })
-    ).then(({ error }) => {
-        if (error) console.error('[api-logger] Insert failed:', error.message);
-    }).catch(() => {
-        // Silently ignore — logging must never break the app
-    });
+        if (!url || !key) {
+            // Missing credentials — skip silently
+            return;
+        }
+
+        const supabase = createClient(url, key);
+
+        Promise.resolve(
+            supabase
+                .from('api_logs')
+                .insert({
+                    provider: entry.provider,
+                    endpoint: entry.endpoint,
+                    method: entry.method ?? 'POST',
+                    request_params: entry.requestParams ? sanitize(entry.requestParams) : null,
+                    response_status: entry.responseStatus ?? null,
+                    response_summary: entry.responseSummary ?? null,
+                    duration_ms: entry.durationMs,
+                    error_message: entry.errorMessage ?? null,
+                    user_id: entry.userId ?? null,
+                    search_id: entry.searchId ?? null,
+                })
+        ).then(({ error }) => {
+            if (error) console.error('[api-logger] Insert failed:', error.message);
+        }).catch(() => {
+            // Silently ignore — logging must never break the app
+        });
+    } catch {
+        // Never throw — logging is non-critical
+    }
 }
 
 /**

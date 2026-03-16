@@ -9,6 +9,12 @@ import { logApiCall } from "@/lib/server/api-logger";
 export async function searchDuffel(params: FlightSearchParams): Promise<FlightResult[]> {
     const DUFFEL_API_URL = "https://api.duffel.com/air/offer_requests";
     const token = env.DUFFEL_TOKEN;
+
+    if (!token) {
+        console.warn("[Duffel] Missing DUFFEL_ACCESS_TOKEN — skipping");
+        return [];
+    }
+
     console.log(`[Duffel] Starting search: ${params.origin} -> ${params.destination} (${params.departureDate})`);
 
     // 1. Prepare Passengers
@@ -47,19 +53,21 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
                 "Duffel-Version": "v2",
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(14000)
         });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             const errMsg = `Duffel API Error: ${response.status} - ${JSON.stringify(errorData)}`;
+            console.error(`[Duffel] API error (${response.status}):`, errMsg);
             logApiCall({
                 provider: 'duffel', endpoint: DUFFEL_API_URL,
                 requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, children: params.children, infants: params.infants, cabinClass: params.cabinClass },
                 responseStatus: response.status, durationMs: Date.now() - startMs,
                 errorMessage: errMsg, searchId: params.searchId,
             });
-            throw new Error(errMsg);
+            return [];
         }
 
         const json = await response.json();
@@ -134,7 +142,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
             errorMessage: error.message, searchId: params.searchId,
         });
         console.error("[Duffel] Search failed:", error.message);
-        throw error;
+        return [];
     }
 }
 
