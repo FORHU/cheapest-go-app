@@ -28,7 +28,25 @@ async function getRedirectTarget(user: any, next: string): Promise<string> {
 }
 
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url);
+    const { searchParams } = new URL(request.url);
+
+    // Determine the correct origin — inside Docker, request.url uses the
+    // container hostname (0.0.0.0) which is unreachable from the browser.
+    // Prefer forwarded headers from the reverse proxy, then NEXT_PUBLIC_SITE_URL.
+    const origin = (() => {
+        const fwdHost = request.headers.get('x-forwarded-host');
+        const fwdProto = request.headers.get('x-forwarded-proto') || 'https';
+        if (fwdHost) return `${fwdProto}://${fwdHost}`;
+
+        const host = request.headers.get('host');
+        if (host && !host.startsWith('0.0.0.0') && !host.startsWith('127.0.0.1') && !host.startsWith('localhost')) {
+            return `${fwdProto}://${host}`;
+        }
+
+        if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+
+        return new URL(request.url).origin;
+    })();
 
     // Handle OAuth code exchange
     const code = searchParams.get('code');
