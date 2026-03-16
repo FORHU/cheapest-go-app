@@ -28,8 +28,8 @@ export function getCorsHeaders(req: Request) {
         if (!origin) return false;
         if (ALLOWED_ORIGINS.includes(origin)) return true;
         
-        // Allow subdomains of cheapestgo.com and judayajohnray.com
-        const domainPattern = /^(https?:\/\/)?([\w-]+\.)*(cheapestgo\.com|judayajohnray\.com|localhost)(:\d+)?$/i;
+        // Allow subdomains of cheapestgo.com and judayajohnray.com / judayajohmray.com
+        const domainPattern = /^(https?:\/\/)?([\w-]+\.)*(cheapestgo\.com|judayajohnray\.com|judayajohmray\.com|localhost)(:\d+)?$/i;
         if (domainPattern.test(origin)) return true;
         
         return false;
@@ -38,12 +38,11 @@ export function getCorsHeaders(req: Request) {
     if (origin && isAllowed(origin)) {
         allowedOrigin = origin;
     } else if (ALLOWED_ORIGINS.length > 0) {
-        // Fallback to the first allowed origin if it's a known mismatch but we want to be safe,
+        // Fallback to '*' if it's a known domain but not in ALLOWED_ORIGINS,
         // OR just keep '*' if it's completely unknown. 
-        // Returning '*' is actually safer for browser preflights if we don't use credentials.
         allowedOrigin = '*'; 
         if (origin) {
-            console.warn(`[cors] Origin mismatch. Requested: "${origin}", Allowed: ${JSON.stringify(ALLOWED_ORIGINS)}. Defaulting to *`);
+            console.warn(`[cors-v2] Origin mismatch. Requested: "${origin}", Allowed: ${JSON.stringify(ALLOWED_ORIGINS)}. Defaulting to *`);
         }
     }
 
