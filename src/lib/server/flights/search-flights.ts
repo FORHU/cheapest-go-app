@@ -4,6 +4,7 @@ import { searchMystifly, searchMystiflyV2 } from "./providers/mystifly";
 import { createClient } from "@/utils/supabase/server";
 import { normalizedToFlightOffer } from "@/utils/flight-utils";
 import { env } from "@/utils/env";
+import { logApiCall } from "@/lib/server/api-logger";
 
 /**
  * Helper to wrap a promise with a timeout.
@@ -24,11 +25,26 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     const TTL_MINUTES = 10;
 
     // 1. PERFORMANCE: Check for valid cached results first
+    const cacheStart = Date.now();
     const cachedResults = await getExistingCachedResults(params, TTL_MINUTES);
     if (cachedResults && cachedResults.length > 0) {
         console.log(`[Cache] Found valid hit for ${params.origin}->${params.destination} (TTL: ${TTL_MINUTES}m)`);
+        logApiCall({
+            provider: 'cache', endpoint: 'flight_results_cache', durationMs: Date.now() - cacheStart,
+            requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate },
+            responseStatus: 200,
+            responseSummary: { cacheHit: true, resultCount: cachedResults.length },
+            searchId: params.searchId,
+        });
         return cachedResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
     }
+    logApiCall({
+        provider: 'cache', endpoint: 'flight_results_cache', durationMs: Date.now() - cacheStart,
+        requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate },
+        responseStatus: 200,
+        responseSummary: { cacheHit: false },
+        searchId: params.searchId,
+    });
 
     // 2. Fetch from providers in parallel with resilience (allSettled)
     const providers = [

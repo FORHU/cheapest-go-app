@@ -1,10 +1,6 @@
 import { FlightResult, FlightSearchParams } from "@/types/flights";
-
-/**
- * Mystifly provider adapter.
- * Handles communication with the Mystifly API and transforms results to our unified format.
- */
 import { env } from "@/utils/env";
+import { logApiCall } from "@/lib/server/api-logger";
 
 /**
  * Mystifly provider adapter.
@@ -25,6 +21,10 @@ export async function searchMystifly(params: FlightSearchParams): Promise<Flight
         date: params.departureDate
     });
 
+    const endpoint = `${supabaseUrl}/functions/v1/mystifly-search`;
+    const startMs = Date.now();
+    const logParams = { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, cabinClass: params.cabinClass };
+
     try {
         const segments = [
             { origin: params.origin.toUpperCase(), destination: params.destination.toUpperCase(), departureDate: params.departureDate },
@@ -33,7 +33,7 @@ export async function searchMystifly(params: FlightSearchParams): Promise<Flight
             segments.push({ origin: params.destination.toUpperCase(), destination: params.origin.toUpperCase(), departureDate: params.returnDate });
         }
 
-        const res = await fetch(`${supabaseUrl}/functions/v1/mystifly-search`, {
+        const res = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -49,21 +49,22 @@ export async function searchMystifly(params: FlightSearchParams): Promise<Flight
                 currency: 'USD',
                 maxOffers: 200
             }),
-            signal: AbortSignal.timeout(20000)
+            signal: AbortSignal.timeout(14000)
         });
 
         if (!res.ok) {
             const error = await res.text();
             console.error(`[Mystifly] Edge Function error (${res.status}):`, error);
+            logApiCall({ provider: 'mystifly', endpoint, requestParams: logParams, responseStatus: res.status, durationMs: Date.now() - startMs, errorMessage: error, searchId: params.searchId });
             return [];
         }
 
         const data = await res.json();
         const flights: any[] = data.flights || [];
-        
+
         console.log(`[Mystifly] Successfully fetched ${flights.length} flights`);
 
-        return flights.map((f: any) => ({
+        const results = flights.map((f: any) => ({
             provider: "mystifly",
             offer_id: f.id || f.offerId,
             price: f.price,
@@ -88,7 +89,11 @@ export async function searchMystifly(params: FlightSearchParams): Promise<Flight
             })),
             raw: f
         }));
+
+        logApiCall({ provider: 'mystifly', endpoint, requestParams: logParams, responseStatus: 200, durationMs: Date.now() - startMs, responseSummary: { resultCount: results.length }, searchId: params.searchId });
+        return results;
     } catch (err: any) {
+        logApiCall({ provider: 'mystifly', endpoint, requestParams: logParams, durationMs: Date.now() - startMs, errorMessage: err.message, searchId: params.searchId });
         console.error("[Mystifly] Search request failed:", err.message);
         return [];
     }
@@ -105,6 +110,10 @@ export async function searchMystiflyV2(params: FlightSearchParams): Promise<Flig
         return [];
     }
 
+    const endpoint = `${supabaseUrl}/functions/v1/mystifly-v2-search`;
+    const startMs = Date.now();
+    const logParams = { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, cabinClass: params.cabinClass };
+
     console.log("[MystiflyV2] Searching via Edge Function...", params.origin);
 
     try {
@@ -115,7 +124,7 @@ export async function searchMystiflyV2(params: FlightSearchParams): Promise<Flig
             segments.push({ origin: params.destination.toUpperCase(), destination: params.origin.toUpperCase(), departureDate: params.returnDate });
         }
 
-        const res = await fetch(`${supabaseUrl}/functions/v1/mystifly-v2-search`, {
+        const res = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -131,15 +140,18 @@ export async function searchMystiflyV2(params: FlightSearchParams): Promise<Flig
                 currency: 'USD',
                 maxOffers: 200
             }),
-            signal: AbortSignal.timeout(20000)
+            signal: AbortSignal.timeout(14000)
         });
 
-        if (!res.ok) return [];
+        if (!res.ok) {
+            logApiCall({ provider: 'mystifly_v2', endpoint, requestParams: logParams, responseStatus: res.status, durationMs: Date.now() - startMs, errorMessage: `HTTP ${res.status}`, searchId: params.searchId });
+            return [];
+        }
 
         const data = await res.json();
         const flights: any[] = data.flights || [];
 
-        return flights.map((f: any) => ({
+        const results = flights.map((f: any) => ({
             provider: "mystifly_v2",
             offer_id: f.id || f.offerId,
             price: f.price,
@@ -169,7 +181,11 @@ export async function searchMystiflyV2(params: FlightSearchParams): Promise<Flig
             })),
             raw: f
         }));
-    } catch (err) {
+
+        logApiCall({ provider: 'mystifly_v2', endpoint, requestParams: logParams, responseStatus: 200, durationMs: Date.now() - startMs, responseSummary: { resultCount: results.length }, searchId: params.searchId });
+        return results;
+    } catch (err: any) {
+        logApiCall({ provider: 'mystifly_v2', endpoint, requestParams: logParams, durationMs: Date.now() - startMs, errorMessage: err.message, searchId: params.searchId });
         return [];
     }
 }

@@ -328,12 +328,39 @@ export function SearchFetcher({
             <div className="flex flex-col lg:flex-row gap-6">
                 {/* Filters sidebar */}
                 <div className="w-full lg:w-72 shrink-0">
-                    <div className={isLoading ? 'opacity-50 pointer-events-none' : ''}>
+                    {isLoading && rawOffers.length === 0 ? (
+                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 animate-pulse">
+                            <div className="space-y-3">
+                                <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
+                                <div className="space-y-2">
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="h-3 w-12 bg-slate-200 dark:bg-slate-700 rounded" />
+                                <div className="space-y-2">
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
+                                <div className="space-y-2">
+                                    <div className="h-5 w-32 bg-slate-100 dark:bg-slate-800 rounded" />
+                                    <div className="h-5 w-28 bg-slate-100 dark:bg-slate-800 rounded" />
+                                    <div className="h-5 w-36 bg-slate-100 dark:bg-slate-800 rounded" />
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
                         <FlightFilters
                             airlines={airlines}
                             onFilterChange={setFilters}
                         />
-                    </div>
+                    )}
                 </div>
 
                 {/* Main results area */}

@@ -17,7 +17,9 @@
       "WebFetch(domain:unsplash.com)",
       "Bash(node -e:*)",
       "Bash(git mv:*)",
-      "Bash(pnpm install:*)"
+      "Bash(pnpm install:*)",
+      "Bash(find:*)",
+      "Bash(xargs:*)"
     ]
   }
 }

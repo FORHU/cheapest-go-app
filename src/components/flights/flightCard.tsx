@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plane, Clock, ArrowRight, Luggage, AlertCircle, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign } from 'lucide-react';
+import { Plane, Clock, ArrowRight, Luggage, AlertCircle, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer, FlightSegmentDetail, FarePolicy } from '@/types/flights';
 import { getAirlineName } from '@/utils/flight-utils';
 
@@ -184,12 +184,6 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                 <span className="font-semibold text-slate-900 dark:text-white text-xs lg:text-sm">
                                     {primary.airline.name}
                                 </span>
-                                {offer.seatsRemaining && offer.seatsRemaining <= 5 && (
-                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
-                                        <AlertCircle className="w-2 h-2 lg:w-3 lg:h-3" />
-                                        {offer.seatsRemaining} left
-                                    </span>
-                                )}
                             </div>
                             <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
                                 {primary.flightNumber}
@@ -284,6 +278,22 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
                                 <Plane className="w-2 h-2 lg:w-3 lg:h-3" />
                                 {primary.aircraft}
+                            </span>
+                        )}
+                        {offer.seatsRemaining != null && offer.seatsRemaining > 0 && (
+                            <span className={`inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs font-medium border ${
+                                offer.seatsRemaining <= 3
+                                    ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+                                    : offer.seatsRemaining <= 6
+                                    ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+                                    : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                            }`}>
+                                <Users className="w-2 h-2 lg:w-3 lg:h-3" />
+                                {offer.seatsRemaining <= 3
+                                    ? `Only ${offer.seatsRemaining} left!`
+                                    : offer.seatsRemaining <= 6
+                                    ? `${offer.seatsRemaining} seats left`
+                                    : `${offer.seatsRemaining} seats available`}
                             </span>
                         )}
                     </div>
