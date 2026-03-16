@@ -5,9 +5,13 @@ import { motion } from 'framer-motion';
 import { Sparkles, Star } from 'lucide-react';
 import { TabList, SparkleEffect, HorizontalScroll } from '@/components/ui';
 import { type SimpleProperty, uniqueTabs } from '@/types';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 
 export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ stays }) => {
   const [activeTab, setActiveTab] = useState(uniqueTabs[0]);
+  const currency = useUserCurrency();
+  const symbol = getCurrencySymbol(currency);
   const displayStays = stays || [];
 
   return (
@@ -94,7 +98,7 @@ export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ sta
                   <p className="text-[9px] sm:text-xs landscape:text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">{stay.location}</p>
                   <p className="text-[11px] sm:text-base landscape:text-[10px] font-bold mt-auto pt-1 sm:pt-1.5 landscape:pt-0.5">
                     <span className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                      ₱{(stay.price || 0).toLocaleString()}
+                      {symbol}{Math.round(convertCurrency(stay.price || 0, 'KRW', currency)).toLocaleString()}
                     </span>
                     <span className="font-normal text-slate-400 text-[8px] sm:text-sm landscape:text-[8px]">/night</span>
                   </p>

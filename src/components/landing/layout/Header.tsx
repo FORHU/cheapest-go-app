@@ -18,9 +18,9 @@ const COUNTRY_CURRENCY: Record<string, { currency: string; countryName: string; 
 };
 
 const CURRENCIES = [
-  { code: 'PHP', country: 'PH' },
-  { code: 'USD', country: 'US' },
   { code: 'KRW', country: 'KR' },
+  { code: 'USD', country: 'US' },
+  { code: 'PHP', country: 'PH' },
 ] as const;
 
 const Header = () => {

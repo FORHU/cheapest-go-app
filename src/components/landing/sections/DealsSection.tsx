@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { Clock, Sparkles } from 'lucide-react';
 import { SectionHeader, HorizontalScroll, TiltCard } from '@/components/ui';
 import { type Deal } from '@/types';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 
 /** Converts an ISO timestamp to a human-readable "X ago" string. */
 function formatAge(iso: string): string {
@@ -29,7 +31,13 @@ function handleDealClick(deal: Deal) {
   });
 }
 
-const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
+const DealCard: React.FC<DealCardProps> = ({ deal, index }) => {
+  const currency = useUserCurrency();
+  const symbol = getCurrencySymbol(currency);
+  const original = Math.round(convertCurrency(deal.originalPrice || 0, 'KRW', currency));
+  const sale = Math.round(convertCurrency(deal.salePrice || 0, 'KRW', currency));
+
+  return (
   <motion.div
     initial={{ opacity: 0, x: 50 }}
     whileInView={{ opacity: 1, x: 0 }}
@@ -64,10 +72,10 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
             {/* Price tag floating */}
             <div className="absolute bottom-1.5 left-1.5 sm:bottom-3 sm:left-3 px-1.5 py-1 sm:px-3 sm:py-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded sm:rounded-lg shadow-lg">
               <span className="text-[8px] sm:text-xs text-slate-400 line-through mr-1">
-                ${(deal.originalPrice || 0).toLocaleString()}
+                {symbol}{original.toLocaleString()}
               </span>
               <span className="text-[9px] sm:text-sm md:text-base font-bold text-slate-900 dark:text-white">
-                ${(deal.salePrice || 0).toLocaleString()}
+                {symbol}{sale.toLocaleString()}
               </span>
             </div>
           </div>
@@ -99,7 +107,8 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => (
         </div>
       </TiltCard>
   </motion.div>
-);
+  );
+};
 
 interface DealsSectionProps {
   deals?: Deal[];

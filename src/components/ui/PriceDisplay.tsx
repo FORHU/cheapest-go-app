@@ -18,7 +18,7 @@ const sizeClasses = {
 export const PriceDisplay: React.FC<PriceDisplayProps> = ({
     price,
     originalPrice,
-    currency = '₱',
+    currency = '$',
     label,
     size = 'md',
     className = '',

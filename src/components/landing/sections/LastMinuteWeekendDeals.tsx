@@ -6,8 +6,12 @@ import { Sparkles } from 'lucide-react';
 import { SectionHeader, HorizontalScroll } from '@/components/ui';
 import { PropertyCard } from '@/components/shared';
 import { type WeekendDeal } from '@/types';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency } from '@/lib/currency';
 
 export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ deals }) => {
+  const currency = useUserCurrency();
+  const convert = (amount: number) => Math.round(convertCurrency(amount, 'KRW', currency));
   const displayDeals = deals || [];
   return (
     <section className="w-full py-4 md:py-8 lg:py-10 landscape-compact-py">
@@ -33,8 +37,8 @@ export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ de
                     location={deal.location}
                     rating={deal.rating}
                     reviews={deal.reviews}
-                    originalPrice={deal.originalPrice}
-                    price={deal.salePrice}
+                    originalPrice={convert(deal.originalPrice)}
+                    price={convert(deal.salePrice)}
                     badge={deal.badge}
                     badgeColor="green"
                     className="h-full flex flex-col flex-1"

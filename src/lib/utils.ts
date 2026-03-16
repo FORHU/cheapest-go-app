@@ -14,8 +14,8 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function formatCurrency(
     amount: number,
-    currency = 'PHP',
-    locale = 'en-PH'
+    currency = 'KRW',
+    locale = 'ko-KR'
 ): string {
     return new Intl.NumberFormat(locale, {
         style: 'currency',
@@ -31,7 +31,7 @@ export function formatCurrency(
 export function formatDate(
     date: Date | string,
     options?: Intl.DateTimeFormatOptions,
-    locale = 'en-PH'
+    locale = 'ko-KR'
 ): string {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return dateObj.toLocaleDateString(locale, options);

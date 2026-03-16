@@ -6,13 +6,17 @@ import { History, Clock } from 'lucide-react';
 import { SectionHeader, Badge, PriceDisplay } from '@/components/ui';
 import { useRecentSearches } from '@/stores';
 import { type RecentItem } from '@/types';
+import { useUserCurrency } from '@/stores/searchStore';
+import { getCurrencySymbol } from '@/lib/currency';
 
 interface RecentCardProps {
   item: RecentItem;
   index: number;
 }
 
-const RecentCard: React.FC<RecentCardProps> = ({ item, index }) => (
+const RecentCard: React.FC<RecentCardProps> = ({ item, index }) => {
+  const symbol = getCurrencySymbol(useUserCurrency());
+  return (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
@@ -43,12 +47,13 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, index }) => (
         </div>
         <div className="flex items-center justify-between mt-1.5 sm:mt-2 gap-1">
           <Badge variant="default" size="sm">{item.type}</Badge>
-          <PriceDisplay price={item.price} currency="$" size="sm" />
+          <PriceDisplay price={item.price} currency={symbol} size="sm" />
         </div>
       </div>
     </motion.div>
   </motion.div>
-);
+  );
+};
 
 const RecentlyViewed = () => {
   // Get recent searches from Zustand store

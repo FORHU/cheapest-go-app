@@ -18,7 +18,7 @@ const CURRENCY_FLAGS: Record<string, string> = {
   KRW: '🇰🇷',
 };
 
-const CURRENCIES = ['PHP', 'USD', 'KRW'] as const;
+const CURRENCIES = ['KRW', 'USD', 'PHP'] as const;
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();

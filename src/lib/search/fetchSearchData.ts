@@ -164,7 +164,7 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
 
     // Currency comes from the user's locale preference (URL param), NOT the destination
     const currency = typeof params.currency === 'string' && params.currency
-        ? params.currency : 'PHP';
+        ? params.currency : 'KRW';
 
     const queryParams: SearchQueryParams = {
         checkin: formatSearchDate(rawCheckin) || "2026-06-01",
