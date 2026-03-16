@@ -6,12 +6,16 @@ import { motion } from 'framer-motion';
 import { Plane } from 'lucide-react';
 import { TabList, HorizontalScroll } from '@/components/ui';
 import { type VacationPackage, packageTabs } from '@/types';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 
 export const ExploreVacationPackages: React.FC<{
   destinations?: VacationPackage[],
   tabs?: string[]
 }> = ({ destinations = [], tabs = packageTabs }) => {
   const [activeTab, setActiveTab] = useState(tabs[0]);
+  const currency = useUserCurrency();
+  const symbol = getCurrencySymbol(currency);
 
   return (
     <section className="w-full py-4 md:py-8 lg:py-10 landscape:py-3 landscape-compact-py">
@@ -88,10 +92,10 @@ export const ExploreVacationPackages: React.FC<{
                         transition={{ delay: i * 0.08 + 0.2 }}
                       >
                         <span className="text-[8px] sm:text-xs landscape:text-[8px] text-slate-400 line-through mr-0.5 sm:mr-1">
-                          ₱{(pkg.originalPrice || 0).toLocaleString()}
+                          {symbol}{Math.round(convertCurrency(pkg.originalPrice || 0, 'KRW', currency)).toLocaleString()}
                         </span>
                         <span className="text-[9px] sm:text-sm md:text-base landscape:text-[9px] font-bold text-slate-900 dark:text-white">
-                          ₱{(pkg.salePrice || 0).toLocaleString()}
+                          {symbol}{Math.round(convertCurrency(pkg.salePrice || 0, 'KRW', currency)).toLocaleString()}
                         </span>
                       </motion.div>
                     </div>

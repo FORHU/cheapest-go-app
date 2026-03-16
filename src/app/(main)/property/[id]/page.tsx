@@ -56,7 +56,7 @@ export default async function PropertyPage({
         propertyName: property.name,
     };
 
-    const currency = (searchParamsResult.currency as string) || 'PHP';
+    const currency = (searchParamsResult.currency as string) || 'KRW';
 
     return (
         <main className="min-h-screen pt-0 md:pt-6 pb-24 md:pb-20 px-3 md:px-6">

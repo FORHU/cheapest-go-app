@@ -4,6 +4,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
 import { type Property } from '@/types';
+import { useUserCurrency } from '@/stores/searchStore';
+import { getCurrencySymbol } from '@/lib/currency';
 
 /**
  * Unified PropertyCard component variants
@@ -123,6 +125,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
     onClick,
     className = '',
 }) => {
+    const symbol = getCurrencySymbol(useUserCurrency());
     // Use property object values or individual props
     const imgSrc = property?.image || image || '';
     const displayName = property?.name || name || '';
@@ -220,11 +223,11 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                     <div className="mt-auto pt-1 sm:pt-2 flex items-baseline gap-0.5 sm:gap-1.5 flex-wrap">
                         {displayOriginalPrice && (
                             <span className="text-[8px] sm:text-xs text-slate-400 line-through">
-                                ₱{displayOriginalPrice.toLocaleString()}
+                                {symbol}{displayOriginalPrice.toLocaleString()}
                             </span>
                         )}
                         <span className="text-xs sm:text-base lg:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                            ₱{displayPrice.toLocaleString()}
+                            {symbol}{displayPrice.toLocaleString()}
                             {priceLabel && (
                                 <span className="font-normal text-slate-500 text-[8px] sm:text-sm">
                                     {priceLabel}
@@ -247,6 +250,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
     onClick,
     className = '',
 }) => {
+    const symbol = getCurrencySymbol(useUserCurrency());
     if (!property) return null;
 
     // Get star rating from property (1-5 scale hotel stars)
@@ -308,12 +312,12 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                     <div className="text-right">
                         {property.originalPrice && property.originalPrice > property.price && (
                             <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
-                                ₱{property.originalPrice.toLocaleString()}
+                                {symbol}{property.originalPrice.toLocaleString()}
                             </div>
                         )}
                         <div className="flex items-baseline gap-1 md:gap-1.5">
                             <span className="text-[13px] landscape:text-[12px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
-                                ₱{property.price.toLocaleString()}
+                                {symbol}{property.price.toLocaleString()}
                             </span>
                             <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
                                 /night

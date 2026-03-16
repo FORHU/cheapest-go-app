@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { TabList, GradientBackground, HorizontalScroll } from '@/components/ui';
 import { styleTabs } from '@/types';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 
 // Types for travel styles
 export interface TravelStyle {
@@ -16,6 +18,8 @@ export interface TravelStyle {
 
 export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ styles }) => {
   const [activeTab, setActiveTab] = useState(styleTabs[0]);
+  const currency = useUserCurrency();
+  const symbol = getCurrencySymbol(currency);
   const displayStyles = styles || [];
 
   return (
@@ -84,7 +88,7 @@ export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ style
                     transition={{ delay: i * 0.08 + 0.2 }}
                   >
                     <span className="text-[9px] sm:text-sm md:text-base landscape:text-[9px] font-bold text-slate-900 dark:text-white">
-                      ₱{(style.price || 0).toLocaleString()}
+                      {symbol}{Math.round(convertCurrency(style.price || 0, 'KRW', currency)).toLocaleString()}
                     </span>
                   </motion.div>
                 </div>

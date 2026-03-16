@@ -213,8 +213,8 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         }
 
         // Currency: based on user's locale (from store), not the destination
-        // A Filipino user searching Korea still sees PHP prices
-        params.set('currency', state.userCurrency || 'PHP');
+        // A Korean user searching abroad still sees KRW prices
+        params.set('currency', state.userCurrency || 'KRW');
 
         // Dates
         params.set('checkIn', state.dates.checkIn!.toISOString());
