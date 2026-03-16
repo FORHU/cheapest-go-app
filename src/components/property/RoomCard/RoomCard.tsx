@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { User, Bed, Square, X, Check } from 'lucide-react';
+import { useUserCurrency } from '@/stores/searchStore';
+import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
 
 /**
  * Format cancellation deadline for display
@@ -104,12 +106,23 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     rateOptions = []
 }) => {
     const [selectedRateIdx, setSelectedRateIdx] = useState(0);
-    const currencySymbol = currency === 'PHP' ? '₱' : currency;
+    const targetCurrency = useUserCurrency();
+    const currencySymbol = getCurrencySymbol(targetCurrency);
+    const sourceCurrency = currency || 'KRW';
 
     // Use rate options if provided, otherwise use single price
     const hasMultipleRates = rateOptions.length > 1;
     const selectedRate = rateOptions[selectedRateIdx];
-    const displayPrice = selectedRate?.price ?? price;
+    
+    // Convert base price
+    const basePriceConverted = convertCurrency(price, sourceCurrency, targetCurrency);
+    
+    // Convert selected rate price
+    const selectedRatePriceConverted = selectedRate 
+        ? convertCurrency(selectedRate.price, selectedRate.currency || sourceCurrency, targetCurrency)
+        : undefined;
+
+    const displayPrice = selectedRatePriceConverted ?? basePriceConverted;
     const displayRefundable = selectedRate?.refundable ?? freeCancellation;
     const displayOfferId = selectedRate?.offerId;
 
@@ -188,7 +201,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                             </div>
                                         </div>
                                         <div className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white ml-1.5 text-right shrink-0">
-                                            {currencySymbol}{rate.price.toLocaleString()}
+                                            {currencySymbol}{convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                             <div className="text-[8px] text-slate-500 font-normal">/night</div>
                                         </div>
                                     </label>
@@ -234,7 +247,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                             <div className="lg:hidden mt-0.5">
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-[15px] font-bold text-blue-600 dark:text-blue-400 leading-none">
-                                        {currencySymbol}{displayPrice.toLocaleString()}
+                                        {currencySymbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                     </span>
                                     <span className="text-[9px] text-slate-500">/night</span>
                                 </div>
@@ -260,7 +273,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     </div>
                     <div className="flex items-baseline justify-end gap-1">
                         <span className="text-[18px] font-bold text-slate-900 dark:text-white leading-none">
-                            {currencySymbol}{displayPrice.toLocaleString()}
+                            {currencySymbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
                         <span className="text-[12px] text-slate-500">/night</span>
                     </div>

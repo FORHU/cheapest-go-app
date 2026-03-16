@@ -80,7 +80,8 @@ export function transformFetchedToProperty(
     id: string,
     fetchedDetails: any,
     preBookResult: any,
-    allImages: string[]
+    allImages: string[],
+    currency: string
 ): PropertyData {
     return {
         id: fetchedDetails.hotelId || id,
@@ -90,6 +91,7 @@ export function transformFetchedToProperty(
         rating: fetchedDetails.reviewRating || fetchedDetails.starRating || 0,
         reviews: fetchedDetails.reviewCount || 0,
         price: preBookResult?.price?.amount || fetchedDetails.rates?.[0]?.price?.amount || 0,
+        currency,
         originalPrice: undefined,
         image: allImages[0] || '',
         images: allImages.length > 0 ? allImages : [],
@@ -104,7 +106,7 @@ export function transformFetchedToProperty(
 }
 
 // Create fallback property from prebook result
-export function createFallbackProperty(id: string, preBookResult: any): PropertyData {
+export function createFallbackProperty(id: string, preBookResult: any, currency: string): PropertyData {
     return {
         id,
         name: preBookResult?.data?.name || "Property Details Unavailable",
@@ -113,6 +115,7 @@ export function createFallbackProperty(id: string, preBookResult: any): Property
         rating: 0,
         reviews: 0,
         price: preBookResult?.price?.amount || 0,
+        currency,
         image: '',
         images: [],
         amenities: [],
@@ -136,7 +139,10 @@ export async function fetchPropertyData(
     // 1. Invoke pre-book if offerId is present
     if (searchParams.offerId) {
         try {
-            preBookResult = await preBook({ offerId: searchParams.offerId as string });
+            preBookResult = await preBook({ 
+                offerId: searchParams.offerId as string,
+                currency: searchParams.currency || 'KRW'
+            });
         } catch (error) {
             console.error('Pre-book check failed:', error);
         }
@@ -171,9 +177,9 @@ export async function fetchPropertyData(
             fetchedDetails.images || [],
             roomImages
         );
-        property = transformFetchedToProperty(id, fetchedDetails, preBookResult, allImages);
+        property = transformFetchedToProperty(id, fetchedDetails, preBookResult, allImages, searchParams.currency || 'KRW');
     } else if (preBookResult || searchParams.offerId) {
-        property = createFallbackProperty(id, preBookResult);
+        property = createFallbackProperty(id, preBookResult, searchParams.currency || 'KRW');
     }
 
     return { property, fetchedDetails, preBookResult };

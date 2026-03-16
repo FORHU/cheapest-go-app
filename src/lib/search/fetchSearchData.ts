@@ -246,7 +246,7 @@ function extractRefundableTag(hotel: any): string | undefined {
 }
 
 // Transform API hotel to Property
-function transformHotelToProperty(hotel: any, cityName: string): Property {
+function transformHotelToProperty(hotel: any, cityName: string, currency: string): Property {
     const { price, originalPrice } = extractPrice(hotel);
     const refundableTag = extractRefundableTag(hotel);
 
@@ -270,6 +270,7 @@ function transformHotelToProperty(hotel: any, cityName: string): Property {
         rating: rating,
         reviews: reviewCount,
         price,
+        currency,
         originalPrice,
         image: hotel.thumbnailUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
         images: hotel.details?.hotel_images_photos ? hotel.details.hotel_images_photos.map((p: any) => p.url) : [],
@@ -297,7 +298,7 @@ export async function fetchSearchProperties(params: SearchParams): Promise<Prope
 
         if (data?.data && Array.isArray(data.data)) {
             const properties = data.data.map((hotel: any) =>
-                transformHotelToProperty(hotel, queryParams.cityName)
+                transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency)
             );
 
             // Filter out hotels with incomplete data (ID-like names indicate missing details)

@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Loader2, LogIn } from 'lucide-react';
+import { useUserCurrency } from '@/stores/searchStore';
+import { getCurrencySymbol } from '@/lib/currency';
 
 interface SubmitBookingButtonProps {
     loading: boolean;
@@ -22,6 +24,8 @@ export function SubmitBookingButton({
     prebookError,
     onSubmit,
 }: SubmitBookingButtonProps) {
+    const currency = useUserCurrency();
+    const symbol = getCurrencySymbol(currency);
     const isDisabled = loading || (prebooking && !prebookId) || !!prebookError;
 
     const getButtonClasses = () => {
@@ -58,7 +62,7 @@ export function SubmitBookingButton({
                         <span>Sign In to Complete Booking</span>
                     </>
                 ) : (
-                    `Continue to Payment • ₱${(totalPrice || 0).toLocaleString()}`
+                    `Continue to Payment • ${symbol}${(totalPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                 )}
             </button>
 
