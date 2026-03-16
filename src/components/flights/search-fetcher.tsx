@@ -173,6 +173,7 @@ export function SearchFetcher({
 }: SearchFetcherProps) {
     const router = useRouter();
     const [state, setState] = useState<SearchState>({ status: 'loading' });
+    const [retryKey, setRetryKey] = useState(0);
     const [filters, setFilters] = useState<FilterState>({
         sortBy: 'price',
         selectedAirlines: [],
@@ -254,7 +255,7 @@ export function SearchFetcher({
             controller.abort();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [origin, destination, departureDate, returnDate, adults, children, infants, cabinClass]);
+    }, [origin, destination, departureDate, returnDate, adults, children, infants, cabinClass, retryKey]);
 
     // ─── Derived data ─────────────────────────────────────────────────────────
     const rawOffers = state.status === 'success' ? state.offers : [];
@@ -292,7 +293,7 @@ export function SearchFetcher({
                 </p>
                 <div className="flex gap-3 justify-center mt-2">
                     <button
-                        onClick={() => setState({ status: 'loading' })}
+                        onClick={() => setRetryKey(k => k + 1)}
                         className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-full transition-colors">
                         Try Again
                     </button>
