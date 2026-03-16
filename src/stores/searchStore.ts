@@ -352,6 +352,20 @@ export const useSearchStore = create<SearchState>()(
                 userCountry: state.userCountry,
                 searchMode: state.searchMode,
             }) as SearchState,
+            // Bump version to migrate existing users from PHP to KRW default
+            version: 1,
+            migrate: (persisted: any, version: number) => {
+                if (version === 0) {
+                    // Migrate old PHP default → KRW
+                    if (persisted.userCurrency === 'PHP') {
+                        persisted.userCurrency = 'KRW';
+                    }
+                    if (persisted.userCountry === 'PH') {
+                        persisted.userCountry = 'KR';
+                    }
+                }
+                return persisted;
+            },
         }
     )
 );
