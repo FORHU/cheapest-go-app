@@ -1,28 +1,42 @@
 'use client';
 
-import React, { useRef, useCallback } from 'react';
-import { MapPin, Building, Navigation } from 'lucide-react';
+import React, { useRef, useCallback, useState } from 'react';
+import { MapPin, Building, Navigation, Car, X, ChevronRight } from 'lucide-react';
 import { Map } from '@/components/ui/map';
-import { Marker, NavigationControl } from 'react-map-gl/mapbox';
+import { Marker, NavigationControl, GeolocateControl, Source, Layer } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
 
 interface LocationSectionProps {
     hotelDetails?: {
+        name?: string;
+        description?: string;
         address?: string;
         city?: string;
         country?: string;
+        image?: string;
     };
     coordinates?: { lat: number; lng: number };
 }
 
 const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordinates }) => {
     const mapRef = useRef<MapRef>(null);
+    const [showCard, setShowCard] = useState(true);
+    
+    const name = hotelDetails?.name || "Premium Stay";
+    const description = hotelDetails?.description || "Public 18-hole golf course with mountain views, a restaurant, and a driving range";
     const address = hotelDetails?.address || "Address not available";
     const city = hotelDetails?.city || "";
     const country = hotelDetails?.country || "";
     const fullLocation = [city, country].filter(Boolean).join(', ');
+    const hotelImage = hotelDetails?.image || "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80";
 
     const hasCoordinates = coordinates && coordinates.lat !== 0 && coordinates.lng !== 0;
+
+    // Example coordinates for the route start (e.g., a nearby landmark or user's presumed location)
+    // In a real app, this might come from the user's GPS or a fixed landmark
+    const routeStart = hasCoordinates 
+        ? { lat: coordinates.lat + 0.005, lng: coordinates.lng - 0.01 } 
+        : { lat: 0, lng: 0 };
 
     const googleMapsLink = hasCoordinates
         ? `https://www.google.com/maps/search/?api=1&query=${coordinates.lat},${coordinates.lng}`
@@ -38,12 +52,27 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordin
         });
     }, [hasCoordinates, coordinates]);
 
+    // GeoJSON for the dashed route
+    const routeData: any = {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+            type: 'LineString',
+            coordinates: [
+                [routeStart.lng, routeStart.lat],
+                [coordinates?.lng || 0, coordinates?.lat || 0]
+            ]
+        }
+    };
+
     return (
         <div className="py-4 lg:py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-36" id="location">
-            <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-4 lg:mb-6">Explore the area</h2>
-            <div className="flex flex-col md:flex-row gap-8">
-                {/* Map */}
-                <div className="flex-1 h-[280px] rounded-xl relative overflow-hidden border border-slate-200 dark:border-slate-700">
+            <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-4 lg:mb-6">Where you'll be</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">{fullLocation}</p>
+            
+            <div className="flex flex-col gap-8">
+                {/* Map Container */}
+                <div className="w-full h-[400px] lg:h-[500px] rounded-2xl relative overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl">
                     {hasCoordinates ? (
                         <>
                             <Map
@@ -55,94 +84,163 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordin
                                     show3dBuildings: true,
                                 }}
                                 initialViewState={{
-                                    longitude: coordinates.lng,
-                                    latitude: coordinates.lat,
-                                    zoom: 15,
+                                    longitude: (coordinates.lng + routeStart.lng) / 2,
+                                    latitude: (coordinates.lat + routeStart.lat) / 2,
+                                    zoom: 14,
                                     pitch: 0,
                                     bearing: 0,
                                 }}
                                 maxPitch={60}
-                                className="rounded-xl min-h-0"
+                                className="rounded-2xl min-h-0"
                             >
                                 <NavigationControl position="top-right" showCompass={false} />
+                                <GeolocateControl position="top-right" trackUserLocation showUserHeading />
 
-                                {/* Hotel pin */}
+                                {/* Route Source and Layer */}
+                                <Source id="route-source" type="geojson" data={routeData}>
+                                    <Layer
+                                        id="route-layer"
+                                        type="line"
+                                        paint={{
+                                            'line-color': '#475569',
+                                            'line-width': 2,
+                                            'line-dasharray': [2, 2],
+                                        }}
+                                    />
+                                </Source>
+
+                                {/* Duration Label Marker */}
+                                <Marker
+                                    latitude={(coordinates.lat + routeStart.lat) / 2}
+                                    longitude={(coordinates.lng + routeStart.lng) / 2}
+                                    anchor="center"
+                                >
+                                    <div className="bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 flex items-center gap-2 cursor-default group hover:scale-105 transition-transform">
+                                        <Car size={14} className="text-slate-900 dark:text-white" />
+                                        <span className="text-[12px] font-bold text-slate-900 dark:text-white">10 min</span>
+                                        <ChevronRight size={14} className="text-slate-400" />
+                                    </div>
+                                </Marker>
+
+                                {/* Start Point Marker */}
+                                <Marker
+                                    latitude={routeStart.lat}
+                                    longitude={routeStart.lng}
+                                    anchor="center"
+                                >
+                                    <div className="w-6 h-6 bg-white dark:bg-slate-900 rounded-full border-4 border-slate-900 dark:border-white shadow-lg flex items-center justify-center">
+                                        <div className="w-2 h-2 bg-slate-900 dark:bg-white rounded-full" />
+                                    </div>
+                                </Marker>
+
+                                {/* Destination Hotel Pin */}
                                 <Marker
                                     latitude={coordinates.lat}
                                     longitude={coordinates.lng}
                                     anchor="bottom"
                                 >
                                     <div className="flex flex-col items-center">
-                                        {/* Pin body */}
-                                        <div className="bg-blue-600 text-white p-2 rounded-full shadow-lg shadow-blue-600/30 border-2 border-white">
-                                            <MapPin size={18} strokeWidth={2.5} />
+                                        <div className="bg-pink-600 text-white p-2.5 rounded-2xl shadow-xl border-2 border-white transform transition-transform hover:scale-110">
+                                            <div className="bg-white/20 p-1.5 rounded-lg">
+                                                <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center">
+                                                    <div className="w-2 h-2 bg-pink-600 rounded-full" />
+                                                </div>
+                                            </div>
                                         </div>
-                                        {/* Pin shadow */}
-                                        <div className="w-3 h-1 bg-black/20 rounded-full mt-0.5 blur-[1px]" />
+                                        <div className="w-4 h-1.5 bg-black/20 rounded-full mt-1 blur-[2px]" />
                                     </div>
                                 </Marker>
                             </Map>
 
+                            {/* Property Card Overlay */}
+                            {showCard && (
+                                <div className="absolute top-6 left-6 z-10 w-[320px] bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-200/50 dark:border-slate-700/50 animate-in fade-in slide-in-from-left-4 duration-500">
+                                    <div className="relative h-[180px]">
+                                        <img 
+                                            src={hotelImage} 
+                                            alt={name}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <button 
+                                            onClick={() => setShowCard(false)}
+                                            className="absolute top-3 right-3 p-1.5 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-md transition-colors"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                                            {[1, 2, 3, 4, 5].map((i) => (
+                                                <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === 1 ? 'bg-white' : 'bg-white/50'}`} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="p-5 space-y-2">
+                                        <h3 className="font-bold text-slate-900 dark:text-white text-lg leading-snug">{name}</h3>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                                            {description}
+                                        </p>
+                                        <p className="text-[12px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 pt-1">
+                                            <MapPin size={12} />
+                                            {address}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Re-center button */}
                             <button
                                 onClick={handleRecenter}
-                                className="absolute bottom-3 left-3 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1.5"
+                                className="absolute bottom-5 right-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 text-xs font-bold px-4 py-2.5 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-2 group"
                             >
-                                <Navigation size={12} />
+                                <Navigation size={14} className="group-hover:rotate-12 transition-transform" />
                                 Re-center
                             </button>
                         </>
                     ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-slate-200 dark:bg-slate-700">
-                            <span className="text-slate-400">Map not available</span>
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+                            <div className="text-center space-y-3">
+                                <div className="p-4 bg-slate-200 dark:bg-slate-800 rounded-full inline-block">
+                                    <MapPin size={32} className="text-slate-400" />
+                                </div>
+                                <p className="text-slate-500 font-medium">Map currently unavailable</p>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* Location Info */}
-                <div className="flex-1 space-y-6">
-                    <div>
-                        <div className="flex items-center gap-2 mb-2 lg:mb-3">
-                            <MapPin size={16} className="text-slate-900 dark:text-white lg:hidden" />
-                            <MapPin size={18} className="text-slate-900 dark:text-white hidden lg:block" />
-                            <h3 className="text-[12px] lg:text-sm font-bold text-slate-900 dark:text-white">Hotel Location</h3>
+                {/* Info Text below map for mobile accessibility */}
+                <div className="lg:hidden space-y-6 px-2">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                <MapPin size={18} className="text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <h3 className="font-bold text-slate-900 dark:text-white">Hotel Location</h3>
                         </div>
-                        <div className="space-y-1.5 lg:space-y-2">
-                            <p className="text-[11px] lg:text-sm text-slate-600 dark:text-slate-300">
+                        <div className="pl-11">
+                            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
                                 {address}
                             </p>
-                            {fullLocation && (
-                                <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">
-                                    {fullLocation}
-                                </p>
-                            )}
-                            {hasCoordinates && (
-                                <p className="text-xs text-slate-400 dark:text-slate-500 font-mono">
-                                    {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
-                                </p>
-                            )}
+                            <a
+                                href={googleMapsLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 mt-4 text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline group"
+                            >
+                                <Navigation size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                View in Google Maps
+                            </a>
                         </div>
-
-                        {/* Google Maps link */}
-                        <a
-                            href={googleMapsLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                        >
-                            <Navigation size={14} />
-                            View in Google Maps
-                        </a>
                     </div>
 
-                    <div>
-                        <div className="flex items-center gap-2 mb-2 lg:mb-3">
-                            <Building size={16} className="text-slate-900 dark:text-white lg:hidden" />
-                            <Building size={18} className="text-slate-900 dark:text-white hidden lg:block" />
-                            <h3 className="text-[12px] lg:text-sm font-bold text-slate-900 dark:text-white">Getting Around</h3>
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                                <Building size={18} className="text-purple-600 dark:text-purple-400" />
+                            </div>
+                            <h3 className="font-bold text-slate-900 dark:text-white">Getting Around</h3>
                         </div>
-                        <p className="text-[11px] lg:text-sm text-slate-600 dark:text-slate-300">
-                            Contact the property for transportation options and directions from nearby landmarks.
+                        <p className="pl-11 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Baguio is best explored by taxi or local jeepneys. Contact our concierge for personalized travel arrangements.
                         </p>
                     </div>
                 </div>
