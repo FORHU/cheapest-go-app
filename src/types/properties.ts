@@ -8,6 +8,7 @@ export interface SimpleProperty {
     reviews?: number;
     originalPrice?: number;
     price: number;
+    currency?: string;
     image: string;
     badge?: string;
     includes?: string[];
@@ -30,6 +31,7 @@ export interface Property {
     rating: number;
     reviews: number;
     price: number;
+    currency?: string;
     originalPrice?: number;
     image: string;
     images: string[];

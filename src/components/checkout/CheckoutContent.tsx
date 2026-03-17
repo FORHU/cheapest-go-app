@@ -13,7 +13,9 @@ import { useAuthStore, useUser } from '@/stores/authStore';
 import {
     useVoucherState,
     useCheckoutStore,
+    useCheckoutActions,
 } from '@/stores/checkoutStore';
+import { useUserCurrency } from '@/stores/searchStore';
 import {
     useBookingFlow,
     useCheckoutForm,
@@ -96,16 +98,24 @@ export function CheckoutContent() {
     const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
     const [isCreatingPayment, setIsCreatingPayment] = useState(false);
 
+    // Global currency sync
+    const globalCurrency = useUserCurrency();
+    const { syncWithUserCurrency } = useCheckoutActions();
+
+    useEffect(() => {
+        syncWithUserCurrency(globalCurrency);
+    }, [globalCurrency, syncWithUserCurrency]);
+
     // Reset success state from previous booking on mount
     useEffect(() => {
         setIsSuccess(false);
         setEmailSent(false);
 
-        // Sync currency from URL if present
+        // Sync currency from URL if present (initial load priority)
         const urlParams = new URLSearchParams(window.location.search);
         const urlCurrency = urlParams.get('currency');
         if (urlCurrency && urlCurrency !== selectedCurrency) {
-            useCheckoutStore.getState().setSelectedCurrency(urlCurrency);
+            syncWithUserCurrency(urlCurrency);
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

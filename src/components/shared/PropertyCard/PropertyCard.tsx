@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
 import { type Property } from '@/types';
 import { useUserCurrency } from '@/stores/searchStore';
-import { getCurrencySymbol } from '@/lib/currency';
+import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
 
 /**
  * Unified PropertyCard component variants
@@ -125,15 +125,23 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
     onClick,
     className = '',
 }) => {
-    const symbol = getCurrencySymbol(useUserCurrency());
+    const targetCurrency = useUserCurrency();
+    const symbol = getCurrencySymbol(targetCurrency);
     // Use property object values or individual props
     const imgSrc = property?.image || image || '';
     const displayName = property?.name || name || '';
     const displayLocation = property?.location || location || '';
     const displayRating = property?.rating || rating;
     const displayReviews = property?.reviews || reviews;
-    const displayPrice = property?.price || price || 0;
-    const displayOriginalPrice = property?.originalPrice || originalPrice;
+    
+    // Convert prices
+    const sourceCurrency = property?.currency || 'KRW';
+    const rawPrice = property?.price || price || 0;
+    const rawOriginalPrice = property?.originalPrice || originalPrice;
+    
+    const displayPrice = convertCurrency(rawPrice, sourceCurrency, targetCurrency);
+    const displayOriginalPrice = rawOriginalPrice ? convertCurrency(rawOriginalPrice, sourceCurrency, targetCurrency) : undefined;
+    
     const displayBadges = property?.badges || (badge ? [badge] : []);
 
     const badgeClasses = {
@@ -200,7 +208,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             </span>
                             {displayReviews && (
                                 <span className="text-[8px] sm:text-xs text-slate-500 dark:text-slate-400">
-                                    ({displayReviews.toLocaleString()} reviews)
+                                    ({displayReviews.toLocaleString(undefined, { maximumFractionDigits: 0 })} reviews)
                                 </span>
                             )}
                         </div>
@@ -223,11 +231,11 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                     <div className="mt-auto pt-1 sm:pt-2 flex items-baseline gap-0.5 sm:gap-1.5 flex-wrap">
                         {displayOriginalPrice && (
                             <span className="text-[8px] sm:text-xs text-slate-400 line-through">
-                                {symbol}{displayOriginalPrice.toLocaleString()}
+                                {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </span>
                         )}
                         <span className="text-xs sm:text-base lg:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                            {symbol}{displayPrice.toLocaleString()}
+                            {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             {priceLabel && (
                                 <span className="font-normal text-slate-500 text-[8px] sm:text-sm">
                                     {priceLabel}
@@ -250,8 +258,13 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
     onClick,
     className = '',
 }) => {
-    const symbol = getCurrencySymbol(useUserCurrency());
+    const targetCurrency = useUserCurrency();
+    const symbol = getCurrencySymbol(targetCurrency);
     if (!property) return null;
+
+    const sourceCurrency = property.currency || 'KRW';
+    const displayPrice = convertCurrency(property.price, sourceCurrency, targetCurrency);
+    const displayOriginalPrice = property.originalPrice ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) : undefined;
 
     // Get star rating from property (1-5 scale hotel stars)
     const hotelStars = Math.min(5, Math.max(1, Math.round((property.rating || 0) / 2)));
@@ -301,7 +314,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                     {/* Rating Section */}
                     <div className="flex items-center gap-1.5 md:gap-2">
                         <div className="px-1.5 py-0.5 lg:px-2 lg:py-1 bg-blue-600 text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg">
-                            {property.rating.toFixed(1)}
+                            {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                         </div>
                         <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
                             {getRatingLabel(property.rating)}
@@ -310,14 +323,14 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
 
                     {/* Price Section */}
                     <div className="text-right">
-                        {property.originalPrice && property.originalPrice > property.price && (
+                        {displayOriginalPrice && displayOriginalPrice > displayPrice && (
                             <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
-                                {symbol}{property.originalPrice.toLocaleString()}
+                                {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </div>
                         )}
                         <div className="flex items-baseline gap-1 md:gap-1.5">
                             <span className="text-[13px] landscape:text-[12px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
-                                {symbol}{property.price.toLocaleString()}
+                                {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </span>
                             <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
                                 /night
