@@ -107,6 +107,7 @@ interface AuthState {
         newPassword: string,
     ) => Promise<void>;
     syncProfile: (profile: Partial<User>) => void;
+    fetchAndSyncRole: () => Promise<void>;
 }
 
 // --- Store ---
@@ -292,6 +293,28 @@ export const useAuthStore = create<AuthState>((set, get) => {
                         ...profile
                     }
                 });
+            }
+        },
+        fetchAndSyncRole: async () => {
+            const { user } = get();
+            if (!user?.id) return;
+
+            try {
+                const supabase = getSupabase();
+                const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+
+                if (!error && profile?.role) {
+                    set({
+                        user: { ...get().user!, role: profile.role as 'user' | 'admin' },
+                    });
+                }
+            } catch (err) {
+                // Silent fallback — stale user_metadata role is used
+                console.error('[authStore] Failed to fetch profile role:', err);
             }
         },
     };

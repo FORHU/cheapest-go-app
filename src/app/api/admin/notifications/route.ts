@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server';
 import {
+    requireAdmin,
+    isAuthError,
     getNotifications,
     markNotificationAsRead,
     markAllNotificationsAsRead,
 } from '@/lib/server/admin';
-import { createClient } from '@/utils/supabase/server';
 
 export async function GET() {
     try {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-        }
+        const auth = await requireAdmin();
+        if (isAuthError(auth)) return auth;
 
         const notifications = await getNotifications();
         return NextResponse.json(notifications);
@@ -25,12 +22,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
     try {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-        }
+        const auth = await requireAdmin();
+        if (isAuthError(auth)) return auth;
 
         const body = await req.json();
         const { action, id } = body;

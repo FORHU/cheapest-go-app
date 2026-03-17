@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/authStore';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 export const AuthListener = () => {
-    const { syncSession } = useAuthStore();
+    const { syncSession, fetchAndSyncRole } = useAuthStore();
     const supabase = createClient();
 
     useEffect(() => {
@@ -15,6 +15,10 @@ export const AuthListener = () => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 syncSession(session);
+                // Fetch authoritative role from profiles table
+                if (session?.user) {
+                    fetchAndSyncRole();
+                }
             } catch (error) {
                 console.error('Error initializing auth:', error);
             }
@@ -24,12 +28,15 @@ export const AuthListener = () => {
         // Listen
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
             syncSession(session);
+            if (session?.user) {
+                fetchAndSyncRole();
+            }
         });
 
         return () => {
             subscription.unsubscribe();
         };
-    }, [syncSession]);
+    }, [syncSession, fetchAndSyncRole]);
 
     return null;
 };
