@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 export const AuthListener = () => {
     const { syncSession } = useAuthStore();
@@ -21,7 +22,7 @@ export const AuthListener = () => {
         initializeAuth();
 
         // Listen
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
             syncSession(session);
         });
 
