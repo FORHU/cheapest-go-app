@@ -50,6 +50,7 @@ interface SearchFetcherProps {
 
 type SearchState =
     | { status: 'loading' }
+    | { status: 'loading_slow' }
     | { status: 'needs_input'; originRaw: string; destinationRaw: string }
     | { status: 'success'; offers: FlightOffer[] }
     | { status: 'empty' }
@@ -58,8 +59,10 @@ type SearchState =
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+/** Soft warning — show "still searching" message */
+const SLOW_SEARCH_MS = 15_000;
 /** Hard client-side timeout. User sees an actionable state instead of infinite loading. */
-const SEARCH_TIMEOUT_MS = 25_000;
+const SEARCH_TIMEOUT_MS = 45_000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -203,7 +206,10 @@ export function SearchFetcher({
             return;
         }
 
-        // 2. Hard client-side timeout — user sees actionable state after 25s
+        // 2. Progressive timeout — soft warning at 15s, hard abort at 45s
+        const slowId = setTimeout(() => {
+            setState(prev => prev.status === 'loading' ? { status: 'loading_slow' } : prev);
+        }, SLOW_SEARCH_MS);
         const timeoutId = setTimeout(() => {
             controller.abort();
             setState({ status: 'timeout' });
@@ -229,6 +235,7 @@ export function SearchFetcher({
                 });
 
                 clearTimeout(timeoutId);
+                clearTimeout(slowId);
 
                 const json = await res.json();
 
@@ -244,6 +251,7 @@ export function SearchFetcher({
                 );
             } catch (err: any) {
                 clearTimeout(timeoutId);
+                clearTimeout(slowId);
                 if (err.name === 'AbortError') return; // Timeout already handled or cancelled
                 setState({ status: 'error', message: err.message || 'Network error' });
             }
@@ -251,6 +259,7 @@ export function SearchFetcher({
 
         run();
         return () => {
+            clearTimeout(slowId);
             clearTimeout(timeoutId);
             controller.abort();
         };
@@ -261,7 +270,8 @@ export function SearchFetcher({
     const rawOffers = state.status === 'success' ? state.offers : [];
     const airlines = useMemo(() => getAirlines(rawOffers), [rawOffers]);
     const filteredOffers = useMemo(() => applyFilters(rawOffers, filters), [rawOffers, filters]);
-    const isLoading = state.status === 'loading';
+    const isLoading = state.status === 'loading' || state.status === 'loading_slow';
+    const isSlowSearch = state.status === 'loading_slow';
     const hasResults = state.status === 'success';
 
     // ─── Non-result states (full-width, no sidebar) ───────────────────────────
@@ -325,6 +335,17 @@ export function SearchFetcher({
         <div className="space-y-4">
             {/* Provider status bar */}
             <ProviderStatus offers={rawOffers} loading={isLoading} />
+
+            {/* Progressive slow-search banner */}
+            {isSlowSearch && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-4 flex items-center gap-3">
+                    <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                    <div>
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Still searching...</p>
+                        <p className="text-xs text-amber-600/70 dark:text-amber-400/70">Flight providers are responding slowly. Hang tight, we&apos;re still looking for the best fares.</p>
+                    </div>
+                </div>
+            )}
 
             <div className="flex flex-col lg:flex-row gap-6">
                 {/* Filters sidebar */}
