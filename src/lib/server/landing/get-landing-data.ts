@@ -11,7 +11,7 @@ const EMPTY_RESULT = {
 };
 
 export const getLandingData = cache(async () => {
-    let supabase;
+    let supabase: Awaited<ReturnType<typeof createClient>>;
     try {
         supabase = await createClient();
     } catch (err) {
