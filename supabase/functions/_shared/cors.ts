@@ -29,7 +29,7 @@ export function getCorsHeaders(req: Request) {
         if (ALLOWED_ORIGINS.includes(origin)) return true;
         
         // Allow subdomains of cheapestgo.com and judayajohnray.com / judayajohmray.com
-        const domainPattern = /^(https?:\/\/)?([\w-]+\.)*(cheapestgo\.com|judayajohnray\.com|judayajohmray\.com|localhost)(:\d+)?$/i;
+        const domainPattern = /^(https?:\/\/)?([\w-]+\.)*(cheapestgo\.com|judayajohnray\.com|judayajohmray\.com|sslip\.io|localhost)(:\d+)?$/i;
         if (domainPattern.test(origin)) return true;
         
         return false;
