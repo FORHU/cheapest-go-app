@@ -6,9 +6,37 @@ import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPo
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
-import { formatTime, formatDuration, formatPrice } from '@/utils/flight-utils';
+import { formatTime, formatDuration } from '@/utils/flight-utils';
 import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency } from '@/lib/currency';
 import type { FarePolicy } from '@/types/flights';
+
+function formatPrice(amount: number, currency: string, targetCurrency?: string): string {
+    const from = currency?.toUpperCase();
+    const to = targetCurrency?.toUpperCase();
+
+    let displayAmount = amount;
+    let displayCurrency = from;
+
+    if (to && from !== to) {
+        displayAmount = convertCurrency(amount, from, to);
+        displayCurrency = to;
+    }
+
+    try {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: displayCurrency || 'USD',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(displayAmount);
+    } catch {
+        const symbols: Record<string, string> = { 'PHP': '₱', 'KRW': '₩', 'USD': '$' };
+        const symbol = symbols[displayCurrency] || displayCurrency;
+        return `${symbol}${Math.round(displayAmount).toLocaleString()}`;
+    }
+}
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
@@ -104,6 +132,7 @@ export default function FlightBookContent() {
         setStep,
         pollForBooking,
     } = useFlightBooking();
+    const targetCurrency = useUserCurrency();
 
     // ─── Loading ─────────────────────────────────────────────────────
 
@@ -280,7 +309,7 @@ export default function FlightBookContent() {
                         </div>
                         <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
                             <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">Total</span>
-                            <span className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency)}</span>
+                            <span className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</span>
                         </div>
                         {bookingResult.tickets && bookingResult.tickets.length > 0 && (
                             <div className="flex justify-between items-start pt-1">
@@ -370,7 +399,7 @@ export default function FlightBookContent() {
                             <div className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">{last.arrival.airport}</div>
                         </div>
                         <div className="ml-auto text-right pl-2 lg:pl-4 border-l border-slate-200 dark:border-slate-700">
-                            <div className="text-base lg:text-xl font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency)}</div>
+                            <div className="text-base lg:text-xl font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</div>
                             <div className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">total price</div>
                         </div>
                     </div>
@@ -646,7 +675,7 @@ export default function FlightBookContent() {
                                 </>
                             ) : (
                                 <>
-                                    Confirm Booking · {formatPrice(offer.price.total, offer.price.currency)}
+                                    Confirm Booking · {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
                                 </>
                             )}
                         </button>
