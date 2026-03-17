@@ -20,7 +20,7 @@ export function useDashboardData() {
                 .select('total_price')
                 .in('status', ['confirmed', 'ticketed']);
 
-            const revenue = confirmedData?.reduce((acc, curr) => acc + Number(curr.total_price), 0) || 0;
+            const revenue = confirmedData?.reduce((acc: number, curr: { total_price: number }) => acc + Number(curr.total_price), 0) || 0;
 
             const { count: pendingBookings } = await supabase
                 .from('unified_bookings')
@@ -71,7 +71,7 @@ export function useDashboardData() {
                 };
             });
 
-            data?.forEach(booking => {
+            data?.forEach((booking: { created_at: string }) => {
                 const date = new Date(booking.created_at);
                 const diffDays = Math.floor((new Date().getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
                 if (diffDays < 7) {
@@ -101,7 +101,7 @@ export function useDashboardData() {
 
             if (error) throw error;
 
-            const counts = data.reduce((acc: any, curr) => {
+            const counts = data.reduce((acc: Record<string, number>, curr: { type: string }) => {
                 acc[curr.type] = (acc[curr.type] || 0) + 1;
                 return acc;
             }, {});
@@ -128,7 +128,7 @@ export function useDashboardData() {
 
             if (error) throw error;
 
-            return data.map(item => ({
+            return data.map((item: { id: string; type: string; status: string; total_price: number; created_at: string; metadata: unknown }) => ({
                 id: item.id,
                 user: (item.metadata as any)?.passenger_name || (item.metadata as any)?.holder_name || 'Anonymous User',
                 action: `${item.status === 'cancelled' ? 'cancelled' : 'booked'} a ${item.type}`,

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
+    requireAdmin,
+    isAuthError,
     getBookingRawData,
     adminForceStatusRecheck,
     adminCancelBooking,
@@ -9,26 +11,11 @@ import {
     adminRetryBooking,
     adminCancelAwaitingTicket
 } from '@/lib/server/admin';
-import { createClient } from '@/utils/supabase/server';
 
 export async function POST(req: Request) {
     try {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-        if (profile?.role !== 'admin') {
-            return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
-        }
+        const auth = await requireAdmin();
+        if (isAuthError(auth)) return auth;
 
         const body = await req.json();
         const { action, bookingId, reason } = body;
@@ -47,7 +34,7 @@ export async function POST(req: Request) {
                 const refundResult = await adminForceRefund(bookingId, reason);
                 return NextResponse.json(refundResult);
             case 'refund_history':
-                const historyRes = await supabase
+                const historyRes = await auth.supabase
                     .from('refund_logs')
                     .select('*')
                     .or(`booking_id.eq.${bookingId},booking_id.eq.${bookingId.slice(0, 8).toUpperCase()}`)

@@ -92,12 +92,17 @@ export async function POST(req: NextRequest) {
         }
 
         // Trust the edge function's priceChanged flag — it handles currency
-        // normalization and uses a $1/equivalent tolerance to avoid false positives.
-        if (revalData.priceChanged) {
+        // normalization and uses a $5 tolerance to avoid false positives.
+        // Guard: newPrice=0 means price extraction failed, not a real $0 fare.
+        if (revalData.priceChanged && revalData.newPrice > 0) {
             return NextResponse.json({
                 success: false,
                 error: `Flight price changed from ${flightTotal} to ${revalData.newPrice}. Please restart booking.`
             }, { status: 409 });
+        }
+
+        if (revalData.priceChanged && revalData.newPrice === 0) {
+            console.warn(`[/book] Revalidation reported priceChanged but newPrice=0 — likely a parse failure. Proceeding with original price: ${flightTotal}`);
         }
 
         const serverFarePolicy = revalData.farePolicy || farePolicy;

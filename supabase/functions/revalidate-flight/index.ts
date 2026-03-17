@@ -316,6 +316,9 @@ async function revalidateMystifly(
     const fareInfo = itinerary.AirItineraryFareInfo ?? itinerary.AirItineraryPricingInfo ?? revalData;
     const itinFare = fareInfo.ItinTotalFare;
 
+    // Debug: log the structure we found so we can diagnose parsing failures
+    console.log(`[revalidate-flight] Parse paths: hasFareItinerary=${!!revalData.FareItinerary}, hasItinerary=${!!revalData.Itinerary}, hasPricedItineraries=${!!revalData.PricedItineraries}, hasItinTotalFare=${!!itinFare}, revalDataKeys=${Object.keys(revalData).join(',')}`);
+
     let currency: string;
     let newPrice = 0;
     let baseFare = 0;
@@ -371,6 +374,16 @@ async function revalidateMystifly(
             policyVersion: 'revalidated',
             policySource: 'mystifly_v1',
         };
+    }
+
+    // ── Safety: if price extraction returned 0 but Mystifly said Success,
+    //    this is a parsing issue, not a real $0 fare. Soft-pass with oldPrice.
+    if (newPrice === 0 && oldPrice > 0) {
+        console.warn(`[revalidate-flight] Price extraction returned 0 despite Success=true — soft-passing with oldPrice: ${oldPrice}`);
+        newPrice = oldPrice;
+        baseFare = oldPrice;
+        pricePerAdult = oldPrice;
+        currency = body.flightPayload.currency || 'USD';
     }
 
     // ── Extract seats remaining (same structure as search normalization) ──

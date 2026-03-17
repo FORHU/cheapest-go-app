@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Loader2 } from 'lucide-react';
@@ -80,6 +80,16 @@ export default function StripeEmbeddedCheckout({ clientSecret, onSuccess }: {
     clientSecret: string;
     onSuccess: (paymentIntentId: string) => void;
 }) {
+    // Clean up Stripe's floating badge/iframe elements when this component unmounts
+    useEffect(() => {
+        return () => {
+            // Stripe.js injects floating iframes and divs into <body> that persist after unmount
+            document.querySelectorAll(
+                'iframe[name*="privateStripe"], iframe[name*="__stripe"], div[class*="__PrivateStripeElement"]'
+            ).forEach(el => el.remove());
+        };
+    }, []);
+
     if (!clientSecret) return null;
 
     return (

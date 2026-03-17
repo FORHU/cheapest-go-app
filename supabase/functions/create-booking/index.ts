@@ -328,8 +328,11 @@ Deno.serve(async (req: Request) => {
 
                 // Build a user-friendly error — strip raw JSON dumps
                 const isDuffel500 = duffelErr.status >= 500;
+                const isExpired = /expired|no longer available|not found|gone/i.test(duffelErr.message ?? '');
                 const friendlyError = isDuffel500
                     ? 'The airline system is temporarily unavailable. Your payment has been automatically refunded.'
+                    : isExpired
+                    ? 'This flight offer has expired. Your payment has been automatically refunded. Please search again for current availability.'
                     : `${duffelErr.message}. Your payment has been automatically refunded.`;
                 console.error('[create-booking] Duffel error details:', duffelErr.message);
 

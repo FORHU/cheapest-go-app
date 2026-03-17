@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin';
+import { EXCHANGE_RATES } from '@/lib/currency';
 import { DashboardStats, AnalyticsData, SupplierBreakdown, RecentActivity, AdvancedAnalyticsData, RevenueTrend, ConversionFunnel, RouteMetric, DashboardData } from '@/types/admin';
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -20,7 +21,7 @@ export async function getDashboardData(): Promise<DashboardData> {
         supabase.from('flight_bookings').select('total_price').in('status', ['booked', 'ticketed'])
     ]);
 
-    const PHP_RATE = 56; // Mock conversion rate
+    const PHP_RATE = 1 / EXCHANGE_RATES['PHP']; // ~55.56 — computed from shared exchange rates
 
     // Gather all bookings for revenue calculations
     const allBookingsForRevenue = [
@@ -199,13 +200,15 @@ export async function getDashboardData(): Promise<DashboardData> {
         legacyHotelTrendData,
         legacyFlightTrendData,
         legacyFlightSegments,
-        quotesCountRes
+        quotesCountRes,
+        searchesCountRes
     ] = await Promise.all([
         supabase.from('unified_bookings').select('total_price, created_at, status, type, metadata, currency').in('status', ['confirmed', 'ticketed']),
         supabase.from('bookings').select('total_price, created_at, status, property_name, currency').in('status', ['confirmed', 'ticketed']),
         supabase.from('flight_bookings').select('id, total_price, created_at, status').in('status', ['booked', 'ticketed']),
         supabase.from('flight_segments').select('booking_id, destination'),
-        supabase.from('booking_sessions').select('*', { count: 'exact', head: true })
+        supabase.from('booking_sessions').select('*', { count: 'exact', head: true }),
+        supabase.from('flight_searches').select('*', { count: 'exact', head: true })
     ]);
 
     const allConfirmed = [
@@ -336,9 +339,8 @@ export async function getDashboardData(): Promise<DashboardData> {
             pendingRate: Math.round((pendingCount / totalCount) * 100)
         },
         conversionFunnel: {
-            // Estimate searches based on quotes if not logged
-            searches: (quotesCountRes.count || 0) * 8,
-            quotes: (quotesCountRes.count || 0),
+            searches: searchesCountRes.count || 0,
+            quotes: quotesCountRes.count || 0,
             confirmed: allConfirmed.length
         },
         topRoutes
@@ -393,31 +395,21 @@ export async function getAdvancedAnalytics(): Promise<AdvancedAnalyticsData> {
         };
     });
 
-    // 3. API Error Logs (Mocking since no explicit log table found, but following Edge Function pattern)
-    // In a real scenario, we'd fetch from a 'logs' table or Supabase Management API
-    const errorLogs = [
-        {
-            id: 'err-1',
-            timestamp: new Date().toISOString(),
-            functionName: 'mystifly-search',
-            message: 'Network timeout: Mystifly API unresponsive',
-            status: 504
-        },
-        {
-            id: 'err-2',
-            timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-            functionName: 'issue-ticket',
-            message: 'Insufficient balance for ticketing',
-            status: 400
-        },
-        {
-            id: 'err-3',
-            timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-            functionName: 'duffel-search',
-            message: 'Invalid API Key provided',
-            status: 401
-        }
-    ];
+    // 3. API Error Logs (from api_logs table)
+    const { data: apiErrors } = await supabase
+        .from('api_logs')
+        .select('id, created_at, provider, endpoint, error_message, response_status')
+        .not('error_message', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    const errorLogs = (apiErrors || []).map(log => ({
+        id: log.id,
+        timestamp: log.created_at,
+        functionName: `${log.provider}/${log.endpoint}`,
+        message: log.error_message,
+        status: log.response_status || 500
+    }));
 
     return {
         providerSuccess,

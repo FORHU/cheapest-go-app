@@ -20,7 +20,8 @@
       "Bash(pnpm install:*)",
       "Bash(find:*)",
       "Bash(xargs:*)",
-      "Bash(npx next lint:*)"
+      "Bash(npx next lint:*)",
+      "Bash(pnpm next build:*)"
     ]
   }
 }
