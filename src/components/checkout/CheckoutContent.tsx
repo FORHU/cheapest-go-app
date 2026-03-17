@@ -376,8 +376,8 @@ export function CheckoutContent() {
                         </div>
                     )}
 
-                    {/* Prebook Error */}
-                    {prebookError && !isAuthModalOpen && (
+                    {/* Prebook Error — suppress auth errors when not signed in (handled by banner above) */}
+                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && (
                         <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg text-red-600 dark:text-red-400">
                             <strong>Error:</strong> {prebookError}
                             <button

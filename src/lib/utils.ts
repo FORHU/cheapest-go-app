@@ -31,10 +31,11 @@ export function formatCurrency(
 export function formatDate(
     date: Date | string,
     options?: Intl.DateTimeFormatOptions,
-    locale = 'ko-KR'
+    locale = 'en-US'
 ): string {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return dateObj.toLocaleDateString(locale, options);
+    const defaultOptions: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+    return dateObj.toLocaleDateString(locale, options || defaultOptions);
 }
 
 /**

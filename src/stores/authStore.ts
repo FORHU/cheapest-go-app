@@ -24,7 +24,7 @@ import {
 
 // --- Helpers ---
 
-const supabase = createClient();
+const getSupabase = () => createClient();
 
 const extractUserProfile = (supabaseUser: SupabaseUser): User => {
     const meta = supabaseUser.user_metadata || {};
@@ -107,6 +107,7 @@ interface AuthState {
         newPassword: string,
     ) => Promise<void>;
     syncProfile: (profile: Partial<User>) => void;
+    fetchAndSyncRole: () => Promise<void>;
 }
 
 // --- Store ---
@@ -155,7 +156,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
             loginSchema.parse({ email, password });
             set({ email });
             return withLoading(async () => {
-                const { data, error } = await supabase.auth.signInWithPassword({
+                const { data, error } = await getSupabase().auth.signInWithPassword({
                     email,
                     password,
                 });
@@ -173,7 +174,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
             registerSchema.parse(data);
             set({ email: data.email });
             return withLoading(async () => {
-                const { data: authData, error } = await supabase.auth.signUp({
+                const { data: authData, error } = await getSupabase().auth.signUp({
                     email: data.email,
                     password: data.password,
                     options: {
@@ -200,14 +201,14 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
         logout: () =>
             withLoading(async () => {
-                const { error } = await supabase.auth.signOut();
+                const { error } = await getSupabase().auth.signOut();
                 if (error) throw error;
                 get().syncSession(null);
             }),
 
         socialLogin: async (provider) => {
             set({ isLoading: true });
-            const { error } = await supabase.auth.signInWithOAuth({
+            const { error } = await getSupabase().auth.signInWithOAuth({
                 provider,
                 options: {
                     redirectTo: buildRedirectUrl(
@@ -226,7 +227,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         resetPassword: (email) => {
             emailSchema.parse({ email });
             return withLoading(async () => {
-                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
                     redirectTo: `${window.location.origin}/auth/reset-password`,
                 });
                 if (error) throw error;
@@ -236,7 +237,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         resendConfirmation: (email) => {
             emailSchema.parse({ email });
             return withLoading(async () => {
-                const { error } = await supabase.auth.resend({
+                const { error } = await getSupabase().auth.resend({
                     type: "signup",
                     email,
                     options: { emailRedirectTo: buildRedirectUrl() },
@@ -248,7 +249,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         updateProfile: (data) => {
             profileSchema.parse(data);
             return withLoading(async () => {
-                const { data: userData, error } = await supabase.auth.updateUser({
+                const { data: userData, error } = await getSupabase().auth.updateUser({
                     data: {
                         first_name: data.firstName,
                         last_name: data.lastName,
@@ -271,13 +272,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
                 const { user } = get();
                 if (!user?.email) throw new Error("No user logged in");
 
-                const { error: signInError } = await supabase.auth.signInWithPassword({
+                const { error: signInError } = await getSupabase().auth.signInWithPassword({
                     email: user.email,
                     password: currentPassword,
                 });
                 if (signInError) throw new Error("Current password is incorrect");
 
-                const { error } = await supabase.auth.updateUser({
+                const { error } = await getSupabase().auth.updateUser({
                     password: newPassword,
                 });
                 if (error) throw error;
@@ -292,6 +293,28 @@ export const useAuthStore = create<AuthState>((set, get) => {
                         ...profile
                     }
                 });
+            }
+        },
+        fetchAndSyncRole: async () => {
+            const { user } = get();
+            if (!user?.id) return;
+
+            try {
+                const supabase = getSupabase();
+                const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+
+                if (!error && profile?.role) {
+                    set({
+                        user: { ...get().user!, role: profile.role as 'user' | 'admin' },
+                    });
+                }
+            } catch (err) {
+                // Silent fallback — stale user_metadata role is used
+                console.error('[authStore] Failed to fetch profile role:', err);
             }
         },
     };
