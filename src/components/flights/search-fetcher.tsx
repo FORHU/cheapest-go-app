@@ -173,6 +173,7 @@ export function SearchFetcher({
 }: SearchFetcherProps) {
     const router = useRouter();
     const [state, setState] = useState<SearchState>({ status: 'loading' });
+    const [retryKey, setRetryKey] = useState(0);
     const [filters, setFilters] = useState<FilterState>({
         sortBy: 'price',
         selectedAirlines: [],
@@ -254,7 +255,7 @@ export function SearchFetcher({
             controller.abort();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [origin, destination, departureDate, returnDate, adults, children, infants, cabinClass]);
+    }, [origin, destination, departureDate, returnDate, adults, children, infants, cabinClass, retryKey]);
 
     // ─── Derived data ─────────────────────────────────────────────────────────
     const rawOffers = state.status === 'success' ? state.offers : [];
@@ -292,7 +293,7 @@ export function SearchFetcher({
                 </p>
                 <div className="flex gap-3 justify-center mt-2">
                     <button
-                        onClick={() => setState({ status: 'loading' })}
+                        onClick={() => setRetryKey(k => k + 1)}
                         className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-full transition-colors">
                         Try Again
                     </button>
@@ -328,12 +329,39 @@ export function SearchFetcher({
             <div className="flex flex-col lg:flex-row gap-6">
                 {/* Filters sidebar */}
                 <div className="w-full lg:w-72 shrink-0">
-                    <div className={isLoading ? 'opacity-50 pointer-events-none' : ''}>
+                    {isLoading && rawOffers.length === 0 ? (
+                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 animate-pulse">
+                            <div className="space-y-3">
+                                <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
+                                <div className="space-y-2">
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="h-3 w-12 bg-slate-200 dark:bg-slate-700 rounded" />
+                                <div className="space-y-2">
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                                </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
+                                <div className="space-y-2">
+                                    <div className="h-5 w-32 bg-slate-100 dark:bg-slate-800 rounded" />
+                                    <div className="h-5 w-28 bg-slate-100 dark:bg-slate-800 rounded" />
+                                    <div className="h-5 w-36 bg-slate-100 dark:bg-slate-800 rounded" />
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
                         <FlightFilters
                             airlines={airlines}
                             onFilterChange={setFilters}
                         />
-                    </div>
+                    )}
                 </div>
 
                 {/* Main results area */}

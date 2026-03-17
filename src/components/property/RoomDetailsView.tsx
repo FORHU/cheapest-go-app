@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { type Property } from '@/types';
 import { ArrowLeft, User, Bed, MapPin, Check, Share2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useBookingActions } from '@/stores/bookingStore';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 
 // Strip HTML tags from text
 const stripHtml = (html: string): string => {
@@ -25,12 +27,13 @@ interface RoomDetailsViewProps {
     property: Property;
     room: any; // Using existing loose type for room
     onBack: () => void;
-    searchParams?: { checkIn?: string; checkOut?: string; adults?: number; children?: number };
+    searchParams?: { checkIn?: string; checkOut?: string; adults?: number; children?: number; currency?: string };
 }
 
 const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBack, searchParams }) => {
     const router = useRouter();
     const { setProperty, setSelectedRoom, setDates, setGuests } = useBookingActions();
+    const targetCurrency = useUserCurrency();
     const [currentPhotoIndex, setCurrentPhotoIndex] = React.useState(0);
     const [lightboxOpen, setLightboxOpen] = React.useState(false);
 
@@ -60,18 +63,23 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
         const checkOutDate = searchParams?.checkOut ? new Date(searchParams.checkOut) : new Date(2026, 0, 25);
         const roomName = room.name || room.rates?.[0]?.name || "Selected Room";
         const roomPrice = extractPrice(room.rates);
+        const sourceCurrency = searchParams?.currency || 'PHP';
+        const convertedPrice = convertCurrency(roomPrice, sourceCurrency, targetCurrency);
 
         setProperty(property);
         setSelectedRoom({
             id: roomName,
             offerId: room.offerId,
             title: roomName,
-            price: roomPrice
+            price: convertedPrice,
+            currency: targetCurrency
         });
         setDates(checkInDate, checkOutDate);
         setGuests(searchParams?.adults || 2, searchParams?.children || 0);
 
-        router.push('/checkout');
+        const params = new URLSearchParams();
+        params.set('currency', targetCurrency);
+        router.push(`/checkout?${params.toString()}`);
     };
 
     const goToPrev = () => setCurrentPhotoIndex((prev) => (prev === 0 ? photos.length - 1 : prev - 1));
@@ -217,8 +225,19 @@ const RoomDetailsView: React.FC<RoomDetailsViewProps> = ({ property, room, onBac
                     <div className="lg:col-span-1">
                         <div className="lg:sticky lg:top-24 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg p-4 md:p-6">
                             <div className="mb-6">
-                                <span className="text-3xl font-bold text-slate-900 dark:text-white">Price Varies</span>
-                                <span className="text-sm text-slate-500 block">Check dates for specific rates</span>
+                                {extractPrice(room.rates) > 0 ? (
+                                    <>
+                                        <span className="text-3xl font-bold text-slate-900 dark:text-white">
+                                            {getCurrencySymbol(targetCurrency)}{convertCurrency(extractPrice(room.rates), searchParams?.currency || 'PHP', targetCurrency).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        </span>
+                                        <span className="text-sm text-slate-500 block">per night</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="text-3xl font-bold text-slate-900 dark:text-white">Price Varies</span>
+                                        <span className="text-sm text-slate-500 block">Check dates for specific rates</span>
+                                    </>
+                                )}
                             </div>
 
                             <button

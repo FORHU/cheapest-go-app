@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
 import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/lib/schemas/flight';
 import type { FlightOffer } from '@/types/flights';
-import { supabase } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
@@ -106,10 +106,10 @@ export function useFlightBooking() {
         // Auto-revalidate the flight
         let isMounted = true;
         const revalidate = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await createClient().auth.getUser();
 
             try {
-                const { data, error } = await supabase.functions.invoke('revalidate-flight', {
+                const { data, error } = await createClient().functions.invoke('revalidate-flight', {
                     body: {
                         provider: parsedOffer.provider,
                         userId: user?.id || 'anonymous',
@@ -136,6 +136,7 @@ export function useFlightBooking() {
                     },
                     farePolicy: data.farePolicy,
                     policyChanged: data.priceChanged || (JSON.stringify(parsedOffer.farePolicy) !== JSON.stringify(data.farePolicy)),
+                    seatsRemaining: data.seatsRemaining ?? parsedOffer.seatsRemaining,
                 };
 
                 if (isMounted) {
@@ -176,7 +177,7 @@ export function useFlightBooking() {
     const bookMutation = useMutation({
         mutationFn: async ({ offer, passengers, contact }: { offer: FlightOffer, passengers: FlightPassengerForm[], contact: FlightContactForm }) => {
             // Client-side auth check (fast-fail UX; server re-verifies via JWT)
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await createClient().auth.getUser();
 
             if (!user) {
                 throw new Error("unauthenticated");

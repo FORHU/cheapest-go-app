@@ -77,6 +77,7 @@ export interface CheckoutState {
     setEmailSent: (value: boolean) => void;
     setFormErrors: (errors: Record<string, string>) => void;
     clearFormErrors: () => void;
+    syncWithUserCurrency: (currency: string) => void;
 
     // Voucher actions
     setVoucherCode: (code: string) => void;
@@ -172,6 +173,13 @@ export const useCheckoutStore = create<CheckoutState>()(
                 // Auto-switch currency based on billing country
                 if (name === 'cardCountry' && COUNTRY_CURRENCY_MAP[value]) {
                     set({ selectedCurrency: COUNTRY_CURRENCY_MAP[value] });
+                }
+            },
+
+            syncWithUserCurrency: (currency: string) => {
+                const { selectedCurrency } = get();
+                if (currency && currency !== selectedCurrency) {
+                    set({ selectedCurrency: currency });
                 }
             },
 
@@ -315,6 +323,7 @@ export const useCheckoutActions = () =>
             setEmailSent: state.setEmailSent,
             setFormErrors: state.setFormErrors,
             clearFormErrors: state.clearFormErrors,
+            syncWithUserCurrency: state.syncWithUserCurrency,
             handleInputChange: state.handleInputChange,
             autoFillFromUser: state.autoFillFromUser,
             resetForm: state.resetForm,

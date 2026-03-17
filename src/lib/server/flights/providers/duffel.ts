@@ -1,5 +1,6 @@
 import { FlightResult, FlightSearchParams } from "@/types/flights";
 import { env } from "@/utils/env";
+import { logApiCall } from "@/lib/server/api-logger";
 
 /**
  * Duffel provider adapter.
@@ -8,6 +9,12 @@ import { env } from "@/utils/env";
 export async function searchDuffel(params: FlightSearchParams): Promise<FlightResult[]> {
     const DUFFEL_API_URL = "https://api.duffel.com/air/offer_requests";
     const token = env.DUFFEL_TOKEN;
+
+    if (!token) {
+        console.warn("[Duffel] Missing DUFFEL_ACCESS_TOKEN — skipping");
+        return [];
+    }
+
     console.log(`[Duffel] Starting search: ${params.origin} -> ${params.destination} (${params.departureDate})`);
 
     // 1. Prepare Passengers
@@ -36,6 +43,8 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
         }
     };
 
+    const startMs = Date.now();
+
     try {
         const response = await fetch(DUFFEL_API_URL, {
             method: "POST",
@@ -44,19 +53,28 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
                 "Duffel-Version": "v2",
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(14000)
         });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(`Duffel API Error: ${response.status} - ${JSON.stringify(errorData)}`);
+            const errMsg = `Duffel API Error: ${response.status} - ${JSON.stringify(errorData)}`;
+            console.error(`[Duffel] API error (${response.status}):`, errMsg);
+            logApiCall({
+                provider: 'duffel', endpoint: DUFFEL_API_URL,
+                requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, children: params.children, infants: params.infants, cabinClass: params.cabinClass },
+                responseStatus: response.status, durationMs: Date.now() - startMs,
+                errorMessage: errMsg, searchId: params.searchId,
+            });
+            return [];
         }
 
         const json = await response.json();
         const offers = json.data?.offers || [];
 
         // 3. Normalize Results
-        return offers.map((offer: any): FlightResult => {
+        const results = offers.map((offer: any): FlightResult => {
             const firstSlice = offer.slices[0];
             const allSegments: any[] = [];
             
@@ -106,9 +124,25 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
             } as any; // Cast to any to allow extra fields for normalization
         });
 
+        logApiCall({
+            provider: 'duffel', endpoint: DUFFEL_API_URL,
+            requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, cabinClass: params.cabinClass },
+            responseStatus: 200, durationMs: Date.now() - startMs,
+            responseSummary: { resultCount: results.length },
+            searchId: params.searchId,
+        });
+
+        return results;
+
     } catch (error: any) {
+        logApiCall({
+            provider: 'duffel', endpoint: DUFFEL_API_URL,
+            requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate },
+            durationMs: Date.now() - startMs,
+            errorMessage: error.message, searchId: params.searchId,
+        });
         console.error("[Duffel] Search failed:", error.message);
-        throw error;
+        return [];
     }
 }
 

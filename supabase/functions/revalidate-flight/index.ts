@@ -33,6 +33,34 @@ import { revalidateFare, revalidateFareV2 } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyV1Policy, normalizeMystiflyV2Policy, normalizeDuffelPolicy } from '../_shared/farePolicy.ts';
 import type { NormalizedFarePolicy } from '../_shared/types.ts';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+/** Fire-and-forget insert to api_logs. Never throws. */
+function logEdgeApiCall(entry: {
+    provider: string; endpoint: string; durationMs: number;
+    requestParams?: Record<string, unknown>; responseStatus?: number;
+    responseSummary?: Record<string, unknown>; errorMessage?: string; userId?: string;
+}): void {
+    try {
+        const supabase = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        );
+        supabase.from('api_logs').insert({
+            provider: entry.provider,
+            endpoint: entry.endpoint,
+            method: 'POST',
+            request_params: entry.requestParams ?? null,
+            response_status: entry.responseStatus ?? null,
+            response_summary: entry.responseSummary ?? null,
+            duration_ms: entry.durationMs,
+            error_message: entry.errorMessage ?? null,
+            user_id: entry.userId ?? null,
+        }).then(({ error }: any) => {
+            if (error) console.error('[api-logger] Insert failed:', error.message);
+        }).catch(() => {});
+    } catch { /* never break the main flow */ }
+}
 
 
 
@@ -69,6 +97,8 @@ interface RevalidateResult {
     };
     /** Locked fare policy with policyVersion='revalidated'. */
     farePolicy?: NormalizedFarePolicy;
+    /** Seat count from the provider, if available. */
+    seatsRemaining?: number;
     error?: string;
     durationMs: number;
 }
@@ -139,9 +169,23 @@ Deno.serve(async (req: Request) => {
 
         console.log(`[revalidate-flight] Done: available=${result.seatsAvailable}, priceChanged=${result.priceChanged}, new=${result.newPrice} in ${result.durationMs}ms`);
 
+        logEdgeApiCall({
+            provider: body.provider, endpoint: 'revalidate-flight', durationMs: result.durationMs,
+            requestParams: { origin: (body.flightPayload.flight as any)?.segments?.[0]?.origin, oldPrice: oldPrice },
+            responseStatus: result.success ? 200 : 422, userId: body.userId,
+            responseSummary: { seatsAvailable: result.seatsAvailable, priceChanged: result.priceChanged, newPrice: result.newPrice, seatsRemaining: result.seatsRemaining },
+            errorMessage: result.error,
+        });
+
         return jsonResponse(corsHeaders, result, result.success ? 200 : 422);
     } catch (err: any) {
         console.error('[revalidate-flight] Error:', err.message);
+
+        logEdgeApiCall({
+            provider: 'unknown', endpoint: 'revalidate-flight', durationMs: Date.now() - startMs,
+            responseStatus: 500,
+            errorMessage: err.message || 'Revalidation failed',
+        });
 
         return jsonResponse(getCorsHeaders(req), {
             success: false,
@@ -262,7 +306,8 @@ async function revalidateMystifly(
 
     // ── Parse updated pricing ──
     const revalData = raw.Data ?? {};
-    const priceChanged = revalData.PriceChanged === true;
+    // NOTE: Ignore Mystifly's PriceChanged flag — sandbox often reports true
+    // for rounding/currency noise. We do our own comparison below.
 
     // Mystifly Sandbox occasionally uses 'Itinerary' or an array 'PricedItineraries' instead of 'FareItinerary' when PriceChanged is true.
     const itinerary = revalData.FareItinerary ?? revalData.Itinerary ??
@@ -328,6 +373,15 @@ async function revalidateMystifly(
         };
     }
 
+    // ── Extract seats remaining (same structure as search normalization) ──
+    let seatsRemaining: number | undefined;
+    const originDestOpts = itinerary.OriginDestinationOptions ?? itinerary.OriginDestinationOption;
+    if (Array.isArray(originDestOpts)) {
+        const firstOpt = originDestOpts[0]?.OriginDestinationOption?.[0] ?? originDestOpts[0];
+        const seatNum = firstOpt?.SeatsRemaining?.Number;
+        if (seatNum != null) seatsRemaining = Number(seatNum);
+    }
+
     const nowIso = new Date().toISOString();
 
     // ── Currency Normalization for comparison ──
@@ -349,7 +403,7 @@ async function revalidateMystifly(
 
     return {
         success: true,
-        priceChanged: priceChanged || Math.abs(normalizedNewPrice - oldPrice) > 1.0, // Increased tolerance to $1/58PHP to avoid micro-rounding noise
+        priceChanged: Math.abs(normalizedNewPrice - oldPrice) > 5.0, // Use our own comparison — $5 tolerance to avoid sandbox noise and minor rounding
         oldPrice,
         newPrice,
         seatsAvailable: true,
@@ -364,6 +418,7 @@ async function revalidateMystifly(
             traceId: newTraceId,
         },
         farePolicy: freshFarePolicy,
+        seatsRemaining,
         revalidatedAt: nowIso,
         durationMs: Date.now() - startMs,
     };

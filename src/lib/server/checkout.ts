@@ -1,4 +1,4 @@
-import { checkoutSchema, guestDetailsSchema } from '@/lib/schemas/checkout';
+import { userDetailsSchema, guestDetailsSchema } from '@/lib/schemas/checkout';
 import type { CheckoutFormData, BookingForType } from '@/components/checkout/types';
 import type { Guest } from '@/services/booking.service';
 
@@ -12,14 +12,11 @@ export function validateCheckoutForm(
 ): { success: true } | { success: false; errors: Record<string, string> } {
   const errors: Record<string, string> = {};
 
-  const mainResult = checkoutSchema.safeParse({
+  const mainResult = userDetailsSchema.safeParse({
     firstName: formData.firstName,
     lastName: formData.lastName,
     email: formData.email,
     phone: formData.phone,
-    cardNumber: formData.cardNumber,
-    expiry: formData.expiry,
-    cvc: formData.cvc,
   });
 
   if (!mainResult.success) {

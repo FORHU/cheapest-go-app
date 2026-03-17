@@ -9,6 +9,7 @@ export interface Room {
     offerId?: string;
     title: string;
     price: number;
+    currency?: string;
     description?: string;
 }
 

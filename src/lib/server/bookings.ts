@@ -42,6 +42,8 @@ export interface ConfirmAndSaveInput {
     remarks?: string;
   }>;
   payment: { method: string; transactionId?: string };
+  /** Stripe PaymentIntent ID — confirm route verifies payment before calling LiteAPI */
+  paymentIntentId?: string;
   // Property metadata (for DB record)
   propertyName: string;
   propertyImage?: string;

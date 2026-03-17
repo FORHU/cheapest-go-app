@@ -49,7 +49,19 @@ export async function duffelRequest<T = any>(
 
     if (!res.ok) {
         console.error(`[Duffel] Error ${res.status}:`, data);
-        throw new Error(`Duffel API Error: ${res.status} - ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+        // Extract user-friendly message from Duffel error response
+        const errors = typeof data === 'object' && data?.errors;
+        const requestId = typeof data === 'object' && data?.meta?.request_id;
+        const firstError = Array.isArray(errors) ? errors[0] : null;
+        const userMessage = firstError?.message || (typeof data === 'string' ? data : JSON.stringify(data));
+        const err = new Error(
+            res.status >= 500
+                ? `Duffel API Error: ${res.status} - ${userMessage}${requestId ? ` (request_id: ${requestId})` : ''}`
+                : `Duffel API Error: ${res.status} - ${userMessage}`
+        );
+        (err as any).status = res.status;
+        (err as any).requestId = requestId;
+        throw err;
     }
 
     return data as T;
