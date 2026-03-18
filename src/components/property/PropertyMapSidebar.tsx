@@ -5,6 +5,9 @@ import { MapPin, Navigation, Car, X, ChevronRight, GraduationCap, Trees, Utensil
 import { Map } from '@/components/ui/map';
 import { Marker, NavigationControl, GeolocateControl, Source, Layer } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
+import { env } from '@/utils/env';
+
+const GOOGLE_MAPS_SEARCH_URL = 'https://www.google.com/maps/search/?api=1';
 
 interface PropertyMapSidebarProps {
     hotelDetails?: {
@@ -118,7 +121,7 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
             try {
                 // Fetch Driving Route with full geometry overview
                 const drivingQuery = await fetch(
-                    `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates.lng},${coordinates.lat};${selectedNativePoi.coordinates.lng},${selectedNativePoi.coordinates.lat}?geometries=geojson&overview=full&steps=true&access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
+                    `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates.lng},${coordinates.lat};${selectedNativePoi.coordinates.lng},${selectedNativePoi.coordinates.lat}?geometries=geojson&overview=full&steps=true&access_token=${env.MAPBOX_TOKEN}`
                 );
                 const drivingJson = await drivingQuery.json();
                 
@@ -133,7 +136,7 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
 
                 // Fetch Walking Route (for time estimation only)
                 const walkingQuery = await fetch(
-                    `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates.lng},${coordinates.lat};${selectedNativePoi.coordinates.lng},${selectedNativePoi.coordinates.lat}?overview=full&steps=true&access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
+                    `https://api.mapbox.com/directions/v5/mapbox/walking/${coordinates.lng},${coordinates.lat};${selectedNativePoi.coordinates.lng},${selectedNativePoi.coordinates.lat}?overview=full&steps=true&access_token=${env.MAPBOX_TOKEN}`
                 );
                 const walkingJson = await walkingQuery.json();
                 
@@ -206,6 +209,32 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
     const handleLoad = useCallback(() => {
         setIsLoaded(true);
     }, []);
+
+    // Scale POI Icons for better visibility
+    React.useEffect(() => {
+        if (!isLoaded || !mapRef.current) return;
+        const map = mapRef.current.getMap();
+        
+        try {
+            const layers = map.getStyle()?.layers;
+            if (layers) {
+                layers.forEach(layer => {
+                    // Target POIs, landmarks, and transit labels
+                    if (layer.type === 'symbol' && 
+                        (layer.id.includes('poi') || 
+                         layer.id.includes('landmark') || 
+                         layer.id.includes('point-of-interest') ||
+                         layer.id.includes('transit'))) {
+                        map.setLayoutProperty(layer.id, 'icon-size', 3.0);
+                        // Also make the text labels very large for accessibility
+                        map.setLayoutProperty(layer.id, 'text-size', 18);
+                    }
+                });
+            }
+        } catch (err) {
+            console.warn('Could not scale POI icons:', err);
+        }
+    }, [isLoaded]);
 
     // midpoint for travel time label
     const midpoint = selectedNativePoi && routeGeometry ? {
@@ -314,7 +343,7 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
                                         </Marker>
                                     )}
 
-                                    {/* Hotel Pin is also Clickable */}
+                                    {/* Hotel Pin - Precision SVG Teardrop */}
                                     <Marker
                                         latitude={coordinates.lat}
                                         longitude={coordinates.lng}
@@ -325,17 +354,25 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
                                         }}
                                     >
                                         <div className="flex flex-col items-center cursor-pointer group">
-                                            <div className={`p-2.5 rounded-2xl shadow-xl border-2 border-white transform transition-transform group-hover:scale-110 ${activePoiId === 'hotel' || !activePoiId ? 'bg-pink-600' : 'bg-slate-400 opacity-60'}`}>
-                                                <div className="bg-white/20 p-1.5 rounded-lg">
-                                                    <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center">
-                                                        <div className={`w-2 h-2 rounded-full ${activePoiId === 'hotel' || !activePoiId ? 'bg-pink-600' : 'bg-slate-400'}`} />
-                                                    </div>
-                                                </div>
+                                            {/* SVG Teardrop Pin */}
+                                            <div className="relative mb-1 transform transition-all duration-300 group-hover:scale-110 group-active:scale-95 drop-shadow-xl">
+                                                <svg width="36" height="42" viewBox="0 0 36 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path 
+                                                        d="M18 42C18 42 36 28.1143 36 18C36 7.88571 27.9411 0 18 0C8.05888 0 0 7.88571 0 18C0 28.1143 18 42 18 42Z" 
+                                                        fill={activePoiId === 'hotel' || !activePoiId ? '#db2777' : '#64748b'}
+                                                        stroke="white"
+                                                        strokeWidth="2"
+                                                    />
+                                                    <circle cx="18" cy="18" r="6" fill="white" />
+                                                </svg>
                                             </div>
-                                            <span className="mt-1 px-3 py-1 bg-white/95 dark:bg-slate-800 dark:text-white rounded-lg shadow-md text-[10px] font-black text-pink-600 uppercase tracking-wider border border-pink-100 dark:border-pink-900/30">
-                                                {name}
-                                            </span>
-                                            <div className="w-4 h-1.5 bg-black/20 rounded-full mt-1 blur-[2px]" />
+                                            
+                                            {/* Minimal Label */}
+                                            <div className="px-2 py-0.5 bg-white/95 dark:bg-slate-800 rounded shadow-md border border-slate-200 dark:border-slate-700">
+                                                <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+                                                    {name}
+                                                </span>
+                                            </div>
                                         </div>
                                     </Marker>
                                 </>
@@ -377,7 +414,7 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
 
                                         <div className="pt-2">
                                             <a 
-                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayInfo.name)}&query_place_id=${displayInfo.coordinates.lat},${displayInfo.coordinates.lng}`}
+                                                href={`${GOOGLE_MAPS_SEARCH_URL}&query=${encodeURIComponent(displayInfo.name)}&query_place_id=${displayInfo.coordinates.lat},${displayInfo.coordinates.lng}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
