@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/utils/supabase/admin';
 import { EXCHANGE_RATES } from '@/lib/currency';
-import { DashboardStats, AnalyticsData, SupplierBreakdown, RecentActivity, AdvancedAnalyticsData, RevenueTrend, ConversionFunnel, RouteMetric, DashboardData } from '@/types/admin';
+import { DashboardStats, AnalyticsData, SupplierBreakdown, RecentActivity, AdvancedAnalyticsData, RevenueTrend, ConversionFunnel, RouteMetric, DashboardData, ApiLogRow } from '@/types/admin';
 
 export async function getDashboardData(): Promise<DashboardData> {
     const supabase = createAdminClient();
@@ -416,4 +416,24 @@ export async function getAdvancedAnalytics(): Promise<AdvancedAnalyticsData> {
         ticketingLatency,
         errorLogs
     };
+}
+
+/**
+ * Fetch all recent API logs for the debug console.
+ */
+export async function getApiLogs(): Promise<ApiLogRow[]> {
+    const supabase = createAdminClient();
+
+    const { data, error } = await supabase
+        .from('api_logs')
+        .select('id, provider, endpoint, method, request_params, response_status, response_summary, duration_ms, error_message, user_id, search_id, created_at')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+    if (error) {
+        console.error('[getApiLogs] Error:', error.message);
+        return [];
+    }
+
+    return (data || []) as ApiLogRow[];
 }
