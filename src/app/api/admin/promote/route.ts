@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, isAuthError } from '@/lib/server/admin';
+import { createNotification } from '@/lib/server/admin/notify';
 import { createAdminClient } from '@/utils/supabase/admin';
 
 export async function POST(req: Request) {
@@ -60,6 +61,12 @@ export async function POST(req: Request) {
         }
 
         console.log(`[Admin Promote] User ${userId} role updated to ${newRole} by ${auth.user.email}`);
+
+        createNotification(
+            `User ${newRole === 'admin' ? 'Promoted' : 'Demoted'}`,
+            `User ${userId} role changed to ${newRole} by ${auth.user.email}.`,
+            'system'
+        );
 
         return NextResponse.json({
             success: true,

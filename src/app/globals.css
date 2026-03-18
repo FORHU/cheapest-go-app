@@ -385,4 +385,18 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Dark mode select & option styling — prevents white flash in dropdowns */
+  .dark select {
+    color-scheme: dark;
+  }
+
+  .dark select option {
+    background-color: #0f172a; /* slate-950 */
+    color: #e2e8f0; /* slate-200 */
+  }
+
+  select option {
+    padding: 8px 12px;
+  }
 }

@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { cancelBooking } from '@/lib/server/bookings';
+import { createNotification } from '@/lib/server/admin/notify';
 import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,11 @@ export async function POST(req: Request) {
         // Revalidate trips page after cancellation
         if (data.success) {
             revalidatePath('/trips');
+            createNotification(
+                'Booking Cancelled',
+                `Booking ${bookingId} cancelled by ${user.email}.`,
+                'booking'
+            );
         }
 
         return Response.json(data);
