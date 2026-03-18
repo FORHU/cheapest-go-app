@@ -152,7 +152,7 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
                     onClick={onToggleCollapse}
                     className="w-10 h-10 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-600/10 transition-all hidden md:flex"
                 >
-                    <div className={`transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}>
+                    <div className={`transition-transform duration-300 ${isCollapsed ? '' : 'rotate-180'}`}>
                         <ChevronRight size={20} />
                     </div>
                 </Button>

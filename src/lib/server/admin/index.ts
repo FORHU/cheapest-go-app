@@ -3,6 +3,8 @@ export * from './dashboard';
 export * from './bookings';
 export * from './customers';
 export * from './notifications';
+export * from './notify';
 export * from './recovery';
+export * from './settings';
 export * from './suppliers';
 export * from './users';

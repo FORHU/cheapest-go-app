@@ -1,6 +1,7 @@
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { confirmAndSaveBooking } from '@/lib/server/bookings';
 import { stripe } from '@/lib/stripe/server';
+import { createNotification } from '@/lib/server/admin/notify';
 import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
@@ -43,6 +44,11 @@ export async function POST(req: Request) {
 
         if (result.success) {
             revalidatePath('/trips');
+            createNotification(
+                'Hotel Booking Confirmed',
+                `Booking ${result.data?.bookingId || ''} confirmed for ${user.email}.`,
+                'booking'
+            );
             return Response.json(result);
         }
 
