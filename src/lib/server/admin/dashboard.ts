@@ -1,9 +1,15 @@
 import { createAdminClient } from '@/utils/supabase/admin';
 import { EXCHANGE_RATES } from '@/lib/currency';
 import { DashboardStats, AnalyticsData, SupplierBreakdown, RecentActivity, AdvancedAnalyticsData, RevenueTrend, ConversionFunnel, RouteMetric, DashboardData, ApiLogRow } from '@/types/admin';
+import { getProviderIntegrations } from './providers';
+import { getAdminSettings } from './settings';
 
 export async function getDashboardData(): Promise<DashboardData> {
     const supabase = createAdminClient();
+
+    // Fire provider integrations + admin settings early (concurrent with DB queries)
+    const providerIntegrationsPromise = getProviderIntegrations();
+    const adminSettingsPromise = getAdminSettings();
 
     // 1. Fetch Stats from all tables
     const [unifiedRes, legacyHotelRes, legacyFlightRes] = await Promise.all([
@@ -343,7 +349,9 @@ export async function getDashboardData(): Promise<DashboardData> {
             quotes: quotesCountRes.count || 0,
             confirmed: allConfirmed.length
         },
-        topRoutes
+        topRoutes,
+        providerIntegrations: await providerIntegrationsPromise,
+        defaultCurrency: ((await adminSettingsPromise).default_currency as string) || 'USD',
     };
 }
 
