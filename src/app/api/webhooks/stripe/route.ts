@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
+import { createNotification } from '@/lib/server/admin/notify';
 import { env } from '@/utils/env';
 
 // Lazy-initialize Stripe to avoid module-level crash during Vercel build
@@ -101,6 +102,11 @@ export async function POST(req: NextRequest) {
 
             if (bookingData.success) {
                 console.log(`[Webhook] Mystifly booking complete. PNR: ${bookingData.pnr} Status: ${bookingData.status}`);
+                createNotification(
+                    'Flight Booking Confirmed',
+                    `Mystifly booking ${bookingData.pnr || bookingSessionId} confirmed.`,
+                    'booking'
+                );
                 // Send confirmation email — fire-and-forget (webhook fires exactly once)
                 fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, pi.metadata?.provider ?? 'mystifly')
                     .catch(e => console.error('[Webhook] Mystifly email error:', e));
@@ -163,6 +169,11 @@ export async function POST(req: NextRequest) {
 
             // Send confirmation email — fire-and-forget, only on fresh booking
             if (!bookingData.alreadyBooked) {
+                createNotification(
+                    'Flight Booking Confirmed',
+                    `Duffel booking ${bookingData.pnr || bookingSessionId} confirmed.`,
+                    'booking'
+                );
                 fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, 'duffel')
                     .catch(e => console.error('[Webhook] Duffel email error:', e));
             }

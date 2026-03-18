@@ -78,7 +78,9 @@ export async function getCustomersList(): Promise<Customer[]> {
 
         const ninetyDaysAgo = new Date();
         ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-        const status: 'active' | 'inactive' = lastBookingDate && lastBookingDate >= ninetyDaysAgo ? 'active' : 'inactive';
+        const status: 'active' | 'inactive' | 'banned' = profile.banned_at
+            ? 'banned'
+            : lastBookingDate && lastBookingDate >= ninetyDaysAgo ? 'active' : 'inactive';
 
         return {
             id: profile.id,

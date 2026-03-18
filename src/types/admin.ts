@@ -187,3 +187,18 @@ export interface MonitoringData {
         awaitingCount: number;
     };
 }
+
+export interface ApiLogRow {
+    id: string;
+    provider: string;
+    endpoint: string;
+    method: string;
+    request_params: Record<string, unknown> | null;
+    response_status: number | null;
+    response_summary: Record<string, unknown> | null;
+    duration_ms: number;
+    error_message: string | null;
+    user_id: string | null;
+    search_id: string | null;
+    created_at: string;
+}

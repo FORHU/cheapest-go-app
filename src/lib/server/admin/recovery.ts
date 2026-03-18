@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin';
 import { stripe } from '@/lib/stripe/server';
 import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
+import { createNotification } from './notify';
 import { RecoveryActionResult, MonitoringData } from '@/types/admin';
 
 // ============================================================================
@@ -251,6 +252,12 @@ export async function adminCancelBooking(bookingId: string): Promise<RecoveryAct
             return { success: false, message: `Failed to update: ${updateError.message}` };
         }
 
+        createNotification(
+            'Booking Force-Cancelled',
+            `Admin cancelled booking ${bookingId} (was "${booking.status}").`,
+            'alert'
+        );
+
         return {
             success: true,
             message: `Booking cancelled successfully (was "${booking.status}", table: ${sourceTable})`,
@@ -391,6 +398,12 @@ export async function adminForceRefund(bookingId: string, reason?: string): Prom
             };
         }
 
+        createNotification(
+            'Booking Force-Refunded',
+            `Admin refunded booking ${bookingId}.${reason ? ` Reason: ${reason}` : ''}`,
+            'alert'
+        );
+
         return {
             success: true,
             message: `Booking marked as refunded (was "${booking.status}", table: ${sourceTable}). ${reason ? `Reason: ${reason}. ` : ''}Remember to process the actual payment refund via the provider dashboard.`,
@@ -456,6 +469,12 @@ export async function adminRestoreBooking(bookingId: string): Promise<RecoveryAc
         if (updateError) {
             return { success: false, message: `Failed to update: ${updateError.message}` };
         }
+
+        createNotification(
+            'Booking Restored',
+            `Admin restored booking ${bookingId} from "${booking.status}" to "${previousStatus}".`,
+            'system'
+        );
 
         return {
             success: true,
@@ -767,6 +786,12 @@ export async function adminCancelAwaitingTicket(bookingId: string): Promise<Reco
             console.error('[adminCancelAwaitingTicket] Failed to send emails:', emailErr);
             // Non-blocking log
         }
+
+        createNotification(
+            'Awaiting Ticket Cancelled',
+            `Admin cancelled awaiting-ticket booking ${booking.pnr || bookingId} and issued refund.`,
+            'alert'
+        );
 
         return {
             success: true,

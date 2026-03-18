@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { createNotification } from '@/lib/server/admin/notify';
 import { env } from '@/utils/env';
 
 /**
@@ -107,6 +108,11 @@ export async function POST(req: NextRequest) {
 
             if (!updateErr) {
                 console.log(`[Flight Webhook] Updated booking ${booking.id} to ${newStatus}`);
+                createNotification(
+                    `Flight ${eventType === 'ticketed' ? 'Ticketed' : eventType === 'refunded' ? 'Refunded' : 'Updated'}`,
+                    `Booking ${booking.pnr || booking.id} status updated to ${newStatus} by ${provider}.`,
+                    'booking'
+                );
 
                 // ─── 4. Financial Ledger Logging ────────────────────────
                 if (newStatus === 'refunded' && refundAmount > 0) {

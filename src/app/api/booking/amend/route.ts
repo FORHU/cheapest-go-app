@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { amendBooking } from '@/lib/server/bookings';
+import { createNotification } from '@/lib/server/admin/notify';
 import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,11 @@ export async function POST(req: Request) {
         // Revalidate trips page after amendment
         if (data.success) {
             revalidatePath('/trips');
+            createNotification(
+                'Booking Amended',
+                `Booking amended by ${user.email}.`,
+                'booking'
+            );
         }
 
         return Response.json(data);
