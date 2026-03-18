@@ -88,6 +88,8 @@ export interface DashboardData {
     revenueStats: RevenueStats;
     conversionFunnel: ConversionFunnel;
     topRoutes: RouteMetric[];
+    providerIntegrations: ProviderIntegrationsData;
+    defaultCurrency: string;
 }
 
 export interface Booking {
@@ -186,6 +188,48 @@ export interface MonitoringData {
         mismatchCount: number;
         awaitingCount: number;
     };
+}
+
+// Provider Integration types
+
+export type ProviderStatus = 'healthy' | 'error' | 'not_configured';
+
+export interface StripeProviderData {
+    status: ProviderStatus;
+    balance: number | null;
+    recentPaymentCount: number | null;
+    totalVolume: number | null;
+    refundCount: number | null;
+    errorMessage?: string;
+}
+
+export interface ResendProviderData {
+    status: ProviderStatus;
+    recentEmailCount: number | null;
+    deliveryRate: number | null;
+    domainStatus: string | null;
+    errorMessage?: string;
+}
+
+export interface DuffelProviderData {
+    status: ProviderStatus;
+    recentOrderCount: number | null;
+    lastOrderDate: string | null;
+    errorMessage?: string;
+}
+
+export interface MystiflyProviderData {
+    status: ProviderStatus;
+    bookingCount: number | null;
+    configStatus: string | null;
+    errorMessage?: string;
+}
+
+export interface ProviderIntegrationsData {
+    stripe: StripeProviderData;
+    resend: ResendProviderData;
+    duffel: DuffelProviderData;
+    mystifly: MystiflyProviderData;
 }
 
 export interface ApiLogRow {
