@@ -43,12 +43,73 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
     const [isActivityCollapsed, setIsActivityCollapsed] = useState(false);
     const [isProvidersCollapsed, setIsProvidersCollapsed] = useState(false);
 
+    const handleDownloadReport = () => {
+        try {
+            // Generate comprehensive dashboard report as CSV
+            const today = new Date().toISOString().split('T')[0];
+
+            // Overview Stats Section
+            const overviewHeaders = ['Metric', 'Value', 'Currency'];
+            const overviewRows = [
+                ['Total Revenue', liveStats.revenue, defaultCurrency],
+                ['Total Bookings', liveStats.totalBookings, ''],
+                ['Pending Bookings', liveStats.pendingBookings, ''],
+                ['Cancelled Bookings', liveStats.cancelledBookings, ''],
+            ];
+
+            // Financial Metrics Section
+            const financialHeaders = ['Metric', 'Value', 'Currency'];
+            const financialRows = [
+                ['Daily Revenue', convertCurrency(revenueStats.dailyRevenue, 'PHP', defaultCurrency), defaultCurrency],
+                ['Monthly Revenue', convertCurrency(revenueStats.monthlyRevenue, 'PHP', defaultCurrency), defaultCurrency],
+                ['Total Profit', convertCurrency(revenueStats.totalProfit, 'PHP', defaultCurrency), defaultCurrency],
+                ['Refund Rate', `${revenueStats.refundRate}%`, ''],
+                ['Failed Rate', `${revenueStats.failedRate}%`, ''],
+                ['Pending Rate', `${revenueStats.pendingRate}%`, ''],
+            ];
+
+            // Combine sections
+            const csvContent = [
+                `Dashboard Report - ${today}`,
+                '',
+                'OVERVIEW STATISTICS',
+                overviewHeaders.join(','),
+                ...overviewRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+                '',
+                'FINANCIAL METRICS',
+                financialHeaders.join(','),
+                ...financialRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+                '',
+                `Generated at: ${new Date().toLocaleString()}`,
+            ].join('\n');
+
+            // Create download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `dashboard-report-${today}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            console.log('Dashboard report exported successfully');
+        } catch (error) {
+            console.error('Failed to export dashboard report:', error);
+        }
+    };
+
     return (
         <div className="pt-12 space-y-12 pb-20">
             <HeaderTitle
                 actions={
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" className="bg-blue-600 hover:bg-blue-500 rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0">
+                        <Button
+                            variant="outline"
+                            className="bg-blue-600 hover:bg-blue-500 rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0"
+                            onClick={handleDownloadReport}
+                        >
                             <FileDown size={18} />
                             Download Report
                         </Button>
