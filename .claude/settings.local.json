@@ -22,7 +22,8 @@
       "Bash(xargs:*)",
       "Bash(npx next lint:*)",
       "Bash(pnpm next build:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(grep:*)"
     ]
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { createNotification } from '@/lib/server/admin/notify';
+import { sendFlightBookingConfirmationEmail, sendFlightRefundEmail } from '@/lib/server/email';
 import { env } from '@/utils/env';
 
 /**
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
         // ─── 2. Locate Active Booking ─────────────────────────────────
         const { data: booking } = await supabase
             .from('flight_bookings')
-            .select('id, status, provider, pnr')
+            .select('id, status, provider, pnr, passenger_email, passenger_name, segments, total_price, currency')
             .or(`provider_order_id.eq.${referenceId},pnr.eq.${referenceId}`)
             .single();
 
@@ -114,7 +115,53 @@ export async function POST(req: NextRequest) {
                     'booking'
                 );
 
-                // ─── 4. Financial Ledger Logging ────────────────────────
+                // ─── 4. Email Notification to Passenger ──────────────────
+                const passengerEmail = booking.passenger_email;
+                const passengerName = booking.passenger_name || 'Valued Customer';
+                const segments = Array.isArray(booking.segments) ? booking.segments : [];
+
+                if (passengerEmail) {
+                    if (newStatus === 'ticketed') {
+                        sendFlightBookingConfirmationEmail({
+                            bookingId: String(booking.id),
+                            pnr: booking.pnr || '',
+                            email: passengerEmail,
+                            passengerName,
+                            provider: booking.provider || provider,
+                            segments: segments.map((s: any) => ({
+                                airline: s.airline || s.carrier || '',
+                                airlineName: s.airlineName || s.carrier_name || '',
+                                flightNumber: s.flightNumber || s.flight_number || '',
+                                origin: s.origin || s.departure_iata || '',
+                                destination: s.destination || s.arrival_iata || '',
+                                departureTime: s.departureTime || s.departing_at || '',
+                                arrivalTime: s.arrivalTime || s.arriving_at || '',
+                            })),
+                            totalPrice: booking.total_price || 0,
+                            currency: booking.currency || 'USD',
+                        }).catch(e => console.error('[Flight Webhook] Ticketed email error:', e));
+                    } else if (newStatus === 'refunded' && refundAmount > 0) {
+                        sendFlightRefundEmail({
+                            bookingId: String(booking.id),
+                            pnr: booking.pnr || '',
+                            email: passengerEmail,
+                            passengerName,
+                            segments: segments.map((s: any) => ({
+                                airline: s.airline || s.carrier || '',
+                                airlineName: s.airlineName || s.carrier_name || '',
+                                flightNumber: s.flightNumber || s.flight_number || '',
+                                origin: s.origin || s.departure_iata || '',
+                                destination: s.destination || s.arrival_iata || '',
+                                departureTime: s.departureTime || s.departing_at || '',
+                                arrivalTime: s.arrivalTime || s.arriving_at || '',
+                            })),
+                            totalPrice: refundAmount,
+                            currency: currency,
+                        }).catch(e => console.error('[Flight Webhook] Refund email error:', e));
+                    }
+                }
+
+                // ─── 5. Financial Ledger Logging ────────────────────────
                 if (newStatus === 'refunded' && refundAmount > 0) {
                     await supabase
                         .from('booking_financial_events')
