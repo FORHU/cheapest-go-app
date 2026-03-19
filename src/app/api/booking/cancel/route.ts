@@ -1,6 +1,7 @@
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { cancelBooking } from '@/lib/server/bookings';
 import { createNotification } from '@/lib/server/admin/notify';
+import { sendHotelCancellationEmail } from '@/lib/server/email';
 import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,29 @@ export async function POST(req: Request) {
                 `Booking ${bookingId} cancelled by ${user.email}.`,
                 'booking'
             );
+
+            // Send cancellation email to guest (fire-and-forget)
+            const { data: booking } = await supabase
+                .from('bookings')
+                .select('property_name, room_name, check_in, check_out, holder_email, holder_first_name, holder_last_name')
+                .eq('booking_id', bookingId)
+                .single();
+
+            if (booking) {
+                const refundData = data.data?.refund;
+                sendHotelCancellationEmail({
+                    bookingId,
+                    email: booking.holder_email || user.email || '',
+                    guestName: `${booking.holder_first_name || ''} ${booking.holder_last_name || ''}`.trim(),
+                    hotelName: booking.property_name || '',
+                    roomName: booking.room_name || '',
+                    checkIn: booking.check_in || '',
+                    checkOut: booking.check_out || '',
+                    refundAmount: refundData?.amount,
+                    currency: refundData?.currency,
+                    refundStatus: refundData?.status || (data.data?.status?.includes('refund') ? 'pending' : 'non_refundable'),
+                }).catch(e => console.error('[cancel] Email error:', e));
+            }
         }
 
         return Response.json(data);

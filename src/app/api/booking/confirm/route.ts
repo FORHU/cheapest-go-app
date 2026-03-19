@@ -2,6 +2,7 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { confirmAndSaveBooking } from '@/lib/server/bookings';
 import { stripe } from '@/lib/stripe/server';
 import { createNotification } from '@/lib/server/admin/notify';
+import { sendBookingConfirmationEmail } from '@/lib/server/email';
 import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,36 @@ export async function POST(req: Request) {
                 `Booking ${result.data?.bookingId || ''} confirmed for ${user.email}.`,
                 'booking'
             );
+
+            // Send confirmation email to guest (fire-and-forget, non-blocking)
+            sendBookingConfirmationEmail({
+                bookingId: result.data?.bookingId || '',
+                email: body.holder?.email || user.email || '',
+                guestName: `${body.holder?.firstName || ''} ${body.holder?.lastName || ''}`.trim(),
+                hotelName: body.propertyName || '',
+                roomName: body.roomName || '',
+                checkIn: body.checkIn || '',
+                checkOut: body.checkOut || '',
+                totalPrice: result.data?.totalPrice || 0,
+                currency: result.data?.currency || body.currency || 'PHP',
+            }).catch(e => console.error('[confirm] Email error:', e));
+
             return Response.json(result);
+        }
+
+        // ── DB save failed AFTER LiteAPI confirmed the booking ──
+        // The hotel IS booked — do NOT refund Stripe. Alert admin instead.
+        if (result.liteApiConfirmed) {
+            createNotification(
+                'CRITICAL: DB Save Failed After LiteAPI Confirm',
+                `Booking ${result.data?.bookingId || 'unknown'} confirmed in LiteAPI for ${user.email} but DB save failed. Manual reconciliation required. PaymentIntent: ${body.paymentIntentId || 'N/A'}`,
+                'booking'
+            );
+            return Response.json({
+                success: false,
+                error: result.error,
+                data: result.data,
+            }, { status: 500 });
         }
 
         // ── LiteAPI failed — refund Stripe payment if it was charged ──
