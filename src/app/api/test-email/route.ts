@@ -114,7 +114,6 @@ export async function GET(req: Request) {
                 ? `Test ${type} email sent to ${recipient}! Check your inbox.`
                 : 'Email failed to send',
             error: result.error,
-            emailId: result.emailId,
             bookingId: sampleBooking.bookingId,
             type
         });
