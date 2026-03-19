@@ -14,10 +14,50 @@ import { env } from '@/utils/env';
  */
 export async function POST(req: NextRequest) {
     try {
-        const payload = await req.json();
+        const rawBody = await req.text();
+        const payload = JSON.parse(rawBody);
 
-        // SECURITY: In production, verify supplier cryptographic signatures here
-        // (e.g. Duffel webhook secret, or Mystifly token)
+        // ── Webhook Signature Verification ──────────────────────────────
+        const duffelSignature = req.headers.get('duffel-signature');
+        const mystiflyToken = req.headers.get('x-mystifly-webhook-token');
+
+        // Duffel webhook verification
+        if (payload.type && payload.type.startsWith('order.')) {
+            const DUFFEL_WEBHOOK_SECRET = process.env.DUFFEL_WEBHOOK_SECRET;
+
+            if (!DUFFEL_WEBHOOK_SECRET) {
+                console.warn('[Flight Webhook] DUFFEL_WEBHOOK_SECRET not configured - skipping signature verification');
+            } else if (!duffelSignature) {
+                console.error('[Flight Webhook] Missing Duffel-Signature header');
+                return NextResponse.json({ error: 'Unauthorized - Missing signature' }, { status: 401 });
+            } else {
+                // Verify HMAC-SHA256 signature
+                const crypto = await import('crypto');
+                const expectedSignature = crypto
+                    .createHmac('sha256', DUFFEL_WEBHOOK_SECRET)
+                    .update(rawBody)
+                    .digest('hex');
+
+                if (duffelSignature !== expectedSignature) {
+                    console.error('[Flight Webhook] Invalid Duffel signature');
+                    return NextResponse.json({ error: 'Unauthorized - Invalid signature' }, { status: 401 });
+                }
+            }
+        }
+        // Mystifly webhook verification
+        else if (payload.event_type && (payload.pnr || payload.order_id)) {
+            const MYSTIFLY_WEBHOOK_SECRET = process.env.MYSTIFLY_WEBHOOK_SECRET;
+
+            if (!MYSTIFLY_WEBHOOK_SECRET) {
+                console.warn('[Flight Webhook] MYSTIFLY_WEBHOOK_SECRET not configured - skipping token verification');
+            } else if (!mystiflyToken) {
+                console.error('[Flight Webhook] Missing X-Mystifly-Webhook-Token header');
+                return NextResponse.json({ error: 'Unauthorized - Missing token' }, { status: 401 });
+            } else if (mystiflyToken !== MYSTIFLY_WEBHOOK_SECRET) {
+                console.error('[Flight Webhook] Invalid Mystifly webhook token');
+                return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 });
+            }
+        }
 
         const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 

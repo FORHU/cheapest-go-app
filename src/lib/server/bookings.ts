@@ -152,8 +152,20 @@ export async function confirmBooking(params: BookingParams): Promise<BookingResu
 // Confirm booking + save atomically with policy snapshot
 // ============================================================================
 
-/** In-memory guard against concurrent confirm calls for the same prebookId.
- *  Prevents double-click / race-condition duplicate LiteAPI bookings. */
+/**
+ * In-memory guard against concurrent confirm calls for the same prebookId.
+ * Prevents double-click / race-condition duplicate LiteAPI bookings.
+ *
+ * LIMITATIONS (documented for future scaling):
+ * - Single-instance only: Lost on server restart, doesn't work across multiple instances
+ * - For multi-instance deployments, consider:
+ *   1. Redis-based distributed locking (e.g., Upstash, Redis Cloud)
+ *   2. DB unique constraint on prebook_id column (requires migration)
+ *   3. Idempotency keys with external state store
+ *
+ * Current mitigation: Coolify single-instance deployment + LiteAPI's own prebookId
+ * deduplication provides acceptable protection for current scale.
+ */
 const inflight = new Set<string>();
 
 export async function confirmAndSaveBooking(
