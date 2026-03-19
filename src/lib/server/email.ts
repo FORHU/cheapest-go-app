@@ -25,6 +25,8 @@ async function logEmail(params: {
     status: EmailLogStatus;
     errorMessage?: string;
     metadata?: Record<string, any>;
+    /** Store the rendered HTML so the retry-emails cron can re-send without regenerating. */
+    htmlBody?: string;
 }) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -36,6 +38,12 @@ async function logEmail(params: {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Merge htmlBody into metadata for failed/queued entries (retry needs it)
+    const metadata = {
+        ...(params.metadata || {}),
+        ...(params.htmlBody ? { htmlBody: params.htmlBody } : {}),
+    };
+
     const { error } = await supabase
         .from('email_logs')
         .insert([{
@@ -45,7 +53,7 @@ async function logEmail(params: {
             email_type: params.emailType,
             status: params.status,
             error_message: params.errorMessage,
-            metadata: params.metadata || {},
+            metadata,
             sent_at: params.status === 'sent' ? new Date().toISOString() : null
         }]);
 
@@ -233,7 +241,8 @@ export async function sendBookingConfirmationEmail(
                         subject,
                         emailType: 'confirmation',
                         status: 'failed',
-                        errorMessage: errorText
+                        errorMessage: errorText,
+                        htmlBody: emailHtml,
                     });
                 }
             } catch (resendError) {
@@ -244,7 +253,8 @@ export async function sendBookingConfirmationEmail(
                     subject,
                     emailType: 'confirmation',
                     status: 'failed',
-                    errorMessage: resendError instanceof Error ? resendError.message : 'Unknown error'
+                    errorMessage: resendError instanceof Error ? resendError.message : 'Unknown error',
+                    htmlBody: emailHtml,
                 });
             }
         } else {
@@ -254,7 +264,8 @@ export async function sendBookingConfirmationEmail(
                 recipient: email,
                 subject,
                 emailType: 'confirmation',
-                status: 'queued'
+                status: 'queued',
+                htmlBody: emailHtml,
             });
             return { success: false, error: 'RESEND_API_KEY not configured' };
         }
@@ -374,16 +385,16 @@ export async function sendHotelCancellationEmail(
                     return { success: true };
                 }
                 const errorText = await resendResponse.text();
-                await logEmail({ bookingId, recipient: email, subject, emailType: 'cancellation', status: 'failed', errorMessage: errorText });
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'cancellation', status: 'failed', errorMessage: errorText, htmlBody: emailHtml });
                 return { success: false, error: `Resend ${resendResponse.status}: ${errorText}` };
             } catch (resendError) {
                 console.error('[sendHotelCancellationEmail] Resend failed:', resendError);
-                await logEmail({ bookingId, recipient: email, subject, emailType: 'cancellation', status: 'failed', errorMessage: resendError instanceof Error ? resendError.message : 'Unknown error' });
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'cancellation', status: 'failed', errorMessage: resendError instanceof Error ? resendError.message : 'Unknown error', htmlBody: emailHtml });
                 return { success: false, error: resendError instanceof Error ? resendError.message : 'Unknown error' };
             }
         }
 
-        await logEmail({ bookingId, recipient: email, subject, emailType: 'cancellation', status: 'queued' });
+        await logEmail({ bookingId, recipient: email, subject, emailType: 'cancellation', status: 'queued', htmlBody: emailHtml });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
         console.error('[sendHotelCancellationEmail] Error:', error);
@@ -468,16 +479,16 @@ export async function sendHotelAmendmentEmail(
                     return { success: true };
                 }
                 const errorText = await resendResponse.text();
-                await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'failed', errorMessage: errorText });
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'failed', errorMessage: errorText, htmlBody: emailHtml });
                 return { success: false, error: `Resend ${resendResponse.status}: ${errorText}` };
             } catch (resendError) {
                 console.error('[sendHotelAmendmentEmail] Resend failed:', resendError);
-                await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'failed', errorMessage: resendError instanceof Error ? resendError.message : 'Unknown error' });
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'failed', errorMessage: resendError instanceof Error ? resendError.message : 'Unknown error', htmlBody: emailHtml });
                 return { success: false, error: resendError instanceof Error ? resendError.message : 'Unknown error' };
             }
         }
 
-        await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'queued' });
+        await logEmail({ bookingId, recipient: email, subject, emailType: 'confirmation', status: 'queued', htmlBody: emailHtml });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
         console.error('[sendHotelAmendmentEmail] Error:', error);
@@ -682,7 +693,8 @@ export async function sendFlightBookingConfirmationEmail(
                 subject,
                 emailType: 'confirmation',
                 status: 'failed',
-                errorMessage: responseText
+                errorMessage: responseText,
+                htmlBody: emailHtml,
             });
             return { success: false, error: `Resend ${resendResponse.status}: ${responseText}` };
         }
@@ -692,7 +704,8 @@ export async function sendFlightBookingConfirmationEmail(
             recipient: email,
             subject,
             emailType: 'confirmation',
-            status: 'queued'
+            status: 'queued',
+            htmlBody: emailHtml,
         });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
@@ -814,7 +827,8 @@ export async function sendFlightAwaitingTicketEmail(
                 subject,
                 emailType: 'awaiting_ticket',
                 status: 'failed',
-                errorMessage: text
+                errorMessage: text,
+                htmlBody: emailHtml,
             });
             return { success: false, error: `Resend ${res.status}: ${text}` };
         }
@@ -824,7 +838,8 @@ export async function sendFlightAwaitingTicketEmail(
             recipient: email,
             subject,
             emailType: 'awaiting_ticket',
-            status: 'queued'
+            status: 'queued',
+            htmlBody: emailHtml,
         });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
@@ -931,7 +946,8 @@ export async function sendFlightRefundEmail(
                 subject,
                 emailType: 'refund',
                 status: 'failed',
-                errorMessage: text
+                errorMessage: text,
+                htmlBody: emailHtml,
             });
             return { success: false, error: `Resend ${res.status}: ${text}` };
         }
@@ -941,7 +957,8 @@ export async function sendFlightRefundEmail(
             recipient: email,
             subject,
             emailType: 'refund',
-            status: 'queued'
+            status: 'queued',
+            htmlBody: emailHtml,
         });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
@@ -1075,7 +1092,8 @@ export async function sendFlightCancellationEmail(
                 subject,
                 emailType: 'cancellation',
                 status: 'failed',
-                errorMessage: text
+                errorMessage: text,
+                htmlBody: emailHtml,
             });
             return { success: false, error: `Resend ${res.status}: ${text}` };
         }
@@ -1085,7 +1103,8 @@ export async function sendFlightCancellationEmail(
             recipient: email,
             subject,
             emailType: 'cancellation',
-            status: 'queued'
+            status: 'queued',
+            htmlBody: emailHtml,
         });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {
@@ -1187,7 +1206,8 @@ export async function sendFlightCancellationRefundEmail(
                 subject,
                 emailType: 'refund',
                 status: 'failed',
-                errorMessage: text
+                errorMessage: text,
+                htmlBody: emailHtml,
             });
             return { success: false, error: `Resend ${res.status}: ${text}` };
         }
@@ -1197,7 +1217,8 @@ export async function sendFlightCancellationRefundEmail(
             recipient: email,
             subject,
             emailType: 'refund',
-            status: 'queued'
+            status: 'queued',
+            htmlBody: emailHtml,
         });
         return { success: false, error: 'RESEND_API_KEY not configured' };
     } catch (error) {

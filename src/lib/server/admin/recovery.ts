@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin';
 import { stripe } from '@/lib/stripe/server';
 import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
-import { createNotification } from './notify';
+import { createNotification, logAdminAction } from './notify';
 import { RecoveryActionResult, MonitoringData } from '@/types/admin';
 
 // ============================================================================
@@ -193,6 +193,17 @@ export async function adminForceStatusRecheck(bookingId: string): Promise<Recove
             .update(updatePayload)
             .eq('id', bookingId);
 
+        logAdminAction({
+            action: 'force_status_recheck',
+            bookingId,
+            table: sourceTable,
+            previousStatus: booking.status,
+            newStatus,
+            provider: 'mystifly',
+            details: ticketNumbers.length > 0 ? `Tickets: ${ticketNumbers.join(', ')}` : 'No tickets found',
+            triggeredBy: 'admin',
+        });
+
         return {
             success: true,
             message: ticketNumbers.length > 0
@@ -257,6 +268,15 @@ export async function adminCancelBooking(bookingId: string): Promise<RecoveryAct
             `Admin cancelled booking ${bookingId} (was "${booking.status}").`,
             'alert'
         );
+
+        logAdminAction({
+            action: 'force_cancel',
+            bookingId,
+            table: sourceTable,
+            previousStatus: booking.status,
+            newStatus: 'cancelled',
+            triggeredBy: 'admin',
+        });
 
         return {
             success: true,
@@ -404,6 +424,16 @@ export async function adminForceRefund(bookingId: string, reason?: string): Prom
             'alert'
         );
 
+        logAdminAction({
+            action: 'force_refund',
+            bookingId,
+            table: sourceTable,
+            previousStatus: booking.status,
+            newStatus: 'refunded',
+            details: reason,
+            triggeredBy: 'admin',
+        });
+
         return {
             success: true,
             message: `Booking marked as refunded (was "${booking.status}", table: ${sourceTable}). ${reason ? `Reason: ${reason}. ` : ''}Remember to process the actual payment refund via the provider dashboard.`,
@@ -475,6 +505,15 @@ export async function adminRestoreBooking(bookingId: string): Promise<RecoveryAc
             `Admin restored booking ${bookingId} from "${booking.status}" to "${previousStatus}".`,
             'system'
         );
+
+        logAdminAction({
+            action: 'restore_booking',
+            bookingId,
+            table: sourceTable,
+            previousStatus: booking.status,
+            newStatus: previousStatus,
+            triggeredBy: 'admin',
+        });
 
         return {
             success: true,
@@ -618,12 +657,28 @@ export async function adminRetryBooking(sessionId: string): Promise<RecoveryActi
         const data = await res.json();
 
         if (data.success) {
+            logAdminAction({
+                action: 'retry_booking',
+                sessionId,
+                bookingId: data.bookingId,
+                newStatus: data.status,
+                details: `PNR: ${data.pnr || 'N/A'}`,
+                triggeredBy: 'admin',
+            });
+
             return {
                 success: true,
                 message: `Retry successful! PNR: ${data.pnr || 'N/A'}. Booking ID: ${data.bookingId || 'N/A'}`,
                 newStatus: data.status
             };
         } else {
+            logAdminAction({
+                action: 'retry_booking',
+                sessionId,
+                details: `Failed: ${data.error || 'Unknown error'}`,
+                triggeredBy: 'admin',
+            });
+
             return {
                 success: false,
                 message: `Retry failed: ${data.error || 'Unknown error'}`
@@ -792,6 +847,16 @@ export async function adminCancelAwaitingTicket(bookingId: string): Promise<Reco
             `Admin cancelled awaiting-ticket booking ${booking.pnr || bookingId} and issued refund.`,
             'alert'
         );
+
+        logAdminAction({
+            action: 'cancel_awaiting_ticket',
+            bookingId,
+            previousStatus: 'awaiting_ticket',
+            newStatus: 'refunded',
+            provider: booking.provider,
+            details: `Refund: ${refundAmount} ${refundCurrency}${stripeRefundId ? `, Stripe: ${stripeRefundId}` : ''}`,
+            triggeredBy: 'admin',
+        });
 
         return {
             success: true,

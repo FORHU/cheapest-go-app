@@ -64,6 +64,21 @@ export async function POST(req: Request) {
                 currency: result.data?.currency || body.currency || 'PHP',
             }).catch(e => console.error('[confirm] Email error:', e));
 
+            // Structured financial event log for hotel payment
+            if (body.paymentIntentId) {
+                console.log(JSON.stringify({
+                    _event: 'financial',
+                    type: 'payment',
+                    bookingType: 'hotel',
+                    bookingId: result.data?.bookingId,
+                    paymentIntentId: body.paymentIntentId,
+                    amount: result.data?.totalPrice || 0,
+                    currency: result.data?.currency || body.currency || 'PHP',
+                    userId: user.id,
+                    timestamp: new Date().toISOString(),
+                }));
+            }
+
             return Response.json(result);
         }
 
@@ -84,15 +99,29 @@ export async function POST(req: Request) {
 
         // ── LiteAPI failed — refund Stripe payment if it was charged ──
         if (body.paymentIntentId) {
+            let refundSuccess = false;
             try {
-                await stripe.refunds.create({ payment_intent: body.paymentIntentId });
-                console.log('[confirm] Refunded Stripe payment after LiteAPI failure:', body.paymentIntentId);
+                const refund = await stripe.refunds.create({ payment_intent: body.paymentIntentId });
+                refundSuccess = true;
+                // Structured financial event log (hotel bookings can't use booking_financial_events FK yet)
+                console.log(JSON.stringify({
+                    _event: 'financial',
+                    type: 'refund',
+                    bookingType: 'hotel',
+                    paymentIntentId: body.paymentIntentId,
+                    refundId: refund.id,
+                    amount: refund.amount / 100,
+                    currency: (refund.currency || 'usd').toUpperCase(),
+                    reason: 'liteapi_failure',
+                    userId: user.id,
+                    timestamp: new Date().toISOString(),
+                }));
             } catch (refundErr: any) {
                 console.error('[confirm] Failed to refund:', refundErr.message);
             }
             return Response.json({
                 success: false,
-                error: (result.error || 'Booking failed') + '. Your payment has been automatically refunded.',
+                error: (result.error || 'Booking failed') + (refundSuccess ? '. Your payment has been automatically refunded.' : '. Please contact support for a refund.'),
             });
         }
 
