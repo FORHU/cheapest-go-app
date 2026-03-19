@@ -106,13 +106,16 @@ export function StatCard({
                     </div>
 
                     <div className="mt-auto">
-                        <h3 className={`font-black tracking-tighter mb-1 transition-colors ${getValueColor()} ${String(value).length > 10 ? 'text-2xl sm:text-3xl' : 'text-4xl'}`}>
+                        <h3
+                            className={`font-black tracking-tighter mb-1 transition-colors ${getValueColor()} ${String(value).length > 10 ? 'text-2xl sm:text-3xl' : 'text-4xl'}`}
+                            suppressHydrationWarning
+                        >
                             {value}
                         </h3>
                         {trend && (
                             <div className="flex items-center gap-2 font-black text-[10px] uppercase tracking-wider">
                                 <TrendingUp size={12} className={getTrendIconColor()} />
-                                <span className={`transition-colors ${getTrendTextColor()}`}>
+                                <span className={`transition-colors ${getTrendTextColor()}`} suppressHydrationWarning>
                                     {trendValue} <span className="opacity-60 ml-0.5">Scale</span>
                                 </span>
                             </div>
