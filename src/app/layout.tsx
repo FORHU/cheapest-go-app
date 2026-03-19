@@ -6,6 +6,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthListener } from '@/components/auth/AuthListener';
+import { ExchangeRateListener } from '@/components/exchange/ExchangeRateListener';
 import AuthModal from '@/components/auth/AuthModal';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { env } from '@/utils/env';
@@ -60,6 +61,7 @@ export default function RootLayout({
         <QueryProvider>
           <ThemeProvider>
             <AuthListener />
+            <ExchangeRateListener />
             <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px]">
               <GlobalSparkle />
               {children}

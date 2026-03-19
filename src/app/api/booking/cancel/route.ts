@@ -52,6 +52,21 @@ export async function POST(req: Request) {
                     currency: refundData?.currency,
                     refundStatus: refundData?.status || (data.data?.status?.includes('refund') ? 'pending' : 'non_refundable'),
                 }).catch(e => console.error('[cancel] Email error:', e));
+
+                // Structured financial event log for hotel cancellation/refund
+                if (refundData?.amount && refundData.amount > 0) {
+                    console.log(JSON.stringify({
+                        _event: 'financial',
+                        type: 'refund',
+                        bookingType: 'hotel',
+                        bookingId,
+                        amount: refundData.amount,
+                        currency: refundData.currency || 'PHP',
+                        refundStatus: refundData.status || 'pending',
+                        userId: user.id,
+                        timestamp: new Date().toISOString(),
+                    }));
+                }
             }
         }
 
