@@ -28,6 +28,8 @@ function getRatingColor(rating: number): string {
     return 'bg-slate-500';
 }
 
+import Image from 'next/image';
+
 const MapPropertyCard = React.memo(function MapPropertyCard({
     property,
     isSelected,
@@ -57,14 +59,15 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             <div className="flex flex-row gap-2.5 md:hidden landscape:gap-1.5 landscape:p-1.5">
                 {/* Image */}
                 <div className="relative w-[100px] h-[80px] flex-shrink-0 rounded-lg overflow-hidden landscape:w-[80px] landscape:h-[60px]">
-                    <img
+                    <Image
                         src={property.image}
                         alt={property.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
+                        fill
+                        className="object-cover"
+                        sizes="100px"
                     />
                     {property.refundableTag === 'RFN' && (
-                        <span className="absolute top-1 left-1 text-[8px] font-semibold bg-emerald-500 text-white px-1.5 py-px rounded-full shadow landscape:text-[7px] landscape:px-1 landscape:py-0">
+                        <span className="absolute top-1 left-1 text-[8px] font-semibold bg-emerald-500 text-white px-1.5 py-px rounded-full shadow landscape:text-[7px] landscape:px-1 landscape:py-0 z-10">
                             {typeof window !== 'undefined' && window.innerHeight < 500 ? 'Free' : 'Free cancel'}
                         </span>
                     )}
@@ -108,14 +111,15 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             <div className="hidden md:flex gap-3">
                 {/* Thumbnail */}
                 <div className="relative w-20 h-16 lg:w-24 lg:h-20 flex-shrink-0 rounded-xl overflow-hidden">
-                    <img
+                    <Image
                         src={property.image}
                         alt={property.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 1024px) 80px, 96px"
                     />
                     {property.refundableTag === 'RFN' && (
-                        <span className="absolute top-1 left-1 text-[9px] font-semibold bg-emerald-500 text-white px-1.5 py-0.5 rounded">
+                        <span className="absolute top-1 left-1 text-[9px] font-semibold bg-emerald-500 text-white px-1.5 py-0.5 rounded z-10">
                             Free cancellation
                         </span>
                     )}
