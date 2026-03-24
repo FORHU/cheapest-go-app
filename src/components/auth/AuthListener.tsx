@@ -26,9 +26,9 @@ export const AuthListener = () => {
         initializeAuth();
 
         // Listen
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
             syncSession(session);
-            if (session?.user) {
+            if (session?.user && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
                 fetchAndSyncRole();
             }
         });

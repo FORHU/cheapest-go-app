@@ -143,6 +143,11 @@ const Map = React.forwardRef<MapRef, MapProps>(
         const mapRef = (ref as React.RefObject<MapRef | null>) || internalRef;
         const styleReady = React.useRef(false);
 
+        const token = env.MAPBOX_TOKEN;
+        if (!token) {
+            console.error('Mapbox token is missing!');
+        }
+
         const handleLoad = React.useCallback(
             (e: mapboxgl.MapboxEvent) => {
                 const map = (mapRef as React.RefObject<MapRef | null>).current?.getMap();
