@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { prebookRoom } from '@/lib/server/bookings';
+import { safeError } from '@/lib/server/safe-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
         return Response.json(data);
     } catch (err) {
         return Response.json(
-            { success: false, error: String(err) },
+            { success: false, error: safeError(err, 'prebook') },
             { status: 500 }
         );
     }

@@ -298,7 +298,16 @@ export function CheckoutContent() {
             );
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Booking failed';
-            if (message.includes("refunded")) {
+
+            // Session expired AFTER Stripe captured payment — the booking is NOT confirmed.
+            // Do NOT claim a refund will happen automatically (auth failed before refund logic runs).
+            if (message === 'Authentication required' || message.toLowerCase().includes('authentication')) {
+                toast.error(
+                    `Your session expired during payment. Your card was charged — please contact support with payment reference: ${stripePaymentIntentId}`,
+                    { duration: 15000 }
+                );
+                openAuthModal('email', window.location.pathname + window.location.search);
+            } else if (message.includes("refunded")) {
                 toast.error(message);
             } else {
                 toast.error(`Booking confirmation failed: ${message}. Your payment will be automatically refunded.`);
@@ -308,7 +317,7 @@ export function CheckoutContent() {
             setClientSecret(null);
             setPaymentIntentId(null);
         }
-    }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher]);
+    }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
 
     // Price to show on submit button (server-calculated if voucher applied)
     const displayTotalPrice = appliedVoucher ? appliedVoucher.finalPrice : totalPrice;

@@ -1,16 +1,17 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, History, Plane, Building2, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryClient';
+import { apiFetch } from '@/lib/api/client';
 import {
     Destination,
     useSearchStore,
     useDestinationQuery,
     useRecentSearches,
     useActiveDropdown,
-    useSuggestions,
-    useSuggestionsLoading
 } from '@/stores/searchStore';
 
 
@@ -27,9 +28,6 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
     const query = useDestinationQuery();
     const recentSearches = useRecentSearches();
     const activeDropdown = useActiveDropdown();
-    // Use store selectors for suggestions/loading (no useState)
-    const suggestions = useSuggestions();
-    const loading = useSuggestionsLoading();
 
     const {
         setDestination,
@@ -37,9 +35,25 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
         addRecentSearch,
         setActiveDropdown,
         removeRecentSearch,
-        setSuggestions,
-        setSuggestionsLoading
     } = useSearchStore();
+
+    // Debounce the query string so the query key only changes after the user pauses
+    const [debouncedQuery, setDebouncedQuery] = useState(query);
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedQuery(query), 400);
+        return () => clearTimeout(t);
+    }, [query]);
+
+    const { data: suggestions = [], isFetching: loading } = useQuery<Destination[]>({
+        queryKey: queryKeys.autocomplete.destinations(debouncedQuery),
+        queryFn: async () => {
+            const result = await apiFetch('/api/autocomplete', { query: debouncedQuery });
+            return result.success ? result.data : [];
+        },
+        enabled: debouncedQuery.length >= 2,
+        staleTime: 1000 * 60 * 5,
+        placeholderData: (prev) => prev,
+    });
 
     const isOpen = forceOpen || activeDropdown === 'destination';
     const onClose = () => {
@@ -66,36 +80,6 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
         addRecentSearch(destination);
         onClose();
     };
-
-    // Debounced Autocomplete via API route
-    useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (!query || query.length < 2) {
-                setSuggestions([]);
-                return;
-            }
-
-            setSuggestionsLoading(true);
-            try {
-                const { apiFetch } = await import('@/lib/api/client');
-                const result = await apiFetch('/api/autocomplete', { query });
-
-                if (result.success) {
-                    setSuggestions(result.data);
-                } else {
-                    setSuggestions([]);
-                }
-            } catch (error) {
-                console.error("Autocomplete failed:", error);
-                setSuggestions([]);
-            } finally {
-                setSuggestionsLoading(false);
-            }
-        }, 500);
-
-        return () => clearTimeout(timer);
-    }, [query, setSuggestions, setSuggestionsLoading]);
-
 
     const getIcon = (type: Destination['type']) => {
         switch (type) {

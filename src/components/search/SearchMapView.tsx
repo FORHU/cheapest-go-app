@@ -11,20 +11,17 @@ import { type Property } from '@/types';
 import { ArrowLeft, MapPin, ChevronDown, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, cn } from '@/lib/utils';
-// import { SearchMapContainer } from '../mapbox/SearchMapContainer';
+import dynamic from 'next/dynamic';
 
 const SearchMapContainer = dynamic(
-    () => import('../mapbox/SearchMapContainer').then((mod) => mod.SearchMapContainer),
+    () => import('../mapbox/SearchMapContainer').then(m => ({ default: m.SearchMapContainer })),
     {
         ssr: false,
         loading: () => (
-            <div className="flex-1 h-full flex items-center justify-center bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
-                <div className="animate-pulse text-sm text-slate-500">Initializing map...</div>
-            </div>
+            <div className="flex-1 h-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg" />
         ),
     }
 );
-
 
 // ── Sort logic ──────────────────────────────────────────
 const SORT_OPTIONS = ['recommended', 'price-low', 'price-high', 'rating'] as const;

@@ -6,13 +6,14 @@ import './globals.css';
 import { ThemeProvider } from '@/components/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthListener } from '@/components/auth/AuthListener';
+import { ExchangeRateListener } from '@/components/exchange/ExchangeRateListener';
 import AuthModal from '@/components/auth/AuthModal';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { env } from '@/utils/env';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' });
-const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
+const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'optional' });
 
 const SITE_URL = env.SITE_URL;
 
@@ -55,11 +56,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <Script src="https://cdn.jsdelivr.net/npm/react-scan/dist/auto.global.js" />
+      {process.env.NODE_ENV === 'development' && (
+        <Script src="https://cdn.jsdelivr.net/npm/react-scan/dist/auto.global.js" />
+      )}
       <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} font-sans`}>
         <QueryProvider>
           <ThemeProvider>
             <AuthListener />
+            <ExchangeRateListener />
             <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px]">
               <GlobalSparkle />
               {children}

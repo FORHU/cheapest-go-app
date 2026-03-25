@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin, isAuthError } from '@/lib/server/admin';
 import { createNotification } from '@/lib/server/admin/notify';
 import { createAdminClient } from '@/utils/supabase/admin';
+import { logAdminAction } from '@/lib/server/admin/audit';
 
 export async function POST(req: Request) {
     try {
@@ -60,7 +61,13 @@ export async function POST(req: Request) {
             console.error('[Admin Promote] Metadata sync error:', metadataError);
         }
 
-        console.log(`[Admin Promote] User ${userId} role updated to ${newRole} by ${auth.user.email}`);
+        logAdminAction({
+            action: 'promote_user',
+            adminId: auth.user.id,
+            adminEmail: auth.user.email,
+            targetId: userId,
+            details: { newRole },
+        });
 
         createNotification(
             `User ${newRole === 'admin' ? 'Promoted' : 'Demoted'}`,

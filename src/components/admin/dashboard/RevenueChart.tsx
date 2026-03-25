@@ -19,19 +19,44 @@ interface RevenueChartProps {
     };
 }
 
+function formatShortCurrency(value: number): string {
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+    return value.toFixed(0);
+}
+
+function formatDateLabel(dateStr: string, timeframe: string): string {
+    const d = new Date(dateStr + 'T00:00:00');
+    if (timeframe === 'monthly') return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('en', { weekday: 'short', day: 'numeric' });
+}
+
 export function RevenueChart({ data }: RevenueChartProps) {
     const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const currentData = data[timeframe];
 
     const maxRevenue = Math.max(...currentData.map(d => d.revenue), 100);
-    const padding = 40;
+    // Round maxRevenue up to a nice number for Y-axis
+    const niceMax = (() => {
+        if (maxRevenue <= 0) return 100;
+        const magnitude = Math.pow(10, Math.floor(Math.log10(maxRevenue)));
+        return Math.ceil(maxRevenue / magnitude) * magnitude;
+    })();
+
+    const leftPadding = 80;
+    const rightPadding = 20;
+    const topPadding = 30;
+    const bottomPadding = 50;
     const width = 800;
-    const height = 300;
+    const height = 320;
+    const chartWidth = width - leftPadding - rightPadding;
+    const chartHeight = height - topPadding - bottomPadding;
 
     // Calculate path points
     const points = currentData.map((d, i) => ({
-        x: (i / (currentData.length - 1)) * (width - padding * 2) + padding,
-        y: height - ((d.revenue / maxRevenue) * (height - padding * 2)) - padding
+        x: (i / Math.max(currentData.length - 1, 1)) * chartWidth + leftPadding,
+        y: topPadding + chartHeight - (d.revenue / niceMax) * chartHeight,
     }));
 
     // Create SVG path string
@@ -40,9 +65,18 @@ export function RevenueChart({ data }: RevenueChartProps) {
         "");
 
     // Create area path string (closing the path to the bottom)
-    const areaPath = `${linePath} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`;
+    const areaPath = `${linePath} L ${points[points.length - 1].x} ${topPadding + chartHeight} L ${points[0].x} ${topPadding + chartHeight} Z`;
 
     const totalRevenue = currentData.reduce((acc, d) => acc + d.revenue, 0);
+
+    // Y-axis tick values
+    const yTicks = [0, 0.25, 0.5, 0.75, 1].map(p => ({
+        value: niceMax * p,
+        y: topPadding + chartHeight - p * chartHeight,
+    }));
+
+    // X-axis labels — show a subset to avoid crowding
+    const labelInterval = timeframe === 'monthly' ? 5 : timeframe === 'weekly' ? 2 : 1;
 
     return (
         <motion.div
@@ -89,7 +123,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
                     </div>
                 </div>
 
-                <div className="relative h-[300px] w-full">
+                <div className="relative h-[320px] w-full">
                     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                         <defs>
                             <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
@@ -102,20 +136,45 @@ export function RevenueChart({ data }: RevenueChartProps) {
                             </linearGradient>
                         </defs>
 
-                        {/* Grid Lines */}
-                        {[0, 0.25, 0.5, 0.75, 1].map((p) => (
-                            <line
-                                key={p}
-                                x1={padding}
-                                y1={padding + (height - padding * 2) * p}
-                                x2={width - padding}
-                                y2={padding + (height - padding * 2) * p}
-                                stroke="currentColor"
-                                strokeWidth="1"
-                                strokeDasharray="4 4"
-                                className="text-slate-100 dark:text-white/5 transition-colors"
-                            />
+                        {/* Y-axis labels + grid lines */}
+                        {yTicks.map((tick) => (
+                            <g key={tick.value}>
+                                <line
+                                    x1={leftPadding}
+                                    y1={tick.y}
+                                    x2={width - rightPadding}
+                                    y2={tick.y}
+                                    stroke="currentColor"
+                                    strokeWidth="1"
+                                    strokeDasharray="4 4"
+                                    className="text-slate-100 dark:text-white/5"
+                                />
+                                <text
+                                    x={leftPadding - 10}
+                                    y={tick.y + 4}
+                                    textAnchor="end"
+                                    className="fill-slate-400 dark:fill-slate-500 text-[11px] font-bold"
+                                >
+                                    {formatShortCurrency(tick.value)}
+                                </text>
+                            </g>
                         ))}
+
+                        {/* X-axis date labels */}
+                        {currentData.map((d, i) => {
+                            if (i % labelInterval !== 0 && i !== currentData.length - 1) return null;
+                            return (
+                                <text
+                                    key={i}
+                                    x={points[i]?.x ?? 0}
+                                    y={height - 8}
+                                    textAnchor="middle"
+                                    className="fill-slate-400 dark:fill-slate-500 text-[10px] font-bold"
+                                >
+                                    {formatDateLabel(d.date, timeframe)}
+                                </text>
+                            );
+                        })}
 
                         <AnimatePresence mode="wait">
                             <motion.g
@@ -147,7 +206,21 @@ export function RevenueChart({ data }: RevenueChartProps) {
                                     transition={{ duration: 1.2, ease: "easeInOut" }}
                                 />
 
-                                {/* Data Points */}
+                                {/* Hover vertical guide line */}
+                                {hoveredIndex !== null && points[hoveredIndex] && (
+                                    <line
+                                        x1={points[hoveredIndex].x}
+                                        y1={topPadding}
+                                        x2={points[hoveredIndex].x}
+                                        y2={topPadding + chartHeight}
+                                        stroke="currentColor"
+                                        strokeWidth="1"
+                                        strokeDasharray="4 4"
+                                        className="text-blue-300 dark:text-blue-600"
+                                    />
+                                )}
+
+                                {/* Data Points + Hover Areas */}
                                 {points.map((point, i) => (
                                     <motion.g
                                         key={i}
@@ -158,18 +231,50 @@ export function RevenueChart({ data }: RevenueChartProps) {
                                         <circle
                                             cx={point.x}
                                             cy={point.y}
-                                            r="6"
-                                            className="fill-white dark:fill-obsidian stroke-blue-600 transition-all stroke-[3px]"
+                                            r={hoveredIndex === i ? 8 : 5}
+                                            className={`fill-white dark:fill-obsidian stroke-blue-600 transition-all ${hoveredIndex === i ? 'stroke-[4px]' : 'stroke-[3px]'}`}
                                         />
-                                        {/* Tooltip Hover Area */}
+                                        {/* Invisible hover target */}
                                         <circle
                                             cx={point.x}
                                             cy={point.y}
-                                            r="20"
-                                            className="fill-transparent cursor-pointer group/point"
+                                            r="24"
+                                            className="fill-transparent cursor-pointer"
+                                            onMouseEnter={() => setHoveredIndex(i)}
+                                            onMouseLeave={() => setHoveredIndex(null)}
                                         />
                                     </motion.g>
                                 ))}
+
+                                {/* Tooltip */}
+                                {hoveredIndex !== null && points[hoveredIndex] && currentData[hoveredIndex] && (
+                                    <g>
+                                        <rect
+                                            x={points[hoveredIndex].x - 60}
+                                            y={points[hoveredIndex].y - 52}
+                                            width="120"
+                                            height="40"
+                                            rx="10"
+                                            className="fill-slate-900 dark:fill-slate-100"
+                                        />
+                                        <text
+                                            x={points[hoveredIndex].x}
+                                            y={points[hoveredIndex].y - 36}
+                                            textAnchor="middle"
+                                            className="fill-white dark:fill-slate-900 text-[11px] font-bold"
+                                        >
+                                            {formatCurrency(currentData[hoveredIndex].revenue)}
+                                        </text>
+                                        <text
+                                            x={points[hoveredIndex].x}
+                                            y={points[hoveredIndex].y - 21}
+                                            textAnchor="middle"
+                                            className="fill-slate-400 dark:fill-slate-500 text-[9px] font-bold"
+                                        >
+                                            {formatDateLabel(currentData[hoveredIndex].date, timeframe)}
+                                        </text>
+                                    </g>
+                                )}
                             </motion.g>
                         </AnimatePresence>
                     </svg>

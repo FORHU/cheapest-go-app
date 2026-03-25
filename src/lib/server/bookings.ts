@@ -61,11 +61,16 @@ export interface ConfirmAndSaveInput {
 
 export interface ConfirmAndSaveResult {
   success: boolean;
+  /** True when LiteAPI confirmed the booking but our DB save failed.
+   *  The hotel IS booked — do NOT refund Stripe in this case. */
+  liteApiConfirmed?: boolean;
   data?: {
     bookingId: string;
     status: string;
     policyType: string;
     policySummary: string;
+    totalPrice?: number;
+    currency?: string;
   };
   error?: string;
 }
@@ -147,6 +152,22 @@ export async function confirmBooking(params: BookingParams): Promise<BookingResu
 // Confirm booking + save atomically with policy snapshot
 // ============================================================================
 
+/**
+ * In-memory guard against concurrent confirm calls for the same prebookId.
+ * Prevents double-click / race-condition duplicate LiteAPI bookings.
+ *
+ * LIMITATIONS (documented for future scaling):
+ * - Single-instance only: Lost on server restart, doesn't work across multiple instances
+ * - For multi-instance deployments, consider:
+ *   1. Redis-based distributed locking (e.g., Upstash, Redis Cloud)
+ *   2. DB unique constraint on prebook_id column (requires migration)
+ *   3. Idempotency keys with external state store
+ *
+ * Current mitigation: Coolify single-instance deployment + LiteAPI's own prebookId
+ * deduplication provides acceptable protection for current scale.
+ */
+const inflight = new Set<string>();
+
 export async function confirmAndSaveBooking(
   params: ConfirmAndSaveInput,
   user: User,
@@ -162,7 +183,28 @@ export async function confirmAndSaveBooking(
     return { success: false, error: 'At least one guest is required' };
   }
 
-  // 2. Call LiteAPI to confirm booking
+  // 2a. Concurrency guard — reject if this prebookId is already being processed
+  if (inflight.has(params.prebookId)) {
+    return { success: false, error: 'Booking is already being processed. Please wait.' };
+  }
+  inflight.add(params.prebookId);
+
+  try {
+    return await _confirmAndSaveBookingInner(params, user);
+  } finally {
+    inflight.delete(params.prebookId);
+  }
+}
+
+async function _confirmAndSaveBookingInner(
+  params: ConfirmAndSaveInput,
+  user: User,
+): Promise<ConfirmAndSaveResult> {
+  // NOTE: Full DB-level idempotency (storing prebookId) would require a schema
+  // migration. The in-memory concurrency guard above is the primary defense
+  // against double-click duplicate bookings without DB changes.
+
+  // 3. Call LiteAPI to confirm booking
   let liteApiResult: any;
   try {
     liteApiResult = await bookLiteApi({
@@ -187,6 +229,22 @@ export async function confirmAndSaveBooking(
 
   const bookingId = bookingData.bookingId;
   const bookingStatus = bookingData.status || 'confirmed';
+
+  // Emit an immutable audit log immediately after LiteAPI confirms — BEFORE the DB write.
+  // If the process crashes between here and the RPC call, this log entry is the evidence
+  // needed for manual reconciliation. Do NOT move this line below the DB write.
+  console.log(JSON.stringify({
+    _event: 'liteapi_confirmed',
+    bookingId,
+    prebookId: params.prebookId,
+    userId: user.id,
+    holderEmail: params.holder.email,
+    propertyName: params.propertyName,
+    checkIn: params.checkIn,
+    checkOut: params.checkOut,
+    currency: params.currency,
+    timestamp: new Date().toISOString(),
+  }));
 
   // Extract price from LiteAPI response
   const totalPrice =
@@ -263,17 +321,19 @@ export async function confirmAndSaveBooking(
 
     if (rpcError) {
       console.error('[confirmAndSaveBooking] DB transaction failed:', rpcError);
-      // Booking was confirmed in LiteAPI but DB failed — log critical
-      console.error('CRITICAL: Booking', bookingId, 'confirmed in LiteAPI but DB save failed');
+      console.error('CRITICAL: Booking', bookingId, 'confirmed in LiteAPI but DB save failed. Manual reconciliation required.');
       return {
-        success: true,
+        success: false,
+        liteApiConfirmed: true,
         data: {
           bookingId,
           status: bookingStatus,
           policyType: snapshot.policyType,
           policySummary: snapshot.summary ?? 'Policy details unavailable',
+          totalPrice,
+          currency,
         },
-        error: 'Booking confirmed but failed to save details. Contact support.',
+        error: 'Booking confirmed but failed to save details. Please contact support with booking ID: ' + bookingId,
       };
     }
 
@@ -286,19 +346,25 @@ export async function confirmAndSaveBooking(
         status: bookingStatus,
         policyType: snapshot.policyType,
         policySummary: snapshot.summary ?? '',
+        totalPrice,
+        currency,
       },
     };
   } catch (error) {
     console.error('[confirmAndSaveBooking] DB error:', error);
+    console.error('CRITICAL: Booking', bookingId, 'confirmed in LiteAPI but DB save threw. Manual reconciliation required.');
     return {
-      success: true,
+      success: false,
+      liteApiConfirmed: true,
       data: {
         bookingId,
         status: bookingStatus,
         policyType: snapshot.policyType,
         policySummary: snapshot.summary ?? '',
+        totalPrice,
+        currency,
       },
-      error: 'Booking confirmed but failed to save. Contact support.',
+      error: 'Booking confirmed but failed to save. Please contact support with booking ID: ' + bookingId,
     };
   }
 }

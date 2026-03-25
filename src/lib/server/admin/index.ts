@@ -8,3 +8,5 @@ export * from './recovery';
 export * from './settings';
 export * from './suppliers';
 export * from './users';
+export * from './providers';
+export * from './search';

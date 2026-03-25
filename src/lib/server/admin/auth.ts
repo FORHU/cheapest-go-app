@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 
 export interface AdminAuthResult {
     user: { id: string; email: string };
+    role: string;
     supabase: Awaited<ReturnType<typeof createClient>>;
 }
 
@@ -21,13 +22,22 @@ export async function requireAdmin(): Promise<AdminAuthResult | NextResponse> {
         );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single();
 
-    if (profile?.role !== 'admin') {
+    // Fail closed: if the role cannot be read, deny access rather than assuming admin
+    if (profileError || !profile) {
+        console.error('[requireAdmin] Failed to read profile role for user', user.id, profileError);
+        return NextResponse.json(
+            { success: false, error: 'Forbidden' },
+            { status: 403 }
+        );
+    }
+
+    if (profile.role !== 'admin') {
         return NextResponse.json(
             { success: false, error: 'Forbidden' },
             { status: 403 }
@@ -36,6 +46,7 @@ export async function requireAdmin(): Promise<AdminAuthResult | NextResponse> {
 
     return {
         user: { id: user.id, email: user.email! },
+        role: profile.role,
         supabase,
     };
 }

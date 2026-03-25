@@ -4,10 +4,17 @@ import { stripe } from '@/lib/stripe/server';
 import { env } from '@/utils/env';
 import { FlightOffer, FarePolicy } from '@/types/flights';
 import { logApiCall } from '@/lib/server/api-logger';
+import { rateLimit } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+    // 5 booking attempts per minute per IP
+    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book' });
+    if (!rl.success) {
+        return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    }
+
     try {
         const { user, error: authError } = await getAuthenticatedUser();
         if (authError || !user) {
@@ -61,6 +68,14 @@ export async function POST(req: NextRequest) {
             || (flight as any).currency
             || 'USD'
         ).toLowerCase();
+
+        // ── Price floor guard ──
+        if (flightTotal <= 0) {
+            return NextResponse.json({
+                success: false,
+                error: 'Invalid flight price — must be greater than $0',
+            }, { status: 400 });
+        }
 
         // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
         const revalStart = Date.now();

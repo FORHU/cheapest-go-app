@@ -79,9 +79,8 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                     <Image
                         src={mainImage}
                         alt="Property view"
-                        fill
-                        className="object-cover hover:scale-105 transition-transform duration-500"
-                        priority
+                        fetchPriority="high"
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                     />
                     <button
                         onClick={(e) => { e.stopPropagation(); handleOpen(0); }}
@@ -105,9 +104,8 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                     <Image
                                         src={img}
                                         alt={`Property view ${i + 1}`}
-                                        fill
-                                        className="object-cover"
-                                        priority={i === 0}
+                                        fetchPriority={i === 0 ? 'high' : 'auto'}
+                                        className="w-full h-full object-cover"
                                     />
                                 </div>
                             ))}
@@ -143,9 +141,8 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                             <Image
                                 src={mainImage}
                                 alt="Main property view"
-                                fill
-                                className="object-cover hover:scale-105 transition-transform duration-500"
-                                priority
+                                fetchPriority="high"
+                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                             />
                         </div>
                         {gallerySubImages.map((img, i) => (

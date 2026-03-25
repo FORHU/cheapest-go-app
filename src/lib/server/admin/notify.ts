@@ -29,3 +29,30 @@ export function createNotification(
         // Never throw
     }
 }
+
+/**
+ * Structured admin audit log.
+ * Emits a JSON line for centralized log aggregation (Coolify logs, etc.).
+ * Never throws — audit logging must not break the main flow.
+ */
+export function logAdminAction(params: {
+    action: string;
+    bookingId?: string;
+    sessionId?: string;
+    table?: string;
+    previousStatus?: string;
+    newStatus?: string;
+    provider?: string;
+    details?: string;
+    triggeredBy?: string;
+}): void {
+    try {
+        console.log(JSON.stringify({
+            _event: 'admin_audit',
+            ...params,
+            timestamp: new Date().toISOString(),
+        }));
+    } catch {
+        // Never throw
+    }
+}

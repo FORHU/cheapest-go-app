@@ -1,30 +1,73 @@
 /**
  * Currency conversion utilities
- * 
- * Note: These are approximate exchange rates for display purposes.
- * In a real application, these should be fetched from a live API.
+ *
+ * Static rates are used as the initial fallback. Call `refreshExchangeRates()`
+ * on app mount to hydrate with live rates from /api/exchange-rates (Frankfurter / ECB data).
  */
 
-export const EXCHANGE_RATES: Record<string, number> = {
-    'USD': 1.0,         // Base currency
-    'PHP': 0.018,       // Philippine Peso (USD per 1 PHP)
-    'KRW': 0.00075,     // South Korean Won (USD per 1 KRW)
-    'JPY': 0.0067,      // Japanese Yen
-    'EUR': 1.087,       // Euro
-    'GBP': 1.266,       // British Pound
-    'AUD': 0.658,       // Australian Dollar
-    'SGD': 0.74,        // Singapore Dollar
-    'MYR': 0.21,        // Malaysian Ringgit
-    'THB': 0.027,       // Thai Baht
-    'VND': 0.0000392,   // Vietnamese Dong
-    'IDR': 0.0000621,   // Indonesian Rupiah
-    'CNY': 0.138,       // Chinese Yuan
-    'TWD': 0.0307,      // New Taiwan Dollar
-    'HKD': 0.127,       // Hong Kong Dollar
-    'INR': 0.012,       // Indian Rupee
-    'AED': 0.272,       // UAE Dirham
-    'CAD': 0.73,        // Canadian Dollar
+// Static fallback rates (USD-per-1-unit format)
+const STATIC_RATES: Record<string, number> = {
+    'USD': 1.0,
+    'PHP': 0.018,
+    'KRW': 0.00075,
+    'JPY': 0.0067,
+    'EUR': 1.087,
+    'GBP': 1.266,
+    'AUD': 0.658,
+    'SGD': 0.74,
+    'MYR': 0.21,
+    'THB': 0.027,
+    'VND': 0.0000392,
+    'IDR': 0.0000621,
+    'CNY': 0.138,
+    'TWD': 0.0307,
+    'HKD': 0.127,
+    'INR': 0.012,
+    'AED': 0.272,
+    'CAD': 0.73,
 };
+
+/**
+ * The live exchange rates object. Starts with static values and is
+ * updated in-place when `refreshExchangeRates()` succeeds.
+ * All consumers of `convertCurrency()` automatically use the latest rates.
+ */
+export const EXCHANGE_RATES: Record<string, number> = { ...STATIC_RATES };
+
+/** Timestamp of the last successful live rate update (0 = never). */
+let _lastRefresh = 0;
+
+/**
+ * Fetch live exchange rates from /api/exchange-rates and update
+ * the EXCHANGE_RATES object in-place. Safe to call multiple times;
+ * skips the fetch if rates were refreshed within the last hour.
+ *
+ * @returns true if rates were updated, false if skipped/errored.
+ */
+export async function refreshExchangeRates(): Promise<boolean> {
+    // Skip if refreshed within the last hour
+    if (_lastRefresh && Date.now() - _lastRefresh < 60 * 60 * 1000) {
+        return false;
+    }
+
+    try {
+        const res = await fetch('/api/exchange-rates');
+        if (!res.ok) return false;
+
+        const json = await res.json();
+        if (!json.success || !json.rates) return false;
+
+        // Update EXCHANGE_RATES in-place so all imported references see the new values
+        for (const [currency, rate] of Object.entries(json.rates as Record<string, number>)) {
+            EXCHANGE_RATES[currency] = rate;
+        }
+        _lastRefresh = Date.now();
+        return true;
+    } catch {
+        // Network error — keep using static/previous rates
+        return false;
+    }
+}
 
 /**
  * Convert amount from one currency to another

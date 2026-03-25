@@ -218,6 +218,46 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
         }
     };
 
+    const handleExport = () => {
+        try {
+            // Convert bookings to CSV
+            const headers = ['Booking ID', 'Type', 'Status', 'Supplier', 'Customer', 'Email', 'Total', 'Currency', 'Payment Status', 'Created At'];
+            const rows = data.bookings.map((booking: any) => [
+                booking.id || booking.booking_id,
+                booking.booking_type === 'flight' ? 'Flight' : 'Hotel',
+                booking.status,
+                booking.supplier || 'N/A',
+                booking.customer_name || `${booking.passenger_name || ''} ${booking.holder_name || ''}`.trim(),
+                booking.customer_email || booking.passenger_email || booking.holder_email || '',
+                booking.total || booking.total_price || 0,
+                booking.currency || 'PHP',
+                booking.payment_status || 'N/A',
+                formatDate(new Date(booking.created_at), { dateStyle: 'medium', timeStyle: 'short' })
+            ]);
+
+            const csvContent = [
+                headers.join(','),
+                ...rows.map((row: any[]) => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+
+            // Create download link
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `bookings-export-${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            toast.success(`Exported ${data.bookings.length} bookings`);
+        } catch (error) {
+            console.error('Export failed:', error);
+            toast.error('Failed to export bookings');
+        }
+    };
+
     const handleRetry = (sessionId: string) => {
         startTransition(async () => {
             try {
@@ -329,7 +369,11 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
                                 ) : null}
                             </button>
                         </div>
-                        <Button variant="outline" className="rounded-xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-normal h-12 px-6 hover:bg-slate-50 transition-all gap-2">
+                        <Button
+                            variant="outline"
+                            className="rounded-xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-normal h-12 px-6 hover:bg-slate-50 transition-all gap-2"
+                            onClick={handleExport}
+                        >
                             <Download size={18} />
                             Export
                         </Button>
