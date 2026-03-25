@@ -6,12 +6,14 @@ interface ClusterLayerProps {
     geoJsonData: any;
     shouldCluster: boolean;
     selectedId: string | null;
+    hoveredId: string | null;
 }
 
 export const ClusterLayer = React.memo(({
     geoJsonData,
     shouldCluster,
     selectedId,
+    hoveredId,
 }: ClusterLayerProps) => {
     return (
         <Source
@@ -29,12 +31,21 @@ export const ClusterLayer = React.memo(({
             {/* Point Layers */}
             <Layer
                 {...unclusteredPointLayer as any}
-                filter={selectedId ? ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], selectedId]] : ['!', ['has', 'point_count']]}
+                filter={
+                    (selectedId || hoveredId)
+                        ? ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], selectedId || ''], ['!=', ['get', 'id'], hoveredId || '']]
+                        : ['!', ['has', 'point_count']]
+                }
             />
             <Layer
                 {...unclusteredPointTextLayer as any}
-                filter={selectedId ? ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], selectedId]] : ['!', ['has', 'point_count']]}
+                filter={
+                    (selectedId || hoveredId)
+                        ? ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], selectedId || ''], ['!=', ['get', 'id'], hoveredId || '']]
+                        : ['!', ['has', 'point_count']]
+                }
             />
         </Source>
     );
 });
+

@@ -1,12 +1,20 @@
+'use client';
+
 import React from 'react';
 import { MappableProperty } from './utils/buildGeoJson';
 import { useMapboxInstance } from './hooks/useMapboxInstance';
 import { useMapMarkers } from './hooks/useMapMarkers';
-import { useMapInteractions } from './hooks/useMapInteractions';
+import { useMapInteractions, PoiData } from './hooks/useMapInteractions';
 import { useMapViewport } from './hooks/useMapViewport';
 import { MapContainer } from './components/MapContainer';
 import { ClusterLayer } from './components/ClusterLayer';
 import { SelectedPropertyPopup } from './components/SelectedPropertyPopup';
+import { Source, Layer, Marker } from 'react-map-gl/mapbox';
+
+import { PoiPopup } from './components/PoiPopup';
+import { PoiDurationMarker } from './components/PoiDurationMarker';
+import { MapMarker } from '../map/MapMarker';
+import { env } from '@/utils/env';
 
 interface SearchMapContainerProps {
     properties: MappableProperty[];
@@ -31,10 +39,21 @@ export const SearchMapContainer = React.memo(({
     // 2. Data Preparation
     const { mappableProperties, geoJsonData, shouldCluster } = useMapMarkers(properties);
 
+    // POI Selection/Hover State
+    const [selectedPoi, setSelectedPoi] = React.useState<PoiData | null>(null);
+    const [hoveredPoi, setHoveredPoi] = React.useState<PoiData | null>(null);
+
+    // GPS Directions State
+    const [routeGeometry, setRouteGeometry] = React.useState<any>(null);
+    const [carDuration, setCarDuration] = React.useState<string | null>(null);
+    const [walkDuration, setWalkDuration] = React.useState<string | null>(null);
+
     // 3. Interactions
-    const { handleMapClick, onMouseEnter, onMouseLeave } = useMapInteractions({
+    const { handleMapClick, onMouseMove } = useMapInteractions({
         mapRef,
         onSelectId,
+        onSelectPoi: setSelectedPoi,
+        onHoverPoi: setHoveredPoi,
     });
 
     // 4. Viewport Management
@@ -46,7 +65,85 @@ export const SearchMapContainer = React.memo(({
     });
 
     // 5. Derived State
-    const selectedProperty = mappableProperties.find(p => p.id === selectedId) || null;
+    const selectedProperty = mappableProperties.find((p: MappableProperty) => p.id === selectedId) || null;
+    const hoveredProperty = mappableProperties.find((p: MappableProperty) => p.id === hoveredId) || null;
+    
+    // Preview logic: prefer hover state for quick feedback, fallback to selected
+    const previewProperty = hoveredProperty || selectedProperty;
+    const activePoi = hoveredPoi || selectedPoi;
+
+
+
+    // Distance calculation helper
+    const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
+        const R = 6371; // km
+        const dLat = (l2.lat - l1.lat) * (Math.PI / 180);
+        const dLng = (l2.lng - l1.lng) * (Math.PI / 180);
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(l1.lat * (Math.PI / 180)) * Math.cos(l2.lat * (Math.PI / 180)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return (R * c).toFixed(2);
+    };
+
+    const poiDistance = previewProperty && activePoi 
+        ? calculateDistance(previewProperty.coordinates, activePoi.coordinates)
+        : null;
+
+    // POI Route Logic
+    // 6. Fetch Real Road GPS Route — only when a POI is *clicked* (selectedPoi)
+    React.useEffect(() => {
+        if (!previewProperty || !selectedPoi) {
+            setRouteGeometry(null);
+            setCarDuration(null);
+            setWalkDuration(null);
+            return;
+        }
+
+        const fetchRoute = async () => {
+            try {
+                // Driving Route — fetch alternatives, pick shortest by distance
+                const drivingQuery = await fetch(
+                    `https://api.mapbox.com/directions/v5/mapbox/driving/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?geometries=geojson&overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`
+                );
+                const drivingJson = await drivingQuery.json();
+
+                if (drivingJson.code === 'Ok' && drivingJson.routes?.length) {
+                    // Sort all alternatives by distance (metres), pick the shortest
+                    const shortestDriving = drivingJson.routes.reduce((best: any, r: any) =>
+                        r.distance < best.distance ? r : best
+                    );
+                    setRouteGeometry(shortestDriving.geometry);
+                    setCarDuration(`${Math.max(1, Math.round(shortestDriving.duration / 60))}m`);
+                }
+
+                // Walking Route — fetch alternatives, pick shortest for time estimate
+                const walkingQuery = await fetch(
+                    `https://api.mapbox.com/directions/v5/mapbox/walking/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`
+                );
+                const walkingJson = await walkingQuery.json();
+
+                if (walkingJson.code === 'Ok' && walkingJson.routes?.length) {
+                    const shortestWalking = walkingJson.routes.reduce((best: any, r: any) =>
+                        r.distance < best.distance ? r : best
+                    );
+                    setWalkDuration(`${Math.max(1, Math.round(shortestWalking.duration / 60))}m`);
+                }
+            } catch (err) {
+                console.error('Directions error:', err);
+            }
+        };
+
+        fetchRoute();
+    }, [previewProperty, selectedPoi]);
+
+    // POI Route Logic (Real Geometry)
+    const poiRouteData: any = routeGeometry ? {
+        type: 'Feature',
+        properties: {},
+        geometry: routeGeometry
+    } : null;
 
     return (
         <MapContainer
@@ -58,24 +155,79 @@ export const SearchMapContainer = React.memo(({
             }}
             onLoad={handleMapLoad}
             onClick={handleMapClick}
-            onMouseEnter={onMouseEnter}
-            onMouseLeave={onMouseLeave}
-            interactiveLayerIds={isMapLoaded ? ['clusters', 'unclustered-point', 'unclustered-point-text'] : undefined}
+            onMouseMove={onMouseMove}
         >
             {isMapLoaded && (
-                <ClusterLayer
-                    geoJsonData={geoJsonData}
-                    shouldCluster={shouldCluster}
-                    selectedId={selectedId}
-                />
+                <>
+
+                    <ClusterLayer
+                        geoJsonData={geoJsonData}
+                        shouldCluster={shouldCluster}
+                        selectedId={selectedId}
+                        hoveredId={hoveredId}
+                    />
+
+                    {/* Premium Property Markers (Selected/Hovered) */}
+                    {mappableProperties.filter(p => p.id === selectedId || p.id === hoveredId).map(property => (
+                        <MapMarker
+                            key={property.id}
+                            property={property}
+                            isSelected={property.id === selectedId}
+                            isHovered={property.id === hoveredId}
+                            onClick={onSelectId}
+                            onHover={onHoverId}
+                        />
+                    ))}
+
+                    {/* POI GPS Route Layers */}
+                    {poiRouteData && (
+                        <Source id="poi-route-source" type="geojson" data={poiRouteData}>
+                            <Layer
+                                id="poi-route-layer"
+                                type="line"
+                                paint={{
+                                    'line-color': '#3b82f6', // Solid blue
+                                    'line-width': 3,
+                                     'line-opacity': 1,
+                                }}
+                            />
+                        </Source>
+                    )}
+
+
+
+                    {/* POI Route Componentry */}
+                    {/* POI Route Componentry */}
+                    {previewProperty && selectedPoi && routeGeometry && (
+                        <PoiDurationMarker
+                            latitude={routeGeometry.coordinates[Math.floor(routeGeometry.coordinates.length / 2)][1]}
+                            longitude={routeGeometry.coordinates[Math.floor(routeGeometry.coordinates.length / 2)][0]}
+                            carDuration={carDuration || ''}
+                            walkDuration={walkDuration || ''}
+                        />
+                    )}
+
+                    {(selectedPoi || (hoveredPoi && !selectedPoi)) && (
+                        <PoiPopup
+                            poi={hoveredPoi || selectedPoi!}
+                            distance={poiDistance ? `${poiDistance} km` : undefined}
+                            onClose={() => setSelectedPoi(null)}
+                        />
+                    )}
+                </>
             )}
 
             <SelectedPropertyPopup
                 selectedProperty={selectedProperty}
-                onClose={() => onSelectId(null)}
+                onClose={() => {
+                    onSelectId(null);
+                    setSelectedPoi(null);
+                }}
                 onViewDetails={onViewDetails}
                 onSelect={(id) => onSelectId(id)}
             />
         </MapContainer>
     );
 });
+
+

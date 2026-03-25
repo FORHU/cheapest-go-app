@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { MapPropertyCard } from '@/components/map/MapPropertyCard';
 import { MapModal } from '@/components/map/MapModal';
 import { computeBounds } from '@/components/map/types';
@@ -242,9 +243,9 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                     {/* Floating List View Toggle */}
                     <button
                         onClick={handleBackToList}
-                        className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/95 hover:bg-slate-900 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm font-semibold backdrop-blur-sm z-50 pointer-events-auto"
+                        className="absolute bottom-6 right-6 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-[14px] font-bold z-50 pointer-events-auto"
                     >
-                        <List size={18} />
+                        <List size={16} strokeWidth={2.5} />
                         Show List
                     </button>
                 </div>

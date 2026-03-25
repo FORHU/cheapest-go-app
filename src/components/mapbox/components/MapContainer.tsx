@@ -9,11 +9,9 @@ interface MapContainerProps {
         latitude: number;
         zoom: number;
     };
-    onLoad: () => void;
+    onLoad: (e: any) => void;
     onClick: (e: any) => void;
-    onMouseEnter: () => void;
-    onMouseLeave: () => void;
-    interactiveLayerIds?: string[];
+    onMouseMove: (e: any) => void;
     children?: React.ReactNode;
 }
 
@@ -22,20 +20,13 @@ export const MapContainer = ({
     initialViewState,
     onLoad,
     onClick,
-    onMouseEnter,
-    onMouseLeave,
-    interactiveLayerIds,
+    onMouseMove,
     children,
 }: MapContainerProps) => {
     return (
         <Map
             ref={mapRef}
-            mapStyle="standard"
-            standardConfig={{
-                lightPreset: 'day',
-                show3dObjects: true,
-                show3dBuildings: true,
-            }}
+            mapStyle="mapbox://styles/mapbox/streets-v12"
             initialViewState={{
                 ...initialViewState,
                 pitch: 45,
@@ -43,11 +34,9 @@ export const MapContainer = ({
             }}
             maxPitch={60}
             onClick={onClick}
-            onMouseEnter={onMouseEnter}
-            onMouseLeave={onMouseLeave}
+            onMouseMove={onMouseMove}
             onLoad={onLoad}
             className={`rounded-none min-h-0 w-full h-full ${children ? '' : ''}`}
-            interactiveLayerIds={interactiveLayerIds}
         >
             <NavigationControl position="top-right" showCompass visualizePitch />
             {children}

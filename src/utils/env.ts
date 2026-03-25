@@ -26,8 +26,14 @@ export const env = {
     // Resend
     RESEND_API_KEY: process.env.RESEND_API_KEY,
 
+    // Google Places
+    GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
+
     // Site
     SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://k-travel-booking.vercel.app',
+
+    //Onda
+    ONDA_SECRET_KEY: process.env.ONDA_SECRET_KEY,
 };
 
 /**
