@@ -29,9 +29,7 @@ export default async function SearchPage(props: {
             <main className="h-[calc(100vh-64px)] w-full overflow-hidden">
                 <Suspense
                     fallback={
-                        <div className="flex h-full items-center justify-center">
-                            <div className="animate-pulse text-sm text-slate-500">Loading map...</div>
-                        </div>
+                        <div className="flex h-full w-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
                     }
                 >
                     <SearchMapView

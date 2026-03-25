@@ -20,11 +20,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "static.cupid.travel",
-      },
-      {
-        protocol: "https",
-        hostname: "*.cupid.travel",
+        hostname: "**",
       },
     ],
   },
@@ -49,7 +45,11 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://js.stripe.com https://api.mapbox.com https://cdn.jsdelivr.net",
+              // 'unsafe-inline' is still required because Next.js injects inline hydration scripts.
+              // Removing it requires nonce-based CSP via middleware (tracked as future hardening).
+              // 'unsafe-eval' has been removed — it enables eval() and is not needed in production.
+              "script-src 'self' 'unsafe-inline' blob: https://js.stripe.com https://api.mapbox.com https://cdn.jsdelivr.net",
+              // 'unsafe-inline' is required for Tailwind/CSS-in-JS utility classes.
               "style-src 'self' 'unsafe-inline' https://api.mapbox.com",
               "img-src 'self' data: blob: https: http:",
               "font-src 'self' data:",

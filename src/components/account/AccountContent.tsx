@@ -60,7 +60,7 @@ export function AccountContent({ initialUser }: AccountContentProps) {
 
     const handleSignOut = async () => {
         await logout();
-        window.location.href = '/';
+        router.push('/');
     };
 
     return (

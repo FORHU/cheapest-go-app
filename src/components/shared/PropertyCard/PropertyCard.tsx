@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
 import { type Property } from '@/types';
@@ -152,7 +153,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: index < 6 ? 0 : 1, y: index < 6 ? 30 : 0 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{
@@ -171,12 +172,16 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
             {/* Card content — Airbnb-style size/layout: 4:3 image, rounded corners */}
             <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
                 <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-2xl landscape-compact-img landscape-img flex-shrink-0">
-                    <motion.div
-                        className="absolute inset-0 bg-cover bg-center"
-                        style={{ backgroundImage: `url(${imgSrc})` }}
-                        whileHover={{ scale: 1.1 }}
-                        transition={{ duration: 0.6 }}
-                    />
+                    {imgSrc && (
+                        <Image
+                            src={imgSrc}
+                            alt={displayName}
+                            fill
+                            sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
+                            className="object-cover transition-transform duration-500 group-hover:scale-110"
+                            loading="lazy"
+                        />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
                     {displayBadges.length > 0 && (
@@ -271,7 +276,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: index < 6 ? 0 : 1, y: index < 6 ? 30 : 0 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.1 }}
             transition={{ delay: index * 0.03, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
@@ -280,10 +285,18 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
         >
             {/* Image Section */}
             <div className="md:w-[240px] relative h-[140px] md:h-auto flex-shrink-0 p-2 md:p-3 md:pr-0">
-                <div
-                    className="absolute inset-2 md:inset-3 md:right-0 bg-cover bg-center rounded-xl transition-transform duration-500 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${property.image})` }}
-                />
+                <div className="absolute inset-2 md:inset-3 md:right-0 rounded-xl overflow-hidden">
+                    {property.image && (
+                        <Image
+                            src={property.image}
+                            alt={property.name}
+                            fill
+                            sizes="240px"
+                            className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                            loading="lazy"
+                        />
+                    )}
+                </div>
                 {/* Heart icon */}
                 <button
                     className="absolute top-3 left-3 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"

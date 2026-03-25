@@ -51,7 +51,28 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
     }
 
-    console.log(`[Stripe Webhook] Event: ${event.type}`);
+    console.log(`[Stripe Webhook] Event: ${event.type} id=${event.id}`);
+
+    // ── Idempotency: deduplicate processed events ────────────────────────────
+    if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+        const { createClient: createSbClient } = await import('@supabase/supabase-js');
+        const dedupClient = createSbClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const { error: dedupError } = await dedupClient
+            .from('stripe_processed_events')
+            .insert({ event_id: event.id, event_type: event.type, processed_at: new Date().toISOString() });
+
+        if (dedupError) {
+            if (dedupError.code === '23505') {
+                // Unique violation — already processed
+                console.log(`[Stripe Webhook] Duplicate event ${event.id} — skipping`);
+                return NextResponse.json({ received: true });
+            }
+            // Table may not exist yet — log and continue
+            if (!dedupError.message?.includes('does not exist')) {
+                console.warn('[Stripe Webhook] Dedup insert error:', dedupError.message);
+            }
+        }
+    }
 
     const headers = {
         'Content-Type': 'application/json',

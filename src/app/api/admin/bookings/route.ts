@@ -11,6 +11,7 @@ import {
     adminRetryBooking,
     adminCancelAwaitingTicket
 } from '@/lib/server/admin';
+import { logAdminAction } from '@/lib/server/admin/audit';
 
 export async function POST(req: Request) {
     try {
@@ -19,6 +20,18 @@ export async function POST(req: Request) {
 
         const body = await req.json();
         const { action, bookingId, reason } = body;
+
+        // Audit all mutating booking actions
+        const mutatingActions = ['recheck', 'cancel', 'refund', 'restore', 'retry_booking', 'cancel_awaiting_ticket'];
+        if (mutatingActions.includes(action)) {
+            logAdminAction({
+                action: `booking_${action}`,
+                adminId: auth.user.id,
+                adminEmail: auth.user.email,
+                targetId: bookingId,
+                details: reason ? { reason } : undefined,
+            });
+        }
 
         switch (action) {
             case 'raw':

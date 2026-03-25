@@ -112,6 +112,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                     <img
                         src={mainImage}
                         alt="Property view"
+                        fetchPriority="high"
                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                     />
                     <button
@@ -136,6 +137,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                     <img
                                         src={img}
                                         alt={`Property view ${i + 1}`}
+                                        fetchPriority={i === 0 ? 'high' : 'auto'}
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
@@ -172,6 +174,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                             <img
                                 src={mainImage}
                                 alt="Main property view"
+                                fetchPriority="high"
                                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                             />
                         </div>

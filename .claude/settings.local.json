@@ -25,7 +25,9 @@
       "Bash(pnpm build:*)",
       "Bash(grep:*)",
       "Bash(pnpm add:*)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(node -e \"require\\(''''C:/Users/USER/AppData/Roaming/npm/node_modules/puppeteer''''\\)\")",
+      "Bash(npm install:*)"
     ]
   }
 }

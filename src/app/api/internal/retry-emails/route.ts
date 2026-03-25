@@ -103,7 +103,7 @@ export async function POST(req: Request) {
                         .eq('id', log.id);
 
                     succeeded++;
-                    console.log(`[retry-emails] Sent: ${log.id} → ${log.recipient}`);
+                    console.log(`[retry-emails] Sent: ${log.id}`);
                 } else {
                     const errorText = await resendResponse.text();
                     // Update error message but keep status as failed
