@@ -6,17 +6,7 @@ import RoomList from '@/components/property/RoomList';
 import PoliciesSection from '@/components/property/PoliciesSection';
 import ReviewsSection from '@/components/property/ReviewsSection';
 import FAQSection from '@/components/property/FAQSection';
-import dynamic from 'next/dynamic';
-
-const PropertyMapSidebar = dynamic(
-    () => import('@/components/property/PropertyMapSidebar'),
-    {
-        ssr: false,
-        loading: () => (
-            <div className="h-full w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-xl" />
-        ),
-    }
-);
+import PropertyMapSidebar from '@/components/property/PropertyMapSidebar';
 import MobilePropertyHeader from '@/components/property/MobilePropertyHeader';
 import MobileBookingCTA from '@/components/property/MobileBookingCTA';
 import BackButton from '@/components/common/BackButton';
