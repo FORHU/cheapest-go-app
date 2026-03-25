@@ -8,7 +8,7 @@ import { getAirlineName } from '@/utils/flight-utils';
 
 
 import { useUserCurrency } from '@/stores/searchStore';
-import { EXCHANGE_RATES } from '@/lib/currency';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -27,30 +27,20 @@ function formatDuration(minutes: number): string {
 
 
 function formatPrice(amount: number, currency: string, targetCurrency?: string): string {
-    const from = currency?.toUpperCase();
-    const to = targetCurrency?.toUpperCase();
+    const from = currency?.toUpperCase() || 'USD';
+    const to = targetCurrency?.toUpperCase() || from;
 
-    let displayAmount = amount;
-    let displayCurrency = from;
+    const displayAmount = from !== to ? convertCurrency(amount, from, to) : amount;
 
-    if (to && from !== to) {
-        const rateFrom = EXCHANGE_RATES[from] || 1;
-        const rateTo = EXCHANGE_RATES[to] || 1;
-        displayAmount = (amount * rateFrom) / rateTo;
-        displayCurrency = to;
-    }
-
-    // Special case for PHP/KRW if Intl is flaky in some environments
     try {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
-            currency: displayCurrency || 'USD',
+            currency: to,
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
         }).format(displayAmount);
-    } catch (e) {
-        const symbols: Record<string, string> = { 'PHP': '₱', 'KRW': '₩', 'USD': '$' };
-        const symbol = symbols[displayCurrency] || displayCurrency;
+    } catch {
+        const symbol = getCurrencySymbol(to);
         return `${symbol}${Math.round(displayAmount).toLocaleString()}`;
     }
 }

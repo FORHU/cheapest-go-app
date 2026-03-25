@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import SearchFilters from '@/components/search/SearchFilters';
 import SearchResults from '@/components/search/SearchResults';
-import { SearchMapView } from '@/components/search/SearchMapView';
 import { ResponsiveSearchHeader } from '@/components/search/ResponsiveSearchHeader';
+import LazySearchMapView from '@/components/search/LazySearchMapView';
 
 import BackButton from '@/components/common/BackButton';
 import { fetchSearchProperties, fetchFacilities } from '@/lib/search';
@@ -33,7 +33,7 @@ export default async function SearchPage(props: {
                         <div className="flex h-full w-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
                     }
                 >
-                    <SearchMapView
+                    <LazySearchMapView
                         properties={initialProperties}
                         destination={searchParams.destination as string || ''}
                     />

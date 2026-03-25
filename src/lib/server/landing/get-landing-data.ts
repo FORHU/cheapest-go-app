@@ -1,6 +1,12 @@
 import { createClient } from "@/utils/supabase/server";
 import { cache } from "react";
 import { type Deal, type VacationPackage } from "@/types";
+import {
+    DESTINATION_PRICE_MARKUP,
+    DESTINATION_INCLUDES_DEFAULT,
+    DESTINATION_RATING_DEFAULT,
+    DESTINATION_REVIEWS_DEFAULT,
+} from "@/lib/constants/landing";
 
 // ─── Shared helper ────────────────────────────────────────────────────────────
 async function supabaseQuery(table: string, limit: number) {
@@ -68,11 +74,11 @@ export const getPopularDestinations = cache(async (): Promise<VacationPackage[]>
         name: d.city,
         location: d.country,
         image: d.image_url || "https://picsum.photos/seed/dest/400/300",
-        originalPrice: Number(d.average_price || 0) * 1.2,
+        originalPrice: Number(d.average_price || 0) * DESTINATION_PRICE_MARKUP,
         salePrice: Number(d.average_price || 0),
-        includes: ["Flight + Hotel", "Free Baggage"],
-        rating: 4.8,
-        reviews: 1240,
+        includes: DESTINATION_INCLUDES_DEFAULT,
+        rating: DESTINATION_RATING_DEFAULT,
+        reviews: DESTINATION_REVIEWS_DEFAULT,
         destinationCode: d.destination_code || d.iata_code || undefined,
     })) ?? [];
 });
@@ -193,11 +199,11 @@ export const getLandingData = cache(async () => {
         name: d.city,
         location: d.country,
         image: d.image_url || "https://picsum.photos/seed/dest/400/300",
-        originalPrice: Number(d.average_price || 0) * 1.2,
+        originalPrice: Number(d.average_price || 0) * DESTINATION_PRICE_MARKUP,
         salePrice: Number(d.average_price || 0),
-        includes: ["Flight + Hotel", "Free Baggage"],
-        rating: 4.8,
-        reviews: 1240,
+        includes: DESTINATION_INCLUDES_DEFAULT,
+        rating: DESTINATION_RATING_DEFAULT,
+        reviews: DESTINATION_REVIEWS_DEFAULT,
         destinationCode: d.destination_code || d.iata_code || undefined,
     })) ?? [];
 
