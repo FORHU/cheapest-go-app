@@ -5,6 +5,7 @@ import { env } from '@/utils/env';
 import { FlightOffer, FarePolicy } from '@/types/flights';
 import { logApiCall } from '@/lib/server/api-logger';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { flightBookingSchema } from '@/lib/schemas/flight';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,11 +42,13 @@ export async function POST(req: NextRequest) {
         if (!flight || typeof flight !== 'object') {
             return NextResponse.json({ success: false, error: 'flight object is required' }, { status: 400 });
         }
-        if (!passengers || !Array.isArray(passengers) || passengers.length === 0) {
-            return NextResponse.json({ success: false, error: 'At least one passenger is required' }, { status: 400 });
-        }
-        if (!contact?.email || !contact?.phone) {
-            return NextResponse.json({ success: false, error: 'Contact email and phone are required' }, { status: 400 });
+
+        const passengerParsed = flightBookingSchema.safeParse({ passengers, contact });
+        if (!passengerParsed.success) {
+            return NextResponse.json(
+                { success: false, error: passengerParsed.error.issues[0]?.message ?? 'Invalid passenger or contact data' },
+                { status: 400 }
+            );
         }
 
         if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {

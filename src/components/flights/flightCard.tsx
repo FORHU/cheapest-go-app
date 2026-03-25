@@ -4,11 +4,10 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plane, Clock, ArrowRight, Luggage, AlertCircle, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer, FlightSegmentDetail, FarePolicy } from '@/types/flights';
-import { getAirlineName } from '@/utils/flight-utils';
+import { getAirlineName, formatPrice } from '@/utils/flight-utils';
 
 
 import { useUserCurrency } from '@/stores/searchStore';
-import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -23,26 +22,6 @@ function formatDuration(minutes: number): string {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-
-function formatPrice(amount: number, currency: string, targetCurrency?: string): string {
-    const from = currency?.toUpperCase() || 'USD';
-    const to = targetCurrency?.toUpperCase() || from;
-
-    const displayAmount = from !== to ? convertCurrency(amount, from, to) : amount;
-
-    try {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: to,
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(displayAmount);
-    } catch {
-        const symbol = getCurrencySymbol(to);
-        return `${symbol}${Math.round(displayAmount).toLocaleString()}`;
-    }
 }
 
 function stopsLabel(stops: number): string {

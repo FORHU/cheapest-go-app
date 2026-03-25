@@ -24,8 +24,8 @@ export interface FetchPropertyResult {
     preBookResult: any;
 }
 
-// Format date as YYYY-MM-DD
-export function formatDate(date: Date): string {
+// Format date as YYYY-MM-DD for API parameters
+export function formatDateForApi(date: Date): string {
     return date.toISOString().split('T')[0];
 }
 
@@ -46,7 +46,7 @@ export function getDefaultDates() {
     tomorrow.setDate(today.getDate() + 1);
     const dayAfter = new Date(tomorrow);
     dayAfter.setDate(tomorrow.getDate() + 2);
-    return { checkIn: formatDate(tomorrow), checkOut: formatDate(dayAfter) };
+    return { checkIn: formatDateForApi(tomorrow), checkOut: formatDateForApi(dayAfter) };
 }
 
 // Collect room images from room types

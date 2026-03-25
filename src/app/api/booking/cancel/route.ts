@@ -3,6 +3,7 @@ import { cancelBooking } from '@/lib/server/bookings';
 import { createNotification } from '@/lib/server/admin/notify';
 import { sendHotelCancellationEmail } from '@/lib/server/email';
 import { revalidatePath } from 'next/cache';
+import { cancelBookingSchema } from '@/lib/schemas/booking';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,14 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { bookingId } = body;
+        const parsed = cancelBookingSchema.safeParse(body);
+        if (!parsed.success) {
+            return Response.json(
+                { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid request' },
+                { status: 400 }
+            );
+        }
+        const { bookingId } = parsed.data;
 
         const data = await cancelBooking(bookingId, user, supabase);
 

@@ -6,37 +6,10 @@ import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPo
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
-import { formatTime, formatDuration } from '@/utils/flight-utils';
+import { formatTime, formatDuration, formatPrice } from '@/utils/flight-utils';
 import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 import { useUserCurrency } from '@/stores/searchStore';
-import { convertCurrency } from '@/lib/currency';
 import type { FarePolicy } from '@/types/flights';
-
-function formatPrice(amount: number, currency: string, targetCurrency?: string): string {
-    const from = currency?.toUpperCase();
-    const to = targetCurrency?.toUpperCase();
-
-    let displayAmount = amount;
-    let displayCurrency = from;
-
-    if (to && from !== to) {
-        displayAmount = convertCurrency(amount, from, to);
-        displayCurrency = to;
-    }
-
-    try {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: displayCurrency || 'USD',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(displayAmount);
-    } catch {
-        const symbols: Record<string, string> = { 'PHP': '₱', 'KRW': '₩', 'USD': '$' };
-        const symbol = symbols[displayCurrency] || displayCurrency;
-        return `${symbol}${Math.round(displayAmount).toLocaleString()}`;
-    }
-}
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
