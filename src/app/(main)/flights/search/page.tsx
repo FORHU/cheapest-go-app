@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SearchFetcher } from "@/components/flights/search-fetcher";
 import { SectionHeader } from "@/components/ui";
 import type { CabinClass } from "@/types/flights";
@@ -42,9 +43,9 @@ export default async function SearchPage({
                 <div className="text-center space-y-4">
                     <h1 className="text-2xl font-bold">Invalid Search Parameters</h1>
                     <p className="text-gray-500">Please provide origin, destination and departure date.</p>
-                    <a href="/" className="text-blue-600 hover:underline">
+                    <Link href="/" className="text-blue-600 hover:underline">
                         Return to search
-                    </a>
+                    </Link>
                 </div>
             </div>
         );

@@ -58,14 +58,12 @@ export function OptimizedImage({
     return <>{fallback || <div className={props.className} />}</>;
   }
 
-  // For external images (LiteAPI, CDNs), use unoptimized mode or add domains to next.config.js
-  const isExternal = src.startsWith('http');
-
+  // All HTTPS hosts are covered by the wildcard remotePatterns in next.config.mjs,
+  // so next/image optimization (WebP/AVIF, srcset) is active for every external URL.
   return (
     <Image
       src={src}
       alt={alt}
-      unoptimized={isExternal} // Disable optimization for external URLs (or add to remotePatterns)
       placeholder="blur"
       blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2YzZjRmNiIvPjwvc3ZnPg=="
       {...props}

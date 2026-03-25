@@ -230,6 +230,22 @@ async function _confirmAndSaveBookingInner(
   const bookingId = bookingData.bookingId;
   const bookingStatus = bookingData.status || 'confirmed';
 
+  // Emit an immutable audit log immediately after LiteAPI confirms — BEFORE the DB write.
+  // If the process crashes between here and the RPC call, this log entry is the evidence
+  // needed for manual reconciliation. Do NOT move this line below the DB write.
+  console.log(JSON.stringify({
+    _event: 'liteapi_confirmed',
+    bookingId,
+    prebookId: params.prebookId,
+    userId: user.id,
+    holderEmail: params.holder.email,
+    propertyName: params.propertyName,
+    checkIn: params.checkIn,
+    checkOut: params.checkOut,
+    currency: params.currency,
+    timestamp: new Date().toISOString(),
+  }));
+
   // Extract price from LiteAPI response
   const totalPrice =
     typeof bookingData.price === 'number' ? bookingData.price :

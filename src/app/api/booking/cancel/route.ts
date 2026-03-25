@@ -63,7 +63,7 @@ export async function POST(req: Request) {
                         amount: refundData.amount,
                         currency: refundData.currency || 'PHP',
                         refundStatus: refundData.status || 'pending',
-                        userId: user.id,
+                        userId: user.id.slice(0, 8),
                         timestamp: new Date().toISOString(),
                     }));
                 }

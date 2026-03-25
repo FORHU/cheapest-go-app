@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/utils/supabase/client';
 import { useEffect } from 'react';
+import { queryKeys, staleTimes } from '@/lib/queryClient';
 
 const supabase = createClient();
 
@@ -9,7 +10,8 @@ export function useDashboardData() {
 
     // 1. Fetch Dashboard Stats
     const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['admin-stats'],
+        queryKey: queryKeys.admin.stats(),
+        staleTime: staleTimes.admin,
         queryFn: async () => {
             const { count: totalBookings } = await supabase
                 .from('unified_bookings')
@@ -43,7 +45,8 @@ export function useDashboardData() {
 
     // 2. Fetch Weekly Analytics
     const { data: analytics, isLoading: analyticsLoading } = useQuery({
-        queryKey: ['admin-analytics'],
+        queryKey: queryKeys.admin.analytics(),
+        staleTime: staleTimes.admin,
         queryFn: async () => {
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -93,7 +96,8 @@ export function useDashboardData() {
 
     // 3. Fetch Supplier Breakdown
     const { data: supplierBreakdown, isLoading: breakdownLoading } = useQuery({
-        queryKey: ['admin-supplier-breakdown'],
+        queryKey: queryKeys.admin.supplierBreakdown(),
+        staleTime: staleTimes.admin,
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('unified_bookings')
@@ -118,7 +122,8 @@ export function useDashboardData() {
 
     // 4. Fetch Recent Activity
     const { data: recentActivity, isLoading: activityLoading } = useQuery({
-        queryKey: ['admin-activity'],
+        queryKey: queryKeys.admin.activity(),
+        staleTime: staleTimes.admin,
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('unified_bookings')
@@ -147,10 +152,7 @@ export function useDashboardData() {
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'unified_bookings' },
                 () => {
-                    queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
-                    queryClient.invalidateQueries({ queryKey: ['admin-activity'] });
-                    queryClient.invalidateQueries({ queryKey: ['admin-analytics'] });
-                    queryClient.invalidateQueries({ queryKey: ['admin-supplier-breakdown'] });
+                    queryClient.invalidateQueries({ queryKey: queryKeys.admin.all });
                 }
             )
             .subscribe();

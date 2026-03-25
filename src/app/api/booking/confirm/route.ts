@@ -4,11 +4,19 @@ import { stripe } from '@/lib/stripe/server';
 import { createNotification } from '@/lib/server/admin/notify';
 import { sendBookingConfirmationEmail } from '@/lib/server/email';
 import { revalidatePath } from 'next/cache';
+import { rateLimit } from '@/lib/server/rate-limit';
+import { safeError } from '@/lib/server/safe-error';
 
 export const dynamic = 'force-dynamic';
 
 
 export async function POST(req: Request) {
+    // 5 booking confirmations per minute per IP
+    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-confirm' });
+    if (!rl.success) {
+        return Response.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    }
+
     try {
         const { user, error: authError } = await getAuthenticatedUser();
         if (authError || !user) {
@@ -74,7 +82,7 @@ export async function POST(req: Request) {
                     paymentIntentId: body.paymentIntentId,
                     amount: result.data?.totalPrice || 0,
                     currency: result.data?.currency || body.currency || 'PHP',
-                    userId: user.id,
+                    userId: user.id.slice(0, 8),
                     timestamp: new Date().toISOString(),
                 }));
             }
@@ -113,7 +121,7 @@ export async function POST(req: Request) {
                     amount: refund.amount / 100,
                     currency: (refund.currency || 'usd').toUpperCase(),
                     reason: 'liteapi_failure',
-                    userId: user.id,
+                    userId: user.id.slice(0, 8),
                     timestamp: new Date().toISOString(),
                 }));
             } catch (refundErr: any) {
@@ -128,7 +136,7 @@ export async function POST(req: Request) {
         return Response.json(result);
     } catch (err) {
         return Response.json(
-            { success: false, error: String(err) },
+            { success: false, error: safeError(err, 'booking/confirm') },
             { status: 500 }
         );
     }

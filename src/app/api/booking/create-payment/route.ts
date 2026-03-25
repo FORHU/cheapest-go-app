@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
+import { rateLimit } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+    // 5 payment initiations per minute per IP
+    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-payment' });
+    if (!rl.success) {
+        return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    }
+
     try {
         const { user, error: authError } = await getAuthenticatedUser();
         if (authError || !user) {

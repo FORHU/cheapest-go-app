@@ -38,6 +38,11 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
         router.push(`/property/${propertyId}?${currentParams.toString()}`);
     };
 
+    const handlePropertyPrefetch = useCallback((propertyId: string) => {
+        const currentParams = new URLSearchParams(searchParams?.toString() || '');
+        router.prefetch(`/property/${propertyId}?${currentParams.toString()}`);
+    }, [router, searchParams]);
+
     // Navigate to map view
     const handleViewOnMap = useCallback(() => {
         const params = new URLSearchParams(searchParams?.toString() || '');
@@ -131,13 +136,14 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                 visibleProperties.length > 0 ? (
                     <div className="space-y-4">
                         {visibleProperties.map((property, index) => (
-                            <PropertyCard
-                                key={property.id}
-                                variant="horizontal"
-                                property={property}
-                                index={index}
-                                onClick={() => handlePropertyClick(property.id)}
-                            />
+                            <div key={property.id} onMouseEnter={() => handlePropertyPrefetch(property.id)}>
+                                <PropertyCard
+                                    variant="horizontal"
+                                    property={property}
+                                    index={index}
+                                    onClick={() => handlePropertyClick(property.id)}
+                                />
+                            </div>
                         ))}
                     </div>
                 ) : (

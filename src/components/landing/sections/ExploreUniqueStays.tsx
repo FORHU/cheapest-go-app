@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Sparkles, Star } from 'lucide-react';
 import { TabList, SparkleEffect, HorizontalScroll } from '@/components/ui';
@@ -71,12 +72,16 @@ export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ sta
 
               <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
                 <div className="relative aspect-[2/1] sm:aspect-[4/3] md:aspect-[3/2] overflow-hidden flex-shrink-0 landscape-compact-img landscape-img">
-                  <motion.div
-                    className="absolute inset-0 bg-cover bg-center"
-                    style={{ backgroundImage: `url(${stay.image})` }}
-                    whileHover={{ scale: 1.15 }}
-                    transition={{ duration: 0.6 }}
-                  />
+                  {stay.image && (
+                    <Image
+                      src={stay.image}
+                      alt={stay.name}
+                      fill
+                      sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
+                      className="object-cover transition-transform duration-500 group-hover:scale-110"
+                      loading="lazy"
+                    />
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
                   {/* Animated badge */}
