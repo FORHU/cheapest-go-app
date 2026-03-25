@@ -3,6 +3,7 @@ import SearchFilters from '@/components/search/SearchFilters';
 import SearchResults from '@/components/search/SearchResults';
 import { SearchMapView } from '@/components/search/SearchMapView';
 import { ResponsiveSearchHeader } from '@/components/search/ResponsiveSearchHeader';
+
 import BackButton from '@/components/common/BackButton';
 import { fetchSearchProperties, fetchFacilities } from '@/lib/search';
 
@@ -23,7 +24,7 @@ export default async function SearchPage(props: {
         fetchFacilities(),
     ]);
 
-    // ─── MAP VIEW: Full Agoda-style split layout ────────────────────
+    // ─── MAP VIEW: split layout ────────────────────
     if (viewMode === 'map') {
         return (
             <main className="h-[calc(100vh-64px)] w-full overflow-hidden">

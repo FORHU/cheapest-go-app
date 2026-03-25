@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { MapPropertyCard } from '@/components/map/MapPropertyCard';
 import { MapModal } from '@/components/map/MapModal';
 import { computeBounds } from '@/components/map/types';
@@ -10,7 +11,20 @@ import { type Property } from '@/types';
 import { ArrowLeft, MapPin, ChevronDown, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, cn } from '@/lib/utils';
-import { SearchMapContainer } from '../mapbox/SearchMapContainer';
+// import { SearchMapContainer } from '../mapbox/SearchMapContainer';
+
+const SearchMapContainer = dynamic(
+    () => import('../mapbox/SearchMapContainer').then((mod) => mod.SearchMapContainer),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex-1 h-full flex items-center justify-center bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
+                <div className="animate-pulse text-sm text-slate-500">Initializing map...</div>
+            </div>
+        ),
+    }
+);
+
 
 // ── Sort logic ──────────────────────────────────────────
 const SORT_OPTIONS = ['recommended', 'price-low', 'price-high', 'rating'] as const;

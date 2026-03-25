@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { MappableProperty } from './utils/buildGeoJson';
 import { useMapboxInstance } from './hooks/useMapboxInstance';
