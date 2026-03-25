@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Menu,
     Search,
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useAuthStore } from '@/stores/authStore';
+import { CommandPalette } from './CommandPalette';
 
 import { useRouter } from 'next/navigation';
 import { Notification } from '@/types/admin';
@@ -46,6 +47,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
     const user = useAuthStore((s) => s.user);
     const logout = useAuthStore((s) => s.logout);
     const [isLogoutOpen, setIsLogoutOpen] = React.useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     const [notifications, setNotifications] = React.useState<Notification[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
@@ -63,6 +65,18 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
         } finally {
             setIsLoading(false);
         }
+    }, []);
+
+    // Cmd+K / Ctrl+K to open search palette
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setIsSearchOpen(prev => !prev);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
     React.useEffect(() => {
@@ -144,20 +158,19 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                     <Menu size={20} />
                 </Button>
 
-                <div className="relative max-w-md w-full hidden sm:block">
+                <button
+                    onClick={() => setIsSearchOpen(true)}
+                    className="relative max-w-md w-full hidden sm:flex items-center gap-3 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg py-2.5 pl-11 pr-12 text-sm font-medium text-slate-400 hover:border-slate-200 dark:hover:border-white/20 transition-all cursor-pointer text-left"
+                >
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
                         <Search size={16} />
                     </div>
-                    <input
-                        type="text"
-                        placeholder="Search tasks..."
-                        className="w-full bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg py-2.5 pl-11 pr-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-slate-400"
-                    />
+                    <span>Search bookings, customers...</span>
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 dark:bg-white/10 rounded-lg text-[10px] font-bold text-slate-400">
                         <Command size={10} />
-                        <span>F</span>
+                        <span>K</span>
                     </div>
-                </div>
+                </button>
             </div>
 
             {/* Right: Actions & Profile */}
@@ -302,6 +315,8 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                     </DialogContent>
                 </Dialog>
             </div>
+
+            <CommandPalette open={isSearchOpen} onOpenChange={setIsSearchOpen} />
         </header>
     );
 }

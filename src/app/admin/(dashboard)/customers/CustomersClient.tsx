@@ -33,13 +33,15 @@ import {
 } from '@/components/ui/Dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate, getInitials, formatCurrency, cn } from '@/lib/utils';
+import { convertCurrency } from '@/lib/currency';
 import { Customer } from '@/types/admin';
 
 interface CustomersClientProps {
     initialCustomers: Customer[];
+    defaultCurrency?: string;
 }
 
-export function CustomersClient({ initialCustomers }: CustomersClientProps) {
+export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: CustomersClientProps) {
     const [customers, setCustomers] = useState(initialCustomers);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -158,7 +160,7 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
                 />
                 <StatCard
                     title="Total Spend"
-                    value={formatCurrency(totalSpend, 'PHP')}
+                    value={formatCurrency(convertCurrency(totalSpend, 'PHP', defaultCurrency), defaultCurrency)}
                     icon={DollarSign}
                     variant="blue"
                 />
@@ -305,7 +307,7 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="py-5 font-black text-slate-900 dark:text-white">
-                                        {formatCurrency(customer.totalSpend, 'PHP')}
+                                        {formatCurrency(convertCurrency(customer.totalSpend, 'PHP', defaultCurrency), defaultCurrency)}
                                     </TableCell>
                                     <TableCell className="py-5">
                                         <div className="flex items-center gap-1 text-slate-900 dark:text-white font-bold">
@@ -485,7 +487,7 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
                                 </div>
                                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Spend</p>
-                                    <p className="text-lg font-black text-slate-900 dark:text-white">{formatCurrency(selectedCustomer.totalSpend, 'PHP')}</p>
+                                    <p className="text-lg font-black text-slate-900 dark:text-white">{formatCurrency(convertCurrency(selectedCustomer.totalSpend, 'PHP', defaultCurrency), defaultCurrency)}</p>
                                 </div>
                                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Bookings</p>

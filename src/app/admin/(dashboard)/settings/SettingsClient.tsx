@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Save,
     Settings2,
@@ -47,9 +48,13 @@ const TIMEZONES = [
 const CURRENCIES = Object.keys(EXCHANGE_RATES);
 
 export function SettingsClient({ initialSettings, integrationKeys }: SettingsClientProps) {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabId>('general');
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+    // Track the "saved" baseline so isDirty resets after successful save
+    const savedBaseline = useRef(initialSettings);
 
     // Form state
     const [portalName, setPortalName] = useState(initialSettings.portal_name || '');
@@ -60,14 +65,15 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
     const [timezone, setTimezone] = useState(initialSettings.timezone || 'Asia/Manila');
     const [cacheDuration, setCacheDuration] = useState(initialSettings.cache_duration ?? 60);
 
+    const baseline = savedBaseline.current;
     const isDirty =
-        portalName !== (initialSettings.portal_name || '') ||
-        adminEmail !== (initialSettings.admin_email || '') ||
-        description !== (initialSettings.platform_description || '') ||
-        publicRegistration !== (initialSettings.public_registration ?? true) ||
-        currency !== (initialSettings.default_currency || 'USD') ||
-        timezone !== (initialSettings.timezone || 'Asia/Manila') ||
-        cacheDuration !== (initialSettings.cache_duration ?? 60);
+        portalName !== (baseline.portal_name || '') ||
+        adminEmail !== (baseline.admin_email || '') ||
+        description !== (baseline.platform_description || '') ||
+        publicRegistration !== (baseline.public_registration ?? true) ||
+        currency !== (baseline.default_currency || 'USD') ||
+        timezone !== (baseline.timezone || 'Asia/Manila') ||
+        cacheDuration !== (baseline.cache_duration ?? 60);
 
     const handleSave = async () => {
         setSaving(true);
@@ -90,7 +96,19 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
             });
             const data = await res.json();
             if (data.success) {
+                // Update baseline so isDirty resets
+                savedBaseline.current = {
+                    portal_name: portalName,
+                    admin_email: adminEmail,
+                    platform_description: description,
+                    public_registration: publicRegistration,
+                    default_currency: currency,
+                    timezone: timezone,
+                    cache_duration: cacheDuration,
+                };
                 setToast({ type: 'success', message: 'Settings saved successfully' });
+                // Refresh server data so other pages pick up changes immediately
+                router.refresh();
             } else {
                 setToast({ type: 'error', message: data.error || 'Failed to save' });
             }
@@ -104,18 +122,7 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
 
     return (
         <div className="space-y-10 pb-20">
-            <HeaderTitle
-                actions={
-                    <Button
-                        onClick={handleSave}
-                        disabled={!isDirty || saving}
-                        className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0 gap-2"
-                    >
-                        {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                        {saving ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                }
-            />
+            <HeaderTitle />
 
             {/* Toast */}
             {toast && (
@@ -369,6 +376,28 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
                     )}
                 </div>
             </div>
+
+            {/* Sticky Save Bar */}
+            <AnimatePresence>
+                {isDirty && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        className="sticky bottom-6 z-40 flex items-center justify-between gap-4 bg-white dark:bg-obsidian border border-slate-200 dark:border-white/10 rounded-2xl px-6 py-4 shadow-2xl shadow-black/10"
+                    >
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400">You have unsaved changes</p>
+                        <Button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0 gap-2"
+                        >
+                            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                            {saving ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

@@ -22,3 +22,20 @@ SELECT cron.schedule(
       ) as request_id;
     $$
 );
+
+-- ============================================================================
+-- Schedule Poll Pending Tickets Cron (Mystifly awaiting_ticket → ticketed)
+-- ============================================================================
+-- Runs every 5 minutes to check Mystifly for ticket issuance on pending bookings.
+
+SELECT cron.schedule(
+    'poll-pending-tickets-every-5-mins',
+    '*/5 * * * *',
+    $$
+    SELECT
+      net.http_post(
+        url:='https://bjhokdrgjyqhhccpuoaa.supabase.co/functions/v1/poll-pending-tickets',
+        headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqaG9rZHJnanlxaGhjY3B1b2FhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODg5MDI4OCwiZXhwIjoyMDg0NDY2Mjg4fQ.CNNPLs8GsF1KT-iYRRQ6vGcJuYH70bHAsfrpWaqzA3U"}'::jsonb
+      ) as request_id;
+    $$
+);

@@ -186,8 +186,9 @@ export function SearchFetcher({
 
     const handleSelect = useCallback((offer: FlightOffer) => {
         sessionStorage.setItem('selectedFlight', JSON.stringify(offer));
+        sessionStorage.setItem('flightSearchPassengers', JSON.stringify({ adults, children, infants }));
         router.push('/flights/book');
-    }, [router]);
+    }, [router, adults, children, infants]);
 
     useEffect(() => {
         // Cancel any previous in-flight request

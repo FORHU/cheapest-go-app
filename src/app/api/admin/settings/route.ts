@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireAdmin, isAuthError } from '@/lib/server/admin';
 import { saveAdminSettings } from '@/lib/server/admin/settings';
 import { createNotification } from '@/lib/server/admin/notify';
+import { logAdminAction } from '@/lib/server/admin/audit';
 
 export async function POST(req: Request) {
     try {
@@ -20,6 +22,16 @@ export async function POST(req: Request) {
         if (!result.success) {
             return NextResponse.json({ success: false, error: result.error }, { status: 500 });
         }
+
+        // Invalidate all admin pages so they re-fetch fresh settings
+        revalidatePath('/admin', 'layout');
+
+        logAdminAction({
+            action: 'update_settings',
+            adminId: auth.user.id,
+            adminEmail: auth.user.email,
+            details: { keys: Object.keys(settings) },
+        });
 
         createNotification('Settings Updated', `Admin settings updated by ${auth.user.email}.`, 'system');
 

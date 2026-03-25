@@ -52,3 +52,4 @@ export {
   SheetTitle,
   SheetDescription,
 } from "./sheet";
+export { Skeleton } from "./Skeleton";

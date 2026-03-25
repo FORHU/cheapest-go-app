@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { TiltCard } from '@/components/ui';
 import HeroHeadline from './HeroHeadline';
 import AISearchBar from './AISearchBar';
 import AISuggestionChips from './AISuggestionChips';
 
 const Hero = () => {
+    const prefersReducedMotion = useReducedMotion();
     const suggestionHandlerRef = useRef<((prompt: string) => void) | null>(null);
 
     const handleSuggestionReady = useCallback((handler: (prompt: string) => void) => {
@@ -36,8 +37,8 @@ const Hero = () => {
                 className="w-full relative z-10 px-4"
             >
                 <motion.div
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                    animate={{ y: prefersReducedMotion ? 0 : [0, -10, 0] }}
+                    transition={{ duration: 6, repeat: prefersReducedMotion ? 0 : Infinity, ease: "easeInOut" }}
                 >
                     <TiltCard className="w-full">
                         <AISearchBar onSuggestionReady={handleSuggestionReady} />

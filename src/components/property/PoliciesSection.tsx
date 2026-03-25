@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, Info, XCircle, CheckCircle, AlertTriangle, LogOut } from 'lucide-react';
+import { sanitizeHtml } from '@/lib/sanitize-html';
 
 interface CancellationPolicy {
     cancelTime?: string;
@@ -220,7 +221,7 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                             {cancellationPolicies.hotelRemarks && (
                                 <div
                                     className="text-xs text-slate-500 dark:text-slate-400 mt-2 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4"
-                                    dangerouslySetInnerHTML={{ __html: cancellationPolicies.hotelRemarks }}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(cancellationPolicies.hotelRemarks) }}
                                 />
                             )}
                         </div>
@@ -237,7 +238,7 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
                     </h3>
                     <div
                         className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 lg:p-4 text-[10px] lg:text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1"
-                        dangerouslySetInnerHTML={{ __html: hotelImportantInformation }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(hotelImportantInformation) }}
                     />
                 </div>
             )}

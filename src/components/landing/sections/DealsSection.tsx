@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Clock, Sparkles } from 'lucide-react';
@@ -51,10 +52,16 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => {
         <div className="relative h-full bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg group">
           {/* Image — responsive height */}
           <div className="relative h-24 sm:h-32 md:h-40 landscape-compact-img landscape-img overflow-hidden flex-shrink-0">
-            <motion.div
-              className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-              style={{ backgroundImage: `url(${deal.image})` }}
-            />
+            {deal.image && (
+              <Image
+                src={deal.image}
+                alt={deal.title}
+                fill
+                sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 300px"
+                className="object-cover transition-transform duration-700 group-hover:scale-110"
+                loading="lazy"
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
             {/* Discount badge */}

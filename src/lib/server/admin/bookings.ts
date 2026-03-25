@@ -81,14 +81,20 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
     const { data: passengers } = flightBookingIds.length > 0
         ? await supabase
             .from('passengers')
-            .select('booking_id, first_name, last_name, ticket_number')
+            .select('booking_id, first_name, last_name, type, ticket_number')
             .in('booking_id', flightBookingIds)
         : { data: [] };
 
-    const passengerMap = (passengers || []).reduce((acc: Record<string, { name: string; tickets: string[] }>, p) => {
+    const passengerMap = (passengers || []).reduce((acc: Record<string, { name: string; tickets: string[]; list: { firstName: string; lastName: string; type: string; ticketNumber?: string }[] }>, p) => {
         if (!acc[p.booking_id]) {
-            acc[p.booking_id] = { name: `${p.first_name || ''} ${p.last_name || ''}`.trim(), tickets: [] };
+            acc[p.booking_id] = { name: `${p.first_name || ''} ${p.last_name || ''}`.trim(), tickets: [], list: [] };
         }
+        acc[p.booking_id].list.push({
+            firstName: p.first_name || '',
+            lastName: p.last_name || '',
+            type: p.type || 'ADT',
+            ...(p.ticket_number ? { ticketNumber: p.ticket_number } : {}),
+        });
         if (p.ticket_number) {
             acc[p.booking_id].tickets.push(p.ticket_number);
         }
@@ -121,7 +127,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
                 profit: Number(item.profit || 0),
                 currency: item.currency,
                 status: item.status,
-                paymentStatus: (item.status === 'confirmed' || item.status === 'ticketed') ? 'paid' :
+                paymentStatus: ['confirmed', 'ticketed', 'booked', 'awaiting_ticket'].includes(item.status) ? 'paid' :
                     item.status === 'refunded' ? 'refunded' :
                         item.status === 'cancelled' ? 'cancelled' : 'unpaid',
                 createdAt: item.created_at,
@@ -155,7 +161,17 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             pnr: '',
             paymentIntentId: '',
             isRefundable: checkRefundability(item, 'bookings').refundable,
-            metadata: {}
+            metadata: {
+                holder: {
+                    firstName: item.holder_first_name || '',
+                    lastName: item.holder_last_name || '',
+                    email: item.holder_email || '',
+                },
+                guests: {
+                    adults: item.guests_adults ?? 1,
+                    children: item.guests_children ?? 0,
+                },
+            }
         })),
         ...(legacyFlightRes.data || []).map(item => ({
             id: item.id,
@@ -170,7 +186,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             profit: 0,
             currency: item.currency || 'USD',
             status: item.status === 'booked' ? 'confirmed' : item.status,
-            paymentStatus: (item.status === 'booked' || item.status === 'ticketed') ? 'paid' :
+            paymentStatus: ['booked', 'ticketed', 'confirmed', 'awaiting_ticket'].includes(item.status) ? 'paid' :
                 item.status === 'cancelled' ? 'cancelled' :
                     item.status === 'refunded' ? 'refunded' : 'unpaid',
             createdAt: item.created_at,
@@ -179,7 +195,9 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             pnr: item.pnr,
             paymentIntentId: item.payment_intent_id || '',
             isRefundable: checkRefundability(item, 'flight_bookings').refundable,
-            metadata: {}
+            metadata: {
+                passengers: passengerMap[item.id]?.list || [],
+            }
         }))
     ];
 
