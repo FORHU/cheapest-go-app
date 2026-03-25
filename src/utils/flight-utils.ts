@@ -4,6 +4,7 @@
  */
 
 import { AIRLINES, FlightSegmentDetail, FlightOffer, CabinClass } from '@/types/flights';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 
 export function formatTime(iso: string): string {
     const d = new Date(iso);
@@ -16,10 +17,18 @@ export function formatDuration(minutes: number): string {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export function formatPrice(amount: number, currency: string): string {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0,
-    }).format(amount);
+export function formatPrice(amount: number, currency: string, targetCurrency?: string): string {
+    const from = currency?.toUpperCase() || 'USD';
+    const to = targetCurrency?.toUpperCase() || from;
+    const displayAmount = from !== to ? convertCurrency(amount, from, to) : amount;
+    try {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency', currency: to, minimumFractionDigits: 0, maximumFractionDigits: 0,
+        }).format(displayAmount);
+    } catch {
+        const symbol = getCurrencySymbol(to);
+        return `${symbol}${Math.round(displayAmount).toLocaleString()}`;
+    }
 }
 
 export function calculateNormalizedPriceUsd(amount: number, currency: string): number {

@@ -7,6 +7,8 @@ const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const isDev = process.env.NODE_ENV === 'development';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
@@ -48,8 +50,8 @@ const nextConfig = {
               "default-src 'self'",
               // 'unsafe-inline' is still required because Next.js injects inline hydration scripts.
               // Removing it requires nonce-based CSP via middleware (tracked as future hardening).
-              // 'unsafe-eval' has been removed — it enables eval() and is not needed in production.
-              "script-src 'self' 'unsafe-inline' blob: https://js.stripe.com https://api.mapbox.com https://cdn.jsdelivr.net",
+              // 'unsafe-eval' is only included in development for React Fast Refresh (HMR).
+              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} blob: https://js.stripe.com https://api.mapbox.com https://cdn.jsdelivr.net`,
               // 'unsafe-inline' is required for Tailwind/CSS-in-JS utility classes.
               "style-src 'self' 'unsafe-inline' https://api.mapbox.com",
               "img-src 'self' data: blob: https: http:",
