@@ -27,7 +27,11 @@
       "Bash(pnpm add:*)",
       "Bash(pnpm test:*)",
       "Bash(node -e \"require\\(''''C:/Users/USER/AppData/Roaming/npm/node_modules/puppeteer''''\\)\")",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(node -e \"require\\(''''mapbox-gl''''\\)\")",
+      "Bash(pkill -f \"next dev.*3099\")",
+      "Bash(pkill -f \"next dev.*309\")",
+      "Bash(echo \"Exit: $?\")"
     ]
   }
 }

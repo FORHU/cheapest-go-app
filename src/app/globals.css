@@ -170,6 +170,20 @@ body {
   display: none !important;
 }
 
+/* Hide Mapbox Standard Style built-in POI feature popups.
+   Our hotel popup (.map-property-popup), click POI (.map-poi-popup),
+   and hover tooltip (.map-poi-hover) are unaffected. */
+.mapboxgl-popup:not(.map-property-popup):not(.map-poi-popup):not(.map-poi-hover) {
+  display: none !important;
+}
+
+/* Strip the default white bubble styling from the hover tooltip */
+.map-poi-hover .mapboxgl-popup-content {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
 /* Landscape mobile: larger images, smaller badges */
 @media (orientation: landscape) and (max-width: 1024px) {
   .landscape-img {

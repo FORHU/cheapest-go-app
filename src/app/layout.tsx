@@ -8,7 +8,7 @@ import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthListener } from '@/components/auth/AuthListener';
 import { ExchangeRateListener } from '@/components/exchange/ExchangeRateListener';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
-import AuthModalWrapper from '@/components/auth/AuthModalWrapper';
+import AuthModal from '@/components/auth/AuthModal';
 import { env } from '@/utils/env';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -68,7 +68,7 @@ export default function RootLayout({
               <GlobalSparkle />
               {children}
             </div>
-            <AuthModalWrapper />
+            <AuthModal />
           </ThemeProvider>
         </QueryProvider>
       </body>
