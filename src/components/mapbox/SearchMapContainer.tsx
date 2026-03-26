@@ -115,7 +115,7 @@ export const SearchMapContainer = React.memo(({
                         r.distance < best.distance ? r : best
                     );
                     setRouteGeometry(shortestDriving.geometry);
-                    setCarDuration(`${Math.max(1, Math.round(shortestDriving.duration / 60))}m`);
+                    setCarDuration(`${Math.max(1, Math.round(shortestDriving.duration / 60))} min`);
                 }
 
                 // Walking Route — fetch alternatives, pick shortest for time estimate
@@ -128,7 +128,7 @@ export const SearchMapContainer = React.memo(({
                     const shortestWalking = walkingJson.routes.reduce((best: any, r: any) =>
                         r.distance < best.distance ? r : best
                     );
-                    setWalkDuration(`${Math.max(1, Math.round(shortestWalking.duration / 60))}m`);
+                    setWalkDuration(`${Math.max(1, Math.round(shortestWalking.duration / 60))} min`);
                 }
             } catch (err) {
                 console.error('Directions error:', err);

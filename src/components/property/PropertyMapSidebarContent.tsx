@@ -200,8 +200,8 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
         if (!hasCoordinates) return;
         mapRef.current?.flyTo({
             center: [coordinates.lng, coordinates.lat],
-            zoom: 15,
-            pitch: 0,
+            zoom: 16,
+            pitch: 45,
             duration: 800,
         });
     }, [hasCoordinates, coordinates]);
@@ -284,8 +284,8 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
                             initialViewState={{
                                 longitude: coordinates.lng,
                                 latitude: coordinates.lat,
-                                zoom: 14,
-                                pitch: 0,
+                                zoom: 16,
+                                pitch: 45,
                                 bearing: 0,
                             }}
                             onLoad={handleLoad}
@@ -331,13 +331,13 @@ const PropertyMapSidebar: React.FC<PropertyMapSidebarProps> = ({
                                                 {travelTime !== null && (
                                                     <div className="px-2.5 py-1.5 flex items-center justify-center gap-2">
                                                         <Car size={14} className="text-blue-600 dark:text-blue-400" />
-                                                        <span className="text-[11px] font-bold text-slate-900 dark:text-white">{travelTime}m</span>
+                                                        <span className="text-[11px] font-bold text-slate-900 dark:text-white">{travelTime} min</span>
                                                     </div>
                                                 )}
                                                 {walkingTime !== null && (
                                                     <div className="px-2.5 py-1.5 flex items-center justify-center gap-2 bg-slate-50/50 dark:bg-slate-800/50">
                                                         <Footprints size={14} className="text-emerald-600 dark:text-emerald-400" />
-                                                        <span className="text-[11px] font-bold text-slate-900 dark:text-white">{walkingTime}m</span>
+                                                        <span className="text-[11px] font-bold text-slate-900 dark:text-white">{walkingTime} min</span>
                                                     </div>
                                                 )}
                                             </div>
