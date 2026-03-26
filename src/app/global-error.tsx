@@ -3,37 +3,34 @@
 import { useEffect } from 'react';
 
 export default function GlobalError({
-    error,
-    reset,
+  error,
+  reset,
 }: {
-    error: Error & { digest?: string };
-    reset: () => void;
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
-    useEffect(() => {
-        console.error('[GlobalError]', error.digest ?? error.message);
-    }, [error]);
+  useEffect(() => {
+    console.error('[Global Error]', error);
+  }, [error]);
 
-    return (
-        <html>
-            <body>
-                <div className="min-h-screen flex items-center justify-center px-4 bg-white">
-                    <div className="max-w-md w-full text-center space-y-6">
-                        <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-                            <span className="text-2xl text-red-600">!</span>
-                        </div>
-                        <h2 className="text-2xl font-bold text-slate-900">Something went wrong</h2>
-                        <p className="text-slate-500">
-                            An unexpected error occurred. Please try refreshing the page.
-                        </p>
-                        <button
-                            onClick={reset}
-                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors"
-                        >
-                            Try again
-                        </button>
-                    </div>
-                </div>
-            </body>
-        </html>
-    );
+  return (
+    <html>
+      <body>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '1rem', textAlign: 'center', fontFamily: 'system-ui, sans-serif' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.75rem' }}>
+            Something went wrong
+          </h2>
+          <p style={{ color: '#64748b', marginBottom: '1.5rem', maxWidth: '400px' }}>
+            An unexpected error occurred. Please try again.
+          </p>
+          <button
+            onClick={reset}
+            style={{ padding: '0.625rem 1.5rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: '9999px', fontWeight: '500', cursor: 'pointer' }}
+          >
+            Retry
+          </button>
+        </div>
+      </body>
+    </html>
+  );
 }

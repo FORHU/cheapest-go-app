@@ -31,7 +31,9 @@
       "Bash(node -e \"require\\(''''mapbox-gl''''\\)\")",
       "Bash(pkill -f \"next dev.*3099\")",
       "Bash(pkill -f \"next dev.*309\")",
-      "Bash(echo \"Exit: $?\")"
+      "Bash(echo \"Exit: $?\")",
+      "Bash(curl -s http://localhost:3000/_next/static/chunks/app/\\\\\\(main\\\\\\)/trips/page.js)",
+      "Bash(timeout 15 pnpm dev)"
     ]
   }
 }

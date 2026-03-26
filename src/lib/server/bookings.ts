@@ -228,7 +228,9 @@ async function _confirmAndSaveBookingInner(
   }
 
   const bookingId = bookingData.bookingId;
-  const bookingStatus = bookingData.status || 'confirmed';
+  // Normalize LiteAPI status to our lowercase DB enum values
+  const rawStatus = (bookingData.status || 'confirmed').toLowerCase();
+  const bookingStatus = (['confirmed', 'pending', 'completed', 'cancelled'].includes(rawStatus) ? rawStatus : 'confirmed') as 'confirmed' | 'pending' | 'completed' | 'cancelled';
 
   // Emit an immutable audit log immediately after LiteAPI confirms — BEFORE the DB write.
   // If the process crashes between here and the RPC call, this log entry is the evidence
