@@ -177,7 +177,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                         {query && (
                             <>
                                 <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[10px] font-mono font-medium uppercase text-slate-500 tracking-wider`}>
-                                    LiteAPI Results
+                                    Search Results
                                 </div>
                                 {suggestions.length > 0 ? (
                                     suggestions.map((item, i) => (

@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         const isZeroDecimal = ZERO_DECIMAL_CURRENCIES.has(currency.toLowerCase());
         const stripeAmount = isZeroDecimal ? Math.round(amount) : Math.round(amount * 100);
 
-        // Create Stripe PaymentIntent (automatic capture — refund on LiteAPI failure)
+        // Create Stripe PaymentIntent (automatic capture — refund on ONDA failure)
         const paymentIntent = await stripe.paymentIntents.create({
             amount: stripeAmount,
             currency: currency.toLowerCase(),

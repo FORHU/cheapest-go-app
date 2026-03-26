@@ -1,4 +1,4 @@
-/** LiteAPI Facility IDs (common ones) */
+/** Facility IDs (common ones) */
 export const FACILITIES = [
     { id: 28, label: 'Free WiFi' },
     { id: 433, label: 'Swimming Pool' },

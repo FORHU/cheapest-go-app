@@ -58,13 +58,13 @@ const SCENARIOS = {
         totalPrice: 12000,
     },
     remarksStringFormat: {
-        label: 'hotelRemarks as single string (LiteAPI sometimes sends this)',
+        label: 'hotelRemarks as single string (some providers send this)',
         policy: {
             refundableTag: 'RFN',
             cancelPolicyInfos: [
                 { cancelTime: '2026-05-10T00:00:00Z', amount: 0, currency: 'PHP', type: 'fixed' },
             ],
-            // Simulating hotelRemarks as a string (LiteAPI inconsistency)
+            // Simulating hotelRemarks as a string (provider inconsistency)
             hotelRemarks: 'No-show charge of 4000 PHP. Early checkout fee: 1500 PHP if leaving before scheduled checkout.' as unknown as string[],
         } as CancellationPolicy,
         totalPrice: 9000,

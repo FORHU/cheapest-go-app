@@ -57,7 +57,7 @@ export interface BookingParams {
 }
 
 /**
- * Prebook response from LiteAPI
+ * Prebook response from ONDA
  */
 export interface PrebookResponse {
   prebookId: string;
@@ -76,7 +76,7 @@ export interface PrebookResponse {
 }
 
 /**
- * Booking response from LiteAPI
+ * Booking response from ONDA
  */
 export interface BookingResponse {
   bookingId: string;
@@ -133,7 +133,7 @@ export interface BookingRecord {
 }
 
 /**
- * Cancellation policy info from LiteAPI
+ * Cancellation policy info
  */
 export interface CancellationPolicy {
   cancelPolicyInfos?: CancelPolicyInfo[];
@@ -149,7 +149,7 @@ export interface CancelPolicyInfo {
 }
 
 /**
- * Booking details from LiteAPI
+ * Booking details
  */
 export interface BookingDetailsResponse {
   bookingId: string;
@@ -194,7 +194,7 @@ export interface BookingDetailsResponse {
 }
 
 /**
- * Cancellation response from LiteAPI
+ * Cancellation response from ONDA
  */
 export interface CancellationResponse {
   bookingId: string;
@@ -218,7 +218,7 @@ export interface AmendBookingParams {
 }
 
 /**
- * Response from LiteAPI amend endpoint
+ * Response from amend endpoint
  */
 export interface AmendBookingResponse {
   bookingId: string;

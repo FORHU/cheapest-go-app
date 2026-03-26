@@ -42,11 +42,11 @@ export interface Property {
         lat: number;
         lng: number;
     };
-    /** Cancellation policy tag from LiteAPI: "RFN" = refundable, "NRFN" = non-refundable */
+    /** Cancellation policy tag: "RFN" = refundable, "NRFN" = non-refundable */
     refundableTag?: 'RFN' | 'NRFN' | string;
     /** Distance from city centre in meters or km */
     distance?: string;
-    /** Board/meal plan types from LiteAPI: "Breakfast included", "Room only", etc. */
+    /** Board/meal plan types: "Breakfast included", "Room only", etc. */
     boardTypes?: string[];
 }
 

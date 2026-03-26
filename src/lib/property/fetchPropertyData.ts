@@ -3,8 +3,13 @@
  * These are pure functions that can be used in server components.
  */
 
-import { preBook, getHotelDetails } from '@/utils/supabase/functions';
 import { type Property } from '@/types';
+import {
+    ondaGetProperty,
+    ondaSearchPropertyDetail,
+    mapOndaPropertyToProperty,
+    mapOndaRoomTypesToRoomTypes,
+} from '@/lib/server/onda';
 export type PropertyData = Property;
 
 // Types
@@ -127,60 +132,61 @@ export function createFallbackProperty(id: string, preBookResult: any, currency:
 
 /**
  * Main data fetching function for property page.
- * Handles prebook, hotel details, and fallbacks.
+ * Fetches property details and available room types from ONDA.
  */
 export async function fetchPropertyData(
     id: string,
     searchParams: SearchParamsInput
 ): Promise<FetchPropertyResult> {
-    let preBookResult = null;
-    let fetchedDetails = null;
+    const checkin = sanitizeDate(searchParams.checkIn) ?? getDefaultDates().checkIn;
+    const checkout = sanitizeDate(searchParams.checkOut) ?? getDefaultDates().checkOut;
+    const adult = Number(searchParams.adults) || 2;
 
-    // 1. Invoke pre-book if offerId is present
-    if (searchParams.offerId) {
-        try {
-            preBookResult = await preBook({ 
-                offerId: searchParams.offerId as string,
-                currency: searchParams.currency || 'KRW'
-            });
-        } catch (error) {
-            console.error('Pre-book check failed:', error);
-        }
-    }
-
-    // 2. Fetch hotel details (Strictly backend)
     try {
-        const targetHotelId = preBookResult?.data?.hotelId || id;
-        const defaults = getDefaultDates();
-        const checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
-        const checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+        // Fetch property details + available room types in parallel
+        const [propResult, availResult] = await Promise.allSettled([
+            ondaGetProperty(id),
+            ondaSearchPropertyDetail(id, { checkin, checkout, adult }),
+        ]);
 
-        fetchedDetails = await getHotelDetails(targetHotelId, {
-            checkIn,
-            checkOut,
-            adults: Number(searchParams.adults || 2),
-            children: Number(searchParams.children || 0),
-            rooms: Number(searchParams.rooms || 1),
-            currency: searchParams.currency
-        });
-    } catch (error) {
-        console.error('Failed to fetch property details:', error);
+        if (propResult.status === 'rejected') {
+            console.error('[fetchPropertyData] Failed to fetch ONDA property:', propResult.reason);
+            return { property: null, fetchedDetails: null, preBookResult: null };
+        }
+
+        const ondaProp = propResult.value;
+        const ondaRoomTypes = availResult.status === 'fulfilled' ? availResult.value : [];
+
+        // Lowest available price (for display)
+        const lowestPrice = ondaRoomTypes.reduce((min, rt) => {
+            const rtMin = rt.rateplans.reduce((m, rp) => Math.min(m, rp.total?.sale_price ?? 0), Infinity);
+            return Math.min(min, rtMin);
+        }, Infinity);
+
+        const property = mapOndaPropertyToProperty(ondaProp, isFinite(lowestPrice) ? lowestPrice : 0);
+
+        const addr = ondaProp.address ?? {} as any;
+        const roomTypes = mapOndaRoomTypesToRoomTypes(id, ondaRoomTypes, checkin, checkout);
+
+        const fetchedDetails = {
+            ...ondaProp,
+            roomTypes,
+            // Fields used by property page components
+            address: [addr.address1, addr.address2, addr.address_detail].filter(Boolean).join(' ') || addr.address1 || '',
+            city: addr.city,
+            country: addr.country_code,
+            checkInTime: ondaProp.checkin,
+            checkOutTime: ondaProp.checkout,
+            hotelImportantInformation: ondaProp.descriptions?.reservation || ondaProp.descriptions?.notice,
+            hotelFacilities: ondaProp.tags?.facilities ?? [],
+            cancellationPolicies: ondaProp.descriptions?.refunds
+                ? [{ description: ondaProp.descriptions.refunds }]
+                : undefined,
+        };
+
+        return { property, fetchedDetails, preBookResult: null };
+    } catch (err) {
+        console.error('[fetchPropertyData] ONDA error:', err instanceof Error ? err.message : err);
+        return { property: null, fetchedDetails: null, preBookResult: null };
     }
-
-    // 3. Build property data
-    let property: PropertyData | null = null;
-
-    if (fetchedDetails) {
-        const roomImages = collectRoomImages(fetchedDetails.roomTypes);
-        const allImages = combineImages(
-            fetchedDetails.thumbnailUrl,
-            fetchedDetails.images || [],
-            roomImages
-        );
-        property = transformFetchedToProperty(id, fetchedDetails, preBookResult, allImages, searchParams.currency || 'KRW');
-    } else if (preBookResult || searchParams.offerId) {
-        property = createFallbackProperty(id, preBookResult, searchParams.currency || 'KRW');
-    }
-
-    return { property, fetchedDetails, preBookResult };
 }

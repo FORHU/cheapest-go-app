@@ -27,7 +27,7 @@ export interface TravelersConfig {
     adults: number;
     children: number;
     rooms: number;
-    /** Per-room configuration for LiteAPI (optional, derived from above if not set) */
+    /** Per-room configuration (optional, derived from above if not set) */
     occupancies?: RoomOccupancy[];
 }
 

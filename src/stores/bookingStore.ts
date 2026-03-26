@@ -13,7 +13,7 @@ export interface Room {
     description?: string;
 }
 
-/** Room data from LiteAPI used for the room detail view */
+/** Room data used for the room detail view */
 export type ViewingRoom = RoomType;
 
 export interface BookingState {

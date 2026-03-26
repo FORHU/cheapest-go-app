@@ -72,7 +72,7 @@ function WhoStaysHere({ breakdown }: { breakdown: TravelerBreakdown }) {
 }
 
 /**
- * Single Review Item - Matches LiteAPI style
+ * Single Review Item
  */
 function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
     const { toggleExpanded, expandedReviewIds } = useReviewsStore();

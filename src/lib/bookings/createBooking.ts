@@ -76,8 +76,8 @@ export interface FlightBookingMetadata {
 
 export interface HotelBookingMetadata {
     [key: string]: unknown;
-    /** LiteAPI booking ID */
-    liteApiBookingId?: string;
+    /** ONDA booking number */
+    ondaBookingNumber?: string;
     /** Property details */
     property: {
         name: string;

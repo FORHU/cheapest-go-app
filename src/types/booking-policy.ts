@@ -1,4 +1,4 @@
-/** Classified policy type derived from LiteAPI response */
+/** Classified policy type derived from provider response */
 export type BookingPolicyType =
     | 'free_cancellation'
     | 'non_refundable'
@@ -27,7 +27,7 @@ export interface BookingPolicySnapshot {
     earlyDepartureFee: number;
     freeCancelDeadline: string | null; // ISO 8601
     tiers: PolicyTier[];
-    rawLiteapiResponse: Record<string, unknown>;
+    rawProviderResponse: Record<string, unknown>;
     capturedAt: string;
 }
 

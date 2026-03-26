@@ -5,16 +5,16 @@ import type {
 } from '@/types/booking-policy';
 
 // ============================================================================
-// Raw LiteAPI shape (defensive — any field may be missing)
+// Raw provider policy shape (defensive — any field may be missing)
 // ============================================================================
 
 /**
- * LiteAPI cancellation policy can arrive in multiple shapes.
+ * Cancellation policy can arrive in multiple shapes from various providers.
  * We accept `any` and defensively narrow.
  *
- * Known shapes from LiteAPI prebook/book responses:
+ * Known shapes:
  *
- * Shape A (standard):
+ * Shape A (ONDA standard):
  *   { cancelPolicyInfos: [{ cancelTime, amount, currency, type }],
  *     hotelRemarks: ["..."],
  *     refundableTag: "REFUNDABLE" | "NON-REFUNDABLE" }
@@ -33,7 +33,7 @@ import type {
 type RawPolicy = Record<string, any> | null | undefined;
 
 // ============================================================================
-// Safely extract cancellation infos from various LiteAPI shapes
+// Safely extract cancellation infos from various provider policy shapes
 // ============================================================================
 
 interface ParsedCancelInfo {
@@ -189,7 +189,7 @@ export function classifyPolicyType(raw: RawPolicy): BookingPolicyType {
 
     const tag = safeRefundableTag(raw)?.toUpperCase() ?? '';
 
-    // Explicit non-refundable tag (includes NRFN from LiteAPI)
+    // Explicit non-refundable tag
     if (
         tag === 'NRFN' ||
         tag.includes('NON-REFUNDABLE') ||
@@ -390,47 +390,13 @@ export interface NormalizedPolicy {
 }
 
 /**
- * Normalizes a raw LiteAPI cancellation policy response into our internal schema.
+ * Normalizes a raw provider cancellation policy response into our internal schema.
  *
- * Accepts the full LiteAPI booking/prebook response.
+ * Accepts the full ONDA booking/prebook response.
  * Extracts and classifies cancellation policy, tiers, and penalties.
  * Stores the raw JSON unchanged for future reference.
- *
- * @example — Example LiteAPI response mappings:
- *
- * 1. Free cancellation:
- *    Input:  { refundableTag: "REFUNDABLE", cancelPolicyInfos: [{ cancelTime: "2026-03-01T18:00:00Z", amount: 0, currency: "PHP", type: "fixed" }] }
- *    Output: policyType = "free_cancellation", tiers = [{ cancelDeadline: "2026-03-01T18:00:00Z", penaltyAmount: 0, ... }]
- *            summary = "Free cancellation before Mar 1, 2026"
- *
- * 2. Non-refundable:
- *    Input:  { refundableTag: "NON-REFUNDABLE", cancelPolicyInfos: [] }
- *    Output: policyType = "non_refundable", tiers = []
- *            summary = "Non-refundable"
- *
- * 3. Partial refund:
- *    Input:  { refundableTag: "REFUNDABLE", cancelPolicyInfos: [{ cancelTime: "2026-03-01T18:00:00Z", amount: 2500, currency: "PHP", type: "fixed" }] }
- *    Output: policyType = "partial_refund", tiers = [{ penaltyAmount: 2500, ... }]
- *            summary = "Cancellation fee: 2500 PHP"
- *
- * 4. Tiered:
- *    Input:  { refundableTag: "REFUNDABLE", cancelPolicyInfos: [
- *               { cancelTime: "2026-02-25T18:00:00Z", amount: 0,    currency: "PHP", type: "fixed" },
- *               { cancelTime: "2026-03-01T18:00:00Z", amount: 2500, currency: "PHP", type: "fixed" },
- *               { cancelTime: "2026-03-05T18:00:00Z", amount: 5000, currency: "PHP", type: "fixed" },
- *             ] }
- *    Output: policyType = "tiered", tiers = [3 tiers sorted by deadline]
- *            summary = "Tiered cancellation — 3 deadlines"
- *
- * 5. No-show penalty:
- *    Input:  { refundableTag: "REFUNDABLE", cancelPolicyInfos: [...], noShowPenalty: 5000 }
- *    Output: noShowPenalty = 5000, appended to summary
- *
- * 6. Null / missing policy:
- *    Input:  null
- *    Output: policyType = "non_refundable", tiers = [], summary = "Non-refundable"
  */
-export function normalizeLiteApiPolicy(
+export function normalizeProviderPolicy(
     bookingId: string,
     cancellationPolicies: RawPolicy,
     rawResponse: Record<string, unknown>,
@@ -456,7 +422,7 @@ export function normalizeLiteApiPolicy(
             noShowPenalty,
             earlyDepartureFee,
             freeCancelDeadline,
-            rawLiteapiResponse: rawResponse,
+            rawProviderResponse: rawResponse,
         },
         tiers,
     };

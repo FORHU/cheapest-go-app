@@ -1,6 +1,5 @@
 /**
  * Voucher/Promo system types.
- * Aligned with LiteAPI Vouchers API.
  * All discount calculations happen server-side only.
  */
 
@@ -8,7 +7,6 @@
 // Voucher Types
 // ============================================================================
 
-/** LiteAPI only supports 'percentage' — kept 'fixed' for local fallback/display */
 export type VoucherDiscountType = 'percentage' | 'fixed';
 
 export type VoucherCategory =
@@ -18,8 +16,8 @@ export type VoucherCategory =
   | 'hotel_specific'
   | 'seasonal';
 
-/** LiteAPI voucher as returned by GET /vouchers */
-export interface LiteAPIVoucher {
+/** ONDA voucher shape (kept for internal use) */
+export interface OndaVoucher {
   id: string;
   voucher_code: string;
   discount_type: 'percentage';

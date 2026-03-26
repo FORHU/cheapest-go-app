@@ -363,7 +363,7 @@ export async function getAdvancedAnalytics(): Promise<AdvancedAnalyticsData> {
         .from('unified_bookings')
         .select('provider, status');
 
-    const providers = ['mystifly', 'duffel', 'liteapi'];
+    const providers = ['mystifly', 'duffel', 'onda'];
     const providerSuccess = providers.map(p => {
         const pBookings = (bookings || []).filter(b => b.provider === p);
         return {

@@ -1,5 +1,5 @@
 /**
- * Lightweight HTML sanitizer for third-party content (e.g. hotel remarks from LiteAPI).
+ * Lightweight HTML sanitizer for third-party content (e.g. hotel remarks from providers).
  *
  * Strips dangerous tags (script, style, iframe, object, embed, form)
  * and dangerous attributes (event handlers, javascript: hrefs).

@@ -54,7 +54,7 @@ export interface UseBookingFlowReturn {
 
 /**
  * High-level hook that orchestrates the complete booking flow.
- * Now supports LiteAPI Payment SDK (usePaymentSdk: true) and voucher codes.
+ * Now supports Stripe payment and voucher codes.
  *
  * Flow:
  * 1. startPrebook(offerId, currency) → gets prebookId, secretKey, transactionId

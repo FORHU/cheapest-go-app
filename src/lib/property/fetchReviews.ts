@@ -3,7 +3,7 @@
  * Pure functions for use in server components.
  */
 
-import { getHotelReviews } from '@/utils/supabase/functions';
+// TODO: wire up ONDA reviews endpoint once available.
 
 // Types
 export interface HotelReview {
@@ -24,7 +24,7 @@ export interface ReviewsData {
     totalCount: number;
 }
 
-// Sentiment analysis types for LiteAPI getSentiment=true response
+// Sentiment analysis types for review sentiment response
 export interface SentimentCategory {
     name: string;
     rating: number;
@@ -93,24 +93,8 @@ export async function fetchHotelReviews(
 ): Promise<ReviewsDataWithSentiment> {
     const { limit = 1000, offset = 0, getSentiment = false } = options;
 
-    try {
-        const result = await getHotelReviews(hotelId, limit, offset, getSentiment);
-        const reviews = (result.reviews || []) as HotelReview[];
-
-        return {
-            reviews,
-            averageRating: calculateAverageRating(reviews),
-            totalCount: reviews.length,
-            sentimentAnalysis: result.sentimentAnalysis || undefined,
-        };
-    } catch (error) {
-        console.error('[fetchHotelReviews] Error:', error);
-        return {
-            reviews: [],
-            averageRating: 0,
-            totalCount: 0
-        };
-    }
+    void hotelId; void limit; void offset; void getSentiment;
+    return { reviews: [], averageRating: 0, totalCount: 0 };
 }
 
 // === Helper Functions for UI ===

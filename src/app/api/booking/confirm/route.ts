@@ -56,7 +56,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // Unified flow: LiteAPI confirm → normalize policy → atomic DB save
+        // Unified flow: ONDA confirm → normalize policy → atomic DB save
         const result = await confirmAndSaveBooking(body, user);
 
         if (result.success) {
@@ -98,12 +98,12 @@ export async function POST(req: Request) {
             return Response.json(result);
         }
 
-        // ── DB save failed AFTER LiteAPI confirmed the booking ──
+        // ── DB save failed AFTER ONDA confirmed the booking ──
         // The hotel IS booked — do NOT refund Stripe. Alert admin instead.
-        if (result.liteApiConfirmed) {
+        if (result.providerConfirmed) {
             createNotification(
-                'CRITICAL: DB Save Failed After LiteAPI Confirm',
-                `Booking ${result.data?.bookingId || 'unknown'} confirmed in LiteAPI for ${user.email} but DB save failed. Manual reconciliation required. PaymentIntent: ${body.paymentIntentId || 'N/A'}`,
+                'CRITICAL: DB Save Failed After ONDA Confirm',
+                `Booking ${result.data?.bookingId || 'unknown'} confirmed in ONDA for ${user.email} but DB save failed. Manual reconciliation required. PaymentIntent: ${body.paymentIntentId || 'N/A'}`,
                 'booking'
             );
             return Response.json({
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
             }, { status: 500 });
         }
 
-        // ── LiteAPI failed — refund Stripe payment if it was charged ──
+        // ── ONDA failed — refund Stripe payment if it was charged ──
         if (body.paymentIntentId) {
             let refundSuccess = false;
             try {
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
                     refundId: refund.id,
                     amount: refund.amount / 100,
                     currency: (refund.currency || 'usd').toUpperCase(),
-                    reason: 'liteapi_failure',
+                    reason: 'provider_failure',
                     userId: user.id.slice(0, 8),
                     timestamp: new Date().toISOString(),
                 }));

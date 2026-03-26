@@ -80,7 +80,7 @@ export function VoucherInput({
                 description: validData.promo.description,
             });
 
-            // Re-prebook with voucher code to apply discount at LiteAPI level
+            // Re-prebook with voucher code to apply discount
             if (onVoucherApplied) {
                 try {
                     await onVoucherApplied(validData.promo.code);

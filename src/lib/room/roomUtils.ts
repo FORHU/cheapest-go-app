@@ -6,7 +6,7 @@
 import { RateOption } from '@/components/property/RoomCard';
 
 /**
- * Room type from LiteAPI (each roomType is actually an "offer")
+ * Room type from ONDA (each roomType is actually an "offer")
  * An offer = physical room + meal plan + cancellation policy
  */
 export interface RoomType {
@@ -21,7 +21,7 @@ export interface RoomType {
     rates?: RoomRate[];
     amenities?: (string | { name: string })[];
     /**
-     * Cancellation policies at offer/roomType level (LiteAPI docs structure)
+     * Cancellation policies at offer/roomType level
      * Each "offer" has ONE cancellation policy that applies to all rates within it
      */
     cancellationPolicies?: {
@@ -46,7 +46,7 @@ export interface RoomRate {
     retailRate?: {
         total?: Array<{ amount: number; currency: string }> | { amount: number };
     };
-    /** LiteAPI structure: refundableTag is INSIDE cancellationPolicies */
+    /** refundableTag is INSIDE cancellationPolicies */
     cancellationPolicies?: {
         refundableTag?: 'RFN' | 'NRFN' | string;
         cancelPolicyInfos?: Array<{
@@ -121,7 +121,7 @@ export function extractRoomPrice(rates?: RoomRate[]): PriceInfo {
 /**
  * Check if free cancellation is available based on refundableTag or cancellation policy
  *
- * LiteAPI structure (per docs):
+ * ONDA structure:
  * - cancellationPolicies is at roomType/offer level, NOT individual rate level
  * - Each roomType has ONE cancellation policy that applies to all its rates
  *
@@ -129,7 +129,7 @@ export function extractRoomPrice(rates?: RoomRate[]): PriceInfo {
  * @param rates - Fallback: array of rates (for backwards compatibility)
  */
 export function hasFreeCancellation(roomType?: RoomType | null, rates?: RoomRate[]): boolean {
-    // 1. Check roomType-level cancellationPolicies (correct per LiteAPI docs)
+    // 1. Check roomType-level cancellationPolicies (correct per ONDA docs)
     if (roomType?.cancellationPolicies?.refundableTag) {
         return roomType.cancellationPolicies.refundableTag === 'RFN';
     }
@@ -174,11 +174,11 @@ export function getRoomDisplayName(roomType: RoomType): string {
 
 /**
  * Create a rate option from a room type (offer)
- * Each roomType in LiteAPI is an "offer" = room + meal plan + cancellation policy
+ * Each roomType in ONDA is an "offer" = room + meal plan + cancellation policy
  */
 export function createRateOption(roomType: RoomType): RateOption {
     const priceInfo = extractRoomPrice(roomType.rates);
-    // Pass roomType to check cancellationPolicies at the correct level (per LiteAPI docs)
+    // Pass roomType to check cancellationPolicies at the correct level (per ONDA docs)
     const refundable = hasFreeCancellation(roomType, roomType.rates);
     const rate = roomType.rates?.[0];
 

@@ -230,7 +230,7 @@ export function CheckoutContent() {
         }
     }, [user, prebookId, selectedRoom, formData, bookingFor, priceData, selectedCurrency, property, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher]);
 
-    // Step 2: After Stripe payment succeeds → confirm with LiteAPI
+    // Step 2: After Stripe payment succeeds → confirm with ONDA
     const handlePaymentSuccess = useCallback(async (stripePaymentIntentId: string) => {
         try {
             if (!prebookId || !selectedRoom?.offerId) {
@@ -240,7 +240,7 @@ export function CheckoutContent() {
             const guests = buildGuestPayload(formData, bookingFor, specialRequests);
             const holder = buildHolderPayload(formData);
 
-            // Confirm booking with LiteAPI (payment already captured by Stripe)
+            // Confirm booking with ONDA (payment already captured by Stripe)
             await completeBooking({
                 holder,
                 guests,

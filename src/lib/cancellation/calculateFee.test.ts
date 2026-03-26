@@ -148,8 +148,8 @@ describe('calculateCancellationFee', () => {
             });
         });
 
-        it('should handle RFN bookings WITHOUT explicit free entry (LiteAPI edge case)', () => {
-            // LiteAPI sometimes omits the amount=0 entry for RFN bookings
+        it('should handle RFN bookings WITHOUT explicit free entry (edge case)', () => {
+            // Some providers omit the amount=0 entry for RFN bookings
             const policy: CancellationPolicy = {
                 refundableTag: 'RFN',
                 cancelPolicyInfos: [

@@ -32,23 +32,10 @@ export { autocompleteDestinations } from './search';
 export { sendBookingConfirmationEmail, sendHotelCancellationEmail, sendHotelAmendmentEmail, sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail, sendFlightRefundEmail } from './email';
 
 // Policy normalizer
-export { normalizeLiteApiPolicy, type NormalizedPolicy } from './policy-normalizer';
+export { normalizeProviderPolicy, type NormalizedPolicy } from './policy-normalizer';
 
 // Cancellation Engine
 export { calculateCancellation, type CancellationResult } from './cancellation-engine';
-
-// LiteAPI gateway
-export {
-    autocompleteLiteApi,
-    searchLiteApi,
-    prebookLiteApi,
-    bookLiteApi,
-    cancelBookingLiteApi,
-    amendBookingLiteApi,
-    getBookingDetailsLiteApi,
-    listVouchersLiteApi,
-    getHotelReviewsLiteApi,
-} from './liteapi';
 
 // Types
 export type {

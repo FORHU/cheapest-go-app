@@ -144,7 +144,7 @@ export function generatePolicyNuances(
 }
 
 // ============================================================================
-// Bridge: Raw LiteAPI Data → BookingPolicyType
+// Bridge: Raw Provider Data → BookingPolicyType
 // ============================================================================
 
 interface RawCancelPolicyInfo {
@@ -155,8 +155,8 @@ interface RawCancelPolicyInfo {
 }
 
 /**
- * Derives a BookingPolicyType from raw LiteAPI cancellation data.
- * Use this when you only have the LiteAPI response (not a BookingPolicySnapshot).
+ * Derives a BookingPolicyType from raw cancellation data.
+ * Use this when you only have the raw provider response (not a BookingPolicySnapshot).
  *
  * KEY: refundableTag defines how to interpret tiers:
  *   RFN  → tiers represent after-deadline penalties; before first tier = FREE

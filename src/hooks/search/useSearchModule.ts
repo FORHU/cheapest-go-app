@@ -48,7 +48,7 @@ export interface UseSearchModuleReturn {
  * 
  * Features:
  * - Syncs URL params to Zustand store on mount
- * - Properly preserves placeId and countryCode for LiteAPI
+ * - Properly preserves placeId and countryCode for ONDA
  * - Manages loading state across components
  * - Provides memoized actions for performance
  */
@@ -97,7 +97,7 @@ export const useSearchModule = (): UseSearchModuleReturn => {
 
         if (destParam) {
             setDestinationQuery(destParam);
-            // IMPORTANT: Preserve placeId and countryCode for LiteAPI searches
+            // IMPORTANT: Preserve placeId and countryCode for ONDA searches
             setDestination({
                 type: 'city',
                 title: destParam,
@@ -168,32 +168,24 @@ export const useSearchModule = (): UseSearchModuleReturn => {
 
         // Validation: Check required fields
         const destValue = state.destination?.title || state.destinationQuery;
-        const hasDestination = destValue && destValue.trim().length > 0;
         const hasCheckIn = state.dates.checkIn !== null;
         const hasCheckOut = state.dates.checkOut !== null;
 
-        // Collect missing fields
+        // Only dates are required — destination is optional
         const missingFields: string[] = [];
-        if (!hasDestination) missingFields.push('destination');
         if (!hasCheckIn) missingFields.push('check-in date');
         if (!hasCheckOut) missingFields.push('check-out date');
 
-        // If any fields are missing, show error and focus the first missing field
         if (missingFields.length > 0) {
             const fieldText = missingFields.length === 1
                 ? missingFields[0]
                 : missingFields.slice(0, -1).join(', ') + ' and ' + missingFields[missingFields.length - 1];
 
             toast.error(`Please select ${fieldText}`, {
-                description: 'All fields are required to search for hotels',
+                description: 'Dates are required to search for hotels',
             });
 
-            // Open the first missing dropdown
-            if (!hasDestination) {
-                setActiveDropdown('destination');
-            } else if (!hasCheckIn || !hasCheckOut) {
-                setActiveDropdown('dates');
-            }
+            setActiveDropdown('dates');
             return;
         }
 
@@ -202,8 +194,8 @@ export const useSearchModule = (): UseSearchModuleReturn => {
 
         const params = new URLSearchParams();
 
-        // Destination
-        params.set('destination', destValue!);
+        // Destination (optional)
+        if (destValue?.trim()) params.set('destination', destValue.trim());
         // Include placeId and countryCode for accurate API results
         if (state.destination?.countryCode) {
             params.set('countryCode', state.destination.countryCode);
@@ -225,7 +217,7 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         params.set('children', state.travelers.children.toString());
         params.set('rooms', state.travelers.rooms.toString());
 
-        // Pass children ages for proper LiteAPI occupancy calculation
+        // Pass children ages for proper ONDA occupancy calculation
         if (state.travelers.occupancies && state.travelers.occupancies.length > 0) {
             // Collect all children ages from occupancies
             const allChildrenAges = state.travelers.occupancies.flatMap(occ => occ.childrenAges);

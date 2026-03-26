@@ -119,7 +119,7 @@ function mapSnapshot(row: any): BookingPolicySnapshot {
         noShowPenalty: Number(row.no_show_penalty),
         earlyDepartureFee: Number(row.early_departure_fee),
         freeCancelDeadline: row.free_cancel_deadline,
-        rawLiteapiResponse: row.raw_liteapi_response,
+        rawProviderResponse: row.raw_provider_response ?? row.raw_liteapi_response,
         capturedAt: row.captured_at,
         tiers: [], // filled separately
     };

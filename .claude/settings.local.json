@@ -33,7 +33,24 @@
       "Bash(pkill -f \"next dev.*309\")",
       "Bash(echo \"Exit: $?\")",
       "Bash(curl -s http://localhost:3000/_next/static/chunks/app/\\\\\\(main\\\\\\)/trips/page.js)",
-      "Bash(timeout 15 pnpm dev)"
+      "Bash(timeout 15 pnpm dev)",
+      "WebFetch(domain:docs.onda.travel)",
+      "WebFetch(domain:api.ondatravel.com)",
+      "WebFetch(domain:www.onda.io)",
+      "WebFetch(domain:ondaorigins.com)",
+      "WebFetch(domain:developers.onda.me)",
+      "WebFetch(domain:api.onda.me)",
+      "WebFetch(domain:channel-api.onda.me)",
+      "Bash(sed -i \"s/const providers = \\\\[''mystifly'', ''duffel'', ''liteapi''\\\\]/const providers = [''mystifly'', ''duffel'', ''onda'']/\" \"c:/Users/USER/Documents/GitHub/cheapest-go-app/src/lib/server/admin/dashboard.ts\")",
+      "Bash(sed -i \"s|// For unified hotels, liteapi policies are usually in metadata.cancellationPolicy|// For unified hotels, provider policies are usually in metadata.cancellationPolicy|\" \"c:/Users/USER/Documents/GitHub/cheapest-go-app/src/lib/server/admin/recovery.ts\")",
+      "Bash(sed -i \"s|{ protocol: \"\"https\"\", hostname: \"\"api.liteapi.travel\"\" }, // Add LiteAPI|{ protocol: \"\"https\"\", hostname: \"\"api.onda.me\"\" }, // ONDA hotel images|\" \"c:/Users/USER/Documents/GitHub/cheapest-go-app/src/components/ui/OptimizedImage.tsx\")",
+      "Bash(\"c:/Users/USER/Documents/GitHub/cheapest-go-app/.env\")",
+      "Bash(supabase --version)",
+      "Bash(supabase status:*)",
+      "Bash(npx supabase:*)",
+      "Read(//c/Users/USER/.supabase/**)",
+      "Read(//c/Users/USER/.config/supabase/**)",
+      "Bash(SUPABASE_ACCESS_TOKEN=4a79499d npx supabase projects list)"
     ]
   }
 }

@@ -1,7 +1,7 @@
 /**
  * Country name → ISO 3166-1 alpha-2 code mapping.
- * Used to derive countryCode from LiteAPI's formattedAddress field,
- * which returns country names (e.g., "South Korea") instead of codes.
+ * Used to derive countryCode from destination names
+ * (e.g., "South Korea" → "KR").
  */
 export const COUNTRY_NAME_TO_CODE: Record<string, string> = {
     // Asia-Pacific
@@ -142,7 +142,7 @@ export const COUNTRY_NAME_TO_CODE: Record<string, string> = {
 };
 
 /**
- * Extract country code from a LiteAPI formattedAddress string.
+ * Extract country code from a formatted address string.
  * The country is usually the last part after the last comma.
  * e.g., "Benguet, Philippines" → "PH", "South Korea" → "KR"
  *

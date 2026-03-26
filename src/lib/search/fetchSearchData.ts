@@ -4,7 +4,7 @@
  */
 
 import { type Property } from '@/types';
-import { searchLiteApi } from '@/utils/supabase/functions';
+import { searchAllProviders } from '@/lib/providers';
 
 // Types
 export interface SearchParams {
@@ -34,7 +34,7 @@ export interface SearchQueryParams {
     checkout: string;
     adults: number;
     children: number;
-    childrenAges?: number[]; // Array of children ages for proper LiteAPI occupancy
+    childrenAges?: number[]; // Array of children ages for proper occupancy
     rooms: number;
     guest_nationality: string;
     currency: string;
@@ -107,8 +107,8 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         ? params.countryCode : '';
 
     // ── Fallback: derive countryCode from known city names when it's missing ──
-    // This ensures LiteAPI always gets at least (cityName + countryCode) instead of
-    // cityName alone, which causes a 400 "bad request" error for smaller cities.
+    // This ensures ONDA always gets at least (cityName + countryCode) instead of
+    // cityName alone, which may cause errors for smaller cities.
     if (!countryCode && destination) {
         const CITY_COUNTRY: Record<string, string> = {
             // Vietnam
@@ -171,12 +171,12 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         checkout: formatSearchDate(rawCheckout) || "2026-06-05",
         adults: Number(params.adults) || 2,
         children: Number(params.children) || 0,
-        childrenAges, // Pass children ages for proper LiteAPI occupancy
+        childrenAges, // Pass children ages for proper occupancy
         rooms: Number(params.rooms) || 1,
         guest_nationality: typeof params.nationality === 'string' && params.nationality ? params.nationality : "KR",
         currency,
         cityName: destination,
-        // Send countryCode even if placeId exists. LiteAPI sometimes needs it for smaller cities
+        // Send countryCode even if placeId exists — needed for smaller cities
         countryCode: countryCode,
         placeId,
         query: destination,
@@ -288,33 +288,25 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
 }
 
 /**
- * Main search function - fetches properties from LiteAPI.
+ * Main search function — runs all active providers (ONDA, TravelgateX, …) in parallel.
+ * Destination filtering and deduplication are handled by the provider aggregator.
  */
 export async function fetchSearchProperties(params: SearchParams): Promise<Property[]> {
     const queryParams = buildSearchQueryParams(params);
 
     try {
-        const data = await searchLiteApi(queryParams);
-
-        if (data?.data && Array.isArray(data.data)) {
-            const properties = data.data.map((hotel: any) =>
-                transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency)
-            );
-
-            // Filter out hotels with incomplete data (ID-like names indicate missing details)
-            const filteredProperties = properties.filter((prop: Property) => {
-                // Exclude hotels where name looks like an ID (e.g., "Hotel lp38f17b", "Hotel lpe13f0")
-                const hasValidName = prop.name &&
-                    !prop.name.match(/^Hotel\s+lp[a-z0-9]+$/i) &&
-                    !prop.name.match(/^lp[a-z0-9]+$/i);
-                return hasValidName;
-            });
-
-            return filteredProperties;
-        }
-    } catch (e) {
-        console.error("Failed to fetch properties:", e);
+        return await searchAllProviders({
+            checkin: queryParams.checkin,
+            checkout: queryParams.checkout,
+            adults: queryParams.adults ?? 2,
+            children: queryParams.children ?? 0,
+            childrenAges: queryParams.childrenAges,
+            destination: queryParams.cityName?.trim() || undefined,
+            countryCode: queryParams.countryCode || undefined,
+            currency: queryParams.currency,
+        });
+    } catch (err) {
+        console.error('[fetchSearchProperties] error:', err instanceof Error ? err.message : err);
+        return [];
     }
-
-    return [];
 }

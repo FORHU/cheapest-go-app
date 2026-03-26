@@ -42,7 +42,7 @@ function formatAmount(amount: number, currency: string = 'PHP'): string {
 
 /**
  * CancellationPolicySection component
- * Displays cancellation policy details similar to LiteAPI sandbox
+ * Displays cancellation policy details from ONDA
  */
 export function CancellationPolicySection({
     cancellationPolicies,

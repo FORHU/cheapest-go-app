@@ -17,8 +17,8 @@ export interface ProcessRefundResult {
     error?: string;
 }
 
-/** Shape of the refund/cancellation info returned by LiteAPI */
-export interface LiteApiRefundInfo {
+/** Shape of the refund/cancellation info returned by the provider */
+export interface ProviderRefundInfo {
     cancellationId?: string;
     refund?: {
         amount?: number;
@@ -73,24 +73,24 @@ export async function createRefundRequest(
 }
 
 // ============================================================================
-// 2. Process Refund (LiteAPI handles payment refund automatically)
+// 2. Process Refund (ONDA handles payment refund automatically)
 // ============================================================================
 
 /**
- * Marks a pending refund as processed using LiteAPI's cancel response.
+ * Marks a pending refund as processed using ONDA's cancel response.
  *
- * LiteAPI's `PUT /bookings/{id}` both cancels the booking AND refunds the
- * original card automatically. There is no separate "refund API" to call.
+ * ONDA's cancel endpoint both cancels the booking AND processes the refund.
+ * There is no separate "refund API" to call.
  * This function simply records that fact in our `refund_logs` table.
  *
  * @param supabase  – authenticated Supabase client
  * @param refundLogId – the pending refund_logs row ID
- * @param liteApiInfo – cancellation/refund data from LiteAPI's response
+ * @param providerInfo – cancellation/refund data from ONDA's response
  */
 export async function processRefund(
     supabase: SupabaseClient,
     refundLogId: string,
-    liteApiInfo: LiteApiRefundInfo
+    providerInfo: ProviderRefundInfo
 ): Promise<ProcessRefundResult> {
     // 1. Fetch Refund Log
     const { data: log, error: logError } = await supabase
@@ -107,10 +107,10 @@ export async function processRefund(
         return { success: false, error: `Refund is already ${log.status}` };
     }
 
-    // 2. LiteAPI already processed the refund when we called PUT /bookings/{id}.
+    // 2. ONDA already processed the refund when we called the cancel endpoint.
     //    We just record the outcome.
     const now = new Date().toISOString();
-    const externalRef = liteApiInfo.cancellationId ?? null;
+    const externalRef = providerInfo.cancellationId ?? null;
 
     // Mark refund log as processed
     const { error: updateError } = await supabase
@@ -125,7 +125,7 @@ export async function processRefund(
 
     if (updateError) {
         console.error('[processRefund] Failed to update refund log:', updateError);
-        // Fall through — LiteAPI already refunded, so we treat DB failure as non-fatal
+        // Fall through — ONDA already refunded, so we treat DB failure as non-fatal
     }
 
     // Update Booking status

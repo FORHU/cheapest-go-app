@@ -255,7 +255,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
 };
 
 /**
- * Horizontal card layout (for search results) - LiteAPI Sandbox Style
+ * Horizontal card layout (for search results)
  */
 const HorizontalCard: React.FC<PropertyCardProps> = ({
     property,

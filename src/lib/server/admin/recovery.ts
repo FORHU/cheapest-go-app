@@ -304,7 +304,7 @@ export function checkRefundability(booking: any, table: BookingTableName): { ref
                 reason: isRefundable ? 'Refundable flight (Fare Policy)' : 'Non-refundable flight policy' 
             };
         } else if (booking.type === 'hotel') {
-            // For unified hotels, liteapi policies are usually in metadata.cancellationPolicy
+            // For unified hotels, provider policies are usually in metadata.cancellationPolicy
             const policy = metadata.cancellationPolicy || metadata.cancellation_policy;
             const policyType = policy?.policyType || policy?.policy_type;
             const isRefundable = policyType && policyType !== 'non_refundable';

@@ -78,7 +78,7 @@ export function OptimizedImage({
  *   remotePatterns: [
  *     { protocol: "https", hostname: "static.cupid.travel" },
  *     { protocol: "https", hostname: "*.cupid.travel" },
- *     { protocol: "https", hostname: "api.liteapi.travel" }, // Add LiteAPI
+ *     { protocol: "https", hostname: "api.onda.me" }, // ONDA hotel images
  *     { protocol: "https", hostname: "*.amazonaws.com" },    // Add S3 if used
  *   ],
  * }

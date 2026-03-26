@@ -62,7 +62,7 @@ const FAQSection: React.FC<FAQSectionProps> = ({
     hotelFacilities,
     hotelImportantInformation
 }) => {
-    // Build FAQs dynamically from real LiteAPI data
+    // Build FAQs dynamically from real ONDA data
     const faqs: { question: string; answer: string }[] = [];
 
     if (checkInTime) {

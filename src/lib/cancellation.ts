@@ -39,7 +39,7 @@ export interface CancellationFeeResult {
  * Checks cancelPolicyInfos for NO_SHOW type entries and hotelRemarks for mentions.
  */
 /**
- * Normalize hotelRemarks to string[] — LiteAPI may return a string or string[].
+ * Normalize hotelRemarks to string[] — may return a string or string[].
  */
 function normalizeRemarks(remarks: string | string[] | undefined): string[] {
     if (!remarks) return [];
@@ -62,7 +62,7 @@ export function extractNoShowPenalty(policy: MinimalPolicy | null | undefined): 
     if (noShowEntry) return Number(noShowEntry.amount) || 0;
 
     // Check hotelRemarks for no-show mentions with amounts
-    // LiteAPI may return hotelRemarks as a string or string[]
+    // hotelRemarks may be a string or string[]
     const remarks = normalizeRemarks(policy.hotelRemarks);
     for (const remark of remarks) {
         const match = remark.match(/no[- ]?show.*?(\d+[\d,.]*)/i);
@@ -90,7 +90,7 @@ export function extractEarlyDepartureFee(policy: MinimalPolicy | null | undefine
     if (edEntry) return Number(edEntry.amount) || 0;
 
     // Check hotelRemarks for early departure/checkout mentions with amounts
-    // LiteAPI may return hotelRemarks as a string or string[]
+    // hotelRemarks may be a string or string[]
     const remarks = normalizeRemarks(policy.hotelRemarks);
     for (const remark of remarks) {
         const match = remark.match(/early\s+(?:departure|checkout).*?(\d+[\d,.]*)/i);
