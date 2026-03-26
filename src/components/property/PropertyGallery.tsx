@@ -79,8 +79,9 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                     <Image
                         src={mainImage}
                         alt="Property view"
+                        fill
                         fetchPriority="high"
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                        className="object-cover hover:scale-105 transition-transform duration-500"
                     />
                     <button
                         onClick={(e) => { e.stopPropagation(); handleOpen(0); }}
@@ -104,8 +105,9 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                     <Image
                                         src={img}
                                         alt={`Property view ${i + 1}`}
+                                        fill
                                         fetchPriority={i === 0 ? 'high' : 'auto'}
-                                        className="w-full h-full object-cover"
+                                        className="object-cover"
                                     />
                                 </div>
                             ))}
@@ -141,8 +143,9 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                             <Image
                                 src={mainImage}
                                 alt="Main property view"
+                                fill
                                 fetchPriority="high"
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                className="object-cover hover:scale-105 transition-transform duration-500"
                             />
                         </div>
                         {gallerySubImages.map((img, i) => (

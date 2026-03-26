@@ -1,6 +1,7 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 import { cache } from "react";
 import { type Deal, type VacationPackage } from "@/types";
+import { env } from "@/utils/env";
 import {
     DESTINATION_PRICE_MARKUP,
     DESTINATION_INCLUDES_DEFAULT,
@@ -8,15 +9,17 @@ import {
     DESTINATION_REVIEWS_DEFAULT,
 } from "@/lib/constants/landing";
 
+// Public read-only client — no cookies needed for landing page data.
+// Using the cookie-based server client here would call cookies() which
+// breaks static/ISR prerendering in Next.js 15.
+function getPublicClient() {
+    return createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+}
+
 // ─── Shared helper ────────────────────────────────────────────────────────────
 async function supabaseQuery(table: string, limit: number) {
-    let supabase: Awaited<ReturnType<typeof createClient>>;
     try {
-        supabase = await createClient();
-    } catch {
-        return { data: null, error: new Error("Failed to create Supabase client") };
-    }
-    try {
+        const supabase = getPublicClient();
         const result = await supabase.from(table).select("*").limit(limit);
         if (result.error?.message?.includes("fetch failed")) {
             await new Promise(r => setTimeout(r, 100));
@@ -118,13 +121,7 @@ const EMPTY_RESULT = {
 };
 
 export const getLandingData = cache(async () => {
-    let supabase: Awaited<ReturnType<typeof createClient>>;
-    try {
-        supabase = await createClient();
-    } catch (err) {
-        console.error("[Landing] Failed to create Supabase client:", err);
-        return EMPTY_RESULT;
-    }
+    const supabase = getPublicClient();
 
     // Helper: query with one retry on network errors (TypeError: fetch failed)
     async function query(table: string, limit: number): Promise<{ data: any[] | null; error: any }> {

@@ -246,7 +246,18 @@ export function CheckoutContent() {
                 guests,
                 payment: { method: "ACC_CREDIT_CARD" },
                 paymentIntentId: stripePaymentIntentId,
-            } as any);
+                propertyName: property?.name || 'Hotel',
+                propertyImage: property?.images?.[0] || undefined,
+                roomName: selectedRoom?.title || 'Room',
+                checkIn: checkIn ? checkIn.toISOString().split('T')[0] : '',
+                checkOut: checkOut ? checkOut.toISOString().split('T')[0] : '',
+                adults,
+                children,
+                currency: selectedCurrency,
+                specialRequests: specialRequests || undefined,
+                voucherCode: appliedVoucher?.code || undefined,
+                discountAmount: appliedVoucher?.discountAmount || 0,
+            });
 
             // Show success immediately
             setIsSuccess(true);

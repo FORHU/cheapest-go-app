@@ -201,7 +201,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                             </div>
                                         </div>
                                         <div className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white ml-1.5 text-right shrink-0">
-                                            {currencySymbol}{convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                            {currencySymbol}{convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                             <div className="text-[8px] text-slate-500 font-normal">/night</div>
                                         </div>
                                     </label>
@@ -247,7 +247,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                             <div className="lg:hidden mt-0.5">
                                 <div className="flex items-baseline gap-1">
                                     <span className="text-[15px] font-bold text-blue-600 dark:text-blue-400 leading-none">
-                                        {currencySymbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        {currencySymbol}{displayPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                     </span>
                                     <span className="text-[9px] text-slate-500">/night</span>
                                 </div>
@@ -273,13 +273,13 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     </div>
                     <div className="flex items-baseline justify-end gap-1">
                         <span className="text-[18px] font-bold text-slate-900 dark:text-white leading-none">
-                            {currencySymbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            {currencySymbol}{displayPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                         </span>
                         <span className="text-[12px] text-slate-500">/night</span>
                     </div>
                     <div className="text-[11px] text-slate-400 line-through leading-none mt-1">
                         {currencySymbol}
-                        {(displayPrice * 1.08).toLocaleString(undefined, {
+                        {(displayPrice * 1.08).toLocaleString('en-US', {
                             maximumFractionDigits: 0,
                         })}
                     </div>
