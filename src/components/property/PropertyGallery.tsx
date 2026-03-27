@@ -8,15 +8,7 @@ interface PropertyGalleryProps {
     images: string[];
 }
 
-// Preload cache - persists across renders without causing re-renders
-const preloadedImages = new Set<string>();
-
-const preloadImage = (src: string) => {
-    if (!src || preloadedImages.has(src)) return;
-    const img = new Image();
-    img.src = src;
-    preloadedImages.add(src);
-};
+import Image from 'next/image';
 
 const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
     const displayImages = images.filter(img => img && img.length > 0);
@@ -29,27 +21,9 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
 
     const gallerySubImages = subImages;
 
-    // Preload adjacent images imperatively (no state updates)
-    const preloadAdjacent = useCallback((index: number) => {
-        [-2, -1, 0, 1, 2].forEach(offset => {
-            const idx = index + offset;
-            if (idx >= 0 && idx < displayImages.length) {
-                preloadImage(displayImages[idx]);
-            }
-        });
-    }, [displayImages]);
-
-    // Preload all images in background (fire and forget)
-    const preloadAll = useCallback(() => {
-        displayImages.forEach(src => preloadImage(src));
-    }, [displayImages]);
-
     const handleOpen = useCallback((index: number) => {
         setSelectedIndex(index);
-        preloadAdjacent(index);
-        // Start preloading all images after a brief delay
-        setTimeout(preloadAll, 100);
-    }, [preloadAdjacent, preloadAll]);
+    }, []);
 
     const handleClose = useCallback(() => setSelectedIndex(null), []);
 
@@ -57,30 +31,24 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
         e?.stopPropagation();
         setSelectedIndex(prev => {
             if (prev === null) return null;
-            const newIndex = prev === 0 ? displayImages.length - 1 : prev - 1;
-            preloadAdjacent(newIndex);
-            return newIndex;
+            return prev === 0 ? displayImages.length - 1 : prev - 1;
         });
-    }, [displayImages.length, preloadAdjacent]);
+    }, [displayImages.length]);
 
     const handleNext = useCallback((e?: React.MouseEvent) => {
         e?.stopPropagation();
         setSelectedIndex(prev => {
             if (prev === null) return null;
-            const newIndex = prev === displayImages.length - 1 ? 0 : prev + 1;
-            preloadAdjacent(newIndex);
-            return newIndex;
+            return prev === displayImages.length - 1 ? 0 : prev + 1;
         });
-    }, [displayImages.length, preloadAdjacent]);
+    }, [displayImages.length]);
 
-    // Keyboard handler - attached directly to the modal div
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Escape') handleClose();
         if (e.key === 'ArrowLeft') handlePrev();
         if (e.key === 'ArrowRight') handleNext();
     }, [handleClose, handlePrev, handleNext]);
 
-    // Scroll thumbnail into view
     const scrollToThumbnail = useCallback((index: number) => {
         if (thumbnailContainerRef.current) {
             const thumbnail = thumbnailContainerRef.current.querySelector(`[data-index="${index}"]`) as HTMLElement;
@@ -90,9 +58,8 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
 
     const handleThumbnailClick = useCallback((index: number) => {
         setSelectedIndex(index);
-        preloadAdjacent(index);
         scrollToThumbnail(index);
-    }, [preloadAdjacent, scrollToThumbnail]);
+    }, [scrollToThumbnail]);
 
     return (
         <>
@@ -109,10 +76,12 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                     className="h-[200px] md:h-[400px] rounded-xl overflow-hidden relative cursor-pointer group"
                     onClick={() => handleOpen(0)}
                 >
-                    <img
+                    <Image
                         src={mainImage}
                         alt="Property view"
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                        fill
+                        fetchPriority="high"
+                        className="object-cover hover:scale-105 transition-transform duration-500"
                     />
                     <button
                         onClick={(e) => { e.stopPropagation(); handleOpen(0); }}
@@ -133,10 +102,12 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                     className="snap-center shrink-0 w-full h-full relative cursor-pointer"
                                     onClick={() => handleOpen(i)}
                                 >
-                                    <img
+                                    <Image
                                         src={img}
                                         alt={`Property view ${i + 1}`}
-                                        className="w-full h-full object-cover"
+                                        fill
+                                        fetchPriority={i === 0 ? 'high' : 'auto'}
+                                        className="object-cover"
                                     />
                                 </div>
                             ))}
@@ -153,7 +124,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                         {/* Photo count badge */}
                         <button
                             onClick={() => handleOpen(0)}
-                            className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm font-medium flex items-center gap-1.5"
+                            className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm font-medium flex items-center gap-1.5 z-10"
                         >
                             <ImageIcon size={12} />
                             {displayImages.length}
@@ -169,10 +140,12 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                             className={`relative cursor-pointer overflow-hidden ${gallerySubImages.length >= 2 ? 'col-span-2 row-span-2' : ''}`}
                             onClick={() => handleOpen(0)}
                         >
-                            <img
+                            <Image
                                 src={mainImage}
                                 alt="Main property view"
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                fill
+                                fetchPriority="high"
+                                className="object-cover hover:scale-105 transition-transform duration-500"
                             />
                         </div>
                         {gallerySubImages.map((img, i) => (
@@ -181,13 +154,14 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                 className="relative cursor-pointer overflow-hidden"
                                 onClick={() => handleOpen(i + 1)}
                             >
-                                <img
+                                <Image
                                     src={img}
                                     alt={`View ${i + 1}`}
-                                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                    fill
+                                    className="object-cover hover:scale-105 transition-transform duration-500"
                                 />
                                 {i === gallerySubImages.length - 1 && displayImages.length > 5 && (
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-sm backdrop-blur-sm">
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-sm backdrop-blur-sm z-10">
                                         +{displayImages.length - 5} photos
                                     </div>
                                 )}
@@ -241,27 +215,31 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                         <div className="flex-1 flex items-center justify-center relative w-full h-full p-4 md:pb-28">
                             <button
                                 className="absolute left-2 md:left-4 p-2 md:p-3 bg-white/10 md:bg-white/5 hover:bg-white/20 md:hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors backdrop-blur-sm group z-20"
-                                onClick={handlePrev}
+                                onClick={(e) => { e.stopPropagation(); handlePrev(); }}
                             >
                                 <ChevronLeft size={24} className="md:w-8 md:h-8 group-hover:-translate-x-0.5 transition-transform" />
                             </button>
 
                             <button
                                 className="absolute right-2 md:right-4 p-2 md:p-3 bg-white/10 md:bg-white/5 hover:bg-white/20 md:hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors backdrop-blur-sm group z-20"
-                                onClick={handleNext}
+                                onClick={(e) => { e.stopPropagation(); handleNext(); }}
                             >
                                 <ChevronRight size={24} className="md:w-8 md:h-8 group-hover:translate-x-0.5 transition-transform" />
                             </button>
 
-                            {/* Main image - instant swap, no animation */}
-                            <img
-                                key={selectedIndex}
-                                src={displayImages[selectedIndex]}
-                                alt={`Gallery view ${selectedIndex + 1}`}
-                                className="max-h-full max-w-full object-contain shadow-2xl select-none"
-                                onClick={(e) => e.stopPropagation()}
-                                draggable={false}
-                            />
+                            {/* Main image */}
+                            <div className="relative w-full h-full max-h-[80vh] md:max-h-[85vh]">
+                                <Image
+                                    key={selectedIndex}
+                                    src={displayImages[selectedIndex]}
+                                    alt={`Gallery view ${selectedIndex + 1}`}
+                                    fill
+                                    className="object-contain shadow-2xl select-none"
+                                    onClick={(e) => e.stopPropagation()}
+                                    draggable={false}
+                                    priority
+                                />
+                            </div>
                         </div>
 
                         {/* Thumbnail Strip */}
@@ -283,10 +261,11 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                                 : 'border-transparent opacity-60 hover:opacity-90 hover:border-white/50'}
                                             transition-[border-color,opacity] duration-100`}
                                     >
-                                        <img
+                                        <Image
                                             src={img}
                                             alt={`Thumbnail ${idx + 1}`}
-                                            className="w-full h-full object-cover"
+                                            fill
+                                            className="object-cover"
                                         />
                                     </button>
                                 ))}

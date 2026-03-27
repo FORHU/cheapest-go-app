@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
+import { createNotification } from '@/lib/server/admin/notify';
 import { env } from '@/utils/env';
 
 // Lazy-initialize Stripe to avoid module-level crash during Vercel build
@@ -50,7 +51,28 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
     }
 
-    console.log(`[Stripe Webhook] Event: ${event.type}`);
+    console.log(`[Stripe Webhook] Event: ${event.type} id=${event.id}`);
+
+    // ── Idempotency: deduplicate processed events ────────────────────────────
+    if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+        const { createClient: createSbClient } = await import('@supabase/supabase-js');
+        const dedupClient = createSbClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const { error: dedupError } = await dedupClient
+            .from('stripe_processed_events')
+            .insert({ event_id: event.id, event_type: event.type, processed_at: new Date().toISOString() });
+
+        if (dedupError) {
+            if (dedupError.code === '23505') {
+                // Unique violation — already processed
+                console.log(`[Stripe Webhook] Duplicate event ${event.id} — skipping`);
+                return NextResponse.json({ received: true });
+            }
+            // Table may not exist yet — log and continue
+            if (!dedupError.message?.includes('does not exist')) {
+                console.warn('[Stripe Webhook] Dedup insert error:', dedupError.message);
+            }
+        }
+    }
 
     const headers = {
         'Content-Type': 'application/json',
@@ -101,9 +123,26 @@ export async function POST(req: NextRequest) {
 
             if (bookingData.success) {
                 console.log(`[Webhook] Mystifly booking complete. PNR: ${bookingData.pnr} Status: ${bookingData.status}`);
+                createNotification(
+                    'Flight Booking Confirmed',
+                    `Mystifly booking ${bookingData.pnr || bookingSessionId} confirmed.`,
+                    'booking'
+                );
                 // Send confirmation email — fire-and-forget (webhook fires exactly once)
                 fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, pi.metadata?.provider ?? 'mystifly')
                     .catch(e => console.error('[Webhook] Mystifly email error:', e));
+
+                // Financial ledger: log payment event
+                if (bookingData.bookingId) {
+                    logFlightPaymentEvent(supabase, {
+                        bookingId: bookingData.bookingId,
+                        amount: pi.amount / 100,
+                        currency: (pi.currency || 'usd').toUpperCase(),
+                        provider: 'mystifly',
+                        transactionId: pi.id,
+                        metadata: { sessionId: bookingSessionId, pnr: bookingData.pnr },
+                    });
+                }
             } else {
                 // create-booking handles the cancel + DB failure update internally
                 console.error('[Webhook] Mystifly create-booking failed:', bookingData.error);
@@ -163,8 +202,25 @@ export async function POST(req: NextRequest) {
 
             // Send confirmation email — fire-and-forget, only on fresh booking
             if (!bookingData.alreadyBooked) {
+                createNotification(
+                    'Flight Booking Confirmed',
+                    `Duffel booking ${bookingData.pnr || bookingSessionId} confirmed.`,
+                    'booking'
+                );
                 fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, 'duffel')
                     .catch(e => console.error('[Webhook] Duffel email error:', e));
+
+                // Financial ledger: log payment event
+                if (bookingData.bookingId) {
+                    logFlightPaymentEvent(supabase, {
+                        bookingId: bookingData.bookingId,
+                        amount: pi.amount / 100,
+                        currency: (pi.currency || 'usd').toUpperCase(),
+                        provider: 'duffel',
+                        transactionId: pi.id,
+                        metadata: { sessionId: bookingSessionId, pnr: bookingData.pnr },
+                    });
+                }
             }
 
         } catch (err) {
@@ -226,4 +282,44 @@ async function fireBookingConfirmationEmail(
     });
 
     console.log('[Email] Confirmation sent:', result.success, result.error ?? '');
+}
+
+// ─── Financial Ledger Helper ─────────────────────────────────────────────────
+
+/**
+ * Insert a payment event into the booking_financial_events ledger.
+ * Fire-and-forget — must not throw.
+ */
+async function logFlightPaymentEvent(
+    supabase: any,
+    params: {
+        bookingId: string;
+        amount: number;
+        currency: string;
+        provider: string;
+        transactionId: string;
+        metadata?: Record<string, any>;
+    },
+) {
+    try {
+        const { error } = await supabase
+            .from('booking_financial_events')
+            .insert({
+                booking_id: params.bookingId,
+                event_type: 'payment',
+                amount: params.amount,
+                currency: params.currency,
+                provider: params.provider,
+                transaction_id: params.transactionId,
+                metadata: params.metadata || {},
+            });
+
+        if (error) {
+            console.error('[Stripe Webhook] Failed to log financial event:', error.message);
+        } else {
+            console.log(`[Stripe Webhook] Ledger: payment event logged for ${params.bookingId}`);
+        }
+    } catch (err) {
+        console.error('[Stripe Webhook] Ledger insert error:', err);
+    }
 }

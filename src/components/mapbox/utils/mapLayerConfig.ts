@@ -20,7 +20,7 @@ export const clusterCountLayer: LayerProps = {
     filter: ['has', 'point_count'],
     layout: {
         'text-field': '{point_count_abbreviated}',
-        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
         'text-size': 12,
     },
     paint: {
@@ -35,9 +35,10 @@ export const unclusteredPointLayer: LayerProps = {
     filter: ['!', ['has', 'point_count']],
     paint: {
         'circle-color': '#ffffff',
-        'circle-radius': 16,
-        'circle-stroke-width': 1,
-        'circle-stroke-color': '#94a3b8',
+        'circle-radius': 18,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#3b82f6',
+        'circle-blur': 0,
     },
 };
 
@@ -48,11 +49,11 @@ export const unclusteredPointTextLayer: LayerProps = {
     filter: ['!', ['has', 'point_count']],
     layout: {
         'text-field': ['get', 'formattedPrice'],
-        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-        'text-size': 10,
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-size': 11,
         'text-offset': [0, 0],
     },
     paint: {
-        'text-color': '#0f172a',
+        'text-color': '#2563eb',
     },
 };

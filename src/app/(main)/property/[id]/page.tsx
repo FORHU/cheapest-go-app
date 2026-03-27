@@ -6,7 +6,7 @@ import RoomList from '@/components/property/RoomList';
 import PoliciesSection from '@/components/property/PoliciesSection';
 import ReviewsSection from '@/components/property/ReviewsSection';
 import FAQSection from '@/components/property/FAQSection';
-import PropertyMapSidebar from '@/components/property/PropertyMapSidebar';
+import PropertyMapSidebar from '@/components/property/PropertyMapSidebarDynamic';
 import MobilePropertyHeader from '@/components/property/MobilePropertyHeader';
 import MobileBookingCTA from '@/components/property/MobileBookingCTA';
 import BackButton from '@/components/common/BackButton';

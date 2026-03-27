@@ -3,11 +3,25 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { type Property } from '@/types';
 import { PropertyMapList, scrollToProperty } from './PropertyMapList';
-import { PropertyMapView } from './PropertyMapView';
+// import { PropertyMapView } from './PropertyMapView';
 import { MapModal } from './MapModal';
 import type { MappableProperty } from './types';
+
+const PropertyMapView = dynamic(
+    () => import('./PropertyMapView').then((mod) => mod.PropertyMapView),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex-1 h-full flex items-center justify-center bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
+                <div className="animate-pulse text-sm text-slate-500">Loading map component...</div>
+            </div>
+        ),
+    }
+);
+
 
 interface MapSearchLayoutProps {
     /** Properties fetched server-side and passed as props */

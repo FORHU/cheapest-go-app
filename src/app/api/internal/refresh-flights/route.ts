@@ -11,8 +11,12 @@ export async function POST(req: Request) {
     try {
         // 1. Security Check
         const authHeader = req.headers.get("authorization");
-        // In a real scenario, use a secure secret from env
-        if (authHeader !== `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-internal-secret'}`) {
+        const cronSecret = process.env.CRON_SECRET || env.SUPABASE_SERVICE_ROLE_KEY;
+        if (!cronSecret) {
+            console.error('[Cron] CRON_SECRET and SUPABASE_SERVICE_ROLE_KEY are both unset — refusing request');
+            return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
+        }
+        if (authHeader !== `Bearer ${cronSecret}`) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

@@ -59,8 +59,36 @@ export function ProjectAnalytics({ data = mockData, isLoading }: ProjectAnalytic
                 </div>
             </div>
 
+            {/* Legend */}
+            <div className="flex items-center gap-6 mb-6 relative z-10">
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-600" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Actual</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-slate-200 dark:bg-white/10" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Projected</span>
+                </div>
+                <div className="ml-auto text-[10px] font-black text-slate-900 dark:text-white">
+                    {data.reduce((s, d) => s + d.value, 0)} Total
+                </div>
+            </div>
+
             <div className="h-full flex flex-col pt-4">
-                <div className="flex items-end justify-between h-48 gap-2 px-2 relative z-10">
+                <div className="flex items-end h-48 gap-2 px-2 relative z-10">
+                    {/* Y-axis scale */}
+                    <div className="flex flex-col justify-between h-full pb-0 pr-2 shrink-0 w-6">
+                        {(() => {
+                            const maxVal = Math.max(...data.map(d => d.value), 1);
+                            return [maxVal, Math.round(maxVal / 2), 0].map((v) => (
+                                <span key={v} className="text-[9px] font-bold text-slate-300 dark:text-white/20 text-right leading-none">
+                                    {v}
+                                </span>
+                            ));
+                        })()}
+                    </div>
+
+                    {/* Bars */}
                     {data.map((item, i) => (
                         <div key={i} className="flex-1 flex flex-col items-center gap-4 group/bar h-full justify-end">
                             <div className="relative w-full h-full flex items-end justify-center">
@@ -84,8 +112,8 @@ export function ProjectAnalytics({ data = mockData, isLoading }: ProjectAnalytic
 
                                     {/* Tooltip on hover */}
                                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none">
-                                        <div className="bg-slate-900 text-white text-[10px] font-black px-2 py-1 rounded shadow-xl transition-colors">
-                                            {item.value}
+                                        <div className="bg-slate-900 text-white text-[10px] font-black px-3 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
+                                            {item.value} bookings
                                         </div>
                                     </div>
                                 </motion.div>

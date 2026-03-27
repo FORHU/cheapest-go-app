@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Sparkles, Star } from 'lucide-react';
 import { TabList, SparkleEffect, HorizontalScroll } from '@/components/ui';
@@ -66,17 +67,18 @@ export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ sta
               whileHover={{ y: -6, scale: 1.02 }}
               className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape:w-[160px] landscape-compact-card snap-start relative group cursor-pointer flex flex-col"
             >
-              {/* Glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-70 blur-xl transition-all duration-500 pointer-events-none" />
-
               <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
                 <div className="relative aspect-[2/1] sm:aspect-[4/3] md:aspect-[3/2] overflow-hidden flex-shrink-0 landscape-compact-img landscape-img">
-                  <motion.div
-                    className="absolute inset-0 bg-cover bg-center"
-                    style={{ backgroundImage: `url(${stay.image})` }}
-                    whileHover={{ scale: 1.15 }}
-                    transition={{ duration: 0.6 }}
-                  />
+                  {stay.image && (
+                    <Image
+                      src={stay.image}
+                      alt={stay.name}
+                      fill
+                      sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
+                      className="object-cover transition-transform duration-500 group-hover:scale-110"
+                      loading="lazy"
+                    />
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
                   {/* Animated badge */}

@@ -40,6 +40,20 @@ export interface BookingParams {
     method: string;
     transactionId?: string;
   };
+  // Stripe payment intent (for server-side verification)
+  paymentIntentId?: string;
+  // Hotel metadata for DB record
+  propertyName?: string;
+  propertyImage?: string;
+  roomName?: string;
+  checkIn?: string;
+  checkOut?: string;
+  adults?: number;
+  children?: number;
+  currency?: string;
+  specialRequests?: string;
+  voucherCode?: string;
+  discountAmount?: number;
 }
 
 /**

@@ -76,12 +76,18 @@ export async function getCustomersList(): Promise<Customer[]> {
         else if (totalSpend >= 5000) loyaltyTier = 'gold';
         else if (totalSpend >= 1000) loyaltyTier = 'silver';
 
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        const status: 'active' | 'inactive' | 'banned' = profile.banned_at
+            ? 'banned'
+            : lastBookingDate && lastBookingDate >= ninetyDaysAgo ? 'active' : 'inactive';
+
         return {
             id: profile.id,
             name: displayName || 'Anonymous',
             email: profile.email,
             loyaltyTier,
-            status: 'active',
+            status,
             joined: profile.created_at,
             totalSpend,
             totalBookings,

@@ -55,6 +55,24 @@ export function useFlightBooking() {
             if (saved) {
                 try { return JSON.parse(saved); } catch (e) { console.error('Error parsing saved passengers:', e); }
             }
+
+            // Initialize from search passenger counts so the form matches the searched itinerary
+            const searchCounts = sessionStorage.getItem('flightSearchPassengers');
+            if (searchCounts) {
+                try {
+                    const { adults = 1, children = 0, infants = 0 } = JSON.parse(searchCounts);
+                    const blank = (type: 'ADT' | 'CHD' | 'INF'): FlightPassengerForm => ({
+                        type, firstName: '', lastName: '', gender: '', birthDate: '',
+                        nationality: 'KR', passport: '', passportExpiry: '',
+                    });
+                    const forms: FlightPassengerForm[] = [
+                        ...Array.from({ length: adults }, () => blank('ADT')),
+                        ...Array.from({ length: children }, () => blank('CHD')),
+                        ...Array.from({ length: infants }, () => blank('INF')),
+                    ];
+                    if (forms.length > 0) return forms;
+                } catch (e) { console.error('Error parsing search passengers:', e); }
+            }
         }
         return [{
             type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
@@ -258,6 +276,7 @@ export function useFlightBooking() {
             if (typeof window !== 'undefined') {
                 sessionStorage.removeItem('flightPassengers');
                 sessionStorage.removeItem('flightContact');
+                sessionStorage.removeItem('flightSearchPassengers');
             }
             sessionStorage.removeItem('selectedFlight');
         },
@@ -304,6 +323,7 @@ export function useFlightBooking() {
         if (typeof window !== 'undefined') {
             sessionStorage.removeItem('flightPassengers');
             sessionStorage.removeItem('flightContact');
+            sessionStorage.removeItem('flightSearchPassengers');
             sessionStorage.removeItem('selectedFlight');
         }
 
@@ -347,6 +367,21 @@ export function useFlightBooking() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!offer) return;
+
+        // Validate passenger count matches the original search
+        const searchCounts = typeof window !== 'undefined'
+            ? sessionStorage.getItem('flightSearchPassengers')
+            : null;
+        if (searchCounts) {
+            try {
+                const { adults = 1, children = 0, infants = 0 } = JSON.parse(searchCounts);
+                const expected = adults + children + infants;
+                if (passengers.length !== expected) {
+                    setErrorMsg(`This fare was searched for ${expected} passenger(s) but ${passengers.length} passenger form(s) are filled. Please match the passenger count to your search.`);
+                    return;
+                }
+            } catch { /* ignore parse errors, let server validate */ }
+        }
 
         try {
             flightBookingSchema.parse({ passengers, contact });

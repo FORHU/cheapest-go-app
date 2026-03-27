@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { HeaderTitle } from '@/components/admin/HeaderTitle';
-import { Users, Search, Filter, MoreHorizontal, UserPlus, Trash2, Edit, DollarSign, Calendar, TrendingUp, Award, Clock } from 'lucide-react';
+import { Users, Search, Filter, MoreHorizontal, Trash2, DollarSign, Calendar, TrendingUp, Award, Clock, X, Eye, ShieldBan, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { StatCard } from '@/components/admin/StatCard';
 import {
     Table,
@@ -15,23 +15,54 @@ import {
     Button,
     Input
 } from '@/components/ui';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogClose,
+} from '@/components/ui/Dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDate, getInitials, formatCurrency, cn } from '@/lib/utils';
+import { convertCurrency } from '@/lib/currency';
 import { Customer } from '@/types/admin';
-import { X } from 'lucide-react';
 
 interface CustomersClientProps {
     initialCustomers: Customer[];
+    defaultCurrency?: string;
 }
 
-export function CustomersClient({ initialCustomers }: CustomersClientProps) {
+export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: CustomersClientProps) {
+    const [customers, setCustomers] = useState(initialCustomers);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [tierFilter, setTierFilter] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
 
+    // Action states
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [detailOpen, setDetailOpen] = useState(false);
+    const [banDialogOpen, setBanDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const showToast = (message: string, type: 'success' | 'error') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
     const filteredCustomers = useMemo(() => {
-        return initialCustomers.filter(customer => {
+        return customers.filter(customer => {
             const matchesSearch =
                 customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 customer.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -41,22 +72,21 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
 
             return matchesSearch && matchesStatus && matchesTier;
         });
-    }, [searchTerm, statusFilter, tierFilter, initialCustomers]);
+    }, [searchTerm, statusFilter, tierFilter, customers]);
 
-    // Calculate aggregate stats
     const totalSpend = useMemo(() =>
-        initialCustomers.reduce((sum, c) => sum + c.totalSpend, 0),
-        [initialCustomers]);
+        customers.reduce((sum, c) => sum + c.totalSpend, 0),
+        [customers]);
 
     const avgBookings = useMemo(() => {
-        if (initialCustomers.length === 0) return 0;
-        const total = initialCustomers.reduce((sum, c) => sum + c.totalBookings, 0);
-        return (total / initialCustomers.length).toFixed(1);
-    }, [initialCustomers]);
+        if (customers.length === 0) return 0;
+        const total = customers.reduce((sum, c) => sum + c.totalBookings, 0);
+        return (total / customers.length).toFixed(1);
+    }, [customers]);
 
     const loyaltyCount = useMemo(() =>
-        initialCustomers.filter(c => c.loyaltyTier !== 'bronze').length,
-        [initialCustomers]);
+        customers.filter(c => c.loyaltyTier !== 'bronze').length,
+        [customers]);
 
     const getTierVariant = (tier: Customer['loyaltyTier']) => {
         switch (tier) {
@@ -77,43 +107,72 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
         }
     };
 
+    const handleAction = async (action: 'ban' | 'unban' | 'hard_delete', customer?: Customer) => {
+        const target = customer || selectedCustomer;
+        if (!target) return;
+        setActionLoading(true);
+        try {
+            const res = await fetch('/api/admin/customers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, userId: target.id }),
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                if (action === 'hard_delete') {
+                    setCustomers(prev => prev.filter(c => c.id !== target.id));
+                    setDeleteDialogOpen(false);
+                    showToast('User permanently deleted', 'success');
+                } else if (action === 'ban') {
+                    setCustomers(prev => prev.map(c =>
+                        c.id === target.id ? { ...c, status: 'banned' as const } : c
+                    ));
+                    setBanDialogOpen(false);
+                    showToast('User has been banned', 'success');
+                } else {
+                    setCustomers(prev => prev.map(c =>
+                        c.id === target.id ? { ...c, status: 'active' as const } : c
+                    ));
+                    showToast('User has been unbanned', 'success');
+                }
+            } else {
+                showToast(data.error || 'Action failed', 'error');
+            }
+        } catch {
+            showToast('Network error — please try again', 'error');
+        } finally {
+            setActionLoading(false);
+            setSelectedCustomer(null);
+        }
+    };
+
     return (
         <div className="space-y-10 pb-20">
-            <HeaderTitle
-                actions={
-                    <Button className="bg-blue-600 hover:bg-blue-500 rounded-xl font-bold h-12 px-6 shadow-xl shadow-blue-500/20 transition-all text-white border-0 gap-2">
-                        <UserPlus size={18} />
-                        Add Customer
-                    </Button>
-                }
-            />
+            <HeaderTitle />
 
             {/* Summary Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="Total Customers"
-                    value={initialCustomers.length.toLocaleString()}
+                    value={customers.length.toLocaleString()}
                     icon={Users}
-                    trend="+4.8%"
                 />
                 <StatCard
                     title="Total Spend"
-                    value={formatCurrency(totalSpend, 'PHP')}
+                    value={formatCurrency(convertCurrency(totalSpend, 'PHP', defaultCurrency), defaultCurrency)}
                     icon={DollarSign}
-                    trend="+12.4%"
                     variant="blue"
                 />
                 <StatCard
                     title="Avg. Bookings"
                     value={avgBookings.toString()}
                     icon={Calendar}
-                    trend="+2.1%"
                 />
                 <StatCard
                     title="Loyalty Members"
                     value={loyaltyCount.toLocaleString()}
                     icon={Award}
-                    trend="+1.0%"
                 />
             </div>
 
@@ -248,7 +307,7 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="py-5 font-black text-slate-900 dark:text-white">
-                                        {formatCurrency(customer.totalSpend, 'PHP')}
+                                        {formatCurrency(convertCurrency(customer.totalSpend, 'PHP', defaultCurrency), defaultCurrency)}
                                     </TableCell>
                                     <TableCell className="py-5">
                                         <div className="flex items-center gap-1 text-slate-900 dark:text-white font-bold">
@@ -275,15 +334,79 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
                                     </TableCell>
                                     <TableCell className="py-5 text-right pr-6">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 rounded-xl">
-                                                <Edit size={16} />
+                                            {/* View Details */}
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-slate-400 hover:text-blue-600 rounded-xl"
+                                                onClick={() => { setSelectedCustomer(customer); setDetailOpen(true); }}
+                                                title="View Details"
+                                            >
+                                                <Eye size={16} />
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-rose-600 rounded-xl">
-                                                <Trash2 size={16} />
+
+                                            {/* Ban / Unban */}
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className={cn(
+                                                    "h-8 w-8 rounded-xl",
+                                                    customer.status === 'banned'
+                                                        ? 'text-emerald-400 hover:text-emerald-600'
+                                                        : 'text-slate-400 hover:text-amber-600'
+                                                )}
+                                                onClick={() => {
+                                                    setSelectedCustomer(customer);
+                                                    if (customer.status === 'banned') {
+                                                        handleAction('unban', customer);
+                                                    } else {
+                                                        setBanDialogOpen(true);
+                                                    }
+                                                }}
+                                                title={customer.status === 'banned' ? 'Unban User' : 'Ban User'}
+                                            >
+                                                {customer.status === 'banned' ? <ShieldCheck size={16} /> : <ShieldBan size={16} />}
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl">
-                                                <MoreHorizontal size={16} />
-                                            </Button>
+
+                                            {/* More Menu */}
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl">
+                                                        <MoreHorizontal size={16} />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-48 rounded-xl border-slate-100 dark:border-white/10 dark:bg-obsidian shadow-2xl">
+                                                    <DropdownMenuItem
+                                                        onClick={() => { setSelectedCustomer(customer); setDetailOpen(true); }}
+                                                        className="gap-2 text-xs font-bold cursor-pointer rounded-lg"
+                                                    >
+                                                        <Eye size={14} /> View Profile
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setSelectedCustomer(customer);
+                                                            if (customer.status === 'banned') {
+                                                                handleAction('unban', customer);
+                                                            } else {
+                                                                setBanDialogOpen(true);
+                                                            }
+                                                        }}
+                                                        className="gap-2 text-xs font-bold cursor-pointer rounded-lg"
+                                                    >
+                                                        {customer.status === 'banned'
+                                                            ? <><ShieldCheck size={14} /> Unban User</>
+                                                            : <><ShieldBan size={14} /> Ban User</>
+                                                        }
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        onClick={() => { setSelectedCustomer(customer); setDeleteDialogOpen(true); }}
+                                                        className="gap-2 text-xs font-bold cursor-pointer rounded-lg text-rose-600 focus:text-rose-600"
+                                                    >
+                                                        <Trash2 size={14} /> Delete Permanently
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -320,6 +443,159 @@ export function CustomersClient({ initialCustomers }: CustomersClientProps) {
                     <p>Showing {filteredCustomers.length} customers</p>
                 </div>
             </motion.div>
+
+            {/* ── Customer Detail Modal ── */}
+            <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+                <DialogContent className="sm:max-w-[480px] p-0">
+                    {selectedCustomer && (
+                        <div className="p-8">
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="w-14 h-14 rounded-xl bg-blue-600 flex items-center justify-center text-white text-lg font-black shadow-lg shadow-blue-600/20">
+                                    {getInitials(selectedCustomer.name.split(' ')[0], selectedCustomer.name.split(' ')[1] || '')}
+                                </div>
+                                <div>
+                                    <DialogHeader>
+                                        <DialogTitle className="text-2xl tracking-tight">{selectedCustomer.name}</DialogTitle>
+                                    </DialogHeader>
+                                    <p className="text-sm text-slate-400 font-medium">{selectedCustomer.email}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Status</p>
+                                    <Badge className={cn(
+                                        'font-black capitalize text-[9px] px-3 py-1 rounded-lg border-none',
+                                        selectedCustomer.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' :
+                                            selectedCustomer.status === 'banned' ? 'bg-rose-500/10 text-rose-600' :
+                                                'bg-slate-500/10 text-slate-600'
+                                    )}>
+                                        {selectedCustomer.status}
+                                    </Badge>
+                                </div>
+                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Loyalty Tier</p>
+                                    <Badge className={cn(
+                                        'capitalize text-[9px] font-black px-2 py-0.5 rounded-lg border-none',
+                                        selectedCustomer.loyaltyTier === 'platinum' ? 'bg-blue-900 text-white' :
+                                            selectedCustomer.loyaltyTier === 'gold' ? 'bg-amber-100 text-amber-700' :
+                                                selectedCustomer.loyaltyTier === 'silver' ? 'bg-slate-100 text-slate-600' :
+                                                    'bg-orange-50 text-orange-600'
+                                    )}>
+                                        {selectedCustomer.loyaltyTier}
+                                    </Badge>
+                                </div>
+                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Spend</p>
+                                    <p className="text-lg font-black text-slate-900 dark:text-white">{formatCurrency(convertCurrency(selectedCustomer.totalSpend, 'PHP', defaultCurrency), defaultCurrency)}</p>
+                                </div>
+                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Bookings</p>
+                                    <p className="text-lg font-black text-slate-900 dark:text-white">{selectedCustomer.totalBookings}</p>
+                                </div>
+                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Joined</p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white">{formatDate(selectedCustomer.joined)}</p>
+                                </div>
+                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Last Booking</p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                        {selectedCustomer.lastBooking !== 'N/A' ? formatDate(selectedCustomer.lastBooking) : 'Never'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <DialogFooter className="mt-8">
+                                <DialogClose asChild>
+                                    <Button variant="ghost" className="flex-1 rounded-xl font-bold h-12 border border-slate-100 dark:border-white/10">
+                                        Close
+                                    </Button>
+                                </DialogClose>
+                            </DialogFooter>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Ban Confirmation Dialog ── */}
+            <Dialog open={banDialogOpen} onOpenChange={(open) => { if (!open) { setBanDialogOpen(false); setSelectedCustomer(null); } }}>
+                <DialogContent showCloseButton={false} className="sm:max-w-[420px] p-0">
+                    <div className="px-8 pt-8 pb-4">
+                        <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 mb-6">
+                            <ShieldBan size={24} />
+                        </div>
+                        <DialogHeader className="space-y-2">
+                            <DialogTitle className="text-2xl tracking-tight">Ban User</DialogTitle>
+                            <DialogDescription className="text-base leading-relaxed">
+                                <strong>{selectedCustomer?.name}</strong> will be banned and unable to access the platform. Their booking history will be preserved. You can unban them at any time.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    <DialogFooter className="px-8 pb-8 pt-4 flex flex-col-reverse sm:flex-row gap-3">
+                        <DialogClose asChild>
+                            <Button variant="ghost" className="flex-1 rounded-xl font-bold h-12 text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 border border-slate-100 dark:border-white/10">
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                        <Button
+                            onClick={() => handleAction('ban')}
+                            disabled={actionLoading}
+                            className="flex-1 rounded-xl font-black h-12 shadow-lg border-0 text-white bg-amber-600 hover:bg-amber-700 shadow-amber-600/20"
+                        >
+                            {actionLoading ? 'Banning...' : 'Ban User'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Hard Delete Confirmation Dialog ── */}
+            <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!open) { setDeleteDialogOpen(false); setSelectedCustomer(null); } }}>
+                <DialogContent showCloseButton={false} className="sm:max-w-[420px] p-0">
+                    <div className="px-8 pt-8 pb-4">
+                        <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-500 mb-6">
+                            <AlertTriangle size={24} />
+                        </div>
+                        <DialogHeader className="space-y-2">
+                            <DialogTitle className="text-2xl tracking-tight">Delete Permanently</DialogTitle>
+                            <DialogDescription className="text-base leading-relaxed">
+                                This will permanently delete <strong>{selectedCustomer?.name}</strong> and their authentication account. This action <strong>cannot be undone</strong>. Their existing bookings will become orphaned.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+                    <DialogFooter className="px-8 pb-8 pt-4 flex flex-col-reverse sm:flex-row gap-3">
+                        <DialogClose asChild>
+                            <Button variant="ghost" className="flex-1 rounded-xl font-bold h-12 text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 border border-slate-100 dark:border-white/10">
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                        <Button
+                            onClick={() => handleAction('hard_delete')}
+                            disabled={actionLoading}
+                            className="flex-1 rounded-xl font-black h-12 shadow-lg border-0 text-white bg-rose-600 hover:bg-rose-700 shadow-rose-600/20"
+                        >
+                            {actionLoading ? 'Deleting...' : 'Delete Forever'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Toast ── */}
+            {toast && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    className={cn(
+                        'fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-2xl text-sm font-bold flex items-center gap-2',
+                        toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                    )}
+                >
+                    {toast.message}
+                    <button onClick={() => setToast(null)} className="ml-2 opacity-70 hover:opacity-100">
+                        <X size={14} />
+                    </button>
+                </motion.div>
+            )}
         </div>
     );
 }

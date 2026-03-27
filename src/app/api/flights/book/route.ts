@@ -4,10 +4,18 @@ import { stripe } from '@/lib/stripe/server';
 import { env } from '@/utils/env';
 import { FlightOffer, FarePolicy } from '@/types/flights';
 import { logApiCall } from '@/lib/server/api-logger';
+import { rateLimit } from '@/lib/server/rate-limit';
+import { flightBookingSchema } from '@/lib/schemas/flight';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+    // 5 booking attempts per minute per IP
+    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book' });
+    if (!rl.success) {
+        return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    }
+
     try {
         const { user, error: authError } = await getAuthenticatedUser();
         if (authError || !user) {
@@ -34,11 +42,13 @@ export async function POST(req: NextRequest) {
         if (!flight || typeof flight !== 'object') {
             return NextResponse.json({ success: false, error: 'flight object is required' }, { status: 400 });
         }
-        if (!passengers || !Array.isArray(passengers) || passengers.length === 0) {
-            return NextResponse.json({ success: false, error: 'At least one passenger is required' }, { status: 400 });
-        }
-        if (!contact?.email || !contact?.phone) {
-            return NextResponse.json({ success: false, error: 'Contact email and phone are required' }, { status: 400 });
+
+        const passengerParsed = flightBookingSchema.safeParse({ passengers, contact });
+        if (!passengerParsed.success) {
+            return NextResponse.json(
+                { success: false, error: passengerParsed.error.issues[0]?.message ?? 'Invalid passenger or contact data' },
+                { status: 400 }
+            );
         }
 
         if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -61,6 +71,14 @@ export async function POST(req: NextRequest) {
             || (flight as any).currency
             || 'USD'
         ).toLowerCase();
+
+        // ── Price floor guard ──
+        if (flightTotal <= 0) {
+            return NextResponse.json({
+                success: false,
+                error: 'Invalid flight price — must be greater than $0',
+            }, { status: 400 });
+        }
 
         // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
         const revalStart = Date.now();
@@ -147,8 +165,14 @@ export async function POST(req: NextRequest) {
         // ── Step 2: Create Stripe PaymentIntent ──
         const stripeStart = Date.now();
         const isMystifly = provider === 'mystifly' || provider === 'mystifly_v2';
+        const ZERO_DECIMAL_CURRENCIES = new Set([
+            'bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga',
+            'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf',
+        ]);
+        const flightIsZeroDecimal = ZERO_DECIMAL_CURRENCIES.has(flightCurrency.toLowerCase());
+        const flightStripeAmount = flightIsZeroDecimal ? Math.round(flightTotal) : Math.round(flightTotal * 100);
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(flightTotal * 100),
+            amount: flightStripeAmount,
             currency: flightCurrency,
             capture_method: isMystifly ? 'manual' : 'automatic',
             metadata: {
@@ -161,7 +185,7 @@ export async function POST(req: NextRequest) {
         });
         logApiCall({
             provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,
-            requestParams: { amount: Math.round(flightTotal * 100), currency: flightCurrency, captureMethod: isMystifly ? 'manual' : 'automatic' },
+            requestParams: { amount: flightStripeAmount, currency: flightCurrency, captureMethod: isMystifly ? 'manual' : 'automatic' },
             responseStatus: 200, userId,
             responseSummary: { paymentIntentId: paymentIntent.id, sessionId },
         });

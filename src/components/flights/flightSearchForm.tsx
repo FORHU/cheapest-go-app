@@ -126,7 +126,7 @@ export default function FlightSearchForm({ onSearch, isLoading }: FlightSearchFo
                 <div className="space-y-1">
                     <label className="text-sm font-medium text-gray-700">Cabin</label>
                     <select 
-                        className="h-10 px-3 rounded-md border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="h-10 px-3 rounded-md border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={params.cabinClass}
                         onChange={(e) => setParams({ ...params, cabinClass: e.target.value as CabinClass })}
                     >

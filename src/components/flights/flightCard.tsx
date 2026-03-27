@@ -4,11 +4,10 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plane, Clock, ArrowRight, Luggage, AlertCircle, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer, FlightSegmentDetail, FarePolicy } from '@/types/flights';
-import { getAirlineName } from '@/utils/flight-utils';
+import { getAirlineName, formatPrice } from '@/utils/flight-utils';
 
 
 import { useUserCurrency } from '@/stores/searchStore';
-import { EXCHANGE_RATES } from '@/lib/currency';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -23,36 +22,6 @@ function formatDuration(minutes: number): string {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-
-function formatPrice(amount: number, currency: string, targetCurrency?: string): string {
-    const from = currency?.toUpperCase();
-    const to = targetCurrency?.toUpperCase();
-
-    let displayAmount = amount;
-    let displayCurrency = from;
-
-    if (to && from !== to) {
-        const rateFrom = EXCHANGE_RATES[from] || 1;
-        const rateTo = EXCHANGE_RATES[to] || 1;
-        displayAmount = (amount * rateFrom) / rateTo;
-        displayCurrency = to;
-    }
-
-    // Special case for PHP/KRW if Intl is flaky in some environments
-    try {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: displayCurrency || 'USD',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-        }).format(displayAmount);
-    } catch (e) {
-        const symbols: Record<string, string> = { 'PHP': '₱', 'KRW': '₩', 'USD': '$' };
-        const symbol = symbols[displayCurrency] || displayCurrency;
-        return `${symbol}${Math.round(displayAmount).toLocaleString()}`;
-    }
 }
 
 function stopsLabel(stops: number): string {

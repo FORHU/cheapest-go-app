@@ -15,7 +15,8 @@ import {
     Plane,
     ChevronRight,
     Smartphone,
-    Mail
+    Mail,
+    Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -29,6 +30,7 @@ const navItems = [
     { label: 'Dashboard', href: '/admin/overview', icon: LayoutDashboard },
     { label: 'Bookings', href: '/admin/bookings', icon: CalendarRange },
     { label: 'Customers', href: '/admin/customers', icon: Users },
+    { label: 'Users', href: '/admin/users', icon: Shield },
     { label: 'Suppliers', href: '/admin/suppliers', icon: Building2 },
     { label: 'Communication', href: '/admin/communication', icon: Mail },
     { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
@@ -114,8 +116,8 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
 
             {/* Navigation Sections */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-10 thin-scrollbar">
-                <NavigationGroup title="Menu" items={navItems.slice(0, 5)} />
-                <NavigationGroup title="General" items={navItems.slice(5)} />
+                <NavigationGroup title="Menu" items={navItems.slice(0, 6)} />
+                <NavigationGroup title="General" items={navItems.slice(6)} />
 
                 {/* Sidebar Widget (Download App) - Hidden when collapsed */}
                 {!isCollapsed && (
@@ -150,7 +152,7 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
                     onClick={onToggleCollapse}
                     className="w-10 h-10 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-600/10 transition-all hidden md:flex"
                 >
-                    <div className={`transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}>
+                    <div className={`transition-transform duration-300 ${isCollapsed ? '' : 'rotate-180'}`}>
                         <ChevronRight size={20} />
                     </div>
                 </Button>

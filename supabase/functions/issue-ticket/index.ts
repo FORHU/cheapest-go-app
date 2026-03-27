@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
 
         const fb = booking as FlightBooking;
 
-        // Validate status — must be "booked" to issue ticket
+        // Validate status — must be "booked" or "awaiting_ticket" to issue ticket
         if (fb.status === 'ticketed') {
             const existingTickets = await getExistingTicketNumbers(supabase, bookingId);
             return jsonResponse(corsHeaders, {
@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
             });
         }
 
-        if (fb.status !== 'booked') {
+        if (fb.status !== 'booked' && fb.status !== 'awaiting_ticket') {
             return jsonResponse(corsHeaders,
                 { success: false, error: `Cannot issue ticket for booking with status: ${fb.status}` },
                 409,

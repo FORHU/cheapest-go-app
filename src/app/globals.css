@@ -81,6 +81,37 @@
       rgba(255, 255, 255, 0.1) 20px);
 }
 
+@utility glass-card {
+  background-color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+
+  :where(.dark, .dark *) & {
+    background-color: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Page transition — used by template.tsx, CSS-only to avoid hydration mismatches */
+@keyframes page-in {
+  from {
+    opacity: 0.5;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-page-in {
+  animation: page-in 0.2s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+
 /* Enable class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -153,6 +184,20 @@ body {
 /* Hide default close button on map property popup (we use a custom one) */
 .map-property-popup .mapboxgl-popup-close-button {
   display: none !important;
+}
+
+/* Hide Mapbox Standard Style built-in POI feature popups.
+   Our hotel popup (.map-property-popup), click POI (.map-poi-popup),
+   and hover tooltip (.map-poi-hover) are unaffected. */
+.mapboxgl-popup:not(.map-property-popup):not(.map-poi-popup):not(.map-poi-hover) {
+  display: none !important;
+}
+
+/* Strip the default white bubble styling from the hover tooltip */
+.map-poi-hover .mapboxgl-popup-content {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
 
 /* Landscape mobile: larger images, smaller badges */
@@ -384,5 +429,19 @@ body {
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Dark mode select & option styling — prevents white flash in dropdowns */
+  .dark select {
+    color-scheme: dark;
+  }
+
+  .dark select option {
+    background-color: #0f172a; /* slate-950 */
+    color: #e2e8f0; /* slate-200 */
+  }
+
+  select option {
+    padding: 8px 12px;
   }
 }
