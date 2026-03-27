@@ -284,6 +284,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
                         property={selectedProperty}
                         onClose={handlePopupClose}
                         onViewDetails={onViewDetails}
+                        mapRef={mapRef}
                     />
                 )}
 
