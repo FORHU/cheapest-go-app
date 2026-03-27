@@ -19,36 +19,39 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
     const destination = searchParams?.get('destination') || '';
 
     const rawSort = searchParams?.get('sort');
-    const sortBy: SortValue = SORT_OPTIONS.includes(rawSort as SortValue) ? (rawSort as SortValue) : 'recommended';
+    const initialSort: SortValue = SORT_OPTIONS.includes(rawSort as SortValue) ? (rawSort as SortValue) : 'recommended';
+    const [sortBy, setSortBy] = useState<SortValue>(initialSort);
 
     const handleSortChange = useCallback((value: SortValue) => {
-        const params = new URLSearchParams(searchParams?.toString() || '');
+        setSortBy(value);
+        // Update URL without triggering a server navigation
+        const params = new URLSearchParams(window.location.search);
         if (value === 'recommended') {
             params.delete('sort');
         } else {
             params.set('sort', value);
         }
-        router.replace(`?${params.toString()}`);
-    }, [router, searchParams]);
+        window.history.replaceState(null, '', `?${params.toString()}`);
+    }, []);
 
     const [visibleCount, setVisibleCount] = useState(12);
 
     const handlePropertyClick = (propertyId: string) => {
-        const currentParams = new URLSearchParams(searchParams?.toString() || '');
+        const currentParams = new URLSearchParams(window.location.search);
         router.push(`/property/${propertyId}?${currentParams.toString()}`);
     };
 
     const handlePropertyPrefetch = useCallback((propertyId: string) => {
-        const currentParams = new URLSearchParams(searchParams?.toString() || '');
+        const currentParams = new URLSearchParams(window.location.search);
         router.prefetch(`/property/${propertyId}?${currentParams.toString()}`);
-    }, [router, searchParams]);
+    }, [router]);
 
     // Navigate to map view
     const handleViewOnMap = useCallback(() => {
-        const params = new URLSearchParams(searchParams?.toString() || '');
+        const params = new URLSearchParams(window.location.search);
         params.set('view', 'map');
         router.push(`/search?${params.toString()}`);
-    }, [router, searchParams]);
+    }, [router]);
 
     // Filter and sort properties
     const filteredProperties = useMemo(() => {

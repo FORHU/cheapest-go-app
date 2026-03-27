@@ -12,8 +12,8 @@ interface PoiDurationMarkerProps {
 export const PoiDurationMarker = React.memo(({
     latitude,
     longitude,
-    carDuration = '8m',
-    walkDuration = '18m',
+    carDuration = '8 min',
+    walkDuration = '18 min',
 }: PoiDurationMarkerProps) => {
     return (
         <Marker

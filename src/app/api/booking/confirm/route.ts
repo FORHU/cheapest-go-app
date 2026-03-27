@@ -6,6 +6,7 @@ import { sendBookingConfirmationEmail } from '@/lib/server/email';
 import { revalidatePath } from 'next/cache';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { safeError } from '@/lib/server/safe-error';
+import { bookingConfirmSchema } from '@/lib/schemas/booking';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,13 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
+        const parsed = bookingConfirmSchema.safeParse(body);
+        if (!parsed.success) {
+            return Response.json(
+                { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid request' },
+                { status: 400 }
+            );
+        }
 
         // ── Stripe payment verification (when paymentIntentId is present) ──
         if (body.paymentIntentId) {

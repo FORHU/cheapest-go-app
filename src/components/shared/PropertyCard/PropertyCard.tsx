@@ -1,12 +1,12 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
 import { type Property } from '@/types';
-import { useUserCurrency } from '@/stores/searchStore';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 /**
  * Unified PropertyCard component variants
@@ -126,22 +126,28 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
     onClick,
     className = '',
 }) => {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
     const targetCurrency = useUserCurrency();
-    const symbol = getCurrencySymbol(targetCurrency);
+
     // Use property object values or individual props
     const imgSrc = property?.image || image || '';
     const displayName = property?.name || name || '';
     const displayLocation = property?.location || location || '';
     const displayRating = property?.rating || rating;
     const displayReviews = property?.reviews || reviews;
-    
-    // Convert prices
+
+    // Skip conversion until mounted — EXCHANGE_RATES may differ between server (static)
+    // and client (live rates from a previous page visit), causing hydration mismatches.
     const sourceCurrency = property?.currency || 'KRW';
     const rawPrice = property?.price || price || 0;
     const rawOriginalPrice = property?.originalPrice || originalPrice;
-    
-    const displayPrice = convertCurrency(rawPrice, sourceCurrency, targetCurrency);
-    const displayOriginalPrice = rawOriginalPrice ? convertCurrency(rawOriginalPrice, sourceCurrency, targetCurrency) : undefined;
+
+    const displayPrice = mounted ? convertCurrency(rawPrice, sourceCurrency, targetCurrency) : rawPrice;
+    const displayOriginalPrice = rawOriginalPrice
+        ? (mounted ? convertCurrency(rawOriginalPrice, sourceCurrency, targetCurrency) : rawOriginalPrice)
+        : undefined;
+    const symbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
     
     const displayBadges = property?.badges || (badge ? [badge] : []);
 
@@ -263,13 +269,19 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
     onClick,
     className = '',
 }) => {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
     const targetCurrency = useUserCurrency();
-    const symbol = getCurrencySymbol(targetCurrency);
     if (!property) return null;
 
+    // Skip conversion until mounted — EXCHANGE_RATES may differ between server (static)
+    // and client (live rates from a previous page visit), causing hydration mismatches.
     const sourceCurrency = property.currency || 'KRW';
-    const displayPrice = convertCurrency(property.price, sourceCurrency, targetCurrency);
-    const displayOriginalPrice = property.originalPrice ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) : undefined;
+    const displayPrice = mounted ? convertCurrency(property.price, sourceCurrency, targetCurrency) : property.price;
+    const displayOriginalPrice = property.originalPrice
+        ? (mounted ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) : property.originalPrice)
+        : undefined;
+    const symbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
 
     // Get star rating from property (1-5 scale hotel stars)
     const hotelStars = Math.min(5, Math.max(1, Math.round((property.rating || 0) / 2)));

@@ -3,6 +3,12 @@ import { stripe } from '@/lib/stripe/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createClient } from '@supabase/supabase-js';
 import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
+import { z } from 'zod';
+
+const flightConfirmSchema = z.object({
+    paymentIntentId: z.string().min(1, 'paymentIntentId is required'),
+    sessionId: z.string().min(1, 'sessionId is required'),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -31,14 +37,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
         }
 
-        const { paymentIntentId, sessionId } = await req.json();
-
-        if (!paymentIntentId || !sessionId) {
+        const rawBody = await req.json();
+        const confirmParsed = flightConfirmSchema.safeParse(rawBody);
+        if (!confirmParsed.success) {
             return NextResponse.json(
-                { success: false, error: 'paymentIntentId and sessionId are required' },
+                { success: false, error: confirmParsed.error.issues[0]?.message ?? 'Invalid request' },
                 { status: 400 },
             );
         }
+        const { paymentIntentId, sessionId } = confirmParsed.data;
 
         // Service-role client for all DB operations
         const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);

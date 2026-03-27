@@ -228,7 +228,9 @@ async function _confirmAndSaveBookingInner(
   }
 
   const bookingId = bookingData.bookingId;
-  const bookingStatus = bookingData.status || 'confirmed';
+  // Normalize LiteAPI status to our lowercase DB enum values
+  const rawStatus = (bookingData.status || 'confirmed').toLowerCase();
+  const bookingStatus = (['confirmed', 'pending', 'completed', 'cancelled'].includes(rawStatus) ? rawStatus : 'confirmed') as 'confirmed' | 'pending' | 'completed' | 'cancelled';
 
   // Emit an immutable audit log immediately after LiteAPI confirms — BEFORE the DB write.
   // If the process crashes between here and the RPC call, this log entry is the evidence
@@ -320,7 +322,12 @@ async function _confirmAndSaveBookingInner(
       });
 
     if (rpcError) {
-      console.error('[confirmAndSaveBooking] DB transaction failed:', rpcError);
+      console.error('[confirmAndSaveBooking] DB transaction failed:', JSON.stringify({
+        code: rpcError.code,
+        message: rpcError.message,
+        details: rpcError.details,
+        hint: rpcError.hint,
+      }));
       console.error('CRITICAL: Booking', bookingId, 'confirmed in LiteAPI but DB save failed. Manual reconciliation required.');
       return {
         success: false,
@@ -333,7 +340,7 @@ async function _confirmAndSaveBookingInner(
           totalPrice,
           currency,
         },
-        error: 'Booking confirmed but failed to save details. Please contact support with booking ID: ' + bookingId,
+        error: `Booking confirmed but failed to save details (DB: ${rpcError.message || rpcError.code || 'unknown'}). Please contact support with booking ID: ${bookingId}`,
       };
     }
 

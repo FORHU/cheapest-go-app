@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { getAirlineName } from '@/utils/flight-utils';
+import { convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 interface FlightBookingCardProps {
     booking: FlightBookingRecord;
@@ -141,6 +143,13 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancelError, setCancelError] = useState<string | null>(null);
     const [localStatus, setLocalStatus] = useState<FlightBookingRecord['status']>(booking.status);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const userCurrency = useUserCurrency();
+    const bookingCurrency = booking.currency || 'USD';
+    const convertPrice = (amount: number, fromCurrency = bookingCurrency) =>
+        mounted ? Math.round(convertCurrency(amount, fromCurrency, userCurrency)) : amount;
+    const displayCurrency = mounted ? userCurrency : bookingCurrency;
 
     const segments = booking.flight_segments || [];
     const firstSegment = segments[0];
@@ -349,7 +358,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </div>
                         <div className="mt-auto flex items-center justify-between gap-2">
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(booking.total_price, 'USD')}
+                                {formatCurrency(convertPrice(booking.total_price), displayCurrency)}
                             </span>
                             {canCancel && (
                                 <button
@@ -452,7 +461,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         <div className="text-right w-full">
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">Total paid</div>
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(booking.total_price, 'USD')}
+                                {formatCurrency(convertPrice(booking.total_price), displayCurrency)}
                             </span>
                         </div>
 
@@ -461,11 +470,11 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 <div className="text-right mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 w-full">
                                     <div className="text-[10px] text-slate-500 dark:text-slate-400">Total Refund</div>
                                     <div className="text-xs font-bold text-green-600 dark:text-green-400">
-                                        {formatCurrency(booking.refund_amount, booking.refund_currency || 'USD')}
+                                        {formatCurrency(convertPrice(booking.refund_amount, booking.refund_currency || 'USD'), displayCurrency)}
                                     </div>
                                     {(booking.refund_penalty_amount ?? 0) > 0 && (
                                         <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
-                                            Penalty applied: {formatCurrency(booking.refund_penalty_amount!, booking.refund_currency || 'USD')}
+                                            Penalty applied: {formatCurrency(convertPrice(booking.refund_penalty_amount!, booking.refund_currency || 'USD'), displayCurrency)}
                                         </div>
                                     )}
                                 </div>

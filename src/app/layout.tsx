@@ -7,8 +7,11 @@ import { ThemeProvider } from '@/components/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthListener } from '@/components/auth/AuthListener';
 import { ExchangeRateListener } from '@/components/exchange/ExchangeRateListener';
-import AuthModal from '@/components/auth/AuthModal';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
+import AuthModal from '@/components/auth/AuthModal';
+import { PWAInstallProvider } from '@/contexts/PWAInstallContext';
+import InstallPWAPrompt from '@/components/pwa/InstallPWAPrompt';
+import PWAServiceWorkerRegistrar from '@/components/pwa/PWAServiceWorkerRegistrar';
 import { env } from '@/utils/env';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
@@ -22,8 +25,13 @@ export const metadata: Metadata = {
   title: 'CheapestGo | Discover and Book Your Next Global Journey',
   description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
   icons: {
-    icon: '/icon.png',
-    apple: '/icon.png',
+    icon: '/cheapestgo.png',
+    apple: '/cheapestgo.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'CheapestGo',
   },
   openGraph: {
     title: 'CheapestGo | Discover and Book Your Next Global Journey',
@@ -62,13 +70,17 @@ export default function RootLayout({
       <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} font-sans`}>
         <QueryProvider>
           <ThemeProvider>
-            <AuthListener />
-            <ExchangeRateListener />
-            <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px]">
-              <GlobalSparkle />
-              {children}
-            </div>
-            <AuthModal />
+            <PWAInstallProvider>
+              <AuthListener />
+              <ExchangeRateListener />
+              <PWAServiceWorkerRegistrar />
+              <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px]">
+                <GlobalSparkle />
+                {children}
+              </div>
+              <AuthModal />
+              <InstallPWAPrompt />
+            </PWAInstallProvider>
           </ThemeProvider>
         </QueryProvider>
       </body>

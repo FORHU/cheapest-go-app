@@ -1,7 +1,7 @@
 // Property page server utilities
 export {
     fetchPropertyData,
-    formatDate,
+    formatDateForApi,
     sanitizeDate,
     getDefaultDates,
     collectRoomImages,

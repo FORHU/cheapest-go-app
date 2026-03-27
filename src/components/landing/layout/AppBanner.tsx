@@ -3,8 +3,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Smartphone, Star, Download, ChevronRight } from 'lucide-react';
+import { usePWAInstall } from '@/contexts/PWAInstallContext';
 
 const AppBanner = () => {
+  const { isInstallable, isIOS, isInstalled, triggerInstall } = usePWAInstall();
+  const canInstall = !isInstalled && (isInstallable || isIOS);
+
   return (
     <section className="w-full py-3 md:py-6 landscape-compact:py-1">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
@@ -118,10 +122,11 @@ const AppBanner = () => {
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
+                  onClick={canInstall ? triggerInstall : undefined}
                   className="flex justify-center items-center gap-1.5 px-4 py-2 bg-white text-slate-900 rounded-xl font-medium shadow-lg w-full sm:w-auto text-sm"
                 >
                   <Download size={15} />
-                  Download App
+                  {canInstall ? 'Install App' : 'Download App'}
                   <ChevronRight size={13} />
                 </motion.button>
                 <motion.button

@@ -1,6 +1,11 @@
 import { autocompleteDestinations } from '@/lib/server/search';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { safeError } from '@/lib/server/safe-error';
+import { z } from 'zod';
+
+const autocompleteSchema = z.object({
+    query: z.string().max(100),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +17,8 @@ export async function POST(req: Request) {
 
     try {
         const body = await req.json();
-        const query = typeof body.query === 'string' ? body.query.slice(0, 100) : '';
+        const parsed = autocompleteSchema.safeParse(body);
+        const query = parsed.success ? parsed.data.query : '';
 
         const data = await autocompleteDestinations(query);
         return Response.json(data);

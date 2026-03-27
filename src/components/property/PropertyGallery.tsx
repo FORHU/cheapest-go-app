@@ -80,7 +80,6 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                         src={mainImage}
                         alt="Property view"
                         fill
-                        sizes="(max-width: 768px) 100vw, 800px"
                         fetchPriority="high"
                         className="object-cover hover:scale-105 transition-transform duration-500"
                     />
@@ -107,7 +106,6 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                         src={img}
                                         alt={`Property view ${i + 1}`}
                                         fill
-                                        sizes="(max-width: 768px) 100vw, 300px"
                                         fetchPriority={i === 0 ? 'high' : 'auto'}
                                         className="object-cover"
                                     />
@@ -146,7 +144,6 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                 src={mainImage}
                                 alt="Main property view"
                                 fill
-                                sizes="(max-width: 768px) 100vw, 600px"
                                 fetchPriority="high"
                                 className="object-cover hover:scale-105 transition-transform duration-500"
                             />

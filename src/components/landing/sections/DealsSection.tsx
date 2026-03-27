@@ -1,14 +1,14 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Clock, Sparkles } from 'lucide-react';
 import { SectionHeader, HorizontalScroll, TiltCard } from '@/components/ui';
 import { type Deal } from '@/types';
-import { useUserCurrency } from '@/stores/searchStore';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 /** Converts an ISO timestamp to a human-readable "X ago" string. */
 function formatAge(iso: string): string {
@@ -33,10 +33,12 @@ function handleDealClick(deal: Deal) {
 }
 
 const DealCard: React.FC<DealCardProps> = ({ deal, index }) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const currency = useUserCurrency();
-  const symbol = getCurrencySymbol(currency);
-  const original = Math.round(convertCurrency(deal.originalPrice || 0, 'KRW', currency));
-  const sale = Math.round(convertCurrency(deal.salePrice || 0, 'KRW', currency));
+  const symbol = getCurrencySymbol(mounted ? currency : 'KRW');
+  const original = mounted ? Math.round(convertCurrency(deal.originalPrice || 0, 'KRW', currency)) : Math.round(deal.originalPrice || 0);
+  const sale = mounted ? Math.round(convertCurrency(deal.salePrice || 0, 'KRW', currency)) : Math.round(deal.salePrice || 0);
 
   return (
   <motion.div

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { env } from "@/utils/env";
+
+const cancelFlightSchema = z.object({
+    bookingId: z.string().min(1, 'bookingId is required'),
+});
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { stripe } from '@/lib/stripe/server';
@@ -33,10 +38,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
         }
 
-        const { bookingId } = await req.json();
-        if (!bookingId) {
-            return NextResponse.json({ success: false, error: 'bookingId is required' }, { status: 400 });
+        const rawBody = await req.json();
+        const cancelParsed = cancelFlightSchema.safeParse(rawBody);
+        if (!cancelParsed.success) {
+            return NextResponse.json(
+                { success: false, error: cancelParsed.error.issues[0]?.message ?? 'Invalid request' },
+                { status: 400 }
+            );
         }
+        const { bookingId } = cancelParsed.data;
 
         // Service-role client for all DB operations (bypasses RLS)
         const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);

@@ -98,16 +98,17 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
+                    style={{ willChange: 'auto' }}
                     className={forceOpen
-                        ? "w-full z-10"
-                        : "absolute top-full left-0 mt-4 w-[500px] min-w-[500px] max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                        ? "w-full z-10 font-sans"
+                        : "absolute top-full left-0 mt-4 w-[500px] min-w-[500px] max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100] font-sans isolate [backdrop-filter:none]"
                     }
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Search Header */}
                     <div className={`${forceOpen ? 'p-3' : 'p-4'} border-b border-slate-100 dark:border-white/5`}>
                         {!forceOpen && (
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-1">
+                            <span className="text-[10px] text-slate-500 font-mono font-medium uppercase tracking-wider block mb-1">
                                 Where to?
                             </span>
                         )}
@@ -119,7 +120,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                 value={query}
                                 onChange={(e) => setDestinationQuery(e.target.value)}
                                 placeholder="Search destinations..."
-                                className={`bg-transparent border-none p-0 font-normal focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400 ${forceOpen ? 'text-[11px]' : 'text-xl'}`}
+                                className={`bg-transparent border-none p-0 font-bold focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder:font-normal placeholder-slate-400 font-sans ${forceOpen ? 'text-[11px]' : 'text-sm'}`}
                             />
                             {loading && <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />}
                             {query && (
@@ -138,24 +139,24 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                         {/* 1. Recent Searches (only if no query) */}
                         {!query && recentSearches.length > 0 && (
                             <>
-                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[9px] font-normal uppercase text-slate-400 tracking-widest`}>
+                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[10px] font-mono font-medium uppercase text-slate-500 tracking-wider`}>
                                     Recent Searches
                                 </div>
                                 {recentSearches.map((item, i) => (
                                     <div
                                         key={i}
                                         onClick={() => handleSelect(item)}
-                                        className={`${forceOpen ? 'px-2' : 'px-6'} py-2 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center justify-between cursor-pointer group transition-colors`}
+                                        className={`${forceOpen ? 'px-2' : 'px-6'} py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between cursor-pointer group`}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className="mt-0.5 text-slate-400 group-hover:text-amber-500 transition-colors">
+                                            <div className="mt-0.5 text-slate-400 group-hover:text-amber-500">
                                                 <History size={14} />
                                             </div>
                                             <div>
-                                                <h5 className="text-[11px] font-normal group-hover:text-amber-500 transition-colors text-slate-900 dark:text-white">
+                                                <h5 className="text-sm font-bold group-hover:text-amber-500 text-slate-900 dark:text-white">
                                                     {item.title}
                                                 </h5>
-                                                <p className="text-[10px] font-normal text-slate-400">{item.subtitle}</p>
+                                                <p className="text-xs font-normal text-slate-400">{item.subtitle}</p>
                                             </div>
                                         </div>
                                         <button
@@ -175,7 +176,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                         {/* 2. Autocomplete Suggestions */}
                         {query && (
                             <>
-                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[9px] font-normal uppercase text-slate-400 tracking-widest`}>
+                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[10px] font-mono font-medium uppercase text-slate-500 tracking-wider`}>
                                     LiteAPI Results
                                 </div>
                                 {suggestions.length > 0 ? (
@@ -183,16 +184,16 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                         <div
                                             key={i}
                                             onClick={() => handleSelect(item)}
-                                            className={`${forceOpen ? 'px-2' : 'px-6'} py-2 hover:bg-slate-50 dark:hover:bg-white/5 flex items-start gap-3 cursor-pointer group transition-colors`}
+                                            className={`${forceOpen ? 'px-2' : 'px-6'} py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-start gap-3 cursor-pointer group`}
                                         >
-                                            <div className="mt-0.5 text-slate-400 group-hover:text-blue-500 transition-colors">
+                                            <div className="mt-0.5 text-slate-400 group-hover:text-blue-500">
                                                 {getIcon(item.type)}
                                             </div>
                                             <div className="flex-1">
-                                                <h5 className="text-[11px] font-normal group-hover:text-blue-500 transition-colors text-slate-900 dark:text-white">
+                                                <h5 className="text-sm font-bold group-hover:text-blue-500 text-slate-900 dark:text-white">
                                                     {item.title}
                                                 </h5>
-                                                <p className="text-[10px] font-normal text-slate-400 truncate max-w-[280px]">
+                                                <p className="text-xs font-normal text-slate-400 truncate max-w-[280px]">
                                                     {item.subtitle}
                                                 </p>
                                             </div>

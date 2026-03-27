@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef } from 'react';
-import type { MapRef } from 'react-map-gl/mapbox';
-import { NavigationControl } from 'react-map-gl/mapbox';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import type { MapRef, MapMouseEvent } from 'react-map-gl/mapbox';
+import { NavigationControl, Popup } from 'react-map-gl/mapbox';
+import { Navigation } from 'lucide-react';
 import { Map } from '@/components/ui/map';
 import { MapMarker } from './MapMarker';
 import { MapPopup } from './MapPopup';
+import { MapPOIPopup } from './MapPOIPopup';
 import { computeBounds } from './types';
 import type { MappableProperty } from './types';
 
@@ -18,6 +20,85 @@ interface PropertyMapViewProps {
     onViewDetails: (id: string) => void;
 }
 
+interface POIState {
+    name: string;
+    category: string;
+    lat: number;
+    lng: number;
+}
+
+// Haversine formula — returns distance in km
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatCategory(raw: string): string {
+    return raw.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatDistance(km: number): string {
+    return km < 1
+        ? `${Math.round(km * 1000)} m from property`
+        : `${km.toFixed(2)} km from property`;
+}
+
+// Mapbox Standard style POI class values that represent actual places/businesses
+const POI_CLASSES = new Set([
+    'food_and_drink', 'retail', 'education', 'entertainment', 'accommodation',
+    'medical', 'sport', 'religion', 'transport', 'arts_and_entertainment',
+    'finance', 'beauty_and_spa', 'gas_station', 'grocery', 'hotel', 'cafe',
+    'bar', 'restaurant', 'fast_food', 'bakery', 'gym', 'pharmacy', 'hospital',
+    'park', 'place_of_worship', 'school', 'university', 'bank', 'atm',
+    'supermarket', 'convenience', 'shopping_mall', 'cinema', 'museum',
+    'nightclub', 'library', 'post_office', 'police', 'fire_station',
+]);
+
+// Place-level class values to ignore (city, suburb, etc. — not clickable POIs)
+const PLACE_CLASSES = new Set([
+    'country', 'region', 'state', 'province', 'city', 'town',
+    'village', 'suburb', 'neighborhood', 'locality', 'place',
+]);
+
+function detectPOI(
+    map: mapboxgl.Map,
+    point: [number, number],
+    lngLat: { lat: number; lng: number },
+): POIState | null {
+    const features = map.queryRenderedFeatures(point);
+
+    const poi = features.find((f) => {
+        const p = f.properties;
+        if (!p?.name) return false;
+        // Primary: Mapbox Streets v8 POI source layer — most reliable signal
+        if (f.sourceLayer === 'poi_label') return true;
+        // Fallback: any symbol layer with a known POI class
+        if (f.layer?.type !== 'symbol') return false;
+        const cls = p.class ? String(p.class) : '';
+        return POI_CLASSES.has(cls);
+    });
+
+    if (!poi) return null;
+
+    // Anchor popup to the feature's actual point geometry, not the cursor
+    let lat = lngLat.lat;
+    let lng = lngLat.lng;
+    if (poi.geometry?.type === 'Point') {
+        [lng, lat] = poi.geometry.coordinates as [number, number];
+    }
+
+    const name = String(poi.properties?.name_en ?? poi.properties?.name ?? '');
+    const category = String(poi.properties?.class ?? poi.properties?.type ?? 'place');
+
+    return { name, category, lat, lng };
+}
+
 const PropertyMapView = React.memo(function PropertyMapView({
     properties,
     selectedId,
@@ -27,6 +108,10 @@ const PropertyMapView = React.memo(function PropertyMapView({
     onViewDetails,
 }: PropertyMapViewProps) {
     const mapRef = useRef<MapRef>(null);
+    const [poiPopup, setPoiPopup] = useState<POIState | null>(null);
+    const [hoveredPOI, setHoveredPOI] = useState<POIState | null>(null);
+    // Track last hovered POI name to skip redundant state updates
+    const hoveredPOINameRef = useRef<string | null>(null);
 
     const bounds = useMemo(() => computeBounds(properties), [properties]);
 
@@ -35,11 +120,32 @@ const PropertyMapView = React.memo(function PropertyMapView({
         [selectedId, properties]
     );
 
+    const poiDistanceKm = useMemo(() => {
+        if (!poiPopup || !selectedProperty) return null;
+        return haversineKm(
+            selectedProperty.coordinates.lat,
+            selectedProperty.coordinates.lng,
+            poiPopup.lat,
+            poiPopup.lng,
+        );
+    }, [poiPopup, selectedProperty]);
+
+    const hoverDistanceKm = useMemo(() => {
+        if (!hoveredPOI || !selectedProperty) return null;
+        return haversineKm(
+            selectedProperty.coordinates.lat,
+            selectedProperty.coordinates.lng,
+            hoveredPOI.lat,
+            hoveredPOI.lng,
+        );
+    }, [hoveredPOI, selectedProperty]);
+
     const handleMarkerClick = useCallback(
         (id: string) => {
             const property = properties.find((p) => p.id === id);
             if (!property) return;
 
+            setPoiPopup(null);
             onSelect(id);
             mapRef.current?.flyTo({
                 center: [property.coordinates.lng, property.coordinates.lat],
@@ -53,11 +159,60 @@ const PropertyMapView = React.memo(function PropertyMapView({
 
     const handlePopupClose = useCallback(() => {
         onSelect(null);
+        setPoiPopup(null);
     }, [onSelect]);
 
-    const handleMapClick = useCallback(() => {
-        onSelect(null);
-    }, [onSelect]);
+    const handlePOIClose = useCallback(() => {
+        setPoiPopup(null);
+    }, []);
+
+    const handleMapClick = useCallback(
+        (e: MapMouseEvent) => {
+            const map = mapRef.current?.getMap();
+            if (!map) { onSelect(null); setPoiPopup(null); return; }
+
+            const poi = detectPOI(map, [e.point.x, e.point.y], e.lngLat);
+
+            if (poi) {
+                setPoiPopup(poi);
+                setHoveredPOI(null); // click popup takes over
+            } else {
+                onSelect(null);
+                setPoiPopup(null);
+            }
+        },
+        [onSelect]
+    );
+
+    const handleMouseMove = useCallback((e: MapMouseEvent) => {
+        // Skip if a click popup is already showing — don't double-render
+        if (poiPopup) return;
+
+        const map = mapRef.current?.getMap();
+        if (!map) return;
+
+        const poi = detectPOI(map, [e.point.x, e.point.y], e.lngLat);
+        const name = poi?.name ?? null;
+
+        // Only update React state when the hovered POI actually changes
+        if (name === hoveredPOINameRef.current) return;
+        hoveredPOINameRef.current = name;
+
+        setHoveredPOI(poi);
+
+        // Update map cursor
+        const canvas = map.getCanvas();
+        canvas.style.cursor = poi ? 'pointer' : '';
+    }, [poiPopup]);
+
+    const handleMouseLeave = useCallback(() => {
+        if (hoveredPOINameRef.current !== null) {
+            hoveredPOINameRef.current = null;
+            setHoveredPOI(null);
+            const canvas = mapRef.current?.getMap()?.getCanvas();
+            if (canvas) canvas.style.cursor = '';
+        }
+    }, []);
 
     const handleMapLoad = useCallback(() => {
         if (properties.length === 0) return;
@@ -74,7 +229,6 @@ const PropertyMapView = React.memo(function PropertyMapView({
             return;
         }
 
-        // Fit bounds with padding
         map.fitBounds(
             [
                 [bounds.minLng, bounds.minLat],
@@ -107,6 +261,8 @@ const PropertyMapView = React.memo(function PropertyMapView({
                 }}
                 maxPitch={60}
                 onClick={handleMapClick}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
                 onLoad={handleMapLoad}
                 className="rounded-none"
             >
@@ -130,6 +286,46 @@ const PropertyMapView = React.memo(function PropertyMapView({
                         onViewDetails={onViewDetails}
                         mapRef={mapRef}
                     />
+                )}
+
+                {poiPopup && (
+                    <MapPOIPopup
+                        name={poiPopup.name}
+                        category={poiPopup.category}
+                        lat={poiPopup.lat}
+                        lng={poiPopup.lng}
+                        distanceKm={poiDistanceKm}
+                        onClose={handlePOIClose}
+                    />
+                )}
+
+                {/* Hover tooltip — only when no click popup is active */}
+                {hoveredPOI && !poiPopup && (
+                    <Popup
+                        latitude={hoveredPOI.lat}
+                        longitude={hoveredPOI.lng}
+                        anchor="bottom"
+                        offset={16}
+                        closeButton={false}
+                        closeOnClick={false}
+                        className="map-poi-hover"
+                    >
+                        <div className="bg-slate-900/90 backdrop-blur-sm text-white rounded-lg px-3 py-2 shadow-xl min-w-[150px] max-w-[220px]">
+                            <p className="font-semibold text-xs leading-tight truncate">
+                                {hoveredPOI.name}
+                            </p>
+                            <p className="text-[10px] text-slate-300 mt-0.5">
+                                {formatCategory(hoveredPOI.category)}
+                            </p>
+                            {hoverDistanceKm !== null && (
+                                <div className="flex items-center gap-1 mt-1.5 text-[10px] text-blue-300 font-medium">
+                                    <Navigation className="w-2.5 h-2.5 shrink-0" />
+                                    <span>{formatDistance(hoverDistanceKm)}</span>
+                                </div>
+                            )}
+                            <p className="text-[9px] text-slate-400 mt-1">Click for details</p>
+                        </div>
+                    </Popup>
                 )}
             </Map>
 

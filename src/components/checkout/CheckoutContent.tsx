@@ -38,7 +38,21 @@ import {
     VoucherInput,
     AvailablePromos,
 } from '@/components/checkout';
-import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
+import dynamic from 'next/dynamic';
+
+// Stripe JS (~60 kB) is only needed when the user reaches the payment step.
+// Lazy-load so it doesn't inflate the initial checkout page bundle.
+const StripeEmbeddedCheckout = dynamic(
+    () => import('@/components/checkout/StripeEmbeddedCheckout'),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center h-48">
+                <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+            </div>
+        ),
+    }
+);
 
 export function CheckoutContent() {
     // Booking store selectors
@@ -232,7 +246,18 @@ export function CheckoutContent() {
                 guests,
                 payment: { method: "ACC_CREDIT_CARD" },
                 paymentIntentId: stripePaymentIntentId,
-            } as any);
+                propertyName: property?.name || 'Hotel',
+                propertyImage: property?.images?.[0] || undefined,
+                roomName: selectedRoom?.title || 'Room',
+                checkIn: checkIn ? checkIn.toISOString().split('T')[0] : '',
+                checkOut: checkOut ? checkOut.toISOString().split('T')[0] : '',
+                adults,
+                children,
+                currency: selectedCurrency,
+                specialRequests: specialRequests || undefined,
+                voucherCode: appliedVoucher?.code || undefined,
+                discountAmount: appliedVoucher?.discountAmount || 0,
+            });
 
             // Show success immediately
             setIsSuccess(true);

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useRef, useCallback, useState } from 'react';
-import { MapPin, Building, Navigation, Car, X, ChevronRight } from 'lucide-react';
+import { MapPin, Building, Navigation, X } from 'lucide-react';
 import { Map } from '@/components/ui/map';
-import { Marker, NavigationControl, GeolocateControl, Source, Layer } from 'react-map-gl/mapbox';
+import { Marker, NavigationControl, GeolocateControl } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
 
 interface LocationSectionProps {
@@ -32,12 +32,6 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordin
 
     const hasCoordinates = coordinates && coordinates.lat !== 0 && coordinates.lng !== 0;
 
-    // Example coordinates for the route start (e.g., a nearby landmark or user's presumed location)
-    // In a real app, this might come from the user's GPS or a fixed landmark
-    const routeStart = hasCoordinates 
-        ? { lat: coordinates.lat + 0.005, lng: coordinates.lng - 0.01 } 
-        : { lat: 0, lng: 0 };
-
     const googleMapsLink = hasCoordinates
         ? `https://www.google.com/maps/search/?api=1&query=${coordinates.lat},${coordinates.lng}`
         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
@@ -46,24 +40,11 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordin
         if (!hasCoordinates) return;
         mapRef.current?.flyTo({
             center: [coordinates.lng, coordinates.lat],
-            zoom: 15,
-            pitch: 0,
+            zoom: 16,
+            pitch: 45,
             duration: 800,
         });
     }, [hasCoordinates, coordinates]);
-
-    // GeoJSON for the dashed route
-    const routeData: any = {
-        type: 'Feature',
-        properties: {},
-        geometry: {
-            type: 'LineString',
-            coordinates: [
-                [routeStart.lng, routeStart.lat],
-                [coordinates?.lng || 0, coordinates?.lat || 0]
-            ]
-        }
-    };
 
     return (
         <div className="py-4 lg:py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-36" id="location">
@@ -84,10 +65,10 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordin
                                     show3dBuildings: true,
                                 }}
                                 initialViewState={{
-                                    longitude: (coordinates.lng + routeStart.lng) / 2,
-                                    latitude: (coordinates.lat + routeStart.lat) / 2,
-                                    zoom: 14,
-                                    pitch: 0,
+                                    longitude: coordinates.lng,
+                                    latitude: coordinates.lat,
+                                    zoom: 16,
+                                    pitch: 45,
                                     bearing: 0,
                                 }}
                                 maxPitch={60}
@@ -96,44 +77,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails, coordin
                                 <NavigationControl position="top-right" showCompass={false} />
                                 <GeolocateControl position="top-right" trackUserLocation showUserHeading />
 
-                                {/* Route Source and Layer */}
-                                <Source id="route-source" type="geojson" data={routeData}>
-                                    <Layer
-                                        id="route-layer"
-                                        type="line"
-                                        paint={{
-                                            'line-color': '#475569',
-                                            'line-width': 2,
-                                            'line-dasharray': [2, 2],
-                                        }}
-                                    />
-                                </Source>
-
-                                {/* Duration Label Marker */}
-                                <Marker
-                                    latitude={(coordinates.lat + routeStart.lat) / 2}
-                                    longitude={(coordinates.lng + routeStart.lng) / 2}
-                                    anchor="center"
-                                >
-                                    <div className="bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 flex items-center gap-2 cursor-default group hover:scale-105 transition-transform">
-                                        <Car size={14} className="text-slate-900 dark:text-white" />
-                                        <span className="text-[12px] font-bold text-slate-900 dark:text-white">10 min</span>
-                                        <ChevronRight size={14} className="text-slate-400" />
-                                    </div>
-                                </Marker>
-
-                                {/* Start Point Marker */}
-                                <Marker
-                                    latitude={routeStart.lat}
-                                    longitude={routeStart.lng}
-                                    anchor="center"
-                                >
-                                    <div className="w-6 h-6 bg-white dark:bg-slate-900 rounded-full border-4 border-slate-900 dark:border-white shadow-lg flex items-center justify-center">
-                                        <div className="w-2 h-2 bg-slate-900 dark:bg-white rounded-full" />
-                                    </div>
-                                </Marker>
-
-                                {/* Destination Hotel Pin */}
+                                {/* Hotel Pin */}
                                 <Marker
                                     latitude={coordinates.lat}
                                     longitude={coordinates.lng}

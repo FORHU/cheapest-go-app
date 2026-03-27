@@ -35,11 +35,31 @@ export async function invokeEdgeFunction<T = any>(
 
     if (!response.ok) {
         let errorText = '';
+        let parsedError: any = null;
         try {
             errorText = await response.text();
+            parsedError = JSON.parse(errorText);
         } catch (e) {
-            errorText = 'Could not read error response';
+            // ignore parse errors — use raw text
         }
+
+        // Extract clean error message from LiteAPI response body
+        const liteApiMessage: string | undefined =
+            parsedError?.error || parsedError?.message || parsedError?.detail;
+
+        if (liteApiMessage) {
+            // Map known LiteAPI error messages to user-friendly equivalents
+            const lower = liteApiMessage.toLowerCase();
+            if (lower.includes('no availability') || lower.includes('not available')) {
+                throw new Error('This room is no longer available. Please go back and select another room.');
+            }
+            if (lower.includes('prebook') && (lower.includes('expired') || lower.includes('invalid'))) {
+                throw new Error('Your booking session has expired. Please go back and select the room again.');
+            }
+            // Surface the clean LiteAPI message rather than the full technical string
+            throw new Error(liteApiMessage);
+        }
+
         throw new Error(`Error invoking ${functionName}: ${response.statusText || 'Unknown error'} (Status: ${response.status}). details: ${errorText}`);
     }
 

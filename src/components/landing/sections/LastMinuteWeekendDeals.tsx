@@ -6,12 +6,14 @@ import { Sparkles } from 'lucide-react';
 import { SectionHeader, HorizontalScroll } from '@/components/ui';
 import { PropertyCard } from '@/components/shared';
 import { type WeekendDeal } from '@/types';
-import { useUserCurrency } from '@/stores/searchStore';
 import { convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ deals }) => {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
   const currency = useUserCurrency();
-  const convert = (amount: number) => Math.round(convertCurrency(amount, 'KRW', currency));
+  const convert = (amount: number) => mounted ? Math.round(convertCurrency(amount, 'KRW', currency)) : Math.round(amount);
   const displayDeals = deals || [];
   return (
     <section className="w-full py-4 md:py-8 lg:py-10 landscape-compact-py">

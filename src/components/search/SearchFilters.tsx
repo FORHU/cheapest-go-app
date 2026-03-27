@@ -1,10 +1,10 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Map as MapIcon, RotateCcw, X } from 'lucide-react';
-import { Map } from '@/components/ui/map';
 import { useSearchFilters, useSearchStore } from '@/stores/searchStore';
 import { STAR_RATINGS, GUEST_RATING_OPTIONS, REVIEW_COUNT_OPTIONS, FACILITIES } from '@/lib/constants';
 import { FilterSection } from './FilterSection';
@@ -12,6 +12,7 @@ import { CheckboxItem } from './CheckboxItem';
 import { RadioItem } from './RadioItem';
 import { ActiveFiltersSummary } from './ActiveFiltersSummary';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 interface SearchFiltersProps {
     initialFacilities?: Array<{ id: number; name: string }>;
@@ -20,7 +21,6 @@ interface SearchFiltersProps {
 
 const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersProps) => {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const initializedRef = useRef(false);
 
@@ -43,6 +43,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
     }, [initialFacilities]);
     const filters = useSearchFilters();
     const { setFilters, toggleStarRating, toggleFacility, resetFilters, isMobileFiltersOpen, setIsMobileFiltersOpen } = useSearchStore();
+    useBodyScrollLock(isMobileFiltersOpen);
     const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering } = filters;
 
     // Initialize filters from URL params on mount (only once)
@@ -50,20 +51,21 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         if (initializedRef.current) return;
         initializedRef.current = true;
 
+        const params = new URLSearchParams(window.location.search);
         const urlFilters = {
-            hotelName: searchParams?.get('hotelName') || '',
-            starRating: searchParams?.get('starRating')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
-            minRating: Number(searchParams?.get('minRating')) || 0,
-            minReviewsCount: Number(searchParams?.get('minReviewsCount')) || 0,
-            facilities: searchParams?.get('facilities')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
-            strictFacilityFiltering: searchParams?.get('strictFacilityFiltering') === 'true',
+            hotelName: params.get('hotelName') || '',
+            starRating: params.get('starRating')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
+            minRating: Number(params.get('minRating')) || 0,
+            minReviewsCount: Number(params.get('minReviewsCount')) || 0,
+            facilities: params.get('facilities')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
+            strictFacilityFiltering: params.get('strictFacilityFiltering') === 'true',
         };
         setFilters(urlFilters);
-    }, [searchParams, setFilters]);
+    }, [setFilters]);
 
     // URL update helper
     const updateURL = useCallback((params: Record<string, string | null>) => {
-        const current = new URLSearchParams(searchParams?.toString() || '');
+        const current = new URLSearchParams(window.location.search);
         Object.entries(params).forEach(([key, value]) => {
             if (value === null || value === '' || value === '0') {
                 current.delete(key);
@@ -72,7 +74,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             }
         });
         router.push(`/search?${current.toString()}`);
-    }, [router, searchParams]);
+    }, [router]);
 
     // Debounced hotel name search
     const handleHotelNameChange = useCallback((value: string) => {
@@ -116,12 +118,12 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
 
     const handleResetFilters = useCallback(() => {
         resetFilters();
-        const current = new URLSearchParams(searchParams?.toString() || '');
+        const current = new URLSearchParams(window.location.search);
         ['hotelName', 'starRating', 'minRating', 'minReviewsCount', 'facilities', 'strictFacilityFiltering'].forEach(key => {
             current.delete(key);
         });
         router.push(`/search?${current.toString()}`);
-    }, [resetFilters, searchParams, router]);
+    }, [resetFilters, router]);
 
     const hasActiveFilters = hotelName || starRating.length > 0 || minRating > 0 ||
         minReviewsCount > 0 || facilities.length > 0;
@@ -234,6 +236,71 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         </div>
     );
 
+    const mobileModal = (
+        <AnimatePresence>
+            {isMobileFiltersOpen && (
+                <>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[90] bg-black/40 lg:hidden pointer-events-auto"
+                        onClick={() => setIsMobileFiltersOpen(false)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, y: "100%", scale: 1 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                        className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-[100] bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px] flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Background Sparkles */}
+                        <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
+                            <GlobalSparkle />
+                        </div>
+
+                        {/* Header */}
+                        <div className="p-4 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
+                            <button
+                                onClick={() => setIsMobileFiltersOpen(false)}
+                                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors -ml-2"
+                            >
+                                <X size={20} className="text-slate-700 dark:text-slate-300" />
+                            </button>
+                            <h2 className="font-semibold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">Filters</h2>
+                            <div className="w-auto relative z-20">
+                                {hasActiveFilters && (
+                                    <button
+                                        onClick={handleResetFilters}
+                                        className="text-sm font-semibold text-slate-900 dark:text-white underline underline-offset-2"
+                                    >
+                                        Clear all
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Filter Content */}
+                        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar relative z-10">
+                            {content}
+                        </div>
+
+                        {/* Fixed Footer */}
+                        <div className="p-4 border-t border-slate-200/50 dark:border-white/5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-center flex-shrink-0 relative z-10">
+                            <button
+                                onClick={() => setIsMobileFiltersOpen(false)}
+                                className="w-full max-w-sm py-3.5 bg-alabaster-accent dark:bg-obsidian-accent text-white rounded-xl font-bold flex items-center justify-center transition-transform active:scale-[0.98] shadow-md hover:shadow-lg"
+                            >
+                                Show places
+                            </button>
+                        </div>
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>
+    );
+
     return (
         <>
             {/* Desktop persistent sidebar */}
@@ -241,69 +308,8 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                 {content}
             </div>
 
-            {/* Mobile modal overlay as a Dropdown */}
-            <AnimatePresence>
-                {isMobileFiltersOpen && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-sm lg:hidden pointer-events-auto"
-                            onClick={() => setIsMobileFiltersOpen(false)}
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, y: "100%", scale: 1 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: "100%" }}
-                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-[100] bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px] flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {/* Background Sparkles */}
-                            <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
-                                <GlobalSparkle />
-                            </div>
-
-                            {/* Header */}
-                            <div className="p-4 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
-                                <button
-                                    onClick={() => setIsMobileFiltersOpen(false)}
-                                    className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors -ml-2"
-                                >
-                                    <X size={20} className="text-slate-700 dark:text-slate-300" />
-                                </button>
-                                <h2 className="font-semibold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">Filters</h2>
-                                <div className="w-auto relative z-20">
-                                    {hasActiveFilters && (
-                                        <button
-                                            onClick={handleResetFilters}
-                                            className="text-sm font-semibold text-slate-900 dark:text-white underline underline-offset-2"
-                                        >
-                                            Clear all
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Filter Content */}
-                            <div className="flex-1 overflow-y-auto p-5 custom-scrollbar relative z-10">
-                                {content}
-                            </div>
-
-                            {/* Fixed Footer */}
-                            <div className="p-4 border-t border-slate-200/50 dark:border-white/5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-center flex-shrink-0 relative z-10">
-                                <button
-                                    onClick={() => setIsMobileFiltersOpen(false)}
-                                    className="w-full max-w-sm py-3.5 bg-alabaster-accent dark:bg-obsidian-accent text-white rounded-xl font-bold flex items-center justify-center transition-transform active:scale-[0.98] shadow-md hover:shadow-lg"
-                                >
-                                    Show places
-                                </button>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+            {/* Mobile modal — rendered via portal at document.body to avoid stacking context issues */}
+            {typeof window !== 'undefined' && createPortal(mobileModal, document.body)}
         </>
     );
 };
