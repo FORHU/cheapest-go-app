@@ -42,9 +42,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Currency is required' }, { status: 400 });
         }
 
+        // Zero-decimal currencies must NOT be multiplied by 100.
+        // See: https://stripe.com/docs/currencies#zero-decimal
+        const ZERO_DECIMAL_CURRENCIES = new Set([
+            'bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga',
+            'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf',
+        ]);
+        const isZeroDecimal = ZERO_DECIMAL_CURRENCIES.has(currency.toLowerCase());
+        const stripeAmount = isZeroDecimal ? Math.round(amount) : Math.round(amount * 100);
+
         // Create Stripe PaymentIntent (automatic capture — refund on LiteAPI failure)
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(amount * 100),
+            amount: stripeAmount,
             currency: currency.toLowerCase(),
             capture_method: 'automatic',
             metadata: {

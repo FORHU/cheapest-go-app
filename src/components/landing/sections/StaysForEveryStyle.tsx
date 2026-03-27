@@ -5,8 +5,8 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { TabList, GradientBackground, HorizontalScroll } from '@/components/ui';
 import { styleTabs } from '@/types';
-import { useUserCurrency } from '@/stores/searchStore';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 // Types for travel styles
 export interface TravelStyle {
@@ -19,8 +19,10 @@ export interface TravelStyle {
 
 export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ styles }) => {
   const [activeTab, setActiveTab] = useState(styleTabs[0]);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
   const currency = useUserCurrency();
-  const symbol = getCurrencySymbol(currency);
+  const symbol = mounted ? getCurrencySymbol(currency) : getCurrencySymbol('KRW');
   const displayStyles = styles || [];
 
   return (
@@ -68,9 +70,6 @@ export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ style
               whileHover={{ y: -8 }}
               className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape:w-[160px] landscape-compact-card snap-start relative group cursor-pointer flex flex-col"
             >
-              {/* Glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-60 blur-xl transition-all duration-500 pointer-events-none" />
-
               <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
                 <div className="relative aspect-[2/1] sm:aspect-[4/3] md:aspect-[3/2] overflow-hidden flex-shrink-0 landscape-compact-img landscape-img">
                   {style.image && (
@@ -93,7 +92,7 @@ export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ style
                     transition={{ delay: i * 0.08 + 0.2 }}
                   >
                     <span className="text-[9px] sm:text-sm md:text-base landscape:text-[9px] font-bold text-slate-900 dark:text-white">
-                      {symbol}{Math.round(convertCurrency(style.price || 0, 'KRW', currency)).toLocaleString()}
+                      {symbol}{(mounted ? Math.round(convertCurrency(style.price || 0, 'KRW', currency)) : Math.round(style.price || 0)).toLocaleString()}
                     </span>
                   </motion.div>
                 </div>

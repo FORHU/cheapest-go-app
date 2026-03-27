@@ -10,6 +10,7 @@ import SignInDropdown from '../../auth/SignInDropdown';
 import { useUserCurrency, useSearchActions } from '@/stores/searchStore';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import NavLink from './Navlink';
+import { usePWAInstall } from '@/contexts/PWAInstallContext';
 
 /** Currency code → flag emoji (primary country for that currency) */
 const CURRENCY_FLAGS: Record<string, string> = {
@@ -32,6 +33,8 @@ const Header = () => {
 
   const userCurrency = useUserCurrency();
   const { setUserCurrency } = useSearchActions();
+  const { isInstallable, isIOS, isInstalled, triggerInstall } = usePWAInstall();
+  const showInstallButton = !isInstalled && (isInstallable || isIOS);
 
   const currencyFlag = CURRENCY_FLAGS[userCurrency] || '🌐';
 
@@ -85,11 +88,16 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-3">
-            {/* Open App Button */}
-            <a href="#" className="flex items-center gap-1.5 px-3 py-1.5 text-lg font-medium text-blue-600 dark:text-blue-400 border border-blue-600 hover:bg-white/5 dark:border-blue-400 rounded-full dark:hover:bg-blue-500/10 transition-colors">
-              <Download size={14} />
-              Open app
-            </a>
+            {/* Install / Open App Button */}
+            {showInstallButton && (
+              <button
+                onClick={triggerInstall}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-lg font-medium text-blue-600 dark:text-blue-400 border border-blue-600 hover:bg-white/5 dark:border-blue-400 rounded-full dark:hover:bg-blue-500/10 transition-colors"
+              >
+                <Download size={14} />
+                Install app
+              </button>
+            )}
 
             {/* Currency dropdown */}
             <div className="relative" ref={currencyRef}>
@@ -194,13 +202,15 @@ const Header = () => {
 
               {/* Drawer Links */}
               <div className="flex-1 overflow-y-auto py-2">
-                <a
-                  href="#"
-                  className="flex items-center gap-3 px-4 min-h-[40px] text-[13px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
-                >
-                  <Download size={16} />
-                  Open app
-                </a>
+                {showInstallButton && (
+                  <button
+                    onClick={() => { triggerInstall(); closeMenu(); }}
+                    className="flex items-center gap-3 px-4 min-h-[40px] w-full text-left text-[13px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                  >
+                    <Download size={16} />
+                    Install app
+                  </button>
+                )}
 
                 {/* Currency — dropdown in hamburger menu */}
                 <div className="px-4 py-2">
