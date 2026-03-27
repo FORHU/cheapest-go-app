@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, XCircle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,8 @@ import ModificationModal from './ModificationModal';
 import { statusColors, statusLabels } from '@/lib/constants';
 import { formatDate, formatCurrency, calculateNights } from '@/lib/utils';
 import { derivePolicyType, getPolicyTitle, getPolicyBadgeColor } from '@/lib/policy-formatter';
+import { convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 interface BookingCardProps {
     booking: BookingRecord;
@@ -36,6 +38,14 @@ function getRatingColor(rating: number): string {
 export default function BookingCard({ booking, onBookingUpdated, index = 0 }: BookingCardProps) {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showModifyModal, setShowModifyModal] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const userCurrency = useUserCurrency();
+    const bookingCurrency = booking.currency || 'USD';
+    const displayPrice = mounted
+        ? Math.round(convertCurrency(booking.total_price, bookingCurrency, userCurrency))
+        : booking.total_price;
+    const displayCurrency = mounted ? userCurrency : bookingCurrency;
 
     const checkInDate = new Date(booking.check_in);
     const checkOutDate = new Date(booking.check_out);
@@ -113,7 +123,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         {/* Price */}
                         <div className="mt-auto">
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(booking.total_price, booking.currency || 'PHP')}
+                                {formatCurrency(displayPrice, displayCurrency)}
                             </span>
                         </div>
                     </div>
@@ -221,7 +231,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         {/* Price */}
                         <div className="text-right">
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(booking.total_price, booking.currency || 'PHP')}
+                                {formatCurrency(displayPrice, displayCurrency)}
                             </span>
                             <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400">total</div>
                         </div>

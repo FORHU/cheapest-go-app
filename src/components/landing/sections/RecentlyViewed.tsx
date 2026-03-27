@@ -6,8 +6,8 @@ import { History, Clock } from 'lucide-react';
 import { SectionHeader, Badge, PriceDisplay } from '@/components/ui';
 import { useRecentSearches } from '@/stores';
 import { type RecentItem } from '@/types';
-import { useUserCurrency } from '@/stores/searchStore';
 import { getCurrencySymbol } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 interface RecentCardProps {
   item: RecentItem;
@@ -15,7 +15,10 @@ interface RecentCardProps {
 }
 
 const RecentCard: React.FC<RecentCardProps> = ({ item, index }) => {
-  const symbol = getCurrencySymbol(useUserCurrency());
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  const userCurrency = useUserCurrency();
+  const symbol = getCurrencySymbol(mounted ? userCurrency : 'KRW');
   return (
   <motion.div
     initial={{ opacity: 0, y: 20 }}

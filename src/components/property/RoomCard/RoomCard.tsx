@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Bed, Square, X, Check } from 'lucide-react';
-import { useUserCurrency } from '@/stores/searchStore';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 /**
  * Format cancellation deadline for display
@@ -106,23 +106,21 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     rateOptions = []
 }) => {
     const [selectedRateIdx, setSelectedRateIdx] = useState(0);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
     const targetCurrency = useUserCurrency();
-    const currencySymbol = getCurrencySymbol(targetCurrency);
     const sourceCurrency = currency || 'KRW';
 
-    // Use rate options if provided, otherwise use single price
     const hasMultipleRates = rateOptions.length > 1;
     const selectedRate = rateOptions[selectedRateIdx];
-    
-    // Convert base price
-    const basePriceConverted = convertCurrency(price, sourceCurrency, targetCurrency);
-    
-    // Convert selected rate price
-    const selectedRatePriceConverted = selectedRate 
-        ? convertCurrency(selectedRate.price, selectedRate.currency || sourceCurrency, targetCurrency)
+
+    const basePriceConverted = mounted ? convertCurrency(price, sourceCurrency, targetCurrency) : price;
+    const selectedRatePriceConverted = selectedRate
+        ? (mounted ? convertCurrency(selectedRate.price, selectedRate.currency || sourceCurrency, targetCurrency) : selectedRate.price)
         : undefined;
 
     const displayPrice = selectedRatePriceConverted ?? basePriceConverted;
+    const currencySymbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
     const displayRefundable = selectedRate?.refundable ?? freeCancellation;
     const displayOfferId = selectedRate?.offerId;
 

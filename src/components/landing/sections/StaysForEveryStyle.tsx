@@ -5,8 +5,8 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { TabList, GradientBackground, HorizontalScroll } from '@/components/ui';
 import { styleTabs } from '@/types';
-import { useUserCurrency } from '@/stores/searchStore';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 // Types for travel styles
 export interface TravelStyle {
@@ -19,8 +19,10 @@ export interface TravelStyle {
 
 export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ styles }) => {
   const [activeTab, setActiveTab] = useState(styleTabs[0]);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
   const currency = useUserCurrency();
-  const symbol = getCurrencySymbol(currency);
+  const symbol = mounted ? getCurrencySymbol(currency) : getCurrencySymbol('KRW');
   const displayStyles = styles || [];
 
   return (
@@ -90,7 +92,7 @@ export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ style
                     transition={{ delay: i * 0.08 + 0.2 }}
                   >
                     <span className="text-[9px] sm:text-sm md:text-base landscape:text-[9px] font-bold text-slate-900 dark:text-white">
-                      {symbol}{Math.round(convertCurrency(style.price || 0, 'KRW', currency)).toLocaleString()}
+                      {symbol}{(mounted ? Math.round(convertCurrency(style.price || 0, 'KRW', currency)) : Math.round(style.price || 0)).toLocaleString()}
                     </span>
                   </motion.div>
                 </div>
