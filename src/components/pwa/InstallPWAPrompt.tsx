@@ -34,73 +34,12 @@ const IOS_STEPS = [
 ] as const;
 
 export default function InstallPWAPrompt() {
-  const { isInstalled, showBanner, isIOS, isInstallable, isGuideOpen, triggerInstall, closeGuide, dismiss } =
-    usePWAInstall();
-
-  // Label for the install button based on what we can actually do
-  const installLabel = isInstallable ? 'Install' : 'How to';
+  const { isInstalled, isGuideOpen, closeGuide } = usePWAInstall();
 
   if (isInstalled) return null;
 
   return (
     <>
-      {/* ── Install Banner (Chrome / Android / iOS teaser) ── */}
-      <AnimatePresence>
-        {showBanner && !isGuideOpen && (
-          <motion.div
-            key="install-banner"
-            initial={{ y: 120, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 120, opacity: 0 }}
-            transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-            className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:w-[380px] z-[9999] pointer-events-none"
-          >
-            <div className="pointer-events-auto relative bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/60 dark:border-white/10 p-4 flex items-center gap-3">
-              {/* App Icon */}
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden shadow-md ring-1 ring-black/5">
-                <Image
-                  src="/cheapestgo.png"
-                  alt="CheapestGo"
-                  width={48}
-                  height={48}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              {/* Text */}
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-slate-900 dark:text-white leading-tight">
-                  Install CheapestGo
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                  {isIOS
-                    ? 'Add to home screen for the full app experience'
-                    : 'Get instant access — no app store needed'}
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={dismiss}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                  aria-label="Dismiss install banner"
-                >
-                  <X size={15} />
-                </button>
-                <button
-                  onClick={triggerInstall}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-semibold rounded-xl transition-colors shadow-md shadow-blue-500/20"
-                >
-                  <Download size={13} />
-                  {installLabel}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ── iOS Step-by-Step Guide Modal ── */}
       <AnimatePresence>
         {isGuideOpen && (

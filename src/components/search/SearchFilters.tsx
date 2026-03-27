@@ -11,6 +11,7 @@ import { CheckboxItem } from './CheckboxItem';
 import { RadioItem } from './RadioItem';
 import { ActiveFiltersSummary } from './ActiveFiltersSummary';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
 interface SearchFiltersProps {
     initialFacilities?: Array<{ id: number; name: string }>;
@@ -42,6 +43,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
     }, [initialFacilities]);
     const filters = useSearchFilters();
     const { setFilters, toggleStarRating, toggleFacility, resetFilters, isMobileFiltersOpen, setIsMobileFiltersOpen } = useSearchStore();
+    useBodyScrollLock(isMobileFiltersOpen);
     const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering } = filters;
 
     // Initialize filters from URL params on mount (only once)
@@ -248,7 +250,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-sm lg:hidden pointer-events-auto"
+                            className="fixed inset-0 z-[90] bg-black/40 lg:hidden pointer-events-auto"
                             onClick={() => setIsMobileFiltersOpen(false)}
                         />
                         <motion.div
