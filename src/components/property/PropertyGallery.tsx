@@ -79,8 +79,10 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                     <Image
                         src={mainImage}
                         alt="Property view"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 800px"
                         fetchPriority="high"
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                        className="object-cover hover:scale-105 transition-transform duration-500"
                     />
                     <button
                         onClick={(e) => { e.stopPropagation(); handleOpen(0); }}
@@ -104,8 +106,10 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                     <Image
                                         src={img}
                                         alt={`Property view ${i + 1}`}
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, 300px"
                                         fetchPriority={i === 0 ? 'high' : 'auto'}
-                                        className="w-full h-full object-cover"
+                                        className="object-cover"
                                     />
                                 </div>
                             ))}
@@ -141,8 +145,10 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                             <Image
                                 src={mainImage}
                                 alt="Main property view"
+                                fill
+                                sizes="(max-width: 768px) 100vw, 600px"
                                 fetchPriority="high"
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                                className="object-cover hover:scale-105 transition-transform duration-500"
                             />
                         </div>
                         {gallerySubImages.map((img, i) => (
