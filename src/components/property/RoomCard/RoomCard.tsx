@@ -143,11 +143,12 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                 )}
                 {/* Image Counter Badge */}
                 {photoCount && photoCount > 1 && (
-                    <div className="absolute bottom-3 lg:bottom-5 right-1 lg:right-3 bg-black/60 text-white text-[9px] lg:text-xs px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-md flex items-center gap-1 backdrop-blur-sm z-10">
-                        <span className="hidden lg:inline">1/{photoCount}</span>
+                    <div className="hidden lg:flex absolute bottom-3 lg:bottom-5 right-1 lg:right-3 bg-black/60 text-white text-[9px] lg:text-xs px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-md items-center gap-1 backdrop-blur-sm z-10">
+                        <span>1/{photoCount}</span>
                         <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-white rounded-full ml-1 lg:ml-1" />
                     </div>
                 )}
+
             </div>
 
             {/* Middle: Info & Rate Options */}
