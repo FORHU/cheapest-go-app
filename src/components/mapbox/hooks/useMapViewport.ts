@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { MapRef } from 'react-map-gl/mapbox';
 import { getBoundsFromProperties } from '../utils/getBoundsFromProperties';
 import { MappableProperty } from '../utils/buildGeoJson';
@@ -16,16 +16,23 @@ export const useMapViewport = ({
     properties,
     selectedId,
 }: UseMapViewportProps) => {
+    const propertiesKey = properties.map(p => p.id).join(',');
+    const hasFittedRef = useRef<string | null>(null);
+
     // 1. Fit bounds on load / properties change
     useEffect(() => {
         if (!isMapLoaded || properties.length === 0) return;
         // If we have a selection, don't refit bounds (prevents jumping if properties update while selected)
         if (selectedId) return;
 
+        // Only fit bounds if the property list has actually changed (prevents zooming out when dialogs close)
+        if (hasFittedRef.current === propertiesKey) return;
+
         const map = mapRef.current;
         if (!map) return;
 
         const bounds = getBoundsFromProperties(properties);
+        hasFittedRef.current = propertiesKey;
 
         if (properties.length === 1) {
             map.flyTo({
@@ -51,7 +58,7 @@ export const useMapViewport = ({
                 bearing: -10,
             }
         );
-    }, [isMapLoaded, properties, mapRef, selectedId]); // selectedId dependency added to prevent refit when selected
+    }, [isMapLoaded, propertiesKey, mapRef, selectedId]);
 
     // 2. Fly to specific property when selected
     useEffect(() => {
