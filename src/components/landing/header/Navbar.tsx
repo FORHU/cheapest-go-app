@@ -170,23 +170,25 @@ const Header = () => {
       {/* Mobile Navigation Drawer*/}
       <AnimatePresence>
         {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[60] lg:hidden"
-          >
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/50" onClick={closeMenu} />
+          <>
+            {/* Backdrop — separate fixed element, no parent transform context */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-60 bg-black/50 lg:hidden"
+              onClick={closeMenu}
+              onTouchMove={(e) => e.preventDefault()}
+            />
 
-            {/* Drawer Panel */}
+            {/* Drawer Panel — fixed directly to viewport, never inside a transformed parent */}
             <motion.nav
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="absolute right-0 top-0 h-full w-[280px] bg-white dark:bg-slate-900 shadow-2xl flex flex-col"
+              className="fixed right-0 top-0 h-dvh w-[280px] z-61 bg-white dark:bg-slate-900 shadow-2xl flex flex-col overflow-hidden lg:hidden"
             >
               {/* Drawer Header */}
               <div className="flex items-center justify-between p-3.5 border-b border-slate-200 dark:border-white/10">
@@ -201,7 +203,7 @@ const Header = () => {
               </div>
 
               {/* Drawer Links */}
-              <div className="flex-1 overflow-y-auto py-2">
+              <div className="flex-1 overflow-y-auto py-2 min-h-0" data-scrollable>
                 {showInstallButton && (
                   <button
                     onClick={() => { triggerInstall(); closeMenu(); }}
@@ -290,14 +292,14 @@ const Header = () => {
                 </button>
               </div>
 
-              {/* Drawer Footer — Sign In / Account dropdown */}
-              <div className="p-4 border-t border-slate-200 dark:border-white/10">
-                <SignInDropdown variant="inline" collapsible onNavigate={closeMenu} />
+              {/* Drawer Footer — Sign In / Account */}
+              <div className="p-4 border-t border-slate-200 dark:border-white/10 shrink-0">
+                <SignInDropdown variant="inline" onNavigate={closeMenu} />
               </div>
             </motion.nav>
-          </motion.div>
+          </>
         )}
-      </AnimatePresence >
+      </AnimatePresence>
     </>
   );
 };

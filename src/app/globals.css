@@ -119,7 +119,6 @@
 @custom-variant landscape (@media (orientation: landscape) and (max-width: 1024px));
 
 /* Prevent horizontal scrolling on mobile */
-html,
 body {
   overflow-x: clip;
   max-width: 100vw;
