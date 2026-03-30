@@ -23,7 +23,12 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json();
+        let body: any;
+        try {
+            body = await req.json();
+        } catch {
+            return badRequest('Request body must be valid JSON');
+        }
 
         // ── Parse segments ──────────────────────────────────────────────────
         let segments = body.segments || [];

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, XCircle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,8 @@ import ModificationModal from './ModificationModal';
 import { statusColors, statusLabels } from '@/lib/constants';
 import { formatDate, formatCurrency, calculateNights } from '@/lib/utils';
 import { derivePolicyType, getPolicyTitle, getPolicyBadgeColor } from '@/lib/policy-formatter';
+import { convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 interface BookingCardProps {
     booking: BookingRecord;
@@ -36,6 +38,14 @@ function getRatingColor(rating: number): string {
 export default function BookingCard({ booking, onBookingUpdated, index = 0 }: BookingCardProps) {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showModifyModal, setShowModifyModal] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const userCurrency = useUserCurrency();
+    const bookingCurrency = booking.currency || 'USD';
+    const displayPrice = mounted
+        ? Math.round(convertCurrency(booking.total_price, bookingCurrency, userCurrency))
+        : booking.total_price;
+    const displayCurrency = mounted ? userCurrency : bookingCurrency;
 
     const checkInDate = new Date(booking.check_in);
     const checkOutDate = new Date(booking.check_out);
@@ -44,6 +54,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
     const fmtDate = (date: Date) =>
         formatDate(date, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
 
+    const normalizedStatus = booking.status?.toLowerCase() as typeof booking.status;
     const isUpcoming = checkInDate > new Date();
     const isPast = checkOutDate < new Date();
 
@@ -83,10 +94,10 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         )}
                         {/* Badges */}
                         <div className="absolute top-1 left-1 flex flex-col gap-1">
-                            <span className={`text-[clamp(0.5rem,1.5vw,0.5625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${statusColors[booking.status]}`}>
-                                {statusLabels[booking.status]}
+                            <span className={`text-[clamp(0.5rem,1.5vw,0.5625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${statusColors[normalizedStatus]}`}>
+                                {statusLabels[normalizedStatus]}
                             </span>
-                            {isUpcoming && booking.status === 'confirmed' && (
+                            {isUpcoming && normalizedStatus === 'confirmed' && (
                                 <span className={`text-[clamp(0.5rem,1.5vw,0.5625rem)] font-semibold text-white px-1.5 py-0.5 rounded shadow ${getPolicyBadgeColor(policyType)}`}>
                                     {getPolicyTitle(policyType)}
                                 </span>
@@ -112,7 +123,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         {/* Price */}
                         <div className="mt-auto">
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(booking.total_price, booking.currency || 'PHP')}
+                                {formatCurrency(displayPrice, displayCurrency)}
                             </span>
                         </div>
                     </div>
@@ -135,10 +146,10 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         )}
                         {/* Badges — stacked column so they never overlap */}
                         <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
-                            <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${statusColors[booking.status]}`}>
-                                {statusLabels[booking.status]}
+                            <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${statusColors[normalizedStatus]}`}>
+                                {statusLabels[normalizedStatus]}
                             </span>
-                            {isUpcoming && booking.status === 'confirmed' && (
+                            {isUpcoming && normalizedStatus === 'confirmed' && (
                                 <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold text-white px-1.5 py-0.5 rounded shadow ${getPolicyBadgeColor(policyType)}`}>
                                     {getPolicyTitle(policyType)}
                                 </span>
@@ -170,7 +181,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         </div>
 
                         {/* Action buttons */}
-                        {isUpcoming && booking.status === 'confirmed' && (
+                        {isUpcoming && normalizedStatus === 'confirmed' && (
                             <div className="flex items-center gap-2 mt-auto">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setShowModifyModal(true); }}
@@ -188,10 +199,10 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                 </button>
                             </div>
                         )}
-                        {isPast && booking.status === 'confirmed' && (
+                        {isPast && normalizedStatus === 'confirmed' && (
                             <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-400">Trip completed</span>
                         )}
-                        {booking.status === 'cancelled' && (
+                        {normalizedStatus === 'cancelled' && (
                             <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-red-500 dark:text-red-400">Cancelled</span>
                         )}
                     </div>
@@ -220,7 +231,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         {/* Price */}
                         <div className="text-right">
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(booking.total_price, booking.currency || 'PHP')}
+                                {formatCurrency(displayPrice, displayCurrency)}
                             </span>
                             <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400">total</div>
                         </div>

@@ -10,6 +10,8 @@ interface Suggestion {
     prompt: string;
 }
 
+// DEMO ONLY — these are example prompts to inspire AI search queries.
+// They are not real deals or live pricing. The ₱15,000 figure is illustrative.
 const suggestions: Suggestion[] = [
     { icon: <Palmtree size={12} />, label: 'Beach Escape', prompt: 'Beachfront resort in Boracay for 2, this weekend' },
     { icon: <Gem size={12} />, label: 'Luxury Stay', prompt: '5-star hotel in Manila under ₱15,000/night' },

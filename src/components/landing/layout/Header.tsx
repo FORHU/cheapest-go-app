@@ -9,6 +9,7 @@ import { useTheme } from '../../context/ThemeContext';
 import SignInDropdown from '../../auth/SignInDropdown';
 import { useUserCurrency, useUserCountry, useSearchActions } from '@/stores/searchStore';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { usePWAInstall } from '@/contexts/PWAInstallContext';
 
 /** Country code → currency label mapping */
 const COUNTRY_CURRENCY: Record<string, { currency: string; countryName: string; flag: string }> = {
@@ -40,6 +41,8 @@ const Header = () => {
   const selectedCountry = COUNTRY_CURRENCY[userCountry] || COUNTRY_CURRENCY['PH'];
 
   useBodyScrollLock(isMenuOpen);
+
+  const { triggerInstall } = usePWAInstall();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -86,10 +89,10 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-3">
             {/* Open App Button */}
-            <a href="#" className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
+            <button onClick={triggerInstall} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-600 dark:border-blue-400 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
               <Download size={14} />
               Open app
-            </a>
+            </button>
 
             {/* Currency dropdown */}
             <div className="relative" ref={currencyRef}>
@@ -209,13 +212,13 @@ const Header = () => {
 
               {/* Drawer Links */}
               <div className="flex-1 overflow-y-auto py-2">
-                <a
-                  href="#"
-                  className="flex items-center gap-3 px-4 min-h-[40px] text-[13px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                <button
+                  onClick={triggerInstall}
+                  className="flex items-center gap-3 px-4 min-h-[40px] w-full text-[13px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
                 >
                   <Download size={18} />
                   Open app
-                </a>
+                </button>
 
                 {/* Currency — dropdown in hamburger menu */}
                 <div className="px-4 py-3">

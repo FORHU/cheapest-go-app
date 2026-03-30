@@ -25,8 +25,17 @@ function TripsSkeleton() {
 }
 
 async function TripsLoader() {
-  const initialData = await fetchTripsData();
-  return <TripsContent initialData={initialData} />;
+  try {
+    const initialData = await fetchTripsData();
+    return <TripsContent initialData={initialData} />;
+  } catch (err) {
+    console.error('[TripsLoader] fetchTripsData threw:', err);
+    const emptyData = {
+      bookings: [], upcomingBookings: [], pastBookings: [], cancelledBookings: [],
+      flightBookings: [], upcomingFlightBookings: [], pastFlightBookings: [], cancelledFlightBookings: [],
+    };
+    return <TripsContent initialData={emptyData} />;
+  }
 }
 
 export default async function TripsPage() {
