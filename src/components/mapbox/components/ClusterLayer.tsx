@@ -21,8 +21,8 @@ export const ClusterLayer = React.memo(({
             type="geojson"
             data={geoJsonData}
             cluster={shouldCluster}
-            clusterMaxZoom={14}
-            clusterRadius={50}
+            clusterMaxZoom={16}
+            clusterRadius={60}
         >
             {/* Cluster Layers */}
             <Layer {...clusterLayer as any} />
