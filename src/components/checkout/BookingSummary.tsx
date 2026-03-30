@@ -4,7 +4,7 @@ import { CancellationPolicySection } from './CancellationPolicySection';
 import { CancellationPolicy } from '@/services/booking.service';
 import type { AppliedVoucher } from '@/types/voucher';
 import { getCurrencySymbol } from '@/lib/currency';
-import { useUserCurrency } from '@/stores/searchStore';
+import { useCheckoutStore } from '@/stores/checkoutStore';
 
 interface BookingSummaryProps {
     propertyName: string;
@@ -65,7 +65,7 @@ export function BookingSummary({
     cancellationPolicies,
     appliedVoucher,
 }: BookingSummaryProps) {
-    const currency = useUserCurrency();
+    const currency = useCheckoutStore((state) => state.selectedCurrency);
     const symbol = getCurrencySymbol(currency);
     const perNightPrice = totalNights > 0 ? Math.round(roomPrice / totalNights) : roomPrice;
 

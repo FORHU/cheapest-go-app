@@ -150,9 +150,9 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                    <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4">
                         <h3 className="text-lg font-medium text-slate-900 dark:text-white">No properties found</h3>
-                        <p className="text-slate-500 dark:text-slate-400">Try searching for "Baguio" to see results.</p>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1">Try adjusting your filters or searching for a different destination.</p>
                     </div>
                 )
             }

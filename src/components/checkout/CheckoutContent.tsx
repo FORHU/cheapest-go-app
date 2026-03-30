@@ -117,7 +117,12 @@ export function CheckoutContent() {
     const { syncWithUserCurrency } = useCheckoutActions();
 
     useEffect(() => {
-        syncWithUserCurrency(globalCurrency);
+        // Don't override when URL already specifies a currency — that would
+        // cause a second prebook call right after the URL-currency prebook starts.
+        const urlCurrency = new URLSearchParams(window.location.search).get('currency');
+        if (!urlCurrency) {
+            syncWithUserCurrency(globalCurrency);
+        }
     }, [globalCurrency, syncWithUserCurrency]);
 
     // Reset success state from previous booking on mount
