@@ -34,10 +34,10 @@ export const unclusteredPointLayer: LayerProps = {
     source: 'properties',
     filter: ['!', ['has', 'point_count']],
     paint: {
-        'circle-color': '#ffffff',
-        'circle-radius': 18,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#3b82f6',
+        'circle-color': '#0f172a',
+        'circle-radius': 20,
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': '#ffffff',
         'circle-blur': 0,
     },
 };
@@ -52,8 +52,9 @@ export const unclusteredPointTextLayer: LayerProps = {
         'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
         'text-size': 11,
         'text-offset': [0, 0],
+        'text-allow-overlap': true,
     },
     paint: {
-        'text-color': '#2563eb',
+        'text-color': '#ffffff',
     },
 };

@@ -12,8 +12,8 @@ import { SelectedPropertyPopup } from './components/SelectedPropertyPopup';
 import { Source, Layer, Marker } from 'react-map-gl/mapbox';
 
 import { PoiPopup } from './components/PoiPopup';
-import { PoiDurationMarker } from './components/PoiDurationMarker';
 import { MapMarker } from '../map/MapMarker';
+import { MapSearchOverlay } from './components/MapSearchOverlay';
 import { env } from '@/utils/env';
 
 interface SearchMapContainerProps {
@@ -23,6 +23,7 @@ interface SearchMapContainerProps {
     hoveredId: string | null;
     onHoverId: (id: string | null) => void;
     onViewDetails: (id: string) => void;
+    searchOverlayClassName?: string;
 }
 
 export const SearchMapContainer = React.memo(({
@@ -32,6 +33,7 @@ export const SearchMapContainer = React.memo(({
     hoveredId,
     onHoverId,
     onViewDetails,
+    searchOverlayClassName,
 }: SearchMapContainerProps) => {
     // 1. Map Instance
     const { mapRef, isMapLoaded, handleMapLoad } = useMapboxInstance();
@@ -146,87 +148,80 @@ export const SearchMapContainer = React.memo(({
     } : null;
 
     return (
-        <MapContainer
-            mapRef={mapRef}
-            initialViewState={{
-                longitude: 120.596, // Default fallback
-                latitude: 14.599,
-                zoom: 14
-            }}
-            onLoad={handleMapLoad}
-            onClick={handleMapClick}
-            onMouseMove={onMouseMove}
-        >
-            {isMapLoaded && (
-                <>
-
-                    <ClusterLayer
-                        geoJsonData={geoJsonData}
-                        shouldCluster={shouldCluster}
-                        selectedId={selectedId}
-                        hoveredId={hoveredId}
-                    />
-
-                    {/* Premium Property Markers (Selected/Hovered) */}
-                    {mappableProperties.filter(p => p.id === selectedId || p.id === hoveredId).map(property => (
-                        <MapMarker
-                            key={property.id}
-                            property={property}
-                            isSelected={property.id === selectedId}
-                            isHovered={property.id === hoveredId}
-                            onClick={onSelectId}
-                            onHover={onHoverId}
-                        />
-                    ))}
-
-                    {/* POI GPS Route Layers */}
-                    {poiRouteData && (
-                        <Source id="poi-route-source" type="geojson" data={poiRouteData}>
-                            <Layer
-                                id="poi-route-layer"
-                                type="line"
-                                paint={{
-                                    'line-color': '#3b82f6', // Solid blue
-                                    'line-width': 3,
-                                     'line-opacity': 1,
-                                }}
-                            />
-                        </Source>
-                    )}
-
-
-
-                    {/* POI Route Componentry */}
-                    {/* POI Route Componentry */}
-                    {previewProperty && selectedPoi && routeGeometry && (
-                        <PoiDurationMarker
-                            latitude={routeGeometry.coordinates[Math.floor(routeGeometry.coordinates.length / 2)][1]}
-                            longitude={routeGeometry.coordinates[Math.floor(routeGeometry.coordinates.length / 2)][0]}
-                            carDuration={carDuration || ''}
-                            walkDuration={walkDuration || ''}
-                        />
-                    )}
-
-                    {(selectedPoi || (hoveredPoi && !selectedPoi)) && (
-                        <PoiPopup
-                            poi={hoveredPoi || selectedPoi!}
-                            distance={poiDistance ? `${poiDistance} km` : undefined}
-                            onClose={() => setSelectedPoi(null)}
-                        />
-                    )}
-                </>
-            )}
-
-            <SelectedPropertyPopup
-                selectedProperty={selectedProperty}
-                onClose={() => {
-                    onSelectId(null);
-                    setSelectedPoi(null);
+        <div className="relative h-full w-full">
+            <MapContainer
+                mapRef={mapRef}
+                initialViewState={{
+                    longitude: 120.596,
+                    latitude: 14.599,
+                    zoom: 14
                 }}
-                onViewDetails={onViewDetails}
-                onSelect={(id) => onSelectId(id)}
+                onLoad={handleMapLoad}
+                onClick={handleMapClick}
+                onMouseMove={onMouseMove}
+            >
+                {isMapLoaded && (
+                    <>
+                        <ClusterLayer
+                            geoJsonData={geoJsonData}
+                            shouldCluster={shouldCluster}
+                            selectedId={selectedId}
+                            hoveredId={hoveredId}
+                        />
+
+                        {mappableProperties.filter(p => p.id === selectedId || p.id === hoveredId).map(property => (
+                            <MapMarker
+                                key={property.id}
+                                property={property}
+                                isSelected={property.id === selectedId}
+                                isHovered={property.id === hoveredId}
+                                onClick={onSelectId}
+                                onHover={onHoverId}
+                            />
+                        ))}
+
+                        {poiRouteData && (
+                            <Source id="poi-route-source" type="geojson" data={poiRouteData}>
+                                <Layer
+                                    id="poi-route-layer"
+                                    type="line"
+                                    paint={{
+                                        'line-color': '#3b82f6',
+                                        'line-width': 3,
+                                        'line-opacity': 1,
+                                    }}
+                                />
+                            </Source>
+                        )}
+
+                        {(selectedPoi || (hoveredPoi && !selectedPoi)) && (
+                            <PoiPopup
+                                poi={hoveredPoi || selectedPoi!}
+                                distance={poiDistance ? `${poiDistance} km` : undefined}
+                                carDuration={selectedPoi ? carDuration : null}
+                                walkDuration={selectedPoi ? walkDuration : null}
+                                onClose={() => setSelectedPoi(null)}
+                            />
+                        )}
+                    </>
+                )}
+
+                <SelectedPropertyPopup
+                    selectedProperty={selectedProperty}
+                    onClose={() => {
+                        onSelectId(null);
+                        setSelectedPoi(null);
+                    }}
+                    onViewDetails={onViewDetails}
+                    onSelect={(id) => onSelectId(id)}
+                />
+            </MapContainer>
+
+            <MapSearchOverlay
+                className={searchOverlayClassName ?? 'absolute top-16 left-4 z-20 w-[72%]'}
+                onSelect={(r) => mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 14, pitch: 45, duration: 1200 })}
             />
-        </MapContainer>
+        </div>
     );
 });
 

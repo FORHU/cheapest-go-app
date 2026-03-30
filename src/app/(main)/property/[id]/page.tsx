@@ -13,6 +13,7 @@ import BackButton from '@/components/common/BackButton';
 import { FadeInUp, FadeIn } from '@/components/property/AnimatedContent';
 import { fetchPropertyData } from '@/lib/property';
 import { fetchHotelReviews } from '@/lib/property/fetchReviews';
+import LocationSection from '@/components/property/LocationSectionDynamic';
 
 export default async function PropertyPage({
     params,
@@ -158,6 +159,19 @@ export default async function PropertyPage({
 
                         <FadeInUp delay={0.55}>
                             <hr className="border-slate-200 dark:border-white/10" />
+                        </FadeInUp>
+
+                        <FadeInUp delay={0.57}>
+                            <LocationSection
+                                hotelDetails={{
+                                    name: property.name,
+                                    address: fetchedDetails?.address || property.location,
+                                    city: fetchedDetails?.city || fetchedDetails?.details?.city,
+                                    country: fetchedDetails?.country || fetchedDetails?.details?.country,
+                                    image: property.images?.[0]
+                                }}
+                                coordinates={property.coordinates}
+                            />
                         </FadeInUp>
 
                         <FadeInUp delay={0.6}>

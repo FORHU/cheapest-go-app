@@ -659,7 +659,7 @@ export default function TestMapPage() {
                     className="rounded-none"
                 >
                     <NavigationControl position="top-right" showCompass visualizePitch />
-                    <GeolocateControl position="top-right" />
+                    <GeolocateControl position="top-right" positionOptions={{ enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }} />
 
                     {HOTELS.map((hotel) => (
                         <Marker

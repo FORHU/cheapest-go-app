@@ -52,9 +52,9 @@ const MapMarker = React.memo(function MapMarker({
                         /* Standard Price bubble (Unselected) */
                         <div
                             className={cn(
-                                'relative text-[12px] font-bold px-[7px] py-[1px] rounded-full whitespace-nowrap',
-                                'bg-white text-blue-600 border border-blue-500 shadow-sm transition-all duration-300',
-                                'dark:bg-slate-900 dark:text-blue-400 dark:border-blue-500 hover:scale-105'
+                                'relative text-[11.5px] font-bold px-2.5 py-[3px] rounded-full whitespace-nowrap',
+                                'bg-slate-900 text-white border border-white/30 shadow-[0_2px_8px_rgba(0,0,0,0.35)]',
+                                'transition-all duration-200 hover:scale-110 hover:bg-slate-700 hover:shadow-[0_4px_12px_rgba(0,0,0,0.4)]'
                             )}
                         >
                             {formatCurrency(property.price)}
@@ -62,31 +62,31 @@ const MapMarker = React.memo(function MapMarker({
                     )}
 
                     {isActive && (
-                        /* Selected/Hovered State: Teardrop Pin + Name Label */
+                        /* Selected/Hovered State: Elevated pill with price + name */
                         <div className="flex flex-col items-center animate-in zoom-in duration-200">
-                            {/* Premium Teardrop Pin */}
+                            {/* Elevated price pill */}
                             <div className={cn(
-                                "p-1.5 rounded-xl shadow-xl border-2 transform transition-all duration-300 z-20",
-                                isSelected ? "bg-slate-600 border-white scale-110" : "bg-slate-700 border-white scale-105"
+                                'text-[11.5px] font-bold px-2.5 py-[3px] rounded-full whitespace-nowrap z-20',
+                                'shadow-[0_4px_16px_rgba(0,0,0,0.5)] border border-white/40 transition-all duration-200',
+                                isSelected
+                                    ? 'bg-blue-600 text-white scale-110'
+                                    : 'bg-slate-700 text-white scale-105'
                             )}>
-                                <div className="bg-white/20 p-1 rounded-lg">
-                                    <div className="w-3 h-3 bg-white rounded-sm flex items-center justify-center">
-                                        <div className={cn(
-                                            "w-1.5 h-1.5 rounded-full",
-                                            isSelected ? "bg-slate-600" : "bg-slate-700"
-                                        )} />
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {/* Shadow under the pin */}
-                            <div className="relative h-1 w-4 flex justify-center mb-1">
-                                 <div className="w-4 h-1.5 bg-black/30 rounded-full mt-1 blur-[1px]" />
+                                {formatCurrency(property.price)}
                             </div>
 
-                            {/* Hotel Name Label (Below Pin) */}
-                            <div className="mt-1.5 bg-white rounded-md shadow-md border border-slate-200 px-2 py-1 z-30 whitespace-nowrap">
-                                <span className="text-[11.5px] font-bold text-slate-800 tracking-tight">
+                            {/* Pointer triangle */}
+                            <div className={cn(
+                                'w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px]',
+                                isSelected ? 'border-t-blue-600' : 'border-t-slate-700'
+                            )} />
+
+                            {/* Shadow ellipse */}
+                            <div className="w-3 h-1 bg-black/25 rounded-full blur-[2px] mb-1" />
+
+                            {/* Hotel name label */}
+                            <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 px-2 py-1 z-30 whitespace-nowrap max-w-[160px]">
+                                <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 tracking-tight line-clamp-1">
                                     {property.name}
                                 </span>
                             </div>

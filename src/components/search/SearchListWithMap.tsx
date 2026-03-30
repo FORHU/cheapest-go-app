@@ -11,6 +11,7 @@ import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
 import { type Property } from '@/types';
 import { MapModal } from '@/components/map/MapModal';
+import { MapSearchOverlay } from '@/components/mapbox/components/MapSearchOverlay';
 import { MapPin } from 'lucide-react';
 
 interface SearchListWithMapProps {
@@ -108,7 +109,7 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
         if (mappableProperties.length === 1) {
             map.flyTo({
                 center: [bounds.centerLng, bounds.centerLat],
-                zoom: 15,
+                zoom: 15.5,
                 pitch: 45,
                 bearing: -10,
                 duration: 0,
@@ -116,6 +117,22 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
             return;
         }
 
+        // Calculate geographic spread
+        const maxDiff = Math.max(bounds.maxLng - bounds.minLng, bounds.maxLat - bounds.minLat);
+        
+        // If properties are within a local city scale (roughly 15km), start deeply zoomed in
+        if (maxDiff < 0.15) {
+            map.flyTo({
+                center: [bounds.centerLng, bounds.centerLat],
+                zoom: 15.5,
+                pitch: 45,
+                bearing: -10,
+                duration: 0,
+            });
+            return;
+        }
+
+        // For wide country/province level searches, fallback to fitting everything
         map.fitBounds(
             [
                 [bounds.minLng, bounds.minLat],
@@ -147,51 +164,58 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
             {/* Hidden on mobile (< md), Visible on tablet (md+) */}
             <div className="hidden md:block md:w-[45%] lg:w-[45%] xl:w-[40%] flex-shrink-0">
                 <div className="sticky top-[80px] h-[calc(100vh-120px)] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 ml-4 lg:ml-6">
-                    <Map
-                        ref={mapRef}
-                        mapStyle="standard"
-                        standardConfig={{
-                            lightPreset: 'day',
-                            show3dObjects: true,
-                            show3dBuildings: true,
-                        }}
-                        initialViewState={{
-                            longitude: bounds.centerLng || 120.596,
-                            latitude: bounds.centerLat || 14.599,
-                            zoom: 14,
-                            pitch: 45,
-                            bearing: -10,
-                        }}
-                        maxPitch={60}
-                        onClick={handleMapClick}
-                        onLoad={handleMapLoad}
-                        className="!rounded-none !min-h-0 h-full"
-                    >
-                        <NavigationControl position="top-right" showCompass visualizePitch />
+                    {/* relative wrapper is required so absolute overlays stack above the map canvas */}
+                    <div className="relative h-full w-full">
+                        <Map
+                            ref={mapRef}
+                            mapStyle="standard"
+                            standardConfig={{
+                                lightPreset: 'day',
+                                show3dObjects: true,
+                                show3dBuildings: true,
+                            }}
+                            initialViewState={{
+                                longitude: bounds.centerLng || 120.596,
+                                latitude: bounds.centerLat || 14.599,
+                                zoom: 14,
+                                pitch: 45,
+                                bearing: -10,
+                            }}
+                            maxPitch={60}
+                            onClick={handleMapClick}
+                            onLoad={handleMapLoad}
+                            className="rounded-none! min-h-0! h-full"
+                        >
+                            <NavigationControl position="top-right" showCompass visualizePitch />
 
-                        {mappableProperties.map((property) => (
-                            <MapMarker
-                                key={property.id}
-                                property={property}
-                                isSelected={selectedId === property.id}
-                                isHovered={hoveredId === property.id}
-                                onClick={handleMarkerClick}
-                                onHover={handleHover}
-                            />
-                        ))}
+                            {mappableProperties.map((property) => (
+                                <MapMarker
+                                    key={property.id}
+                                    property={property}
+                                    isSelected={selectedId === property.id}
+                                    isHovered={hoveredId === property.id}
+                                    onClick={handleMarkerClick}
+                                    onHover={handleHover}
+                                />
+                            ))}
 
-                        {selectedProperty && (
-                            <MapPopup
-                                property={selectedProperty}
-                                onClose={handlePopupClose}
-                                onViewDetails={handleViewDetails}
-                            />
-                        )}
-                    </Map>
+                            {selectedProperty && (
+                                <MapPopup
+                                    property={selectedProperty}
+                                    onClose={handlePopupClose}
+                                    onViewDetails={handleViewDetails}
+                                />
+                            )}
+                        </Map>
 
-                    {/* Property count badge */}
-                    <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                        {mappableProperties.length} properties on map
+                        <MapSearchOverlay
+                            onSelect={(r) => mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 14, pitch: 45, duration: 1200 })}
+                        />
+
+                        {/* Property count badge */}
+                        <div className="absolute bottom-4 left-4 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                            {mappableProperties.length} properties on map
+                        </div>
                     </div>
                 </div>
             </div>
