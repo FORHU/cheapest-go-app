@@ -98,7 +98,7 @@ export const ResponsiveSearchHeader = () => {
             </div>
 
             {/* Mobile Search Dropdown Popover */}
-            <MobileSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
+            <MobileSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} onSearch={() => setIsSearchModalOpen(false)} />
         </>
     );
 };

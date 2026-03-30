@@ -184,15 +184,15 @@ Deno.serve(async (req: Request) => {
 
     if (body.hotelIds) {
       locationParams = { hotelIds: body.hotelIds };
-    } else if (normalizedCityName && countryCode) {
-      // Prioritize cityName and countryCode over placeId for better results in smaller regions (like Baguio)
-      locationParams = { cityName: normalizedCityName, countryCode: countryCode };
-      // Include placeId if it exists to help LiteAPI disambiguate
-      if (placeId) {
-        (locationParams as any).placeId = placeId;
-      }
+    } else if (placeId && normalizedCityName && countryCode) {
+      // placeId covers cities, regions, AND countries — always use it when available.
+      // Also send cityName+countryCode so LiteAPI can use whichever gives better results.
+      // This fixes country-level searches (Thailand, Japan) where cityName alone returns nothing.
+      locationParams = { placeId, cityName: normalizedCityName, countryCode };
     } else if (placeId) {
-      locationParams = { placeId: placeId };
+      locationParams = { placeId };
+    } else if (normalizedCityName && countryCode) {
+      locationParams = { cityName: normalizedCityName, countryCode };
     } else if (normalizedCityName) {
       // cityName without countryCode — still try (LiteAPI may resolve it)
       locationParams = { cityName: normalizedCityName };
