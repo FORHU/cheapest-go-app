@@ -3,6 +3,7 @@
  * These are pure functions that can be used in server components.
  */
 
+import { unstable_cache } from 'next/cache';
 import { type Property } from '@/types';
 import { searchLiteApi } from '@/utils/supabase/functions';
 
@@ -287,34 +288,52 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
     } as Property;
 }
 
-/**
- * Main search function - fetches properties from LiteAPI.
- */
-export async function fetchSearchProperties(params: SearchParams): Promise<Property[]> {
-    const queryParams = buildSearchQueryParams(params);
-
-    try {
+// Cache is defined at module level so a single stable instance is reused across requests.
+// Next.js keys it as: ['search-properties'] + JSON.stringify(queryParams).
+// Using the normalized queryParams (not raw URL strings) ensures that alternate param
+// spellings (checkIn vs checkin) don't produce separate cache entries.
+const getCachedSearchProperties = unstable_cache(
+    async (queryParams: SearchQueryParams): Promise<Property[]> => {
         const data = await searchLiteApi(queryParams);
 
         if (data?.data && Array.isArray(data.data)) {
-            const properties = data.data.map((hotel: any) =>
-                transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency)
-            );
+            const results = data.data
+                .map((hotel: any) =>
+                    transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency)
+                )
+                .filter(
+                    (prop: Property) =>
+                        prop.name &&
+                        !prop.name.match(/^Hotel\s+lp[a-z0-9]+$/i) &&
+                        !prop.name.match(/^lp[a-z0-9]+$/i)
+                );
 
-            // Filter out hotels with incomplete data (ID-like names indicate missing details)
-            const filteredProperties = properties.filter((prop: Property) => {
-                // Exclude hotels where name looks like an ID (e.g., "Hotel lp38f17b", "Hotel lpe13f0")
-                const hasValidName = prop.name &&
-                    !prop.name.match(/^Hotel\s+lp[a-z0-9]+$/i) &&
-                    !prop.name.match(/^lp[a-z0-9]+$/i);
-                return hasValidName;
-            });
+            // Throw on empty so unstable_cache does not store the empty result —
+            // next request retries live instead of serving a stale cache miss.
+            if (results.length === 0) throw new Error('NO_RESULTS');
 
-            return filteredProperties;
+            return results;
         }
-    } catch (e) {
-        console.error("Failed to fetch properties:", e);
-    }
 
-    return [];
+        throw new Error('NO_RESULTS');
+    },
+    ['search-properties'],
+    { revalidate: 300 } // 5-minute TTL per unique search combination
+);
+
+/**
+ * Main search function - fetches properties from LiteAPI.
+ * Results are cached for 5 minutes per unique combination of search params.
+ * Empty results and errors are never cached so the next search retries live.
+ */
+export async function fetchSearchProperties(params: SearchParams): Promise<Property[]> {
+    const queryParams = buildSearchQueryParams(params);
+    try {
+        return await getCachedSearchProperties(queryParams);
+    } catch (e) {
+        if (e instanceof Error && e.message !== 'NO_RESULTS') {
+            console.error("Failed to fetch properties:", e);
+        }
+        return [];
+    }
 }
