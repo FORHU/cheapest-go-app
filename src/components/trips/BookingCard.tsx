@@ -120,11 +120,29 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                             {booking.guests_children > 0 && `, ${booking.guests_children} ${booking.guests_children === 1 ? 'child' : 'children'}`}
                         </div>
 
-                        {/* Price */}
-                        <div className="mt-auto">
+                        {/* Price + actions */}
+                        <div className="mt-auto flex items-center justify-between gap-2">
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(displayPrice, displayCurrency)}
                             </span>
+                            {isUpcoming && normalizedStatus === 'confirmed' && (
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowModifyModal(true); }}
+                                        className="inline-flex items-center gap-1 text-[clamp(0.625rem,1.5vw,0.75rem)] text-blue-600 dark:text-blue-400 hover:underline transition-colors"
+                                    >
+                                        <Pencil className="w-3 h-3" />
+                                        Modify
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
+                                        className="inline-flex items-center gap-1 text-[clamp(0.625rem,1.5vw,0.75rem)] text-red-500 dark:text-red-400 hover:underline transition-colors"
+                                    >
+                                        <XCircle className="w-3 h-3" />
+                                        Cancel
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
