@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -269,15 +269,8 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                                 <X size={20} className="text-slate-700 dark:text-slate-300" />
                             </button>
                             <h2 className="font-semibold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">Filters</h2>
-                            <div className="w-auto relative z-20">
-                                {hasActiveFilters && (
-                                    <button
-                                        onClick={handleResetFilters}
-                                        className="text-sm font-semibold text-slate-900 dark:text-white underline underline-offset-2"
-                                    >
-                                        Clear all
-                                    </button>
-                                )}
+                            <div className="w-8 relative z-20">
+                                {/* Intentionally left blank to balance the flex layout */}
                             </div>
                         </div>
 

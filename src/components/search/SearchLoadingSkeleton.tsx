@@ -8,7 +8,7 @@ export const SearchLoadingSkeleton = () => {
                 <div className="mb-4 h-6 w-32 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
 
                 {/* Search Bar Skeleton */}
-                <div className="mb-8 relative z-50">
+                <div className="mb-8">
                     <div className="h-20 w-full bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
                 </div>
             </div>
