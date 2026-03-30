@@ -53,8 +53,8 @@ const MapMarker = React.memo(function MapMarker({
                         <div
                             className={cn(
                                 'relative text-[11.5px] font-bold px-2.5 py-[3px] rounded-full whitespace-nowrap',
-                                'bg-slate-900 text-white border border-white/30 shadow-[0_2px_8px_rgba(0,0,0,0.35)]',
-                                'transition-all duration-200 hover:scale-110 hover:bg-slate-700 hover:shadow-[0_4px_12px_rgba(0,0,0,0.4)]'
+                                'bg-white text-slate-900 shadow-[0_1px_4px_rgba(0,0,0,0.18)] ring-1 ring-black/10',
+                                'transition-all duration-200 hover:scale-110 hover:shadow-[0_3px_8px_rgba(0,0,0,0.22)]'
                             )}
                         >
                             {formatCurrency(property.price)}
