@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect } from 'react';
 
-// Use layout effect for immediate locking to prevent initial flash/scroll
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export function useBodyScrollLock(isLocked: boolean): void {
@@ -8,23 +7,29 @@ export function useBodyScrollLock(isLocked: boolean): void {
         if (!isLocked) return;
 
         const scrollY = window.scrollY;
-        const originalOverflow = document.body.style.overflow;
-        const originalPosition = document.body.style.position;
-        const originalTop = document.body.style.top;
-        const originalWidth = document.body.style.width;
 
-        // iOS Safari requires position:fixed to truly prevent background scroll
+        // Prevent wheel / keyboard scroll
+        const preventScroll = (e: Event) => e.preventDefault();
+
+        // Prevent touchmove scroll (iOS Safari)
+        const preventTouch = (e: TouchEvent) => {
+            // Allow touch inside the drawer itself (elements with data-scrollable)
+            const target = e.target as HTMLElement;
+            if (target.closest('[data-scrollable]')) return;
+            e.preventDefault();
+        };
+
         document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.top = `-${scrollY}px`;
-        document.body.style.width = '100%';
+        document.body.style.overscrollBehavior = 'none';
+
+        window.addEventListener('wheel', preventScroll, { passive: false });
+        window.addEventListener('touchmove', preventTouch, { passive: false });
 
         return () => {
-            document.body.style.overflow = originalOverflow;
-            document.body.style.position = originalPosition;
-            document.body.style.top = originalTop;
-            document.body.style.width = originalWidth;
-            // Restore scroll position without visual jump
+            document.body.style.overflow = '';
+            document.body.style.overscrollBehavior = '';
+            window.removeEventListener('wheel', preventScroll);
+            window.removeEventListener('touchmove', preventTouch);
             window.scrollTo(0, scrollY);
         };
     }, [isLocked]);
