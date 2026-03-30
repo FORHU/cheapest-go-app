@@ -193,11 +193,11 @@ const Header = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="absolute right-0 top-0 h-full w-[280px] bg-white dark:bg-slate-900 shadow-2xl flex flex-col"
+              className="absolute right-0 top-0 h-full w-[min(320px,85vw)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl flex flex-col"
             >
               {/* Drawer Header */}
-              <div className="flex items-center justify-between p-3.5 border-b border-slate-200 dark:border-white/10">
-                <span className="font-display font-bold text-sm text-slate-900 dark:text-white">Menu</span>
+              <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
+                <span className="font-display font-bold text-lg text-slate-900 dark:text-white">Menu</span>
                 <button
                   onClick={closeMenu}
                   className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
@@ -213,20 +213,20 @@ const Header = () => {
                   href="#"
                   className="flex items-center gap-3 px-4 min-h-[40px] text-[13px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
                 >
-                  <Download size={16} />
+                  <Download size={18} />
                   Open app
                 </a>
 
                 {/* Currency — dropdown in hamburger menu */}
-                <div className="px-4 py-2">
+                <div className="px-4 py-3">
                   <button
                     type="button"
                     onClick={() => setIsMobileCurrencyOpen((o) => !o)}
-                    className="flex items-center justify-between w-full min-h-[44px] px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-800/50 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                    className="flex items-center justify-between w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-left text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all shadow-sm"
                   >
-                    <span className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">{userCountry}</span>
-                      <span className="font-bold">{userCurrency}</span>
+                    <span className="flex items-center gap-3">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5 rounded">{userCountry}</span>
+                      <span className="text-sm font-bold">{userCurrency}</span>
                     </span>
                     <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isMobileCurrencyOpen ? 'rotate-180' : ''}`} />
                   </button>
@@ -239,13 +239,13 @@ const Header = () => {
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <div className="mt-2 flex flex-col rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
+                                <div className="mt-2 flex flex-col rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/50 dark:bg-slate-800/50 shadow-sm backdrop-blur-sm">
                           {CURRENCIES.map((c) => (
                             <button
                               key={c.code}
                               type="button"
                               onClick={() => { handleCurrencySelect(c.code, c.country); }}
-                              className={`flex items-center gap-3 px-4 min-h-[44px] w-full text-left text-[13px] font-medium transition-colors ${userCurrency === c.code
+                              className={`flex items-center gap-3 px-4 min-h-[48px] w-full text-left text-sm font-medium transition-colors ${userCurrency === c.code
                                 ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
                                 : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
                                 }`}
@@ -260,18 +260,18 @@ const Header = () => {
                   </AnimatePresence>
                 </div>
 
-                <div className="my-1 mx-4 border-t border-slate-200 dark:border-white/10" />
+                <div className="my-2 mx-4 border-t border-slate-200 dark:border-white/10" />
 
                 <a
                   href="#"
-                  className="flex items-center gap-3 px-4 min-h-[44px] text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   List your property
                 </a>
 
                 <a
                   href="#"
-                  className="flex items-center gap-3 px-4 min-h-[44px] text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   Support
                 </a>
@@ -279,20 +279,21 @@ const Header = () => {
                 <Link
                   href="/trips"
                   onClick={closeMenu}
-                  className="flex items-center gap-3 px-4 min-h-[44px] text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   Trips
                 </Link>
 
-                <div className="my-1 mx-4 border-t border-slate-200 dark:border-white/10" />
+                <div className="my-2 mx-4 border-t border-slate-200 dark:border-white/10" />
 
                 <button
                   onClick={() => { toggleTheme(); }}
-                  className="flex items-center gap-3 px-4 min-h-[44px] w-full text-left text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-3 px-4 min-h-[48px] w-full text-left text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
-                  {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                  {theme === 'dark' ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5 text-blue-500" />}
                   {theme === 'dark' ? 'Light mode' : 'Dark mode'}
                 </button>
+
               </div>
 
               {/* Drawer Footer — Sign In / Account dropdown */}

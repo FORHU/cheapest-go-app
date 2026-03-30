@@ -107,17 +107,17 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                     <Link
                         href="/trips"
                         onClick={handleNav}
-                        className="flex items-center gap-3 px-3 py-1.5 text-[clamp(0.75rem,2vw,0.8125rem)] text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+                        className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
                     >
-                        <Briefcase className="h-4 w-4 text-slate-400" />
+                        <Briefcase className="h-5 w-5 text-slate-400" />
                         My Trips
                     </Link>
                     <Link
                         href="/account"
                         onClick={handleNav}
-                        className="flex items-center gap-3 px-3 py-1.5 text-[clamp(0.75rem,2vw,0.8125rem)] text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+                        className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
                     >
-                        <Settings className="h-4 w-4 text-slate-400" />
+                        <Settings className="h-5 w-5 text-slate-400" />
                         Account Settings
                     </Link>
                 </div>
@@ -137,29 +137,28 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                             window.location.href = '/';
                         }
                     }}
-                    className="w-full flex items-center gap-3 px-3 py-1.5 text-[clamp(0.75rem,2vw,0.8125rem)] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
                 >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-5 w-5" />
                     Sign out
                 </button>
             </>
         ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
                 <Link
                     href={getRedirectLink('/login')}
                     onClick={handleNav}
-                    className="block w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white text-[13px] font-medium rounded-full transition-colors text-center"
+                    className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-full transition-colors text-center shadow-lg shadow-blue-500/20"
                 >
                     Sign in
                 </Link>
                 <Link
                     href={getRedirectLink('/login', 'signup')}
                     onClick={handleNav}
-                    className="block w-full py-2 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-[13px] font-medium rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
+                    className="block w-full py-3 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm font-semibold rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
                 >
                     Create an account
                 </Link>
-
             </div>
         );
 
@@ -169,7 +168,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                     <button
                         type="button"
                         onClick={() => setInlineOpen(!isInlineOpen)}
-                        className="flex items-center justify-between w-full min-h-[40px] px-3.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800/50 text-left text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                        className="flex items-center justify-between w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-left text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 transition-all shadow-sm"
                     >
                         <span>{user ? 'Account' : 'Sign in'}</span>
                         <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform ${isInlineOpen ? 'rotate-180' : ''}`} />
