@@ -374,8 +374,8 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                             )}
                         </Map>
 
-                        {/* Directions panel Overlay — top center */}
-                        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] md:w-[calc(100%-4rem)] max-w-sm">
+                        {/* Directions panel Overlay — margin-right to avoid Mapbox controls */}
+                        <div className="absolute top-3 left-3 right-14 z-20 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[380px] max-w-sm">
                             {!showDirections ? (
                                 <button
                                     onClick={() => {
@@ -474,11 +474,11 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
 
                         {/* POI info card */}
                         {displayInfo && !showDirections && (
-                            <div className="absolute top-2 left-2 sm:top-14 sm:left-4 z-10 w-[170px] sm:w-[260px] bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-left-4 duration-300">
-                                <div className="p-1.5 sm:p-4 relative">
+                            <div className="absolute top-16 left-3 sm:top-16 sm:left-4 z-10 w-[200px] sm:w-[260px] bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-left-4 duration-300">
+                                <div className="p-2 sm:p-4 relative">
                                     <button
                                         onClick={() => { setActivePoiId(null); setSelectedNativePoi(null); }}
-                                        className="absolute top-0.5 right-0.5 sm:top-3 sm:right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                                        className="absolute top-1 right-1 sm:top-3 sm:right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                                     >
                                         <X size={16} className="w-3 h-3 sm:w-4 sm:h-4" />
                                     </button>

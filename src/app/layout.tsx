@@ -25,8 +25,13 @@ export const metadata: Metadata = {
   title: 'CheapestGo | Discover and Book Your Next Global Journey',
   description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
   icons: {
-    icon: '/cheapestgo.png',
-    apple: '/cheapestgo.png',
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
   },
   appleWebApp: {
     capable: true,
