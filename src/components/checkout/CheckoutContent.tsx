@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     useProperty,
     useSelectedRoom,
@@ -53,6 +53,13 @@ const StripeEmbeddedCheckout = dynamic(
         ),
     }
 );
+
+const BOOKING_STEPS = [
+    'Verifying payment...',
+    'Securing your reservation...',
+    'Confirming with the hotel...',
+    'Finalizing booking details...',
+] as const;
 
 export function CheckoutContent() {
     // Booking store selectors
@@ -111,6 +118,27 @@ export function CheckoutContent() {
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
     const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+
+    // Booking confirmation progress overlay
+    const [bookingStepIdx, setBookingStepIdx] = useState(0);
+    const bookingStepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+    useEffect(() => {
+        if (loading && step === 'payment') {
+            setBookingStepIdx(0);
+            bookingStepTimer.current = setInterval(() => {
+                setBookingStepIdx((i) => Math.min(i + 1, BOOKING_STEPS.length - 1));
+            }, 4000);
+        } else {
+            if (bookingStepTimer.current) {
+                clearInterval(bookingStepTimer.current);
+                bookingStepTimer.current = null;
+            }
+        }
+        return () => {
+            if (bookingStepTimer.current) clearInterval(bookingStepTimer.current);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loading, step]);
 
     // Global currency sync
     const globalCurrency = useUserCurrency();
@@ -547,6 +575,32 @@ export function CheckoutContent() {
                         </div>
                     </div>
                 </div>
+
+                {/* Booking confirmation overlay — covers form after Stripe payment succeeds */}
+                {loading && step === 'payment' && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-lg">
+                        <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
+                            <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Confirming your booking</h2>
+                                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium animate-pulse min-h-[20px]">
+                                    {BOOKING_STEPS[bookingStepIdx]}
+                                </p>
+                            </div>
+                            <div className="w-full space-y-2">
+                                {BOOKING_STEPS.map((label, i) => (
+                                    <div key={label} className={`flex items-center gap-2 text-xs ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
+                                        <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${i < bookingStepIdx ? 'bg-green-500 text-white' : i === bookingStepIdx ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                            {i < bookingStepIdx ? '✓' : i + 1}
+                                        </span>
+                                        {label}
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">Please don&apos;t close this page</p>
+                        </div>
+                    </div>
+                )}
             </main>
             <AuthModal />
         </>

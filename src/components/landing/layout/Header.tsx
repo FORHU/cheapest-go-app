@@ -11,13 +11,6 @@ import { useUserCurrency, useUserCountry, useSearchActions } from '@/stores/sear
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { usePWAInstall } from '@/contexts/PWAInstallContext';
 
-/** Country code → currency label mapping */
-const COUNTRY_CURRENCY: Record<string, { currency: string; countryName: string; flag: string }> = {
-  PH: { currency: 'PHP', countryName: 'Philippines', flag: '🇵🇭' },
-  US: { currency: 'USD', countryName: 'United States', flag: '🇺🇸' },
-  KR: { currency: 'KRW', countryName: 'South Korea', flag: '🇰🇷' },
-};
-
 const CURRENCIES = [
   { code: 'KRW', country: 'KR' },
   { code: 'USD', country: 'US' },
@@ -37,8 +30,6 @@ const Header = () => {
   const userCurrency = useUserCurrency();
   const userCountry = useUserCountry();
   const { setUserCurrency, setUserCountry } = useSearchActions();
-
-  const selectedCountry = COUNTRY_CURRENCY[userCountry] || COUNTRY_CURRENCY['PH'];
 
   useBodyScrollLock(isMenuOpen);
 
@@ -301,7 +292,7 @@ const Header = () => {
 
               {/* Drawer Footer — Sign In / Account dropdown */}
               <div className="p-4 border-t border-slate-200 dark:border-white/10">
-                <SignInDropdown variant="inline" collapsible onNavigate={closeMenu} />
+                <SignInDropdown variant="inline" onNavigate={closeMenu} />
               </div>
             </motion.nav>
           </motion.div>
