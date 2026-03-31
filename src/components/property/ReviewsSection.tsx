@@ -304,7 +304,7 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
                         {hasMore && (
                             <button
                                 onClick={handleLoadMore}
-                                className="w-full sm:w-auto px-5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl text-[16px] sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95"
+                                className="w-auto px-4 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95"
                             >
                                 Load more reviews
                             </button>

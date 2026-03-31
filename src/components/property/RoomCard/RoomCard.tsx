@@ -180,26 +180,24 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                             : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
                                             }`}
                                     >
-                                        <div className="flex items-center gap-1 LG:gap-2">
+                                        <div className="flex items-center gap-1 min-w-0 flex-1">
                                             <input
                                                 type="radio"
                                                 name={`rate-${title}`}
                                                 checked={selectedRateIdx === idx}
                                                 onChange={() => setSelectedRateIdx(idx)}
-                                                className="w-2.5 h-2.5 LG:w-3.5 LG:h-3.5 text-blue-600 cursor-pointer"
+                                                className="w-2.5 h-2.5 text-blue-600 cursor-pointer shrink-0"
                                             />
-                                            <div className="min-w-0">
-                                                <div className="text-[10px] lg:text-sm font-medium text-slate-800 dark:text-slate-200 truncate pr-1">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="text-[10px] lg:text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
                                                     {rate.boardName || 'Room only'}
                                                 </div>
-                                                <div className={`text-[8px] lg:text-[11px] font-medium leading-tight ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                    {rate.refundable
-                                                        ? 'Free cancellation'
-                                                        : 'Non-refundable'}
+                                                <div className={`text-[8px] lg:text-[11px] font-medium leading-tight truncate ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                                    {rate.refundable ? 'Free cancellation' : 'Non-refundable'}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white ml-1.5 text-right shrink-0">
+                                        <div className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white ml-2 text-right shrink-0 whitespace-nowrap">
                                             {currencySymbol}{convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                             <div className="text-[8px] text-slate-500 font-normal">/night</div>
                                         </div>

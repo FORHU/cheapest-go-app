@@ -192,39 +192,39 @@ const Header = () => {
               className="absolute right-0 top-0 h-screen w-[min(320px,85vw)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl flex flex-col"
             >
               {/* Drawer Header */}
-              <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
-                <span className="font-display font-bold text-lg text-slate-900 dark:text-white">Menu</span>
+              <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-200 dark:border-white/10">
+                <span className="font-display font-bold text-sm text-slate-900 dark:text-white">Menu</span>
                 <button
                   onClick={closeMenu}
-                  className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                  className="flex items-center justify-center min-h-[36px] min-w-[36px] p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                   aria-label="Close menu"
                 >
-                  <X className="w-5 h-5 text-slate-700 dark:text-white" />
+                  <X className="w-4 h-4 text-slate-700 dark:text-white" />
                 </button>
               </div>
 
               {/* Drawer Links */}
-              <div className="flex-1 overflow-y-auto py-2">
+              <div className="flex-1 overflow-y-auto py-1">
                 <button
                   onClick={triggerInstall}
-                  className="flex items-center gap-3 px-4 min-h-[40px] w-full text-[13px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                  className="flex items-center gap-2 px-3 min-h-[36px] w-full text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
                 >
-                  <Download size={18} />
+                  <Download size={14} />
                   Open app
                 </button>
 
                 {/* Currency — dropdown in hamburger menu */}
-                <div className="px-4 py-3">
+                <div className="px-3 py-2">
                   <button
                     type="button"
                     onClick={() => setIsMobileCurrencyOpen((o) => !o)}
-                    className="flex items-center justify-between w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-left text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all shadow-sm"
+                    className="flex items-center justify-between w-full min-h-[38px] px-3 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10 transition-all shadow-sm"
                   >
-                    <span className="flex items-center gap-3">
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5 rounded">{userCountry}</span>
-                      <span className="text-sm font-bold">{userCurrency}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider bg-slate-200/50 dark:bg-white/10 px-1.5 py-0.5 rounded">{userCountry}</span>
+                      <span className="text-xs font-bold">{userCurrency}</span>
                     </span>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isMobileCurrencyOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isMobileCurrencyOpen ? 'rotate-180' : ''}`} />
                   </button>
                   <AnimatePresence>
                     {isMobileCurrencyOpen && (
@@ -235,18 +235,18 @@ const Header = () => {
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                                <div className="mt-2 flex flex-col rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/50 dark:bg-slate-800/50 shadow-sm backdrop-blur-sm">
+                        <div className="mt-1.5 flex flex-col rounded-lg border border-slate-200 dark:border-white/10 overflow-hidden bg-white/50 dark:bg-slate-800/50 shadow-sm backdrop-blur-sm">
                           {CURRENCIES.map((c) => (
                             <button
                               key={c.code}
                               type="button"
                               onClick={() => { handleCurrencySelect(c.code, c.country); }}
-                              className={`flex items-center gap-3 px-4 min-h-[48px] w-full text-left text-sm font-medium transition-colors ${userCurrency === c.code
+                              className={`flex items-center gap-2 px-3 min-h-[38px] w-full text-left text-xs font-medium transition-colors ${userCurrency === c.code
                                 ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
                                 : 'text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5'
                                 }`}
                             >
-                              <span className="text-[10px] text-slate-400 font-bold w-6">{c.country}</span>
+                              <span className="text-[9px] text-slate-400 font-bold w-5">{c.country}</span>
                               <span className="font-bold">{c.code}</span>
                             </button>
                           ))}
@@ -256,18 +256,18 @@ const Header = () => {
                   </AnimatePresence>
                 </div>
 
-                <div className="my-2 mx-4 border-t border-slate-200 dark:border-white/10" />
+                <div className="my-1.5 mx-3 border-t border-slate-200 dark:border-white/10" />
 
                 <a
                   href="#"
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-2 px-3 min-h-[38px] text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   List your property
                 </a>
 
                 <a
                   href="#"
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-2 px-3 min-h-[38px] text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   Support
                 </a>
@@ -275,39 +275,39 @@ const Header = () => {
                 <Link
                   href="/trips"
                   onClick={closeMenu}
-                  className="flex items-center gap-3 px-4 min-h-[48px] text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-2 px-3 min-h-[38px] text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   Trips
                 </Link>
 
-                <div className="my-2 mx-4 border-t border-slate-200 dark:border-white/10" />
+                <div className="my-1.5 mx-3 border-t border-slate-200 dark:border-white/10" />
 
                 <button
                   onClick={() => { toggleTheme(); }}
-                  className="flex items-center gap-3 px-4 min-h-[48px] w-full text-left text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-2 px-3 min-h-[38px] w-full text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
-                  {theme === 'dark' ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5 text-blue-500" />}
+                  {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-500" /> : <Moon className="w-4 h-4 text-blue-500" />}
                   {theme === 'dark' ? 'Light mode' : 'Dark mode'}
                 </button>
 
-                <div className="my-2 mx-4 border-t border-slate-200 dark:border-white/10" />
+                <div className="my-1.5 mx-3 border-t border-slate-200 dark:border-white/10" />
 
-                {/* Sign In / Account — inside scrollable area so it's always reachable */}
-                <div className="px-4 pb-4 space-y-2">
+                {/* Sign In / Account */}
+                <div className="px-3 pb-3 space-y-1.5">
                   {user ? (
                     <>
-                      <div className="flex items-center gap-3 py-2">
-                        <div className="size-9 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                      <div className="flex items-center gap-2.5 py-1.5">
+                        <div className="size-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
                           {(user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{user.firstName} {user.lastName}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{user.firstName} {user.lastName}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
                         </div>
                       </div>
                       <button
                         onClick={async () => { await logout(); window.location.href = '/'; }}
-                        className="w-full py-2.5 px-4 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 text-sm font-semibold rounded-full hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-center"
+                        className="w-full py-2 px-3 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 text-xs font-semibold rounded-full hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-center"
                       >
                         Sign out
                       </button>
@@ -317,14 +317,14 @@ const Header = () => {
                       <Link
                         href="/login"
                         onClick={closeMenu}
-                        className="block w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-full transition-colors text-center"
+                        className="block w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-full transition-colors text-center"
                       >
                         Sign in
                       </Link>
                       <Link
                         href="/login?mode=signup"
                         onClick={closeMenu}
-                        className="block w-full py-2.5 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm font-semibold rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
+                        className="block w-full py-2 px-3 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-xs font-semibold rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
                       >
                         Create an account
                       </Link>

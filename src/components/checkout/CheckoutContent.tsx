@@ -12,7 +12,6 @@ import {
 import { useAuthStore, useUser } from '@/stores/authStore';
 import {
     useVoucherState,
-    useCheckoutStore,
     useCheckoutActions,
 } from '@/stores/checkoutStore';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -116,7 +115,6 @@ export function CheckoutContent() {
     // Stripe payment step state
     const [step, setStep] = useState<'form' | 'payment'>('form');
     const [clientSecret, setClientSecret] = useState<string | null>(null);
-    const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
     const [isCreatingPayment, setIsCreatingPayment] = useState(false);
 
     // Booking confirmation progress overlay
@@ -253,7 +251,6 @@ export function CheckoutContent() {
             }
 
             setClientSecret(result.data.clientSecret);
-            setPaymentIntentId(result.data.paymentIntentId);
             setStep('payment');
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Payment setup failed';
@@ -373,7 +370,6 @@ export function CheckoutContent() {
             // Return to form so user can retry
             setStep('form');
             setClientSecret(null);
-            setPaymentIntentId(null);
         }
     }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
 
@@ -443,16 +439,25 @@ export function CheckoutContent() {
                         </div>
                     )}
 
-                    {/* Prebook Error — suppress auth errors when not signed in (handled by banner above) */}
-                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && (
-                        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg text-red-600 dark:text-red-400">
-                            <strong>Error:</strong> {prebookError}
-                            <button
-                                onClick={retryPrebook}
-                                className="ml-4 px-3 py-1 bg-red-500 text-white rounded text-sm"
-                            >
-                                Retry
-                            </button>
+                    {/* Prebook Error — unavailability is handled inline near the button; show banner only for other errors */}
+                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && !/no longer available|not available|unavailable|sold out/i.test(prebookError) && (
+                        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg">
+                            <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">Booking error</p>
+                            <p className="text-sm text-red-600 dark:text-red-400 mb-3">{prebookError}</p>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => window.history.back()}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                                >
+                                    Go back
+                                </button>
+                                <button
+                                    onClick={retryPrebook}
+                                    className="px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                >
+                                    Retry
+                                </button>
+                            </div>
                         </div>
                     )}
 
