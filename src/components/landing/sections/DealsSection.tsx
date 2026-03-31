@@ -61,7 +61,8 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => {
                 fill
                 sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 300px"
                 className="object-cover transition-transform duration-700 group-hover:scale-110"
-                loading="lazy"
+                priority={index === 0}
+                loading={index === 0 ? undefined : 'lazy'}
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
