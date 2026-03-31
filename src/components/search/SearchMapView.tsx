@@ -89,7 +89,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
 
     const handleBackToList = useCallback(() => {
         const params = new URLSearchParams(searchParams?.toString() || '');
-        params.delete('view');
+        params.set('view', 'list');
         router.push(`/search?${params.toString()}`);
     }, [router, searchParams]);
 
