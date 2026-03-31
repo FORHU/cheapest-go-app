@@ -1,4 +1,11 @@
-const CACHE_NAME = 'cheapestgo-v1';
+const CACHE_NAME = 'cheapestgo-v2';
+
+// Never cache anything in development — hot-reload changes assets constantly
+// and stale caches cause blank pages.
+const isDev =
+  self.location.hostname === 'localhost' ||
+  self.location.hostname === '127.0.0.1' ||
+  self.location.hostname.startsWith('192.168.');
 
 const PRECACHE_URLS = [
   '/',
@@ -6,15 +13,22 @@ const PRECACHE_URLS = [
   '/og-image.png',
 ];
 
-// Install: pre-cache core assets
+// Install: pre-cache core assets (production only)
 self.addEventListener('install', (event) => {
+  if (isDev) {
+    self.skipWaiting();
+    return;
+  }
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .catch((err) => console.warn('[SW] Precache failed (non-fatal):', err))
   );
   self.skipWaiting();
 });
 
-// Activate: clean up old caches
+// Activate: clean up all old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((names) =>
@@ -28,13 +42,15 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: strategy based on request type
+// Fetch: in dev, pass everything through untouched
 self.addEventListener('fetch', (event) => {
+  if (isDev) return;
+
   const { request } = event;
   const url = new URL(request.url);
 
   // Only handle same-origin GET requests
-  if (request.method !== 'GET' || url.origin !== location.origin) return;
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
   // Skip API and auth routes — always network
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) return;
@@ -67,18 +83,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets (_next/static) — stale-while-revalidate
-  if (url.pathname.startsWith('/_next/static/')) {
+  // Static assets with content hashes (_next/static) — cache-first (immutable in prod)
+  // Only cache URLs that contain a content hash to avoid serving stale non-hashed files.
+  if (url.pathname.startsWith('/_next/static/') && /[a-f0-9]{8,}/.test(url.pathname)) {
     event.respondWith(
       caches.match(request).then((cached) => {
-        const network = fetch(request).then((res) => {
+        if (cached) return cached;
+        return fetch(request).then((res) => {
           if (res.ok) {
             const clone = res.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
           return res;
         });
-        return cached || network;
       })
     );
   }
