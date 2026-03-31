@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useRef, useCallback, useState } from 'react';
-import { MapPin, Navigation, Car, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { MapPin, Navigation, Car, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize } from 'lucide-react';
 import { Map } from '@/components/ui/map';
 import { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
@@ -32,6 +33,14 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
     const [isLoaded, setIsLoaded] = useState(false);
     const [mounted, setMounted] = useState(false);
     
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Trigger map resize after fullscreen transition so it fills the new container
+    React.useEffect(() => {
+        const id = setTimeout(() => mapRef.current?.resize(), 310);
+        return () => clearTimeout(id);
+    }, [isFullscreen]);
+
     // POI State
     const [activePoiId, setActivePoiId] = useState<string | null>(null);
     const [selectedNativePoi, setSelectedNativePoi] = useState<any>(null);
@@ -43,6 +52,13 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
     React.useEffect(() => {
         setMounted(true);
     }, []);
+
+    const formatDuration = (mins: number) => {
+        if (mins < 60) return `${mins} min`;
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return m === 0 ? `${h} hr` : `${h} hr ${m} min`;
+    };
 
     const name = propertyName || hotelDetails?.name || 'Premium Stay';
     const addressLine = hotelDetails?.address || 'Address not available';
@@ -216,6 +232,15 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
 
     const handleLoad = useCallback(() => {
         setIsLoaded(true);
+        // Hide streets-v12 POI icon layers (the large coloured circles)
+        const map = mapRef.current?.getMap();
+        if (map) {
+            ['poi-label', 'transit-label'].forEach(layerId => {
+                if (map.getLayer(layerId)) {
+                    map.setLayoutProperty(layerId, 'visibility', 'none');
+                }
+            });
+        }
     }, []);
 
     // Scale POI icons for better visibility
@@ -268,15 +293,13 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
         );
     }
 
-    return (
-        <div className="h-full w-full flex flex-col rounded-xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-white/10 relative">
-            <div className="flex-1 relative w-full h-full">
-                {hasCoordinates ? (
-                    <>
-                        <Map
+    const mapContent = (
+        <div className="absolute inset-0">
+            {hasCoordinates ? (
+                <>
+                    <Map
                             ref={mapRef}
-                            mapStyle="standard"
-                            standardConfig={{ lightPreset: 'day' }}
+                            mapStyle="mapbox://styles/mapbox/streets-v12"
                             initialViewState={{ longitude: coordinates.lng, latitude: coordinates.lat, zoom: 16, pitch: 45, bearing: 0 }}
                             onLoad={handleLoad}
                             onClick={onMapClick}
@@ -452,13 +475,13 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                                     {originTravelTime !== null && (
                                                         <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
                                                             <Car size={9} className="text-blue-600 dark:text-blue-400" />
-                                                            <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300">{originTravelTime} min</span>
+                                                            <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300">{formatDuration(originTravelTime)} </span>
                                                         </div>
                                                     )}
                                                     {originWalkingTime !== null && (
                                                         <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
                                                             <Footprints size={9} className="text-emerald-600 dark:text-emerald-400" />
-                                                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300">{originWalkingTime} min</span>
+                                                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300">{formatDuration(originWalkingTime)}</span>
                                                         </div>
                                                     )}
                                                     {originTravelTime === null && originWalkingTime === null && origin && !isFetchingOriginRoute && (
@@ -503,13 +526,13 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                                 {poiTravelTime !== null && (
                                                     <div className="flex items-center gap-1">
                                                         <Car size={10} className="text-blue-600 dark:text-blue-400" />
-                                                        <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{poiTravelTime} min</span>
+                                                        <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiTravelTime)}</span>
                                                     </div>
                                                 )}
                                                 {poiWalkingTime !== null && (
                                                     <div className="flex items-center gap-1">
                                                         <Footprints size={10} className="text-emerald-600 dark:text-emerald-400" />
-                                                        <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{poiWalkingTime} min</span>
+                                                        <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiWalkingTime)}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -531,14 +554,23 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                             </div>
                         )}
 
-                        <button
-                            onClick={handleRecenter}
-                            className={`absolute right-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 text-xs font-bold px-4 py-2.5 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-2 group bottom-5`}
-                            suppressHydrationWarning
-                        >
-                            <Navigation size={14} className="group-hover:rotate-12 transition-transform" />
-                            Re-center
-                        </button>
+                        <div className="absolute right-3 bottom-5 flex flex-col gap-2 items-end">
+                            <button
+                                onClick={() => setIsFullscreen(f => !f)}
+                                className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 p-2.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                                title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                            >
+                                {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+                            </button>
+                            <button
+                                onClick={handleRecenter}
+                                className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-1.5 group"
+                                suppressHydrationWarning
+                            >
+                                <Navigation size={11} className="group-hover:rotate-12 transition-transform" />
+                                Re-center
+                            </button>
+                        </div>
                     </>
                 ) : (
                     <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800">
@@ -548,8 +580,21 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                         </div>
                     </div>
                 )}
-            </div>
         </div>
+    );
+
+    return (
+        <>
+            <div className="h-full w-full rounded-xl overflow-hidden relative shadow-sm border border-slate-200/60 dark:border-white/10">
+                {!isFullscreen && mapContent}
+            </div>
+            {isFullscreen && mounted && createPortal(
+                <div className="fixed inset-0 z-9999 bg-white dark:bg-slate-900">
+                    {mapContent}
+                </div>,
+                document.body
+            )}
+        </>
     );
 };
 
