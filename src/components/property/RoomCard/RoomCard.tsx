@@ -231,8 +231,8 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     )}
                 </div>
 
-                <div className="flex items-end justify-between mt-2 lg:mt-3">
-                    <div className="flex flex-col">
+                <div className="flex items-center justify-between mt-2 lg:mt-3 gap-2">
+                    <div className="flex flex-col min-w-0">
                         <button
                             onClick={onViewDetails}
                             className="text-[10px] lg:text-xs text-blue-600 font-bold hover:underline self-start mb-0.5 lg:mb-0"
@@ -240,13 +240,13 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                             Room details
                         </button>
                         {/* Hide price on mobile if multiple rates since it's already shown on the radio button */}
-                        {!(hasMultipleRates) && (
+                        {!hasMultipleRates && (
                             <div className="lg:hidden mt-0.5">
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-[15px] font-bold text-blue-600 dark:text-blue-400 leading-none">
+                                <div className="flex items-baseline gap-0.5 flex-wrap">
+                                    <span className="text-[12px] font-bold text-blue-600 dark:text-blue-400 leading-none whitespace-nowrap">
                                         {currencySymbol}{displayPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                     </span>
-                                    <span className="text-[9px] text-slate-500">/night</span>
+                                    <span className="text-[9px] text-slate-500 whitespace-nowrap">/night</span>
                                 </div>
                             </div>
                         )}
@@ -255,9 +255,9 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     {/* Mobile Action Button */}
                     <button
                         onClick={() => onReserve(displayOfferId)}
-                        className="lg:hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded-lg text-[11px] shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shrink-0 ml-2"
+                        className="lg:hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded-lg text-[11px] shadow-sm shrink-0"
                     >
-                        Choose room
+                        Choose
                     </button>
                 </div>
             </div>

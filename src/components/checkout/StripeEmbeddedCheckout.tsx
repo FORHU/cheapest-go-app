@@ -59,19 +59,19 @@ function CheckoutForm({ clientSecret, onSuccess }: {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm mt-6">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Complete Payment</h2>
+        <form onSubmit={handleSubmit} className="p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm mt-4">
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">Complete Payment</h2>
 
-            <PaymentElement className="mb-6" />
+            <PaymentElement className="mb-4" options={{ layout: 'accordion' }} />
 
             <button
                 disabled={isLoading || submitted || !stripe || !elements}
-                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white font-semibold flex items-center justify-center gap-2"
+                className="w-full py-2 sm:py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white text-sm font-semibold flex items-center justify-center gap-2"
             >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Pay Now'}
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Pay Now'}
             </button>
 
-            {message && <div className="mt-4 text-sm text-red-500 text-center">{message}</div>}
+            {message && <div className="mt-3 text-xs text-red-500 text-center">{message}</div>}
         </form>
     );
 }
