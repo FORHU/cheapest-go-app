@@ -121,20 +121,9 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                         );
                     })
                 ) : (
-                    <>
-                        <RoomCard
-                            title="Deluxe King Room"
-                            price={5200}
-                            onReserve={() => handleReserve("Deluxe King Room", 5200)}
-                            onViewDetails={() => setViewingRoom({ name: "Deluxe King Room" })}
-                        />
-                        <RoomCard
-                            title="Executive Suite"
-                            price={8500}
-                            onReserve={() => handleReserve("Executive Suite", 8500)}
-                            onViewDetails={() => setViewingRoom({ name: "Executive Suite" })}
-                        />
-                    </>
+                    <div className="py-8 text-center text-slate-400 text-sm">
+                        No rooms available for the selected dates.
+                    </div>
                 )}
             </div>
         </div>

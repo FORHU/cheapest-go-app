@@ -265,20 +265,11 @@ export const RoomCard: React.FC<RoomCardProps> = ({
             {/* Right: Pricing & Action (Desktop Sidebar) */}
             <div className={`p-3 lg:p-4 hidden lg:flex lg:flex-col justify-between lg:items-end bg-slate-50/50 dark:bg-white/5 lg:min-w-[180px] border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-white/5 shrink-0`}>
                 <div className="text-right hidden lg:block">
-                    <div className="inline-block bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mb-1">
-                        8% OFF
-                    </div>
                     <div className="flex items-baseline justify-end gap-1">
                         <span className="text-[18px] font-bold text-slate-900 dark:text-white leading-none">
                             {currencySymbol}{displayPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                         </span>
                         <span className="text-[12px] text-slate-500">/night</span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 line-through leading-none mt-1">
-                        {currencySymbol}
-                        {(displayPrice * 1.08).toLocaleString('en-US', {
-                            maximumFractionDigits: 0,
-                        })}
                     </div>
                     <div className="text-[10px] text-slate-400 mt-2">
                         (1 night, 1 Room incl. taxes)
