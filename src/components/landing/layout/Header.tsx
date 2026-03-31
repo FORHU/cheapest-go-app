@@ -6,10 +6,11 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Moon, Sun, Download, Menu, X, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
-import SignInDropdown from '../../auth/SignInDropdown';
 import { useUserCurrency, useUserCountry, useSearchActions } from '@/stores/searchStore';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { usePWAInstall } from '@/contexts/PWAInstallContext';
+import { useAuthStore } from '@/stores/authStore';
+import SignInDropdown from '../../auth/SignInDropdown';
 
 const CURRENCIES = [
   { code: 'KRW', country: 'KR' },
@@ -30,6 +31,7 @@ const Header = () => {
   const userCurrency = useUserCurrency();
   const userCountry = useUserCountry();
   const { setUserCurrency, setUserCountry } = useSearchActions();
+  const { user, logout } = useAuthStore();
 
   useBodyScrollLock(isMenuOpen);
 
@@ -187,7 +189,7 @@ const Header = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="absolute right-0 top-0 h-full w-[min(320px,85vw)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl flex flex-col"
+              className="absolute right-0 top-0 h-screen w-[min(320px,85vw)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl flex flex-col"
             >
               {/* Drawer Header */}
               <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
@@ -288,11 +290,47 @@ const Header = () => {
                   {theme === 'dark' ? 'Light mode' : 'Dark mode'}
                 </button>
 
-              </div>
+                <div className="my-2 mx-4 border-t border-slate-200 dark:border-white/10" />
 
-              {/* Drawer Footer — Sign In / Account dropdown */}
-              <div className="p-4 border-t border-slate-200 dark:border-white/10">
-                <SignInDropdown variant="inline" onNavigate={closeMenu} />
+                {/* Sign In / Account — inside scrollable area so it's always reachable */}
+                <div className="px-4 pb-4 space-y-2">
+                  {user ? (
+                    <>
+                      <div className="flex items-center gap-3 py-2">
+                        <div className="size-9 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                          {(user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{user.firstName} {user.lastName}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => { await logout(); window.location.href = '/'; }}
+                        className="w-full py-2.5 px-4 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 text-sm font-semibold rounded-full hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-center"
+                      >
+                        Sign out
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/login"
+                        onClick={closeMenu}
+                        className="block w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-full transition-colors text-center"
+                      >
+                        Sign in
+                      </Link>
+                      <Link
+                        href="/login?mode=signup"
+                        onClick={closeMenu}
+                        className="block w-full py-2.5 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm font-semibold rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
+                      >
+                        Create an account
+                      </Link>
+                    </>
+                  )}
+                </div>
               </div>
             </motion.nav>
           </motion.div>
