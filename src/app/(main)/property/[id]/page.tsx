@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import PropertyGallery from '@/components/property/PropertyGallery';
 import PropertyOverview from '@/components/property/PropertyOverview';
 import PropertyNav from '@/components/property/PropertyNav';
@@ -14,6 +15,43 @@ import { FadeInUp, FadeIn } from '@/components/property/AnimatedContent';
 import { fetchPropertyData } from '@/lib/property';
 import { fetchHotelReviews } from '@/lib/property/fetchReviews';
 import LocationSection from '@/components/property/LocationSectionDynamic';
+
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+    const { id } = await params;
+    const { property, fetchedDetails } = await fetchPropertyData(id, {});
+    if (!property) return {};
+
+    const city = fetchedDetails?.city || fetchedDetails?.details?.city || '';
+    const country = fetchedDetails?.country || fetchedDetails?.details?.country || '';
+    const location = [city, country].filter(Boolean).join(', ');
+    const title = `${property.name} – Cheapest Rates | CheapestGo`;
+    const description = `Book ${property.name}${location ? ` in ${location}` : ''} at the cheapest price. ${property.rating ? `Rated ${property.rating}/10.` : ''} Best deals on hotels with free cancellation options.`;
+    const image = property.images?.[0] || property.image;
+
+    return {
+        title,
+        description,
+        openGraph: {
+            title,
+            description,
+            type: 'website',
+            images: image ? [{ url: image, width: 1200, height: 630, alt: property.name }] : [],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title,
+            description,
+            images: image ? [image] : [],
+        },
+        alternates: {
+            canonical: `/property/${id}`,
+        },
+    };
+}
 
 export default async function PropertyPage({
     params,
@@ -59,8 +97,47 @@ export default async function PropertyPage({
 
     const currency = (searchParamsResult.currency as string) || 'KRW';
 
+    const city = fetchedDetails?.city || fetchedDetails?.details?.city || '';
+    const country = fetchedDetails?.country || fetchedDetails?.details?.country || '';
+
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'Hotel',
+        name: property.name,
+        description: property.description,
+        image: property.images?.[0] || property.image,
+        address: {
+            '@type': 'PostalAddress',
+            streetAddress: fetchedDetails?.address || property.location,
+            addressLocality: city,
+            addressCountry: country,
+        },
+        ...(property.rating && {
+            aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: property.rating,
+                bestRating: 10,
+                reviewCount: property.reviews || 1,
+            },
+        }),
+        ...(property.price && {
+            priceRange: `From ${property.currency || 'USD'} ${property.price}`,
+        }),
+        ...(property.coordinates?.lat && {
+            geo: {
+                '@type': 'GeoCoordinates',
+                latitude: property.coordinates.lat,
+                longitude: property.coordinates.lng,
+            },
+        }),
+    };
+
     return (
         <main className="min-h-screen pt-0 md:pt-6 pb-24 md:pb-20 px-3 md:px-6">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
             {/* Mobile floating header — appears on scroll */}
             <MobilePropertyHeader propertyName={property.name} />
 
@@ -69,7 +146,7 @@ export default async function PropertyPage({
                 <FadeIn delay={0}>
                     <div className="hidden lg:block">
                         <div className="text-xs text-slate-500 mb-4">
-                            Philippines  &gt;  Baguio Properties  &gt;  {property.name}
+                            {[fetchedDetails?.country || fetchedDetails?.details?.country, fetchedDetails?.city || fetchedDetails?.details?.city, property.name].filter(Boolean).join('  \u203a  ')}
                         </div>
                     </div>
                 </FadeIn>
