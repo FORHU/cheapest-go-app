@@ -90,8 +90,8 @@ export const LegalLayout: React.FC<LegalLayoutProps> = ({
           <p className="font-semibold text-slate-700 dark:text-slate-300 mb-1 font-display">Questions about this document?</p>
           <p>
             Contact us at{' '}
-            <a href="mailto:support.cheapestgo@gmail.com" className="text-alabaster-accent dark:text-obsidian-accent hover:underline underline-offset-2">
-              support.cheapestgo@gmail.com
+            <a href="mailto:support@cheapestgo.com" className="text-alabaster-accent dark:text-obsidian-accent hover:underline underline-offset-2">
+              support@cheapestgo.com
             </a>
           </p>
           <p className="mt-1">JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · United States</p>
