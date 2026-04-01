@@ -14,6 +14,7 @@ const StandardFooter = () => (
         </div>
         <p className="hidden lg:block text-slate-500 dark:text-slate-400 text-sm max-w-xs leading-relaxed">
           Engineered for the discerning traveler. <br />Precision data. Zero compromise.
+          <br /><span className="text-xs mt-1 block">Powered by Duffel, Mystifly, TravelgateX, ONDA & Rakuten.</span>
         </p>
       </div>
 
