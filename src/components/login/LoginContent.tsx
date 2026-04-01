@@ -6,6 +6,7 @@ import { useLoginForm } from '@/hooks';
 import { loginSchema, registerSchema } from '@/lib/schemas/auth';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import VerifyEmailStep from '@/components/auth/VerifyEmailStep';
+import ForgotPasswordStep from '@/components/auth/ForgotPasswordStep';
 import {
     AuthHeader,
     EmailField,
@@ -134,6 +135,10 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
                         <div className="mt-8">
                             <VerifyEmailStep />
                         </div>
+                    ) : authStep === 'forgot-password' ? (
+                        <div className="mt-8">
+                            <ForgotPasswordStep />
+                        </div>
                     ) : (
                         <>
                             <SocialLoginButtons />
@@ -179,7 +184,7 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
 
                                 {mode === 'signin' && (
                                     <div className="text-right">
-                                        <button type="button" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                                        <button type="button" onClick={() => setAuthStep('forgot-password')} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                                             Forgot password?
                                         </button>
                                     </div>

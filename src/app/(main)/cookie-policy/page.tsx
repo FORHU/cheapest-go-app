@@ -196,7 +196,7 @@ export default function CookiePolicyPage() {
             <>
               <p>For questions about our use of cookies:</p>
               <ul className="list-none space-y-1">
-                <li>📧 support.cheapestgo@gmail.com</li>
+                <li>📧 support@cheapestgo.com</li>
                 <li>🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA</li>
               </ul>
             </>
