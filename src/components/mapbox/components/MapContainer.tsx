@@ -8,6 +8,8 @@ interface MapContainerProps {
         longitude: number;
         latitude: number;
         zoom: number;
+        pitch?: number;
+        bearing?: number;
     };
     onLoad: (e: any) => void;
     onClick: (e: any) => void;
@@ -28,9 +30,9 @@ export const MapContainer = ({
             ref={mapRef}
             mapStyle="mapbox://styles/mapbox/streets-v12"
             initialViewState={{
-                ...initialViewState,
                 pitch: 45,
                 bearing: -10,
+                ...initialViewState,
             }}
             maxPitch={60}
             onClick={onClick}
