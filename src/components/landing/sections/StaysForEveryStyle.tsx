@@ -58,7 +58,7 @@ export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ style
           {displayStyles.map((style, i) => (
             <motion.div
               key={style.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={i === 0 ? false : { opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{

@@ -51,7 +51,7 @@ export const ExploreVacationPackages: React.FC<{
             return (
               <motion.div
                 key={pkg.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={i === 0 ? false : { opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{
