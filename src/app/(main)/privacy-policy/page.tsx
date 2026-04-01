@@ -26,8 +26,8 @@ export default function PrivacyPolicyPage() {
               </p>
               <p>
                 For questions regarding this Privacy Policy, contact us at{' '}
-                <a href="mailto:support.cheapestgo@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  support.cheapestgo@gmail.com
+                <a href="mailto:support@cheapestgo.com" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  support@cheapestgo.com
                 </a>.
               </p>
             </>
@@ -162,8 +162,8 @@ export default function PrivacyPolicyPage() {
               </ul>
               <p>
                 To exercise any of these rights, email us at{' '}
-                <a href="mailto:support.cheapestgo@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  support.cheapestgo@gmail.com
+                <a href="mailto:support@cheapestgo.com" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  support@cheapestgo.com
                 </a>
                 . We will respond within 30 days.
               </p>
@@ -176,7 +176,7 @@ export default function PrivacyPolicyPage() {
             <p>
               CheapestGo is not intended for children under the age of 18. We do not knowingly collect
               personal information from children. If you believe we have inadvertently collected
-              information from a child, please contact us immediately at support.cheapestgo@gmail.com
+              information from a child, please contact us immediately at support@cheapestgo.com
               and we will delete such information promptly.
             </p>
           ),
@@ -210,7 +210,7 @@ export default function PrivacyPolicyPage() {
             <>
               <p>For privacy-related inquiries, requests, or complaints:</p>
               <ul className="list-none space-y-1">
-                <li>📧 support.cheapestgo@gmail.com</li>
+                <li>📧 support@cheapestgo.com</li>
                 <li>🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA</li>
               </ul>
             </>

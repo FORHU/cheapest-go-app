@@ -49,7 +49,7 @@ const StandardFooter = () => (
         <a href="/privacy-policy" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors hover:underline underline-offset-2">Privacy Policy</a>
         <a href="/cookie-policy" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors hover:underline underline-offset-2">Cookie Policy</a>
         <a href="/refund-policy" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors hover:underline underline-offset-2">Refund Policy</a>
-        <a href="mailto:support.cheapestgo@gmail.com" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors hover:underline underline-offset-2">Contact</a>
+        <a href="mailto:support@cheapestgo.com" className="hover:text-slate-700 dark:hover:text-slate-300 transition-colors hover:underline underline-offset-2">Contact</a>
       </div>
     </div>
   </footer>
@@ -66,7 +66,7 @@ const MinimalFooter = () => (
         <a href="/terms-of-service" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">Terms & Conditions</a>
         <a href="/privacy-policy" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">Privacy Policy</a>
         <a href="/cookie-policy" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">Cookie preferences</a>
-        <a href="mailto:support.cheapestgo@gmail.com" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">Contact us</a>
+        <a href="mailto:support@cheapestgo.com" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">Contact us</a>
       </div>
 
       <button className="flex items-center gap-1.5 px-3 py-1 text-[10px] lg:text-xs font-medium border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
