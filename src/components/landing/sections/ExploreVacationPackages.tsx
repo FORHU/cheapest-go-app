@@ -73,7 +73,8 @@ export const ExploreVacationPackages: React.FC<{
                           fill
                           sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
                           className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          loading="lazy"
+                          priority={i === 0}
+                          loading={i === 0 ? undefined : 'lazy'}
                         />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />

@@ -51,6 +51,8 @@ export interface PropertyCardProps {
     includes?: string[];
     /** Price label suffix */
     priceLabel?: string;
+    /** Preload this image (use for first visible card) */
+    priority?: boolean;
 }
 
 /**
@@ -122,6 +124,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
     badgeColor = 'green',
     includes,
     priceLabel,
+    priority = false,
     index = 0,
     onClick,
     className = '',
@@ -185,7 +188,8 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             fill
                             sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
                             className="object-cover transition-transform duration-500 group-hover:scale-110"
-                            loading="lazy"
+                            priority={priority}
+                            loading={priority ? undefined : 'lazy'}
                         />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />

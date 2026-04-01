@@ -26,7 +26,7 @@ export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ de
         />
 
         <HorizontalScroll gap={4} scrollAmount={320}>
-          {displayDeals.map((deal: WeekendDeal) => (
+          {displayDeals.map((deal: WeekendDeal, i: number) => (
               <div
                 key={deal.id}
                 onClick={() => toast.info(deal.name, { description: 'Live hotel search will be available at launch.' })}
@@ -43,6 +43,7 @@ export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ de
                     price={convert(deal.salePrice)}
                     badge={deal.badge}
                     badgeColor="green"
+                    priority={i === 0}
                     className="h-full flex flex-col flex-1"
                   />
                   <span className="absolute bottom-2 right-2 text-[8px] text-slate-400 italic pointer-events-none">
