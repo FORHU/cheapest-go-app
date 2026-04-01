@@ -70,8 +70,8 @@ export default function RefundPolicyPage() {
               </ol>
               <p>
                 Alternatively, contact us at{' '}
-                <a href="mailto:support.cheapestgo@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">
-                  support.cheapestgo@gmail.com
+                <a href="mailto:support@cheapestgo.com" className="text-blue-600 dark:text-blue-400 hover:underline">
+                  support@cheapestgo.com
                 </a>{' '}
                 with your booking reference number and we will process the cancellation within 1
                 business day.
@@ -129,7 +129,7 @@ export default function RefundPolicyPage() {
                 availability and supplier policies. To request an amendment:
               </p>
               <ol className="list-decimal pl-5 space-y-1">
-                <li>Contact us at support.cheapestgo@gmail.com with your booking reference</li>
+                <li>Contact us at support@cheapestgo.com with your booking reference</li>
                 <li>Specify the change you need and the reason</li>
                 <li>We will check availability with the supplier and confirm if the amendment is possible</li>
               </ol>
@@ -166,7 +166,7 @@ export default function RefundPolicyPage() {
           title: 'Disputes and Chargebacks',
           content: (
             <p>
-              If you have a concern about a charge, please contact us at support.cheapestgo@gmail.com
+              If you have a concern about a charge, please contact us at support@cheapestgo.com
               before initiating a chargeback with your bank. Most issues can be resolved quickly.
               Chargebacks initiated without first contacting CheapestGo may result in account
               suspension. CheapestGo reserves the right to contest chargebacks that are made in bad
@@ -182,7 +182,7 @@ export default function RefundPolicyPage() {
               and airline components. Airline tickets are generally non-refundable or carry significant
               cancellation fees. The specific terms for your package will be shown during checkout and
               in your confirmation email. If you need to cancel a package, contact us immediately at
-              support.cheapestgo@gmail.com for guidance.
+              support@cheapestgo.com for guidance.
             </p>
           ),
         },
@@ -195,7 +195,7 @@ export default function RefundPolicyPage() {
                 ready and reach us at:
               </p>
               <ul className="list-none space-y-1">
-                <li>📧 support.cheapestgo@gmail.com</li>
+                <li>📧 support@cheapestgo.com</li>
                 <li>🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA</li>
               </ul>
               <p>We aim to respond to all refund requests within 1–2 business days.</p>

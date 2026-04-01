@@ -34,8 +34,17 @@ const PasswordStep: React.FC = () => {
             if (err.message && (err.message.includes('Email not confirmed') || err.message.includes('email not confirmed'))) {
                 return;
             }
-            toast.error("Invalid email or password.");
-            setError("Invalid email or password.");
+            // Likely a Google/social account — no password set
+            const isBadCredentials =
+                err.message?.toLowerCase().includes('invalid login') ||
+                err.message?.toLowerCase().includes('invalid credentials') ||
+                err.status === 400;
+            if (isBadCredentials) {
+                setError("Wrong password, or this account was created with Google. Try Google sign-in or reset your password.");
+            } else {
+                toast.error("Invalid email or password.");
+                setError("Invalid email or password.");
+            }
         }
     };
 

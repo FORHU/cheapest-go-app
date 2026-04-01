@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { PlaneTakeoff, ArrowLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePasswordValidation } from '@/hooks';
+import { createClient } from '@/utils/supabase/client';
 
 export function ResetPasswordContent() {
     const { isLoading } = useAuthStore();
@@ -32,11 +33,12 @@ export function ResetPasswordContent() {
         }
 
         try {
-            // The password update is handled by Supabase automatically
-            // when the user clicks the link in their email
+            const supabase = createClient();
+            const { error: updateError } = await supabase.auth.updateUser({ password });
+            if (updateError) throw updateError;
             setSuccess(true);
-        } catch (err) {
-            setError('Failed to reset password. Please try again.');
+        } catch (err: any) {
+            setError(err?.message || 'Failed to reset password. Please try again.');
         }
     };
 

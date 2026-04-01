@@ -9,6 +9,7 @@ import EmailStep from './EmailStep';
 import PasswordStep from './PasswordStep';
 import RegisterStep from './RegisterStep';
 import VerifyEmailStep from './VerifyEmailStep';
+import ForgotPasswordStep from './ForgotPasswordStep';
 
 const AuthModal: React.FC = () => {
     const { isAuthModalOpen, closeAuthModal, authStep } = useAuthStore();
@@ -44,16 +45,7 @@ const AuthModal: React.FC = () => {
             case 'verify-email':
                 return <VerifyEmailStep />;
             case 'forgot-password':
-                return (
-                    <div className="text-center py-8">
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
-                            Reset your password
-                        </h2>
-                        <p className="text-slate-500 dark:text-slate-400">
-                            Password reset functionality coming soon.
-                        </p>
-                    </div>
-                );
+                return <ForgotPasswordStep />;
             default:
                 return <EmailStep />;
         }
