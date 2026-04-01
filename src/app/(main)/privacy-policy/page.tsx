@@ -53,7 +53,7 @@ export default function PrivacyPolicyPage() {
               </ul>
               <p><strong>Information from third parties:</strong></p>
               <ul className="list-disc pl-5 space-y-1">
-                <li>Hotel availability and pricing data from LiteAPI</li>
+                <li>Travel availability and pricing data from our partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten)</li>
                 <li>Payment confirmation and fraud signals from Stripe</li>
                 <li>Analytics data from service providers we use to improve our platform</li>
               </ul>
@@ -91,8 +91,7 @@ export default function PrivacyPolicyPage() {
                   <a href="https://stripe.com/privacy" className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">stripe.com/privacy</a>.
                 </li>
                 <li>
-                  <strong>LiteAPI:</strong> Hotel search queries and booking details are processed through
-                  LiteAPI to retrieve availability and pricing.
+                  <strong>Travel Partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten):</strong> Search queries and booking details are processed through our partner APIs to retrieve availability and pricing.
                 </li>
                 <li>
                   <strong>Supabase:</strong> Our database infrastructure is hosted on Supabase. Data is

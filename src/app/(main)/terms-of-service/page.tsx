@@ -160,8 +160,8 @@ export default function TermsOfServicePage() {
               All content on the CheapestGo Platform — including logos, text, graphics, software, and
               design — is the property of CheapestGo or its licensors and is protected by applicable
               intellectual property laws. You may not reproduce, distribute, or create derivative works
-              from our content without prior written consent. Hotel images and descriptions are provided
-              by LiteAPI and respective hotel suppliers under license.
+              from our content without prior written consent. Hotel and flight images and descriptions are provided
+              by our partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten) and respective suppliers under license.
             </p>
           ),
         },
