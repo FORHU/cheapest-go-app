@@ -40,9 +40,10 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
     onHover,
 }: MapPropertyCardProps) {
     const targetCurrency = useUserCurrency();
-    const displayPrice = convertCurrency(property.price, property.currency, targetCurrency);
+    const sourceCurrency = property.currency || 'USD';
+    const displayPrice = convertCurrency(property.price, sourceCurrency, targetCurrency);
     const displayOriginalPrice = property.originalPrice
-        ? convertCurrency(property.originalPrice, property.currency, targetCurrency)
+        ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency)
         : undefined;
 
     return (

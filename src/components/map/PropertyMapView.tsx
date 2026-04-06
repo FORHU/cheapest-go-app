@@ -275,7 +275,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
                     <MapMarker
                         key={property.id}
                         property={property}
-                        displayPrice={convertCurrency(property.price, property.currency, targetCurrency)}
+                        displayPrice={convertCurrency(property.price, property.currency || 'USD', targetCurrency)}
                         displayCurrency={targetCurrency}
                         isSelected={selectedId === property.id}
                         isHovered={hoveredId === property.id}

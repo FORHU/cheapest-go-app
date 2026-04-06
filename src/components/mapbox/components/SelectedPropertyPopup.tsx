@@ -26,7 +26,7 @@ export const SelectedPropertyPopup = React.memo(({
         <>
             <MapMarker
                 property={selectedProperty}
-                displayPrice={convertCurrency(selectedProperty.price, selectedProperty.currency, targetCurrency)}
+                displayPrice={convertCurrency(selectedProperty.price, selectedProperty.currency || 'USD', targetCurrency)}
                 displayCurrency={targetCurrency}
                 isSelected={true}
                 isHovered={false}

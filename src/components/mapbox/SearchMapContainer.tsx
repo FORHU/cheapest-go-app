@@ -178,7 +178,7 @@ export const SearchMapContainer = React.memo(({
                             <MapMarker
                                 key={property.id}
                                 property={property}
-                                displayPrice={convertCurrency(property.price, property.currency, targetCurrency)}
+                                displayPrice={convertCurrency(property.price, property.currency || 'USD', targetCurrency)}
                                 displayCurrency={targetCurrency}
                                 isSelected={property.id === selectedId}
                                 isHovered={property.id === hoveredId}

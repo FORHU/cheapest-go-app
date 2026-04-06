@@ -43,9 +43,10 @@ const MapPopup = React.memo(function MapPopup({
 }: MapPopupProps) {
     const isLandscape = useIsLandscapeMobile();
     const targetCurrency = useUserCurrency();
-    const displayPrice = convertCurrency(property.price, property.currency, targetCurrency);
+    const sourceCurrency = property.currency || 'USD';
+    const displayPrice = convertCurrency(property.price, sourceCurrency, targetCurrency);
     const displayOriginalPrice = property.originalPrice
-        ? convertCurrency(property.originalPrice, property.currency, targetCurrency)
+        ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency)
         : undefined;
 
     useEffect(() => {
@@ -135,7 +136,7 @@ const MapPopup = React.memo(function MapPopup({
                     </h3>
 
                     <div className="flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-2.5 h-2.5 text-slate-400 flex-shrink-0" />
+                        <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                             {property.location}
                         </span>
