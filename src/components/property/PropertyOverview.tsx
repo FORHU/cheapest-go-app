@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Star, Wifi, Car, Utensils, Coffee, Check } from 'lucide-react';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 
 interface ReviewsData {
     reviews: any[];

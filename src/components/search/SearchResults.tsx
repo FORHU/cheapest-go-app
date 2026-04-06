@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { PropertyCard } from '@/components/shared';
 import { ChevronDown, MapPin } from 'lucide-react';
 
@@ -19,31 +19,39 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
     const destination = searchParams?.get('destination') || '';
 
     const rawSort = searchParams?.get('sort');
-    const sortBy: SortValue = SORT_OPTIONS.includes(rawSort as SortValue) ? (rawSort as SortValue) : 'recommended';
+    const initialSort: SortValue = SORT_OPTIONS.includes(rawSort as SortValue) ? (rawSort as SortValue) : 'recommended';
+    const [sortBy, setSortBy] = useState<SortValue>(initialSort);
 
     const handleSortChange = useCallback((value: SortValue) => {
-        const params = new URLSearchParams(searchParams?.toString() || '');
+        setSortBy(value);
+        // Update URL without triggering a server navigation
+        const params = new URLSearchParams(window.location.search);
         if (value === 'recommended') {
             params.delete('sort');
         } else {
             params.set('sort', value);
         }
-        router.replace(`?${params.toString()}`);
-    }, [router, searchParams]);
+        window.history.replaceState(null, '', `?${params.toString()}`);
+    }, []);
 
     const [visibleCount, setVisibleCount] = useState(12);
 
     const handlePropertyClick = (propertyId: string) => {
-        const currentParams = new URLSearchParams(searchParams?.toString() || '');
+        const currentParams = new URLSearchParams(window.location.search);
         router.push(`/property/${propertyId}?${currentParams.toString()}`);
     };
 
+    const handlePropertyPrefetch = useCallback((propertyId: string) => {
+        const currentParams = new URLSearchParams(window.location.search);
+        router.prefetch(`/property/${propertyId}?${currentParams.toString()}`);
+    }, [router]);
+
     // Navigate to map view
     const handleViewOnMap = useCallback(() => {
-        const params = new URLSearchParams(searchParams?.toString() || '');
+        const params = new URLSearchParams(window.location.search);
         params.set('view', 'map');
         router.push(`/search?${params.toString()}`);
-    }, [router, searchParams]);
+    }, [router]);
 
     // Filter and sort properties
     const filteredProperties = useMemo(() => {
@@ -131,19 +139,20 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                 visibleProperties.length > 0 ? (
                     <div className="space-y-4">
                         {visibleProperties.map((property, index) => (
-                            <PropertyCard
-                                key={property.id}
-                                variant="horizontal"
-                                property={property}
-                                index={index}
-                                onClick={() => handlePropertyClick(property.id)}
-                            />
+                            <div key={property.id} onMouseEnter={() => handlePropertyPrefetch(property.id)}>
+                                <PropertyCard
+                                    variant="horizontal"
+                                    property={property}
+                                    index={index}
+                                    onClick={() => handlePropertyClick(property.id)}
+                                />
+                            </div>
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                    <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4">
                         <h3 className="text-lg font-medium text-slate-900 dark:text-white">No properties found</h3>
-                        <p className="text-slate-500 dark:text-slate-400">Try searching for "Baguio" to see results.</p>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1">Try adjusting your filters or searching for a different destination.</p>
                     </div>
                 )
             }

@@ -4,6 +4,8 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Plane, Luggage, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
+import { useUser, useAuthLoading } from '@/stores/authStore';
 import type { BookingRecord, FlightBookingRecord } from '@/services/booking.service';
 import BookingCard from './BookingCard';
 import FlightBookingCard from './FlightBookingCard';
@@ -25,6 +27,15 @@ function isFlight(b: MixedBooking): b is FlightBookingRecord {
 export function TripsContent({ initialData }: TripsContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const user = useUser();
+  const isLoading = useAuthLoading();
+
+  // Redirect if logged out while on page
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/');
+    }
+  }, [user, isLoading, router]);
 
   const rawTab = searchParams?.get('tab');
   const activeTab: TabValue = VALID_TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';
@@ -73,6 +84,8 @@ export function TripsContent({ initialData }: TripsContentProps) {
   const refetch = useCallback(() => {
     router.refresh();
   }, [router]);
+
+  if (!user) return null;
 
   return (
     <main className="min-h-screen pt-4 pb-16 px-3 sm:pt-6 sm:pb-20 sm:px-4 md:px-6 lg:px-8">

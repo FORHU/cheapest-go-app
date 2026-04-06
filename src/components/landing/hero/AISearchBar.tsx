@@ -308,7 +308,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                 </div>
             </div>
 
-            <MobileSearchModal isOpen={isMobileModalOpen} onClose={() => setIsMobileModalOpen(false)}>
+            <MobileSearchModal isOpen={isMobileModalOpen} onClose={() => setIsMobileModalOpen(false)} onSearch={() => setIsMobileModalOpen(false)}>
                 {searchMode === 'flights' ? (
                     <div className="flex flex-col h-full">
                         {/* Close button */}

@@ -1,11 +1,12 @@
 import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 /**
  * Utility function to merge class names
- * Similar to clsx but with TypeScript support
+ * Combines clsx for conditional classes and tailwind-merge for conflict resolution
  */
 export function cn(...inputs: ClassValue[]) {
-    return clsx(inputs);
+    return twMerge(clsx(inputs));
 }
 
 /**
@@ -13,12 +14,14 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function formatCurrency(
     amount: number,
-    currency = 'PHP',
-    locale = 'en-PH'
+    currency = 'KRW',
+    locale = 'ko-KR'
 ): string {
     return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
     }).format(amount);
 }
 
@@ -28,10 +31,11 @@ export function formatCurrency(
 export function formatDate(
     date: Date | string,
     options?: Intl.DateTimeFormatOptions,
-    locale = 'en-PH'
+    locale = 'en-US'
 ): string {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return dateObj.toLocaleDateString(locale, options);
+    const defaultOptions: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+    return dateObj.toLocaleDateString(locale, options || defaultOptions);
 }
 
 /**

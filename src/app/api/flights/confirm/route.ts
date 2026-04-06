@@ -3,6 +3,12 @@ import { stripe } from '@/lib/stripe/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createClient } from '@supabase/supabase-js';
 import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
+import { z } from 'zod';
+
+const flightConfirmSchema = z.object({
+    paymentIntentId: z.string().min(1, 'paymentIntentId is required'),
+    sessionId: z.string().min(1, 'sessionId is required'),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -26,26 +32,23 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
     try {
         const { user, error: authError } = await getAuthenticatedUser();
+        const { env } = await import("@/utils/env");
         if (authError || !user) {
             return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
         }
 
-        const { paymentIntentId, sessionId } = await req.json();
-
-        if (!paymentIntentId || !sessionId) {
+        const rawBody = await req.json();
+        const confirmParsed = flightConfirmSchema.safeParse(rawBody);
+        if (!confirmParsed.success) {
             return NextResponse.json(
-                { success: false, error: 'paymentIntentId and sessionId are required' },
+                { success: false, error: confirmParsed.error.issues[0]?.message ?? 'Invalid request' },
                 { status: 400 },
             );
         }
+        const { paymentIntentId, sessionId } = confirmParsed.data;
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        if (!supabaseUrl || !serviceRoleKey) {
-            throw new Error('Supabase environment variables not set');
-        }
-
-        const supabase = createClient(supabaseUrl, serviceRoleKey);
+        // Service-role client for all DB operations
+        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
         // ── Step 1: Verify payment server-side (never trust the client) ──────
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
@@ -118,10 +121,10 @@ export async function POST(req: NextRequest) {
 
         const edgeFnHeaders = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${serviceRoleKey}`,
+            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
         };
 
-        const bookingRes = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
+        const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
             method: 'POST',
             headers: edgeFnHeaders,
             body: JSON.stringify({ sessionId }),
@@ -134,7 +137,7 @@ export async function POST(req: NextRequest) {
             // Duffel: auto-ticket if needed
             if (!isMystifly && bookingData.status !== 'ticketed' && !bookingData.alreadyBooked && bookingData.bookingId) {
                 console.log('[/confirm] Auto-ticketing Duffel order:', bookingData.bookingId);
-                const ticketRes = await fetch(`${supabaseUrl}/functions/v1/issue-ticket`, {
+                const ticketRes = await fetch(`${env.SUPABASE_URL}/functions/v1/issue-ticket`, {
                     method: 'POST',
                     headers: edgeFnHeaders,
                     body: JSON.stringify({ bookingId: bookingData.bookingId }),

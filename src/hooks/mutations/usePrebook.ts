@@ -37,7 +37,12 @@ export function usePrebook(options?: UsePrebookOptions) {
       options?.onSuccess?.(data);
     },
     onError: (error: Error) => {
-      console.error('[usePrebook] Error:', error);
+      const isUnavailable = /no longer available|not available|unavailable|sold out/i.test(error.message);
+      if (isUnavailable) {
+        console.warn('[usePrebook] Room unavailable:', error.message);
+      } else {
+        console.error('[usePrebook] Error:', error);
+      }
       options?.onError?.(error);
     },
   });

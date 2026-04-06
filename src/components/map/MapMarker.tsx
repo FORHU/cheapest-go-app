@@ -1,12 +1,13 @@
-'use client';
-
 import React from 'react';
 import { Marker } from 'react-map-gl/mapbox';
+import { Bed } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import type { MappableProperty } from './types';
 
 interface MapMarkerProps {
     property: MappableProperty;
+    displayPrice?: number;
+    displayCurrency?: string;
     isSelected: boolean;
     isHovered: boolean;
     onClick: (id: string) => void;
@@ -15,15 +16,14 @@ interface MapMarkerProps {
 
 const MapMarker = React.memo(function MapMarker({
     property,
+    displayPrice,
+    displayCurrency,
     isSelected,
     isHovered,
     onClick,
     onHover,
 }: MapMarkerProps) {
     const isActive = isSelected || isHovered;
-
-    // If selected, we show the full Popup instead of the marker to avoid overlap/duplication
-    // if (isSelected) return null;
 
     return (
         <Marker
@@ -43,61 +43,43 @@ const MapMarker = React.memo(function MapMarker({
                 onMouseEnter={() => onHover(property.id)}
                 onMouseLeave={() => onHover(null)}
                 className={cn(
-                    'transition-transform duration-200 ease-out p-2 -m-2', // Add padding and negative margin to increase touch target to ~44px
-                    isActive ? 'scale-110' : 'scale-100 hover:scale-105'
+                    'transition-all duration-300 ease-out flex flex-col items-center group',
+                    isSelected ? 'scale-110 -translate-y-1' : 'scale-100'
                 )}
             >
-                <div className="relative flex flex-col items-center">
-                    {/* Price bubble */}
-                    <div
-                        className={cn(
-                            'relative text-xs font-bold px-2.5 py-1.5 rounded-full whitespace-nowrap',
-                            'shadow-lg border transition-all duration-200',
-                            isSelected
-                                ? 'bg-blue-600 text-white border-blue-700 shadow-blue-500/40'
-                                : isHovered
-                                    ? 'bg-slate-900 text-white border-slate-700 shadow-slate-900/40'
-                                    : 'bg-white text-slate-900 border-slate-200 shadow-slate-300/40 dark:bg-slate-900 dark:text-white dark:border-slate-600 dark:shadow-black/40'
-                        )}
-                    >
-                        {formatCurrency(property.price)}
-
-                        {/* Notch / arrow */}
-                        <div
-                            className={cn(
-                                'absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45',
-                                'border-r border-b',
-                                isSelected
-                                    ? 'bg-blue-600 border-blue-700'
-                                    : isHovered
-                                        ? 'bg-slate-900 border-slate-700'
-                                        : 'bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-600'
-                            )}
-                        />
+                {/* Marker Container (Pill) */}
+                <div className={cn(
+                    'flex items-center gap-2 px-1.5 py-1 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.15)] ring-1 ring-black/5 transition-all duration-200',
+                    isActive ? 'ring-blue-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.2)]' : 'group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.18)]'
+                )}>
+                    {/* Icon Circle */}
+                    <div className={cn(
+                        'w-6 h-6 rounded-full flex items-center justify-center transition-colors',
+                        isSelected ? 'bg-blue-700' : 'bg-blue-500'
+                    )}>
+                        <Bed className="w-3.5 h-3.5 text-white" />
                     </div>
 
-                    {/* Pin dot with pulse effect */}
-                    <div className="relative mt-1.5">
-                        <div
-                            className={cn(
-                                'w-3 h-3 rounded-full border-2 border-white shadow-md transition-colors duration-200',
-                                isSelected
-                                    ? 'bg-blue-600'
-                                    : isHovered
-                                        ? 'bg-slate-900'
-                                        : 'bg-red-500'
-                            )}
-                        />
-                        {isActive && (
-                            <div
-                                className={cn(
-                                    'absolute inset-0 w-3 h-3 rounded-full animate-ping opacity-40',
-                                    isSelected ? 'bg-blue-500' : 'bg-slate-700'
-                                )}
-                            />
-                        )}
+                    {/* Price Label */}
+                    <div className="pr-2 text-[11px] font-bold text-slate-800 whitespace-nowrap tracking-tight">
+                        {formatCurrency(displayPrice ?? property.price, displayCurrency ?? property.currency)}
                     </div>
                 </div>
+
+                {/* Triangle Tail */}
+                <div className={cn(
+                    'w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] -mt-[1px]',
+                    isSelected ? 'border-t-blue-700' : 'border-t-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)]'
+                )} />
+
+                {/* Hover/Selected Name Label (Optional, showing only when active/hovered) */}
+                {isActive && (
+                    <div className="absolute -top-8 bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 px-2 py-1 z-30 whitespace-nowrap max-w-[160px] animate-in fade-in slide-in-from-bottom-1 duration-200">
+                        <span className="text-[10px] font-semibold text-slate-800 dark:text-slate-100 tracking-tight line-clamp-1">
+                            {property.name}
+                        </span>
+                    </div>
+                )}
             </div>
         </Marker>
     );

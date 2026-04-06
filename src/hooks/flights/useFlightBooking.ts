@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
 import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/lib/schemas/flight';
-import type { FlightOffer } from '@/lib/flights/types';
+import type { FlightOffer } from '@/types/flights';
 import { createClient } from '@/utils/supabase/client';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
@@ -21,7 +21,31 @@ export function useFlightBooking() {
     const [clientSecret, setClientSecret] = useState('');
 
     // HIGH-2 FIX: Idempotency key to prevent double bookings
-    const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+    // Helper to generate UUIDs safely on HTTP or HTTPS
+    const generateId = (): string => {
+        if (typeof crypto !== 'undefined') {
+            if (crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            if (crypto.getRandomValues) {
+                const bytes = new Uint8Array(16);
+                crypto.getRandomValues(bytes);
+                bytes[6] = (bytes[6] & 0x0f) | 0x40;
+                bytes[8] = (bytes[8] & 0x3f) | 0x80;
+                const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0'));
+                return `${hex[0]}${hex[1]}${hex[2]}${hex[3]}-${hex[4]}${hex[5]}-${hex[6]}${hex[7]}-${hex[8]}${hex[9]}-${hex.slice(10).join('')}`;
+            }
+        }
+        // Very last resort fallback matching uuid structure if all crypto fails
+        let d = new Date().getTime();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            const r = (d + Math.random() * 16) % 16 | 0;
+            d = Math.floor(d / 16);
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    };
+
+    const idempotencyKeyRef = useRef<string>(generateId());
     // Tracks the booking session ID after Stripe payment, for PNR confirmation
     const bookingSessionIdRef = useRef<string | null>(null);
 
@@ -30,6 +54,24 @@ export function useFlightBooking() {
             const saved = sessionStorage.getItem('flightPassengers');
             if (saved) {
                 try { return JSON.parse(saved); } catch (e) { console.error('Error parsing saved passengers:', e); }
+            }
+
+            // Initialize from search passenger counts so the form matches the searched itinerary
+            const searchCounts = sessionStorage.getItem('flightSearchPassengers');
+            if (searchCounts) {
+                try {
+                    const { adults = 1, children = 0, infants = 0 } = JSON.parse(searchCounts);
+                    const blank = (type: 'ADT' | 'CHD' | 'INF'): FlightPassengerForm => ({
+                        type, firstName: '', lastName: '', gender: '', birthDate: '',
+                        nationality: 'KR', passport: '', passportExpiry: '',
+                    });
+                    const forms: FlightPassengerForm[] = [
+                        ...Array.from({ length: adults }, () => blank('ADT')),
+                        ...Array.from({ length: children }, () => blank('CHD')),
+                        ...Array.from({ length: infants }, () => blank('INF')),
+                    ];
+                    if (forms.length > 0) return forms;
+                } catch (e) { console.error('Error parsing search passengers:', e); }
             }
         }
         return [{
@@ -82,18 +124,17 @@ export function useFlightBooking() {
         // Auto-revalidate the flight
         let isMounted = true;
         const revalidate = async () => {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await createClient().auth.getUser();
 
             try {
-                const { data, error } = await supabase.functions.invoke('revalidate-flight', {
+                const { data, error } = await createClient().functions.invoke('revalidate-flight', {
                     body: {
                         provider: parsedOffer.provider,
                         userId: user?.id || 'anonymous',
                         flightPayload: {
                             oldPrice: parsedOffer.price.total,
                             currency: parsedOffer.price.currency,
-                            traceId: parsedOffer.provider.startsWith('mystifly') ? parsedOffer.offerId : undefined,
+                            traceId: parsedOffer.provider.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
                             flight: parsedOffer.provider === 'duffel'
                                 ? ((parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
                                 : undefined,
@@ -103,6 +144,7 @@ export function useFlightBooking() {
 
                 if (error) throw error;
                 if (!data.success) throw new Error(data.error || 'Revalidation failed');
+                if (!data.seatsAvailable) throw new Error(data.error || 'Flight is no longer available. Please search again.');
 
                 const revalidatedOffer = {
                     ...parsedOffer,
@@ -112,6 +154,7 @@ export function useFlightBooking() {
                     },
                     farePolicy: data.farePolicy,
                     policyChanged: data.priceChanged || (JSON.stringify(parsedOffer.farePolicy) !== JSON.stringify(data.farePolicy)),
+                    seatsRemaining: data.seatsRemaining ?? parsedOffer.seatsRemaining,
                 };
 
                 if (isMounted) {
@@ -152,8 +195,7 @@ export function useFlightBooking() {
     const bookMutation = useMutation({
         mutationFn: async ({ offer, passengers, contact }: { offer: FlightOffer, passengers: FlightPassengerForm[], contact: FlightContactForm }) => {
             // Client-side auth check (fast-fail UX; server re-verifies via JWT)
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await createClient().auth.getUser();
 
             if (!user) {
                 throw new Error("unauthenticated");
@@ -205,7 +247,7 @@ export function useFlightBooking() {
                 throw new Error(data.error || 'Booking failed');
             }
 
-            return data.data;
+            return data.data ?? data;
         },
         onMutate: () => {
             setStep('submitting');
@@ -234,6 +276,7 @@ export function useFlightBooking() {
             if (typeof window !== 'undefined') {
                 sessionStorage.removeItem('flightPassengers');
                 sessionStorage.removeItem('flightContact');
+                sessionStorage.removeItem('flightSearchPassengers');
             }
             sessionStorage.removeItem('selectedFlight');
         },
@@ -244,14 +287,20 @@ export function useFlightBooking() {
                 if (typeof window !== 'undefined') {
                     // Import the store and open the modal
                     import('@/stores/authStore').then(({ useAuthStore }) => {
-                        useAuthStore.getState().openAuthModal('email');
+                        const redirectPath = window.location.pathname + window.location.search;
+                        useAuthStore.getState().openAuthModal('email', redirectPath);
                     });
                 }
             } else {
                 setErrorMsg(error.message || 'Booking failed. Please try again.');
                 setStep('error');
-                // Generate a new idempotency key for retry
-                idempotencyKeyRef.current = crypto.randomUUID();
+                // Keep the same idempotency key for the same offer retry
+                if (error?.message === "unauthenticated") {
+                    // do nothing to idempotency, they just need to log in
+                } else {
+                    // If it failed for other reasons, generate a new key for next attempt
+                    idempotencyKeyRef.current = generateId();
+                }
             }
         }
     });
@@ -274,6 +323,7 @@ export function useFlightBooking() {
         if (typeof window !== 'undefined') {
             sessionStorage.removeItem('flightPassengers');
             sessionStorage.removeItem('flightContact');
+            sessionStorage.removeItem('flightSearchPassengers');
             sessionStorage.removeItem('selectedFlight');
         }
 
@@ -317,6 +367,21 @@ export function useFlightBooking() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!offer) return;
+
+        // Validate passenger count matches the original search
+        const searchCounts = typeof window !== 'undefined'
+            ? sessionStorage.getItem('flightSearchPassengers')
+            : null;
+        if (searchCounts) {
+            try {
+                const { adults = 1, children = 0, infants = 0 } = JSON.parse(searchCounts);
+                const expected = adults + children + infants;
+                if (passengers.length !== expected) {
+                    setErrorMsg(`This fare was searched for ${expected} passenger(s) but ${passengers.length} passenger form(s) are filled. Please match the passenger count to your search.`);
+                    return;
+                }
+            } catch { /* ignore parse errors, let server validate */ }
+        }
 
         try {
             flightBookingSchema.parse({ passengers, contact });

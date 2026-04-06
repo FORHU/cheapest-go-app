@@ -3,7 +3,8 @@
  * These are pure functions that can be used in server components.
  */
 
-import { Property } from '@/data/mockProperties';
+import { unstable_cache } from 'next/cache';
+import { type Property } from '@/types';
 import { searchLiteApi } from '@/utils/supabase/functions';
 
 // Types
@@ -103,13 +104,68 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         : undefined;
 
     // countryCode comes from destination selection (autocomplete → URL param)
-    const countryCode = typeof params.countryCode === 'string' && params.countryCode
+    let countryCode = typeof params.countryCode === 'string' && params.countryCode
         ? params.countryCode : '';
+
+    // ── Fallback: derive countryCode from known city names when it's missing ──
+    // This ensures LiteAPI always gets at least (cityName + countryCode) instead of
+    // cityName alone, which causes a 400 "bad request" error for smaller cities.
+    if (!countryCode && destination) {
+        const CITY_COUNTRY: Record<string, string> = {
+            // Vietnam
+            'da nang': 'VN', 'danang': 'VN', 'ho chi minh': 'VN', 'saigon': 'VN',
+            'hanoi': 'VN', 'hoi an': 'VN', 'hue': 'VN', 'nha trang': 'VN',
+            'phu quoc': 'VN', 'vung tau': 'VN', 'ha long': 'VN',
+            // Philippines
+            'manila': 'PH', 'cebu': 'PH', 'cebu city': 'PH', 'boracay': 'PH',
+            'boracay island': 'PH', 'palawan': 'PH', 'el nido': 'PH',
+            'davao': 'PH', 'bohol': 'PH', 'baguio': 'PH', 'siargao': 'PH',
+            'pasig': 'PH', 'pasig city': 'PH', 'makati': 'PH', 'taguig': 'PH',
+            'quezon city': 'PH',
+            // Japan
+            'tokyo': 'JP', 'osaka': 'JP', 'kyoto': 'JP', 'sapporo': 'JP',
+            'fukuoka': 'JP', 'nara': 'JP', 'hiroshima': 'JP', 'okinawa': 'JP',
+            // South Korea
+            'seoul': 'KR', 'busan': 'KR', 'jeju': 'KR', 'incheon': 'KR',
+            // Thailand
+            'bangkok': 'TH', 'phuket': 'TH', 'pattaya': 'TH', 'chiang mai': 'TH',
+            'koh samui': 'TH', 'krabi': 'TH',
+            // Singapore / Malaysia
+            'singapore': 'SG', 'kuala lumpur': 'MY', 'penang': 'MY', 'langkawi': 'MY',
+            'kota kinabalu': 'MY', 'johor bahru': 'MY',
+            // Indonesia
+            'bali': 'ID', 'jakarta': 'ID', 'lombok': 'ID', 'yogyakarta': 'ID',
+            'surabaya': 'ID', 'bandung': 'ID',
+            // Middle East / India
+            'dubai': 'AE', 'abu dhabi': 'AE', 'doha': 'QA', 'istanbul': 'TR',
+            'delhi': 'IN', 'new delhi': 'IN', 'mumbai': 'IN', 'goa': 'IN',
+            'colombo': 'LK', 'kathmandu': 'NP',
+            // Europe
+            'london': 'GB', 'paris': 'FR', 'amsterdam': 'NL', 'frankfurt': 'DE',
+            'munich': 'DE', 'berlin': 'DE', 'rome': 'IT', 'milan': 'IT',
+            'madrid': 'ES', 'barcelona': 'ES', 'zurich': 'CH', 'vienna': 'AT',
+            'athens': 'GR', 'lisbon': 'PT', 'brussels': 'BE', 'prague': 'CZ',
+            'budapest': 'HU', 'warsaw': 'PL', 'stockholm': 'SE', 'oslo': 'NO',
+            'copenhagen': 'DK', 'helsinki': 'FI',
+            // Americas
+            'new york': 'US', 'los angeles': 'US', 'san francisco': 'US',
+            'miami': 'US', 'chicago': 'US', 'toronto': 'CA', 'vancouver': 'CA',
+            'cancun': 'MX', 'mexico city': 'MX',
+            // Oceania
+            'sydney': 'AU', 'melbourne': 'AU', 'auckland': 'NZ',
+        };
+        const key = destination.toLowerCase().trim();
+        // Direct lookup first, then strip common suffixes (City, Island, Province, etc.)
+        countryCode = CITY_COUNTRY[key]
+            || CITY_COUNTRY[key.replace(/\s+(city|island|province|metro|town)$/i, '')]
+            || '';
+    }
+
     const placeId = typeof params.placeId === 'string' ? params.placeId : undefined;
 
     // Currency comes from the user's locale preference (URL param), NOT the destination
     const currency = typeof params.currency === 'string' && params.currency
-        ? params.currency : 'PHP';
+        ? params.currency : 'KRW';
 
     const queryParams: SearchQueryParams = {
         checkin: formatSearchDate(rawCheckin) || "2026-06-01",
@@ -139,6 +195,7 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
 
     return queryParams;
 }
+
 
 // Extract price from hotel room types
 function extractPrice(hotel: any): { price: number; originalPrice?: number } {
@@ -190,7 +247,7 @@ function extractRefundableTag(hotel: any): string | undefined {
 }
 
 // Transform API hotel to Property
-function transformHotelToProperty(hotel: any, cityName: string): Property {
+function transformHotelToProperty(hotel: any, cityName: string, currency: string): Property {
     const { price, originalPrice } = extractPrice(hotel);
     const refundableTag = extractRefundableTag(hotel);
 
@@ -214,6 +271,7 @@ function transformHotelToProperty(hotel: any, cityName: string): Property {
         rating: rating,
         reviews: reviewCount,
         price,
+        currency,
         originalPrice,
         image: hotel.thumbnailUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
         images: hotel.details?.hotel_images_photos ? hotel.details.hotel_images_photos.map((p: any) => p.url) : [],
@@ -230,34 +288,52 @@ function transformHotelToProperty(hotel: any, cityName: string): Property {
     } as Property;
 }
 
-/**
- * Main search function - fetches properties from LiteAPI.
- */
-export async function fetchSearchProperties(params: SearchParams): Promise<Property[]> {
-    const queryParams = buildSearchQueryParams(params);
-
-    try {
+// Cache is defined at module level so a single stable instance is reused across requests.
+// Next.js keys it as: ['search-properties'] + JSON.stringify(queryParams).
+// Using the normalized queryParams (not raw URL strings) ensures that alternate param
+// spellings (checkIn vs checkin) don't produce separate cache entries.
+const getCachedSearchProperties = unstable_cache(
+    async (queryParams: SearchQueryParams): Promise<Property[]> => {
         const data = await searchLiteApi(queryParams);
 
         if (data?.data && Array.isArray(data.data)) {
-            const properties = data.data.map((hotel: any) =>
-                transformHotelToProperty(hotel, queryParams.cityName)
-            );
+            const results = data.data
+                .map((hotel: any) =>
+                    transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency)
+                )
+                .filter(
+                    (prop: Property) =>
+                        prop.name &&
+                        !prop.name.match(/^Hotel\s+lp[a-z0-9]+$/i) &&
+                        !prop.name.match(/^lp[a-z0-9]+$/i)
+                );
 
-            // Filter out hotels with incomplete data (ID-like names indicate missing details)
-            const filteredProperties = properties.filter((prop: Property) => {
-                // Exclude hotels where name looks like an ID (e.g., "Hotel lp38f17b", "Hotel lpe13f0")
-                const hasValidName = prop.name &&
-                    !prop.name.match(/^Hotel\s+lp[a-z0-9]+$/i) &&
-                    !prop.name.match(/^lp[a-z0-9]+$/i);
-                return hasValidName;
-            });
+            // Throw on empty so unstable_cache does not store the empty result —
+            // next request retries live instead of serving a stale cache miss.
+            if (results.length === 0) throw new Error('NO_RESULTS');
 
-            return filteredProperties;
+            return results;
         }
-    } catch (e) {
-        console.error("Failed to fetch properties:", e);
-    }
 
-    return [];
+        throw new Error('NO_RESULTS');
+    },
+    ['search-properties'],
+    { revalidate: 300 } // 5-minute TTL per unique search combination
+);
+
+/**
+ * Main search function - fetches properties from LiteAPI.
+ * Results are cached for 5 minutes per unique combination of search params.
+ * Empty results and errors are never cached so the next search retries live.
+ */
+export async function fetchSearchProperties(params: SearchParams): Promise<Property[]> {
+    const queryParams = buildSearchQueryParams(params);
+    try {
+        return await getCachedSearchProperties(queryParams);
+    } catch (e) {
+        if (e instanceof Error && e.message !== 'NO_RESULTS') {
+            console.error("Failed to fetch properties:", e);
+        }
+        return [];
+    }
 }

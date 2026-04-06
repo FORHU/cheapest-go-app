@@ -77,6 +77,7 @@ export interface CheckoutState {
     setEmailSent: (value: boolean) => void;
     setFormErrors: (errors: Record<string, string>) => void;
     clearFormErrors: () => void;
+    syncWithUserCurrency: (currency: string) => void;
 
     // Voucher actions
     setVoucherCode: (code: string) => void;
@@ -103,8 +104,8 @@ export const useCheckoutStore = create<CheckoutState>()(
             specialRequests: '',
             payeeFirstName: '',
             payeeLastName: '',
-            phoneCountryCode: '+63',
-            selectedCurrency: 'PHP',
+            phoneCountryCode: '+82',
+            selectedCurrency: 'KRW',
             isSuccess: false,
             emailSent: false,
             formErrors: {},
@@ -175,6 +176,13 @@ export const useCheckoutStore = create<CheckoutState>()(
                 }
             },
 
+            syncWithUserCurrency: (currency: string) => {
+                const { selectedCurrency } = get();
+                if (currency && currency !== selectedCurrency) {
+                    set({ selectedCurrency: currency });
+                }
+            },
+
             autoFillFromUser: (user) => {
                 if (!user) return;
 
@@ -195,8 +203,8 @@ export const useCheckoutStore = create<CheckoutState>()(
                 specialRequests: '',
                 payeeFirstName: '',
                 payeeLastName: '',
-                phoneCountryCode: '+63',
-                selectedCurrency: 'PHP',
+                phoneCountryCode: '+82',
+                selectedCurrency: 'KRW',
                 isSuccess: false,
                 emailSent: false,
                 formErrors: {},
@@ -315,6 +323,7 @@ export const useCheckoutActions = () =>
             setEmailSent: state.setEmailSent,
             setFormErrors: state.setFormErrors,
             clearFormErrors: state.clearFormErrors,
+            syncWithUserCurrency: state.syncWithUserCurrency,
             handleInputChange: state.handleInputChange,
             autoFillFromUser: state.autoFillFromUser,
             resetForm: state.resetForm,

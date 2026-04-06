@@ -1,7 +1,11 @@
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import { fetchTripsData } from '@/lib/trips';
 import { TripsContent } from '@/components/trips';
 import { Skeleton } from '@/components/shared/Skeleton';
+import { getAuthenticatedUser } from '@/lib/server/auth';
+
+export const dynamic = 'force-dynamic';
 
 function TripsSkeleton() {
   return (
@@ -21,11 +25,26 @@ function TripsSkeleton() {
 }
 
 async function TripsLoader() {
-  const initialData = await fetchTripsData();
-  return <TripsContent initialData={initialData} />;
+  try {
+    const initialData = await fetchTripsData();
+    return <TripsContent initialData={initialData} />;
+  } catch (err) {
+    console.error('[TripsLoader] fetchTripsData threw:', err);
+    const emptyData = {
+      bookings: [], upcomingBookings: [], pastBookings: [], cancelledBookings: [],
+      flightBookings: [], upcomingFlightBookings: [], pastFlightBookings: [], cancelledFlightBookings: [],
+    };
+    return <TripsContent initialData={emptyData} />;
+  }
 }
 
-export default function TripsPage() {
+export default async function TripsPage() {
+  const { user } = await getAuthenticatedUser();
+
+  if (!user) {
+    redirect('/login?next=/trips');
+  }
+
   return (
     <Suspense fallback={<TripsSkeleton />}>
       <TripsLoader />

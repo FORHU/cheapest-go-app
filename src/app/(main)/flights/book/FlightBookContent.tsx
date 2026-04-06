@@ -2,14 +2,14 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw } from 'lucide-react';
+import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw, Users } from 'lucide-react';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
-import { formatTime, formatDuration, formatPrice } from '@/lib/flights/utils';
+import { formatTime, formatDuration, formatPrice } from '@/utils/flight-utils';
 import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
-import { useFlightSearch } from '@/hooks/search/useFlightSearch';
-import type { FarePolicy } from '@/lib/flights/types';
+import { useUserCurrency } from '@/stores/searchStore';
+import type { FarePolicy } from '@/types/flights';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
@@ -105,7 +105,7 @@ export default function FlightBookContent() {
         setStep,
         pollForBooking,
     } = useFlightBooking();
-    const { handleFlightSearch } = useFlightSearch();
+    const targetCurrency = useUserCurrency();
 
     // ─── Loading ─────────────────────────────────────────────────────
 
@@ -165,10 +165,13 @@ export default function FlightBookContent() {
                         {errorMsg || 'Your booking could not be completed.'}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-                        Your card has <strong>not</strong> been charged. Please try a different flight or date.
+                        {errorMsg?.includes('automatically refunded')
+                            ? 'Please try a different flight or date.'
+                            : <>Your card has <strong>not</strong> been charged. Please try a different flight or date.</>
+                        }
                     </p>
                     <button
-                        onClick={handleFlightSearch}
+                        onClick={() => router.push('/flights')}
                         className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors"
                     >
                         Search Again
@@ -279,7 +282,7 @@ export default function FlightBookContent() {
                         </div>
                         <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
                             <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">Total</span>
-                            <span className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency)}</span>
+                            <span className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</span>
                         </div>
                         {bookingResult.tickets && bookingResult.tickets.length > 0 && (
                             <div className="flex justify-between items-start pt-1">
@@ -369,10 +372,28 @@ export default function FlightBookContent() {
                             <div className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">{last.arrival.airport}</div>
                         </div>
                         <div className="ml-auto text-right pl-2 lg:pl-4 border-l border-slate-200 dark:border-slate-700">
-                            <div className="text-base lg:text-xl font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency)}</div>
+                            <div className="text-base lg:text-xl font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</div>
                             <div className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">total price</div>
                         </div>
                     </div>
+                    {offer.seatsRemaining != null && offer.seatsRemaining > 0 && (
+                        <div className="mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-slate-100 dark:border-slate-800">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-xs font-medium border ${
+                                offer.seatsRemaining <= 3
+                                    ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+                                    : offer.seatsRemaining <= 6
+                                    ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+                                    : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                            }`}>
+                                <Users className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+                                {offer.seatsRemaining <= 3
+                                    ? `Only ${offer.seatsRemaining} seat${offer.seatsRemaining === 1 ? '' : 's'} left!`
+                                    : offer.seatsRemaining <= 6
+                                    ? `${offer.seatsRemaining} seats left`
+                                    : `${offer.seatsRemaining} seats available`}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Fare Policy Panel — shown from search-stage policy, updated after revalidation */}
@@ -627,7 +648,7 @@ export default function FlightBookContent() {
                                 </>
                             ) : (
                                 <>
-                                    Confirm Booking · {formatPrice(offer.price.total, offer.price.currency)}
+                                    Confirm Booking · {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
                                 </>
                             )}
                         </button>

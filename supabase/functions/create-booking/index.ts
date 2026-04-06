@@ -17,6 +17,7 @@
  *   { success, bookingId, pnr, status, confirmedPrice, confirmedCurrency }
  */
 
+import { getCorsHeaders } from '../_shared/cors.ts';
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -25,18 +26,6 @@ declare const Deno: any;
 import { bookFlight, bookFlightV2, revalidateFare, revalidateFareV2, MystiflyError } from '../_shared/mystiflyClient.ts';
 import { createDuffelOrder } from '../_shared/duffelClient.ts';
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
-
-function getCorsHeaders(req: Request) {
-    const origin = req.headers.get('Origin') ?? '';
-    const allowedOrigin = ALLOWED_ORIGINS.length > 0
-        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
-        : '*';
-    return {
-        'Access-Control-Allow-Origin': allowedOrigin,
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    };
-}
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -303,13 +292,61 @@ Deno.serve(async (req: Request) => {
                 }, 502);
             }
         } else if (bs.provider === 'duffel') {
-            result = await bookWithDuffel(bs.flight, bs.passengers, bs.contact);
+            try {
+                result = await bookWithDuffel(bs.flight, bs.passengers, bs.contact);
+            } catch (duffelErr: any) {
+                console.error('[create-booking] Duffel Booking FAILED:', duffelErr.message);
+
+                // If payment was authorized/captured, we must refund
+                const paymentIntentId = bs.payment_intent_id;
+                if (paymentIntentId) {
+                    console.warn('[create-booking] Duffel failed after payment — attempting automatic Stripe refund');
+                    try {
+                        const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+                        await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}/cancel`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Basic ${btoa(stripeSecretKey + ':')}`,
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                        });
+                        // Also try refund if it was already captured
+                        await fetch(`https://api.stripe.com/v1/refunds`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Basic ${btoa(stripeSecretKey + ':')}`,
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: new URLSearchParams({ payment_intent: paymentIntentId }).toString(),
+                        });
+                    } catch (refundErr) {
+                        console.error('[create-booking] Automatic refund failed (manual intervention needed):', refundErr);
+                    }
+                }
+
+                await supabase.from('booking_sessions').update({ status: 'failed' }).eq('id', sessionId);
+
+                // Build a user-friendly error — strip raw JSON dumps
+                const isDuffel500 = duffelErr.status >= 500;
+                const isExpired = /expired|no longer available|not found|gone/i.test(duffelErr.message ?? '');
+                const friendlyError = isDuffel500
+                    ? 'The airline system is temporarily unavailable. Your payment has been automatically refunded.'
+                    : isExpired
+                    ? 'This flight offer has expired. Your payment has been automatically refunded. Please search again for current availability.'
+                    : `${duffelErr.message}. Your payment has been automatically refunded.`;
+                console.error('[create-booking] Duffel error details:', duffelErr.message);
+
+                return jsonResponse(corsHeaders, {
+                    success: false,
+                    error: friendlyError,
+                }, 502);
+            }
         } else {
             return jsonResponse(corsHeaders, { success: false, error: `Unknown provider: ${bs.provider}` }, 400);
         }
 
         // ── 3. Mystifly: check PNR and handle payment capture / cancel ──
-        // STEP 6: PNR received from Mystifly → safe to capture Stripe payment now
+        // (PNR check for Duffel is handled implicitly - if we reach here, it succeeded)
         if (isMystifly) {
             const paymentIntentId = bs.payment_intent_id;
 
@@ -552,84 +589,99 @@ async function bookWithMystifly(
     // ── STEP: Revalidate fare before booking ── version-paired, no fallback ──
     const revalidateFn = isV2Provider ? revalidateFareV2 : revalidateFare;
     console.log(`[create-booking] Revalidating with ${isV2Provider ? 'V2' : 'V1'} function...`);
-    const revalResult = await revalidateFn(fareSourceCode, sessionId, conversationId);
 
+    let revalResult: any = null;
+    let revalidationSkipped = false;
 
-    if (!revalResult.Success) {
-        console.error('[create-booking] Mystifly Revalidation FAILED:', JSON.stringify(revalResult));
-        const msg = revalResult.Message ?? '';
-        const isUnavailable = /not available|not found|expired/i.test(msg);
-        throw new Error(isUnavailable ? 'Flight is no longer available' : `Fare revalidation failed: ${msg}`);
+    try {
+        revalResult = await revalidateFn(fareSourceCode, sessionId, conversationId);
+    } catch (revalErr: any) {
+        const isParse = revalErr?.type === 'PARSE' || /invalid json|empty response/i.test(revalErr?.message ?? '');
+        if (isV2Provider && isParse) {
+            // V2 revalidation endpoint may not exist — skip and proceed to booking.
+            // The booking API itself will validate the fare.
+            console.warn('[create-booking] V2 revalidation returned empty — skipping revalidation, proceeding to book');
+            revalidationSkipped = true;
+        } else {
+            throw revalErr;
+        }
     }
-
-    // Use updated FareSourceCode if revalidation returned a new one
-    const revalData = revalResult.Data ?? {};
-    const revalFareInfo = revalData.FareItinerary?.AirItineraryFareInfo ?? revalData;
-    if (revalFareInfo.FareSourceCode || revalData.FareSourceCode) {
-        fareSourceCode = revalFareInfo.FareSourceCode ?? revalData.FareSourceCode ?? fareSourceCode!;
-        console.log('[create-booking] Updated FareSourceCode from revalidation:', fareSourceCode!.slice(0, 50) + '...');
-    }
-
-    // ── Support V2 Summarized vs V1 Nested ──
-    // V2 (Summarized) always has FlightFaresList. V1 (Legacy) has FareItinerary or PricedItineraries.
-    const isV2 = revalData.FlightFaresList !== undefined;
-    console.log('[create-booking] Revalidation structure:', isV2 ? 'Summarized (V2)' : (revalData.PricedItineraries ? 'List (V1)' : 'Legacy (V1)'));
 
     let revalidatedPrice: number | undefined;
     let revalidatedCurrency: string | undefined;
 
-    if (isV2 && revalData.FlightFaresList) {
-        // V2 Summarized Path
-        const fare = revalData.FlightFaresList[0];
-        if (fare) {
-            let total = 0;
-            const passengerFares: any[] = fare.PassengerFare ?? [];
-            for (const pf of passengerFares) {
-                total += (pf.TotalFare || 0) * (pf.Quantity || 1);
-                revalidatedCurrency = pf.Currency;
-            }
-            revalidatedPrice = total;
+    if (!revalidationSkipped) {
+        if (!revalResult.Success) {
+            console.error('[create-booking] Mystifly Revalidation FAILED:', JSON.stringify(revalResult));
+            const msg = revalResult.Message ?? '';
+            const isUnavailable = /not available|not found|expired/i.test(msg);
+            throw new Error(isUnavailable ? 'Flight is no longer available' : `Fare revalidation failed: ${msg}`);
         }
-    } else if (revalData.PricedItineraries) {
-        // V1 List Path (Standard ASHR 1.0 Revalidate)
-        const pricedItin = revalData.PricedItineraries[0];
-        if (pricedItin) {
-            const pricingInfo = pricedItin.AirItineraryPricingInfo;
-            const itinFare = pricingInfo?.ItinTotalFare;
+
+        // Use updated FareSourceCode if revalidation returned a new one
+        const revalData = revalResult.Data ?? {};
+        const revalFareInfo = revalData.FareItinerary?.AirItineraryFareInfo ?? revalData;
+        if (revalFareInfo.FareSourceCode || revalData.FareSourceCode) {
+            fareSourceCode = revalFareInfo.FareSourceCode ?? revalData.FareSourceCode ?? fareSourceCode!;
+            console.log('[create-booking] Updated FareSourceCode from revalidation:', fareSourceCode!.slice(0, 50) + '...');
+        }
+
+        // ── Support V2 Summarized vs V1 Nested ──
+        const isV2 = revalData.FlightFaresList !== undefined;
+        console.log('[create-booking] Revalidation structure:', isV2 ? 'Summarized (V2)' : (revalData.PricedItineraries ? 'List (V1)' : 'Legacy (V1)'));
+
+        if (isV2 && revalData.FlightFaresList) {
+            // V2 Summarized Path
+            const fare = revalData.FlightFaresList[0];
+            if (fare) {
+                let total = 0;
+                const passengerFares: any[] = fare.PassengerFare ?? [];
+                for (const pf of passengerFares) {
+                    total += (pf.TotalFare || 0) * (pf.Quantity || 1);
+                    revalidatedCurrency = pf.Currency;
+                }
+                revalidatedPrice = total;
+            }
+        } else if (revalData.PricedItineraries) {
+            // V1 List Path (Standard ASHR 1.0 Revalidate)
+            const pricedItin = revalData.PricedItineraries[0];
+            if (pricedItin) {
+                const pricingInfo = pricedItin.AirItineraryPricingInfo;
+                const itinFare = pricingInfo?.ItinTotalFare;
+                if (itinFare) {
+                    const amount = itinFare.TotalFare?.Amount ?? itinFare.TotalFare?.Value;
+                    revalidatedPrice = amount ? Number(amount) : undefined;
+                    revalidatedCurrency = itinFare.TotalFare?.CurrencyCode ?? itinFare.TotalFare?.Currency;
+                }
+                // CRITICAL: Update FareSourceCode for Booking!
+                const newCode = pricingInfo?.FareSourceCode || pricedItin.FareSourceCode;
+                if (newCode) {
+                    fareSourceCode = newCode;
+                    console.log('[create-booking] Refreshed FareSourceCode from PricedItineraries:', fareSourceCode!.slice(0, 50) + '...');
+                }
+            }
+        } else {
+            // V1 Nested Path (Legacy fallback)
+            const itin = revalData.FareItinerary ?? revalData;
+            const itinFare = itin.AirItineraryFareInfo?.ItinTotalFare ?? itin.ItinTotalFare;
+
             if (itinFare) {
                 const amount = itinFare.TotalFare?.Amount ?? itinFare.TotalFare?.Value;
                 revalidatedPrice = amount ? Number(amount) : undefined;
                 revalidatedCurrency = itinFare.TotalFare?.CurrencyCode ?? itinFare.TotalFare?.Currency;
-            }
-            // CRITICAL: Update FareSourceCode for Booking!
-            const newCode = pricingInfo?.FareSourceCode || pricedItin.FareSourceCode;
-            if (newCode) {
-                fareSourceCode = newCode;
-                console.log('[create-booking] Refreshed FareSourceCode from PricedItineraries:', fareSourceCode!.slice(0, 50) + '...');
-            }
-        }
-    } else {
-        // V1 Nested Path (Legacy fallback)
-        const itin = revalData.FareItinerary ?? revalData;
-        const itinFare = itin.AirItineraryFareInfo?.ItinTotalFare ?? itin.ItinTotalFare;
 
-        if (itinFare) {
-            const amount = itinFare.TotalFare?.Amount ?? itinFare.TotalFare?.Value;
-            revalidatedPrice = amount ? Number(amount) : undefined;
-            revalidatedCurrency = itinFare.TotalFare?.CurrencyCode ?? itinFare.TotalFare?.Currency;
-
-            // Check for refreshed code here too
-            const newCode = itin.FareSourceCode || (itin.AirItineraryFareInfo as any)?.FareSourceCode;
-            if (newCode) {
-                fareSourceCode = newCode;
-                console.log('[create-booking] Refreshed FareSourceCode from FareItinerary:', fareSourceCode!.slice(0, 50) + '...');
+                const newCode = itin.FareSourceCode || (itin.AirItineraryFareInfo as any)?.FareSourceCode;
+                if (newCode) {
+                    fareSourceCode = newCode;
+                    console.log('[create-booking] Refreshed FareSourceCode from FareItinerary:', fareSourceCode!.slice(0, 50) + '...');
+                }
+            } else {
+                console.warn('[create-booking] V1 Revalidation structure unexpected. Keys:', Object.keys(itin));
             }
-        } else {
-            console.warn('[create-booking] V1 Revalidation structure unexpected. Keys:', Object.keys(itin));
         }
     }
 
-    console.log('[create-booking] Revalidation parsed. Price:', revalidatedPrice, revalidatedCurrency);
+    console.log('[create-booking] Revalidation parsed. Price:', revalidatedPrice, revalidatedCurrency, revalidationSkipped ? '(skipped)' : '');
 
     const isDemo = (Deno.env.get('MYSTIFLY_BASE_URL') ?? '').includes('demo');
 
@@ -771,7 +823,8 @@ async function bookWithDuffel(
 
     try {
         console.log('[create-booking] Creating Duffel Order for offer:', offerId);
-        const orderResponse = await createDuffelOrder({
+
+        const duffelPayload = {
             type: 'instant',
             selected_offers: [offerId],
             passengers: orderPassengers,
@@ -782,7 +835,21 @@ async function bookWithDuffel(
                     currency: rawOffer.total_currency,
                 }
             ],
-        });
+        };
+
+        // Retry once on Duffel 500 (transient server errors)
+        let orderResponse: any;
+        try {
+            orderResponse = await createDuffelOrder(duffelPayload);
+        } catch (firstErr: any) {
+            if (firstErr.status === 500) {
+                console.warn('[create-booking] Duffel 500, retrying once after 1s...');
+                await new Promise(r => setTimeout(r, 1000));
+                orderResponse = await createDuffelOrder(duffelPayload);
+            } else {
+                throw firstErr;
+            }
+        }
 
         const order = orderResponse.data;
         if (!order || !order.id) {

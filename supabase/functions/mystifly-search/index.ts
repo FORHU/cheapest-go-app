@@ -12,27 +12,16 @@
  *     children?, infants?, cabinClass?, tripType?, maxOffers?, nonStopOnly? }
  */
 
+import { getCorsHeaders } from '../_shared/cors.ts';
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 declare const Deno: any;
 
 import type { NormalizedFlight, CabinClass, TripType } from '../_shared/types.ts';
-import { searchFlights, createSession, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, MYSTIFLY_TARGET } from '../_shared/mystiflyClient.ts';
+import { searchFlights, createSession, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, getMystiflyTarget } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyResponse } from '../_shared/normalizeFlight.ts';
 
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
-
-function getCorsHeaders(req: Request) {
-    const origin = req.headers.get('Origin') ?? '';
-    const allowedOrigin = ALLOWED_ORIGINS.length > 0
-        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
-        : '*';
-    return {
-        'Access-Control-Allow-Origin': allowedOrigin,
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    };
-}
 
 // ─── Request Body ───────────────────────────────────────────────────
 
@@ -126,7 +115,7 @@ Deno.serve(async (req: Request) => {
             OriginDestinationInformations: originDestinations,
             PassengerTypeQuantities: passengerTypes,
             NearByAirports: true,
-            Target: 'Production', // Based on user documentation image for V1 Search
+            Target: getMystiflyTarget(), // Use dynamic target based on env
             ConversationId: '',
             CurrencyCode: body.currency,
             TravelPreferences: {
@@ -200,8 +189,8 @@ Deno.serve(async (req: Request) => {
 
         console.log(`[mystifly-search] Mystifly returned ${flights.length} raw itineraries`);
 
-        // Sort by price ascending
-        flights.sort((a, b) => a.price - b.price);
+        // Sort by normalized price ascending
+        flights.sort((a, b) => a.normalizedPriceUsd - b.normalizedPriceUsd);
         // ── Currency Fallback Conversion ──
         // Some Mystifly fare sources ignore CurrencyCode. We force convert to requested currency.
         const targetCurrency = body.currency || 'USD';

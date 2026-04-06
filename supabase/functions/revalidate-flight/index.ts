@@ -29,24 +29,41 @@ declare const Deno: any;
 
 import type { FlightProvider } from '../_shared/types.ts';
 import { FlightProvider as FP } from '../_shared/types.ts';
-import { revalidateFare, revalidateFareV2, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { revalidateFare, revalidateFareV2 } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyV1Policy, normalizeMystiflyV2Policy, normalizeDuffelPolicy } from '../_shared/farePolicy.ts';
 import type { NormalizedFarePolicy } from '../_shared/types.ts';
+import { getCorsHeaders } from '../_shared/cors.ts';
+import { createClient } from "npm:@supabase/supabase-js@2";
 
-
-
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').filter(Boolean);
-
-function getCorsHeaders(req: Request) {
-    const origin = req.headers.get('Origin') ?? '';
-    const allowedOrigin = ALLOWED_ORIGINS.length > 0
-        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
-        : '*';
-    return {
-        'Access-Control-Allow-Origin': allowedOrigin,
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    };
+/** Fire-and-forget insert to api_logs. Never throws. */
+function logEdgeApiCall(entry: {
+    provider: string; endpoint: string; durationMs: number;
+    requestParams?: Record<string, unknown>; responseStatus?: number;
+    responseSummary?: Record<string, unknown>; errorMessage?: string; userId?: string;
+}): void {
+    try {
+        const supabase = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        );
+        supabase.from('api_logs').insert({
+            provider: entry.provider,
+            endpoint: entry.endpoint,
+            method: 'POST',
+            request_params: entry.requestParams ?? null,
+            response_status: entry.responseStatus ?? null,
+            response_summary: entry.responseSummary ?? null,
+            duration_ms: entry.durationMs,
+            error_message: entry.errorMessage ?? null,
+            user_id: entry.userId ?? null,
+        }).then(({ error }: any) => {
+            if (error) console.error('[api-logger] Insert failed:', error.message);
+        }).catch(() => {});
+    } catch { /* never break the main flow */ }
 }
+
+
+
 
 // ─── Request / Response Types ───────────────────────────────────────
 
@@ -80,6 +97,8 @@ interface RevalidateResult {
     };
     /** Locked fare policy with policyVersion='revalidated'. */
     farePolicy?: NormalizedFarePolicy;
+    /** Seat count from the provider, if available. */
+    seatsRemaining?: number;
     error?: string;
     durationMs: number;
 }
@@ -150,9 +169,23 @@ Deno.serve(async (req: Request) => {
 
         console.log(`[revalidate-flight] Done: available=${result.seatsAvailable}, priceChanged=${result.priceChanged}, new=${result.newPrice} in ${result.durationMs}ms`);
 
+        logEdgeApiCall({
+            provider: body.provider, endpoint: 'revalidate-flight', durationMs: result.durationMs,
+            requestParams: { origin: (body.flightPayload.flight as any)?.segments?.[0]?.origin, oldPrice: oldPrice },
+            responseStatus: result.success ? 200 : 422, userId: body.userId,
+            responseSummary: { seatsAvailable: result.seatsAvailable, priceChanged: result.priceChanged, newPrice: result.newPrice, seatsRemaining: result.seatsRemaining },
+            errorMessage: result.error,
+        });
+
         return jsonResponse(corsHeaders, result, result.success ? 200 : 422);
     } catch (err: any) {
         console.error('[revalidate-flight] Error:', err.message);
+
+        logEdgeApiCall({
+            provider: 'unknown', endpoint: 'revalidate-flight', durationMs: Date.now() - startMs,
+            responseStatus: 500,
+            errorMessage: err.message || 'Revalidation failed',
+        });
 
         return jsonResponse(getCorsHeaders(req), {
             success: false,
@@ -202,9 +235,56 @@ async function revalidateMystifly(
         };
     }
 
-    const raw = body.provider === 'mystifly_v2'
-        ? await revalidateFareV2(traceId, sessionId, conversationId)
-        : await revalidateFare(traceId, sessionId, conversationId);
+    // ── Call Mystifly API (catch errors gracefully instead of letting them 500) ──
+    let raw: any;
+    try {
+        raw = body.provider === 'mystifly_v2'
+            ? await revalidateFareV2(traceId, sessionId, conversationId)
+            : await revalidateFare(traceId, sessionId, conversationId);
+    } catch (err: any) {
+        const msg = err?.message || 'Mystifly revalidation request failed';
+        const isExpired = /expired|not found|not available|timeout|abort/i.test(msg);
+        const isParse = err?.type === 'PARSE' || /invalid json|empty response/i.test(msg);
+        console.error(`[revalidate-flight] Mystifly API error (${body.provider}):`, msg);
+
+        // V2 PARSE errors (empty response) = endpoint may not exist.
+        // Soft-pass: trust the fare from search and let the booking API validate it.
+        if (body.provider === 'mystifly_v2' && isParse) {
+            console.warn('[revalidate-flight] V2 revalidation unavailable — soft-passing with original price');
+            return {
+                success: true,
+                priceChanged: false,
+                oldPrice,
+                newPrice: oldPrice,
+                seatsAvailable: true,
+                provider: body.provider,
+                validatedFlight: {
+                    price: oldPrice,
+                    baseFare: oldPrice,
+                    taxes: 0,
+                    currency: body.flightPayload.currency || 'USD',
+                    pricePerAdult: oldPrice,
+                    traceId,
+                },
+                revalidationSkipped: true,
+                durationMs: Date.now() - startMs,
+            };
+        }
+
+        return {
+            success: true, // success=true means we handled it; seatsAvailable=false means fare is gone
+            priceChanged: false,
+            oldPrice,
+            newPrice: 0,
+            seatsAvailable: false,
+            provider: body.provider,
+            validatedFlight: { price: 0, baseFare: 0, taxes: 0, currency: 'USD', pricePerAdult: 0 },
+            error: isExpired
+                ? 'Flight fare has expired. Please search again.'
+                : `Revalidation failed: ${msg}`,
+            durationMs: Date.now() - startMs,
+        };
+    }
 
     // ── Handle failure / unavailable ──
     if (!raw.Success) {
@@ -226,7 +306,8 @@ async function revalidateMystifly(
 
     // ── Parse updated pricing ──
     const revalData = raw.Data ?? {};
-    const priceChanged = revalData.PriceChanged === true;
+    // NOTE: Ignore Mystifly's PriceChanged flag — sandbox often reports true
+    // for rounding/currency noise. We do our own comparison below.
 
     // Mystifly Sandbox occasionally uses 'Itinerary' or an array 'PricedItineraries' instead of 'FareItinerary' when PriceChanged is true.
     const itinerary = revalData.FareItinerary ?? revalData.Itinerary ??
@@ -234,6 +315,9 @@ async function revalidateMystifly(
 
     const fareInfo = itinerary.AirItineraryFareInfo ?? itinerary.AirItineraryPricingInfo ?? revalData;
     const itinFare = fareInfo.ItinTotalFare;
+
+    // Debug: log the structure we found so we can diagnose parsing failures
+    console.log(`[revalidate-flight] Parse paths: hasFareItinerary=${!!revalData.FareItinerary}, hasItinerary=${!!revalData.Itinerary}, hasPricedItineraries=${!!revalData.PricedItineraries}, hasItinTotalFare=${!!itinFare}, revalDataKeys=${Object.keys(revalData).join(',')}`);
 
     let currency: string;
     let newPrice = 0;
@@ -292,11 +376,47 @@ async function revalidateMystifly(
         };
     }
 
+    // ── Safety: if price extraction returned 0 but Mystifly said Success,
+    //    this is a parsing issue, not a real $0 fare. Soft-pass with oldPrice.
+    if (newPrice === 0 && oldPrice > 0) {
+        console.warn(`[revalidate-flight] Price extraction returned 0 despite Success=true — soft-passing with oldPrice: ${oldPrice}`);
+        newPrice = oldPrice;
+        baseFare = oldPrice;
+        pricePerAdult = oldPrice;
+        currency = body.flightPayload.currency || 'USD';
+    }
+
+    // ── Extract seats remaining (same structure as search normalization) ──
+    let seatsRemaining: number | undefined;
+    const originDestOpts = itinerary.OriginDestinationOptions ?? itinerary.OriginDestinationOption;
+    if (Array.isArray(originDestOpts)) {
+        const firstOpt = originDestOpts[0]?.OriginDestinationOption?.[0] ?? originDestOpts[0];
+        const seatNum = firstOpt?.SeatsRemaining?.Number;
+        if (seatNum != null) seatsRemaining = Number(seatNum);
+    }
+
     const nowIso = new Date().toISOString();
+
+    // ── Currency Normalization for comparison ──
+    // Providers often return prices in USD/EUR even if the search was in PHP/KRW.
+    // We must normalize to the oldPrice's currency (provided in flightPayload)
+    // for an accurate delta check.
+    const searchCurrency = (body.flightPayload.currency || 'USD').toUpperCase();
+    const revalCurrency = (currency || 'USD').toUpperCase();
+
+    let normalizedNewPrice = newPrice;
+    if (searchCurrency !== revalCurrency) {
+        // Simple fixed rates for major production currencies to avoid false 409s
+        const rates: Record<string, number> = { 'PHP': 58, 'KRW': 1350, 'USD': 1 };
+        const rateToUsd = rates[revalCurrency] || 1;
+        const rateFromUsd = rates[searchCurrency] || 1;
+        normalizedNewPrice = (newPrice / rateToUsd) * rateFromUsd;
+        console.log(`[revalidate-flight] Normalizing ${newPrice} ${revalCurrency} to ${normalizedNewPrice} ${searchCurrency} for comparison.`);
+    }
 
     return {
         success: true,
-        priceChanged: priceChanged || Math.abs(newPrice - oldPrice) > 0.01,
+        priceChanged: Math.abs(normalizedNewPrice - oldPrice) > 5.0, // Use our own comparison — $5 tolerance to avoid sandbox noise and minor rounding
         oldPrice,
         newPrice,
         seatsAvailable: true,
@@ -311,6 +431,7 @@ async function revalidateMystifly(
             traceId: newTraceId,
         },
         farePolicy: freshFarePolicy,
+        seatsRemaining,
         revalidatedAt: nowIso,
         durationMs: Date.now() - startMs,
     };

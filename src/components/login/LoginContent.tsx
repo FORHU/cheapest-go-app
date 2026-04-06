@@ -6,6 +6,7 @@ import { useLoginForm } from '@/hooks';
 import { loginSchema, registerSchema } from '@/lib/schemas/auth';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import VerifyEmailStep from '@/components/auth/VerifyEmailStep';
+import ForgotPasswordStep from '@/components/auth/ForgotPasswordStep';
 import {
     AuthHeader,
     EmailField,
@@ -14,7 +15,13 @@ import {
     AuthFooter,
 } from '@/components/login';
 
-export function LoginContent() {
+import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
+
+interface LoginContentProps {
+    isAdmin?: boolean;
+}
+
+export function LoginContent({ isAdmin = false }: LoginContentProps) {
     // All login state and logic from hook
     const {
         isLoading,
@@ -34,7 +41,7 @@ export function LoginContent() {
         setPassword,
         errors,
         setErrors,
-    } = useLoginForm();
+    } = useLoginForm({ isAdminMode: isAdmin });
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,7 +72,7 @@ export function LoginContent() {
                 toast.success("Account created successfully!");
             } else {
                 await login(email, password);
-                toast.success("Welcome back!");
+                toast.success(isAdmin ? "Identity verified. Accessing Command Center..." : "Welcome back!");
             }
         } catch (error: any) {
             if (error?.code === 'over_email_send_rate_limit' || error?.message?.includes('rate limit')) {
@@ -100,7 +107,7 @@ export function LoginContent() {
             setErrors({ general: error?.message || 'Authentication failed. Please try again.' });
             toast.error(error?.message || 'Authentication failed');
         }
-    }, [email, password, firstName, lastName, mode, register, login, setErrors, setAuthStep, setMode]);
+    }, [email, password, firstName, lastName, mode, register, login, setErrors, setAuthStep, setMode, isAdmin]);
 
     const handleToggleMode = useCallback(() => {
         setMode(mode === 'signin' ? 'signup' : 'signin');
@@ -112,11 +119,14 @@ export function LoginContent() {
     }, [errors, setErrors]);
 
     return (
-        <div className="min-h-screen">
+        <div className={`min-h-screen ${isAdmin ? 'bg-alabaster dark:bg-obsidian transition-colors duration-800' : ''}`}>
+            {isAdmin && <GlobalSparkle />}
             <div className="flex flex-col items-center pt-8 pb-12 px-6">
                 <AuthHeader
-                    title={mode === 'signin' ? 'Sign in' : 'Create an account'}
-                    subtitle="One account for all your travel needs"
+                    title={isAdmin ? (
+                        <>Sign In as <span className="text-blue-600">Admin</span></>
+                    ) as unknown as string : (mode === 'signin' ? 'Sign in' : 'Create an account')}
+                    subtitle={isAdmin ? "Authorized personnel only" : "One account for all your travel needs"}
                     onBack={() => setAuthStep('email')}
                 />
 
@@ -124,6 +134,10 @@ export function LoginContent() {
                     {authStep === 'verify-email' ? (
                         <div className="mt-8">
                             <VerifyEmailStep />
+                        </div>
+                    ) : authStep === 'forgot-password' ? (
+                        <div className="mt-8">
+                            <ForgotPasswordStep />
                         </div>
                     ) : (
                         <>
@@ -170,7 +184,7 @@ export function LoginContent() {
 
                                 {mode === 'signin' && (
                                     <div className="text-right">
-                                        <button type="button" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                                        <button type="button" onClick={() => setAuthStep('forgot-password')} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                                             Forgot password?
                                         </button>
                                     </div>
@@ -189,7 +203,7 @@ export function LoginContent() {
                                 </button>
                             </form>
 
-                            <AuthFooter mode={mode} onToggleMode={handleToggleMode} />
+                            {!isAdmin && <AuthFooter mode={mode} onToggleMode={handleToggleMode} />}
                         </>
                     )}
                 </div>

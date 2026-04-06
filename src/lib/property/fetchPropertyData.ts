@@ -3,27 +3,11 @@
  * These are pure functions that can be used in server components.
  */
 
-import { baguioProperties } from '@/data/mockProperties';
 import { preBook, getHotelDetails } from '@/utils/supabase/functions';
+import { type Property } from '@/types';
+export type PropertyData = Property;
 
 // Types
-export interface PropertyData {
-    id: string;
-    name: string;
-    location: string;
-    description: string;
-    rating: number;
-    reviews: number;
-    price: number;
-    originalPrice?: number;
-    image: string;
-    images: string[];
-    amenities: string[];
-    badges: string[];
-    type: 'hotel' | 'apartment' | 'resort' | 'villa';
-    coordinates: { lat: number; lng: number };
-}
-
 export interface SearchParamsInput {
     checkIn?: string;
     checkOut?: string;
@@ -40,13 +24,8 @@ export interface FetchPropertyResult {
     preBookResult: any;
 }
 
-// Helper to get mock property
-export function getMockProperty(id: string) {
-    return baguioProperties.find(p => p.id === id);
-}
-
-// Format date as YYYY-MM-DD
-export function formatDate(date: Date): string {
+// Format date as YYYY-MM-DD for API parameters
+export function formatDateForApi(date: Date): string {
     return date.toISOString().split('T')[0];
 }
 
@@ -67,7 +46,7 @@ export function getDefaultDates() {
     tomorrow.setDate(today.getDate() + 1);
     const dayAfter = new Date(tomorrow);
     dayAfter.setDate(tomorrow.getDate() + 2);
-    return { checkIn: formatDate(tomorrow), checkOut: formatDate(dayAfter) };
+    return { checkIn: formatDateForApi(tomorrow), checkOut: formatDateForApi(dayAfter) };
 }
 
 // Collect room images from room types
@@ -101,7 +80,8 @@ export function transformFetchedToProperty(
     id: string,
     fetchedDetails: any,
     preBookResult: any,
-    allImages: string[]
+    allImages: string[],
+    currency: string
 ): PropertyData {
     return {
         id: fetchedDetails.hotelId || id,
@@ -111,6 +91,7 @@ export function transformFetchedToProperty(
         rating: fetchedDetails.reviewRating || fetchedDetails.starRating || 0,
         reviews: fetchedDetails.reviewCount || 0,
         price: preBookResult?.price?.amount || fetchedDetails.rates?.[0]?.price?.amount || 0,
+        currency,
         originalPrice: undefined,
         image: allImages[0] || '',
         images: allImages.length > 0 ? allImages : [],
@@ -125,7 +106,7 @@ export function transformFetchedToProperty(
 }
 
 // Create fallback property from prebook result
-export function createFallbackProperty(id: string, preBookResult: any): PropertyData {
+export function createFallbackProperty(id: string, preBookResult: any, currency: string): PropertyData {
     return {
         id,
         name: preBookResult?.data?.name || "Property Details Unavailable",
@@ -134,6 +115,7 @@ export function createFallbackProperty(id: string, preBookResult: any): Property
         rating: 0,
         reviews: 0,
         price: preBookResult?.price?.amount || 0,
+        currency,
         image: '',
         images: [],
         amenities: [],
@@ -157,46 +139,47 @@ export async function fetchPropertyData(
     // 1. Invoke pre-book if offerId is present
     if (searchParams.offerId) {
         try {
-            preBookResult = await preBook({ offerId: searchParams.offerId as string });
+            preBookResult = await preBook({ 
+                offerId: searchParams.offerId as string,
+                currency: searchParams.currency || 'KRW'
+            });
         } catch (error) {
             console.error('Pre-book check failed:', error);
         }
     }
 
-    // 2. Fetch hotel details if not a mock property
-    if (!getMockProperty(id)) {
-        try {
-            const targetHotelId = preBookResult?.data?.hotelId || id;
-            const defaults = getDefaultDates();
-            const checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
-            const checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+    // 2. Fetch hotel details (Strictly backend)
+    try {
+        const targetHotelId = preBookResult?.data?.hotelId || id;
+        const defaults = getDefaultDates();
+        const checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
+        const checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
 
-            fetchedDetails = await getHotelDetails(targetHotelId, {
-                checkIn,
-                checkOut,
-                adults: Number(searchParams.adults || 2),
-                children: Number(searchParams.children || 0),
-                rooms: Number(searchParams.rooms || 1),
-                currency: searchParams.currency
-            });
-        } catch (error) {
-            console.error('Failed to fetch property details:', error);
-        }
+        fetchedDetails = await getHotelDetails(targetHotelId, {
+            checkIn,
+            checkOut,
+            adults: Number(searchParams.adults || 2),
+            children: Number(searchParams.children || 0),
+            rooms: Number(searchParams.rooms || 1),
+            currency: searchParams.currency
+        });
+    } catch (error) {
+        console.error('Failed to fetch property details:', error);
     }
 
     // 3. Build property data
-    let property = getMockProperty(id) as PropertyData | null;
+    let property: PropertyData | null = null;
 
-    if (!property && fetchedDetails) {
+    if (fetchedDetails) {
         const roomImages = collectRoomImages(fetchedDetails.roomTypes);
         const allImages = combineImages(
             fetchedDetails.thumbnailUrl,
             fetchedDetails.images || [],
             roomImages
         );
-        property = transformFetchedToProperty(id, fetchedDetails, preBookResult, allImages);
-    } else if (!property && (preBookResult || searchParams.offerId)) {
-        property = createFallbackProperty(id, preBookResult);
+        property = transformFetchedToProperty(id, fetchedDetails, preBookResult, allImages, searchParams.currency || 'KRW');
+    } else if (preBookResult || searchParams.offerId) {
+        property = createFallbackProperty(id, preBookResult, searchParams.currency || 'KRW');
     }
 
     return { property, fetchedDetails, preBookResult };

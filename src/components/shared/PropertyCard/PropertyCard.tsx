@@ -1,9 +1,12 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
+import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 /**
  * Unified PropertyCard component variants
@@ -48,6 +51,8 @@ export interface PropertyCardProps {
     includes?: string[];
     /** Price label suffix */
     priceLabel?: string;
+    /** Preload this image (use for first visible card) */
+    priority?: boolean;
 }
 
 /**
@@ -119,18 +124,34 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
     badgeColor = 'green',
     includes,
     priceLabel,
+    priority = false,
     index = 0,
     onClick,
     className = '',
 }) => {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const targetCurrency = useUserCurrency();
+
     // Use property object values or individual props
     const imgSrc = property?.image || image || '';
     const displayName = property?.name || name || '';
     const displayLocation = property?.location || location || '';
     const displayRating = property?.rating || rating;
     const displayReviews = property?.reviews || reviews;
-    const displayPrice = property?.price || price || 0;
-    const displayOriginalPrice = property?.originalPrice || originalPrice;
+
+    // Skip conversion until mounted — EXCHANGE_RATES may differ between server (static)
+    // and client (live rates from a previous page visit), causing hydration mismatches.
+    const sourceCurrency = property?.currency || 'KRW';
+    const rawPrice = property?.price || price || 0;
+    const rawOriginalPrice = property?.originalPrice || originalPrice;
+
+    const displayPrice = mounted ? convertCurrency(rawPrice, sourceCurrency, targetCurrency) : rawPrice;
+    const displayOriginalPrice = rawOriginalPrice
+        ? (mounted ? convertCurrency(rawOriginalPrice, sourceCurrency, targetCurrency) : rawOriginalPrice)
+        : undefined;
+    const symbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
+    
     const displayBadges = property?.badges || (badge ? [badge] : []);
 
     const badgeClasses = {
@@ -141,7 +162,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: index < 6 ? 0 : 1, y: index < 6 ? 30 : 0 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{
@@ -155,17 +176,22 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
             className={`relative group cursor-pointer ${className}`}
         >
             {/* Glow effect on hover */}
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-2xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
 
             {/* Card content — Airbnb-style size/layout: 4:3 image, rounded corners */}
-            <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
-                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-xl landscape-compact-img landscape-img flex-shrink-0">
-                    <motion.div
-                        className="absolute inset-0 bg-cover bg-center"
-                        style={{ backgroundImage: `url(${imgSrc})` }}
-                        whileHover={{ scale: 1.1 }}
-                        transition={{ duration: 0.6 }}
-                    />
+            <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
+                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-2xl landscape-compact-img landscape-img flex-shrink-0">
+                    {imgSrc && (
+                        <Image
+                            src={imgSrc}
+                            alt={displayName}
+                            fill
+                            sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
+                            className="object-cover transition-transform duration-500 group-hover:scale-110"
+                            priority={priority}
+                            loading={priority ? undefined : 'lazy'}
+                        />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
                     {displayBadges.length > 0 && (
@@ -197,7 +223,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             </span>
                             {displayReviews && (
                                 <span className="text-[8px] sm:text-xs text-slate-500 dark:text-slate-400">
-                                    ({displayReviews.toLocaleString()} reviews)
+                                    ({displayReviews.toLocaleString(undefined, { maximumFractionDigits: 0 })} reviews)
                                 </span>
                             )}
                         </div>
@@ -220,11 +246,11 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                     <div className="mt-auto pt-1 sm:pt-2 flex items-baseline gap-0.5 sm:gap-1.5 flex-wrap">
                         {displayOriginalPrice && (
                             <span className="text-[8px] sm:text-xs text-slate-400 line-through">
-                                ₱{displayOriginalPrice.toLocaleString()}
+                                {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </span>
                         )}
                         <span className="text-xs sm:text-base lg:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                            ₱{displayPrice.toLocaleString()}
+                            {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             {priceLabel && (
                                 <span className="font-normal text-slate-500 text-[8px] sm:text-sm">
                                     {priceLabel}
@@ -247,14 +273,26 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
     onClick,
     className = '',
 }) => {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const targetCurrency = useUserCurrency();
     if (!property) return null;
+
+    // Skip conversion until mounted — EXCHANGE_RATES may differ between server (static)
+    // and client (live rates from a previous page visit), causing hydration mismatches.
+    const sourceCurrency = property.currency || 'KRW';
+    const displayPrice = mounted ? convertCurrency(property.price, sourceCurrency, targetCurrency) : property.price;
+    const displayOriginalPrice = property.originalPrice
+        ? (mounted ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency) : property.originalPrice)
+        : undefined;
+    const symbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
 
     // Get star rating from property (1-5 scale hotel stars)
     const hotelStars = Math.min(5, Math.max(1, Math.round((property.rating || 0) / 2)));
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: index < 6 ? 0 : 1, y: index < 6 ? 30 : 0 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.1 }}
             transition={{ delay: index * 0.03, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
@@ -263,10 +301,18 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
         >
             {/* Image Section */}
             <div className="md:w-[240px] relative h-[140px] md:h-auto flex-shrink-0 p-2 md:p-3 md:pr-0">
-                <div
-                    className="absolute inset-2 md:inset-3 md:right-0 bg-cover bg-center rounded-xl transition-transform duration-500 group-hover:scale-105"
-                    style={{ backgroundImage: `url(${property.image})` }}
-                />
+                <div className="absolute inset-2 md:inset-3 md:right-0 rounded-xl overflow-hidden">
+                    {property.image && (
+                        <Image
+                            src={property.image}
+                            alt={property.name}
+                            fill
+                            sizes="240px"
+                            className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                            loading="lazy"
+                        />
+                    )}
+                </div>
                 {/* Heart icon */}
                 <button
                     className="absolute top-3 left-3 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"
@@ -281,6 +327,13 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             {/* Content Section */}
             <div className="flex-1 p-2 md:p-4 flex flex-col justify-between">
                 <div className="mt-1 md:mt-0">
+                    {/* Refundable badge */}
+                    {property.refundableTag === 'RFN' && (
+                        <span className="inline-flex items-center gap-1 text-[9px] lg:text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded-full mb-1">
+                            <svg className="w-2.5 h-2.5 lg:w-3 lg:h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            Free cancellation
+                        </span>
+                    )}
                     {/* Hotel Name */}
                     <h3 className="text-[12px] landscape:text-[11px] lg:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
                         {property.name}
@@ -297,7 +350,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                     {/* Rating Section */}
                     <div className="flex items-center gap-1.5 md:gap-2">
                         <div className="px-1.5 py-0.5 lg:px-2 lg:py-1 bg-blue-600 text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg">
-                            {property.rating.toFixed(1)}
+                            {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                         </div>
                         <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
                             {getRatingLabel(property.rating)}
@@ -306,14 +359,14 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
 
                     {/* Price Section */}
                     <div className="text-right">
-                        {property.originalPrice && property.originalPrice > property.price && (
+                        {displayOriginalPrice && displayOriginalPrice > displayPrice && (
                             <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
-                                ₱{property.originalPrice.toLocaleString()}
+                                {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </div>
                         )}
                         <div className="flex items-baseline gap-1 md:gap-1.5">
                             <span className="text-[13px] landscape:text-[12px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
-                                ₱{property.price.toLocaleString()}
+                                {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </span>
                             <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
                                 /night

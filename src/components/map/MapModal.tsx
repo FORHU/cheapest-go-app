@@ -5,7 +5,21 @@ import { createPortal } from 'react-dom';
 import { X, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
-import { SearchMapContainer } from '@/components/mapbox/SearchMapContainer';
+import dynamic from 'next/dynamic';
+// import { SearchMapContainer } from '@/components/mapbox/SearchMapContainer';
+
+const SearchMapContainer = dynamic(
+    () => import('@/components/mapbox/SearchMapContainer').then((mod) => mod.SearchMapContainer),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex-1 h-full flex items-center justify-center bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
+                <div className="animate-pulse text-sm text-slate-500 font-medium">Loading map...</div>
+            </div>
+        ),
+    }
+);
+
 import { MapPropertyCarousel } from './MapPropertyCarousel';
 import type { MappableProperty } from './types';
 

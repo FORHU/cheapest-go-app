@@ -1,21 +1,29 @@
 "use client";
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { TabList, GradientBackground, HorizontalScroll } from '@/components/ui';
+import { styleTabs } from '@/types';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
-// Travel styles data
-const travelStyles = [
-  { id: 1, title: 'Beachfront Villa', location: 'Boracay, Philippines', price: 25899, image: 'https://picsum.photos/seed/villa/400/300' },
-  { id: 2, title: 'Mountain Retreat', location: 'Batanes, Philippines', price: 18499, image: 'https://picsum.photos/seed/mountain/400/300' },
-  { id: 3, title: 'City View Suite', location: 'Makati, Philippines', price: 32450, image: 'https://picsum.photos/seed/city/400/300' },
-  { id: 4, title: 'Lux Hotels', location: 'Cebu, Philippines', price: 51709, image: 'https://picsum.photos/seed/luxury/400/300' },
-];
+// Types for travel styles
+export interface TravelStyle {
+  id: number | string;
+  title: string;
+  location: string;
+  price: number;
+  image: string;
+}
 
-const styleTabs = ['Beach', 'Kid-Friendly', 'Ski', 'Romantic', 'Wellness and Relaxation'];
-
-export const StaysForEveryStyle: React.FC = () => {
+export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ styles }) => {
   const [activeTab, setActiveTab] = useState(styleTabs[0]);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  const currency = useUserCurrency();
+  const symbol = mounted ? getCurrencySymbol(currency) : getCurrencySymbol('KRW');
+  const displayStyles = styles || [];
 
   return (
     <GradientBackground className="w-full py-4 md:py-8 lg:py-10 landscape:py-3 landscape-compact-py">
@@ -47,10 +55,10 @@ export const StaysForEveryStyle: React.FC = () => {
         />
 
         <HorizontalScroll gap={4} scrollAmount={320}>
-          {travelStyles.map((style, i) => (
+          {displayStyles.map((style, i) => (
             <motion.div
               key={style.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={i === 0 ? false : { opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{
@@ -60,19 +68,21 @@ export const StaysForEveryStyle: React.FC = () => {
                 damping: 15
               }}
               whileHover={{ y: -8 }}
-              className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape:w-[160px] landscape-compact-card snap-start relative group cursor-pointer flex flex-col"
+              className="shrink-0 w-[220px] sm:w-[260px] md:w-[320px] snap-start relative group cursor-pointer flex flex-col"
             >
-              {/* Glow effect */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl opacity-0 group-hover:opacity-60 blur-xl transition-all duration-500 pointer-events-none" />
-
-              <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
+              <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
                 <div className="relative aspect-[2/1] sm:aspect-[4/3] md:aspect-[3/2] overflow-hidden flex-shrink-0 landscape-compact-img landscape-img">
-                  <motion.div
-                    className="absolute inset-0 bg-cover bg-center"
-                    style={{ backgroundImage: `url(${style.image})` }}
-                    whileHover={{ scale: 1.15 }}
-                    transition={{ duration: 0.6 }}
-                  />
+                  {style.image && (
+                    <Image
+                      src={style.image}
+                      alt={style.title}
+                      fill
+                      sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
+                      className="object-cover transition-transform duration-500 group-hover:scale-110"
+                      priority={i === 0}
+                      loading={i === 0 ? undefined : 'lazy'}
+                    />
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
                   {/* Price tag floating — responsive */}
@@ -83,7 +93,7 @@ export const StaysForEveryStyle: React.FC = () => {
                     transition={{ delay: i * 0.08 + 0.2 }}
                   >
                     <span className="text-[9px] sm:text-sm md:text-base landscape:text-[9px] font-bold text-slate-900 dark:text-white">
-                      ₱{style.price.toLocaleString()}
+                      {symbol}{(mounted ? Math.round(convertCurrency(style.price || 0, 'KRW', currency)) : Math.round(style.price || 0)).toLocaleString()}
                     </span>
                   </motion.div>
                 </div>

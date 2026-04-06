@@ -8,43 +8,74 @@
  *
  * All database queries use server actions instead. Do NOT add `.from()` calls here.
  */
-import { create } from 'zustand';
-import { createClient } from '@/utils/supabase/client';
-import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
-import type { User, AuthStep } from '@/types/auth';
+import { create } from "zustand";
+import { createClient } from "@/utils/supabase/client";
+import type { User as SupabaseUser, Session } from "@supabase/supabase-js";
+import type { User, AuthStep } from "@/types/auth";
 import {
-    loginSchema, registerSchema, emailSchema, profileSchema, updatePasswordSchema,
-    type RegisterInput, type ProfileInput,
-} from '@/lib/schemas/auth';
+    loginSchema,
+    registerSchema,
+    emailSchema,
+    profileSchema,
+    updatePasswordSchema,
+    type RegisterInput,
+    type ProfileInput,
+} from "@/lib/schemas/auth";
 
 // --- Helpers ---
 
-const supabase = createClient();
+const getSupabase = () => createClient();
 
 const extractUserProfile = (supabaseUser: SupabaseUser): User => {
     const meta = supabaseUser.user_metadata || {};
     return {
         id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        firstName: meta.first_name || meta.firstName || meta.name?.split(' ')[0] || 'User',
-        lastName: meta.last_name || meta.lastName || meta.name?.split(' ').slice(1).join(' ') || '',
+        email: supabaseUser.email || "",
+        firstName:
+            meta.first_name || meta.firstName || meta.name?.split(" ")[0] || "User",
+        lastName:
+            meta.last_name ||
+            meta.lastName ||
+            meta.name?.split(" ").slice(1).join(" ") ||
+            "",
         avatar: meta.avatar_url || meta.picture,
+        role: meta.role || 'user',
     };
 };
 
-const buildRedirectUrl = (path = '/auth/callback') => {
+const buildRedirectUrl = (
+    path = "/auth/callback",
+    explicitRedirect?: string,
+) => {
     const searchParams = new URLSearchParams(window.location.search);
-    const existingRedirect = searchParams.get('redirect') || searchParams.get('next');
+    let targetPath =
+        explicitRedirect ||
+        searchParams.get("redirect") ||
+        searchParams.get("next");
 
-    // If we already have a redirect target in the current URL, use it
-    let targetPath = existingRedirect || window.location.pathname + window.location.search;
+    // If no target provided, fallback to current page
+    if (!targetPath) {
+        targetPath = window.location.pathname + window.location.search;
+    }
 
-    // Only include safe relative paths in the redirect
-    const safePath = targetPath.startsWith('/') && !targetPath.startsWith('//') ? targetPath : '/';
+    // Handle absolute URLs from the same origin
+    if (targetPath.startsWith(window.location.origin)) {
+        targetPath = targetPath.substring(window.location.origin.length);
+    }
+
+    // Safety check: if we are already on login/auth pages, don't redirect back to them
+    if (targetPath.includes("/login") || targetPath.includes("/auth/")) {
+        targetPath = "/";
+    }
+
+    // Only include safe relative paths in the redirect (must start with /, but not //)
+    const safePath =
+        targetPath.startsWith("/") && !targetPath.startsWith("//")
+            ? targetPath
+            : "/";
 
     return `${window.location.origin}${path}?next=${encodeURIComponent(safePath)}`;
 };
-
 
 // --- Types ---
 
@@ -54,23 +85,29 @@ interface AuthState {
     session: Session | null;
     authStep: AuthStep;
     email: string;
+    redirectTo: string | null;
     isLoading: boolean;
     isAuthModalOpen: boolean;
 
     setAuthStep: (step: AuthStep) => void;
     setEmail: (email: string) => void;
-    openAuthModal: (step?: AuthStep) => void;
+    openAuthModal: (step?: AuthStep, redirectTo?: string) => void;
     closeAuthModal: () => void;
     syncSession: (session: Session | null) => void;
 
     login: (email: string, password: string) => Promise<void>;
     register: (data: RegisterInput) => Promise<void>;
     logout: () => Promise<void>;
-    socialLogin: (provider: 'google' | 'apple' | 'facebook') => Promise<void>;
+    socialLogin: (provider: "google" | "apple" | "facebook") => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
     resendConfirmation: (email: string) => Promise<void>;
     updateProfile: (data: ProfileInput) => Promise<void>;
-    updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+    updatePassword: (
+        currentPassword: string,
+        newPassword: string,
+    ) => Promise<void>;
+    syncProfile: (profile: Partial<User>) => void;
+    fetchAndSyncRole: () => Promise<void>;
 }
 
 // --- Store ---
@@ -86,20 +123,32 @@ export const useAuthStore = create<AuthState>((set, get) => {
         user: null,
         supabaseUser: null,
         session: null,
-        authStep: 'email',
-        email: '',
+        authStep: "email",
+        email: "",
+        redirectTo: null,
         isLoading: true,
         isAuthModalOpen: false,
 
         setAuthStep: (authStep) => set({ authStep }),
         setEmail: (email) => set({ email }),
-        openAuthModal: (step = 'email') => set({ isAuthModalOpen: true, authStep: step }),
-        closeAuthModal: () => set({ isAuthModalOpen: false }),
+        openAuthModal: (step = 'email', redirectTo?: string) =>
+            set({
+                isAuthModalOpen: true,
+                authStep: step,
+                redirectTo: redirectTo ?? get().redirectTo,
+            }),
+        closeAuthModal: () => set({ isAuthModalOpen: false, redirectTo: null }),
 
         syncSession: (session) => {
-            set(session?.user
-                ? { session, supabaseUser: session.user, user: extractUserProfile(session.user), isLoading: false }
-                : { session: null, supabaseUser: null, user: null, isLoading: false },
+            set(
+                session?.user
+                    ? {
+                        session,
+                        supabaseUser: session.user,
+                        user: extractUserProfile(session.user),
+                        isLoading: false,
+                    }
+                    : { session: null, supabaseUser: null, user: null, isLoading: false },
             );
         },
 
@@ -107,10 +156,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
             loginSchema.parse({ email, password });
             set({ email });
             return withLoading(async () => {
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                const { data, error } = await getSupabase().auth.signInWithPassword({
+                    email,
+                    password,
+                });
                 if (error) {
-                    if (error.message?.toLowerCase().includes('email not confirmed')) {
-                        set({ authStep: 'verify-email' });
+                    if (error.message?.toLowerCase().includes("email not confirmed")) {
+                        set({ authStep: "verify-email" });
                     }
                     throw error;
                 }
@@ -122,11 +174,14 @@ export const useAuthStore = create<AuthState>((set, get) => {
             registerSchema.parse(data);
             set({ email: data.email });
             return withLoading(async () => {
-                const { data: authData, error } = await supabase.auth.signUp({
+                const { data: authData, error } = await getSupabase().auth.signUp({
                     email: data.email,
                     password: data.password,
                     options: {
-                        emailRedirectTo: buildRedirectUrl(),
+                        emailRedirectTo: buildRedirectUrl(
+                            "/auth/callback",
+                            get().redirectTo || undefined,
+                        ),
                         data: {
                             first_name: data.firstName,
                             last_name: data.lastName,
@@ -139,22 +194,28 @@ export const useAuthStore = create<AuthState>((set, get) => {
                 if (authData.user) {
                     authData.session
                         ? get().syncSession(authData.session)
-                        : set({ authStep: 'verify-email' });
+                        : set({ authStep: "verify-email" });
                 }
             });
         },
 
-        logout: () => withLoading(async () => {
-            const { error } = await supabase.auth.signOut();
-            if (error) throw error;
-            get().syncSession(null);
-        }),
+        logout: () =>
+            withLoading(async () => {
+                const { error } = await getSupabase().auth.signOut();
+                if (error) throw error;
+                get().syncSession(null);
+            }),
 
         socialLogin: async (provider) => {
             set({ isLoading: true });
-            const { error } = await supabase.auth.signInWithOAuth({
+            const { error } = await getSupabase().auth.signInWithOAuth({
                 provider,
-                options: { redirectTo: buildRedirectUrl() },
+                options: {
+                    redirectTo: buildRedirectUrl(
+                        "/auth/callback",
+                        get().redirectTo || undefined,
+                    ),
+                },
             });
             if (error) {
                 set({ isLoading: false });
@@ -166,7 +227,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         resetPassword: (email) => {
             emailSchema.parse({ email });
             return withLoading(async () => {
-                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
                     redirectTo: `${window.location.origin}/auth/reset-password`,
                 });
                 if (error) throw error;
@@ -176,8 +237,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         resendConfirmation: (email) => {
             emailSchema.parse({ email });
             return withLoading(async () => {
-                const { error } = await supabase.auth.resend({
-                    type: 'signup',
+                const { error } = await getSupabase().auth.resend({
+                    type: "signup",
                     email,
                     options: { emailRedirectTo: buildRedirectUrl() },
                 });
@@ -188,7 +249,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         updateProfile: (data) => {
             profileSchema.parse(data);
             return withLoading(async () => {
-                const { data: userData, error } = await supabase.auth.updateUser({
+                const { data: userData, error } = await getSupabase().auth.updateUser({
                     data: {
                         first_name: data.firstName,
                         last_name: data.lastName,
@@ -197,7 +258,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
                 });
                 if (error) throw error;
                 if (userData.user) {
-                    set({ user: extractUserProfile(userData.user), supabaseUser: userData.user });
+                    set({
+                        user: extractUserProfile(userData.user),
+                        supabaseUser: userData.user,
+                    });
                 }
             });
         },
@@ -206,17 +270,52 @@ export const useAuthStore = create<AuthState>((set, get) => {
             updatePasswordSchema.parse({ currentPassword, newPassword });
             return withLoading(async () => {
                 const { user } = get();
-                if (!user?.email) throw new Error('No user logged in');
+                if (!user?.email) throw new Error("No user logged in");
 
-                const { error: signInError } = await supabase.auth.signInWithPassword({
+                const { error: signInError } = await getSupabase().auth.signInWithPassword({
                     email: user.email,
                     password: currentPassword,
                 });
-                if (signInError) throw new Error('Current password is incorrect');
+                if (signInError) throw new Error("Current password is incorrect");
 
-                const { error } = await supabase.auth.updateUser({ password: newPassword });
+                const { error } = await getSupabase().auth.updateUser({
+                    password: newPassword,
+                });
                 if (error) throw error;
             });
+        },
+        syncProfile: (profile) => {
+            const { user } = get();
+            if (user) {
+                set({
+                    user: {
+                        ...user,
+                        ...profile
+                    }
+                });
+            }
+        },
+        fetchAndSyncRole: async () => {
+            const { user } = get();
+            if (!user?.id) return;
+
+            try {
+                const supabase = getSupabase();
+                const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .maybeSingle();
+
+                if (!error && profile?.role) {
+                    set({
+                        user: { ...get().user!, role: profile.role as 'user' | 'admin' },
+                    });
+                }
+            } catch (err) {
+                // Silent fallback — stale user_metadata role is used
+                console.error('[authStore] Failed to fetch profile role:', err);
+            }
         },
     };
 });

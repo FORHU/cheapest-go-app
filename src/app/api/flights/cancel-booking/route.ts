@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { env } from "@/utils/env";
+
+const cancelFlightSchema = z.object({
+    bookingId: z.string().min(1, 'bookingId is required'),
+});
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { stripe } from '@/lib/stripe/server';
@@ -32,25 +38,24 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
         }
 
-        const { bookingId } = await req.json();
-        if (!bookingId) {
-            return NextResponse.json({ success: false, error: 'bookingId is required' }, { status: 400 });
+        const rawBody = await req.json();
+        const cancelParsed = cancelFlightSchema.safeParse(rawBody);
+        if (!cancelParsed.success) {
+            return NextResponse.json(
+                { success: false, error: cancelParsed.error.issues[0]?.message ?? 'Invalid request' },
+                { status: 400 }
+            );
         }
-
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        if (!supabaseUrl || !serviceRoleKey) {
-            throw new Error('Supabase environment variables not set');
-        }
+        const { bookingId } = cancelParsed.data;
 
         // Service-role client for all DB operations (bypasses RLS)
-        const supabase = createServiceClient(supabaseUrl, serviceRoleKey);
+        const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
 
         // ── Step 1: Load booking ──────────────────────────────────────
         const { data: booking, error: fetchErr } = await supabase
             .from('flight_bookings')
-            .select('id, user_id, status, provider, pnr, payment_intent_id, created_at, cancellation_log, session_id, total_price, payment_currency')
+            .select('id, user_id, status, provider, pnr, payment_intent_id, created_at, cancellation_log, session_id, total_price, payment_currency, refund_amount')
             .eq('id', bookingId)
             .single();
 
@@ -134,7 +139,7 @@ export async function POST(req: NextRequest) {
 
         try {
             if (isMystifly) {
-                const result = await cancelMystifly(booking, supabaseUrl, serviceRoleKey);
+                const result = await cancelMystifly(booking);
                 supplierSuccess = result.success;
                 // SECURITY: Cap refund amount at the total price to prevent supplier bugs from triggering excess refunds
                 refundAmount = Math.min(result.refundAmount ?? 0, booking.total_price);
@@ -144,7 +149,7 @@ export async function POST(req: NextRequest) {
                 supplierCancellationId = result.cancellationId;
             } else {
                 // Duffel cancellation
-                const result = await cancelDuffel(booking, supabaseUrl, serviceRoleKey);
+                const result = await cancelDuffel(booking);
                 supplierSuccess = result.success;
                 // SECURITY: Cap refund amount
                 refundAmount = Math.min(result.refundAmount ?? 0, booking.total_price);
@@ -159,24 +164,37 @@ export async function POST(req: NextRequest) {
 
         // ── Step 6: Handle supplier response ──────────────────────────
         if (!supplierSuccess) {
+            const isProviderMissing = (supplierError?.toLowerCase().includes('not found') ||
+                supplierError?.toLowerCase().includes('does not exist') ||
+                supplierError?.toLowerCase().includes('could not find'));
+
+            const finalStatus = isProviderMissing ? 'cancelled_provider_missing' : 'cancel_failed';
+
             const failLog = {
                 at: new Date().toISOString(),
                 oldStatus: 'cancel_requested',
-                newStatus: 'cancel_failed',
+                newStatus: finalStatus,
                 supplierError,
+                isProviderMissing,
             };
 
             await supabase
                 .from('flight_bookings')
                 .update({
-                    status: 'cancel_failed',
+                    status: finalStatus,
                     cancellation_log: [...(booking.cancellation_log ?? []), logEntry, failLog],
+                    refund_amount: isProviderMissing ? 0 : booking.refund_amount,
                 })
                 .eq('id', bookingId);
 
             return NextResponse.json(
-                { success: false, error: supplierError || 'Supplier rejected the cancellation request' },
-                { status: 422 },
+                {
+                    success: isProviderMissing, // Treat provider missing as a "handled success"
+                    status: finalStatus,
+                    error: supplierError || 'Supplier rejected the cancellation request',
+                    providerMissing: isProviderMissing
+                },
+                { status: isProviderMissing ? 200 : 422 },
             );
         }
 
@@ -326,11 +344,13 @@ interface CancelResult {
     currency?: string;
     cancellationId?: string;
     error?: string;
+    providerMissing?: boolean;
 }
 
-async function cancelMystifly(booking: any, supabaseUrl: string, serviceRoleKey: string): Promise<CancelResult> {
+async function cancelMystifly(booking: any): Promise<CancelResult> {
+    const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
     // Load traceId / fareSourceCode from booking sessions or metadata
-    const { data: session } = await createServiceClient(supabaseUrl, serviceRoleKey)
+    const { data: session } = await supabase
         .from('booking_sessions')
         .select('flight')
         .eq('id', booking.session_id)
@@ -357,8 +377,9 @@ async function cancelMystifly(booking: any, supabaseUrl: string, serviceRoleKey:
     };
 }
 
-async function cancelDuffel(booking: any, supabaseUrl: string, serviceRoleKey: string): Promise<CancelResult> {
-    const duffelToken = process.env.DUFFEL_ACCESS_TOKEN;
+async function cancelDuffel(booking: any): Promise<CancelResult> {
+    const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const duffelToken = env.DUFFEL_TOKEN;
     if (!duffelToken) {
         return { success: false, error: 'DUFFEL_ACCESS_TOKEN not configured' };
     }
@@ -369,7 +390,7 @@ async function cancelDuffel(booking: any, supabaseUrl: string, serviceRoleKey: s
     let orderId: string | undefined = booking.provider_order_id;
 
     if (!orderId) {
-        const { data: session } = await createServiceClient(supabaseUrl, serviceRoleKey)
+        const { data: session } = await supabase
             .from('booking_sessions')
             .select('flight')
             .eq('id', booking.session_id)
@@ -412,13 +433,32 @@ async function cancelDuffel(booking: any, supabaseUrl: string, serviceRoleKey: s
         const cancellationData = await cancellationRes.json();
         if (!cancellationRes.ok) {
             const duffelError = cancellationData?.errors?.[0]?.message ?? '';
+            const status = cancellationRes.status;
+
+            // Scenario 4 Fix: Handle 422 for non-refundable tickets
+            // If the ticket is strictly non-refundable, Duffel might throw 422 on cancellation attempts.
+            // We intercept this to allow an "internal cancellation" so the user can clear their dashboard.
+            const isNonRefundableError = status === 422 || duffelError.toLowerCase().includes('non-refundable') || duffelError.toLowerCase().includes('cannot be cancelled');
+
+            if (isNonRefundableError || status === 404) {
+                const isNotFound = status === 404 || duffelError.toLowerCase().includes('not found') || duffelError.toLowerCase().includes('does not exist');
+                console.warn(`[cancel-booking] Duffel ${status} error — ${isNotFound ? 'resource missing' : 'non-refundable'}:`, duffelError);
+                return {
+                    success: false, // Return false but with enough info for the handler to decide
+                    providerMissing: isNotFound,
+                    refundAmount: 0,
+                    penaltyAmount: booking.total_price || 0,
+                    currency: booking.currency || 'USD',
+                    error: isNotFound ? 'Supplier record not found. Cancelled internally.' : 'Ticket is non-refundable. Cancelled internally.'
+                };
+            }
 
             // Sandbox/test fallback: if Duffel rejects due to invalid token or test order,
             // treat as a successful mock cancellation so dev/staging flows complete.
             const isAuthOrTestError = duffelError.toLowerCase().includes('access token')
                 || duffelError.toLowerCase().includes('not a valid')
-                || cancellationRes.status === 401
-                || cancellationRes.status === 403;
+                || status === 401
+                || status === 403;
 
             if (isAuthOrTestError) {
                 console.warn('[cancel-booking] Duffel auth/test error — sandbox mock cancellation:', duffelError);

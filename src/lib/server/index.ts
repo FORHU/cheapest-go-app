@@ -1,7 +1,7 @@
 // Server layer barrel exports
 
 // Auth
-export { getAuthenticatedUser, type AuthResult } from './auth';
+export { getAuthenticatedUser, getUserProfile, type AuthResult } from './auth';
 
 // Bookings
 export {
@@ -29,7 +29,7 @@ export {
 export { autocompleteDestinations } from './search';
 
 // Email
-export { sendBookingConfirmationEmail, sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail, sendFlightRefundEmail } from './email';
+export { sendBookingConfirmationEmail, sendHotelCancellationEmail, sendHotelAmendmentEmail, sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail, sendFlightRefundEmail } from './email';
 
 // Policy normalizer
 export { normalizeLiteApiPolicy, type NormalizedPolicy } from './policy-normalizer';

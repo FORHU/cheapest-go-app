@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2, LogIn, AlertTriangle } from 'lucide-react';
+import { useUserCurrency } from '@/stores/searchStore';
+import { getCurrencySymbol } from '@/lib/currency';
 
 interface SubmitBookingButtonProps {
     loading: boolean;
@@ -22,6 +24,8 @@ export function SubmitBookingButton({
     prebookError,
     onSubmit,
 }: SubmitBookingButtonProps) {
+    const currency = useUserCurrency();
+    const symbol = getCurrencySymbol(currency);
     const isDisabled = loading || (prebooking && !prebookId) || !!prebookError;
 
     const getButtonClasses = () => {
@@ -32,13 +36,28 @@ export function SubmitBookingButton({
         return 'bg-yellow-400 hover:bg-yellow-500 text-slate-900 shadow-yellow-400/20 cursor-pointer';
     };
 
+    const isUnavailable = !!prebookError && /no longer available|not available|unavailable|sold out/i.test(prebookError);
+
     return (
         <>
+            {/* Inline unavailability notice — visible right above the button on mobile */}
+            {isUnavailable && (
+                <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-xs font-semibold text-red-700 dark:text-red-300">Room session expired</p>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">Your room hold has expired. Go back and reselect the room to get a fresh session — you can pick the same room again.</p>
+                    </div>
+                </div>
+            )}
+
             <button
                 type="button"
-                onClick={onSubmit}
-                disabled={isDisabled}
-                className={`w-full py-2 lg:py-3 font-bold text-[12px] lg:text-base rounded-lg lg:rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 lg:gap-3 ${getButtonClasses()}`}
+                onClick={isUnavailable ? () => window.history.back() : onSubmit}
+                disabled={loading || (prebooking && !prebookId) || (!!prebookError && !isUnavailable)}
+                className={`w-full py-2 lg:py-3 font-bold text-[12px] lg:text-base rounded-lg lg:rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 lg:gap-3 ${
+                    isUnavailable ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer' : getButtonClasses()
+                }`}
             >
                 {loading ? (
                     <>
@@ -50,15 +69,17 @@ export function SubmitBookingButton({
                         <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
                         <span>Verifying Room...</span>
                     </>
+                ) : isUnavailable ? (
+                    <span>Go back &amp; reselect room</span>
                 ) : prebookError ? (
-                    <span className="text-[12px] lg:text-base">Room verification failed — please retry above</span>
+                    <span>Verification failed — see error above</span>
                 ) : !isAuthenticated ? (
                     <>
                         <LogIn className="w-4 h-4 lg:w-5 lg:h-5" />
                         <span>Sign In to Complete Booking</span>
                     </>
                 ) : (
-                    `Complete Booking • ₱${(totalPrice || 0).toLocaleString()}`
+                    `Continue to Payment • ${symbol}${(totalPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                 )}
             </button>
 

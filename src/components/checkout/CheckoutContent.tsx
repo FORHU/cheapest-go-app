@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     useProperty,
     useSelectedRoom,
@@ -12,8 +12,9 @@ import {
 import { useAuthStore, useUser } from '@/stores/authStore';
 import {
     useVoucherState,
-    useCheckoutStore,
+    useCheckoutActions,
 } from '@/stores/checkoutStore';
+import { useUserCurrency } from '@/stores/searchStore';
 import {
     useBookingFlow,
     useCheckoutForm,
@@ -31,12 +32,33 @@ import {
     UserDetailsForm,
     BookingForSection,
     SpecialRequestsSection,
-    PaymentForm,
     BookingSummary,
     SubmitBookingButton,
     VoucherInput,
     AvailablePromos,
 } from '@/components/checkout';
+import dynamic from 'next/dynamic';
+
+// Stripe JS (~60 kB) is only needed when the user reaches the payment step.
+// Lazy-load so it doesn't inflate the initial checkout page bundle.
+const StripeEmbeddedCheckout = dynamic(
+    () => import('@/components/checkout/StripeEmbeddedCheckout'),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex items-center justify-center h-48">
+                <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+            </div>
+        ),
+    }
+);
+
+const BOOKING_STEPS = [
+    'Verifying payment...',
+    'Securing your reservation...',
+    'Confirming with the hotel...',
+    'Finalizing booking details...',
+] as const;
 
 export function CheckoutContent() {
     // Booking store selectors
@@ -76,10 +98,6 @@ export function CheckoutContent() {
         setIsWorkTravel,
         specialRequests,
         setSpecialRequests,
-        payeeFirstName,
-        setPayeeFirstName,
-        payeeLastName,
-        setPayeeLastName,
         phoneCountryCode,
         setPhoneCountryCode,
         selectedCurrency,
@@ -94,16 +112,55 @@ export function CheckoutContent() {
 
     const prebookError = prebookErrorObj?.message || null;
 
+    // Stripe payment step state
+    const [step, setStep] = useState<'form' | 'payment'>('form');
+    const [clientSecret, setClientSecret] = useState<string | null>(null);
+    const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+
+    // Booking confirmation progress overlay
+    const [bookingStepIdx, setBookingStepIdx] = useState(0);
+    const bookingStepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+    useEffect(() => {
+        if (loading && step === 'payment') {
+            setBookingStepIdx(0);
+            bookingStepTimer.current = setInterval(() => {
+                setBookingStepIdx((i) => Math.min(i + 1, BOOKING_STEPS.length - 1));
+            }, 4000);
+        } else {
+            if (bookingStepTimer.current) {
+                clearInterval(bookingStepTimer.current);
+                bookingStepTimer.current = null;
+            }
+        }
+        return () => {
+            if (bookingStepTimer.current) clearInterval(bookingStepTimer.current);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loading, step]);
+
+    // Global currency sync
+    const globalCurrency = useUserCurrency();
+    const { syncWithUserCurrency } = useCheckoutActions();
+
+    useEffect(() => {
+        // Don't override when URL already specifies a currency — that would
+        // cause a second prebook call right after the URL-currency prebook starts.
+        const urlCurrency = new URLSearchParams(window.location.search).get('currency');
+        if (!urlCurrency) {
+            syncWithUserCurrency(globalCurrency);
+        }
+    }, [globalCurrency, syncWithUserCurrency]);
+
     // Reset success state from previous booking on mount
     useEffect(() => {
         setIsSuccess(false);
         setEmailSent(false);
 
-        // Sync currency from URL if present
+        // Sync currency from URL if present (initial load priority)
         const urlParams = new URLSearchParams(window.location.search);
         const urlCurrency = urlParams.get('currency');
         if (urlCurrency && urlCurrency !== selectedCurrency) {
-            useCheckoutStore.getState().setSelectedCurrency(urlCurrency);
+            syncWithUserCurrency(urlCurrency);
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -139,10 +196,11 @@ export function CheckoutContent() {
         }
     }, [setEmailSent]);
 
-    // Complete booking handler
-    const handleCompleteBooking = useCallback(async () => {
+    // Step 1: Validate form → create Stripe PaymentIntent → show payment UI
+    const handleProceedToPayment = useCallback(async () => {
         if (!user) {
-            openAuthModal('email');
+            const redirectPath = window.location.pathname + window.location.search;
+            openAuthModal('email', redirectPath);
             return;
         }
 
@@ -155,35 +213,92 @@ export function CheckoutContent() {
             return;
         }
 
+        if (!prebookId || !selectedRoom?.offerId) {
+            toast.error("Booking session expired. Please go back and select the room again.");
+            return;
+        }
+
+        // Use server-calculated final price if voucher applied
+        const chargeAmount = appliedVoucher
+            ? appliedVoucher.finalPrice
+            : (priceData?.total || totalPrice || 0);
+
+        if (chargeAmount <= 0) {
+            toast.error("Invalid booking price. Please retry.");
+            return;
+        }
+
+        setIsCreatingPayment(true);
+        try {
+            const result = await apiFetch<{ clientSecret: string; paymentIntentId: string }>(
+                '/api/booking/create-payment',
+                {
+                    prebookId,
+                    amount: chargeAmount,
+                    currency: selectedCurrency,
+                    holderEmail: formData.email,
+                    propertyName: property?.name || 'Hotel',
+                    roomName: selectedRoom?.title || 'Room',
+                }
+            );
+
+            if (!result.success) {
+                throw new Error('error' in result ? result.error : 'Failed to create payment session');
+            }
+
+            if (!result.data?.clientSecret) {
+                throw new Error('Failed to create payment session');
+            }
+
+            setClientSecret(result.data.clientSecret);
+            setStep('payment');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Payment setup failed';
+            toast.error(message);
+        } finally {
+            setIsCreatingPayment(false);
+        }
+    }, [user, prebookId, selectedRoom, formData, bookingFor, priceData, selectedCurrency, property, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher]);
+
+    // Step 2: After Stripe payment succeeds → confirm with LiteAPI
+    const handlePaymentSuccess = useCallback(async (stripePaymentIntentId: string) => {
         try {
             if (!prebookId || !selectedRoom?.offerId) {
-                throw new Error("Booking session expired. Please go back and select the room again.");
+                throw new Error("Booking session expired.");
             }
 
             const guests = buildGuestPayload(formData, bookingFor, specialRequests);
             const holder = buildHolderPayload(formData);
 
-            // Use direct card payment method
-            const payment = { method: "ACC_CREDIT_CARD" };
-
+            // Confirm booking with LiteAPI (payment already captured by Stripe)
             await completeBooking({
                 holder,
                 guests,
-                payment,
+                payment: { method: "ACC_CREDIT_CARD" },
+                paymentIntentId: stripePaymentIntentId,
+                propertyName: property?.name || 'Hotel',
+                propertyImage: property?.images?.[0] || undefined,
+                roomName: selectedRoom?.title || 'Room',
+                checkIn: checkIn ? checkIn.toISOString().split('T')[0] : '',
+                checkOut: checkOut ? checkOut.toISOString().split('T')[0] : '',
+                adults,
+                children,
+                currency: selectedCurrency,
+                specialRequests: specialRequests || undefined,
+                voucherCode: appliedVoucher?.code || undefined,
+                discountAmount: appliedVoucher?.discountAmount || 0,
             });
 
-            // Show success immediately - don't wait for email/save
+            // Show success immediately
             setIsSuccess(true);
 
             const confirmedBookingId = useBookingStore.getState().bookingId;
 
-            // Use server-calculated final price if voucher applied
             const finalBookingPrice = appliedVoucher
                 ? appliedVoucher.finalPrice
                 : (priceData?.total || totalPrice || 0);
 
-            // Run email and save in parallel for faster completion
-            // These are fire-and-forget - user sees success immediately
+            // Fire-and-forget post-booking tasks
             const postBookingTasks: Promise<unknown>[] = [
                 sendConfirmationEmail({
                     bookingId: confirmedBookingId || 'N/A',
@@ -219,7 +334,6 @@ export function CheckoutContent() {
                     }).catch(err => console.error("Failed to save booking:", err))
                 );
 
-                // Record voucher usage if promo was applied
                 if (appliedVoucher) {
                     postBookingTasks.push(
                         apiFetch('/api/voucher/record', {
@@ -234,19 +348,30 @@ export function CheckoutContent() {
                 }
             }
 
-            // Execute in parallel without blocking
             Promise.all(postBookingTasks).catch(err =>
                 console.error("Post-booking tasks error:", err)
             );
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Booking failed';
-            if (message.includes("fraud check") || message.includes("2013")) {
-                toast.error("Booking rejected by fraud prevention. Please use realistic information.");
+
+            // Session expired AFTER Stripe captured payment — the booking is NOT confirmed.
+            // Do NOT claim a refund will happen automatically (auth failed before refund logic runs).
+            if (message === 'Authentication required' || message.toLowerCase().includes('authentication')) {
+                toast.error(
+                    `Your session expired during payment. Your card was charged — please contact support with payment reference: ${stripePaymentIntentId}`,
+                    { duration: 15000 }
+                );
+                openAuthModal('email', window.location.pathname + window.location.search);
+            } else if (message.includes("refunded")) {
+                toast.error(message);
             } else {
-                toast.error(`Booking failed: ${message}`);
+                toast.error(`Booking confirmation failed: ${message}. Your payment will be automatically refunded.`);
             }
+            // Return to form so user can retry
+            setStep('form');
+            setClientSecret(null);
         }
-    }, [user, prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher]);
+    }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
 
     // Price to show on submit button (server-calculated if voucher applied)
     const displayTotalPrice = appliedVoucher ? appliedVoucher.finalPrice : totalPrice;
@@ -269,10 +394,12 @@ export function CheckoutContent() {
         <>
             <main className="min-h-screen pt-4 lg:pt-6 pb-20 px-3 lg:px-4 md:px-6 relative">
                 <div className="max-w-6xl mx-auto">
-                    {/* Desktop Text Back Button */}
-                    <div className="hidden md:flex mb-2 justify-between items-center">
-                        <BackButton label="Modify booking" />
-                    </div>
+                    {/* Desktop Text Back Button — hidden on payment step (has its own back button) */}
+                    {step !== 'payment' && (
+                        <div className="hidden md:flex mb-2 justify-between items-center">
+                            <BackButton label="Modify booking" />
+                        </div>
+                    )}
 
                     {/* Mobile Floating Back Button */}
                     <div className="md:hidden mt-2 mb-4">
@@ -302,7 +429,10 @@ export function CheckoutContent() {
                                     </p>
                                 </div>
                                 <button
-                                    onClick={() => openAuthModal('email')}
+                                    onClick={() => {
+                                        const redirectPath = window.location.pathname + window.location.search;
+                                        openAuthModal('email', redirectPath);
+                                    }}
                                     className="px-4 py-2 min-h-[44px] bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors w-full sm:w-auto"
                                 >
                                     Sign In
@@ -311,85 +441,108 @@ export function CheckoutContent() {
                         </div>
                     )}
 
-                    {/* Prebook Error */}
-                    {prebookError && !isAuthModalOpen && (
-                        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg text-red-600 dark:text-red-400">
-                            <strong>Error:</strong> {prebookError}
-                            <button
-                                onClick={retryPrebook}
-                                className="ml-4 px-3 py-1 bg-red-500 text-white rounded text-sm"
-                            >
-                                Retry
-                            </button>
+                    {/* Prebook Error — unavailability is handled inline near the button; show banner only for other errors */}
+                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && !/no longer available|not available|unavailable|sold out/i.test(prebookError) && (
+                        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg">
+                            <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">Booking error</p>
+                            <p className="text-sm text-red-600 dark:text-red-400 mb-3">{prebookError}</p>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => window.history.back()}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                                >
+                                    Go back
+                                </button>
+                                <button
+                                    onClick={retryPrebook}
+                                    className="px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                >
+                                    Retry
+                                </button>
+                            </div>
                         </div>
                     )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
-                        {/* Main Form */}
+                        {/* Main Content — switches between form and payment */}
                         <div className="lg:col-span-2 space-y-2.5 lg:space-y-6">
-                            <UserDetailsForm
-                                formData={formData}
-                                onInputChange={handleInputChange}
-                                phoneCountryCode={phoneCountryCode}
-                                onPhoneCountryChange={setPhoneCountryCode}
-                                isWorkTravel={isWorkTravel}
-                                onWorkTravelChange={setIsWorkTravel}
-                                errors={formErrors}
-                            />
+                            {step === 'form' ? (
+                                <>
+                                    <UserDetailsForm
+                                        formData={formData}
+                                        onInputChange={handleInputChange}
+                                        phoneCountryCode={phoneCountryCode}
+                                        onPhoneCountryChange={setPhoneCountryCode}
+                                        isWorkTravel={isWorkTravel}
+                                        onWorkTravelChange={setIsWorkTravel}
+                                        errors={formErrors}
+                                    />
 
-                            <BookingForSection
-                                bookingFor={bookingFor}
-                                onBookingForChange={setBookingFor}
-                                formData={formData}
-                                onInputChange={handleInputChange}
-                                errors={formErrors}
-                            />
+                                    <BookingForSection
+                                        bookingFor={bookingFor}
+                                        onBookingForChange={setBookingFor}
+                                        formData={formData}
+                                        onInputChange={handleInputChange}
+                                        errors={formErrors}
+                                    />
 
-                            <SpecialRequestsSection
-                                value={specialRequests}
-                                onChange={setSpecialRequests}
-                            />
+                                    <SpecialRequestsSection
+                                        value={specialRequests}
+                                        onChange={setSpecialRequests}
+                                    />
 
-                            {/* Voucher/Promo Section */}
-                            <VoucherInput
-                                bookingPrice={totalPrice}
-                                currency={selectedCurrency}
-                                onVoucherApplied={reprebookWithVoucher}
-                                onVoucherRemoved={reprebookWithoutVoucher}
-                            />
+                                    {/* Voucher/Promo Section */}
+                                    <VoucherInput
+                                        bookingPrice={totalPrice}
+                                        currency={selectedCurrency}
+                                        onVoucherApplied={reprebookWithVoucher}
+                                        onVoucherRemoved={reprebookWithoutVoucher}
+                                    />
 
-                            {/* Available Promos (server-fetched) */}
-                            <AvailablePromos
-                                bookingPrice={totalPrice}
-                                currency={selectedCurrency}
-                                onVoucherApplied={reprebookWithVoucher}
-                            />
+                                    <AvailablePromos
+                                        bookingPrice={totalPrice}
+                                        currency={selectedCurrency}
+                                        onVoucherApplied={reprebookWithVoucher}
+                                    />
 
-                            {/* Payment — Direct Card Form */}
-                            <PaymentForm
-                                formData={formData}
-                                onInputChange={handleInputChange}
-                                payeeFirstName={payeeFirstName}
-                                payeeLastName={payeeLastName}
-                                onPayeeFirstNameChange={setPayeeFirstName}
-                                onPayeeLastNameChange={setPayeeLastName}
-                                errors={formErrors}
-                            />
+                                    <div className="hidden lg:block">
+                                        <SubmitBookingButton
+                                            loading={loading || isCreatingPayment}
+                                            prebooking={prebooking}
+                                            prebookId={prebookId}
+                                            isAuthenticated={!!user}
+                                            totalPrice={displayTotalPrice}
+                                            prebookError={prebookError}
+                                            onSubmit={handleProceedToPayment}
+                                        />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {/* Payment step — Stripe Embedded Checkout */}
+                                    <div className="space-y-4">
+                                        <button
+                                            onClick={() => { setStep('form'); setClientSecret(null); }}
+                                            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
+                                            Back to booking details
+                                        </button>
 
-                            <div className="hidden lg:block">
-                                <SubmitBookingButton
-                                    loading={loading}
-                                    prebooking={prebooking}
-                                    prebookId={prebookId}
-                                    isAuthenticated={!!user}
-                                    totalPrice={displayTotalPrice}
-                                    prebookError={prebookError}
-                                    onSubmit={handleCompleteBooking}
-                                />
-                            </div>
+                                        {clientSecret ? (
+                                            <StripeEmbeddedCheckout
+                                                clientSecret={clientSecret}
+                                                onSuccess={handlePaymentSuccess}
+                                            />
+                                        ) : (
+                                            <div className="p-8 text-center text-slate-500">Loading payment form...</div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
-                        {/* Sidebar Summary */}
+                        {/* Sidebar Summary — always visible */}
                         <div className="flex flex-col gap-4 lg:gap-6 lg:sticky lg:top-24 self-start">
                             <BookingSummary
                                 propertyName={displayProperty.name}
@@ -412,21 +565,49 @@ export function CheckoutContent() {
                                 appliedVoucher={appliedVoucher}
                             />
 
-                            {/* Mobile-only Submit Button positioned after the summary */}
-                            <div className="block lg:hidden">
-                                <SubmitBookingButton
-                                    loading={loading}
-                                    prebooking={prebooking}
-                                    prebookId={prebookId}
-                                    isAuthenticated={!!user}
-                                    totalPrice={displayTotalPrice}
-                                    prebookError={prebookError}
-                                    onSubmit={handleCompleteBooking}
-                                />
-                            </div>
+                            {/* Mobile-only Submit Button — only on form step */}
+                            {step === 'form' && (
+                                <div className="block lg:hidden">
+                                    <SubmitBookingButton
+                                        loading={loading || isCreatingPayment}
+                                        prebooking={prebooking}
+                                        prebookId={prebookId}
+                                        isAuthenticated={!!user}
+                                        totalPrice={displayTotalPrice}
+                                        prebookError={prebookError}
+                                        onSubmit={handleProceedToPayment}
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
+
+                {/* Booking confirmation overlay — covers form after Stripe payment succeeds */}
+                {loading && step === 'payment' && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-lg">
+                        <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
+                            <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Confirming your booking</h2>
+                                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium animate-pulse min-h-[20px]">
+                                    {BOOKING_STEPS[bookingStepIdx]}
+                                </p>
+                            </div>
+                            <div className="w-full space-y-2">
+                                {BOOKING_STEPS.map((label, i) => (
+                                    <div key={label} className={`flex items-center gap-2 text-xs ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
+                                        <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${i < bookingStepIdx ? 'bg-green-500 text-white' : i === bookingStepIdx ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                            {i < bookingStepIdx ? '✓' : i + 1}
+                                        </span>
+                                        {label}
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">Please don&apos;t close this page</p>
+                        </div>
+                    </div>
+                )}
             </main>
             <AuthModal />
         </>

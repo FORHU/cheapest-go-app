@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import { getUserProfile } from '@/lib/server/auth';
 import { NextResponse } from 'next/server';
 import { type EmailOtpType } from '@supabase/supabase-js';
 
@@ -10,8 +11,42 @@ function validateRedirectUrl(url: string): string {
     return url;
 }
 
+/** Determines the redirect target based on user role and requested 'next' path. */
+async function getRedirectTarget(user: any, next: string): Promise<string> {
+    // 1. Check metadata (fastest)
+    if (user?.user_metadata?.role === 'admin' || user?.app_metadata?.role === 'admin') {
+        return '/admin';
+    }
+
+    // 2. Check database (reliable fallback)
+    const profile = await getUserProfile(user.id);
+    if (profile?.role === 'admin') {
+        return '/admin';
+    }
+
+    return next;
+}
+
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url);
+    const { searchParams } = new URL(request.url);
+
+    // Determine the correct origin — inside Docker, request.url uses the
+    // container hostname (0.0.0.0) which is unreachable from the browser.
+    // Prefer forwarded headers from the reverse proxy, then NEXT_PUBLIC_SITE_URL.
+    const origin = (() => {
+        const fwdHost = request.headers.get('x-forwarded-host');
+        const fwdProto = request.headers.get('x-forwarded-proto') || 'https';
+        if (fwdHost) return `${fwdProto}://${fwdHost}`;
+
+        const host = request.headers.get('host');
+        if (host && !host.startsWith('0.0.0.0') && !host.startsWith('127.0.0.1') && !host.startsWith('localhost')) {
+            return `${fwdProto}://${host}`;
+        }
+
+        if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+
+        return new URL(request.url).origin;
+    })();
 
     // Handle OAuth code exchange
     const code = searchParams.get('code');
@@ -42,7 +77,8 @@ export async function GET(request: Request) {
         });
 
         if (!verifyError && data.session) {
-            return NextResponse.redirect(`${origin}${next}`);
+            const redirectTarget = await getRedirectTarget(data.session.user, next);
+            return NextResponse.redirect(`${origin}${redirectTarget}`);
         }
 
         console.error('Email verification error:', verifyError?.message);
@@ -54,7 +90,8 @@ export async function GET(request: Request) {
         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
         if (!exchangeError && data.session) {
-            return NextResponse.redirect(`${origin}${next}`);
+            const redirectTarget = await getRedirectTarget(data.session.user, next);
+            return NextResponse.redirect(`${origin}${redirectTarget}`);
         }
 
         console.error('Code exchange error:', exchangeError?.message);

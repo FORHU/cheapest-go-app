@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Search } from 'lucide-react';
 import { useSearchStore, useDestination, useDestinationQuery, useDates, useTravelers } from '@/stores/searchStore';
 import { DestinationPicker } from '@/components/landing/hero/search/DestinationPicker';
@@ -12,9 +12,10 @@ type AccordionSection = 'where' | 'when' | 'who';
 
 interface MobileSearchAccordionProps {
     onClose?: () => void;
+    onSearch?: () => void;
 }
 
-export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ onClose }) => {
+export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ onClose, onSearch }) => {
     const [activeSection, setActiveSection] = useState<AccordionSection>('where');
 
     // Search Store hooks
@@ -22,10 +23,21 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
     const destination = useDestination();
     const query = useDestinationQuery();
     const { checkIn, checkOut } = useDates();
-    const { adults, children, rooms } = useTravelers();
+    const { adults, children } = useTravelers();
 
     // Extracted search logic
     const { handleSearch, isSearching } = useSearchModule();
+
+    // Close modal when navigation completes (isSearching flips true → false).
+    // Handles the re-search case from the results page; home-page navigations just unmount.
+    const onSearchRef = useRef(onSearch);
+    onSearchRef.current = onSearch;
+    const wasSearchingRef = useRef(false);
+    useEffect(() => {
+        const was = wasSearchingRef.current;
+        wasSearchingRef.current = isSearching;
+        if (was && !isSearching) onSearchRef.current?.();
+    }, [isSearching]);
 
     useEffect(() => {
         if (activeSection === 'where') setActiveDropdown('destination');
@@ -59,7 +71,22 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
     };
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full relative">
+            {/* ─── Loading overlay ─── */}
+            {isSearching && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl gap-4">
+                    <div className="w-14 h-14 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
+                    <div className="text-center">
+                        <p className="text-base font-bold text-slate-900 dark:text-white">Finding hotels…</p>
+                        {(destination?.title || query) && (
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                                {destination?.title || query}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* ─── Close Button Row ─── */}
             <div className="flex justify-end px-4 pt-2 pb-1 shrink-0">
                 {onClose && (
@@ -166,7 +193,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                     Clear all
                 </button>
                 <button
-                    onClick={() => handleSearch()}
+                    onClick={handleSearch}
                     disabled={isSearching}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-2 min-w-[100px] justify-center shadow-md"
                 >

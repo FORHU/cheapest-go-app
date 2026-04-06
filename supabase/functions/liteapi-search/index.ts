@@ -8,6 +8,39 @@ const corsHeaders = {
 // Declare Deno to avoid lint errors in this environment
 declare const Deno: any;
 
+// ── In-Memory Search Cache ──────────────────────────────────────
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const cache = new Map<string, { data: any; expiresAt: number }>();
+
+// Periodic cleanup to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of cache.entries()) {
+    if (now > entry.expiresAt) cache.delete(key);
+  }
+}, 60_000); // Clean every 1 minute
+
+function getCacheKey(params: Record<string, any>): string {
+  // Stable serialization for consistent cache keys
+  const keys = Object.keys(params).sort();
+  const stable = keys.map(k => `${k}:${JSON.stringify(params[k])}`).join('|');
+  return stable;
+}
+
+function getFromCache(key: string): any | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
 interface HotelDetails {
   id: string | number;
   name: string;
@@ -107,6 +140,31 @@ Deno.serve(async (req: Request) => {
     const body = JSON.parse(rawData || "{}");
     console.log("===== SEARCH REQUEST =====", JSON.stringify(body).substring(0, 300));
 
+    // ── Cache lookup ──
+    const cacheKey = getCacheKey(body);
+    const cached = getFromCache(cacheKey);
+    if (cached) {
+      console.log(`[Cache HIT] ${Date.now() - t0}ms`);
+      console.log(JSON.stringify({
+        _event: 'search_analytics',
+        source: 'cache',
+        cityName: body.cityName,
+        countryCode: body.countryCode,
+        checkin: body.checkin,
+        checkout: body.checkout,
+        rooms: body.rooms || 1,
+        adults: body.adults || 2,
+        children: body.children || 0,
+        resultCount: cached.data?.length || 0,
+        duration_ms: Date.now() - t0,
+        timestamp: new Date().toISOString(),
+      }));
+      return new Response(JSON.stringify(cached), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'HIT' },
+        status: 200
+      });
+    }
+
     // Mapping inputs
     const checkin = body.checkin || body.startDate;
     const checkout = body.checkout || body.endDate;
@@ -126,15 +184,15 @@ Deno.serve(async (req: Request) => {
 
     if (body.hotelIds) {
       locationParams = { hotelIds: body.hotelIds };
-    } else if (normalizedCityName && countryCode) {
-      // Prioritize cityName and countryCode over placeId for better results in smaller regions (like Baguio)
-      locationParams = { cityName: normalizedCityName, countryCode: countryCode };
-      // Include placeId if it exists to help LiteAPI disambiguate
-      if (placeId) {
-        (locationParams as any).placeId = placeId;
-      }
+    } else if (placeId && normalizedCityName && countryCode) {
+      // placeId covers cities, regions, AND countries — always use it when available.
+      // Also send cityName+countryCode so LiteAPI can use whichever gives better results.
+      // This fixes country-level searches (Thailand, Japan) where cityName alone returns nothing.
+      locationParams = { placeId, cityName: normalizedCityName, countryCode };
     } else if (placeId) {
-      locationParams = { placeId: placeId };
+      locationParams = { placeId };
+    } else if (normalizedCityName && countryCode) {
+      locationParams = { cityName: normalizedCityName, countryCode };
     } else if (normalizedCityName) {
       // cityName without countryCode — still try (LiteAPI may resolve it)
       locationParams = { cityName: normalizedCityName };
@@ -229,8 +287,26 @@ Deno.serve(async (req: Request) => {
     let hotels = ratesData.data || [];
 
     if (hotels.length === 0) {
+      // Log empty results for analytics
+      console.log(JSON.stringify({
+        _event: 'search_analytics',
+        source: 'liteapi',
+        cityName: body.cityName || normalizedCityName,
+        countryCode: countryCode,
+        placeId: placeId,
+        checkin: checkin,
+        checkout: checkout,
+        rooms: body.rooms || 1,
+        adults: body.adults || 2,
+        children: body.children || 0,
+        hasFilters: !!(body.hotelName || body.starRating || body.minRating || body.facilities),
+        resultCount: 0,
+        duration_ms: Date.now() - t0,
+        timestamp: new Date().toISOString(),
+      }));
+
       return new Response(JSON.stringify({ data: [] }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'MISS' },
         status: 200
       });
     }
@@ -455,10 +531,33 @@ Deno.serve(async (req: Request) => {
 
     console.log(`[Timing] TOTAL: ${Date.now() - t0}ms (rates: ${t2 - t1}ms, details: ${t3 - t2}ms, merge: ${Date.now() - t3}ms) — ${hotels.length} hotels`);
 
-    return new Response(JSON.stringify({
-      data: hotels
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const responseData = { data: hotels };
+
+    // ── Cache successful results ──
+    setCache(cacheKey, responseData);
+
+    // ── Search Analytics ──
+    console.log(JSON.stringify({
+      _event: 'search_analytics',
+      source: 'liteapi',
+      cityName: body.cityName || normalizedCityName,
+      countryCode: countryCode,
+      placeId: placeId,
+      checkin: checkin,
+      checkout: checkout,
+      rooms: body.rooms || 1,
+      adults: body.adults || 2,
+      children: body.children || 0,
+      hasFilters: !!(body.hotelName || body.starRating || body.minRating || body.facilities),
+      resultCount: hotels.length,
+      duration_ms: Date.now() - t0,
+      rates_api_ms: t2 - t1,
+      details_api_ms: t3 - t2,
+      timestamp: new Date().toISOString(),
+    }));
+
+    return new Response(JSON.stringify(responseData), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'MISS' },
       status: 200
     });
 

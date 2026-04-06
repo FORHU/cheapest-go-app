@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Bed, Square, X, Check } from 'lucide-react';
+import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 /**
  * Format cancellation deadline for display
@@ -104,12 +106,21 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     rateOptions = []
 }) => {
     const [selectedRateIdx, setSelectedRateIdx] = useState(0);
-    const currencySymbol = currency === 'PHP' ? '₱' : currency;
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const targetCurrency = useUserCurrency();
+    const sourceCurrency = currency || 'KRW';
 
-    // Use rate options if provided, otherwise use single price
     const hasMultipleRates = rateOptions.length > 1;
     const selectedRate = rateOptions[selectedRateIdx];
-    const displayPrice = selectedRate?.price ?? price;
+
+    const basePriceConverted = mounted ? convertCurrency(price, sourceCurrency, targetCurrency) : price;
+    const selectedRatePriceConverted = selectedRate
+        ? (mounted ? convertCurrency(selectedRate.price, selectedRate.currency || sourceCurrency, targetCurrency) : selectedRate.price)
+        : undefined;
+
+    const displayPrice = selectedRatePriceConverted ?? basePriceConverted;
+    const currencySymbol = getCurrencySymbol(mounted ? targetCurrency : sourceCurrency);
     const displayRefundable = selectedRate?.refundable ?? freeCancellation;
     const displayOfferId = selectedRate?.offerId;
 
@@ -132,11 +143,12 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                 )}
                 {/* Image Counter Badge */}
                 {photoCount && photoCount > 1 && (
-                    <div className="absolute bottom-3 lg:bottom-5 right-1 lg:right-3 bg-black/60 text-white text-[9px] lg:text-xs px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-md flex items-center gap-1 backdrop-blur-sm z-10">
-                        <span className="hidden lg:inline">1/{photoCount}</span>
+                    <div className="hidden lg:flex absolute bottom-3 lg:bottom-5 right-1 lg:right-3 bg-black/60 text-white text-[9px] lg:text-xs px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-md items-center gap-1 backdrop-blur-sm z-10">
+                        <span>1/{photoCount}</span>
                         <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-white rounded-full ml-1 lg:ml-1" />
                     </div>
                 )}
+
             </div>
 
             {/* Middle: Info & Rate Options */}
@@ -168,27 +180,25 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                             : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
                                             }`}
                                     >
-                                        <div className="flex items-center gap-1 LG:gap-2">
+                                        <div className="flex items-center gap-1 min-w-0 flex-1">
                                             <input
                                                 type="radio"
                                                 name={`rate-${title}`}
                                                 checked={selectedRateIdx === idx}
                                                 onChange={() => setSelectedRateIdx(idx)}
-                                                className="w-2.5 h-2.5 LG:w-3.5 LG:h-3.5 text-blue-600 cursor-pointer"
+                                                className="w-2.5 h-2.5 text-blue-600 cursor-pointer shrink-0"
                                             />
-                                            <div className="min-w-0">
-                                                <div className="text-[10px] lg:text-sm font-medium text-slate-800 dark:text-slate-200 truncate pr-1">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="text-[10px] lg:text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
                                                     {rate.boardName || 'Room only'}
                                                 </div>
-                                                <div className={`text-[8px] lg:text-[11px] font-medium leading-tight ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                    {rate.refundable
-                                                        ? 'Free cancellation'
-                                                        : 'Non-refundable'}
+                                                <div className={`text-[8px] lg:text-[11px] font-medium leading-tight truncate ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                                    {rate.refundable ? 'Free cancellation' : 'Non-refundable'}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white ml-1.5 text-right shrink-0">
-                                            {currencySymbol}{rate.price.toLocaleString()}
+                                        <div className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white ml-2 text-right shrink-0 whitespace-nowrap">
+                                            {currencySymbol}{convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                             <div className="text-[8px] text-slate-500 font-normal">/night</div>
                                         </div>
                                     </label>
@@ -221,8 +231,8 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     )}
                 </div>
 
-                <div className="flex items-end justify-between mt-2 lg:mt-3">
-                    <div className="flex flex-col">
+                <div className="flex items-center justify-between mt-2 lg:mt-3 gap-2">
+                    <div className="flex flex-col min-w-0">
                         <button
                             onClick={onViewDetails}
                             className="text-[10px] lg:text-xs text-blue-600 font-bold hover:underline self-start mb-0.5 lg:mb-0"
@@ -230,13 +240,13 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                             Room details
                         </button>
                         {/* Hide price on mobile if multiple rates since it's already shown on the radio button */}
-                        {!(hasMultipleRates) && (
+                        {!hasMultipleRates && (
                             <div className="lg:hidden mt-0.5">
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-[15px] font-bold text-blue-600 dark:text-blue-400 leading-none">
-                                        {currencySymbol}{displayPrice.toLocaleString()}
+                                <div className="flex items-baseline gap-0.5 flex-wrap">
+                                    <span className="text-[12px] font-bold text-blue-600 dark:text-blue-400 leading-none whitespace-nowrap">
+                                        {currencySymbol}{displayPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                     </span>
-                                    <span className="text-[9px] text-slate-500">/night</span>
+                                    <span className="text-[9px] text-slate-500 whitespace-nowrap">/night</span>
                                 </div>
                             </div>
                         )}
@@ -245,9 +255,9 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     {/* Mobile Action Button */}
                     <button
                         onClick={() => onReserve(displayOfferId)}
-                        className="lg:hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded-lg text-[11px] shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shrink-0 ml-2"
+                        className="lg:hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded-lg text-[11px] shadow-sm shrink-0"
                     >
-                        Choose room
+                        Choose
                     </button>
                 </div>
             </div>
@@ -255,20 +265,11 @@ export const RoomCard: React.FC<RoomCardProps> = ({
             {/* Right: Pricing & Action (Desktop Sidebar) */}
             <div className={`p-3 lg:p-4 hidden lg:flex lg:flex-col justify-between lg:items-end bg-slate-50/50 dark:bg-white/5 lg:min-w-[180px] border-t lg:border-t-0 lg:border-l border-slate-100 dark:border-white/5 shrink-0`}>
                 <div className="text-right hidden lg:block">
-                    <div className="inline-block bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mb-1">
-                        8% OFF
-                    </div>
                     <div className="flex items-baseline justify-end gap-1">
                         <span className="text-[18px] font-bold text-slate-900 dark:text-white leading-none">
-                            {currencySymbol}{displayPrice.toLocaleString()}
+                            {currencySymbol}{displayPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                         </span>
                         <span className="text-[12px] text-slate-500">/night</span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 line-through leading-none mt-1">
-                        {currencySymbol}
-                        {(displayPrice * 1.08).toLocaleString(undefined, {
-                            maximumFractionDigits: 0,
-                        })}
                     </div>
                     <div className="text-[10px] text-slate-400 mt-2">
                         (1 night, 1 Room incl. taxes)

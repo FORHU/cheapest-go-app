@@ -43,13 +43,16 @@ interface MapProps extends Omit<MapboxMapProps, 'mapStyle' | 'terrain'> {
 function Buildings3DLayer({
     color = '#aaa',
     opacity = 0.8,
+    beforeId,
 }: {
     color?: string;
     opacity?: number;
+    beforeId?: string;
 }) {
     return (
         <Layer
             id="3d-buildings"
+            beforeId={beforeId}
             source="composite"
             source-layer="building"
             filter={['==', 'extrude', 'true']}
@@ -119,6 +122,8 @@ const STANDARD_STYLE = {
     layers: [] as never[],
 };
 
+import { env } from '@/utils/env';
+
 const Map = React.forwardRef<MapRef, MapProps>(
     (
         {
@@ -140,6 +145,12 @@ const Map = React.forwardRef<MapRef, MapProps>(
         const internalRef = React.useRef<MapRef>(null);
         const mapRef = (ref as React.RefObject<MapRef | null>) || internalRef;
         const styleReady = React.useRef(false);
+        const [firstSymbolId, setFirstSymbolId] = React.useState<string>();
+
+        const token = env.MAPBOX_TOKEN;
+        if (!token) {
+            console.error('Mapbox token is missing!');
+        }
 
         const handleLoad = React.useCallback(
             (e: mapboxgl.MapboxEvent) => {
@@ -151,6 +162,15 @@ const Map = React.forwardRef<MapRef, MapProps>(
 
                 const setup = () => {
                     try {
+                        // Find the first symbol layer to insert 3D buildings underneath
+                        const layers = map.getStyle()?.layers;
+                        if (layers) {
+                            const firstSymbol = layers.find(l => l.type === 'symbol');
+                            if (firstSymbol) {
+                                setFirstSymbolId(firstSymbol.id);
+                            }
+                        }
+
                         // Apply any runtime config overrides (e.g. non-default lightPreset)
                         if (isStandard && standardConfig) {
                             for (const [key, value] of Object.entries(standardConfig)) {
@@ -222,7 +242,7 @@ const Map = React.forwardRef<MapRef, MapProps>(
             >
                 <MapboxMap
                     ref={mapRef}
-                    mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+                    mapboxAccessToken={env.MAPBOX_TOKEN}
                     mapStyle={resolvedStyle as MapboxMapProps['mapStyle']}
                     onLoad={handleLoad}
                     {...props}
@@ -240,6 +260,7 @@ const Map = React.forwardRef<MapRef, MapProps>(
                         <Buildings3DLayer
                             color={buildingColor}
                             opacity={buildingOpacity}
+                            beforeId={firstSymbolId}
                         />
                     )}
                     {children}

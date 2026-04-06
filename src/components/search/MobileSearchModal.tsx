@@ -9,10 +9,11 @@ import { MobileSearchAccordion } from './MobileSearchAccordion';
 interface MobileSearchModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onSearch?: () => void;
     children?: React.ReactNode;
 }
 
-export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({ isOpen, onClose, children }) => {
+export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({ isOpen, onClose, onSearch, children }) => {
     // Lock body scroll when modal is open
     useEffect(() => {
         if (isOpen) {
@@ -54,7 +55,7 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({ isOpen, on
 
                     {/* Content */}
                     <div className="relative z-10 flex flex-col h-full w-full">
-                        {children || <MobileSearchAccordion onClose={onClose} />}
+                        {children || <MobileSearchAccordion onClose={onClose} onSearch={onSearch} />}
                     </div>
                 </motion.div>
             )}

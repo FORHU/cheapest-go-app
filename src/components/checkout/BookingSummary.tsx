@@ -1,10 +1,10 @@
-'use client';
-
 import React from 'react';
 import { Calendar, Star, MapPin, Tag } from 'lucide-react';
 import { CancellationPolicySection } from './CancellationPolicySection';
 import { CancellationPolicy } from '@/services/booking.service';
 import type { AppliedVoucher } from '@/types/voucher';
+import { getCurrencySymbol } from '@/lib/currency';
+import { useCheckoutStore } from '@/stores/checkoutStore';
 
 interface BookingSummaryProps {
     propertyName: string;
@@ -65,6 +65,8 @@ export function BookingSummary({
     cancellationPolicies,
     appliedVoucher,
 }: BookingSummaryProps) {
+    const currency = useCheckoutStore((state) => state.selectedCurrency);
+    const symbol = getCurrencySymbol(currency);
     const perNightPrice = totalNights > 0 ? Math.round(roomPrice / totalNights) : roomPrice;
 
     return (
@@ -152,7 +154,7 @@ export function BookingSummary({
                             {adults} {adults === 1 ? 'Adult' : 'Adults'}{children > 0 ? ` + ${children} ${children === 1 ? 'Child' : 'Children'}` : ''}
                         </div>
                         <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400 mt-0.5 lg:mt-1">
-                            ₱{perNightPrice.toLocaleString()} average per night
+                            {symbol}{perNightPrice.toLocaleString()} average per night
                         </div>
                         {prebookId && (
                             <span className="inline-block mt-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded">
@@ -168,12 +170,12 @@ export function BookingSummary({
                                 1 room × {totalNights} {totalNights === 1 ? 'night' : 'nights'}
                             </span>
                             <span className="font-medium text-slate-900 dark:text-white">
-                                ₱{roomPrice.toLocaleString()}
+                                {symbol}{roomPrice.toLocaleString()}
                             </span>
                         </div>
                         <div className="flex justify-between text-[11px] lg:text-sm">
                             <span className="text-slate-600 dark:text-slate-400">Included taxes and fees</span>
-                            <span className="font-medium text-slate-900 dark:text-white">₱{taxes.toLocaleString()}</span>
+                            <span className="font-medium text-slate-900 dark:text-white">{symbol}{taxes.toLocaleString()}</span>
                         </div>
 
                         {/* Voucher discount line (server-calculated amount) */}
@@ -184,7 +186,7 @@ export function BookingSummary({
                                     <span>Promo: {appliedVoucher.code}</span>
                                 </span>
                                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                    -₱{appliedVoucher.discountAmount.toLocaleString()}
+                                    -{symbol}{appliedVoucher.discountAmount.toLocaleString()}
                                 </span>
                             </div>
                         )}
@@ -196,15 +198,15 @@ export function BookingSummary({
                                 {appliedVoucher ? (
                                     <>
                                         <span className="text-[12px] line-through text-slate-400 dark:text-slate-500 mr-2 font-normal">
-                                            ₱{(totalPrice || 0).toLocaleString()}
+                                            {symbol}{(totalPrice || 0).toLocaleString()}
                                         </span>
                                         <span className="text-emerald-600 dark:text-emerald-400">
-                                            ₱{appliedVoucher.finalPrice.toLocaleString()}
+                                            {symbol}{appliedVoucher.finalPrice.toLocaleString()}
                                         </span>
                                     </>
                                 ) : (
                                     <span className="text-slate-900 dark:text-white">
-                                        ₱{(totalPrice || 0).toLocaleString()}
+                                        {symbol}{(totalPrice || 0).toLocaleString()}
                                     </span>
                                 )}
                             </div>
@@ -214,7 +216,7 @@ export function BookingSummary({
                         {appliedVoucher && (
                             <div className="text-center pt-1">
                                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
-                                    You save ₱{appliedVoucher.discountAmount.toLocaleString()} with this promo
+                                    You save {symbol}{appliedVoucher.discountAmount.toLocaleString()} with this promo
                                 </span>
                             </div>
                         )}

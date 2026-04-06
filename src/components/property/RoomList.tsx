@@ -2,12 +2,14 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Property } from '@/data/mockProperties';
+import { type Property } from '@/types';
 import { useViewingRoom, useBookingActions } from '@/stores/bookingStore';
 import { useRoomGrouping } from '@/hooks';
 import { RoomType } from '@/lib/room';
 import RoomDetailsView from './RoomDetailsView';
 import { RoomCard } from './RoomCard';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency } from '@/lib/currency';
 
 interface RoomListProps {
     property: Property;
@@ -33,19 +35,30 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
         hotelImages,
     });
 
-    const handleReserve = (roomTitle: string, price: number, offerId?: string) => {
+    const targetCurrency = useUserCurrency();
+
+    const handleReserve = (roomTitle: string, price: number, roomCurrency?: string, offerId?: string) => {
         const checkInDate = searchParams?.checkIn ? new Date(searchParams.checkIn) : new Date(2026, 0, 23);
         const checkOutDate = searchParams?.checkOut ? new Date(searchParams.checkOut) : new Date(2026, 0, 25);
 
-        const currency = searchParams?.currency || 'PHP';
+        const sourceCurrency = roomCurrency || searchParams?.currency || 'PHP';
+        
+        // Convert to current user currency for the store
+        const convertedPrice = convertCurrency(price, sourceCurrency, targetCurrency);
 
         setProperty(property);
-        setSelectedRoom({ id: roomTitle, offerId, title: roomTitle, price }); // Todo: Add currency to Room interface
+        setSelectedRoom({ 
+            id: roomTitle, 
+            offerId, 
+            title: roomTitle, 
+            price: convertedPrice,
+            currency: targetCurrency 
+        });
         setDates(checkInDate, checkOutDate);
         setGuests(searchParams?.adults || 2, searchParams?.children || 0);
 
         const params = new URLSearchParams();
-        params.set('currency', currency);
+        params.set('currency', targetCurrency);
         router.push(`/checkout?${params.toString()}`);
     };
 
@@ -96,6 +109,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                     handleReserve(
                                         groupedRoom.roomName,
                                         selectedRate?.price || groupedRoom.lowestPrice,
+                                        selectedRate?.currency || groupedRoom.currency,
                                         offerId || lowestRate?.offerId
                                     );
                                 }}
@@ -107,20 +121,9 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                         );
                     })
                 ) : (
-                    <>
-                        <RoomCard
-                            title="Deluxe King Room"
-                            price={5200}
-                            onReserve={() => handleReserve("Deluxe King Room", 5200)}
-                            onViewDetails={() => setViewingRoom({ name: "Deluxe King Room" })}
-                        />
-                        <RoomCard
-                            title="Executive Suite"
-                            price={8500}
-                            onReserve={() => handleReserve("Executive Suite", 8500)}
-                            onViewDetails={() => setViewingRoom({ name: "Executive Suite" })}
-                        />
-                    </>
+                    <div className="py-8 text-center text-slate-400 text-sm">
+                        No rooms available for the selected dates.
+                    </div>
                 )}
             </div>
         </div>

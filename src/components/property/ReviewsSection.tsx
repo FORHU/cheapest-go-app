@@ -25,7 +25,7 @@ interface ReviewsSectionProps {
  */
 function RatingSummary({ rating, totalCount }: { rating: number; totalCount: number }) {
     return (
-        <div className="flex items-center gap-2 lg:gap-3 mb-3 lg:mb-6">
+        <div className="flex items-center gap-2 lg:gap-3 lg:mb-6">
             <div className={`${getRatingColor(rating)} text-white w-9 h-9 lg:w-12 lg:h-12 rounded-lg flex items-center justify-center font-bold text-sm lg:text-xl`}>
                 {rating > 0 ? rating.toFixed(0) : '-'}
             </div>
@@ -246,8 +246,10 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
                 <div className="lg:w-64 flex-shrink-0">
                     <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-2 lg:mb-4">Guest reviews</h2>
 
-                    <RatingSummary rating={averageRating} totalCount={totalCount} />
-                    <WhoStaysHere breakdown={travelerBreakdown} />
+                    <div className="flex lg:flex-col gap-4 lg:gap-0">
+                        <RatingSummary rating={averageRating} totalCount={totalCount} />
+                        <WhoStaysHere breakdown={travelerBreakdown} />
+                    </div>
                 </div>
 
                 {/* Right Column - Reviews List */}
@@ -302,7 +304,7 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
                         {hasMore && (
                             <button
                                 onClick={handleLoadMore}
-                                className="w-full sm:w-auto px-5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl text-[16px] sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95"
+                                className="w-auto px-4 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95"
                             >
                                 Load more reviews
                             </button>
