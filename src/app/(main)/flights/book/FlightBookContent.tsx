@@ -171,7 +171,7 @@ export default function FlightBookContent() {
                         }
                     </p>
                     <button
-                        onClick={() => router.push('/flights')}
+                        onClick={() => router.push('/flights/search')}
                         className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors"
                     >
                         Search Again
