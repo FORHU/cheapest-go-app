@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { CabinClass, FlightSearchParams } from '@/types/flights';
 import { searchFlights, saveSearch } from '@/lib/server/flights/search-flights';
+import { rateLimit } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,12 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // This avoids the cloud round-trip latency and ECONNRESET from slow providers.
 
 export async function POST(req: NextRequest) {
+    // 20 searches per minute per IP
+    const rl = rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'flights-search' });
+    if (!rl.success) {
+        return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    }
+
     try {
         let body: any;
         try {

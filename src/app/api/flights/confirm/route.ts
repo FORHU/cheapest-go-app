@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createClient } from '@supabase/supabase-js';
 import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
+import { rateLimit } from '@/lib/server/rate-limit';
 import { z } from 'zod';
 
 const flightConfirmSchema = z.object({
@@ -30,6 +31,12 @@ export const dynamic = 'force-dynamic';
  * Body: { paymentIntentId: string, sessionId: string }
  */
 export async function POST(req: NextRequest) {
+    // 10 confirm attempts per minute per IP
+    const rl = rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'flights-confirm' });
+    if (!rl.success) {
+        return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    }
+
     try {
         const { user, error: authError } = await getAuthenticatedUser();
         const { env } = await import("@/utils/env");
