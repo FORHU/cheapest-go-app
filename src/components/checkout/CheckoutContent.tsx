@@ -394,10 +394,12 @@ export function CheckoutContent() {
         <>
             <main className="min-h-screen pt-4 lg:pt-6 pb-20 px-3 lg:px-4 md:px-6 relative">
                 <div className="max-w-6xl mx-auto">
-                    {/* Desktop Text Back Button */}
-                    <div className="hidden md:flex mb-2 justify-between items-center">
-                        <BackButton label="Modify booking" />
-                    </div>
+                    {/* Desktop Text Back Button — hidden on payment step (has its own back button) */}
+                    {step !== 'payment' && (
+                        <div className="hidden md:flex mb-2 justify-between items-center">
+                            <BackButton label="Modify booking" />
+                        </div>
+                    )}
 
                     {/* Mobile Floating Back Button */}
                     <div className="md:hidden mt-2 mb-4">

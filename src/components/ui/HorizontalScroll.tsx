@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -30,8 +30,30 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
         }
     }, [scrollAmount]);
 
+    // Block all user-initiated scrolling — arrows only
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+
+        const prevent = (e: Event) => e.preventDefault();
+
+        // Block wheel scroll
+        el.addEventListener('wheel', prevent, { passive: false });
+        // Block touch swipe
+        el.addEventListener('touchmove', prevent, { passive: false });
+        // Block trackpad/pointer drag scroll
+        el.addEventListener('pointermove', (e: PointerEvent) => {
+            if (e.buttons > 0) e.preventDefault();
+        }, { passive: false });
+
+        return () => {
+            el.removeEventListener('wheel', prevent);
+            el.removeEventListener('touchmove', prevent);
+        };
+    }, []);
+
     return (
-        <div className="relative">
+        <div className="relative overflow-x-hidden">
             {/* Navigation Arrows */}
             {showNavigation && (
                 <div className="hidden md:flex items-center gap-2 absolute -top-14 right-0 z-10">
@@ -54,14 +76,16 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
                 </div>
             )}
 
-            {/* Scrollable Content */}
+            {/* Scroll container — no user scroll, arrows only */}
             <div
                 ref={scrollRef}
-                className={`flex overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory ${className}`}
+                className={`flex overflow-x-scroll pt-3 pb-4 snap-x snap-mandatory ${className}`}
                 style={{
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
-                    gap: `${gap * 4}px`
+                    gap: `${gap * 4}px`,
+                    userSelect: 'none',
+                    WebkitOverflowScrolling: 'auto',
                 }}
             >
                 {children}
