@@ -26,7 +26,6 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isMobileCurrencyOpen, setIsMobileCurrencyOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const currencyRef = useRef<HTMLDivElement>(null);
 
   const userCurrency = useUserCurrency();
@@ -37,10 +36,6 @@ const Header = () => {
   useBodyScrollLock(isMenuOpen);
 
   const { triggerInstall } = usePWAInstall();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -74,15 +69,9 @@ const Header = () => {
     setIsMobileCurrencyOpen(false);
   };
 
-  if (!mounted) {
-    return (
-      <header className="sticky top-0 z-[60] w-full border-b border-slate-200 dark:border-white/5 bg-white/70 backdrop-blur-xl transition-colors duration-800" style={{ height: '64px' }} />
-    );
-  }
-
   return (
     <>
-      <header className="sticky top-0 z-[60] w-full border-b border-slate-200 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl transition-colors duration-800 landscape-compact-header">
+      <header suppressHydrationWarning className="sticky top-0 z-[60] w-full border-b border-slate-200 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl transition-colors duration-800 landscape-compact-header">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between landscape-compact-header">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
