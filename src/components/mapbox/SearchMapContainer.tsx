@@ -22,7 +22,7 @@ interface SearchMapContainerProps {
     onSelectId: (id: string | null) => void;
     hoveredId: string | null;
     onHoverId: (id: string | null) => void;
-    onViewDetails: (id: string) => void;
+    onViewDetails: (id: string, offerId?: string) => void;
     searchOverlayClassName?: string;
 }
 
@@ -153,8 +153,10 @@ export const SearchMapContainer = React.memo(({
                 mapRef={mapRef}
                 initialViewState={{
                     longitude: 120.596,
-                    latitude: 14.599,
-                    zoom: 14
+                    latitude: 16.402, // Centered on Baguio City
+                    zoom: 14.5,
+                    pitch: 45,
+                    bearing: -10,
                 }}
                 onLoad={handleMapLoad}
                 onClick={handleMapClick}
@@ -169,7 +171,7 @@ export const SearchMapContainer = React.memo(({
                             hoveredId={hoveredId}
                         />
 
-                        {mappableProperties.filter(p => p.id === selectedId || p.id === hoveredId).map(property => (
+                        {mappableProperties.map(property => (
                             <MapMarker
                                 key={property.id}
                                 property={property}
@@ -219,7 +221,7 @@ export const SearchMapContainer = React.memo(({
 
             <MapSearchOverlay
                 className={searchOverlayClassName ?? 'absolute top-16 left-4 z-20 w-[72%]'}
-                onSelect={(r) => mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 14, pitch: 45, duration: 1200 })}
+                onSelect={(r) => mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, pitch: 45, bearing: -10, duration: 1200 })}
             />
         </div>
     );

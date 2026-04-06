@@ -18,7 +18,7 @@ export default async function SearchPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const searchParams = await props.searchParams;
-    const viewMode = searchParams.view === 'map' ? 'map' : 'list';
+    const viewMode = searchParams.view === 'list' ? 'list' : 'map';
 
     // Parallel fetch: properties and facilities
     const [initialProperties, initialFacilities] = await Promise.all([

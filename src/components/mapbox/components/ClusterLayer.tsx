@@ -27,24 +27,6 @@ export const ClusterLayer = React.memo(({
             {/* Cluster Layers */}
             <Layer {...clusterLayer as any} />
             <Layer {...clusterCountLayer as any} />
-
-            {/* Point Layers */}
-            <Layer
-                {...unclusteredPointLayer as any}
-                filter={
-                    (selectedId || hoveredId)
-                        ? ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], selectedId || ''], ['!=', ['get', 'id'], hoveredId || '']]
-                        : ['!', ['has', 'point_count']]
-                }
-            />
-            <Layer
-                {...unclusteredPointTextLayer as any}
-                filter={
-                    (selectedId || hoveredId)
-                        ? ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'id'], selectedId || ''], ['!=', ['get', 'id'], hoveredId || '']]
-                        : ['!', ['has', 'point_count']]
-                }
-            />
         </Source>
     );
 });

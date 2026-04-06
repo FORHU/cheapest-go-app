@@ -2,14 +2,47 @@
 
 import React, { useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, Navigation, Car, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize } from 'lucide-react';
+import { MapPin, Navigation, Car, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Map } from '@/components/ui/map';
-import { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
+import { Marker, NavigationControl, Source, Layer, GeolocateControl } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
 import { useMapboxDirections } from '../mapbox/hooks/useMapboxDirections';
 import { useMapboxSearch } from '../mapbox/hooks/useMapboxSearch';
+import { env } from '@/utils/env';
 
 const GOOGLE_MAPS_SEARCH_URL = 'https://www.google.com/maps/search/?api=1';
+
+const POI_FILTERS = [
+    { id: 'all', label: 'All Discovery', icon: Search },
+    { id: 'restaurant', label: 'Dining', icon: Utensils },
+    { id: 'attraction', label: 'Attractions & Parks', icon: Landmark },
+];
+
+/**
+ * Creates a Mapbox-native 'Real' visual URL for a location.
+ * Uses Mapbox Static Images API to provide a geographical pinpoint of the spot.
+ */
+const getMapboxPoiImage = (name: string, lat: number, lng: number) => {
+    return `/api/poi-photo?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}`;
+};
+
+const BAGUIO_DEFAULT_GEMS = [
+    { name: 'Burnham Park', category: 'Park', icon: Trees, coordinates: { lat: 16.4124, lng: 120.5946 } },
+    { name: 'Mines View Park', category: 'Sightseeing', icon: Landmark, coordinates: { lat: 16.4231, lng: 120.6274 } },
+    { name: 'Session Road', category: 'Shopping', icon: ShoppingBasket, coordinates: { lat: 16.4138, lng: 120.5971 } },
+    { name: 'Good Taste Cafe', category: 'Dining', icon: Utensils, coordinates: { lat: 16.4162, lng: 120.5937 } },
+    { name: 'Chaya Baguio', category: 'Dining', icon: Utensils, coordinates: { lat: 16.3986, lng: 120.5847 } },
+    { name: 'Vizco\'s Restaurant', category: 'Dining', icon: Utensils, coordinates: { lat: 16.4135, lng: 120.5975 } },
+];
+
+
+const NEARBY_CATEGORIES = [
+    { id: 'restaurant', label: 'Food', icon: Utensils, color: 'text-orange-500', bg: 'bg-orange-50' },
+    { id: 'park', label: 'Parks', icon: Trees, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    { id: 'shopping', label: 'Shopping', icon: ShoppingBasket, color: 'text-blue-500', bg: 'bg-blue-50' },
+    { id: 'attractions', label: 'Sightseeing', icon: Landmark, color: 'text-purple-500', bg: 'bg-purple-50' },
+    { id: 'transit', label: 'Transit', icon: Bus, color: 'text-slate-500', bg: 'bg-slate-50' },
+];
 
 interface PropertyMapSidebarProps {
     hotelDetails?: {
@@ -30,10 +63,12 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
     propertyName,
 }) => {
     const mapRef = useRef<MapRef>(null);
+    const gemsScrollRef = useRef<HTMLDivElement>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [mounted, setMounted] = useState(false);
-    
     const [isFullscreen, setIsFullscreen] = useState(false);
+    // Stable session token for Mapbox Search Box API
+    const [mapboxSessionToken] = useState(() => Math.random().toString(36).substring(2, 15));
 
     // Trigger map resize after fullscreen transition so it fills the new container
     React.useEffect(() => {
@@ -47,6 +82,16 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
 
     // Directions State
     const [showDirections, setShowDirections] = useState(false);
+
+    // Nearby Categories State
+    const [activeCategory, setActiveCategory] = useState<string | null>(null);
+    const [categoryResults, setCategoryResults] = useState<any[]>([]);
+    const [isSearchingCategory, setIsSearchingCategory] = useState(false);
+
+    // Nearby Image Gems State
+    const [nearbyGems, setNearbyGems] = useState<any[]>([]);
+    const [isFetchingGems, setIsFetchingGems] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState('all');
 
     // Initial hydration fix
     React.useEffect(() => {
@@ -106,6 +151,17 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
         };
     }, []);
 
+    const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
+
+    React.useEffect(() => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            (err) => console.warn('Sidebar geolocation failed:', err),
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+        );
+    }, []);
+
     // Search query hook for origin typing
     const {
         originQuery,
@@ -117,7 +173,7 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
         handleOriginSearch,
         handleSelectOrigin,
         clearSearch
-    } = useMapboxSearch({ proximity: hasCoordinates ? coordinates : undefined });
+    } = useMapboxSearch({ proximity: userLocation || (hasCoordinates ? coordinates : undefined) });
 
     const clearDirections = useCallback(() => {
         setShowDirections(false);
@@ -147,6 +203,138 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
         destination: hasCoordinates ? { lat: coordinates.lat, lng: coordinates.lng } : null,
         enabled: showDirections && !!origin && hasCoordinates
     });
+
+    // Category Search Logic
+    React.useEffect(() => {
+        if (!activeCategory || !hasCoordinates || !env.MAPBOX_TOKEN) {
+            setCategoryResults([]);
+            return;
+        }
+
+        const fetchResults = async () => {
+            setIsSearchingCategory(true);
+            try {
+                const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(activeCategory)}.json?proximity=${coordinates.lng},${coordinates.lat}&access_token=${env.MAPBOX_TOKEN}&limit=8&types=poi&language=en`;
+                const res = await fetch(url);
+                const data = await res.json();
+                const results = (data.features || []).map((f: any) => getPoiDetails(f));
+                setCategoryResults(results);
+            } catch (err) {
+                console.error('Nearby search failed:', err);
+                setCategoryResults([]);
+            } finally {
+                setIsSearchingCategory(false);
+            }
+        };
+
+        fetchResults();
+    }, [activeCategory, coordinates, hasCoordinates, getPoiDetails]);
+
+    // Fetch Nearby Gems (Filtered by Category)
+    React.useEffect(() => {
+        if (!isLoaded || !hasCoordinates || !env.MAPBOX_TOKEN) return;
+
+        const fetchTopGems = async () => {
+            setIsFetchingGems(true);
+            try {
+                const results: any[] = [];
+                const categories = selectedCategory === 'all' 
+                    ? ['tourism', 'park', 'restaurant', 'museum'] 
+                    : (selectedCategory === 'attraction' ? ['park', 'tourism', 'museum', 'monument', 'viewpoint', 'attraction'] : [selectedCategory]);
+                
+                const fetchPromises = categories.map(cat => 
+                    fetch(`https://api.mapbox.com/search/searchbox/v1/category/${encodeURIComponent(cat)}?access_token=${env.MAPBOX_TOKEN}&language=en&limit=15&proximity=${coordinates.lng},${coordinates.lat}`)
+                        .then(res => res.json())
+                        .catch(() => ({ features: [] }))
+                );
+                
+                const categoryResponses = await Promise.all(fetchPromises);
+                const uniqueFeatures: Record<string, any> = {};
+
+                categoryResponses.forEach(data => {
+                    if (data.features) {
+                        data.features.forEach((f: any) => {
+                            if (!uniqueFeatures[f.properties.mapbox_id]) {
+                                uniqueFeatures[f.properties.mapbox_id] = f;
+                            }
+                        });
+                    }
+                });
+
+                // --- STAGE 2: DEEP RETRIEVAL FOR REAL IMAGES from Mapbox ---
+                const retrievePromises = Object.values(uniqueFeatures).slice(0, 20).map(async (f: any) => {
+                    const id = f.properties.mapbox_id;
+                    try {
+                        const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/retrieve/${id}?access_token=${env.MAPBOX_TOKEN}&session_token=${mapboxSessionToken}`);
+                        const data = await res.json();
+                        const retrievedFeature = data.features?.[0];
+                        
+                        const name = retrievedFeature?.properties?.name || f.properties.name;
+                        const lat = retrievedFeature?.geometry?.coordinates[1] || f.geometry.coordinates[1];
+                        const lng = retrievedFeature?.geometry?.coordinates[0] || f.geometry.coordinates[0];
+                        
+                        // Priority 1: Mapbox/Foursquare native photo URL (metadata.image_url)
+                        // Priority 2: Mapbox Extended images array (metadata.images)
+                        // Priority 3: Mapbox Vivid Satellite 'Drone' Snippet (High-res 45° real-world shot)
+                        const metadata = retrievedFeature?.properties?.metadata;
+                        const imageUrl = metadata?.image_url || metadata?.images?.[0] || getMapboxPoiImage(name, lat, lng);
+                        
+                        return {
+                            name,
+                            category: retrievedFeature?.properties?.category_en?.[0] || f.properties.category || 'Attraction',
+                            icon: f.properties.maki === 'restaurant' ? Utensils : (f.properties.maki === 'park' ? Trees : Landmark),
+                            coordinates: { lat, lng },
+                            imageUrl
+                        };
+                    } catch (e) {
+                        return {
+                            name: f.properties.name,
+                            category: f.properties.category_en?.[0] || 'Attraction',
+                            icon: f.properties.maki === 'restaurant' ? Utensils : (f.properties.maki === 'park' ? Trees : Landmark),
+                            coordinates: { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] },
+                            imageUrl: getMapboxPoiImage(f.properties.name || 'POI', f.geometry.coordinates[1], f.geometry.coordinates[0])
+                        };
+                    }
+                });
+
+                results.push(...(await Promise.all(retrievePromises)));
+
+                // ── Fallback for Baguio City (Only if sparse) ──
+                const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
+                if (results.length < 5 && isBaguio) {
+                    BAGUIO_DEFAULT_GEMS.forEach(gem => {
+                        const gCat = gem.category.toLowerCase();
+                        const sCat = selectedCategory === 'restaurant' ? 'dining' : selectedCategory;
+                        const matchesCat = selectedCategory === 'all' || 
+                                          gCat.includes(sCat) || 
+                                          (selectedCategory === 'attraction' && (gCat.includes('sightseeing') || gCat.includes('landmark') || gCat.includes('park') || gCat.includes('nature')));
+                        
+                        if (matchesCat && !results.find(r => r.name === gem.name)) {
+                            const imageUrl = getMapboxPoiImage(gem.name, gem.coordinates.lat, gem.coordinates.lng);
+                            results.push({
+                                ...gem,
+                                imageUrl
+                            });
+                        }
+                    });
+                }
+
+                setNearbyGems(results.slice(0, 20));
+                // Clear directions when switching categories for a clean view
+                if (showDirections) clearDirections();
+            } catch (err) {
+                console.error('Fetching gems failed:', err);
+                const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
+                if (isBaguio && selectedCategory === 'all') setNearbyGems(BAGUIO_DEFAULT_GEMS);
+            } finally {
+                setIsFetchingGems(false);
+            }
+        };
+
+        fetchTopGems();
+    }, [isLoaded, hasCoordinates, coordinates, getPoiDetails, selectedCategory]);
+
+    // Determine which markers/route should be active
 
     // Determine which route is currently active
     const activeRouteGeometry = showDirections && origin ? originRouteGeometry : poiRouteGeometry;
@@ -219,6 +407,15 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
         mapRef.current?.flyTo({ center: [coordinates.lng, coordinates.lat], zoom: 16, pitch: 45, duration: 800 });
     }, [hasCoordinates, coordinates]);
 
+    const scrollGems = useCallback((direction: 'left' | 'right') => {
+        if (!gemsScrollRef.current) return;
+        const scrollAmount = 300;
+        gemsScrollRef.current.scrollBy({ 
+            left: direction === 'left' ? -scrollAmount : scrollAmount, 
+            behavior: 'smooth' 
+        });
+    }, []);
+
     // Fit bounds for origin search directions
     React.useEffect(() => {
         if (showDirections && origin && hasCoordinates && mapRef.current) {
@@ -232,40 +429,9 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
 
     const handleLoad = useCallback(() => {
         setIsLoaded(true);
-        // Hide streets-v12 POI icon layers (the large coloured circles)
-        const map = mapRef.current?.getMap();
-        if (map) {
-            ['poi-label', 'transit-label'].forEach(layerId => {
-                if (map.getLayer(layerId)) {
-                    map.setLayoutProperty(layerId, 'visibility', 'none');
-                }
-            });
-        }
     }, []);
 
-    // Scale POI icons for better visibility
-    React.useEffect(() => {
-        if (!isLoaded || !mapRef.current) return;
-        const map = mapRef.current.getMap();
-        try {
-            const layers = map.getStyle()?.layers;
-            if (layers) {
-                layers.forEach(layer => {
-                    if (layer.type === 'symbol' && (
-                        layer.id.includes('poi') ||
-                        layer.id.includes('landmark') ||
-                        layer.id.includes('point-of-interest') ||
-                        layer.id.includes('transit')
-                    )) {
-                        map.setLayoutProperty(layer.id, 'icon-size', 3.0);
-                        map.setLayoutProperty(layer.id, 'text-size', 18);
-                    }
-                });
-            }
-        } catch (err) {
-            console.warn('Could not scale POI icons:', err);
-        }
-    }, [isLoaded]);
+    // POI Icons are shown automatically by streets-v12. (No need to scale manually)
 
     const onMouseMove = useCallback((event: any) => {
         if (!mapRef.current || showDirections) return;
@@ -305,9 +471,11 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                             onClick={onMapClick}
                             onMouseMove={onMouseMove}
                             maxPitch={60}
+                            enable3DBuildings={true}
                             className="!min-h-0 !rounded-none h-full"
                         >
                             <NavigationControl position="top-right" showCompass={false} />
+                            <GeolocateControl position="top-right" positionOptions={{ enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }} />
 
                             {isLoaded && (
                                 <>
@@ -342,11 +510,11 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                                 });
                                             }}
                                         >
-                                            <div className="flex flex-col items-center cursor-move group">
-                                                <div className="w-8 h-8 bg-emerald-500 border-[3px] border-white rounded-full shadow-lg flex items-center justify-center transform transition-transform group-hover:scale-110">
-                                                    <div className="w-2.5 h-2.5 bg-white rounded-full" />
-                                                </div>
-                                                <div className="w-3 h-1 bg-black/20 rounded-full blur-[1px] mt-0.5" />
+                                            <div className="flex flex-col items-center cursor-move group drop-shadow-xl">
+                                                <svg width="28" height="34" viewBox="0 0 24 30" fill="none" xmlns="http://www.w3.org/2000/svg" className="transform transition-transform group-hover:scale-110">
+                                                    <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 30 12 30C12 30 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#10b981" stroke="white" strokeWidth="2"/>
+                                                    <circle cx="12" cy="12" r="4" fill="white"/>
+                                                </svg>
                                             </div>
                                         </Marker>
                                     )}
@@ -364,12 +532,11 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                     >
                                         <div className="flex flex-col items-center cursor-pointer group">
                                             {showDirections ? (
-                                                <div className="bg-pink-600 text-white p-2.5 rounded-2xl shadow-xl border-2 border-white transform transition-transform hover:scale-110">
-                                                    <div className="bg-white/20 p-1.5 rounded-lg">
-                                                        <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center">
-                                                            <div className="w-2 h-2 bg-pink-600 rounded-full" />
-                                                        </div>
-                                                    </div>
+                                                <div className="drop-shadow-xl transform transition-transform hover:scale-110">
+                                                    <svg width="28" height="34" viewBox="0 0 24 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 30 12 30C12 30 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#db2777" stroke="white" strokeWidth="2"/>
+                                                        <circle cx="12" cy="12" r="4" fill="white"/>
+                                                    </svg>
                                                 </div>
                                             ) : (
                                                 <div className="relative mb-1 transform transition-all duration-300 group-hover:scale-110 group-active:scale-95 drop-shadow-xl">
@@ -393,9 +560,56 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                             )}
                                         </div>
                                     </Marker>
+
+                                    {/* Combined POI Markers (from top gems and active category) */}
+                                    {!showDirections && [...nearbyGems, ...categoryResults].reduce((acc: any[], curr) => {
+                                        if (!acc.find(p => p.name === curr.name)) acc.push(curr);
+                                        return acc;
+                                    }, []).map((poi, idx) => (
+                                        <Marker
+                                            key={`${poi.name}-${idx}`}
+                                            latitude={poi.coordinates.lat}
+                                            longitude={poi.coordinates.lng}
+                                            anchor="bottom"
+                                            onClick={(e) => {
+                                                e.originalEvent.stopPropagation();
+                                                setSelectedNativePoi(poi);
+                                                setActivePoiId(poi.name);
+                                            }}
+                                        >
+                                            <div className="flex flex-col items-center cursor-pointer group animate-in zoom-in duration-300">
+                                                <div className={`relative mb-1 transform transition-all duration-300 group-hover:scale-110 drop-shadow-xl ${activePoiId === poi.name ? 'scale-110 z-10' : 'scale-90 opacity-80'}`}>
+                                                    <div className={`w-8 h-8 rounded-full border-2 border-white flex items-center justify-center shadow-lg ${activePoiId === poi.name ? 'bg-blue-600' : 'bg-white/95 dark:bg-slate-800/95'}`}>
+                                                        {React.createElement(poi.icon, { 
+                                                            size: 14, 
+                                                            className: activePoiId === poi.name ? 'text-white' : 'text-blue-600 dark:text-blue-400' 
+                                                        })}
+                                                    </div>
+                                                    <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 border-r border-b border-white transform rotate-45 ${activePoiId === poi.name ? 'bg-blue-600' : 'bg-white/95 dark:bg-slate-800/95'}`} />
+                                                </div>
+                                            </div>
+                                        </Marker>
+                                    ))}
                                 </>
                             )}
                         </Map>
+
+                        {/* Map Legend (Bottom-left) */}
+                        {showDirections && origin && (
+                            <div className="absolute bottom-6 left-3 z-20 pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg px-2.5 py-2 space-y-2">
+                                    <h4 className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 px-0.5">Map Legend</h4>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white shadow-sm shrink-0" />
+                                        <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Starting Point</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-pink-600 border border-white shadow-sm shrink-0" />
+                                        <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Destination</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ) }
 
                         {/* Directions panel Overlay */}
                         <div className="absolute top-1.5 left-1.5 right-11 z-20 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[340px]">
@@ -554,7 +768,8 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                             </div>
                         )}
 
-                        <div className="absolute right-3 bottom-5 flex flex-col gap-2 items-end">
+                        {/* Map Controls */}
+                        <div className="absolute right-3 bottom-5 flex flex-col gap-2 items-end z-40">
                             <button
                                 onClick={() => setIsFullscreen(f => !f)}
                                 className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 p-2.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
@@ -571,6 +786,121 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                 Re-center
                             </button>
                         </div>
+
+                        {/* Visual "Places to Visit" Image Bar */}
+                        <div className={`absolute z-30 transition-all duration-500 ease-in-out group/nearby ${
+                            isFullscreen 
+                                ? 'left-5 top-[120px] bottom-[120px] w-48 flex flex-col gap-2 overflow-y-auto no-scrollbar py-4 px-2 bg-black/10 backdrop-blur rounded-2xl' 
+                                : 'bottom-20 left-1/2 -translate-x-1/2 w-[94%] flex flex-col gap-1.5'
+                        }`}>
+                            {/* Category Filter Pills */}
+                            <div className={`flex gap-1.5 overflow-x-auto no-scrollbar px-1 mb-0.5 ${isFullscreen ? 'flex-col mb-2' : 'flex-row'}`}>
+                                {POI_FILTERS.map(filter => {
+                                    const isSelected = selectedCategory === filter.id;
+                                    const Icon = filter.icon;
+                                    return (
+                                        <button
+                                            key={filter.id}
+                                            onClick={() => setSelectedCategory(filter.id)}
+                                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-300 shadow-sm shrink-0
+                                                ${isSelected 
+                                                    ? 'bg-blue-600 border-blue-600 text-white scale-105' 
+                                                    : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
+                                                }
+                                            `}
+                                        >
+                                            <Icon size={10} />
+                                            <span className="text-[9px] font-bold whitespace-nowrap uppercase tracking-tighter">{filter.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="relative flex flex-row w-full group/imagebar">
+                                {/* Previous Button (PC only, horizontal mode) */}
+                                {!isFullscreen && nearbyGems.length > 0 && (
+                                    <button 
+                                        onClick={() => scrollGems('left')}
+                                        className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-40 w-8 h-8 items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100 hover:bg-white"
+                                    >
+                                        <ChevronLeft size={16} />
+                                    </button>
+                                )}
+
+                                <div 
+                                    ref={gemsScrollRef}
+                                    className={`flex gap-2.5 overflow-x-auto no-scrollbar scroll-smooth px-1 py-1 w-full ${
+                                        isFullscreen ? 'flex-col overflow-y-auto no-scrollbar' : 'flex-row'
+                                    }`}
+                                >
+                                    {(isFetchingGems ? Array(6).fill(0) : nearbyGems).map((poi, idx) => {
+                                if (isFetchingGems) {
+                                    return <div key={idx} className="flex-shrink-0 w-32 h-20 sm:w-40 sm:h-24 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />;
+                                }
+                                const isActive = activePoiId === poi.name;
+                                // 100% Mapbox Native Image
+                                const imageUrl = poi.imageUrl || getMapboxPoiImage(poi.name, poi.coordinates.lat, poi.coordinates.lng);
+
+                                return (
+                                    <button
+                                        key={`${poi.name}-${idx}`}
+                                        onClick={() => {
+                                            if (isActive) {
+                                                setActivePoiId(null);
+                                                setSelectedNativePoi(null);
+                                            } else {
+                                                setSelectedNativePoi(poi);
+                                                setActivePoiId(poi.name);
+                                                mapRef.current?.flyTo({ center: [poi.coordinates.lng, poi.coordinates.lat], zoom: 17, pitch: 45, duration: 800 });
+                                            }
+                                        }}
+                                        className={`group relative flex-shrink-0 transition-all duration-300 transform hover:scale-[1.03] active:scale-95
+                                            ${isFullscreen ? 'w-full aspect-[4/3]' : 'w-32 h-20 sm:w-40 sm:h-24'}
+                                            ${isActive ? 'ring-2 ring-blue-500 shadow-xl' : 'shadow-md'}
+                                            rounded-xl overflow-hidden
+                                        `}
+                                    >
+                                        {/* Background Image */}
+                                        <img 
+                                            src={imageUrl} 
+                                            alt={poi.name}
+                                            className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isActive ? 'scale-110' : ''}`}
+                                        />
+                                        
+                                        {/* Overlay Gradient */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                        
+                                        {/* Content */}
+                                        <div className="absolute inset-0 p-2 flex flex-col justify-end items-start text-white text-left">
+                                            <div className="flex items-center gap-1 mb-0.5 opacity-80">
+                                                {React.createElement(poi.icon, { size: 10, className: 'shrink-0' })}
+                                                <span className="text-[8px] sm:text-[9px] font-medium uppercase tracking-wider truncate">{poi.category}</span>
+                                            </div>
+                                            <h4 className="text-[10px] sm:text-[11px] font-bold leading-tight line-clamp-2">{poi.name}</h4>
+                                        </div>
+
+                                        {/* Selection Indicators */}
+                                        {isActive && (
+                                            <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-blue-500 rounded-full border border-white">
+                                                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                                            </div>
+                                        )}
+                                    </button>
+                                    );
+                                })}
+                                </div>
+
+                                {/* Next Button (PC only, horizontal mode) */}
+                                {!isFullscreen && nearbyGems.length > 0 && (
+                                    <button 
+                                        onClick={() => scrollGems('right')}
+                                        className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-40 w-8 h-8 items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100 hover:bg-white"
+                                    >
+                                        <ChevronRight size={16} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </>
                 ) : (
                     <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800">
@@ -580,7 +910,7 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                         </div>
                     </div>
                 )}
-        </div>
+            </div>
     );
 
     return (
