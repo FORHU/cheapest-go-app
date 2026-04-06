@@ -3,8 +3,10 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import type { MapRef, MapMouseEvent } from 'react-map-gl/mapbox';
 import { NavigationControl, Popup } from 'react-map-gl/mapbox';
-import { Navigation } from 'lucide-react';
+import { Navigation, Layers } from 'lucide-react';
 import { Map } from '@/components/ui/map';
+import { useMapDetails } from '@/components/mapbox/hooks/useMapDetails';
+import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel';
 import { MapMarker } from './MapMarker';
 import { MapPopup } from './MapPopup';
 import { MapPOIPopup } from './MapPOIPopup';
@@ -115,6 +117,20 @@ const PropertyMapView = React.memo(function PropertyMapView({
     // Track last hovered POI name to skip redundant state updates
     const hoveredPOINameRef = useRef<string | null>(null);
     const targetCurrency = useUserCurrency();
+
+    const {
+        mapType,
+        setMapType,
+        showDetailsPanel,
+        setShowDetailsPanel,
+        showLabels,
+        setShowLabels,
+        mapDetails,
+        handleDetailToggle,
+        terrainEnabled,
+        mapStyleUrl,
+        standardConfig,
+    } = useMapDetails();
 
     const bounds = useMemo(() => computeBounds(properties), [properties]);
 
@@ -249,12 +265,10 @@ const PropertyMapView = React.memo(function PropertyMapView({
         <div className="relative w-full h-full">
             <Map
                 ref={mapRef}
-                mapStyle="standard"
-                standardConfig={{
-                    lightPreset: 'day',
-                    show3dObjects: true,
-                    show3dBuildings: true,
-                }}
+                mapStyle={mapStyleUrl}
+                standardConfig={mapType === 'default-3d' ? { ...standardConfig, show3dFacades: false } : undefined}
+                enable3DTerrain={terrainEnabled}
+                terrainExaggeration={1.5}
                 initialViewState={{
                     longitude: bounds.centerLng || 120.596,
                     latitude: bounds.centerLat || 16.402,
@@ -335,9 +349,38 @@ const PropertyMapView = React.memo(function PropertyMapView({
             </Map>
 
             {/* Property count badge */}
-            <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-slate-900 dark:text-white px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-xs font-medium">
+            <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-slate-900 dark:white px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-xs font-medium">
                 {properties.length} {properties.length === 1 ? 'property' : 'properties'} on map
             </div>
+
+            {/* ── Layers button ── */}
+            {!showDetailsPanel && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDetailsPanel(true);
+                    }}
+                    className="absolute top-4 left-4 z-20 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer flex items-center gap-2 group"
+                >
+                    <Layers className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors" />
+                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+                    <svg className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            )}
+
+            {/* ── Map Details Panel ── */}
+            <MapDetailsPanel
+                isOpen={showDetailsPanel}
+                onClose={() => setShowDetailsPanel(false)}
+                mapType={mapType}
+                onMapTypeChange={setMapType}
+                details={mapDetails}
+                onDetailToggle={handleDetailToggle}
+                showLabels={showLabels}
+                onLabelsToggle={() => setShowLabels((prev) => !prev)}
+            />
         </div>
     );
 });

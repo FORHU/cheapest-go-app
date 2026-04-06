@@ -2,12 +2,14 @@
 
 import React, { useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, Navigation, Car, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MapPin, Navigation, Car, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { Map } from '@/components/ui/map';
 import { Marker, NavigationControl, Source, Layer, GeolocateControl } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
 import { useMapboxDirections } from '../mapbox/hooks/useMapboxDirections';
 import { useMapboxSearch } from '../mapbox/hooks/useMapboxSearch';
+import { useMapDetails } from '@/components/mapbox/hooks/useMapDetails';
+import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel';
 import { env } from '@/utils/env';
 
 const GOOGLE_MAPS_SEARCH_URL = 'https://www.google.com/maps/search/?api=1';
@@ -69,6 +71,19 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
     const [isFullscreen, setIsFullscreen] = useState(false);
     // Stable session token for Mapbox Search Box API
     const [mapboxSessionToken] = useState(() => Math.random().toString(36).substring(2, 15));
+
+    const {
+        mapType,
+        setMapType,
+        showDetailsPanel,
+        setShowDetailsPanel,
+        showLabels,
+        setShowLabels,
+        mapDetails,
+        handleDetailToggle,
+        terrainEnabled,
+        mapStyleUrl,
+    } = useMapDetails();
 
     // Trigger map resize after fullscreen transition so it fills the new container
     React.useEffect(() => {
@@ -238,16 +253,16 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
             setIsFetchingGems(true);
             try {
                 const results: any[] = [];
-                const categories = selectedCategory === 'all' 
-                    ? ['tourism', 'park', 'restaurant', 'museum'] 
+                const categories = selectedCategory === 'all'
+                    ? ['tourism', 'park', 'restaurant', 'museum']
                     : (selectedCategory === 'attraction' ? ['park', 'tourism', 'museum', 'monument', 'viewpoint', 'attraction'] : [selectedCategory]);
-                
-                const fetchPromises = categories.map(cat => 
+
+                const fetchPromises = categories.map(cat =>
                     fetch(`https://api.mapbox.com/search/searchbox/v1/category/${encodeURIComponent(cat)}?access_token=${env.MAPBOX_TOKEN}&language=en&limit=15&proximity=${coordinates.lng},${coordinates.lat}`)
                         .then(res => res.json())
                         .catch(() => ({ features: [] }))
                 );
-                
+
                 const categoryResponses = await Promise.all(fetchPromises);
                 const uniqueFeatures: Record<string, any> = {};
 
@@ -268,17 +283,17 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                         const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/retrieve/${id}?access_token=${env.MAPBOX_TOKEN}&session_token=${mapboxSessionToken}`);
                         const data = await res.json();
                         const retrievedFeature = data.features?.[0];
-                        
+
                         const name = retrievedFeature?.properties?.name || f.properties.name;
                         const lat = retrievedFeature?.geometry?.coordinates[1] || f.geometry.coordinates[1];
                         const lng = retrievedFeature?.geometry?.coordinates[0] || f.geometry.coordinates[0];
-                        
+
                         // Priority 1: Mapbox/Foursquare native photo URL (metadata.image_url)
                         // Priority 2: Mapbox Extended images array (metadata.images)
                         // Priority 3: Mapbox Vivid Satellite 'Drone' Snippet (High-res 45° real-world shot)
                         const metadata = retrievedFeature?.properties?.metadata;
                         const imageUrl = metadata?.image_url || metadata?.images?.[0] || getMapboxPoiImage(name, lat, lng);
-                        
+
                         return {
                             name,
                             category: retrievedFeature?.properties?.category_en?.[0] || f.properties.category || 'Attraction',
@@ -305,10 +320,10 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                     BAGUIO_DEFAULT_GEMS.forEach(gem => {
                         const gCat = gem.category.toLowerCase();
                         const sCat = selectedCategory === 'restaurant' ? 'dining' : selectedCategory;
-                        const matchesCat = selectedCategory === 'all' || 
-                                          gCat.includes(sCat) || 
-                                          (selectedCategory === 'attraction' && (gCat.includes('sightseeing') || gCat.includes('landmark') || gCat.includes('park') || gCat.includes('nature')));
-                        
+                        const matchesCat = selectedCategory === 'all' ||
+                            gCat.includes(sCat) ||
+                            (selectedCategory === 'attraction' && (gCat.includes('sightseeing') || gCat.includes('landmark') || gCat.includes('park') || gCat.includes('nature')));
+
                         if (matchesCat && !results.find(r => r.name === gem.name)) {
                             const imageUrl = getMapboxPoiImage(gem.name, gem.coordinates.lat, gem.coordinates.lng);
                             results.push({
@@ -358,7 +373,7 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
 
     const onMapClick = useCallback((event: any) => {
         if (!mapRef.current) return;
-        
+
         // If we are looking for directions, clicking anywhere on the map sets the Origin pin!
         if (showDirections) {
             handleSelectOrigin({
@@ -410,9 +425,9 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
     const scrollGems = useCallback((direction: 'left' | 'right') => {
         if (!gemsScrollRef.current) return;
         const scrollAmount = 300;
-        gemsScrollRef.current.scrollBy({ 
-            left: direction === 'left' ? -scrollAmount : scrollAmount, 
-            behavior: 'smooth' 
+        gemsScrollRef.current.scrollBy({
+            left: direction === 'left' ? -scrollAmount : scrollAmount,
+            behavior: 'smooth'
         });
     }, []);
 
@@ -421,7 +436,7 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
         if (showDirections && origin && hasCoordinates && mapRef.current) {
             mapRef.current.fitBounds(
                 [[Math.min(origin.lng, coordinates.lng), Math.min(origin.lat, coordinates.lat)],
-                 [Math.max(origin.lng, coordinates.lng), Math.max(origin.lat, coordinates.lat)]],
+                [Math.max(origin.lng, coordinates.lng), Math.max(origin.lat, coordinates.lat)]],
                 { padding: { top: 180, bottom: 60, left: 60, right: 60 }, pitch: 30, duration: 1200, maxZoom: 17 }
             );
         }
@@ -464,457 +479,456 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
             {hasCoordinates ? (
                 <>
                     <Map
-                            ref={mapRef}
-                            mapStyle="mapbox://styles/mapbox/streets-v12"
-                            initialViewState={{ longitude: coordinates.lng, latitude: coordinates.lat, zoom: 16, pitch: 45, bearing: 0 }}
-                            onLoad={handleLoad}
-                            onClick={onMapClick}
-                            onMouseMove={onMouseMove}
-                            maxPitch={60}
-                            enable3DBuildings={true}
-                            className="!min-h-0 !rounded-none h-full"
-                        >
-                            <NavigationControl position="top-right" showCompass={false} />
-                            <GeolocateControl position="top-right" positionOptions={{ enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }} />
-
-                            {isLoaded && (
-                                <>
-                                    <Source id="route-source" type="geojson" data={routeGeojson as any}>
-                                        <Layer
-                                            id="route-layer-casing"
-                                            type="line"
-                                            layout={{ 'line-cap': 'round', 'line-join': 'round', 'visibility': activeRouteGeometry ? 'visible' : 'none' }}
-                                            paint={{ 'line-color': showDirections ? '#ffffff' : 'transparent', 'line-width': 8, 'line-opacity': 0.6 }}
-                                        />
-                                        <Layer
-                                            id="route-layer"
-                                            type="line"
-                                            layout={{ 'line-cap': 'round', 'line-join': 'round', 'visibility': activeRouteGeometry ? 'visible' : 'none' }}
-                                            paint={{ 'line-color': '#3b82f6', 'line-width': showDirections ? 5 : 6, 'line-opacity': showDirections ? 0.9 : 0.8 }}
-                                        />
-                                    </Source>
-
-                                    {/* Origin Pin (Draggable for manual placement) */}
-                                    {showDirections && origin && (
-                                        <Marker 
-                                            latitude={origin.lat} 
-                                            longitude={origin.lng} 
-                                            anchor="bottom"
-                                            draggable={true}
-                                            onDragEnd={(e) => {
-                                                handleSelectOrigin({
-                                                    ...origin,
-                                                    lat: e.lngLat.lat,
-                                                    lng: e.lngLat.lng,
-                                                    name: 'Dropped Pin'
-                                                });
-                                            }}
-                                        >
-                                            <div className="flex flex-col items-center cursor-move group drop-shadow-xl">
-                                                <svg width="28" height="34" viewBox="0 0 24 30" fill="none" xmlns="http://www.w3.org/2000/svg" className="transform transition-transform group-hover:scale-110">
-                                                    <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 30 12 30C12 30 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#10b981" stroke="white" strokeWidth="2"/>
-                                                    <circle cx="12" cy="12" r="4" fill="white"/>
-                                                </svg>
-                                            </div>
-                                        </Marker>
-                                    )}
-
-                                    {/* Hotel Pin */}
-                                    <Marker
-                                        latitude={coordinates.lat}
-                                        longitude={coordinates.lng}
-                                        anchor="bottom"
-                                        onClick={(e) => {
-                                            if (showDirections) return;
-                                            e.originalEvent.stopPropagation();
-                                            setActivePoiId(activePoiId === 'hotel' ? null : 'hotel');
-                                        }}
-                                    >
-                                        <div className="flex flex-col items-center cursor-pointer group">
-                                            {showDirections ? (
-                                                <div className="drop-shadow-xl transform transition-transform hover:scale-110">
-                                                    <svg width="28" height="34" viewBox="0 0 24 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 30 12 30C12 30 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#db2777" stroke="white" strokeWidth="2"/>
-                                                        <circle cx="12" cy="12" r="4" fill="white"/>
-                                                    </svg>
-                                                </div>
-                                            ) : (
-                                                <div className="relative mb-1 transform transition-all duration-300 group-hover:scale-110 group-active:scale-95 drop-shadow-xl">
-                                                    <svg width="36" height="42" viewBox="0 0 36 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path
-                                                            d="M18 42C18 42 36 28.1143 36 18C36 7.88571 27.9411 0 18 0C8.05888 0 0 7.88571 0 18C0 28.1143 18 42 18 42Z"
-                                                            fill={activePoiId === 'hotel' || !activePoiId ? '#db2777' : '#64748b'}
-                                                            stroke="white"
-                                                            strokeWidth="2"
-                                                        />
-                                                        <circle cx="18" cy="18" r="6" fill="white" />
-                                                    </svg>
-                                                </div>
-                                            )}
-                                            {showDirections ? (
-                                                <div className="w-4 h-1.5 bg-black/20 rounded-full mt-1 blur-[2px]" />
-                                            ) : (
-                                                <div className="px-2 py-0.5 bg-white/95 dark:bg-slate-800 rounded shadow-md border border-slate-200 dark:border-slate-700">
-                                                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{name}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </Marker>
-
-                                    {/* Combined POI Markers (from top gems and active category) */}
-                                    {!showDirections && [...nearbyGems, ...categoryResults].reduce((acc: any[], curr) => {
-                                        if (!acc.find(p => p.name === curr.name)) acc.push(curr);
-                                        return acc;
-                                    }, []).map((poi, idx) => (
-                                        <Marker
-                                            key={`${poi.name}-${idx}`}
-                                            latitude={poi.coordinates.lat}
-                                            longitude={poi.coordinates.lng}
-                                            anchor="bottom"
-                                            onClick={(e) => {
-                                                e.originalEvent.stopPropagation();
-                                                setSelectedNativePoi(poi);
-                                                setActivePoiId(poi.name);
-                                            }}
-                                        >
-                                            <div className="flex flex-col items-center cursor-pointer group animate-in zoom-in duration-300">
-                                                <div className={`relative mb-1 transform transition-all duration-300 group-hover:scale-110 drop-shadow-xl ${activePoiId === poi.name ? 'scale-110 z-10' : 'scale-90 opacity-80'}`}>
-                                                    <div className={`w-8 h-8 rounded-full border-2 border-white flex items-center justify-center shadow-lg ${activePoiId === poi.name ? 'bg-blue-600' : 'bg-white/95 dark:bg-slate-800/95'}`}>
-                                                        {React.createElement(poi.icon, { 
-                                                            size: 14, 
-                                                            className: activePoiId === poi.name ? 'text-white' : 'text-blue-600 dark:text-blue-400' 
-                                                        })}
-                                                    </div>
-                                                    <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 border-r border-b border-white transform rotate-45 ${activePoiId === poi.name ? 'bg-blue-600' : 'bg-white/95 dark:bg-slate-800/95'}`} />
-                                                </div>
-                                            </div>
-                                        </Marker>
-                                    ))}
-                                </>
-                            )}
-                        </Map>
-
-                        {/* Map Legend (Bottom-left) */}
-                        {showDirections && origin && (
-                            <div className="absolute bottom-6 left-3 z-20 pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg px-2.5 py-2 space-y-2">
-                                    <h4 className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 px-0.5">Map Legend</h4>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white shadow-sm shrink-0" />
-                                        <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Starting Point</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2.5 h-2.5 rounded-full bg-pink-600 border border-white shadow-sm shrink-0" />
-                                        <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Destination</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ) }
-
-                        {/* Directions panel Overlay */}
-                        <div className="absolute top-1.5 left-1.5 right-11 z-20 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[340px]">
-                            {!showDirections ? (
-                                <button
-                                    onClick={() => {
-                                        setShowDirections(true);
-                                        setActivePoiId(null);
-                                        setSelectedNativePoi(null);
-                                    }}
-                                    className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow px-2.5 py-1 flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors"
-                                >
-                                    <Navigation size={10} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                                    Get directions...
-                                </button>
-                            ) : (
-                                <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow overflow-hidden">
-                                    {/* Origin row */}
-                                    <div className="flex items-center gap-1.5 px-2 py-1 border-b border-slate-100 dark:border-slate-800">
-                                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
-                                        <div className="flex-1 relative">
-                                            <input
-                                                type="text"
-                                                value={originQuery}
-                                                onChange={(e) => handleOriginSearch(e.target.value)}
-                                                onBlur={() => setTimeout(() => setShowOriginResults(false), 150)}
-                                                onFocus={() => originResults.length > 0 && setShowOriginResults(true)}
-                                                placeholder="Where from?"
-                                                autoFocus
-                                                className="w-full text-[10px] text-slate-800 dark:text-slate-200 bg-transparent placeholder-slate-400 focus:outline-none"
-                                            />
-                                            {isSearching && (
-                                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                                            )}
-                                        </div>
-                                        {originQuery && (
-                                            <button onClick={() => { clearSearch(); }} className="shrink-0 text-slate-400 hover:text-slate-600">
-                                                <X size={10} />
-                                            </button>
-                                        )}
-                                    </div>
-                                    {/* Destination row */}
-                                    <div className="flex items-center gap-1.5 px-2 py-1">
-                                        <div className="w-1.5 h-1.5 bg-pink-500 rounded-full shrink-0" />
-                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 flex-1 truncate">{name}</span>
-                                        <button onClick={clearDirections} className="shrink-0 text-slate-400 hover:text-slate-600">
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-
-                                    {/* Autocomplete results */}
-                                    {showOriginResults && originResults.length > 0 && (
-                                        <div className="border-t border-slate-100 dark:border-slate-800">
-                                            {originResults.map((r) => (
-                                                <button
-                                                    key={r.id}
-                                                    onMouseDown={() => handleSelectOrigin(r)}
-                                                    className="w-full text-left px-2 py-1 text-[10px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0"
-                                                >
-                                                    <Search size={9} className="text-slate-400 shrink-0" />
-                                                    <span className="line-clamp-1">{r.name}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Travel times */}
-                                    {origin && (
-                                        <div className="border-t border-slate-100 dark:border-slate-800 px-2 py-1 flex items-center gap-1.5">
-                                            {isFetchingOriginRoute ? (
-                                                <div className="flex items-center gap-1 text-[9px] text-slate-400">
-                                                    <div className="w-2.5 h-2.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                                                    Calculating...
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    {originTravelTime !== null && (
-                                                        <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
-                                                            <Car size={9} className="text-blue-600 dark:text-blue-400" />
-                                                            <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300">{formatDuration(originTravelTime)} </span>
-                                                        </div>
-                                                    )}
-                                                    {originWalkingTime !== null && (
-                                                        <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
-                                                            <Footprints size={9} className="text-emerald-600 dark:text-emerald-400" />
-                                                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300">{formatDuration(originWalkingTime)}</span>
-                                                        </div>
-                                                    )}
-                                                    {originTravelTime === null && originWalkingTime === null && origin && !isFetchingOriginRoute && (
-                                                        <span className="text-[9px] text-slate-400">No route found</span>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* POI info card */}
-                        {displayInfo && !showDirections && (
-                            <div className="absolute top-16 left-3 sm:top-16 sm:left-4 z-10 w-[200px] sm:w-[260px] bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-left-4 duration-300">
-                                <div className="p-2 sm:p-4 relative">
-                                    <button
-                                        onClick={() => { setActivePoiId(null); setSelectedNativePoi(null); }}
-                                        className="absolute top-1 right-1 sm:top-3 sm:right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                                    >
-                                        <X size={16} className="w-3 h-3 sm:w-4 sm:h-4" />
-                                    </button>
-                                    <div className="pr-4 sm:pr-6 space-y-0.5 sm:space-y-1.5">
-                                        <h3 className="font-bold text-slate-900 dark:text-white text-[11px] sm:text-sm leading-tight">{displayInfo.name}</h3>
-                                        <p className="text-[9px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-tight">{displayInfo.address}</p>
-
-                                        {displayInfo.distance > 0 && (
-                                            <div className="flex items-center gap-1 sm:gap-1.5 pt-0.5 sm:pt-1">
-                                                <div className="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                                                    <Navigation size={10} className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-slate-600 dark:text-slate-400" />
-                                                </div>
-                                                <span className="text-[8px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-400">
-                                                    {displayInfo.distance.toFixed(2)} km from property
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        {/* Travel times from hotel to POI */}
-                                        {(poiTravelTime !== null || poiWalkingTime !== null) && (
-                                            <div className="flex items-center gap-2 pt-1">
-                                                {poiTravelTime !== null && (
-                                                    <div className="flex items-center gap-1">
-                                                        <Car size={10} className="text-blue-600 dark:text-blue-400" />
-                                                        <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiTravelTime)}</span>
-                                                    </div>
-                                                )}
-                                                {poiWalkingTime !== null && (
-                                                    <div className="flex items-center gap-1">
-                                                        <Footprints size={10} className="text-emerald-600 dark:text-emerald-400" />
-                                                        <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiWalkingTime)}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <div className="pt-1 sm:pt-2">
-                                            <a
-                                                href={`${GOOGLE_MAPS_SEARCH_URL}&query=${encodeURIComponent(displayInfo.name)}&query_place_id=${displayInfo.coordinates?.lat},${displayInfo.coordinates?.lng}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-[8px] sm:text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
-                                            >
-                                                View on Google Maps
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="absolute -left-2 top-8 w-4 h-4 bg-white dark:bg-slate-900 border-l border-t border-slate-200 dark:border-slate-700 transform -rotate-45 -z-10 hidden sm:block" />
-                            </div>
+                        ref={mapRef}
+                        mapStyle={mapStyleUrl}
+                        enable3DTerrain={terrainEnabled}
+                        terrainExaggeration={1.5}
+                        initialViewState={{ longitude: coordinates.lng, latitude: coordinates.lat, zoom: 16, pitch: 45, bearing: 0 }}
+                        onLoad={handleLoad}
+                        onClick={onMapClick}
+                        onMouseMove={onMouseMove}
+                        maxPitch={60}
+                        enable3DBuildings={false}
+                        className="!min-h-0 !rounded-none h-full"
+                    >
+                        <NavigationControl position="top-right" showCompass={false} />
+                        
+                        {/* ── Layers button ── */}
+                        {!showDetailsPanel && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowDetailsPanel(true);
+                                }}
+                                className="absolute top-4 left-4 z-20 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer flex items-center gap-2 group"
+                            >
+                                <Layers className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors" />
+                                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+                                <svg className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
                         )}
 
-                        {/* Map Controls */}
-                        <div className="absolute right-3 bottom-5 flex flex-col gap-2 items-end z-40">
-                            <button
-                                onClick={() => setIsFullscreen(f => !f)}
-                                className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 p-2.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
-                                title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-                            >
-                                {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-                            </button>
-                            <button
-                                onClick={handleRecenter}
-                                className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-1.5 group"
-                                suppressHydrationWarning
-                            >
-                                <Navigation size={11} className="group-hover:rotate-12 transition-transform" />
-                                Re-center
-                            </button>
-                        </div>
+                        {/* ── Map Details Panel ── */}
+                        <MapDetailsPanel
+                            isOpen={showDetailsPanel}
+                            onClose={() => setShowDetailsPanel(false)}
+                            mapType={mapType}
+                            onMapTypeChange={setMapType}
+                            details={mapDetails}
+                            onDetailToggle={handleDetailToggle}
+                            showLabels={showLabels}
+                            onLabelsToggle={() => setShowLabels((prev) => !prev)}
+                        />
+                        <GeolocateControl position="top-right" positionOptions={{ enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }} />
 
-                        {/* Visual "Places to Visit" Image Bar */}
-                        <div className={`absolute z-30 transition-all duration-500 ease-in-out group/nearby ${
-                            isFullscreen 
-                                ? 'left-5 top-[120px] bottom-[120px] w-48 flex flex-col gap-2 overflow-y-auto no-scrollbar py-4 px-2 bg-black/10 backdrop-blur rounded-2xl' 
-                                : 'bottom-20 left-1/2 -translate-x-1/2 w-[94%] flex flex-col gap-1.5'
-                        }`}>
-                            {/* Category Filter Pills */}
-                            <div className={`flex gap-1.5 overflow-x-auto no-scrollbar px-1 mb-0.5 ${isFullscreen ? 'flex-col mb-2' : 'flex-row'}`}>
-                                {POI_FILTERS.map(filter => {
-                                    const isSelected = selectedCategory === filter.id;
-                                    const Icon = filter.icon;
-                                    return (
-                                        <button
-                                            key={filter.id}
-                                            onClick={() => setSelectedCategory(filter.id)}
-                                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-300 shadow-sm shrink-0
-                                                ${isSelected 
-                                                    ? 'bg-blue-600 border-blue-600 text-white scale-105' 
-                                                    : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
-                                                }
-                                            `}
-                                        >
-                                            <Icon size={10} />
-                                            <span className="text-[9px] font-bold whitespace-nowrap uppercase tracking-tighter">{filter.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                        {isLoaded && (
+                            <>
+                                <Source id="route-source" type="geojson" data={routeGeojson as any}>
+                                    <Layer
+                                        id="route-layer-casing"
+                                        type="line"
+                                        layout={{ 'line-cap': 'round', 'line-join': 'round', 'visibility': activeRouteGeometry ? 'visible' : 'none' }}
+                                        paint={{ 'line-color': showDirections ? '#ffffff' : 'transparent', 'line-width': 8, 'line-opacity': 0.6 }}
+                                    />
+                                    <Layer
+                                        id="route-layer"
+                                        type="line"
+                                        layout={{ 'line-cap': 'round', 'line-join': 'round', 'visibility': activeRouteGeometry ? 'visible' : 'none' }}
+                                        paint={{ 'line-color': '#3b82f6', 'line-width': showDirections ? 5 : 6, 'line-opacity': showDirections ? 0.9 : 0.8 }}
+                                    />
+                                </Source>
 
-                            <div className="relative flex flex-row w-full group/imagebar">
-                                {/* Previous Button (PC only, horizontal mode) */}
-                                {!isFullscreen && nearbyGems.length > 0 && (
-                                    <button 
-                                        onClick={() => scrollGems('left')}
-                                        className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-40 w-8 h-8 items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100 hover:bg-white"
+                                {/* Origin Pin (Draggable for manual placement) */}
+                                {showDirections && origin && (
+                                    <Marker
+                                        latitude={origin.lat}
+                                        longitude={origin.lng}
+                                        anchor="bottom"
+                                        draggable={true}
+                                        onDragEnd={(e) => {
+                                            handleSelectOrigin({
+                                                ...origin,
+                                                lat: e.lngLat.lat,
+                                                lng: e.lngLat.lng,
+                                                name: 'Dropped Pin'
+                                            });
+                                        }}
                                     >
-                                        <ChevronLeft size={16} />
-                                    </button>
+                                        <div className="flex flex-col items-center cursor-move group drop-shadow-xl">
+                                            <svg width="28" height="34" viewBox="0 0 24 30" fill="none" xmlns="http://www.w3.org/2000/svg" className="transform transition-transform group-hover:scale-110">
+                                                <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 30 12 30C12 30 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#10b981" stroke="white" strokeWidth="2" />
+                                                <circle cx="12" cy="12" r="4" fill="white" />
+                                            </svg>
+                                        </div>
+                                    </Marker>
                                 )}
 
-                                <div 
-                                    ref={gemsScrollRef}
-                                    className={`flex gap-2.5 overflow-x-auto no-scrollbar scroll-smooth px-1 py-1 w-full ${
-                                        isFullscreen ? 'flex-col overflow-y-auto no-scrollbar' : 'flex-row'
-                                    }`}
+                                {/* Hotel Pin */}
+                                <Marker
+                                    latitude={coordinates.lat}
+                                    longitude={coordinates.lng}
+                                    anchor="bottom"
+                                    onClick={(e) => {
+                                        if (showDirections) return;
+                                        e.originalEvent.stopPropagation();
+                                        setActivePoiId(activePoiId === 'hotel' ? null : 'hotel');
+                                    }}
                                 >
-                                    {(isFetchingGems ? Array(6).fill(0) : nearbyGems).map((poi, idx) => {
-                                if (isFetchingGems) {
-                                    return <div key={idx} className="flex-shrink-0 w-32 h-20 sm:w-40 sm:h-24 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />;
-                                }
-                                const isActive = activePoiId === poi.name;
-                                // 100% Mapbox Native Image
-                                const imageUrl = poi.imageUrl || getMapboxPoiImage(poi.name, poi.coordinates.lat, poi.coordinates.lng);
+                                    <div className="flex flex-col items-center cursor-pointer group">
+                                        {showDirections ? (
+                                            <div className="drop-shadow-xl transform transition-transform hover:scale-110">
+                                                <svg width="28" height="34" viewBox="0 0 24 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 30 12 30C12 30 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#db2777" stroke="white" strokeWidth="2" />
+                                                    <circle cx="12" cy="12" r="4" fill="white" />
+                                                </svg>
+                                            </div>
+                                        ) : (
+                                            <div className="relative mb-1 transform transition-all duration-300 group-hover:scale-110 group-active:scale-95 drop-shadow-xl">
+                                                <svg width="36" height="42" viewBox="0 0 36 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path
+                                                        d="M18 42C18 42 36 28.1143 36 18C36 7.88571 27.9411 0 18 0C8.05888 0 0 7.88571 0 18C0 28.1143 18 42 18 42Z"
+                                                        fill={activePoiId === 'hotel' || !activePoiId ? '#db2777' : '#64748b'}
+                                                        stroke="white"
+                                                        strokeWidth="2"
+                                                    />
+                                                    <circle cx="18" cy="18" r="6" fill="white" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                        {showDirections ? (
+                                            <div className="w-4 h-1.5 bg-black/20 rounded-full mt-1 blur-[2px]" />
+                                        ) : (
+                                            <div className="px-2 py-0.5 bg-white/95 dark:bg-slate-800 rounded shadow-md border border-slate-200 dark:border-slate-700">
+                                                <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{name}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Marker>
+                            </>
+                        )}
+                    </Map>
 
+                    {/* Map Legend (Bottom-left) */}
+                    {showDirections && origin && (
+                        <div className="absolute bottom-6 left-3 z-20 pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg px-2.5 py-2 space-y-2">
+                                <h4 className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 px-0.5">Map Legend</h4>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white shadow-sm shrink-0" />
+                                    <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Starting Point</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-pink-600 border border-white shadow-sm shrink-0" />
+                                    <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Destination</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Directions panel Overlay */}
+                    <div className="absolute top-1.5 left-1.5 right-11 z-20 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[340px]">
+                        {!showDirections ? (
+                            <button
+                                onClick={() => {
+                                    setShowDirections(true);
+                                    setActivePoiId(null);
+                                    setSelectedNativePoi(null);
+                                }}
+                                className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow px-2.5 py-1 flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <Navigation size={10} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                                Get directions...
+                            </button>
+                        ) : (
+                            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow overflow-hidden">
+                                {/* Origin row */}
+                                <div className="flex items-center gap-1.5 px-2 py-1 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
+                                    <div className="flex-1 relative">
+                                        <input
+                                            type="text"
+                                            value={originQuery}
+                                            onChange={(e) => handleOriginSearch(e.target.value)}
+                                            onBlur={() => setTimeout(() => setShowOriginResults(false), 150)}
+                                            onFocus={() => originResults.length > 0 && setShowOriginResults(true)}
+                                            placeholder="Where from?"
+                                            autoFocus
+                                            className="w-full text-[10px] text-slate-800 dark:text-slate-200 bg-transparent placeholder-slate-400 focus:outline-none"
+                                        />
+                                        {isSearching && (
+                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                        )}
+                                    </div>
+                                    {originQuery && (
+                                        <button onClick={() => { clearSearch(); }} className="shrink-0 text-slate-400 hover:text-slate-600">
+                                            <X size={10} />
+                                        </button>
+                                    )}
+                                </div>
+                                {/* Destination row */}
+                                <div className="flex items-center gap-1.5 px-2 py-1">
+                                    <div className="w-1.5 h-1.5 bg-pink-500 rounded-full shrink-0" />
+                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 flex-1 truncate">{name}</span>
+                                    <button onClick={clearDirections} className="shrink-0 text-slate-400 hover:text-slate-600">
+                                        <X size={10} />
+                                    </button>
+                                </div>
+
+                                {/* Autocomplete results */}
+                                {showOriginResults && originResults.length > 0 && (
+                                    <div className="border-t border-slate-100 dark:border-slate-800">
+                                        {originResults.map((r) => (
+                                            <button
+                                                key={r.id}
+                                                onMouseDown={() => handleSelectOrigin(r)}
+                                                className="w-full text-left px-2 py-1 text-[10px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0"
+                                            >
+                                                <Search size={9} className="text-slate-400 shrink-0" />
+                                                <span className="line-clamp-1">{r.name}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Travel times */}
+                                {origin && (
+                                    <div className="border-t border-slate-100 dark:border-slate-800 px-2 py-1 flex items-center gap-1.5">
+                                        {isFetchingOriginRoute ? (
+                                            <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                                                <div className="w-2.5 h-2.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                                Calculating...
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {originTravelTime !== null && (
+                                                    <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
+                                                        <Car size={9} className="text-blue-600 dark:text-blue-400" />
+                                                        <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300">{formatDuration(originTravelTime)} </span>
+                                                    </div>
+                                                )}
+                                                {originWalkingTime !== null && (
+                                                    <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
+                                                        <Footprints size={9} className="text-emerald-600 dark:text-emerald-400" />
+                                                        <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300">{formatDuration(originWalkingTime)}</span>
+                                                    </div>
+                                                )}
+                                                {originTravelTime === null && originWalkingTime === null && origin && !isFetchingOriginRoute && (
+                                                    <span className="text-[9px] text-slate-400">No route found</span>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* POI info card */}
+                    {displayInfo && !showDirections && (
+                        <div className="absolute top-16 left-3 sm:top-16 sm:left-4 z-10 w-[200px] sm:w-[260px] bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-left-4 duration-300">
+                            <div className="p-2 sm:p-4 relative">
+                                <button
+                                    onClick={() => { setActivePoiId(null); setSelectedNativePoi(null); }}
+                                    className="absolute top-1 right-1 sm:top-3 sm:right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                                >
+                                    <X size={16} className="w-3 h-3 sm:w-4 sm:h-4" />
+                                </button>
+                                <div className="pr-4 sm:pr-6 space-y-0.5 sm:space-y-1.5">
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-[11px] sm:text-sm leading-tight">{displayInfo.name}</h3>
+                                    <p className="text-[9px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-tight">{displayInfo.address}</p>
+
+                                    {displayInfo.distance > 0 && (
+                                        <div className="flex items-center gap-1 sm:gap-1.5 pt-0.5 sm:pt-1">
+                                            <div className="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                                                <Navigation size={10} className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-slate-600 dark:text-slate-400" />
+                                            </div>
+                                            <span className="text-[8px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                                                {displayInfo.distance.toFixed(2)} km from property
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Travel times from hotel to POI */}
+                                    {(poiTravelTime !== null || poiWalkingTime !== null) && (
+                                        <div className="flex items-center gap-2 pt-1">
+                                            {poiTravelTime !== null && (
+                                                <div className="flex items-center gap-1">
+                                                    <Car size={10} className="text-blue-600 dark:text-blue-400" />
+                                                    <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiTravelTime)}</span>
+                                                </div>
+                                            )}
+                                            {poiWalkingTime !== null && (
+                                                <div className="flex items-center gap-1">
+                                                    <Footprints size={10} className="text-emerald-600 dark:text-emerald-400" />
+                                                    <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiWalkingTime)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="pt-1 sm:pt-2">
+                                        <a
+                                            href={`${GOOGLE_MAPS_SEARCH_URL}&query=${encodeURIComponent(displayInfo.name)}&query_place_id=${displayInfo.coordinates?.lat},${displayInfo.coordinates?.lng}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[8px] sm:text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                                        >
+                                            View on Google Maps
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="absolute -left-2 top-8 w-4 h-4 bg-white dark:bg-slate-900 border-l border-t border-slate-200 dark:border-slate-700 transform -rotate-45 -z-10 hidden sm:block" />
+                        </div>
+                    )}
+
+                    {/* Map Controls */}
+                    <div className="absolute right-3 bottom-5 flex flex-col gap-2 items-end z-40">
+                        <button
+                            onClick={() => setIsFullscreen(f => !f)}
+                            className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 p-2.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                        >
+                            {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+                        </button>
+                        <button
+                            onClick={handleRecenter}
+                            className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-1.5 group"
+                            suppressHydrationWarning
+                        >
+                            <Navigation size={11} className="group-hover:rotate-12 transition-transform" />
+                            Re-center
+                        </button>
+                    </div>
+
+                    {/* Visual "Places to Visit" Image Bar */}
+                    <div className={`absolute z-30 transition-all duration-500 ease-in-out group/nearby ${isFullscreen
+                            ? 'left-5 top-[120px] bottom-[120px] w-48 flex flex-col gap-2 overflow-y-auto no-scrollbar py-4 px-2 bg-black/10 backdrop-blur rounded-2xl'
+                            : 'bottom-20 left-1/2 -translate-x-1/2 w-[94%] flex flex-col gap-1.5'
+                        }`}>
+                        {/* Category Filter Pills */}
+                        <div className={`flex gap-1.5 overflow-x-auto no-scrollbar px-1 mb-0.5 ${isFullscreen ? 'flex-col mb-2' : 'flex-row'}`}>
+                            {POI_FILTERS.map(filter => {
+                                const isSelected = selectedCategory === filter.id;
+                                const Icon = filter.icon;
                                 return (
                                     <button
-                                        key={`${poi.name}-${idx}`}
-                                        onClick={() => {
-                                            if (isActive) {
-                                                setActivePoiId(null);
-                                                setSelectedNativePoi(null);
-                                            } else {
-                                                setSelectedNativePoi(poi);
-                                                setActivePoiId(poi.name);
-                                                mapRef.current?.flyTo({ center: [poi.coordinates.lng, poi.coordinates.lat], zoom: 17, pitch: 45, duration: 800 });
+                                        key={filter.id}
+                                        onClick={() => setSelectedCategory(filter.id)}
+                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-300 shadow-sm shrink-0
+                                                ${isSelected
+                                                ? 'bg-blue-600 border-blue-600 text-white scale-105'
+                                                : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
                                             }
-                                        }}
-                                        className={`group relative flex-shrink-0 transition-all duration-300 transform hover:scale-[1.03] active:scale-95
+                                            `}
+                                    >
+                                        <Icon size={10} />
+                                        <span className="text-[9px] font-bold whitespace-nowrap uppercase tracking-tighter">{filter.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="relative flex flex-row w-full group/imagebar">
+                            {/* Previous Button (PC only, horizontal mode) */}
+                            {!isFullscreen && nearbyGems.length > 0 && (
+                                <button
+                                    onClick={() => scrollGems('left')}
+                                    className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-40 w-8 h-8 items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100 hover:bg-white"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+                            )}
+
+                            <div
+                                ref={gemsScrollRef}
+                                className={`flex gap-2.5 overflow-x-auto no-scrollbar scroll-smooth px-1 py-1 w-full ${isFullscreen ? 'flex-col overflow-y-auto no-scrollbar' : 'flex-row'
+                                    }`}
+                            >
+                                {(isFetchingGems ? Array(6).fill(0) : nearbyGems).map((poi, idx) => {
+                                    if (isFetchingGems) {
+                                        return <div key={idx} className="flex-shrink-0 w-32 h-20 sm:w-40 sm:h-24 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />;
+                                    }
+                                    const isActive = activePoiId === poi.name;
+                                    // 100% Mapbox Native Image
+                                    const imageUrl = poi.imageUrl || getMapboxPoiImage(poi.name, poi.coordinates.lat, poi.coordinates.lng);
+
+                                    return (
+                                        <button
+                                            key={`${poi.name}-${idx}`}
+                                            onClick={() => {
+                                                if (isActive) {
+                                                    setActivePoiId(null);
+                                                    setSelectedNativePoi(null);
+                                                } else {
+                                                    setSelectedNativePoi(poi);
+                                                    setActivePoiId(poi.name);
+                                                    mapRef.current?.flyTo({ center: [poi.coordinates.lng, poi.coordinates.lat], zoom: 17, pitch: 45, duration: 800 });
+                                                }
+                                            }}
+                                            className={`group relative flex-shrink-0 transition-all duration-300 transform hover:scale-[1.03] active:scale-95
                                             ${isFullscreen ? 'w-full aspect-[4/3]' : 'w-32 h-20 sm:w-40 sm:h-24'}
                                             ${isActive ? 'ring-2 ring-blue-500 shadow-xl' : 'shadow-md'}
                                             rounded-xl overflow-hidden
                                         `}
-                                    >
-                                        {/* Background Image */}
-                                        <img 
-                                            src={imageUrl} 
-                                            alt={poi.name}
-                                            className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isActive ? 'scale-110' : ''}`}
-                                        />
-                                        
-                                        {/* Overlay Gradient */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                                        
-                                        {/* Content */}
-                                        <div className="absolute inset-0 p-2 flex flex-col justify-end items-start text-white text-left">
-                                            <div className="flex items-center gap-1 mb-0.5 opacity-80">
-                                                {React.createElement(poi.icon, { size: 10, className: 'shrink-0' })}
-                                                <span className="text-[8px] sm:text-[9px] font-medium uppercase tracking-wider truncate">{poi.category}</span>
-                                            </div>
-                                            <h4 className="text-[10px] sm:text-[11px] font-bold leading-tight line-clamp-2">{poi.name}</h4>
-                                        </div>
+                                        >
+                                            {/* Background Image */}
+                                            <img
+                                                src={imageUrl}
+                                                alt={poi.name}
+                                                className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${isActive ? 'scale-110' : ''}`}
+                                            />
 
-                                        {/* Selection Indicators */}
-                                        {isActive && (
-                                            <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-blue-500 rounded-full border border-white">
-                                                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                                            {/* Overlay Gradient */}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                                            {/* Content */}
+                                            <div className="absolute inset-0 p-2 flex flex-col justify-end items-start text-white text-left">
+                                                <div className="flex items-center gap-1 mb-0.5 opacity-80">
+                                                    {React.createElement(poi.icon, { size: 10, className: 'shrink-0' })}
+                                                    <span className="text-[8px] sm:text-[9px] font-medium uppercase tracking-wider truncate">{poi.category}</span>
+                                                </div>
+                                                <h4 className="text-[10px] sm:text-[11px] font-bold leading-tight line-clamp-2">{poi.name}</h4>
                                             </div>
-                                        )}
-                                    </button>
+
+                                            {/* Selection Indicators */}
+                                            {isActive && (
+                                                <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-blue-500 rounded-full border border-white">
+                                                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                                                </div>
+                                            )}
+                                        </button>
                                     );
                                 })}
-                                </div>
-
-                                {/* Next Button (PC only, horizontal mode) */}
-                                {!isFullscreen && nearbyGems.length > 0 && (
-                                    <button 
-                                        onClick={() => scrollGems('right')}
-                                        className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-40 w-8 h-8 items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100 hover:bg-white"
-                                    >
-                                        <ChevronRight size={16} />
-                                    </button>
-                                )}
                             </div>
-                        </div>
-                    </>
-                ) : (
-                    <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800">
-                        <div className="text-center">
-                            <MapPin className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                            <span className="text-sm text-slate-400">Map not available</span>
+
+                            {/* Next Button (PC only, horizontal mode) */}
+                            {!isFullscreen && nearbyGems.length > 0 && (
+                                <button
+                                    onClick={() => scrollGems('right')}
+                                    className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-40 w-8 h-8 items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100 hover:bg-white"
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            )}
                         </div>
                     </div>
-                )}
-            </div>
+                </>
+            ) : (
+                <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800">
+                    <div className="text-center">
+                        <MapPin className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                        <span className="text-sm text-slate-400">Map not available</span>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 
     return (
-        <>
+        <div className="flex flex-col h-full bg-white dark:bg-slate-900">
             <div className="h-full w-full rounded-xl overflow-hidden relative shadow-sm border border-slate-200/60 dark:border-white/10">
                 {!isFullscreen && mapContent}
             </div>
@@ -924,7 +938,7 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                 </div>,
                 document.body
             )}
-        </>
+        </div>
     );
 };
 

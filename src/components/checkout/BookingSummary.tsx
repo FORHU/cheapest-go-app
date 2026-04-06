@@ -26,6 +26,7 @@ interface BookingSummaryProps {
     cancellationPolicies?: CancellationPolicy;
     /** Server-validated applied voucher (display only) */
     appliedVoucher?: AppliedVoucher | null;
+    isLoading?: boolean;
 }
 
 function formatDate(date: Date): string {
@@ -64,6 +65,7 @@ export function BookingSummary({
     prebookId,
     cancellationPolicies,
     appliedVoucher,
+    isLoading,
 }: BookingSummaryProps) {
     const currency = useCheckoutStore((state) => state.selectedCurrency);
     const symbol = getCurrencySymbol(currency);
@@ -154,7 +156,11 @@ export function BookingSummary({
                             {adults} {adults === 1 ? 'Adult' : 'Adults'}{children > 0 ? ` + ${children} ${children === 1 ? 'Child' : 'Children'}` : ''}
                         </div>
                         <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400 mt-0.5 lg:mt-1">
-                            {symbol}{perNightPrice.toLocaleString()} average per night
+                            {isLoading ? (
+                                <span className="animate-pulse">Calculated per night...</span>
+                            ) : (
+                                <>{symbol}{perNightPrice.toLocaleString()} average per night</>
+                            )}
                         </div>
                         {prebookId && (
                             <span className="inline-block mt-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded">
@@ -170,12 +176,22 @@ export function BookingSummary({
                                 1 room × {totalNights} {totalNights === 1 ? 'night' : 'nights'}
                             </span>
                             <span className="font-medium text-slate-900 dark:text-white">
-                                {symbol}{roomPrice.toLocaleString()}
+                                {isLoading ? (
+                                    <span className="h-4 w-16 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
+                                ) : (
+                                    <>{symbol}{roomPrice.toLocaleString()}</>
+                                )}
                             </span>
                         </div>
                         <div className="flex justify-between text-[11px] lg:text-sm">
                             <span className="text-slate-600 dark:text-slate-400">Included taxes and fees</span>
-                            <span className="font-medium text-slate-900 dark:text-white">{symbol}{taxes.toLocaleString()}</span>
+                            <span className="font-medium text-slate-900 dark:text-white">
+                                {isLoading ? (
+                                    <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
+                                ) : (
+                                    <>{symbol}{taxes.toLocaleString()}</>
+                                )}
+                            </span>
                         </div>
 
                         {/* Voucher discount line (server-calculated amount) */}
@@ -195,7 +211,9 @@ export function BookingSummary({
                         <div className="flex justify-between text-[14px] lg:text-base font-bold pt-2 border-t border-slate-200 dark:border-white/10">
                             <span className="text-slate-900 dark:text-white">Total</span>
                             <div className="text-right">
-                                {appliedVoucher ? (
+                                {isLoading ? (
+                                    <span className="h-5 w-20 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
+                                ) : appliedVoucher ? (
                                     <>
                                         <span className="text-[12px] line-through text-slate-400 dark:text-slate-500 mr-2 font-normal">
                                             {symbol}{(totalPrice || 0).toLocaleString()}

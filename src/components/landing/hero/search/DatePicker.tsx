@@ -18,6 +18,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
     const [activeTab, setActiveTab] = useState<'calendar' | 'flexible'>('calendar');
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectingCheckOut, setSelectingCheckOut] = useState(false);
+    const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
     // Store
     const activeDropdown = useActiveDropdown();
@@ -107,23 +108,45 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
             const isInRange = checkIn && checkOut && date > checkIn && date < checkOut;
 
             days.push(
-                <button
-                    key={day}
-                    type="button"
-                    disabled={isPast}
-                    onClick={() => handleDateClick(date)}
-                    className={`${inline ? "w-full aspect-square" : "size-8"} flex items-center justify-center ${inline ? "text-[9px]" : "text-[11px]"} font-medium rounded-full transition-all
-                        ${isPast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer'}
-                        ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg' : ''}
-                        ${isInRange ? 'bg-alabaster-accent/10 dark:bg-obsidian-accent/10' : ''}
-                        ${!isPast && !isCheckIn && !isCheckOut && !isInRange ? 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300' : ''}
-                        ${isToday && !isCheckIn && !isCheckOut ? 'ring-1 ring-alabaster-accent dark:ring-obsidian-accent' : ''}
-                        ${isPast && !isCheckIn && !isCheckOut ? 'line-through decoration-slate-400/30' : ''}
-                    `}
+                <div 
+                    key={day} 
+                    className="relative"
+                    onMouseEnter={() => isToday && setHoveredDate('today')}
+                    onMouseLeave={() => isToday && setHoveredDate(null)}
                 >
-                    {day}
-                </button>
-
+                    <button
+                        type="button"
+                        disabled={isPast || isToday}
+                        onClick={() => handleDateClick(date)}
+                        className={`${inline ? "w-full aspect-square" : "size-8"} flex items-center justify-center ${inline ? "text-[9px]" : "text-[11px]"} font-medium rounded-full transition-all 
+                            ${isPast || isToday ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer'}
+                            ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg' : ''}
+                            ${isInRange ? 'bg-alabaster-accent/10 dark:bg-obsidian-accent/10' : ''}
+                            ${!isPast && !isCheckIn && !isCheckOut && !isInRange ? 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300' : ''}
+                            ${isToday && !isCheckIn && !isCheckOut ? 'ring-1 ring-alabaster-accent dark:ring-obsidian-accent' : ''}
+                            ${isPast && !isCheckIn && !isCheckOut ? 'line-through decoration-slate-400/30' : ''}
+                        `}
+                    >
+                        {day}
+                    </button>
+                    
+                    {/* Tooltip for today's date */}
+                    <AnimatePresence>
+                        {isToday && hoveredDate === 'today' && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 5, x: '-50%' }}
+                                animate={{ opacity: 1, y: -10, x: '-50%' }}
+                                exit={{ opacity: 0, y: 5, x: '-50%' }}
+                                className="absolute bottom-full left-1/2 mb-2 px-3 py-1.5 bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-md text-white text-[10px] leading-tight font-bold rounded-lg shadow-2xl border border-white/10 whitespace-nowrap z-[101] pointer-events-none"
+                            >
+                                <div className="relative">
+                                    Same-day booking not allowed
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-4 border-x-transparent border-t-4 border-t-slate-900/95 dark:border-t-slate-800/95" />
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             );
         }
 

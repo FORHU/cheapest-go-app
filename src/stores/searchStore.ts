@@ -197,9 +197,29 @@ export const useSearchStore = create<SearchState>()(
 
             setDestinationQuery: (destinationQuery) => set({ destinationQuery }),
 
-            setDates: (dates) => set((state) => ({
-                dates: { ...state.dates, ...dates }
-            })),
+            setDates: (dates) => set((state) => {
+                const newDates = { ...state.dates, ...dates };
+                
+                // Safety check: ensure checkIn is not today or in the past
+                if (newDates.checkIn) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (newDates.checkIn <= today) {
+                        const tomorrow = new Date(today);
+                        tomorrow.setDate(today.getDate() + 1);
+                        newDates.checkIn = tomorrow;
+                        
+                        // If checkOut is now before or same as checkIn, move it to checkIn + 1 day
+                        if (newDates.checkOut && newDates.checkOut <= newDates.checkIn) {
+                            const dayAfterTomorrow = new Date(tomorrow);
+                            dayAfterTomorrow.setDate(tomorrow.getDate() + 1);
+                            newDates.checkOut = dayAfterTomorrow;
+                        }
+                    }
+                }
+                
+                return { dates: newDates };
+            }),
 
             setTravelers: (travelers) => set((state) => ({
                 travelers: { ...state.travelers, ...travelers }

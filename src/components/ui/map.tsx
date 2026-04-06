@@ -22,6 +22,8 @@ interface StandardStyleConfig {
     showPointOfInterestLabels?: boolean;
     showRoadLabels?: boolean;
     showTransitLabels?: boolean;
+    showTraffic?: boolean;
+    showTransit?: boolean;
     showPedestrianRoads?: boolean;
     colorBuildings?: string;
     colorLand?: string;
@@ -114,6 +116,8 @@ const STANDARD_STYLE = {
                 showPointOfInterestLabels: true,
                 showRoadLabels: true,
                 showTransitLabels: true,
+                showTraffic: false,
+                showTransit: false,
                 showPedestrianRoads: true,
             },
         },
@@ -144,8 +148,68 @@ const Map = React.forwardRef<MapRef, MapProps>(
         const isStandard = mapStyle === 'standard';
         const internalRef = React.useRef<MapRef>(null);
         const mapRef = (ref as React.RefObject<MapRef | null>) || internalRef;
-        const styleReady = React.useRef(false);
+        const [isStyleLoaded, setIsStyleLoaded] = React.useState(false);
+        const [mapReady, setMapReady] = React.useState(false);
         const [firstSymbolId, setFirstSymbolId] = React.useState<string>();
+
+        // Handle style loading and configuration
+        React.useEffect(() => {
+            const map = mapRef.current?.getMap();
+            if (!map || !mapReady) return;
+
+            setIsStyleLoaded(false);
+
+            const setup = () => {
+                if (!map || !map.getStyle()) return;
+                
+                try {
+                    // Find the first symbol layer to insert 3D buildings underneath
+                    const layers = map.getStyle()?.layers;
+                    if (layers) {
+                        const firstSymbol = layers.find(l => l.type === 'symbol');
+                        if (firstSymbol) {
+                            setFirstSymbolId(firstSymbol.id);
+                        }
+                    }
+
+                    // Apply any runtime config overrides (e.g. non-default lightPreset)
+                    if (isStandard && standardConfig) {
+                        for (const [key, value] of Object.entries(standardConfig)) {
+                            if (value !== undefined) {
+                                map.setConfigProperty('basemap', key, value);
+                            }
+                        }
+                    }
+
+                    // Add terrain programmatically after style loads
+                    if (enable3DTerrain) {
+                        if (!map.getSource('mapbox-dem')) {
+                            map.addSource('mapbox-dem', {
+                                type: 'raster-dem',
+                                url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                                tileSize: 512,
+                                maxzoom: 14,
+                            });
+                        }
+                        map.setTerrain({
+                            source: 'mapbox-dem',
+                            exaggeration: terrainExaggeration,
+                        });
+                    }
+
+                    setIsStyleLoaded(true);
+                } catch (err) {
+                    console.warn('Map setup failed, retrying...', err);
+                    setTimeout(setup, 300);
+                }
+            };
+
+            if (map.isStyleLoaded()) {
+                setup();
+            } else {
+                map.once('style.load', setup);
+            }
+        }, [mapStyle, mapReady, isStandard, standardConfig, enable3DTerrain, terrainExaggeration]);
 
         const token = env.MAPBOX_TOKEN;
         if (!token) {
@@ -154,68 +218,15 @@ const Map = React.forwardRef<MapRef, MapProps>(
 
         const handleLoad = React.useCallback(
             (e: mapboxgl.MapboxEvent) => {
-                const map = (mapRef as React.RefObject<MapRef | null>).current?.getMap();
-                if (!map) {
-                    onLoad?.(e);
-                    return;
-                }
-
-                const setup = () => {
-                    try {
-                        // Find the first symbol layer to insert 3D buildings underneath
-                        const layers = map.getStyle()?.layers;
-                        if (layers) {
-                            const firstSymbol = layers.find(l => l.type === 'symbol');
-                            if (firstSymbol) {
-                                setFirstSymbolId(firstSymbol.id);
-                            }
-                        }
-
-                        // Apply any runtime config overrides (e.g. non-default lightPreset)
-                        if (isStandard && standardConfig) {
-                            for (const [key, value] of Object.entries(standardConfig)) {
-                                if (value !== undefined) {
-                                    map.setConfigProperty('basemap', key, value);
-                                }
-                            }
-                        }
-
-                        // Add terrain programmatically after style loads
-                        if (enable3DTerrain) {
-                            if (!map.getSource('mapbox-dem')) {
-                                map.addSource('mapbox-dem', {
-                                    type: 'raster-dem',
-                                    url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
-                                    tileSize: 512,
-                                    maxzoom: 14,
-                                });
-                            }
-                            map.setTerrain({
-                                source: 'mapbox-dem',
-                                exaggeration: terrainExaggeration,
-                            });
-                        }
-
-                        styleReady.current = true;
-                    } catch {
-                        setTimeout(setup, 300);
-                    }
-                };
-
-                if (map.isStyleLoaded()) {
-                    setup();
-                } else {
-                    map.once('style.load', setup);
-                }
-
+                setMapReady(true);
                 onLoad?.(e);
             },
-            [isStandard, standardConfig, enable3DTerrain, terrainExaggeration, mapRef, onLoad]
+            [onLoad]
         );
 
         // Runtime config updates (e.g. switching lightPreset)
         React.useEffect(() => {
-            if (!isStandard || !standardConfig || !styleReady.current) return;
+            if (!isStandard || !standardConfig || !isStyleLoaded) return;
 
             const map = (mapRef as React.RefObject<MapRef | null>).current?.getMap();
             if (!map) return;
@@ -226,10 +237,10 @@ const Map = React.forwardRef<MapRef, MapProps>(
                         map.setConfigProperty('basemap', key, value);
                     }
                 }
-            } catch {
-                // Ignore
+            } catch (err) {
+                console.warn('Failed to update config property', err);
             }
-        }, [isStandard, standardConfig, mapRef]);
+        }, [isStandard, standardConfig, mapRef, isStyleLoaded]);
 
         const resolvedStyle = isStandard ? STANDARD_STYLE : mapStyle;
 
@@ -247,23 +258,27 @@ const Map = React.forwardRef<MapRef, MapProps>(
                     onLoad={handleLoad}
                     {...props}
                 >
-                    {!isStandard && enable3DTerrain && (
-                        <Source
-                            id="mapbox-dem"
-                            type="raster-dem"
-                            url="mapbox://mapbox.mapbox-terrain-dem-v1"
-                            tileSize={512}
-                            maxzoom={14}
-                        />
+                    {isStyleLoaded && (
+                        <>
+                            {!isStandard && enable3DTerrain && (
+                                <Source
+                                    id="mapbox-dem"
+                                    type="raster-dem"
+                                    url="mapbox://mapbox.mapbox-terrain-dem-v1"
+                                    tileSize={512}
+                                    maxzoom={14}
+                                />
+                            )}
+                            {!isStandard && enable3DBuildings && (
+                                <Buildings3DLayer
+                                    color={buildingColor}
+                                    opacity={buildingOpacity}
+                                    beforeId={firstSymbolId}
+                                />
+                            )}
+                            {children}
+                        </>
                     )}
-                    {!isStandard && enable3DBuildings && (
-                        <Buildings3DLayer
-                            color={buildingColor}
-                            opacity={buildingOpacity}
-                            beforeId={firstSymbolId}
-                        />
-                    )}
-                    {children}
                 </MapboxMap>
             </div>
         );

@@ -14,6 +14,9 @@ import { Source, Layer, Marker } from 'react-map-gl/mapbox';
 import { PoiPopup } from './components/PoiPopup';
 import { MapMarker } from '../map/MapMarker';
 import { MapSearchOverlay } from './components/MapSearchOverlay';
+import { Layers } from 'lucide-react';
+import { useMapDetails } from './hooks/useMapDetails';
+import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
 import { useUserCurrency } from '@/stores/searchStore';
 import { convertCurrency } from '@/lib/currency';
@@ -150,10 +153,27 @@ export const SearchMapContainer = React.memo(({
         geometry: routeGeometry
     } : null;
 
+    const {
+        mapType,
+        setMapType,
+        showDetailsPanel,
+        setShowDetailsPanel,
+        showLabels,
+        setShowLabels,
+        mapDetails,
+        handleDetailToggle,
+        terrainEnabled,
+        mapStyleUrl,
+        standardConfig,
+    } = useMapDetails();
+
     return (
         <div className="relative h-full w-full">
             <MapContainer
                 mapRef={mapRef}
+                mapStyle={mapStyleUrl}
+                standardConfig={mapType === 'default-3d' ? standardConfig : undefined}
+                enable3DTerrain={terrainEnabled}
                 initialViewState={{
                     longitude: 120.596,
                     latitude: 16.402, // Centered on Baguio City
@@ -164,6 +184,7 @@ export const SearchMapContainer = React.memo(({
                 onLoad={handleMapLoad}
                 onClick={handleMapClick}
                 onMouseMove={onMouseMove}
+                hideLayersButton={true}
             >
                 {isMapLoaded && (
                     <>
@@ -224,9 +245,39 @@ export const SearchMapContainer = React.memo(({
                 />
             </MapContainer>
 
+            {/* ── Map Search Overlay (Centered) ── */}
             <MapSearchOverlay
-                className={searchOverlayClassName ?? 'absolute top-16 left-4 z-20 w-[72%]'}
+                className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[60%] sm:w-[320px] md:w-[400px]"
                 onSelect={(r) => mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, pitch: 45, bearing: -10, duration: 1200 })}
+            />
+
+            {/* ── Layers button (Top-left) ── */}
+            {!showDetailsPanel && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDetailsPanel(true);
+                    }}
+                    className="absolute top-4 left-4 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 px-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 group h-[38px] shrink-0"
+                >
+                    <Layers className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors" />
+                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+                    <svg className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            )}
+
+            {/* ── Map Details Panel ── */}
+            <MapDetailsPanel
+                isOpen={showDetailsPanel}
+                onClose={() => setShowDetailsPanel(false)}
+                mapType={mapType}
+                onMapTypeChange={setMapType}
+                details={mapDetails}
+                onDetailToggle={handleDetailToggle}
+                showLabels={showLabels}
+                onLabelsToggle={() => setShowLabels((prev) => !prev)}
             />
         </div>
     );

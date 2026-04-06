@@ -45,7 +45,7 @@ export const MapSearchOverlay = ({ onSelect, className = 'absolute top-3 left-3 
     return (
         <div className={className}>
             <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg pointer-events-auto">
-                <div className="flex items-center gap-2 px-3 py-2.5">
+                <div className="flex items-center gap-2 px-3 h-[38px]">
                     {isSearching ? (
                         <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
                     ) : (

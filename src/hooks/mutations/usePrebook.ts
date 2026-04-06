@@ -6,7 +6,11 @@ import { apiFetch } from '@/lib/api/client';
 import type { PrebookResponse } from '@/services';
 
 export interface UsePrebookOptions {
-  onSuccess?: (data: PrebookResponse) => void;
+  onSuccess?: (data: PrebookResponse, variables: {
+    offerId: string;
+    currency: string;
+    voucherCode?: string;
+  }) => void;
   onError?: (error: Error) => void;
 }
 
@@ -30,18 +34,17 @@ export function usePrebook(options?: UsePrebookOptions) {
 
       return result.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       if (data?.prebookId) {
         setPrebookId(data.prebookId);
       }
-      options?.onSuccess?.(data);
+      options?.onSuccess?.(data, variables);
     },
     onError: (error: Error) => {
+      console.error('[usePrebook] Error:', error);
       const isUnavailable = /no longer available|not available|unavailable|sold out/i.test(error.message);
       if (isUnavailable) {
         console.warn('[usePrebook] Room unavailable:', error.message);
-      } else {
-        console.error('[usePrebook] Error:', error);
       }
       options?.onError?.(error);
     },

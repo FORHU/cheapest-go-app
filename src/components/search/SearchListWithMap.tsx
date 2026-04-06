@@ -12,7 +12,9 @@ import type { MappableProperty } from '@/components/map/types';
 import { type Property } from '@/types';
 import { MapModal } from '@/components/map/MapModal';
 import { MapSearchOverlay } from '@/components/mapbox/components/MapSearchOverlay';
-import { MapPin } from 'lucide-react';
+import { MapPin, Layers } from 'lucide-react';
+import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel';
+import { useMapDetails } from '@/components/mapbox/hooks/useMapDetails';
 
 interface SearchListWithMapProps {
     properties: Property[];
@@ -39,6 +41,20 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [showMobileMap, setShowMobileMap] = useState(false);
+
+    const {
+        mapType,
+        setMapType,
+        showDetailsPanel,
+        setShowDetailsPanel,
+        showLabels,
+        setShowLabels,
+        mapDetails,
+        handleDetailToggle,
+        terrainEnabled,
+        mapStyleUrl,
+        standardConfig,
+    } = useMapDetails();
 
     // Filter only properties with real coordinates
     const mappableProperties = useMemo<MappableProperty[]>(
@@ -168,12 +184,10 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
                     <div className="relative h-full w-full">
                         <Map
                             ref={mapRef}
-                            mapStyle="standard"
-                            standardConfig={{
-                                lightPreset: 'day',
-                                show3dObjects: true,
-                                show3dBuildings: true,
-                            }}
+                            mapStyle={mapStyleUrl}
+                            standardConfig={mapType === 'default-3d' ? standardConfig : undefined}
+                            enable3DTerrain={terrainEnabled}
+                            terrainExaggeration={1.5}
                             initialViewState={{
                                 longitude: bounds.centerLng || 120.596,
                                 latitude: bounds.centerLat || 14.599,
@@ -186,7 +200,7 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
                             onLoad={handleMapLoad}
                             className="rounded-none! min-h-0! h-full"
                         >
-                            <NavigationControl position="top-right" showCompass visualizePitch />
+                            <NavigationControl position="bottom-right" showCompass visualizePitch />
 
                             {mappableProperties.map((property) => (
                                 <MapMarker
@@ -208,8 +222,36 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
                             )}
                         </Map>
 
+                        {/* ── Map Search Overlay (Centered) ── */}
                         <MapSearchOverlay
+                            className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[60%] sm:w-[320px] md:w-[400px]"
                             onSelect={(r) => mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 14, pitch: 45, duration: 1200 })}
+                        />
+
+                        {/* ── Layers button (Top-left) ── */}
+                        {!showDetailsPanel && (
+                            <button
+                                onClick={() => setShowDetailsPanel(true)}
+                                className="absolute top-4 left-4 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 px-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 group h-[38px] shrink-0"
+                            >
+                                <Layers className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors" />
+                                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
+                                <svg className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                        )}
+
+                        {/* ── Map Details Panel ── */}
+                        <MapDetailsPanel
+                            isOpen={showDetailsPanel}
+                            onClose={() => setShowDetailsPanel(false)}
+                            mapType={mapType}
+                            onMapTypeChange={setMapType}
+                            details={mapDetails}
+                            onDetailToggle={handleDetailToggle}
+                            showLabels={showLabels}
+                            onLabelsToggle={() => setShowLabels((prev) => !prev)}
                         />
 
                         {/* Property count badge */}

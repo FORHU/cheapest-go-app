@@ -21,6 +21,7 @@ import {
     useCheckoutPrebook,
     usePricingCalculation,
 } from '@/hooks';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api/client';
 import { LogIn } from 'lucide-react';
 import { toast } from 'sonner';
@@ -142,14 +143,18 @@ export function CheckoutContent() {
     const globalCurrency = useUserCurrency();
     const { syncWithUserCurrency } = useCheckoutActions();
 
+    const searchParams = useSearchParams();
+
     useEffect(() => {
-        // Don't override when URL already specifies a currency — that would
-        // cause a second prebook call right after the URL-currency prebook starts.
-        const urlCurrency = new URLSearchParams(window.location.search).get('currency');
-        if (!urlCurrency) {
+        // Sync currency from URL whenever it changes
+        const urlCurrency = searchParams.get('currency');
+        if (urlCurrency && urlCurrency !== selectedCurrency) {
+            syncWithUserCurrency(urlCurrency);
+        } else if (!urlCurrency) {
+            // Only sync from global if no URL override is present
             syncWithUserCurrency(globalCurrency);
         }
-    }, [globalCurrency, syncWithUserCurrency]);
+    }, [globalCurrency, syncWithUserCurrency, searchParams, selectedCurrency]);
 
     // Reset success state from previous booking on mount
     useEffect(() => {
@@ -172,7 +177,7 @@ export function CheckoutContent() {
     });
 
     // Pricing calculation hook
-    const { displayProperty, displayRoom, totalNights, taxes, totalPrice } = usePricingCalculation({
+    const { displayProperty, displayRoom, totalNights, roomPrice, taxes, totalPrice } = usePricingCalculation({
         priceData,
     });
 
@@ -552,7 +557,7 @@ export function CheckoutContent() {
                                 reviewScore={property?.rating}
                                 reviewCount={property?.reviews}
                                 roomTitle={displayRoom.title}
-                                roomPrice={displayRoom.price}
+                                roomPrice={roomPrice}
                                 totalNights={totalNights}
                                 adults={adults}
                                 children={children}
@@ -563,6 +568,7 @@ export function CheckoutContent() {
                                 prebookId={prebookId}
                                 cancellationPolicies={priceData?.cancellationPolicies}
                                 appliedVoucher={appliedVoucher}
+                                isLoading={prebooking}
                             />
 
                             {/* Mobile-only Submit Button — only on form step */}
