@@ -56,7 +56,7 @@ const MapPopup = React.memo(function MapPopup({
             const currentX = e.touches[0].clientX;
             const diffY = Math.abs(currentY - startY);
             const diffX = Math.abs(currentX - startX);
-            
+
             // If user swipes more than 10px in any direction, close the popup
             if (diffY > 10 || diffX > 10) {
                 onClose();
@@ -90,11 +90,11 @@ const MapPopup = React.memo(function MapPopup({
             latitude={property.coordinates.lat}
             longitude={property.coordinates.lng}
             anchor="bottom"
-            offset={isLandscape ? 20 : 40}
+            offset={isLandscape ? 25 : 60}
             closeOnClick={false}
             onClose={onClose}
             className="map-property-popup z-50"
-            maxWidth="min(180px, calc(100vw - 16px))"
+            maxWidth="min(240px, calc(100vw - 16px))"
         >
             <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl w-full border border-slate-100 dark:border-slate-800">
 

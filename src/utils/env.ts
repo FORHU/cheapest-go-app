@@ -29,6 +29,9 @@ export const env = {
     // Google Places
     GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
 
+    // Foursquare
+    FOURSQUARE_API_KEY: process.env.FOURSQUARE_API_KEY,
+
     // Site
     SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://k-travel-booking.vercel.app',
 

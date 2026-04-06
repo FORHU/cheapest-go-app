@@ -10,6 +10,22 @@ interface MapSearchOverlayProps {
 }
 
 export const MapSearchOverlay = ({ onSelect, className = 'absolute top-3 left-3 z-10 w-[72%]' }: MapSearchOverlayProps) => {
+    const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | undefined>();
+
+    React.useEffect(() => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setUserLocation({
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                });
+            },
+            (err) => console.warn('Geolocation failed:', err),
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+        );
+    }, []);
+
     const {
         originQuery,
         originResults,
@@ -19,7 +35,7 @@ export const MapSearchOverlay = ({ onSelect, className = 'absolute top-3 left-3 
         handleOriginSearch,
         handleSelectOrigin,
         clearSearch,
-    } = useMapboxSearch();
+    } = useMapboxSearch({ proximity: userLocation });
 
     const handlePick = (result: SearchResult) => {
         handleSelectOrigin(result);
