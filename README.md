@@ -1,10 +1,10 @@
-# ✈️ CheapestGo — Travel Booking Platform
+# CheapestGo — Travel Booking Platform
 
-A full-stack travel booking platform built with **Next.js 16**, **Supabase**, and **Stripe**. Supports hotel and flight search, booking, and payment — with multi-city itineraries, real-time flight availability, and AI-powered trip planning.
+A full-stack travel booking platform built with **Next.js 15**, **Supabase**, and **Stripe**. Supports hotel and flight search, booking, and payment — with multi-city itineraries, real-time flight availability, and AI-powered trip planning.
 
 ---
 
-## 🚀 Features
+## Features
 
 ### Flights
 - **Multi-provider search** — Duffel Airways + Mystifly (V1 & V2 branded fares) aggregated in parallel
@@ -20,37 +20,60 @@ A full-stack travel booking platform built with **Next.js 16**, **Supabase**, an
 
 ### Hotels
 - **LiteAPI integration** — Search, prebook, and book hotels globally
+- **Multi-currency display** — Client-side conversion via exchange rates; currency change never re-triggers a supplier search
+- **Free cancellation badge** — Surfaced from LiteAPI refundability tag on both list and map views
 - **Voucher support** — Discount code validation at checkout
 - **Reviews & facilities** — Fetched from LiteAPI
-- **Interactive map** — Mapbox GL powered property map with pin clustering
+- **Interactive map** — Mapbox GL powered property map with pin clustering and currency-aware price labels
+
+### Auth
+- **Google OAuth** — One-click sign-in via Supabase Auth
+- **Email + password** — Standard sign-up / sign-in
+- **Forgot password** — Sends Supabase recovery email; reset flow at `/auth/reset-password`
+- **Contextual error messages** — Detects Google-only accounts attempting password sign-in
 
 ### AI & UX
 - **AI search bar** — Natural language flight and hotel search
 - **AI itinerary generator** — Day-by-day trip planner with map integration
 - **Dark mode** — Full dark/light theme support
-- **Mobile-first** — Fully responsive with bottom-sheet modals
+- **Mobile-first** — Fully responsive with bottom-sheet modals and landscape-compact layouts
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 16 (App Router, Turbopack) |
+| Framework | Next.js 15 (App Router) |
 | Language | TypeScript |
+| Runtime | React 19 |
 | Styling | Tailwind CSS v4 |
 | Animation | Framer Motion |
-| State | Zustand + TanStack Query |
+| State | Zustand + TanStack Query v5 |
 | Backend | Supabase (Postgres + Edge Functions + Auth) |
 | Payments | Stripe (Embedded Checkout, Manual Capture) |
 | Email | Resend |
 | Maps | Mapbox GL / react-map-gl |
 | Icons | Lucide React |
-| Validation | Zod |
+| Validation | Zod v4 |
 
 ---
 
-## 💳 Payment & Booking Flow
+## Travel API Partners
+
+| Partner | Purpose |
+|---|---|
+| Duffel | Flight search, booking, and e-ticket issuance |
+| Mystifly | Flight search (V1 lowest fares + V2 branded fares) |
+| TravelgateX | Hotel availability and distribution |
+| ONDA | Hotel rates and inventory |
+| Rakuten | Hotel rates and packages |
+| LiteAPI | Hotel search, prebook, book, cancel |
+| Stripe | Payments (manual + automatic capture) |
+
+---
+
+## Payment & Booking Flow
 
 ### Mystifly (Manual Capture — PNR before charge)
 
@@ -103,7 +126,7 @@ flight_bookings:   pnr_created → awaiting_ticket → ticketed
 
 ---
 
-## 📦 Supabase Edge Functions
+## Supabase Edge Functions
 
 | Function | Description |
 |---|---|
@@ -127,7 +150,7 @@ flight_bookings:   pnr_created → awaiting_ticket → ticketed
 
 ---
 
-## ⚙️ Environment Variables
+## Environment Variables
 
 Copy `.env.example` to `.env` and fill in the values:
 
@@ -138,13 +161,13 @@ cp .env.example .env
 ```env
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=
-SUPABASE_SERVICE_ROLE_KEY=          # Server-only — never expose to client
+NEXT_PUBLIC_SUPABASE_ANON_KEY=         # Also accepted as NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+SUPABASE_SERVICE_ROLE_KEY=             # Server-only — never expose to client
 
 # Stripe
-STRIPE_SECRET_KEY=                  # Server-only
+STRIPE_SECRET_KEY=                     # Server-only
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-STRIPE_WEBHOOK_SECRET=              # From: stripe listen --print-secret
+STRIPE_WEBHOOK_SECRET=                 # From: stripe listen --print-secret
 
 # Mystifly
 MYSTIFLY_BASE_URL=
@@ -164,7 +187,7 @@ NEXT_PUBLIC_MAPBOX_TOKEN=
 
 ---
 
-## 🧑‍💻 Local Development
+## Local Development
 
 ### Prerequisites
 - Node.js 20+
@@ -204,6 +227,7 @@ npx supabase functions deploy --no-verify-jwt
 npx supabase functions deploy create-booking --no-verify-jwt
 npx supabase functions deploy poll-pending-tickets --no-verify-jwt
 ```
+
 > **Note on Deno Deploy:** Do not use `await import()` for dynamic local file imports inside Edge Functions. Supabase Cloud deployment bundles will eagerly strip dynamic internal paths and throw 500 errors gracefully resolved via static imports at the top of the file.
 
 ### Database Migrations
@@ -229,7 +253,7 @@ SELECT cron.schedule(
   )$$
 );
 ```
-## pg_cron
+
 Verify the job is registered:
 ```sql
 SELECT jobid, jobname, schedule, active FROM cron.job;
@@ -245,7 +269,7 @@ LIMIT 10;
 
 ---
 
-## 🗂 Project Structure
+## Project Structure
 
 ```
 src/
@@ -262,23 +286,26 @@ src/
 │   │   │   ├── book/         # Creates booking session + PaymentIntent
 │   │   │   ├── confirm/      # DB-first fallback (checks webhook ran first)
 │   │   │   └── search/       # Flight search orchestration
-│   │   ├── hotels/           # Hotel API routes
+│   │   ├── booking/          # Hotel booking API routes
 │   │   └── webhooks/stripe/  # Stripe webhook (Mystifly + Duffel handlers)
-│   └── auth/                 # Supabase auth callbacks
+│   └── auth/                 # Supabase auth callbacks + reset password
 ├── components/
-│   ├── landing/hero/         # Search bar, AI search, date pickers
+│   ├── landing/              # Hero, search bar, landing page sections
 │   ├── flights/              # Flight cards, filters, results
+│   ├── map/                  # Mapbox property map, markers, popups
 │   ├── trips/                # Booking history cards
 │   ├── checkout/             # Stripe embedded checkout
+│   ├── auth/                 # Auth modal, steps, password reset
 │   └── ui/                   # Shared UI components
 ├── hooks/
 │   ├── flights/              # useFlightBooking
 │   └── search/               # useFlightSearch, useSearchModule
 ├── lib/
 │   ├── flights/              # Types, normalization, provider interfaces
+│   ├── currency.ts           # Exchange rate conversion
 │   ├── stripe/               # Stripe server client
 │   └── server/               # Auth utilities, email
-├── stores/                   # Zustand global state
+├── stores/                   # Zustand global state (auth, search, currency)
 └── utils/                    # Supabase client utilities
 
 supabase/
@@ -292,7 +319,7 @@ supabase/
 
 ---
 
-## 🔐 Security
+## Security
 
 - Server-side auth enforced on all booking API routes
 - `user_id` always extracted from Supabase JWT — never trusted from client
@@ -302,6 +329,6 @@ supabase/
 
 ---
 
-## 📄 License
+## License
 
-Private — all rights reserved.
+Private — all rights reserved. © 2026 JTP Partners

@@ -11,6 +11,8 @@ import { type Property } from '@/types';
 import { ArrowLeft, MapPin, ChevronDown, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, cn } from '@/lib/utils';
+import { convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 
 const SearchMapContainer = dynamic(
     () => import('../mapbox/SearchMapContainer').then(m => ({ default: m.SearchMapContainer })),
@@ -53,6 +55,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortValue>('recommended');
     const [showMobileMap, setShowMobileMap] = useState(true);
+    const targetCurrency = useUserCurrency();
 
     // Filter only properties with real coordinates (not 0,0)
     const mappableProperties = useMemo<MappableProperty[]>(
@@ -165,7 +168,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                         <>
                             <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 hidden md:block" />
                             <span className="text-xs text-slate-500 dark:text-slate-400 hidden md:inline">
-                                {formatCurrency(priceRange.min, mappableProperties[0]?.currency)} – {formatCurrency(priceRange.max, mappableProperties[0]?.currency)} /night
+                                {formatCurrency(convertCurrency(priceRange.min, mappableProperties[0]?.currency || 'USD', targetCurrency), targetCurrency)} – {formatCurrency(convertCurrency(priceRange.max, mappableProperties[0]?.currency || 'USD', targetCurrency), targetCurrency)} /night
                             </span>
                         </>
                     )}

@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createClient } from '@supabase/supabase-js';
 import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
+import { rateLimit } from '@/lib/server/rate-limit';
 import { z } from 'zod';
 
 const flightConfirmSchema = z.object({
@@ -30,6 +31,12 @@ export const dynamic = 'force-dynamic';
  * Body: { paymentIntentId: string, sessionId: string }
  */
 export async function POST(req: NextRequest) {
+    // 10 confirm attempts per minute per IP
+    const rl = rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'flights-confirm' });
+    if (!rl.success) {
+        return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
+    }
+
     try {
         const { user, error: authError } = await getAuthenticatedUser();
         const { env } = await import("@/utils/env");
@@ -69,10 +76,8 @@ export async function POST(req: NextRequest) {
             .eq('session_id', sessionId)
             .maybeSingle();
 
-        if (existingBooking?.pnr) {
+        if (existingBooking) {
             // Security: prevent session-swapping attacks.
-            // Verify the payment_intent_id stored at booking time matches the one in this request.
-            // An attacker who steals a sessionId cannot redeem it with a different payment.
             if (existingBooking.payment_intent_id && existingBooking.payment_intent_id !== paymentIntentId) {
                 console.error('[/confirm] payment_intent_id mismatch — possible session swap attack', {
                     stored: existingBooking.payment_intent_id,
@@ -82,14 +87,25 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ success: false, error: 'Payment mismatch' }, { status: 403 });
             }
 
-            console.log('[/confirm] Webhook already ran, returning existing booking. PNR:', existingBooking.pnr);
-            return NextResponse.json({
-                success: true,
-                bookingId: existingBooking.id,
-                pnr: existingBooking.pnr,
-                status: existingBooking.status,
-                source: 'webhook',
-            });
+            // Booking already failed — don't retry, surface the error directly
+            if (existingBooking.status === 'failed') {
+                console.log('[/confirm] Booking already failed for session:', sessionId);
+                return NextResponse.json({
+                    success: false,
+                    error: 'Booking failed — the flight offer was no longer available. Your payment has been automatically refunded.',
+                }, { status: 400 });
+            }
+
+            if (existingBooking.pnr) {
+                console.log('[/confirm] Webhook already ran, returning existing booking. PNR:', existingBooking.pnr);
+                return NextResponse.json({
+                    success: true,
+                    bookingId: existingBooking.id,
+                    pnr: existingBooking.pnr,
+                    status: existingBooking.status,
+                    source: 'webhook',
+                });
+            }
         }
 
         // ── Step 3: Strict per-provider status check (fallback path only) ───

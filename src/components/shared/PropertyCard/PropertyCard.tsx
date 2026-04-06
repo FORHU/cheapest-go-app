@@ -327,6 +327,13 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             {/* Content Section */}
             <div className="flex-1 p-2 md:p-4 flex flex-col justify-between">
                 <div className="mt-1 md:mt-0">
+                    {/* Refundable badge */}
+                    {property.refundableTag === 'RFN' && (
+                        <span className="inline-flex items-center gap-1 text-[9px] lg:text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded-full mb-1">
+                            <svg className="w-2.5 h-2.5 lg:w-3 lg:h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                            Free cancellation
+                        </span>
+                    )}
                     {/* Hotel Name */}
                     <h3 className="text-[12px] landscape:text-[11px] lg:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
                         {property.name}

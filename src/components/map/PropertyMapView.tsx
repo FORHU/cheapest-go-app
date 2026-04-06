@@ -12,6 +12,8 @@ import { MapPopup } from './MapPopup';
 import { MapPOIPopup } from './MapPOIPopup';
 import { computeBounds } from './types';
 import type { MappableProperty } from './types';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency } from '@/lib/currency';
 
 interface PropertyMapViewProps {
     properties: MappableProperty[];
@@ -114,6 +116,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
     const [hoveredPOI, setHoveredPOI] = useState<POIState | null>(null);
     // Track last hovered POI name to skip redundant state updates
     const hoveredPOINameRef = useRef<string | null>(null);
+    const targetCurrency = useUserCurrency();
 
     const {
         mapType,
@@ -286,6 +289,8 @@ const PropertyMapView = React.memo(function PropertyMapView({
                     <MapMarker
                         key={property.id}
                         property={property}
+                        displayPrice={convertCurrency(property.price, property.currency || 'USD', targetCurrency)}
+                        displayCurrency={targetCurrency}
                         isSelected={selectedId === property.id}
                         isHovered={hoveredId === property.id}
                         onClick={handleMarkerClick}

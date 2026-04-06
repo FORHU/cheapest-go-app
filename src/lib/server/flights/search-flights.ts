@@ -25,6 +25,8 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     const TTL_MINUTES = 10;
 
     // 1. PERFORMANCE: Check for valid cached results first
+    // NOTE: saveSearch must NOT be called before this — a freshly-created empty
+    // record would be found as the "most recent" and always cause a cache miss.
     const cacheStart = Date.now();
     const cachedResults = await getExistingCachedResults(params, TTL_MINUTES);
     if (cachedResults && cachedResults.length > 0) {
@@ -46,7 +48,15 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
         searchId: params.searchId,
     });
 
-    // 2. Fetch from providers in parallel with resilience (allSettled)
+    // 2. Cache miss — create the search record NOW (after the cache check)
+    // so the next request finds this record with results already populated.
+    let searchId = params.searchId;
+    if (!searchId) {
+        const saved = await saveSearch(params).catch(() => ({ id: undefined }));
+        searchId = (saved as any).id;
+    }
+
+    // 3. Fetch from providers in parallel with resilience (allSettled)
     const providers = [
         { name: "Duffel", call: searchDuffel(params) },
         { name: "Mystifly", call: searchMystifly(params) },
@@ -61,7 +71,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     const allResults = settlement
         .filter((r): r is PromiseFulfilledResult<FlightResult[]> => r.status === "fulfilled")
         .flatMap(r => r.value);
-        
+
     // Log failures/timeouts for observability
     settlement.forEach((r, i) => {
         if (r.status === "rejected") {
@@ -70,17 +80,17 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
         }
     });
 
-    // 3. Update cache with new results
-    if (allResults.length > 0 && params.searchId) {
-        await cacheResults(params.searchId, allResults);
+    // 4. Update cache with new results
+    if (allResults.length > 0 && searchId) {
+        await cacheResults(searchId, allResults);
 
-        // 4. Log Analytics (Phase 11) - Fire and forget
+        // 5. Log Analytics — fire and forget
         logSearchAnalytics(params, allResults).catch(err =>
             console.error("[Analytics] Logging failed:", err.message)
         );
     }
 
-    // 5. Return aggregated and unified results
+    // 6. Return aggregated and unified results
     return allResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
 }
 

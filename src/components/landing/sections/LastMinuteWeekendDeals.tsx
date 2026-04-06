@@ -30,7 +30,7 @@ export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ de
               <div
                 key={deal.id}
                 onClick={() => toast.info(deal.name, { description: 'Live hotel search will be available at launch.' })}
-                className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape-compact-card snap-start flex flex-col cursor-pointer"
+                className="shrink-0 w-[220px] sm:w-[260px] md:w-[320px] snap-start flex flex-col cursor-pointer"
               >
                 <div className="h-full block relative">
                   <PropertyCard

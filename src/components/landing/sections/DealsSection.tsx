@@ -48,12 +48,12 @@ export const DealCard: React.FC<DealCardProps> = ({ deal, index }) => {
     transition={{ delay: index * 0.1 }}
     whileHover={{ y: -8 }}
     onClick={() => handleDealClick(deal)}
-    className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[280px] lg:w-[300px] landscape-compact-card snap-start flex flex-col cursor-pointer"
+    className="shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape-compact-card snap-start flex flex-col cursor-pointer"
   >
     <TiltCard className="h-full">
         <div className="relative h-full bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg group">
           {/* Image — responsive height */}
-          <div className="relative h-24 sm:h-32 md:h-40 landscape-compact-img landscape-img overflow-hidden flex-shrink-0">
+          <div className="relative aspect-2/1 sm:aspect-4/3 md:aspect-3/2 overflow-hidden shrink-0 landscape-compact-img landscape-img">
             {deal.image && (
               <Image
                 src={deal.image}
