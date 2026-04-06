@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw, Users } from 'lucide-react';
+import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight } from 'lucide-react';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
@@ -298,6 +298,78 @@ export default function FlightBookContent() {
                             </div>
                         )}
                     </motion.div>
+
+                    {/* ── Hotel Upsell ── */}
+                    {(() => {
+                        // Map common arrival airport codes → city names for hotel search
+                        const AIRPORT_TO_CITY: Record<string, string> = {
+                            BKK: 'Bangkok', DMK: 'Bangkok', SIN: 'Singapore', MNL: 'Manila',
+                            CEB: 'Cebu', KUL: 'Kuala Lumpur', DPS: 'Bali', CGK: 'Jakarta',
+                            HAN: 'Hanoi', SGN: 'Ho Chi Minh City', DAD: 'Da Nang',
+                            ICN: 'Seoul', GMP: 'Seoul', NRT: 'Tokyo', HND: 'Tokyo',
+                            KIX: 'Osaka', CTS: 'Sapporo', TPE: 'Taipei', HKG: 'Hong Kong',
+                            PEK: 'Beijing', PVG: 'Shanghai', CAN: 'Guangzhou',
+                            DXB: 'Dubai', AUH: 'Abu Dhabi', DOH: 'Doha',
+                            DEL: 'New Delhi', BOM: 'Mumbai', CMB: 'Colombo',
+                            SYD: 'Sydney', MEL: 'Melbourne', AKL: 'Auckland',
+                            LHR: 'London', CDG: 'Paris', AMS: 'Amsterdam',
+                            FRA: 'Frankfurt', MAD: 'Madrid', FCO: 'Rome',
+                            JFK: 'New York', LAX: 'Los Angeles', SFO: 'San Francisco',
+                            ORD: 'Chicago', MIA: 'Miami', YYZ: 'Toronto',
+                        };
+                        const airportCode = last.arrival.airport;
+                        const cityName = AIRPORT_TO_CITY[airportCode] || airportCode;
+                        const depDate = primary.departure.time?.slice(0, 10) ?? '';
+                        const checkOut = (() => {
+                            if (!depDate) return '';
+                            const d = new Date(depDate);
+                            d.setDate(d.getDate() + 3);
+                            return d.toISOString().slice(0, 10);
+                        })();
+                        const hotelUrl = `/search?destination=${encodeURIComponent(cityName)}&checkIn=${depDate}&checkOut=${checkOut}&adults=1`;
+                        const dest = cityName;
+                        return depDate ? (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.55, type: 'spring', bounce: 0.3 }}
+                                className="mb-4"
+                            >
+                                <div className="relative rounded-2xl overflow-hidden border-2 border-blue-400 dark:border-blue-500 shadow-lg shadow-blue-500/20">
+                                    {/* Gradient background */}
+                                    <div className="absolute inset-0 bg-linear-to-br from-blue-600 to-indigo-600 opacity-90" />
+
+                                    {/* Decorative circles */}
+                                    <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full" />
+                                    <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-white/10 rounded-full" />
+
+                                    <div className="relative z-10 p-4">
+                                        <div className="flex items-start gap-3 mb-3">
+                                            <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                                                <BedDouble className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-white leading-tight">
+                                                    Complete your trip to {dest}
+                                                </p>
+                                                <p className="text-xs text-blue-100 mt-0.5">
+                                                    Don&apos;t forget to book a hotel — find the best deals while they last
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => router.push(hotelUrl)}
+                                            className="w-full py-2.5 rounded-xl bg-white text-blue-700 font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-50 active:scale-[0.98] transition-all shadow-md"
+                                        >
+                                            <BedDouble className="w-4 h-4" />
+                                            Search Hotels in {dest}
+                                            <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ) : null;
+                    })()}
 
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
