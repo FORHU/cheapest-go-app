@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     useProperty,
     useSelectedRoom,
@@ -12,7 +12,6 @@ import {
 import { useAuthStore, useUser } from '@/stores/authStore';
 import {
     useVoucherState,
-    useCheckoutStore,
     useCheckoutActions,
 } from '@/stores/checkoutStore';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -53,6 +52,13 @@ const StripeEmbeddedCheckout = dynamic(
         ),
     }
 );
+
+const BOOKING_STEPS = [
+    'Verifying payment...',
+    'Securing your reservation...',
+    'Confirming with the hotel...',
+    'Finalizing booking details...',
+] as const;
 
 export function CheckoutContent() {
     // Booking store selectors
@@ -109,8 +115,28 @@ export function CheckoutContent() {
     // Stripe payment step state
     const [step, setStep] = useState<'form' | 'payment'>('form');
     const [clientSecret, setClientSecret] = useState<string | null>(null);
-    const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
     const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+
+    // Booking confirmation progress overlay
+    const [bookingStepIdx, setBookingStepIdx] = useState(0);
+    const bookingStepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+    useEffect(() => {
+        if (loading && step === 'payment') {
+            setBookingStepIdx(0);
+            bookingStepTimer.current = setInterval(() => {
+                setBookingStepIdx((i) => Math.min(i + 1, BOOKING_STEPS.length - 1));
+            }, 4000);
+        } else {
+            if (bookingStepTimer.current) {
+                clearInterval(bookingStepTimer.current);
+                bookingStepTimer.current = null;
+            }
+        }
+        return () => {
+            if (bookingStepTimer.current) clearInterval(bookingStepTimer.current);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loading, step]);
 
     // Global currency sync
     const globalCurrency = useUserCurrency();
@@ -225,7 +251,6 @@ export function CheckoutContent() {
             }
 
             setClientSecret(result.data.clientSecret);
-            setPaymentIntentId(result.data.paymentIntentId);
             setStep('payment');
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Payment setup failed';
@@ -345,7 +370,6 @@ export function CheckoutContent() {
             // Return to form so user can retry
             setStep('form');
             setClientSecret(null);
-            setPaymentIntentId(null);
         }
     }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
 
@@ -415,16 +439,25 @@ export function CheckoutContent() {
                         </div>
                     )}
 
-                    {/* Prebook Error — suppress auth errors when not signed in (handled by banner above) */}
-                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && (
-                        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg text-red-600 dark:text-red-400">
-                            <strong>Error:</strong> {prebookError}
-                            <button
-                                onClick={retryPrebook}
-                                className="ml-4 px-3 py-1 bg-red-500 text-white rounded text-sm"
-                            >
-                                Retry
-                            </button>
+                    {/* Prebook Error — unavailability is handled inline near the button; show banner only for other errors */}
+                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && !/no longer available|not available|unavailable|sold out/i.test(prebookError) && (
+                        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg">
+                            <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">Booking error</p>
+                            <p className="text-sm text-red-600 dark:text-red-400 mb-3">{prebookError}</p>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => window.history.back()}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                                >
+                                    Go back
+                                </button>
+                                <button
+                                    onClick={retryPrebook}
+                                    className="px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                >
+                                    Retry
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -547,6 +580,32 @@ export function CheckoutContent() {
                         </div>
                     </div>
                 </div>
+
+                {/* Booking confirmation overlay — covers form after Stripe payment succeeds */}
+                {loading && step === 'payment' && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-lg">
+                        <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
+                            <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Confirming your booking</h2>
+                                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium animate-pulse min-h-[20px]">
+                                    {BOOKING_STEPS[bookingStepIdx]}
+                                </p>
+                            </div>
+                            <div className="w-full space-y-2">
+                                {BOOKING_STEPS.map((label, i) => (
+                                    <div key={label} className={`flex items-center gap-2 text-xs ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
+                                        <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${i < bookingStepIdx ? 'bg-green-500 text-white' : i === bookingStepIdx ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                            {i < bookingStepIdx ? '✓' : i + 1}
+                                        </span>
+                                        {label}
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">Please don&apos;t close this page</p>
+                        </div>
+                    </div>
+                )}
             </main>
             <AuthModal />
         </>

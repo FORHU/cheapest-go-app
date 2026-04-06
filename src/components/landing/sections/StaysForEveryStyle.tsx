@@ -58,7 +58,7 @@ export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ style
           {displayStyles.map((style, i) => (
             <motion.div
               key={style.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={i === 0 ? false : { opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{
@@ -79,7 +79,8 @@ export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ style
                       fill
                       sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
                       className="object-cover transition-transform duration-500 group-hover:scale-110"
-                      loading="lazy"
+                      priority={i === 0}
+                      loading={i === 0 ? undefined : 'lazy'}
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />

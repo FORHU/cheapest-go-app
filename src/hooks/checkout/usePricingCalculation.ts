@@ -34,12 +34,12 @@ export function usePricingCalculation({
     const { checkIn, checkOut } = useBookingDates();
 
     return useMemo(() => {
-        const displayProperty = property || { name: "Grand Sierra Pines Baguio", rating: 4.8, image: "" };
-        const displayRoom = selectedRoom || { title: "Deluxe King Room", price: 5200 };
+        const displayProperty = property || { name: "", rating: 0, image: "" };
+        const displayRoom = selectedRoom || { title: "", price: 0 };
         const totalNights = (checkIn && checkOut)
             ? Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
-            : 2;
-        const baseRoomPrice = displayRoom.price || 5200;
+            : 0;
+        const baseRoomPrice = displayRoom.price || 0;
         const roomPrice = priceData?.price ?? (baseRoomPrice * totalNights);
         const taxes = priceData?.tax ?? (roomPrice * 0.12);
         const totalPrice = priceData?.total ?? (roomPrice + taxes);

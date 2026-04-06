@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MapPin, ArrowRight } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 
 interface LocationSectionProps {
     hotelDetails?: {
@@ -20,13 +20,6 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails }) => {
     const country = hotelDetails?.country || '';
     const fullLocation = [city, country].filter(Boolean).join(', ');
 
-    const handleScrollToMap = () => {
-        const mapSection = document.getElementById('location');
-        if (mapSection) {
-            mapSection.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
     return (
         <div className="py-4 lg:py-8 border-t border-slate-200 dark:border-white/10 scroll-mt-36" id="location-text">
             <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-4 lg:mb-6">Where you'll be</h2>
@@ -41,13 +34,6 @@ const LocationSection: React.FC<LocationSectionProps> = ({ hotelDetails }) => {
                 </div>
                 <div className="pl-11 space-y-3">
                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{address}</p>
-                    <button
-                        onClick={handleScrollToMap}
-                        className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                        <ArrowRight size={13} />
-                        Explore nearby places on the map
-                    </button>
                 </div>
             </div>
         </div>

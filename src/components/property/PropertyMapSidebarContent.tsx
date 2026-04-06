@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useRef, useCallback, useState } from 'react';
-import { MapPin, Navigation, Car, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { MapPin, Navigation, Car, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize } from 'lucide-react';
 import { Map } from '@/components/ui/map';
 import { Marker, NavigationControl, Source, Layer } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
@@ -32,6 +33,14 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
     const [isLoaded, setIsLoaded] = useState(false);
     const [mounted, setMounted] = useState(false);
     
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Trigger map resize after fullscreen transition so it fills the new container
+    React.useEffect(() => {
+        const id = setTimeout(() => mapRef.current?.resize(), 310);
+        return () => clearTimeout(id);
+    }, [isFullscreen]);
+
     // POI State
     const [activePoiId, setActivePoiId] = useState<string | null>(null);
     const [selectedNativePoi, setSelectedNativePoi] = useState<any>(null);
@@ -43,6 +52,13 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
     React.useEffect(() => {
         setMounted(true);
     }, []);
+
+    const formatDuration = (mins: number) => {
+        if (mins < 60) return `${mins} min`;
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return m === 0 ? `${h} hr` : `${h} hr ${m} min`;
+    };
 
     const name = propertyName || hotelDetails?.name || 'Premium Stay';
     const addressLine = hotelDetails?.address || 'Address not available';
@@ -216,6 +232,15 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
 
     const handleLoad = useCallback(() => {
         setIsLoaded(true);
+        // Hide streets-v12 POI icon layers (the large coloured circles)
+        const map = mapRef.current?.getMap();
+        if (map) {
+            ['poi-label', 'transit-label'].forEach(layerId => {
+                if (map.getLayer(layerId)) {
+                    map.setLayoutProperty(layerId, 'visibility', 'none');
+                }
+            });
+        }
     }, []);
 
     // Scale POI icons for better visibility
@@ -268,15 +293,13 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
         );
     }
 
-    return (
-        <div className="h-full w-full flex flex-col rounded-xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-white/10 relative">
-            <div className="flex-1 relative w-full h-full">
-                {hasCoordinates ? (
-                    <>
-                        <Map
+    const mapContent = (
+        <div className="absolute inset-0">
+            {hasCoordinates ? (
+                <>
+                    <Map
                             ref={mapRef}
-                            mapStyle="standard"
-                            standardConfig={{ lightPreset: 'day', show3dObjects: true, show3dBuildings: true }}
+                            mapStyle="mapbox://styles/mapbox/streets-v12"
                             initialViewState={{ longitude: coordinates.lng, latitude: coordinates.lat, zoom: 16, pitch: 45, bearing: 0 }}
                             onLoad={handleLoad}
                             onClick={onMapClick}
@@ -374,8 +397,8 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                             )}
                         </Map>
 
-                        {/* Directions panel Overlay — margin-right to avoid Mapbox controls */}
-                        <div className="absolute top-3 left-3 right-14 z-20 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[380px] max-w-sm">
+                        {/* Directions panel Overlay */}
+                        <div className="absolute top-1.5 left-1.5 right-11 z-20 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[340px]">
                             {!showDirections ? (
                                 <button
                                     onClick={() => {
@@ -383,16 +406,16 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                         setActivePoiId(null);
                                         setSelectedNativePoi(null);
                                     }}
-                                    className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg px-4 py-2.5 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                                    className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow px-2.5 py-1 flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors"
                                 >
-                                    <Navigation size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                                    Get directions to this property...
+                                    <Navigation size={10} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                                    Get directions...
                                 </button>
                             ) : (
-                                <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden">
+                                <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow overflow-hidden">
                                     {/* Origin row */}
-                                    <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
-                                        <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shrink-0" />
+                                    <div className="flex items-center gap-1.5 px-2 py-1 border-b border-slate-100 dark:border-slate-800">
+                                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
                                         <div className="flex-1 relative">
                                             <input
                                                 type="text"
@@ -402,24 +425,24 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                                 onFocus={() => originResults.length > 0 && setShowOriginResults(true)}
                                                 placeholder="Where from?"
                                                 autoFocus
-                                                className="w-full text-xs text-slate-800 dark:text-slate-200 bg-transparent placeholder-slate-400 focus:outline-none"
+                                                className="w-full text-[10px] text-slate-800 dark:text-slate-200 bg-transparent placeholder-slate-400 focus:outline-none"
                                             />
                                             {isSearching && (
-                                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                                             )}
                                         </div>
                                         {originQuery && (
                                             <button onClick={() => { clearSearch(); }} className="shrink-0 text-slate-400 hover:text-slate-600">
-                                                <X size={13} />
+                                                <X size={10} />
                                             </button>
                                         )}
                                     </div>
                                     {/* Destination row */}
-                                    <div className="flex items-center gap-2 px-3 py-2.5">
-                                        <div className="w-2.5 h-2.5 bg-pink-500 rounded-full shrink-0" />
-                                        <span className="text-xs text-slate-500 dark:text-slate-400 flex-1 truncate">{name}</span>
+                                    <div className="flex items-center gap-1.5 px-2 py-1">
+                                        <div className="w-1.5 h-1.5 bg-pink-500 rounded-full shrink-0" />
+                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 flex-1 truncate">{name}</span>
                                         <button onClick={clearDirections} className="shrink-0 text-slate-400 hover:text-slate-600">
-                                            <X size={13} />
+                                            <X size={10} />
                                         </button>
                                     </div>
 
@@ -430,9 +453,9 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                                 <button
                                                     key={r.id}
                                                     onMouseDown={() => handleSelectOrigin(r)}
-                                                    className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 last:border-0"
+                                                    className="w-full text-left px-2 py-1 text-[10px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0"
                                                 >
-                                                    <Search size={10} className="text-slate-400 shrink-0" />
+                                                    <Search size={9} className="text-slate-400 shrink-0" />
                                                     <span className="line-clamp-1">{r.name}</span>
                                                 </button>
                                             ))}
@@ -441,28 +464,28 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
 
                                     {/* Travel times */}
                                     {origin && (
-                                        <div className="border-t border-slate-100 dark:border-slate-800 px-3 py-2 flex items-center gap-3">
+                                        <div className="border-t border-slate-100 dark:border-slate-800 px-2 py-1 flex items-center gap-1.5">
                                             {isFetchingOriginRoute ? (
-                                                <div className="flex items-center gap-2 text-xs text-slate-400">
-                                                    <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                                <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                                                    <div className="w-2.5 h-2.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                                                     Calculating...
                                                 </div>
                                             ) : (
                                                 <>
                                                     {originTravelTime !== null && (
-                                                        <div className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1 rounded-lg">
-                                                            <Car size={11} className="text-blue-600 dark:text-blue-400" />
-                                                            <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300">{originTravelTime} min</span>
+                                                        <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
+                                                            <Car size={9} className="text-blue-600 dark:text-blue-400" />
+                                                            <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300">{formatDuration(originTravelTime)} </span>
                                                         </div>
                                                     )}
                                                     {originWalkingTime !== null && (
-                                                        <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 rounded-lg">
-                                                            <Footprints size={11} className="text-emerald-600 dark:text-emerald-400" />
-                                                            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">{originWalkingTime} min</span>
+                                                        <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
+                                                            <Footprints size={9} className="text-emerald-600 dark:text-emerald-400" />
+                                                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300">{formatDuration(originWalkingTime)}</span>
                                                         </div>
                                                     )}
                                                     {originTravelTime === null && originWalkingTime === null && origin && !isFetchingOriginRoute && (
-                                                        <span className="text-[11px] text-slate-400">No route found</span>
+                                                        <span className="text-[9px] text-slate-400">No route found</span>
                                                     )}
                                                 </>
                                             )}
@@ -503,13 +526,13 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                                 {poiTravelTime !== null && (
                                                     <div className="flex items-center gap-1">
                                                         <Car size={10} className="text-blue-600 dark:text-blue-400" />
-                                                        <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{poiTravelTime} min</span>
+                                                        <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiTravelTime)}</span>
                                                     </div>
                                                 )}
                                                 {poiWalkingTime !== null && (
                                                     <div className="flex items-center gap-1">
                                                         <Footprints size={10} className="text-emerald-600 dark:text-emerald-400" />
-                                                        <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{poiWalkingTime} min</span>
+                                                        <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiWalkingTime)}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -531,14 +554,23 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                             </div>
                         )}
 
-                        <button
-                            onClick={handleRecenter}
-                            className={`absolute right-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 text-xs font-bold px-4 py-2.5 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-2 group bottom-5`}
-                            suppressHydrationWarning
-                        >
-                            <Navigation size={14} className="group-hover:rotate-12 transition-transform" />
-                            Re-center
-                        </button>
+                        <div className="absolute right-3 bottom-5 flex flex-col gap-2 items-end">
+                            <button
+                                onClick={() => setIsFullscreen(f => !f)}
+                                className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 p-2.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                                title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                            >
+                                {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+                            </button>
+                            <button
+                                onClick={handleRecenter}
+                                className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-1.5 group"
+                                suppressHydrationWarning
+                            >
+                                <Navigation size={11} className="group-hover:rotate-12 transition-transform" />
+                                Re-center
+                            </button>
+                        </div>
                     </>
                 ) : (
                     <div className="h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800">
@@ -548,8 +580,21 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                         </div>
                     </div>
                 )}
-            </div>
         </div>
+    );
+
+    return (
+        <>
+            <div className="h-full w-full rounded-xl overflow-hidden relative shadow-sm border border-slate-200/60 dark:border-white/10">
+                {!isFullscreen && mapContent}
+            </div>
+            {isFullscreen && mounted && createPortal(
+                <div className="fixed inset-0 z-9999 bg-white dark:bg-slate-900">
+                    {mapContent}
+                </div>,
+                document.body
+            )}
+        </>
     );
 };
 

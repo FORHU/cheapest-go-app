@@ -22,7 +22,7 @@ const Hero = () => {
     return (
         <section className="w-full flex flex-col items-center text-center max-w-4xl mx-auto mt-6 md:mt-10 lg:mt-16 mb-6 md:mb-10 lg:mb-16 landscape-compact:mt-2 landscape-compact:mb-2 relative">
             {/* Background Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[600px] h-[200px] sm:h-[300px] bg-alabaster-accent/5 dark:bg-obsidian-accent/10 blur-[100px] rounded-full pointer-events-none z-[-1]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[600px] h-[200px] sm:h-[300px] bg-alabaster-accent/5 dark:bg-obsidian-accent/10 blur-3xl rounded-full pointer-events-none z-[-1]" />
 
             {/* Headline */}
             <div className="px-4 w-full flex flex-col items-center">
@@ -31,9 +31,8 @@ const Hero = () => {
 
             {/* AI Search Bar — floating with bobbing animation */}
             <motion.div
-                initial={{ y: -100, opacity: 0 }}
+                initial={false}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.8 }}
                 className="w-full relative z-10 px-4"
             >
                 <motion.div

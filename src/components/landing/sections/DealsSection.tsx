@@ -42,7 +42,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => {
 
   return (
   <motion.div
-    initial={{ opacity: 0, x: 50 }}
+    initial={index === 0 ? false : { opacity: 0, x: 50 }}
     whileInView={{ opacity: 1, x: 0 }}
     viewport={{ once: true }}
     transition={{ delay: index * 0.1 }}
@@ -61,7 +61,8 @@ const DealCard: React.FC<DealCardProps> = ({ deal, index }) => {
                 fill
                 sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 300px"
                 className="object-cover transition-transform duration-700 group-hover:scale-110"
-                loading="lazy"
+                priority={index === 0}
+                loading={index === 0 ? undefined : 'lazy'}
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />

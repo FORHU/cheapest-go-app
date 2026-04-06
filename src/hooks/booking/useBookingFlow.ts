@@ -253,9 +253,10 @@ export function useBookingFlow(): UseBookingFlowReturn {
         const isExpiredSession = errorCode === '2012' || errorCode === '2010';
 
         if (isExpiredSession && selectedRoom?.offerId) {
+          const currentCurrency = useCheckoutStore.getState().selectedCurrency || 'PHP';
           const refreshResult = await refreshPrebook(
             selectedRoom.offerId,
-            'PHP'
+            currentCurrency
           );
 
           if (refreshResult?.prebookId) {
