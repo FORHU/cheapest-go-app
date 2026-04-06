@@ -1,25 +1,15 @@
-import { env } from "@/utils/env";
-
-// Booking/prebook operations need more time than search/autocomplete
-const SLOW_FUNCTIONS = new Set([
-    'liteapi-book-v2', 'liteapi-prebook-v2', 'liteapi-cancel-booking',
-    'liteapi-amend-booking', 'liteapi-booking-details',
-    'create-booking', 'create-booking-session',
-]);
-
 export async function invokeEdgeFunction<T = any>(
     functionName: string,
     body?: any,
-    options?: { headers?: Record<string, string>; method?: 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH'; timeoutMs?: number }
+    options?: { headers?: Record<string, string>; method?: 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH' }
 ) {
     // Use direct HTTP fetch to bypass Supabase client auth issues on server side
     // Edge functions can be called directly with the anon key in the Authorization header
-    const supabaseUrl = env.SUPABASE_URL;
-    const supabaseKey = env.SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!;
 
     const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
     const method = options?.method || 'POST';
-    const timeout = options?.timeoutMs ?? (SLOW_FUNCTIONS.has(functionName) ? 60_000 : 15_000);
 
     const response = await fetch(functionUrl, {
         method,
@@ -29,37 +19,16 @@ export async function invokeEdgeFunction<T = any>(
             'apikey': supabaseKey,
             ...options?.headers
         },
-        body: body ? JSON.stringify(body) : undefined,
-        signal: AbortSignal.timeout(timeout),
+        body: body ? JSON.stringify(body) : undefined
     });
 
     if (!response.ok) {
         let errorText = '';
-        let parsedError: any = null;
         try {
             errorText = await response.text();
-            parsedError = JSON.parse(errorText);
         } catch (e) {
-            // ignore parse errors — use raw text
+            errorText = 'Could not read error response';
         }
-
-        // Extract clean error message from LiteAPI response body
-        const liteApiMessage: string | undefined =
-            parsedError?.error || parsedError?.message || parsedError?.detail;
-
-        if (liteApiMessage) {
-            // Map known LiteAPI error messages to user-friendly equivalents
-            const lower = liteApiMessage.toLowerCase();
-            if (lower.includes('no availability') || lower.includes('not available')) {
-                throw new Error('This room is no longer available. Please go back and select another room.');
-            }
-            if (lower.includes('prebook') && (lower.includes('expired') || lower.includes('invalid'))) {
-                throw new Error('Your booking session has expired. Please go back and select the room again.');
-            }
-            // Surface the clean LiteAPI message rather than the full technical string
-            throw new Error(liteApiMessage);
-        }
-
         throw new Error(`Error invoking ${functionName}: ${response.statusText || 'Unknown error'} (Status: ${response.status}). details: ${errorText}`);
     }
 

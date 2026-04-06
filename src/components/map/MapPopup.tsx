@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { Popup } from 'react-map-gl/mapbox';
 import { MapPin, X } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 import type { MappableProperty } from './types';
 
 interface MapPopupProps {
@@ -40,6 +42,12 @@ const MapPopup = React.memo(function MapPopup({
     mapRef
 }: MapPopupProps) {
     const isLandscape = useIsLandscapeMobile();
+    const targetCurrency = useUserCurrency();
+    const sourceCurrency = property.currency || 'USD';
+    const displayPrice = convertCurrency(property.price, sourceCurrency, targetCurrency);
+    const displayOriginalPrice = property.originalPrice
+        ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency)
+        : undefined;
 
     useEffect(() => {
         let startY = 0;
@@ -128,7 +136,7 @@ const MapPopup = React.memo(function MapPopup({
                     </h3>
 
                     <div className="flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-2.5 h-2.5 text-slate-400 flex-shrink-0" />
+                        <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                             {property.location}
                         </span>
@@ -147,13 +155,13 @@ const MapPopup = React.memo(function MapPopup({
                     {/* Price + CTA */}
                     <div className={`flex items-center justify-between border-t border-slate-100 dark:border-slate-800 ${isLandscape ? 'mt-1 pt-1' : 'mt-2 pt-2'}`}>
                         <div className="leading-none">
-                            {property.originalPrice && property.originalPrice > property.price && (
+                            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
                                 <span className="text-[9px] text-slate-400 line-through block mb-0.5">
-                                    {formatCurrency(property.originalPrice)}
+                                    {formatCurrency(displayOriginalPrice, targetCurrency)}
                                 </span>
                             )}
                             <span className={`font-bold text-blue-600 dark:text-blue-400 ${isLandscape ? 'text-xs' : 'text-sm'}`}>
-                                {formatCurrency(property.price)}
+                                {formatCurrency(displayPrice, targetCurrency)}
                             </span>
                             <span className="text-[9px] text-slate-400 ml-0.5">/night</span>
                         </div>

@@ -18,6 +18,8 @@ import { Layers } from 'lucide-react';
 import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency } from '@/lib/currency';
 
 interface SearchMapContainerProps {
     properties: MappableProperty[];
@@ -70,6 +72,7 @@ export const SearchMapContainer = React.memo(({
     });
 
     // 5. Derived State
+    const targetCurrency = useUserCurrency();
     const selectedProperty = mappableProperties.find((p: MappableProperty) => p.id === selectedId) || null;
     const hoveredProperty = mappableProperties.find((p: MappableProperty) => p.id === hoveredId) || null;
     
@@ -196,6 +199,8 @@ export const SearchMapContainer = React.memo(({
                             <MapMarker
                                 key={property.id}
                                 property={property}
+                                displayPrice={convertCurrency(property.price, property.currency || 'USD', targetCurrency)}
+                                displayCurrency={targetCurrency}
                                 isSelected={property.id === selectedId}
                                 isHovered={property.id === hoveredId}
                                 onClick={onSelectId}

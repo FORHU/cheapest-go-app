@@ -91,8 +91,13 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
     const segments: FlightSegmentDetail[] = (rawSegments ?? []).map((seg: any, idx: number) => ({
         segmentIndex: idx,
         airline: {
-            code: (typeof seg.airline === 'object' ? seg.airline.code : seg.airline) ?? nf.airline ?? '',
-            name: (typeof seg.airline === 'object' ? seg.airline.name : (seg.airlineName || getAirlineName(seg.airline ?? nf.airline ?? ''))),
+            code: (() => {
+                const raw = typeof seg.airline === 'object' ? seg.airline?.code : seg.airline;
+                // Only use nf.airline fallback if it looks like an IATA code (2–3 uppercase letters)
+                const fallback = /^[A-Z0-9]{2,3}$/.test(nf.airline ?? '') ? nf.airline : '';
+                return (raw && raw.length <= 3 ? raw : null) ?? fallback ?? '';
+            })(),
+            name: (typeof seg.airline === 'object' ? seg.airline.name : (seg.airlineName || getAirlineName(seg.airline ?? '') || nf.airline || '')),
         },
         origin: seg.origin ?? nf.origin ?? '',
         destination: seg.destination ?? nf.destination ?? '',

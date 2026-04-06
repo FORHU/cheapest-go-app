@@ -60,10 +60,11 @@ const Header = () => {
     setIsCurrencyOpen(false);
     setIsMobileCurrencyOpen(false);
 
-    if (pathname && (pathname.includes('/property/') || pathname.includes('/checkout') || pathname.includes('/search') || pathname.includes('/flights'))) {
+    // Only re-fetch for property pages (rates are currency-specific from LiteAPI).
+    // On /search, currency is display-only (client-side conversion) — don't retrigger the search.
+    if (pathname && (pathname.includes('/property/') || pathname.includes('/flights'))) {
       const params = new URLSearchParams(searchParams?.toString() || '');
       params.set('currency', currencyCode);
-      // For properties, it might need re-fetching, so replace URL to trigger server components
       router.replace(`${pathname}?${params.toString()}`);
     }
   };
