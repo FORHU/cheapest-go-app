@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { Popup } from 'react-map-gl/mapbox';
 import { MapPin, X } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 import type { MappableProperty } from './types';
 
 interface MapPopupProps {
@@ -40,6 +42,11 @@ const MapPopup = React.memo(function MapPopup({
     mapRef
 }: MapPopupProps) {
     const isLandscape = useIsLandscapeMobile();
+    const targetCurrency = useUserCurrency();
+    const displayPrice = convertCurrency(property.price, property.currency, targetCurrency);
+    const displayOriginalPrice = property.originalPrice
+        ? convertCurrency(property.originalPrice, property.currency, targetCurrency)
+        : undefined;
 
     useEffect(() => {
         let startY = 0;
@@ -147,13 +154,13 @@ const MapPopup = React.memo(function MapPopup({
                     {/* Price + CTA */}
                     <div className={`flex items-center justify-between border-t border-slate-100 dark:border-slate-800 ${isLandscape ? 'mt-1 pt-1' : 'mt-2 pt-2'}`}>
                         <div className="leading-none">
-                            {property.originalPrice && property.originalPrice > property.price && (
+                            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
                                 <span className="text-[9px] text-slate-400 line-through block mb-0.5">
-                                    {formatCurrency(property.originalPrice)}
+                                    {formatCurrency(displayOriginalPrice, targetCurrency)}
                                 </span>
                             )}
                             <span className={`font-bold text-blue-600 dark:text-blue-400 ${isLandscape ? 'text-xs' : 'text-sm'}`}>
-                                {formatCurrency(property.price)}
+                                {formatCurrency(displayPrice, targetCurrency)}
                             </span>
                             <span className="text-[9px] text-slate-400 ml-0.5">/night</span>
                         </div>

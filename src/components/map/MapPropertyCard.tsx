@@ -3,6 +3,8 @@
 import React from 'react';
 import { MapPin } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 import type { MappableProperty } from './types';
 
 interface MapPropertyCardProps {
@@ -37,6 +39,12 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
     onSelect,
     onHover,
 }: MapPropertyCardProps) {
+    const targetCurrency = useUserCurrency();
+    const displayPrice = convertCurrency(property.price, property.currency, targetCurrency);
+    const displayOriginalPrice = property.originalPrice
+        ? convertCurrency(property.originalPrice, property.currency, targetCurrency)
+        : undefined;
+
     return (
         <button
             type="button"
@@ -98,7 +106,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         <div className="flex-shrink-0 w-full min-w-0 overflow-hidden">
                             <div className="flex items-baseline gap-0.5 w-full overflow-hidden">
                                 <span className="text-[13px] font-bold text-blue-600 dark:text-blue-400 landscape:text-[11px] truncate block">
-                                    {formatCurrency(property.price)}
+                                    {formatCurrency(displayPrice, targetCurrency)}
                                 </span>
                                 <span className="text-[9px] text-slate-400 landscape:text-[7px] flex-shrink-0">/night</span>
                             </div>
@@ -159,13 +167,13 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
 
                         {/* Price */}
                         <div className="text-right flex-shrink-0">
-                            {property.originalPrice && property.originalPrice > property.price && (
+                            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
                                 <span className="text-[10px] text-slate-400 line-through block leading-none">
-                                    {formatCurrency(property.originalPrice)}
+                                    {formatCurrency(displayOriginalPrice, targetCurrency)}
                                 </span>
                             )}
                             <span className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-bold text-blue-600 dark:text-blue-400">
-                                {formatCurrency(property.price)}
+                                {formatCurrency(displayPrice, targetCurrency)}
                             </span>
                             <span className="text-[10px] text-slate-400 ml-0.5">/night</span>
                         </div>

@@ -68,7 +68,7 @@ export const StaysForEveryStyle: React.FC<{ styles?: TravelStyle[] }> = ({ style
                 damping: 15
               }}
               whileHover={{ y: -8 }}
-              className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] landscape:w-[160px] landscape-compact-card snap-start relative group cursor-pointer flex flex-col"
+              className="shrink-0 w-[220px] sm:w-[260px] md:w-[320px] snap-start relative group cursor-pointer flex flex-col"
             >
               <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
                 <div className="relative aspect-[2/1] sm:aspect-[4/3] md:aspect-[3/2] overflow-hidden flex-shrink-0 landscape-compact-img landscape-img">

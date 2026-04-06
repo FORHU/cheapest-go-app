@@ -19,7 +19,7 @@ export const VersionBadge = () => (
         className="mb-6 inline-flex items-center gap-2 px-3 py-1 rounded-full border dark:border-obsidian-accent/20 border-alabaster-accent/20 dark:bg-obsidian-accent/5 bg-alabaster-accent/5 shadow-sm"
     >
         <Activity className="w-3 h-3 dark:text-obsidian-accent text-alabaster-accent" />
-        <span className="text-xs font-mono dark:text-obsidian-accent text-alabaster-accent tracking-wide uppercase">Smart Price Tracking</span>
+        <span className="text-xs font-display font-semibold dark:text-obsidian-accent text-alabaster-accent tracking-widest uppercase">Smart Price Tracking</span>
     </motion.div>
 );
 
