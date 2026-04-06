@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { CabinClass, FlightSearchParams } from '@/types/flights';
-import { searchFlights, saveSearch } from '@/lib/server/flights/search-flights';
+import { searchFlights } from '@/lib/server/flights/search-flights';
 import { rateLimit } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -88,13 +88,10 @@ export async function POST(req: NextRequest) {
             cabinClass: cabin,
         };
 
-        // ── Save search record (for caching / analytics) ─────────────────────
-        // Fire-and-forget — don't block the response on this
-        const savedSearch = await saveSearch(params).catch(() => ({ id: undefined }));
-        const searchParams = { ...params, searchId: (savedSearch as any).id };
-
         // ── Search providers in parallel (15s timeout each) ─────────────────
-        const offers = await searchFlights(searchParams);
+        // saveSearch is called inside searchFlights after the cache check,
+        // so we never create an empty record that poisons the cache lookup.
+        const offers = await searchFlights(params);
 
         return NextResponse.json({
             success: true,

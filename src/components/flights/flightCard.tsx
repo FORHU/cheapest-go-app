@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plane, Clock, ArrowRight, Luggage, AlertCircle, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
-import type { FlightOffer, FlightSegmentDetail, FarePolicy } from '@/types/flights';
-import { getAirlineName, formatPrice } from '@/utils/flight-utils';
+import { Plane, ArrowRight, Luggage, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
+import type { FlightOffer, FlightSegmentDetail } from '@/types/flights';
+import { formatPrice } from '@/utils/flight-utils';
 
 
 import { useUserCurrency } from '@/stores/searchStore';
@@ -32,19 +32,28 @@ function stopsLabel(stops: number): string {
 
 // ─── Airline Logo ────────────────────────────────────────────────────
 
-const AIRLINE_COLORS: Record<string, string> = {
-    'KE': 'bg-sky-600', 'OZ': 'bg-emerald-600', 'PR': 'bg-blue-700', '5J': 'bg-yellow-500',
-    'SQ': 'bg-amber-700', 'AA': 'bg-red-600', 'DL': 'bg-blue-800', 'UA': 'bg-blue-600',
-    'BA': 'bg-indigo-800', 'LH': 'bg-yellow-600', 'EK': 'bg-red-700', 'QR': 'bg-purple-800',
-    'TK': 'bg-red-600', 'AF': 'bg-blue-600', 'CX': 'bg-emerald-700', 'JL': 'bg-rose-700',
-    'NH': 'bg-blue-500', 'TG': 'bg-purple-600', 'VN': 'bg-teal-600', 'GA': 'bg-sky-700',
-};
+function AirlineLogo({ code, name }: { code: string | undefined; name?: string }) {
+    const [failed, setFailed] = useState(false);
+    const iata = (code || '').toUpperCase().slice(0, 3);
+    const initials = iata.slice(0, 2) || (name || '??').slice(0, 2).toUpperCase();
 
-function AirlineLogo({ code }: { code: string | undefined }) {
-    const c = code || '??';
+    if (iata && !failed) {
+        return (
+            <div className="w-7 h-7 lg:w-10 lg:h-10 rounded-md lg:rounded-lg bg-white border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src={`https://pics.avs.io/40/40/${iata}.png`}
+                    alt={name || iata}
+                    className="w-5 h-5 lg:w-7 lg:h-7 object-contain"
+                    onError={() => setFailed(true)}
+                />
+            </div>
+        );
+    }
+
     return (
-        <div className={`w-7 h-7 lg:w-10 lg:h-10 rounded-md lg:rounded-lg ${AIRLINE_COLORS[c] || 'bg-slate-600'} flex items-center justify-center text-white font-bold text-[10px] lg:text-sm shrink-0`}>
-            {c}
+        <div className="w-7 h-7 lg:w-10 lg:h-10 rounded-md lg:rounded-lg bg-slate-600 flex items-center justify-center text-white font-bold text-[10px] lg:text-sm shrink-0">
+            {initials}
         </div>
     );
 }
@@ -54,7 +63,7 @@ function AirlineLogo({ code }: { code: string | undefined }) {
 function SegmentRow({ segment }: { segment: FlightSegmentDetail }) {
     return (
         <div className="flex items-center gap-2 lg:gap-4 py-1.5 lg:py-2.5 px-1">
-            <AirlineLogo code={segment.airline.code} />
+            <AirlineLogo code={segment.airline.code} name={segment.airline.name} />
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1 lg:gap-2 text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">
@@ -147,7 +156,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                 <div className="flex-1 px-2.5 pt-2.5 pb-2 lg:p-5">
                     {/* Airline header */}
                     <div className="flex items-center gap-1.5 lg:gap-3 mb-1.5 lg:mb-3">
-                        <AirlineLogo code={primary.airline.code} />
+                        <AirlineLogo code={primary.airline.code} name={primary.airline.name} />
                         <div className="min-w-0">
                             <div className="flex items-center gap-1 lg:gap-2">
                                 <span className="font-semibold text-slate-900 dark:text-white text-xs lg:text-sm">
@@ -162,7 +171,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     </div>
 
                     {/* Route timeline */}
-                    <div className="flex items-center gap-1.5 lg:gap-3">
+                    <div className="flex items-center gap-1.5 lg:gap-3 min-w-0 w-full">
                         <div className="text-center">
                             <div className="text-base lg:text-lg font-bold text-slate-900 dark:text-white leading-tight">{formatTime(primary.departure.time)}</div>
                             <div className="text-[9px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-medium">{primary.departure.airport}</div>
@@ -188,7 +197,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     </div>
 
                     {/* Tags */}
-                    <div className="flex flex-wrap gap-0.5 lg:gap-1.5 mt-1.5 lg:mt-3">
+                    <div className="flex flex-wrap gap-0.5 lg:gap-1.5 mt-1.5 lg:mt-3 min-w-0 overflow-hidden">
                         {offer.baggage && (
                             <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                                 <Luggage className="w-2 h-2 lg:w-3 lg:h-3" />
