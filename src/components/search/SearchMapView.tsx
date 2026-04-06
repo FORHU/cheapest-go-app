@@ -165,7 +165,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                         <>
                             <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 hidden md:block" />
                             <span className="text-xs text-slate-500 dark:text-slate-400 hidden md:inline">
-                                {formatCurrency(priceRange.min)} – {formatCurrency(priceRange.max)} /night
+                                {formatCurrency(priceRange.min, mappableProperties[0]?.currency)} – {formatCurrency(priceRange.max, mappableProperties[0]?.currency)} /night
                             </span>
                         </>
                     )}

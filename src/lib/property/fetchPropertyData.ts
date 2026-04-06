@@ -24,16 +24,29 @@ export interface FetchPropertyResult {
     preBookResult: any;
 }
 
-// Format date as YYYY-MM-DD for API parameters
+// Format date as YYYY-MM-DD for API parameters (Local Date)
 export function formatDateForApi(date: Date): string {
-    return date.toISOString().split('T')[0];
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
 }
 
-// Sanitize date from URL (may be ISO strings)
+// Sanitize date from URL (handles YYYY-MM-DD and ISO strings)
 export function sanitizeDate(dateStr: string | undefined): string | undefined {
     if (!dateStr) return undefined;
     try {
-        return new Date(decodeURIComponent(dateStr)).toISOString().split('T')[0];
+        const decoded = decodeURIComponent(dateStr);
+        // If it's already YYYY-MM-DD, return as is
+        if (/^\d{4}-\d{2}-\d{2}$/.test(decoded)) {
+            return decoded;
+        }
+        // If it's an ISO string or other format, parse and format as local YYYY-MM-DD
+        // Note: For ISO strings like "2026-04-03T22:00:00Z", this might still be tricky
+        // but since we updated the frontend to send YYYY-MM-DD, this is a fallback.
+        const d = new Date(decoded);
+        if (isNaN(d.getTime())) return undefined;
+        return formatDateForApi(d);
     } catch {
         return undefined;
     }
@@ -148,12 +161,21 @@ export async function fetchPropertyData(
         }
     }
 
-    // 2. Fetch hotel details (Strictly backend)
+        // 2. Fetch hotel details (Strictly backend)
     try {
         const targetHotelId = preBookResult?.data?.hotelId || id;
         const defaults = getDefaultDates();
-        const checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
-        const checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+        let checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
+        let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+
+        // Strictly enforce "At least tomorrow" for check-in
+        if (checkIn <= formatDateForApi(new Date())) {
+            checkIn = defaults.checkIn;
+            // Also ensure checkOut is after the new checkIn
+            if (checkOut <= checkIn) {
+                checkOut = defaults.checkOut;
+            }
+        }
 
         fetchedDetails = await getHotelDetails(targetHotelId, {
             checkIn,
@@ -165,6 +187,35 @@ export async function fetchPropertyData(
         });
     } catch (error) {
         console.error('Failed to fetch property details:', error);
+    }
+
+    // Fallback: If no details found for requested currency, try USD for static content
+    if (!fetchedDetails && searchParams.currency && searchParams.currency !== 'USD') {
+        try {
+            const targetHotelId = preBookResult?.data?.hotelId || id;
+            const defaults = getDefaultDates();
+            const checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
+            const checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+
+            const fallbackDetails = await getHotelDetails(targetHotelId, {
+                checkIn,
+                checkOut,
+                adults: Number(searchParams.adults || 2),
+                children: Number(searchParams.children || 0),
+                rooms: Number(searchParams.rooms || 1),
+                currency: 'USD'
+            });
+
+            if (fallbackDetails) {
+                fetchedDetails = {
+                    ...fallbackDetails,
+                    roomTypes: [], // Clear rooms to avoid showing USD prices as the requested currency
+                    isFallback: true
+                };
+            }
+        } catch (err) {
+            console.error('Fallback fetch failed:', err);
+        }
     }
 
     // 3. Build property data

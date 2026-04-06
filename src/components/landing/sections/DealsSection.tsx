@@ -32,7 +32,7 @@ function handleDealClick(deal: Deal) {
   });
 }
 
-const DealCard: React.FC<DealCardProps> = ({ deal, index }) => {
+export const DealCard: React.FC<DealCardProps> = ({ deal, index }) => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const currency = useUserCurrency();

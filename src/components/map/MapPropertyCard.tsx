@@ -98,7 +98,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         <div className="flex-shrink-0 w-full min-w-0 overflow-hidden">
                             <div className="flex items-baseline gap-0.5 w-full overflow-hidden">
                                 <span className="text-[13px] font-bold text-blue-600 dark:text-blue-400 landscape:text-[11px] truncate block">
-                                    {formatCurrency(property.price)}
+                                    {formatCurrency(property.price, property.currency)}
                                 </span>
                                 <span className="text-[9px] text-slate-400 landscape:text-[7px] flex-shrink-0">/night</span>
                             </div>
@@ -161,11 +161,11 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         <div className="text-right flex-shrink-0">
                             {property.originalPrice && property.originalPrice > property.price && (
                                 <span className="text-[10px] text-slate-400 line-through block leading-none">
-                                    {formatCurrency(property.originalPrice)}
+                                    {formatCurrency(property.originalPrice, property.currency)}
                                 </span>
                             )}
                             <span className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-bold text-blue-600 dark:text-blue-400">
-                                {formatCurrency(property.price)}
+                                {formatCurrency(property.price, property.currency)}
                             </span>
                             <span className="text-[10px] text-slate-400 ml-0.5">/night</span>
                         </div>

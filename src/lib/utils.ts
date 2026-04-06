@@ -14,9 +14,20 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function formatCurrency(
     amount: number,
-    currency = 'KRW',
-    locale = 'ko-KR'
+    currencyCode = 'KRW'
 ): string {
+    const currency = currencyCode.toUpperCase();
+    
+    const localeMap: Record<string, string> = {
+        'KRW': 'ko-KR',
+        'USD': 'en-US',
+        'PHP': 'en-PH',
+        'EUR': 'de-DE',
+        'JPY': 'ja-JP',
+    };
+
+    const locale = localeMap[currency] || 'en-US';
+
     return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
