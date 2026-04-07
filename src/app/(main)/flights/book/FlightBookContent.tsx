@@ -10,6 +10,7 @@ import { formatTime, formatDuration, formatPrice } from '@/utils/flight-utils';
 import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 import { useUserCurrency } from '@/stores/searchStore';
 import type { FarePolicy } from '@/types/flights';
+import { getAirportInfo } from '@/utils/airport-info';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
@@ -301,34 +302,10 @@ export default function FlightBookContent() {
 
                     {/* ── Bundle Hotel Upsell ── */}
                     {(() => {
-                        const AIRPORT_INFO: Record<string, { city: string; cc: string }> = {
-                            BKK: { city: 'Bangkok', cc: 'TH' }, DMK: { city: 'Bangkok', cc: 'TH' },
-                            SIN: { city: 'Singapore', cc: 'SG' },
-                            MNL: { city: 'Manila', cc: 'PH' }, CEB: { city: 'Cebu', cc: 'PH' },
-                            KUL: { city: 'Kuala Lumpur', cc: 'MY' },
-                            DPS: { city: 'Bali', cc: 'ID' }, CGK: { city: 'Jakarta', cc: 'ID' },
-                            HAN: { city: 'Hanoi', cc: 'VN' }, SGN: { city: 'Ho Chi Minh City', cc: 'VN' }, DAD: { city: 'Da Nang', cc: 'VN' },
-                            ICN: { city: 'Seoul', cc: 'KR' }, GMP: { city: 'Seoul', cc: 'KR' },
-                            NRT: { city: 'Tokyo', cc: 'JP' }, HND: { city: 'Tokyo', cc: 'JP' }, KIX: { city: 'Osaka', cc: 'JP' }, CTS: { city: 'Sapporo', cc: 'JP' },
-                            TPE: { city: 'Taipei', cc: 'TW' },
-                            HKG: { city: 'Hong Kong', cc: 'HK' },
-                            PEK: { city: 'Beijing', cc: 'CN' }, PVG: { city: 'Shanghai', cc: 'CN' }, CAN: { city: 'Guangzhou', cc: 'CN' },
-                            DXB: { city: 'Dubai', cc: 'AE' }, AUH: { city: 'Abu Dhabi', cc: 'AE' }, DOH: { city: 'Doha', cc: 'QA' },
-                            DEL: { city: 'New Delhi', cc: 'IN' }, BOM: { city: 'Mumbai', cc: 'IN' },
-                            CMB: { city: 'Colombo', cc: 'LK' },
-                            SYD: { city: 'Sydney', cc: 'AU' }, MEL: { city: 'Melbourne', cc: 'AU' },
-                            AKL: { city: 'Auckland', cc: 'NZ' },
-                            LHR: { city: 'London', cc: 'GB' }, CDG: { city: 'Paris', cc: 'FR' },
-                            AMS: { city: 'Amsterdam', cc: 'NL' }, FRA: { city: 'Frankfurt', cc: 'DE' },
-                            MAD: { city: 'Madrid', cc: 'ES' }, FCO: { city: 'Rome', cc: 'IT' },
-                            JFK: { city: 'New York', cc: 'US' }, LAX: { city: 'Los Angeles', cc: 'US' },
-                            SFO: { city: 'San Francisco', cc: 'US' }, ORD: { city: 'Chicago', cc: 'US' },
-                            MIA: { city: 'Miami', cc: 'US' }, YYZ: { city: 'Toronto', cc: 'CA' },
-                        };
                         const airportCode = last.arrival.airport;
-                        const info = AIRPORT_INFO[airportCode];
-                        const cityName = info?.city || airportCode;
-                        const countryCode = info?.cc || '';
+                        const info = getAirportInfo(airportCode);
+                        const cityName = info.city;
+                        const countryCode = info.cc;
                         const depDate = primary.departure.time?.slice(0, 10) ?? '';
                         const checkOut = (() => {
                             if (!depDate) return '';
@@ -380,13 +357,13 @@ export default function FlightBookContent() {
                                         {/* Savings comparison */}
                                         <div className="flex items-center gap-2 mb-3 px-1">
                                             <div className="flex-1 bg-white/10 rounded-lg p-2 text-center">
-                                                <p className="text-[9px] text-violet-200 font-medium">Hotel only</p>
-                                                <p className="text-sm font-bold text-white/60 line-through">15% markup</p>
+                                                <p className="text-[9px] text-violet-200 font-medium">Book separately</p>
+                                                <p className="text-sm font-bold text-white/60 line-through">Standard rate</p>
                                             </div>
                                             <div className="text-white/50 text-lg">→</div>
                                             <div className="flex-1 bg-amber-400/20 border border-amber-400/40 rounded-lg p-2 text-center">
-                                                <p className="text-[9px] text-amber-200 font-medium">With flight bundle</p>
-                                                <p className="text-sm font-bold text-amber-300">12% markup</p>
+                                                <p className="text-[9px] text-amber-200 font-medium">Add to this trip</p>
+                                                <p className="text-sm font-bold text-amber-300">Bundle savings</p>
                                             </div>
                                         </div>
 

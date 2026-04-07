@@ -101,6 +101,31 @@ export function useFlightBooking() {
         }
     }, [passengers, contact]);
 
+    // Recovery: if the user hard-refreshed during the Stripe payment step,
+    // selectedFlight is gone but flightBookingSessionId + flightPaymentIntentId remain.
+    // Auto-confirm so the booking isn't left in limbo.
+    // Only recover if the payment was initiated within the last 30 minutes — prevents
+    // stale keys from a previous failed/expired booking from re-triggering confirm.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const recoverySessionId = sessionStorage.getItem('flightBookingSessionId');
+        const recoveryPaymentIntentId = sessionStorage.getItem('flightPaymentIntentId');
+        const ts = Number(sessionStorage.getItem('flightBookingTs') || '0');
+        const ageMs = Date.now() - ts;
+        const THIRTY_MIN = 30 * 60 * 1000;
+        if (recoverySessionId && recoveryPaymentIntentId && ageMs < THIRTY_MIN) {
+            console.log('[useFlightBooking] Detected payment-step refresh — auto-confirming booking');
+            bookingSessionIdRef.current = recoverySessionId;
+            pollForBooking(recoveryPaymentIntentId);
+        } else if (recoverySessionId || recoveryPaymentIntentId) {
+            // Stale keys — clear them so they don't interfere
+            sessionStorage.removeItem('flightBookingSessionId');
+            sessionStorage.removeItem('flightPaymentIntentId');
+            sessionStorage.removeItem('flightBookingTs');
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     useEffect(() => {
         const raw = sessionStorage.getItem('selectedFlight');
         if (!raw) {
@@ -113,6 +138,19 @@ export function useFlightBooking() {
             parsedOffer = JSON.parse(raw);
         } catch {
             router.replace('/');
+            return;
+        }
+
+        // Duffel offers have a hard expiry — check it before allowing the user to proceed.
+        // If the offer is already expired (e.g. user returns to the page hours later),
+        // show an error immediately instead of letting them fill the form and fail at payment.
+        const rawOffer = (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer;
+        const expiresAt = rawOffer?.expires_at ?? (parsedOffer as any).expires_at;
+        if (expiresAt && new Date(expiresAt) < new Date()) {
+            sessionStorage.removeItem('selectedFlight');
+            setErrorMsg('This flight offer has expired. Please search again for current availability.');
+            setStep('error');
+            setOffer(parsedOffer);
             return;
         }
 
@@ -261,6 +299,16 @@ export function useFlightBooking() {
                 // Store the session ID so we can poll for PNR after webhook processes
                 bookingSessionIdRef.current = data.sessionId;
                 setBookingResult({ bookingId: data.sessionId });
+                // Remove selectedFlight and persist session ID so that if the user
+                // hard-refreshes during the Stripe payment step we can recover the
+                // in-flight booking rather than letting them re-submit the same offer.
+                if (typeof window !== 'undefined') {
+                    sessionStorage.removeItem('selectedFlight');
+                    sessionStorage.setItem('flightBookingSessionId', data.sessionId);
+                    sessionStorage.setItem('flightPaymentIntentId', data.paymentIntentId || '');
+                    // Timestamp lets the recovery effect ignore stale data from prior failed attempts
+                    sessionStorage.setItem('flightBookingTs', String(Date.now()));
+                }
                 return;
             }
 
@@ -319,12 +367,15 @@ export function useFlightBooking() {
         // Show a loading state while confirming
         setStep('submitting');
 
-        // Clear session storage now that payment is done
+        // Clear all flight booking session storage
         if (typeof window !== 'undefined') {
             sessionStorage.removeItem('flightPassengers');
             sessionStorage.removeItem('flightContact');
             sessionStorage.removeItem('flightSearchPassengers');
             sessionStorage.removeItem('selectedFlight');
+            sessionStorage.removeItem('flightBookingSessionId');
+            sessionStorage.removeItem('flightPaymentIntentId');
+            sessionStorage.removeItem('flightBookingTs');
         }
 
         try {
@@ -342,6 +393,11 @@ export function useFlightBooking() {
                 const errMsg = data.error || 'Booking could not be completed. Your card has not been charged.';
                 setErrorMsg(errMsg);
                 setStep('error');
+                if (typeof window !== 'undefined') {
+                    sessionStorage.removeItem('flightBookingSessionId');
+                    sessionStorage.removeItem('flightPaymentIntentId');
+                    sessionStorage.removeItem('flightBookingTs');
+                }
                 return;
             }
 
