@@ -96,6 +96,7 @@ export default async function PropertyPage({
     };
 
     const currency = (searchParamsResult.currency as string) || 'KRW';
+    const bundleFlightId = (searchParamsResult.bundleFlightId as string) || null;
 
     const city = fetchedDetails?.city || fetchedDetails?.details?.city || '';
     const country = fetchedDetails?.country || fetchedDetails?.details?.country || '';
@@ -166,6 +167,26 @@ export default async function PropertyPage({
                         <PropertyGallery images={property.images} />
                     </FadeInUp>
                 </div>
+
+                {/* Bundle Active Banner — shown when arriving from post-flight-booking upsell */}
+                {bundleFlightId && (
+                    <div className="mt-3 mx-0">
+                        <div className="flex items-center gap-3 px-4 py-3 bg-linear-to-r from-violet-600 to-indigo-600 rounded-xl text-white shadow-md shadow-violet-500/20">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 shrink-0 text-base">
+                                ✦
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold leading-tight">Bundle Discount Active</p>
+                                <p className="text-[11px] text-violet-200 leading-tight mt-0.5 truncate">
+                                    Booking with flight <span className="font-mono text-white/80">{bundleFlightId.slice(0, 8)}…</span> — hotel charged at 12% instead of 15%
+                                </p>
+                            </div>
+                            <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-bold">
+                                SAVE 3%
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Navigation Tabs — full width */}
                 <div className="mt-2 md:mt-8">

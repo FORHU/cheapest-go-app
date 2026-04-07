@@ -144,6 +144,8 @@ export function CheckoutContent() {
     const { syncWithUserCurrency } = useCheckoutActions();
 
     const searchParams = useSearchParams();
+    // Present when user arrived from the post-flight-booking bundle upsell → triggers 12% bundle rate
+    const bundleFlightId = searchParams.get('bundleFlightId') || undefined;
 
     useEffect(() => {
         // Sync currency from URL whenever it changes
@@ -244,6 +246,7 @@ export function CheckoutContent() {
                     holderEmail: formData.email,
                     propertyName: property?.name || 'Hotel',
                     roomName: selectedRoom?.title || 'Room',
+                    ...(bundleFlightId ? { bundleFlightId } : {}),
                 }
             );
 
@@ -263,7 +266,7 @@ export function CheckoutContent() {
         } finally {
             setIsCreatingPayment(false);
         }
-    }, [user, prebookId, selectedRoom, formData, bookingFor, priceData, selectedCurrency, property, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher]);
+    }, [user, prebookId, selectedRoom, formData, bookingFor, priceData, selectedCurrency, property, openAuthModal, totalPrice, clearFormErrors, setFormErrors, appliedVoucher, bundleFlightId]);
 
     // Step 2: After Stripe payment succeeds → confirm with LiteAPI
     const handlePaymentSuccess = useCallback(async (stripePaymentIntentId: string) => {

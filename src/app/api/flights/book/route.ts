@@ -6,6 +6,7 @@ import { FlightOffer, FarePolicy } from '@/types/flights';
 import { logApiCall } from '@/lib/server/api-logger';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { flightBookingSchema } from '@/lib/schemas/flight';
+import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -165,12 +166,15 @@ export async function POST(req: NextRequest) {
         // ── Step 2: Create Stripe PaymentIntent ──
         const stripeStart = Date.now();
         const isMystifly = provider === 'mystifly' || provider === 'mystifly_v2';
-        const ZERO_DECIMAL_CURRENCIES = new Set([
-            'bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf', 'krw', 'mga',
-            'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf',
-        ]);
-        const flightIsZeroDecimal = ZERO_DECIMAL_CURRENCIES.has(flightCurrency.toLowerCase());
-        const flightStripeAmount = flightIsZeroDecimal ? Math.round(flightTotal) : Math.round(flightTotal * 100);
+
+        // Apply platform markup before charging the customer.
+        // The provider (Duffel/Mystifly) is billed the original fare from our balance.
+        // See src/lib/pricing.ts for the full strategy rationale.
+        const pricing = applyMarkup(flightTotal, FLIGHT_MARKUP);
+        const flightStripeAmount = toStripeAmount(pricing.chargedPrice, flightCurrency);
+
+        console.log(`[/book] Pricing: original=${pricing.originalPrice} ${flightCurrency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%, markupAmount=${pricing.markupAmount}`);
+
         const paymentIntent = await stripe.paymentIntents.create({
             amount: flightStripeAmount,
             currency: flightCurrency,
@@ -180,14 +184,18 @@ export async function POST(req: NextRequest) {
                 provider: provider,
                 userId: userId,
                 passengerEmail: contact.email,
+                // Store pricing breakdown in metadata for audit trail
+                originalPrice: String(pricing.originalPrice),
+                markupRate: String(pricing.markupRate),
+                markupAmount: String(pricing.markupAmount),
             },
             description: `Flight Booking: ${flight.segments[0]?.origin} to ${flight.segments[flight.segments.length - 1]?.destination}`,
         });
         logApiCall({
             provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,
-            requestParams: { amount: flightStripeAmount, currency: flightCurrency, captureMethod: isMystifly ? 'manual' : 'automatic' },
+            requestParams: { amount: flightStripeAmount, currency: flightCurrency, captureMethod: isMystifly ? 'manual' : 'automatic', markupRate: pricing.markupRate },
             responseStatus: 200, userId,
-            responseSummary: { paymentIntentId: paymentIntent.id, sessionId },
+            responseSummary: { paymentIntentId: paymentIntent.id, sessionId, chargedPrice: pricing.chargedPrice },
         });
 
         // ── Step 3: Store PaymentIntent ID in booking session ──
@@ -197,7 +205,12 @@ export async function POST(req: NextRequest) {
             .from('booking_sessions')
             .update({
                 payment_intent_id: paymentIntent.id,
-                status: 'payment_initiated'
+                status: 'payment_initiated',
+                // Pricing audit — original provider cost vs what the customer was charged
+                original_price: pricing.originalPrice,
+                charged_price: pricing.chargedPrice,
+                markup_pct: pricing.markupRate,
+                currency: flightCurrency,
             })
             .eq('id', sessionId);
 
