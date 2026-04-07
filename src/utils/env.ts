@@ -14,6 +14,9 @@ export const env = {
     MYSTIFLY_PASSWORD: process.env.MYSTIFLY_PASSWORD!,
     MYSTIFLY_ACCOUNT_NUMBER: process.env.MYSTIFLY_ACCOUNT_NUMBER!,
     MYSTIFLY_BASE_URL: process.env.MYSTIFLY_BASE_URL || 'https://restapidemo.myfarebox.com',
+    MYSTIFLY_ENV: process.env.MYSTIFLY_ENV || 'Production',
+    MYSTIFLY_NATIONALITY: process.env.MYSTIFLY_NATIONALITY || 'US',
+    MYSTIFLY_PRICING_SOURCE_TYPE: process.env.MYSTIFLY_PRICING_SOURCE_TYPE || 'All',
 
     // Stripe
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,

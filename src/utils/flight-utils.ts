@@ -78,9 +78,9 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
     if ((!rawSegments || rawSegments.length === 0) && nf.departure_time && nf.arrival_time) {
         rawSegments = [{
             airline: nf.airline,
-            origin: nf.origin || '---',
-            destination: nf.destination || '---',
-            flightNumber: nf.flightNumber || '---',
+            origin: nf.origin || '',
+            destination: nf.destination || '',
+            flightNumber: nf.flightNumber || '',
             departureTime: nf.departure_time,
             arrivalTime: nf.arrival_time,
             duration: nf.duration || 0,

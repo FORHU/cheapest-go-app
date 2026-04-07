@@ -1,11 +1,13 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plane, Search } from 'lucide-react';
+import { Plane, Search, ChevronDown } from 'lucide-react';
 import { FlightCard } from './flightCard';
 import { Skeleton } from '@/components/shared/Skeleton/Skeleton';
 import type { FlightOffer } from '@/types/flights';
+
+const PAGE_SIZE = 15;
 
 // ─── Skeleton Card ───────────────────────────────────────────────────
 
@@ -153,10 +155,25 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
     }
 
     // Results
+    return <PaginatedResults offers={offers} onSelect={onSelect} resetKey={offers} />;
+};
+
+// ─── Paginated Results ───────────────────────────────────────────────
+
+function PaginatedResults({ offers, onSelect, resetKey }: { offers: FlightOffer[]; onSelect?: (offer: FlightOffer) => void; resetKey?: unknown }) {
+    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+    // Reset to first page whenever the offer list or filters change
+    React.useEffect(() => { setVisibleCount(PAGE_SIZE); }, [resetKey]);
+
+    const visible = offers.slice(0, visibleCount);
+    const remaining = offers.length - visibleCount;
+    const hasMore = remaining > 0;
+
     return (
         <div className="space-y-2 lg:space-y-3">
             <AnimatePresence>
-                {offers.map((offer, idx) => (
+                {visible.map((offer, idx) => (
                     <FlightCard
                         key={`${offer.offerId}-${idx}`}
                         offer={offer}
@@ -165,8 +182,27 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
                     />
                 ))}
             </AnimatePresence>
+
+            {hasMore && (
+                <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="pt-2 flex flex-col items-center gap-2"
+                >
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                        Showing {visible.length} of {offers.length} flights
+                    </p>
+                    <button
+                        onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                        className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md text-sm font-medium text-slate-700 dark:text-slate-200 transition-all"
+                    >
+                        <ChevronDown className="w-4 h-4 text-blue-500" />
+                        Show {Math.min(remaining, PAGE_SIZE)} more flights
+                    </button>
+                </motion.div>
+            )}
         </div>
     );
-};
+}
 
 export default FlightResults;
