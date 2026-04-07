@@ -330,22 +330,22 @@ export async function revalidateFareV2(
     const target = getMystiflyTarget();
     const body = { FareSourceCode: fareSourceCode, Target: target };
 
-    // 1. Try V2 OnePoint/Revalidate
+    // 1. Try V2 Revalidate/Flight
+    try {
+        console.log(`[mystiflyClient] V2 Revalidate (Revalidate/Flight). Target: ${target}`);
+        return await mystiflyRequest('/api/v2/Revalidate/Flight', body, sessionId, conversationId);
+    } catch (err: any) {
+        if (err?.type !== 'PARSE' && !err?.message?.includes('searchIdentifier')) throw err;
+        console.warn('[mystiflyClient] V2 Revalidate/Flight failed or returned empty — trying OnePoint');
+    }
+
+    // 2. Try V2 OnePoint/Revalidate
     try {
         console.log(`[mystiflyClient] V2 Revalidate (OnePoint). Target: ${target}`);
         return await mystiflyRequest('/api/v2/OnePoint/Revalidate', body, sessionId, conversationId);
     } catch (err: any) {
         if (err?.type !== 'PARSE') throw err;
-        console.warn('[mystiflyClient] V2 OnePoint/Revalidate returned empty');
-    }
-
-    // 2. Try V2 Revalidate/Flight
-    try {
-        console.log(`[mystiflyClient] V2 Revalidate (Revalidate/Flight). Target: ${target}`);
-        return await mystiflyRequest('/api/v2/Revalidate/Flight', body, sessionId, conversationId);
-    } catch (err: any) {
-        if (err?.type !== 'PARSE') throw err;
-        console.warn('[mystiflyClient] V2 Revalidate/Flight also returned empty — falling back to V1');
+        console.warn('[mystiflyClient] V2 OnePoint/Revalidate also returned empty — falling back to V1');
     }
 
     // 3. Final fallback: V1 Revalidate (FareSourceCodes work across versions)
@@ -391,24 +391,24 @@ export async function bookFlightV2(
 ) {
     const target = getMystiflyTarget();
 
-    // Try V2 OnePoint/Book first
+    // Try V2 Book/Flight first
+    try {
+        console.log(`[mystiflyClient] V2 Book (Book/Flight). Target: ${target}`);
+        const v2Body = buildV2BookBody(v1StyleBody, target);
+        return await mystiflyRequest('/api/v2/Book/Flight', v2Body, sessionId, conversationId);
+    } catch (err: any) {
+        if (err?.type !== 'PARSE' && !err?.message?.includes('searchIdentifier')) throw err;
+        console.warn('[mystiflyClient] V2 Book/Flight failed or returned empty — trying OnePoint');
+    }
+
+    // Try V2 OnePoint/Book
     try {
         console.log(`[mystiflyClient] V2 Book (OnePoint). Target: ${target}`);
         const v2Body = buildV2BookBody(v1StyleBody, target);
         return await mystiflyRequest('/api/v2/OnePoint/Book', v2Body, sessionId, conversationId);
     } catch (err: any) {
         if (err?.type !== 'PARSE') throw err;
-        console.warn('[mystiflyClient] V2 OnePoint/Book returned empty — trying /api/v2/Book/Flight');
-    }
-
-    // Try V2 Book/Flight
-    try {
-        console.log(`[mystiflyClient] V2 Book (Book/Flight). Target: ${target}`);
-        const v2Body = buildV2BookBody(v1StyleBody, target);
-        return await mystiflyRequest('/api/v2/Book/Flight', v2Body, sessionId, conversationId);
-    } catch (err: any) {
-        if (err?.type !== 'PARSE') throw err;
-        console.warn('[mystiflyClient] V2 Book/Flight also returned empty — falling back to V1 /api/v1/Book/Flight');
+        console.warn('[mystiflyClient] V2 OnePoint/Book also returned empty — falling back to V1 /api/v1/Book/Flight');
     }
 
     // Final fallback: V1 Book (FareSourceCodes work across versions)

@@ -390,7 +390,7 @@ function normalizeMystiflyV2(
         const fare = data.FlightFaresList?.find((f: any) => f.FareRef === itin.FareRef);
         if (!fare) return null;
 
-        const fareSourceCode: string = itin.FareSourceCode ?? '';
+        const fareSourceCode: string = fare.FareSourceCode ?? itin.FareSourceCode ?? '';
 
         // ── Price ──
         const currency: string = fare.Currency ?? 'USD';

@@ -66,6 +66,7 @@ export interface PrebookResponse {
     taxes?: number;
     total: number;
   };
+  currency?: string;
   status?: string;
   /** Cancellation policies from prebook response */
   cancellationPolicies?: CancellationPolicy;

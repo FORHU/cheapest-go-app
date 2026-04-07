@@ -328,11 +328,12 @@ Deno.serve(async (req: Request) => {
 
                 // Build a user-friendly error — strip raw JSON dumps
                 const isDuffel500 = duffelErr.status >= 500;
-                const isExpired = /expired|no longer available|not found|gone/i.test(duffelErr.message ?? '');
-                const friendlyError = isDuffel500
-                    ? 'The airline system is temporarily unavailable. Your payment has been automatically refunded.'
-                    : isExpired
+                const isExpired = /expired|no longer available|not found|gone|422/i.test(duffelErr.message ?? '') || duffelErr.status === 422;
+                // Check expired first — a 422 "offer expired" should not show the generic 500 message
+                const friendlyError = isExpired
                     ? 'This flight offer has expired. Your payment has been automatically refunded. Please search again for current availability.'
+                    : isDuffel500
+                    ? 'The airline system is temporarily unavailable. Your payment has been automatically refunded.'
                     : `${duffelErr.message}. Your payment has been automatically refunded.`;
                 console.error('[create-booking] Duffel error details:', duffelErr.message);
 
@@ -822,7 +823,20 @@ async function bookWithDuffel(
     });
 
     try {
-        console.log('[create-booking] Creating Duffel Order for offer:', offerId);
+        console.log('[create-booking] Creating Duffel Order for offer:', offerId, {
+            total_amount: rawOffer.total_amount,
+            total_currency: rawOffer.total_currency,
+            expires_at: rawOffer.expires_at,
+            passengerCount: orderPassengers.length,
+        });
+
+        // Check if offer has expired before even trying
+        if (rawOffer.expires_at && new Date(rawOffer.expires_at) < new Date()) {
+            throw Object.assign(
+                new Error(`Duffel offer expired at ${rawOffer.expires_at}. Please search again.`),
+                { status: 422 }
+            );
+        }
 
         const duffelPayload = {
             type: 'instant',
@@ -842,9 +856,10 @@ async function bookWithDuffel(
         try {
             orderResponse = await createDuffelOrder(duffelPayload);
         } catch (firstErr: any) {
+            console.error('[create-booking] Duffel order error:', firstErr.status, firstErr.message);
             if (firstErr.status === 500) {
-                console.warn('[create-booking] Duffel 500, retrying once after 1s...');
-                await new Promise(r => setTimeout(r, 1000));
+                console.warn('[create-booking] Duffel 500, retrying once after 2s...');
+                await new Promise(r => setTimeout(r, 2000));
                 orderResponse = await createDuffelOrder(duffelPayload);
             } else {
                 throw firstErr;

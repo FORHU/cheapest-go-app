@@ -1,5 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
+
+export const revalidate = 1800; // regenerate every 30 minutes
 import { Sparkles, ArrowLeft } from 'lucide-react';
 import { getFlightDeals } from '@/lib/server/landing/get-landing-data';
 import { DealCard } from '@/components/landing/sections/DealsSection';

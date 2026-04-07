@@ -217,8 +217,15 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         params.set('currency', state.userCurrency || 'KRW');
 
         // Dates
-        params.set('checkIn', state.dates.checkIn!.toISOString());
-        params.set('checkOut', state.dates.checkOut!.toISOString());
+        // Dates - Use YYYY-MM-DD local string to avoid UTC shift
+        params.set('checkIn', (() => {
+            const d = state.dates.checkIn!;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        })());
+        params.set('checkOut', (() => {
+            const d = state.dates.checkOut!;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        })());
 
         // Travelers
         params.set('adults', state.travelers.adults.toString());

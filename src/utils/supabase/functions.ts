@@ -29,7 +29,17 @@ export async function invokeEdgeFunction<T = any>(
         } catch (e) {
             errorText = 'Could not read error response';
         }
-        throw new Error(`Error invoking ${functionName}: ${response.statusText || 'Unknown error'} (Status: ${response.status}). details: ${errorText}`);
+        // Strip HTML (e.g. Cloudflare 502 pages) — only keep plain-text details
+        const isHtml = errorText.trimStart().startsWith('<');
+        const details = isHtml ? '' : errorText.slice(0, 300);
+        // Map status codes to user-friendly messages
+        const friendly =
+            response.status === 502 || response.status === 503 || response.status === 504
+                ? 'The service is temporarily unavailable. Please try again in a moment.'
+                : response.status === 429
+                ? 'Too many requests. Please wait a moment and try again.'
+                : details || response.statusText || 'Unexpected error';
+        throw new Error(`Error invoking ${functionName}: ${friendly}${details && !isHtml ? ` — ${details}` : ''}`);
     }
 
     const data = await response.json();

@@ -130,6 +130,9 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
             // Thailand
             'bangkok': 'TH', 'phuket': 'TH', 'pattaya': 'TH', 'chiang mai': 'TH',
             'koh samui': 'TH', 'krabi': 'TH',
+            // China / Hong Kong / Taiwan
+            'hong kong': 'HK', 'beijing': 'CN', 'shanghai': 'CN', 'guangzhou': 'CN',
+            'shenzhen': 'CN', 'taipei': 'TW', 'taichung': 'TW',
             // Singapore / Malaysia
             'singapore': 'SG', 'kuala lumpur': 'MY', 'penang': 'MY', 'langkawi': 'MY',
             'kota kinabalu': 'MY', 'johor bahru': 'MY',

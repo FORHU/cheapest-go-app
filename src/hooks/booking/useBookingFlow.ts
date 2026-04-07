@@ -9,6 +9,7 @@ import {
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import type { BookingParams, PrebookResponse, CancellationPolicy } from '@/services';
 import { apiFetch } from '@/lib/api/client';
+import { toast } from 'sonner';
 
 /**
  * Price data from prebook response
@@ -17,6 +18,7 @@ export interface PriceData {
   price: number;
   tax: number;
   total: number;
+  currency: string;
   /** Cancellation policies from prebook */
   cancellationPolicies?: CancellationPolicy;
 }
@@ -54,13 +56,6 @@ export interface UseBookingFlowReturn {
 
 /**
  * High-level hook that orchestrates the complete booking flow.
- * Now supports LiteAPI Payment SDK (usePaymentSdk: true) and voucher codes.
- *
- * Flow:
- * 1. startPrebook(offerId, currency) → gets prebookId, secretKey, transactionId
- * 2. User applies voucher → reprebookWithVoucher(code) → gets new credentials
- * 3. Payment SDK renders using secretKey
- * 4. completeBooking() uses TRANSACTION_ID payment method
  */
 export function useBookingFlow(): UseBookingFlowReturn {
   const prebookId = usePrebookId();
@@ -73,13 +68,20 @@ export function useBookingFlow(): UseBookingFlowReturn {
 
   // Prebook mutation
   const prebookMutation = usePrebook({
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       // Update price data if available
       if (data.price) {
+        console.log('[useBookingFlow] Prebook Success:', {
+          requestedCurrency: variables.currency,
+          receivedCurrency: data.currency,
+          price: data.price.total,
+          taxes: data.price.taxes
+        });
         setPriceData({
           price: data.price.subtotal || data.price.total,
           tax: data.price.taxes || 0,
           total: data.price.total,
+          currency: data.currency || variables.currency,
           cancellationPolicies: data.cancellationPolicies,
         });
       }
@@ -92,21 +94,26 @@ export function useBookingFlow(): UseBookingFlowReturn {
         setTransactionId(data.transactionId);
       }
     },
+    onError: (err: any) => {
+      console.error('[useBookingFlow] Prebook Error:', err);
+      toast.error(err?.message || "Failed to update price for the selected currency.");
+    }
   });
 
   // Booking mutation
   const bookingMutation = useBooking();
 
   /**
-   * Start the prebook process (with optional voucher code)
+   * Start the prebook process
    */
   const startPrebook = useCallback(
     async (offerId: string, currency: string, voucherCode?: string): Promise<PrebookResponse> => {
+      console.log('[useBookingFlow] Starting Prebook:', { offerId, currency, voucherCode });
+      setPriceData(null); // Clear stale price data
       const params: { offerId: string; currency: string; voucherCode?: string } = { offerId, currency };
       if (voucherCode) params.voucherCode = voucherCode;
       return prebookMutation.mutateAsync(params);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [prebookMutation.mutateAsync]
   );
 
@@ -122,36 +129,39 @@ export function useBookingFlow(): UseBookingFlowReturn {
       if (!result.success) {
         throw new Error(result.error || 'Refresh prebook failed');
       }
-      if (!result.data) {
-        throw new Error('Refresh prebook failed');
+
+      const data = result.data;
+      if (!data) {
+          throw new Error('Refresh prebook failed: No data returned');
       }
 
-      // Clear any stale prebook mutation error from previous attempts
       prebookMutation.reset();
 
-      if (result.data.prebookId) {
-        setPrebookId(result.data.prebookId);
+      if (data.prebookId) setPrebookId(data.prebookId);
+      if (data.secretKey) setSecretKey(data.secretKey);
+      if (data.transactionId) setTransactionId(data.transactionId);
+      
+      if (data.price) {
+        setPriceData({
+          price: data.price.subtotal || data.price.total,
+          tax: data.price.taxes || 0,
+          total: data.price.total,
+          currency: data.currency || currency,
+          cancellationPolicies: data.cancellationPolicies,
+        });
       }
-      if (result.data.secretKey) {
-        setSecretKey(result.data.secretKey);
-      }
-      if (result.data.transactionId) {
-        setTransactionId(result.data.transactionId);
-      }
-      return result.data as PrebookResponse;
+      
+      return data;
     },
     [setPrebookId, prebookMutation]
   );
 
   /**
-   * Re-prebook with a voucher code to get new Payment SDK credentials
+   * Re-prebook with a voucher code
    */
   const reprebookWithVoucher = useCallback(
     async (voucherCode: string): Promise<PrebookResponse | null> => {
       if (!selectedRoom?.offerId) return null;
-
-      // Get current currency from checkout store
-      // Note: We access store directly to avoid dependency cycles or passing it down
       const currentCurrency = useCheckoutStore.getState().selectedCurrency || 'PHP';
 
       const result = await apiFetch<PrebookResponse>('/api/booking/prebook', {
@@ -163,38 +173,38 @@ export function useBookingFlow(): UseBookingFlowReturn {
       if (!result.success) {
         throw new Error(result.error || 'Failed to apply voucher to booking');
       }
-      if (!result.data) {
-        throw new Error('Failed to apply voucher to booking');
+
+      const data = result.data;
+      if (!data) {
+          throw new Error('Failed to apply voucher: No data returned');
       }
 
-      // Clear any stale prebook mutation error from previous attempts
       prebookMutation.reset();
+      if (data.prebookId) setPrebookId(data.prebookId);
+      if (data.secretKey) setSecretKey(data.secretKey);
+      if (data.transactionId) setTransactionId(data.transactionId);
 
-      if (result.data.prebookId) setPrebookId(result.data.prebookId);
-      if (result.data.secretKey) setSecretKey(result.data.secretKey);
-      if (result.data.transactionId) setTransactionId(result.data.transactionId);
-
-      if (result.data.price) {
+      if (data.price) {
         setPriceData({
-          price: result.data.price.subtotal || result.data.price.total,
-          tax: result.data.price.taxes || 0,
-          total: result.data.price.total,
-          cancellationPolicies: result.data.cancellationPolicies,
+          price: data.price.subtotal || data.price.total,
+          tax: data.price.taxes || 0,
+          total: data.price.total,
+          currency: data.currency || currentCurrency,
+          cancellationPolicies: data.cancellationPolicies,
         });
       }
 
-      return result.data as PrebookResponse;
+      return data;
     },
     [selectedRoom?.offerId, setPrebookId, prebookMutation]
   );
 
   /**
-   * Re-prebook without voucher (when user removes applied voucher)
+   * Re-prebook without voucher
    */
   const reprebookWithoutVoucher = useCallback(
     async (): Promise<PrebookResponse | null> => {
       if (!selectedRoom?.offerId) return null;
-
       const currentCurrency = useCheckoutStore.getState().selectedCurrency || 'PHP';
 
       const result = await apiFetch<PrebookResponse>('/api/booking/prebook', {
@@ -205,64 +215,54 @@ export function useBookingFlow(): UseBookingFlowReturn {
       if (!result.success) {
         throw new Error(result.error || 'Failed to refresh booking session');
       }
-      if (!result.data) {
-        throw new Error('Failed to refresh booking session');
+
+      const data = result.data;
+      if (!data) {
+          throw new Error('Failed to refresh booking session: No data returned');
       }
 
-      // Clear any stale prebook mutation error from previous attempts
       prebookMutation.reset();
+      if (data.prebookId) setPrebookId(data.prebookId);
+      if (data.secretKey) setSecretKey(data.secretKey);
+      if (data.transactionId) setTransactionId(data.transactionId);
 
-      if (result.data.prebookId) setPrebookId(result.data.prebookId);
-      if (result.data.secretKey) setSecretKey(result.data.secretKey);
-      if (result.data.transactionId) setTransactionId(result.data.transactionId);
-
-      if (result.data.price) {
+      if (data.price) {
         setPriceData({
-          price: result.data.price.subtotal || result.data.price.total,
-          tax: result.data.price.taxes || 0,
-          total: result.data.price.total,
-          cancellationPolicies: result.data.cancellationPolicies,
+          price: data.price.subtotal || data.price.total,
+          tax: data.price.taxes || 0,
+          total: data.price.total,
+          currency: data.currency || currentCurrency,
+          cancellationPolicies: data.cancellationPolicies,
         });
       }
 
-      return result.data as PrebookResponse;
+      return data;
     },
     [selectedRoom?.offerId, setPrebookId, prebookMutation]
   );
 
   /**
-   * Complete the booking with provided details.
-   * Uses whatever payment method the caller provides.
+   * Complete the booking
    */
   const completeBooking = useCallback(
     async (params: Omit<BookingParams, 'prebookId'>): Promise<void> => {
       let currentPrebookId = prebookId;
-
-      if (!currentPrebookId) {
-        throw new Error('No prebook ID available. Please select a room first.');
-      }
+      if (!currentPrebookId) throw new Error('No prebook ID available.');
 
       const bookingParams = { ...params, prebookId: currentPrebookId };
 
       try {
         await bookingMutation.mutateAsync(bookingParams);
       } catch (error) {
-        // Check if error is due to expired prebook session
         const errorMessage = error instanceof Error ? error.message : '';
         const errorCode = (error as { code?: string })?.code || errorMessage.match(/\d{4}/)?.[0];
         const isExpiredSession = errorCode === '2012' || errorCode === '2010';
 
         if (isExpiredSession && selectedRoom?.offerId) {
           const currentCurrency = useCheckoutStore.getState().selectedCurrency || 'PHP';
-          const refreshResult = await refreshPrebook(
-            selectedRoom.offerId,
-            currentCurrency
-          );
-
+          const refreshResult = await refreshPrebook(selectedRoom.offerId, currentCurrency);
           if (refreshResult?.prebookId) {
-            currentPrebookId = refreshResult.prebookId;
-            const retryParams = { ...params, prebookId: currentPrebookId };
-            await bookingMutation.mutateAsync(retryParams);
+            await bookingMutation.mutateAsync({ ...params, prebookId: refreshResult.prebookId });
           } else {
             throw new Error('Could not refresh booking session');
           }
@@ -271,12 +271,9 @@ export function useBookingFlow(): UseBookingFlowReturn {
         }
       }
     },
-    [prebookId, transactionId, selectedRoom?.offerId, bookingMutation, refreshPrebook]
+    [prebookId, selectedRoom?.offerId, bookingMutation, refreshPrebook]
   );
 
-  /**
-   * Reset booking state
-   */
   const reset = useCallback(() => {
     setPrebookId(null);
     setBookingId(null);
@@ -288,7 +285,6 @@ export function useBookingFlow(): UseBookingFlowReturn {
   }, [setPrebookId, setBookingId, prebookMutation, bookingMutation]);
 
   return {
-    // State
     prebookId,
     priceData,
     isPrebooking: prebookMutation.isPending,
@@ -298,15 +294,11 @@ export function useBookingFlow(): UseBookingFlowReturn {
     bookingError: bookingMutation.error,
     secretKey,
     transactionId,
-
-    // Actions
     startPrebook,
     completeBooking,
     refreshPrebook,
     reprebookWithVoucher,
     reprebookWithoutVoucher,
-
-    // Helpers
     reset,
   };
 }

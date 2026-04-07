@@ -72,14 +72,7 @@ const MapMarker = React.memo(function MapMarker({
                     isSelected ? 'border-t-blue-700' : 'border-t-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)]'
                 )} />
 
-                {/* Hover/Selected Name Label (Optional, showing only when active/hovered) */}
-                {isActive && (
-                    <div className="absolute -top-8 bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-100 dark:border-slate-700 px-2 py-1 z-30 whitespace-nowrap max-w-[160px] animate-in fade-in slide-in-from-bottom-1 duration-200">
-                        <span className="text-[10px] font-semibold text-slate-800 dark:text-slate-100 tracking-tight line-clamp-1">
-                            {property.name}
-                        </span>
-                    </div>
-                )}
+                {/* Removed property name label per user request */}
             </div>
         </Marker>
     );

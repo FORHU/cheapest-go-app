@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw, Users } from 'lucide-react';
+import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight } from 'lucide-react';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
@@ -10,6 +10,7 @@ import { formatTime, formatDuration, formatPrice } from '@/utils/flight-utils';
 import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 import { useUserCurrency } from '@/stores/searchStore';
 import type { FarePolicy } from '@/types/flights';
+import { getAirportInfo } from '@/utils/airport-info';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
@@ -298,6 +299,94 @@ export default function FlightBookContent() {
                             </div>
                         )}
                     </motion.div>
+
+                    {/* ── Bundle Hotel Upsell ── */}
+                    {(() => {
+                        // For round-trips, last.arrival is back at the origin (home airport).
+                        // The hotel should be at the destination — the end of the outbound leg (segmentIndex 0).
+                        const isRoundTrip = (offer as any).tripType === 'round-trip';
+                        const outboundSegments = isRoundTrip
+                            ? offer.segments.filter((s: any) => (s.segmentIndex ?? 0) === 0)
+                            : offer.segments;
+                        const destinationSegment = outboundSegments[outboundSegments.length - 1] ?? last;
+                        const airportCode = destinationSegment.arrival.airport;
+                        const info = getAirportInfo(airportCode);
+                        const cityName = info.city;
+                        const countryCode = info.cc;
+                        const depDate = primary.departure.time?.slice(0, 10) ?? '';
+                        const checkOut = (() => {
+                            if (!depDate) return '';
+                            const d = new Date(depDate);
+                            d.setDate(d.getDate() + 3);
+                            return d.toISOString().slice(0, 10);
+                        })();
+                        // Pass bundleFlightId so the hotel checkout applies the 12% bundle rate
+                        const bundleParam = bookingResult.bookingId ? `&bundleFlightId=${bookingResult.bookingId}` : '';
+                        const hotelUrl = `/search?destination=${encodeURIComponent(cityName)}&checkIn=${depDate}&checkOut=${checkOut}&adults=1${countryCode ? `&countryCode=${countryCode}` : ''}${bundleParam}`;
+                        const dest = cityName;
+                        return depDate ? (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.55, type: 'spring', bounce: 0.3 }}
+                                className="mb-4"
+                            >
+                                <div className="relative rounded-2xl overflow-hidden border-2 border-violet-400 dark:border-violet-500 shadow-lg shadow-violet-500/20">
+                                    {/* Gradient background */}
+                                    <div className="absolute inset-0 bg-linear-to-br from-violet-600 via-indigo-600 to-blue-600 opacity-95" />
+
+                                    {/* Decorative circles */}
+                                    <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full" />
+                                    <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-white/10 rounded-full" />
+
+                                    {/* Bundle badge */}
+                                    <div className="absolute top-3 right-3 z-20">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-bold shadow-md">
+                                            ✦ BUNDLE DEAL
+                                        </span>
+                                    </div>
+
+                                    <div className="relative z-10 p-4">
+                                        <div className="flex items-start gap-3 mb-3">
+                                            <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                                                <BedDouble className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div className="flex-1 pr-16">
+                                                <p className="text-sm font-bold text-white leading-tight">
+                                                    Add a hotel to complete your trip
+                                                </p>
+                                                <p className="text-xs text-violet-100 mt-0.5">
+                                                    Book your stay in {dest} and save with our flight + hotel bundle rate
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Savings comparison */}
+                                        <div className="flex items-center gap-2 mb-3 px-1">
+                                            <div className="flex-1 bg-white/10 rounded-lg p-2 text-center">
+                                                <p className="text-[9px] text-violet-200 font-medium">Book separately</p>
+                                                <p className="text-sm font-bold text-white/60 line-through">Standard rate</p>
+                                            </div>
+                                            <div className="text-white/50 text-lg">→</div>
+                                            <div className="flex-1 bg-amber-400/20 border border-amber-400/40 rounded-lg p-2 text-center">
+                                                <p className="text-[9px] text-amber-200 font-medium">Add to this trip</p>
+                                                <p className="text-sm font-bold text-amber-300">Bundle savings</p>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => router.push(hotelUrl)}
+                                            className="w-full py-2.5 rounded-xl bg-white text-violet-700 font-bold text-sm flex items-center justify-center gap-2 hover:bg-violet-50 active:scale-[0.98] transition-all shadow-md"
+                                        >
+                                            <BedDouble className="w-4 h-4" />
+                                            Find Hotels in {dest}
+                                            <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ) : null;
+                    })()}
 
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
