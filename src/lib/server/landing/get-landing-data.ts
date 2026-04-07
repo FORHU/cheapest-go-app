@@ -17,13 +17,28 @@ function getPublicClient() {
 }
 
 // ─── Shared helper ────────────────────────────────────────────────────────────
+// Cap at 8s — fast enough to stay within Next.js build limits and not stall
+// the landing page. On network errors (fetch failed) we do one retry.
+const QUERY_TIMEOUT_MS = 8000;
+
 async function supabaseQuery(table: string, limit: number) {
     try {
         const supabase = getPublicClient();
-        const result = await supabase.from(table).select("*").limit(limit);
+        const makeTimeout = (label: string) =>
+            new Promise<{ data: null; error: Error }>(resolve =>
+                setTimeout(() => resolve({ data: null, error: new Error(`Query timeout: ${label}`) }), QUERY_TIMEOUT_MS)
+            );
+        const result = await Promise.race([
+            supabase.from(table).select("*").limit(limit),
+            makeTimeout(table),
+        ]);
+        // Only retry on network-level fetch failures, NOT on our own timeout
         if (result.error?.message?.includes("fetch failed")) {
-            await new Promise(r => setTimeout(r, 100));
-            return supabase.from(table).select("*").limit(limit);
+            await new Promise(r => setTimeout(r, 200));
+            return Promise.race([
+                supabase.from(table).select("*").limit(limit),
+                makeTimeout(`${table}-retry`),
+            ]);
         }
         return result;
     } catch (err) {

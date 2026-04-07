@@ -302,7 +302,14 @@ export default function FlightBookContent() {
 
                     {/* ── Bundle Hotel Upsell ── */}
                     {(() => {
-                        const airportCode = last.arrival.airport;
+                        // For round-trips, last.arrival is back at the origin (home airport).
+                        // The hotel should be at the destination — the end of the outbound leg (segmentIndex 0).
+                        const isRoundTrip = (offer as any).tripType === 'round-trip';
+                        const outboundSegments = isRoundTrip
+                            ? offer.segments.filter((s: any) => (s.segmentIndex ?? 0) === 0)
+                            : offer.segments;
+                        const destinationSegment = outboundSegments[outboundSegments.length - 1] ?? last;
+                        const airportCode = destinationSegment.arrival.airport;
                         const info = getAirportInfo(airportCode);
                         const cityName = info.city;
                         const countryCode = info.cc;

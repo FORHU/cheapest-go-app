@@ -1,6 +1,8 @@
 import { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cheapestgo.com';
 
 async function getDestinations(): Promise<{ city: string; country: string }[]> {
