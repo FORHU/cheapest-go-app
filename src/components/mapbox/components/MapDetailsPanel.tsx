@@ -124,14 +124,19 @@ export function MapDetailsPanel({
             {/* Map details toggles */}
             <div className="px-4 pb-3">
                 <div className="grid grid-cols-3 gap-2">
-                    {details.map((detail) => (
+                    {details.map((detail) => {
+                        const isDisabled = detail.id === 'terrain' && mapType !== 'default-3d';
+                        return (
                         <button
                             key={detail.id}
                             onClick={() => onDetailToggle(detail.id)}
+                            disabled={isDisabled}
                             className={`
                                 flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all cursor-pointer
                                 ${
-                                    detail.enabled
+                                    isDisabled
+                                        ? 'opacity-50 cursor-not-allowed border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50'
+                                        : detail.enabled
                                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                                         : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800'
                                 }
@@ -139,20 +144,21 @@ export function MapDetailsPanel({
                         >
                             <div
                                 className={`${
-                                    detail.enabled ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500'
+                                    detail.enabled && !isDisabled ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500'
                                 }`}
                             >
                                 {DETAIL_ICONS[detail.id]}
                             </div>
                             <span
                                 className={`text-[11px] font-medium ${
-                                    detail.enabled ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'
+                                    detail.enabled && !isDisabled ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'
                                 }`}
                             >
                                 {detail.label}
                             </span>
                         </button>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
