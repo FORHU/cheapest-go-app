@@ -2,7 +2,7 @@
 
 import React, { useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, Navigation, Car, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
+import { MapPin, Navigation, Car, Bike, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { Map } from '@/components/ui/map';
 import { Marker, NavigationControl, Source, Layer, GeolocateControl } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
@@ -107,6 +107,7 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
     const [nearbyGems, setNearbyGems] = useState<any[]>([]);
     const [isFetchingGems, setIsFetchingGems] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('all');
+    const [transportProfile, setTransportProfile] = useState<'driving-traffic' | 'driving' | 'walking' | 'cycling'>('driving-traffic');
 
     // Initial hydration fix
     React.useEffect(() => {
@@ -199,12 +200,13 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
     const {
         routeGeometry: poiRouteGeometry,
         travelTime: poiTravelTime,
-        walkingTime: poiWalkingTime
+        walkingTime: poiWalkingTime,
+        cyclingTime: poiCyclingTime
     } = useMapboxDirections({
         origin: hasCoordinates ? { lat: coordinates.lat, lng: coordinates.lng } : null,
         destination: selectedNativePoi ? { lat: selectedNativePoi.coordinates.lat, lng: selectedNativePoi.coordinates.lng } : null,
         enabled: !!selectedNativePoi && hasCoordinates && !showDirections,
-        drivingProfile: 'driving'
+        profile: transportProfile
     });
 
     // ROUTE 2: User Origin to Hotel (with traffic)
@@ -212,11 +214,13 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
         routeGeometry: originRouteGeometry,
         travelTime: originTravelTime,
         walkingTime: originWalkingTime,
+        cyclingTime: originCyclingTime,
         isFetchingRoute: isFetchingOriginRoute
     } = useMapboxDirections({
         origin: origin ? { lat: origin.lat, lng: origin.lng } : null,
         destination: hasCoordinates ? { lat: coordinates.lat, lng: coordinates.lng } : null,
-        enabled: showDirections && !!origin && hasCoordinates
+        enabled: showDirections && !!origin && hasCoordinates,
+        profile: transportProfile
     });
 
     // Category Search Logic
@@ -628,7 +632,7 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                     )}
 
                     {/* Directions panel Overlay */}
-                    <div className="absolute top-1.5 left-1.5 right-11 z-20 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[340px]">
+                    <div className="absolute top-1.5 left-1.5 right-11 z-20 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[340px] sm:right-auto md:top-3">
                         {!showDirections ? (
                             <button
                                 onClick={() => {
@@ -636,10 +640,10 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                     setActivePoiId(null);
                                     setSelectedNativePoi(null);
                                 }}
-                                className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow px-2.5 py-1 flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                                className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg px-3 py-2 flex items-center gap-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-[0.98] cursor-pointer"
                             >
-                                <Navigation size={10} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                                Get directions...
+                                <Navigation size={12} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                                <span className="truncate">Get directions...</span>
                             </button>
                         ) : (
                             <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow overflow-hidden">
@@ -676,6 +680,37 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                     </button>
                                 </div>
 
+                                {/* Transport Profile Selector */}
+                                <div className="flex border-t border-slate-100 dark:border-slate-800">
+                                    <button 
+                                        onClick={() => setTransportProfile('driving-traffic')}
+                                        className={`flex-1 py-1.5 flex justify-center transition-colors ${transportProfile === 'driving-traffic' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                        <Car size={14} />
+                                    </button>
+                                    <button 
+                                        onClick={() => setTransportProfile('walking')}
+                                        className={`flex-1 py-1.5 flex justify-center transition-colors ${transportProfile === 'walking' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                        <Footprints size={14} />
+                                    </button>
+                                    <button 
+                                        onClick={() => setTransportProfile('cycling')}
+                                        className={`flex-1 py-1.5 flex justify-center transition-colors ${transportProfile === 'cycling' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                        <Bike size={14} />
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            const url = `https://www.google.com/maps/dir/?api=1&origin=${origin ? `${origin.lat},${origin.lng}` : ''}&destination=${coordinates.lat},${coordinates.lng}&travelmode=transit`;
+                                            window.open(url, '_blank');
+                                        }}
+                                        className="flex-1 py-1.5 flex justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        <Bus size={14} />
+                                    </button>
+                                </div>
+
                                 {/* Autocomplete results */}
                                 {showOriginResults && originResults.length > 0 && (
                                     <div className="border-t border-slate-100 dark:border-slate-800">
@@ -702,16 +737,22 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                             </div>
                                         ) : (
                                             <>
-                                                {originTravelTime !== null && (
+                                                {originTravelTime !== null && transportProfile === 'driving-traffic' && (
                                                     <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
                                                         <Car size={9} className="text-blue-600 dark:text-blue-400" />
                                                         <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300">{formatDuration(originTravelTime)} </span>
                                                     </div>
                                                 )}
-                                                {originWalkingTime !== null && (
+                                                {originWalkingTime !== null && transportProfile === 'walking' && (
                                                     <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
                                                         <Footprints size={9} className="text-emerald-600 dark:text-emerald-400" />
                                                         <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300">{formatDuration(originWalkingTime)}</span>
+                                                    </div>
+                                                )}
+                                                {originCyclingTime !== null && transportProfile === 'cycling' && (
+                                                    <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-900/30 px-1.5 py-0.5 rounded">
+                                                        <Bike size={9} className="text-purple-600 dark:text-purple-400" />
+                                                        <span className="text-[9px] font-bold text-purple-700 dark:text-purple-300">{formatDuration(originCyclingTime)}</span>
                                                     </div>
                                                 )}
                                                 {originTravelTime === null && originWalkingTime === null && origin && !isFetchingOriginRoute && (
@@ -765,6 +806,12 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                                     <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiWalkingTime)}</span>
                                                 </div>
                                             )}
+                                            {poiCyclingTime !== null && (
+                                                <div className="flex items-center gap-1">
+                                                    <Bike size={10} className="text-purple-600 dark:text-purple-400" />
+                                                    <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiCyclingTime)}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -806,10 +853,10 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                     {/* Visual "Places to Visit" Image Bar */}
                     <div className={`absolute z-30 transition-all duration-500 ease-in-out group/nearby ${isFullscreen
                             ? 'left-5 top-[120px] bottom-[120px] w-48 flex flex-col gap-2 overflow-y-auto no-scrollbar py-4 px-2 bg-black/10 backdrop-blur rounded-2xl'
-                            : 'bottom-20 left-1/2 -translate-x-1/2 w-[94%] flex flex-col gap-1.5'
+                            : 'bottom-[74px] sm:bottom-20 left-1/2 -translate-x-1/2 w-[96%] sm:w-[94%] flex flex-col gap-2'
                         }`}>
                         {/* Category Filter Pills */}
-                        <div className={`flex gap-1.5 overflow-x-auto no-scrollbar px-1 mb-0.5 ${isFullscreen ? 'flex-col mb-2' : 'flex-row'}`}>
+                        <div className={`flex gap-1.5 overflow-x-auto no-scrollbar px-0.5 ${isFullscreen ? 'flex-col mb-2' : 'flex-row'}`}>
                             {POI_FILTERS.map(filter => {
                                 const isSelected = selectedCategory === filter.id;
                                 const Icon = filter.icon;
@@ -869,7 +916,7 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
                                                 }
                                             }}
                                             className={`group relative flex-shrink-0 transition-all duration-300 transform hover:scale-[1.03] active:scale-95
-                                            ${isFullscreen ? 'w-full aspect-[4/3]' : 'w-32 h-20 sm:w-40 sm:h-24'}
+                                            ${isFullscreen ? 'w-full aspect-[4/3]' : 'w-28 h-18 sm:w-32 sm:h-20 md:w-40 md:h-24'}
                                             ${isActive ? 'ring-2 ring-blue-500 shadow-xl' : 'shadow-md'}
                                             rounded-xl overflow-hidden
                                         `}

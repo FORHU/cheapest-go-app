@@ -40,15 +40,25 @@ export function useMapDetails() {
         showTransit: transitEnabled,
     }), [showLabels, trafficEnabled, transitEnabled]);
 
+    const handleMapTypeChange = useCallback((type: MapTypeId) => {
+        setMapType(type);
+        if (type !== 'default-3d') {
+            setMapDetails((prev) =>
+                prev.map((d) => (d.id === 'terrain' ? { ...d, enabled: false } : d))
+            );
+        }
+    }, []);
+
     const handleDetailToggle = useCallback((id: string) => {
+        if (id === 'terrain' && mapType !== 'default-3d') return;
         setMapDetails((prev) =>
             prev.map((d) => (d.id === id ? { ...d, enabled: !d.enabled } : d))
         );
-    }, []);
+    }, [mapType]);
 
     return {
         mapType,
-        setMapType,
+        setMapType: handleMapTypeChange,
         showDetailsPanel,
         setShowDetailsPanel,
         showLabels,

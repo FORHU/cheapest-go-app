@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Image as ImageIcon, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,6 +19,11 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
 
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const thumbnailContainerRef = useRef<HTMLDivElement>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const gallerySubImages = subImages;
 
@@ -80,6 +86,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                         src={mainImage}
                         alt="Property view"
                         fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
                         fetchPriority="high"
                         className="object-cover hover:scale-105 transition-transform duration-500"
                     />
@@ -106,6 +113,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                         src={img}
                                         alt={`Property view ${i + 1}`}
                                         fill
+                                        sizes="(max-width: 768px) 100vw, 0vw"
                                         fetchPriority={i === 0 ? 'high' : 'auto'}
                                         className="object-cover"
                                     />
@@ -144,6 +152,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                 src={mainImage}
                                 alt="Main property view"
                                 fill
+                                sizes="(max-width: 768px) 100vw, 50vw"
                                 fetchPriority="high"
                                 className="object-cover hover:scale-105 transition-transform duration-500"
                             />
@@ -158,6 +167,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                     src={img}
                                     alt={`View ${i + 1}`}
                                     fill
+                                    sizes="(max-width: 768px) 0vw, 25vw"
                                     className="object-cover hover:scale-105 transition-transform duration-500"
                                 />
                                 {i === gallerySubImages.length - 1 && displayImages.length > 5 && (
@@ -179,6 +189,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
             )}
 
             {/* Lightbox Modal */}
+            {mounted && createPortal(
             <AnimatePresence>
                 {selectedIndex !== null && (
                     <motion.div
@@ -234,6 +245,8 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                     src={displayImages[selectedIndex]}
                                     alt={`Gallery view ${selectedIndex + 1}`}
                                     fill
+                                    sizes="100vw"
+                                    unoptimized={true}
                                     className="object-contain shadow-2xl select-none"
                                     onClick={(e) => e.stopPropagation()}
                                     draggable={false}
@@ -265,6 +278,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                             src={img}
                                             alt={`Thumbnail ${idx + 1}`}
                                             fill
+                                            sizes="80px"
                                             className="object-cover"
                                         />
                                     </button>
@@ -273,7 +287,9 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                         </div>
                     </motion.div>
                 )}
-            </AnimatePresence>
+            </AnimatePresence>,
+            document.body
+            )}
         </>
     );
 };

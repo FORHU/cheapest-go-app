@@ -118,7 +118,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                         type="button"
                         disabled={isPast || isToday}
                         onClick={() => handleDateClick(date)}
-                        className={`${inline ? "w-full aspect-square" : "size-8"} flex items-center justify-center ${inline ? "text-[9px]" : "text-[11px]"} font-medium rounded-full transition-all 
+                        className={`${inline ? "w-full aspect-square" : "size-[30px] mx-auto my-0.5"} flex items-center justify-center ${inline ? "text-[9px]" : "text-[11px]"} font-medium rounded-full transition-all 
                             ${isPast || isToday ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer'}
                             ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg' : ''}
                             ${isInRange ? 'bg-alabaster-accent/10 dark:bg-obsidian-accent/10' : ''}
@@ -169,8 +169,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                     transition={{ duration: 0.2 }}
                     className={inline
                         ? "w-full z-10"
-                        : "absolute top-full left-0 mt-4 w-[500px] min-w-[500px] max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"}
-                    onClick={(e) => e.stopPropagation()}
+                        : "absolute top-full left-0 mt-4 w-[540px] min-w-[540px] max-w-[540px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"}
+                        onClick={(e) => e.stopPropagation()}
                 >
 
                     {/* Tabs */}
