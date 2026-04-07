@@ -146,8 +146,16 @@ export async function POST(req: NextRequest) {
             body: JSON.stringify({ sessionId }),
         });
 
-        const bookingData = await bookingRes.json();
-        console.log('[/confirm] create-booking response:', JSON.stringify(bookingData));
+        const rawText = await bookingRes.text();
+        console.log('[/confirm] create-booking raw response (status', bookingRes.status, '):', rawText);
+
+        let bookingData: any;
+        try {
+            bookingData = JSON.parse(rawText);
+        } catch {
+            console.error('[/confirm] create-booking returned non-JSON:', rawText.slice(0, 500));
+            return NextResponse.json({ success: false, error: `Booking service error (HTTP ${bookingRes.status})` }, { status: 502 });
+        }
 
         if (bookingData.success) {
             // Duffel: auto-ticket if needed
