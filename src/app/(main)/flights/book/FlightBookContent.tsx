@@ -299,7 +299,7 @@ export default function FlightBookContent() {
                         )}
                     </motion.div>
 
-                    {/* ── Hotel Upsell ── */}
+                    {/* ── Bundle Hotel Upsell ── */}
                     {(() => {
                         const AIRPORT_INFO: Record<string, { city: string; cc: string }> = {
                             BKK: { city: 'Bangkok', cc: 'TH' }, DMK: { city: 'Bangkok', cc: 'TH' },
@@ -336,7 +336,9 @@ export default function FlightBookContent() {
                             d.setDate(d.getDate() + 3);
                             return d.toISOString().slice(0, 10);
                         })();
-                        const hotelUrl = `/search?destination=${encodeURIComponent(cityName)}&checkIn=${depDate}&checkOut=${checkOut}&adults=1${countryCode ? `&countryCode=${countryCode}` : ''}`;
+                        // Pass bundleFlightId so the hotel checkout applies the 12% bundle rate
+                        const bundleParam = bookingResult.bookingId ? `&bundleFlightId=${bookingResult.bookingId}` : '';
+                        const hotelUrl = `/search?destination=${encodeURIComponent(cityName)}&checkIn=${depDate}&checkOut=${checkOut}&adults=1${countryCode ? `&countryCode=${countryCode}` : ''}${bundleParam}`;
                         const dest = cityName;
                         return depDate ? (
                             <motion.div
@@ -345,34 +347,55 @@ export default function FlightBookContent() {
                                 transition={{ delay: 0.55, type: 'spring', bounce: 0.3 }}
                                 className="mb-4"
                             >
-                                <div className="relative rounded-2xl overflow-hidden border-2 border-blue-400 dark:border-blue-500 shadow-lg shadow-blue-500/20">
+                                <div className="relative rounded-2xl overflow-hidden border-2 border-violet-400 dark:border-violet-500 shadow-lg shadow-violet-500/20">
                                     {/* Gradient background */}
-                                    <div className="absolute inset-0 bg-linear-to-br from-blue-600 to-indigo-600 opacity-90" />
+                                    <div className="absolute inset-0 bg-linear-to-br from-violet-600 via-indigo-600 to-blue-600 opacity-95" />
 
                                     {/* Decorative circles */}
                                     <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full" />
                                     <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-white/10 rounded-full" />
+
+                                    {/* Bundle badge */}
+                                    <div className="absolute top-3 right-3 z-20">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-bold shadow-md">
+                                            ✦ BUNDLE DEAL
+                                        </span>
+                                    </div>
 
                                     <div className="relative z-10 p-4">
                                         <div className="flex items-start gap-3 mb-3">
                                             <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
                                                 <BedDouble className="w-6 h-6 text-white" />
                                             </div>
-                                            <div>
+                                            <div className="flex-1 pr-16">
                                                 <p className="text-sm font-bold text-white leading-tight">
-                                                    Complete your trip to {dest}
+                                                    Add a hotel to complete your trip
                                                 </p>
-                                                <p className="text-xs text-blue-100 mt-0.5">
-                                                    Don&apos;t forget to book a hotel — find the best deals while they last
+                                                <p className="text-xs text-violet-100 mt-0.5">
+                                                    Book your stay in {dest} and save with our flight + hotel bundle rate
                                                 </p>
                                             </div>
                                         </div>
+
+                                        {/* Savings comparison */}
+                                        <div className="flex items-center gap-2 mb-3 px-1">
+                                            <div className="flex-1 bg-white/10 rounded-lg p-2 text-center">
+                                                <p className="text-[9px] text-violet-200 font-medium">Hotel only</p>
+                                                <p className="text-sm font-bold text-white/60 line-through">15% markup</p>
+                                            </div>
+                                            <div className="text-white/50 text-lg">→</div>
+                                            <div className="flex-1 bg-amber-400/20 border border-amber-400/40 rounded-lg p-2 text-center">
+                                                <p className="text-[9px] text-amber-200 font-medium">With flight bundle</p>
+                                                <p className="text-sm font-bold text-amber-300">12% markup</p>
+                                            </div>
+                                        </div>
+
                                         <button
                                             onClick={() => router.push(hotelUrl)}
-                                            className="w-full py-2.5 rounded-xl bg-white text-blue-700 font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-50 active:scale-[0.98] transition-all shadow-md"
+                                            className="w-full py-2.5 rounded-xl bg-white text-violet-700 font-bold text-sm flex items-center justify-center gap-2 hover:bg-violet-50 active:scale-[0.98] transition-all shadow-md"
                                         >
                                             <BedDouble className="w-4 h-4" />
-                                            Search Hotels in {dest}
+                                            Find Hotels in {dest}
                                             <ArrowRight className="w-4 h-4" />
                                         </button>
                                     </div>

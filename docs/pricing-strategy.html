@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CheapestGo — Markup & Pricing Strategy</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #1a1a2e;
+    background: #fff;
+    padding: 48px 56px;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #0052cc;
+    padding-bottom: 20px;
+    margin-bottom: 36px;
+  }
+  .brand { font-size: 22px; font-weight: 700; color: #0052cc; letter-spacing: -0.5px; }
+  .brand span { color: #ff5f1f; }
+  .doc-meta { text-align: right; color: #666; font-size: 11.5px; line-height: 1.6; }
+  .doc-meta strong { color: #333; display: block; font-size: 13px; }
+
+  /* ── Title ── */
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #0d0d1a;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    color: #555;
+    font-size: 13.5px;
+    margin-bottom: 36px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e8eaf0;
+  }
+
+  /* ── Sections ── */
+  h2 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0052cc;
+    margin: 32px 0 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #d0d9f0;
+  }
+
+  h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 22px 0 10px;
+  }
+
+  p { margin-bottom: 12px; color: #333; }
+
+  /* ── Rate cards ── */
+  .rate-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0 28px;
+  }
+  .rate-card {
+    border-radius: 10px;
+    padding: 20px 22px;
+    border: 1px solid;
+  }
+  .rate-card.flights {
+    background: #f0f7ff;
+    border-color: #b3d4ff;
+  }
+  .rate-card.hotels {
+    background: #fff7f0;
+    border-color: #ffd4b3;
+  }
+  .rate-card .rate-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 4px;
+  }
+  .rate-card.flights .rate-label { color: #0052cc; }
+  .rate-card.hotels .rate-label { color: #cc5200; }
+  .rate-card .rate-value {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .rate-card.flights .rate-value { color: #0052cc; }
+  .rate-card.hotels .rate-value { color: #cc5200; }
+  .rate-card .rate-reason {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.5;
+  }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px;
+    font-size: 12.5px;
+  }
+  thead tr { background: #0052cc; color: #fff; }
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+  }
+  tbody tr:nth-child(even) { background: #f5f7ff; }
+  tbody tr:hover { background: #eef2ff; }
+  tbody td { padding: 9px 14px; color: #333; border-bottom: 1px solid #e8eaf0; }
+  .profit-cell { font-weight: 600; color: #1a7f37; }
+  .highlight-row td { background: #fff3e0 !important; font-weight: 500; }
+
+  /* ── Code blocks ── */
+  .code-block {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 11.5px;
+    line-height: 1.6;
+    margin: 14px 0 20px;
+    overflow-x: auto;
+  }
+  .code-block .comment { color: #6c7086; }
+  .code-block .key { color: #89b4fa; }
+  .code-block .value { color: #a6e3a1; }
+  .code-block .string { color: #f38ba8; }
+
+  /* ── Flow steps ── */
+  .flow-steps {
+    counter-reset: step;
+    margin: 16px 0 24px;
+    padding: 0;
+    list-style: none;
+  }
+  .flow-steps li {
+    counter-increment: step;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    background: #f8f9ff;
+    border-radius: 8px;
+    border-left: 3px solid #0052cc;
+  }
+  .flow-steps li::before {
+    content: counter(step);
+    min-width: 24px;
+    height: 24px;
+    background: #0052cc;
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── Info boxes ── */
+  .info-box {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 12.5px;
+    border-left: 4px solid;
+  }
+  .info-box.blue { background: #eff6ff; border-color: #3b82f6; color: #1e40af; }
+  .info-box.orange { background: #fff7ed; border-color: #f97316; color: #9a3412; }
+  .info-box.green { background: #f0fdf4; border-color: #22c55e; color: #14532d; }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid #e8eaf0;
+    font-size: 11px;
+    color: #888;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── Inline code ── */
+  code {
+    background: #f0f2ff;
+    color: #0052cc;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+  }
+
+  ul { margin: 8px 0 14px 20px; }
+  ul li { margin-bottom: 5px; color: #444; }
+
+  @media print {
+    body { padding: 32px 40px; }
+    .rate-cards { page-break-inside: avoid; }
+    table { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <div class="brand">Cheapest<span>Go</span></div>
+    <div style="font-size:11px;color:#888;margin-top:2px;">Internal Business Document</div>
+  </div>
+  <div class="doc-meta">
+    <strong>Markup &amp; Pricing Strategy</strong>
+    Version 1.0 &nbsp;·&nbsp; April 2026<br />
+    Classification: Internal
+  </div>
+</div>
+
+<!-- Title -->
+<h1>Markup &amp; Pricing Strategy</h1>
+<p class="subtitle">
+  This document explains how CheapestGo earns revenue through markup pricing on flights and hotels,
+  the rationale behind each rate, the technical implementation, and the projected margin after all deductions.
+</p>
+
+<!-- Overview -->
+<h2>Overview</h2>
+<p>
+  CheapestGo charges customers a marked-up price while paying flight and hotel providers
+  the raw supplier fare. The difference — minus Stripe processing fees — is the platform's profit margin.
+  Markup rates are set per product type to balance competitiveness with sustainability.
+</p>
+
+<!-- Rate cards -->
+<div class="rate-cards">
+  <div class="rate-card flights">
+    <div class="rate-label">✈ Flights</div>
+    <div class="rate-value">8%</div>
+    <div class="rate-reason">
+      Transparent market. Google Flights &amp; Kayak show base fares at $0 markup.
+      Must stay low to protect the "cheapest" brand promise.
+    </div>
+  </div>
+  <div class="rate-card hotels">
+    <div class="rate-label">🏨 Hotels</div>
+    <div class="rate-value">15%</div>
+    <div class="rate-reason">
+      Opaque market. Rates vary by platform &amp; availability contract.
+      15% is the OTA industry standard (Booking.com, Agoda, Expedia).
+    </div>
+  </div>
+</div>
+
+<!-- Why flights 8% -->
+<h2>Flights — Why 8%</h2>
+<p>
+  Flight prices are the most transparent product in travel. Aggregators like Google Flights, Kayak,
+  and Skyscanner display the exact airline fare with zero markup and redirect users directly to the
+  airline or GDS. A user can compare in under 10 seconds.
+</p>
+<p>
+  Charging a high percentage markup on flights would directly contradict the "CheapestGo" brand
+  name and drive price-sensitive customers away. 8% sits at the bottom of the traditional OTA range,
+  keeping the brand promise intact while still generating meaningful revenue at volume.
+</p>
+
+<h3>Competitive Landscape — Flights</h3>
+<table>
+  <thead>
+    <tr><th>Platform</th><th>Markup Model</th><th>Typical Rate</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Google Flights</td><td>None (aggregator)</td><td>$0</td><td>Redirects to airline / OTA</td></tr>
+    <tr><td>Kayak / Skyscanner</td><td>None (aggregator)</td><td>$0</td><td>Redirects to supplier</td></tr>
+    <tr><td>Expedia / Booking.com</td><td>Flat fee</td><td>$15–25</td><td>Not percentage-based</td></tr>
+    <tr><td>Priceline / Orbitz</td><td>Percentage</td><td>8–12%</td><td>Traditional OTA range</td></tr>
+    <tr class="highlight-row"><td><strong>CheapestGo</strong></td><td>Percentage</td><td><strong>8%</strong></td><td>Bottom of OTA range; brand-aligned</td></tr>
+  </tbody>
+</table>
+
+<!-- Why hotels 15% -->
+<h2>Hotels — Why 15%</h2>
+<p>
+  Hotel prices are inherently opaque. The same room can be listed at different rates across Booking.com,
+  Agoda, Expedia, and direct — due to inventory contracts, dynamic pricing, loyalty tier discounts,
+  and availability windows. Customers cannot easily do an apples-to-apples comparison, which means
+  a 15% markup is effectively invisible.
+</p>
+<p>
+  15% aligns with what established OTAs charge and is considered the industry standard for hotel
+  distribution. Future hotel providers (TravelgateX/RateHawk, ONDA, Rakuten) use net-rate models,
+  meaning CheapestGo buys at wholesale and sells at the marked-up rate.
+</p>
+
+<h3>Competitive Landscape — Hotels</h3>
+<table>
+  <thead>
+    <tr><th>Platform</th><th>Commission / Markup</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Booking.com</td><td>15–25%</td><td>Charged to hotel; passed through as higher room rate</td></tr>
+    <tr><td>Agoda</td><td>15–20%</td><td>Commission from hotel side</td></tr>
+    <tr><td>Expedia</td><td>15–30%</td><td>Varies by property tier</td></tr>
+    <tr><td>Airbnb</td><td>14–16% guest + 3% host</td><td>Split fee model</td></tr>
+    <tr class="highlight-row"><td><strong>CheapestGo</strong></td><td><strong>15%</strong></td><td>Bottom of competitive range; net-rate model with providers</td></tr>
+  </tbody>
+</table>
+
+<!-- How it works -->
+<h2>How It Works — Technical Flow</h2>
+<ol class="flow-steps">
+  <li>Provider (Duffel / Mystifly / hotel supplier) prices the fare at the raw cost, e.g. <strong>$500</strong>.</li>
+  <li>CheapestGo applies the markup: <code>$500 × 1.08 = $540</code> for an 8% flight markup.</li>
+  <li>Stripe charges the customer <strong>$540</strong>. The PaymentIntent is created with the marked-up amount.</li>
+  <li>After booking confirmation, the provider deducts the original <strong>$500</strong> from the platform's Duffel balance or Mystifly account.</li>
+  <li>CheapestGo retains the <strong>$40 difference</strong>, minus Stripe's processing fee (~$16.96) = <strong>~$23 net profit</strong>.</li>
+  <li>Both the original price and the charged price are stored in the database for finance reporting.</li>
+</ol>
+
+<div class="info-box blue">
+  <strong>Key principle:</strong> The provider is always paid the raw fare — CheapestGo never modifies
+  what is sent to Duffel or Mystifly. The markup only affects the Stripe PaymentIntent amount.
+</div>
+
+<!-- Profit table -->
+<h2>Projected Profit — Per Booking</h2>
+<p>Net profit after Stripe fees (2.9% + $0.30 per transaction). Provider costs are already included in the base price.</p>
+
+<table>
+  <thead>
+    <tr><th>Product</th><th>Base Price</th><th>Markup</th><th>Customer Pays</th><th>Stripe Fee</th><th>Net Profit</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Budget flight</td><td>$300</td><td>8%</td><td>$324</td><td>-$9.70</td><td class="profit-cell">~$14.30</td></tr>
+    <tr><td>Mid-range flight</td><td>$500</td><td>8%</td><td>$540</td><td>-$16.96</td><td class="profit-cell">~$23.04</td></tr>
+    <tr><td>Long-haul flight</td><td>$900</td><td>8%</td><td>$972</td><td>-$28.49</td><td class="profit-cell">~$43.51</td></tr>
+    <tr><td>Short hotel stay (2 nights)</td><td>$200</td><td>15%</td><td>$230</td><td>-$6.97</td><td class="profit-cell">~$23.03</td></tr>
+    <tr><td>Standard hotel (3 nights)</td><td>$300</td><td>15%</td><td>$345</td><td>-$10.31</td><td class="profit-cell">~$34.69</td></tr>
+    <tr><td>Hotel + flight bundle</td><td>$800</td><td>12%</td><td>$896</td><td>-$26.28</td><td class="profit-cell">~$69.72</td></tr>
+  </tbody>
+</table>
+
+<!-- Volume projections -->
+<h2>Volume Projections — Monthly</h2>
+<table>
+  <thead>
+    <tr><th>Monthly Bookings</th><th>Avg Ticket</th><th>Gross Revenue</th><th>Est. Net Profit</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>10 flights</td><td>$500</td><td>$5,400</td><td class="profit-cell">~$230</td></tr>
+    <tr><td>50 flights</td><td>$500</td><td>$27,000</td><td class="profit-cell">~$1,152</td></tr>
+    <tr><td>100 flights</td><td>$500</td><td>$54,000</td><td class="profit-cell">~$2,304</td></tr>
+    <tr><td>100 flights + 50 hotels</td><td>$500 / $300</td><td>$71,250</td><td class="profit-cell">~$4,040</td></tr>
+    <tr><td>500 flights + 200 hotels</td><td>$500 / $350</td><td>$322,000</td><td class="profit-cell">~$18,200</td></tr>
+  </tbody>
+</table>
+
+<!-- Configuration -->
+<h2>Configuration</h2>
+<p>Rates are controlled via environment variables. No code changes needed to adjust them.</p>
+
+<div class="code-block">
+<span class="comment"># .env  (see src/lib/pricing.ts for full documentation)</span><br />
+<br />
+<span class="comment"># Flights: 8% — transparent market, competitive vs Google Flights/Kayak</span><br />
+<span class="key">FLIGHT_MARKUP_PERCENTAGE</span>=<span class="value">0.08</span><br />
+<br />
+<span class="comment"># Hotels: 15% — OTA industry standard, opaque pricing market</span><br />
+<span class="key">HOTEL_MARKUP_PERCENTAGE</span>=<span class="value">0.15</span><br />
+<br />
+<span class="comment"># Bundles (not yet active): 12% blended rate</span><br />
+<span class="key">BUNDLE_MARKUP_PERCENTAGE</span>=<span class="value">0.12</span>
+</div>
+
+<div class="info-box orange">
+  <strong>Safety clamp:</strong> All rates are clamped between 0% and 50% in <code>src/lib/pricing.ts</code>.
+  A misconfigured environment variable cannot charge customers more than 1.5× the base price.
+</div>
+
+<!-- Database -->
+<h2>Database Audit Trail</h2>
+<p>Every booking stores both the original supplier cost and the customer-charged price:</p>
+
+<table>
+  <thead>
+    <tr><th>Table</th><th>Column</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>booking_sessions</code></td><td><code>original_price</code></td><td>Raw provider fare (what we pay Duffel / Mystifly)</td></tr>
+    <tr><td><code>booking_sessions</code></td><td><code>charged_price</code></td><td>Amount charged to the customer via Stripe</td></tr>
+    <tr><td><code>booking_sessions</code></td><td><code>markup_pct</code></td><td>Decimal rate applied, e.g. 0.08</td></tr>
+    <tr><td><code>flight_bookings</code></td><td><code>supplier_cost</code></td><td>Confirmed fare from the provider after booking</td></tr>
+    <tr><td><code>flight_bookings</code></td><td><code>charged_price</code></td><td>Final Stripe capture amount</td></tr>
+    <tr><td><code>Stripe metadata</code></td><td><code>originalPrice</code></td><td>Stored on PaymentIntent for Stripe dashboard audit</td></tr>
+  </tbody>
+</table>
+
+<!-- Future -->
+<h2>Future: Hotel Providers</h2>
+<p>
+  LiteAPI will be replaced with <strong>TravelgateX (RateHawk)</strong>, <strong>ONDA</strong>,
+  and <strong>Rakuten</strong>. These providers use a net-rate model — CheapestGo purchases
+  inventory at wholesale and resells at the marked-up price. The 15% rate already accounts for this model.
+</p>
+<p>
+  When bundles (flight + hotel) are introduced, a blended <strong>12% rate</strong> will be applied
+  to the combined total, giving a slightly higher effective margin than flights alone while remaining
+  competitive against package-deal OTAs like Expedia Packages and Booking.com combos.
+</p>
+
+<div class="info-box green">
+  <strong>Implementation reference:</strong> See <code>src/lib/pricing.ts</code> for the full
+  TypeScript implementation including <code>applyMarkup()</code>, <code>toStripeAmount()</code>,
+  and <code>estimateNetProfit()</code>. See migration
+  <code>20260407000000_add_markup_pricing_columns.sql</code> for DB schema changes.
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <span>CheapestGo — Internal Document — Do not distribute</span>
+  <span>Generated April 2026 &nbsp;·&nbsp; src/lib/pricing.ts v1.0</span>
+</div>
+
+</body>
+</html>

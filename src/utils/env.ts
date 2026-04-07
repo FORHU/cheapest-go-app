@@ -40,6 +40,12 @@ export const env = {
 
     //Onda
     ONDA_SECRET_KEY: process.env.ONDA_SECRET_KEY,
+
+    // Markup pricing (see src/lib/pricing.ts for full documentation)
+    // FLIGHT_MARKUP_PERCENTAGE: 8%  — keep low; flights are price-transparent vs Google Flights
+    // HOTEL_MARKUP_PERCENTAGE:  15% — OTA standard; hotel prices are opaque across platforms
+    FLIGHT_MARKUP_PERCENTAGE: process.env.FLIGHT_MARKUP_PERCENTAGE || '0.08',
+    HOTEL_MARKUP_PERCENTAGE: process.env.HOTEL_MARKUP_PERCENTAGE || '0.15',
 };
 
 /**
