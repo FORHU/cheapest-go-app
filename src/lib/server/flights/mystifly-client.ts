@@ -177,21 +177,40 @@ function getRequestOptions(maxOffers = 50): string {
     return 'TwoHundred';
 }
 
+const AIRLINE_NAMES: Record<string, string> = {
+    // Asia-Pacific
+    KE: 'Korean Air', OZ: 'Asiana Airlines', '7C': 'Jeju Air', TW: "T'way Air",
+    LJ: 'Jin Air', ZE: 'Eastar Jet', BX: 'Air Busan', RS: 'Air Seoul',
+    PR: 'Philippine Airlines', '5J': 'Cebu Pacific', Z2: 'AirAsia Philippines',
+    JL: 'Japan Airlines', NH: 'ANA', MM: 'Peach Aviation',
+    SQ: 'Singapore Airlines', TR: 'Scoot', MH: 'Malaysia Airlines', AK: 'AirAsia',
+    TG: 'Thai Airways', FD: 'Thai AirAsia', VN: 'Vietnam Airlines', VJ: 'VietJet Air',
+    GA: 'Garuda Indonesia', QZ: 'Indonesia AirAsia', SL: 'Thai Lion Air',
+    D7: 'AirAsia X', XJ: 'Thai AirAsia X', CX: 'Cathay Pacific', HX: 'Hong Kong Airlines',
+    CA: 'Air China', MU: 'China Eastern', CZ: 'China Southern',
+    CI: 'China Airlines', BR: 'EVA Air', MI: 'SilkAir', JQ: 'Jetstar', GK: 'Jetstar Japan',
+    YP: 'Air Premia',
+    // Middle East
+    EK: 'Emirates', EY: 'Etihad Airways', QR: 'Qatar Airways',
+    SV: 'Saudia', GF: 'Gulf Air', WY: 'Oman Air',
+    // Americas
+    AA: 'American Airlines', DL: 'Delta Air Lines', UA: 'United Airlines',
+    WN: 'Southwest Airlines', B6: 'JetBlue', AS: 'Alaska Airlines',
+    AC: 'Air Canada', WS: 'WestJet', LA: 'LATAM Airlines',
+    AV: 'Avianca', CM: 'Copa Airlines', AM: 'Aeromexico',
+    // Europe
+    BA: 'British Airways', LH: 'Lufthansa', AF: 'Air France', KL: 'KLM',
+    IB: 'Iberia', LX: 'SWISS', OS: 'Austrian Airlines',
+    SK: 'SAS', AY: 'Finnair', TP: 'TAP Portugal', TK: 'Turkish Airlines',
+    FR: 'Ryanair', U2: 'easyJet', W6: 'Wizz Air',
+    // Africa
+    ET: 'Ethiopian Airlines', SA: 'South African Airways', KQ: 'Kenya Airways',
+    // India
+    AI: 'Air India', '6E': 'IndiGo',
+};
+
 function getAirlineName(code: string): string {
-    const names: Record<string, string> = {
-        KE: 'Korean Air', OZ: 'Asiana Airlines', PR: 'Philippine Airlines',
-        '5J': 'Cebu Pacific', SQ: 'Singapore Airlines', AA: 'American Airlines',
-        DL: 'Delta Air Lines', UA: 'United Airlines', BA: 'British Airways',
-        LH: 'Lufthansa', EK: 'Emirates', QR: 'Qatar Airways', TK: 'Turkish Airlines',
-        AF: 'Air France', CX: 'Cathay Pacific', JL: 'Japan Airlines',
-        NH: 'ANA', TG: 'Thai Airways', VN: 'Vietnam Airlines', GA: 'Garuda Indonesia',
-        FD: 'Thai AirAsia', AK: 'AirAsia', QZ: 'Indonesia AirAsia', D7: 'AirAsia X',
-        XJ: 'Thai AirAsia X', Z2: 'AirAsia Philippines', VJ: 'VietJet Air',
-        BX: 'Air Busan', LJ: 'Jin Air', TW: 'T\'way Air', ZE: 'Eastar Jet',
-        '7C': 'Jeju Air', RS: 'Air Seoul', SL: 'Thai Lion Air', MH: 'Malaysia Airlines',
-        MI: 'SilkAir', TR: 'Scoot', JQ: 'Jetstar', GK: 'Jetstar Japan',
-    };
-    return names[code] || code;
+    return AIRLINE_NAMES[code] || code;
 }
 
 function mapCabinClass(code: string): string {
