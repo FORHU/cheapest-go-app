@@ -54,7 +54,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
                 "Content-Type": "application/json"
             },
             body: JSON.stringify(body),
-            signal: AbortSignal.timeout(14000)
+            signal: AbortSignal.timeout(10000)
         });
 
         if (!response.ok) {

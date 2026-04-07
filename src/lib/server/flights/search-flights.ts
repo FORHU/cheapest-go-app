@@ -3,7 +3,6 @@ import { searchDuffel } from "./providers/duffel";
 import { searchMystifly, searchMystiflyV2 } from "./providers/mystifly";
 import { createClient } from "@/utils/supabase/server";
 import { normalizedToFlightOffer } from "@/utils/flight-utils";
-import { env } from "@/utils/env";
 import { logApiCall } from "@/lib/server/api-logger";
 
 /**
@@ -21,7 +20,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, providerName: str
  * Implements caching logic and provider aggregation.
  */
 export async function searchFlights(params: FlightSearchParams): Promise<FlightOffer[]> {
-    const TIMEOUT_MS = 15000; // 15 seconds
+    const TIMEOUT_MS = 12000; // 12 seconds
     const TTL_MINUTES = 10;
 
     // 1. PERFORMANCE: Check for valid cached results first
@@ -213,6 +212,7 @@ export async function cacheResults(searchId: string, results: FlightResult[]): P
                 departure_time: r.departure_time,
                 arrival_time: r.arrival_time,
                 duration: r.duration,
+                stops: r.stops ?? 0,
                 raw: r.raw
             }))
         );

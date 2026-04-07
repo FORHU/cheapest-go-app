@@ -39,7 +39,7 @@ export function useCheckoutPrebook({
             !prebookFailedRef.current.has(prebookKey)
         ) {
             prebookInitiatedRef.current = prebookKey;
-            startPrebook(selectedRoom.offerId, selectedCurrency).catch((err: Error) => {
+            startPrebook(selectedRoom.offerId, selectedCurrency).catch((_err: Error) => {
                 // Mark permanently failed so the effect never re-triggers
                 prebookFailedRef.current.add(prebookKey);
                 prebookInitiatedRef.current = prebookKey;
@@ -50,7 +50,7 @@ export function useCheckoutPrebook({
     // Auto-retry prebook after auth — only for auth errors, never for unavailable rooms
     useEffect(() => {
         const prebookKey = `${selectedRoom?.offerId}-${selectedCurrency}`;
-        const isUnavailable = /no longer available|not available|unavailable|sold out/i.test(prebookError || '');
+        const isUnavailable = /no longer available|not available|unavailable|sold out|no availability/i.test(prebookError || '');
         if (user && prebookError && !isUnavailable && selectedRoom?.offerId && !isAuthModalOpen) {
             prebookInitiatedRef.current = null;
             prebookFailedRef.current.delete(prebookKey);

@@ -5,6 +5,44 @@ import { rateLimit } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
+// ─── Server-side filtering ────────────────────────────────────────────────────
+
+interface ServerFilters {
+    sortBy?: 'price' | 'duration' | 'departure';
+    maxStops?: number | null;
+    selectedAirlines?: string[];
+}
+
+function applyServerFilters(offers: any[], filters?: ServerFilters): any[] {
+    if (!filters) return offers;
+    let results = [...offers];
+
+    if (filters.maxStops != null) {
+        results = results.filter(o => o.totalStops <= filters.maxStops!);
+    }
+
+    if (filters.selectedAirlines && filters.selectedAirlines.length > 0) {
+        const set = new Set(filters.selectedAirlines);
+        results = results.filter(o => {
+            const name = o.segments?.[0]?.airline?.name || o.segments?.[0]?.airline?.code || o.provider;
+            return set.has(name);
+        });
+    }
+
+    switch (filters.sortBy ?? 'price') {
+        case 'duration':
+            results.sort((a, b) => (a.totalDuration ?? 0) - (b.totalDuration ?? 0));
+            break;
+        case 'departure':
+            results.sort((a, b) => (a.segments?.[0]?.departure?.time ?? '').localeCompare(b.segments?.[0]?.departure?.time ?? ''));
+            break;
+        default: // price
+            results.sort((a, b) => (a.price?.total ?? 0) - (b.price?.total ?? 0));
+    }
+
+    return results;
+}
+
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 function badRequest(error: string) {
@@ -91,15 +129,19 @@ export async function POST(req: NextRequest) {
         // ── Search providers in parallel (15s timeout each) ─────────────────
         // saveSearch is called inside searchFlights after the cache check,
         // so we never create an empty record that poisons the cache lookup.
-        const offers = await searchFlights(params);
+        const allOffers = await searchFlights(params);
+
+        // ── Apply server-side filters (if provided) ──────────────────────────
+        const filters = body.filters as ServerFilters | undefined;
+        const offers = applyServerFilters(allOffers, filters);
 
         return NextResponse.json({
             success: true,
             data: {
                 offers,
                 totalResults: offers.length,
+                allCount: allOffers.length,
                 searchTimestamp: new Date().toISOString(),
-                searchDurationMs: 0,
             },
         });
     } catch (err) {

@@ -1,31 +1,36 @@
 import { FlightResult, FlightSearchParams } from "@/types/flights";
 import { env } from "@/utils/env";
 import { logApiCall } from "@/lib/server/api-logger";
+import {
+    searchMystiflyDirect,
+    searchMystiflyV2Direct,
+    normalizeMystiflyV1Results,
+    normalizeMystiflyV2Results,
+    CABIN_MAP,
+    TRIP_TYPE_MAP,
+} from "@/lib/server/flights/mystifly-client";
 
 /**
- * Mystifly provider adapter.
- * Handles communication with the Mystifly API (via Edge Functions) and transforms results.
+ * Mystifly provider adapter — direct Node.js calls (no Edge Function hop).
  */
 export async function searchMystifly(params: FlightSearchParams): Promise<FlightResult[]> {
-    const supabaseUrl = env.SUPABASE_URL;
-    const anonKey = env.SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !anonKey) {
-        console.warn("[Mystifly] Missing Supabase credentials for Edge Function call");
+    if (!env.MYSTIFLY_USERNAME || !env.MYSTIFLY_PASSWORD || !env.MYSTIFLY_ACCOUNT_NUMBER) {
+        console.warn("[Mystifly] Missing credentials — skipping");
         return [];
     }
 
-    console.log("[Mystifly] Searching via Edge Function...", {
-        origin: params.origin,
-        dest: params.destination,
-        date: params.departureDate
-    });
+    console.log("[Mystifly] Searching direct:", params.origin, "->", params.destination);
 
-    const endpoint = `${supabaseUrl}/functions/v1/mystifly-search`;
+    const endpoint = `${env.MYSTIFLY_BASE_URL}/api/v1/Search/Flight`;
     const startMs = Date.now();
-    const logParams = { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, cabinClass: params.cabinClass };
+    const logParams = {
+        origin: params.origin, destination: params.destination,
+        departureDate: params.departureDate, returnDate: params.returnDate,
+        adults: params.adults, cabinClass: params.cabinClass,
+    };
 
     try {
+        const tripType = params.returnDate ? 'round-trip' : 'one-way';
         const segments = [
             { origin: params.origin.toUpperCase(), destination: params.destination.toUpperCase(), departureDate: params.departureDate },
         ];
@@ -33,90 +38,81 @@ export async function searchMystifly(params: FlightSearchParams): Promise<Flight
             segments.push({ origin: params.destination.toUpperCase(), destination: params.origin.toUpperCase(), departureDate: params.returnDate });
         }
 
-        const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${anonKey}`
-            },
-            body: JSON.stringify({
-                segments,
-                tripType: params.returnDate ? 'round-trip' : 'one-way',
-                adults: params.adults,
-                children: params.children || 0,
-                infants: params.infants || 0,
-                cabinClass: params.cabinClass || 'economy',
-                currency: 'USD',
-                maxOffers: 200
-            }),
-            signal: AbortSignal.timeout(14000)
-        });
+        const cabinCode = CABIN_MAP[params.cabinClass ?? 'economy'] ?? 'Y';
+        const airTripType = TRIP_TYPE_MAP[tripType] ?? 'OneWay';
 
-        if (!res.ok) {
-            const error = await res.text();
-            console.error(`[Mystifly] Edge Function error (${res.status}):`, error);
-            logApiCall({ provider: 'mystifly', endpoint, requestParams: logParams, responseStatus: res.status, durationMs: Date.now() - startMs, errorMessage: error, searchId: params.searchId });
-            return [];
+        const passengerTypes: { Code: string; Quantity: number }[] = [];
+        if (params.adults > 0) passengerTypes.push({ Code: 'ADT', Quantity: params.adults });
+        if (params.children && params.children > 0) passengerTypes.push({ Code: 'CHD', Quantity: params.children });
+        if (params.infants && params.infants > 0) passengerTypes.push({ Code: 'INF', Quantity: params.infants });
+
+        const body = {
+            OriginDestinationInformations: segments.map(s => ({
+                DepartureDateTime: `${s.departureDate}T00:00:00`,
+                OriginLocationCode: s.origin,
+                DestinationLocationCode: s.destination,
+            })),
+            PassengerTypeQuantities: passengerTypes,
+            NearByAirports: true,
+            CurrencyCode: 'USD',
+            TravelPreferences: {
+                AirTripType: airTripType,
+                CabinPreference: cabinCode,
+                MaxStopsQuantity: 'All',
+                PreferenceLevel: 'Preferred',
+                Preferences: {
+                    CabinClassPreference: { CabinType: cabinCode, PreferenceLevel: 'Preferred' },
+                },
+                CurrencyCode: 'USD',
+            },
+            RequestOptions: 'Fifty',
+        };
+
+        const raw = await searchMystiflyDirect(body);
+
+        // Graceful empty result
+        if (!raw.Success) {
+            const msg: string = raw.Message ?? '';
+            const isEmpty = msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no flights') || msg.toLowerCase().includes('no result');
+            if (isEmpty) {
+                logApiCall({ provider: 'mystifly', endpoint, requestParams: logParams, responseStatus: 200, durationMs: Date.now() - startMs, responseSummary: { resultCount: 0 }, searchId: params.searchId });
+                return [];
+            }
+            throw new Error(`Mystifly search failed: ${msg}`);
         }
 
-        const data = await res.json();
-        const flights: any[] = data.flights || [];
+        const results = normalizeMystiflyV1Results(raw, 50) as FlightResult[];
 
-        console.log(`[Mystifly] Successfully fetched ${flights.length} flights`);
-
-        const results = flights.map((f: any) => ({
-            provider: "mystifly",
-            offer_id: f.id || f.offerId,
-            price: f.price,
-            currency: f.currency,
-            airline: f.airlineName || f.airline,
-            departure_time: f.departureTime,
-            arrival_time: f.arrivalTime,
-            duration: f.durationMinutes || 0,
-            stops: f.stops || 0,
-            remaining_seats: f.seatsRemaining || null,
-            traceId: f.traceId,
-            segments: (f.segments || []).map((s: any) => ({
-                airline: s.airline,
-                airlineName: s.airlineName,
-                flightNumber: s.flightNumber,
-                origin: s.origin,
-                destination: s.destination,
-                departureTime: s.departureTime,
-                arrivalTime: s.arrivalTime,
-                duration: s.duration,
-                cabinClass: s.cabinClass
-            })),
-            raw: f
-        }));
-
+        console.log(`[Mystifly] ${results.length} results`);
         logApiCall({ provider: 'mystifly', endpoint, requestParams: logParams, responseStatus: 200, durationMs: Date.now() - startMs, responseSummary: { resultCount: results.length }, searchId: params.searchId });
         return results;
     } catch (err: any) {
         logApiCall({ provider: 'mystifly', endpoint, requestParams: logParams, durationMs: Date.now() - startMs, errorMessage: err.message, searchId: params.searchId });
-        console.error("[Mystifly] Search request failed:", err.message);
+        console.error("[Mystifly] Search failed:", err.message);
         return [];
     }
 }
 
 /**
- * Mystifly V2 provider adapter (Branded Fares).
+ * Mystifly V2 provider adapter — Branded Fares, direct Node.js calls.
  */
 export async function searchMystiflyV2(params: FlightSearchParams): Promise<FlightResult[]> {
-    const supabaseUrl = env.SUPABASE_URL;
-    const anonKey = env.SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !anonKey) {
+    if (!env.MYSTIFLY_USERNAME || !env.MYSTIFLY_PASSWORD || !env.MYSTIFLY_ACCOUNT_NUMBER) {
         return [];
     }
 
-    const endpoint = `${supabaseUrl}/functions/v1/mystifly-v2-search`;
-    const startMs = Date.now();
-    const logParams = { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, cabinClass: params.cabinClass };
+    console.log("[MystiflyV2] Searching direct:", params.origin, "->", params.destination);
 
-    console.log("[MystiflyV2] Searching via Edge Function...", params.origin);
+    const endpoint = `${env.MYSTIFLY_BASE_URL}/api/v2/Search/Flight`;
+    const startMs = Date.now();
+    const logParams = {
+        origin: params.origin, destination: params.destination,
+        departureDate: params.departureDate, returnDate: params.returnDate,
+        adults: params.adults, cabinClass: params.cabinClass,
+    };
 
     try {
+        const tripType = params.returnDate ? 'round-trip' : 'one-way';
         const segments = [
             { origin: params.origin.toUpperCase(), destination: params.destination.toUpperCase(), departureDate: params.departureDate },
         ];
@@ -124,68 +120,62 @@ export async function searchMystiflyV2(params: FlightSearchParams): Promise<Flig
             segments.push({ origin: params.destination.toUpperCase(), destination: params.origin.toUpperCase(), departureDate: params.returnDate });
         }
 
-        const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${anonKey}`
-            },
-            body: JSON.stringify({
-                segments,
-                tripType: params.returnDate ? 'round-trip' : 'one-way',
-                adults: params.adults,
-                children: params.children || 0,
-                infants: params.infants || 0,
-                cabinClass: params.cabinClass || 'economy',
-                currency: 'USD',
-                maxOffers: 200
-            }),
-            signal: AbortSignal.timeout(14000)
-        });
+        const cabinCode = CABIN_MAP[params.cabinClass ?? 'economy'] ?? 'Y';
+        const airTripType = TRIP_TYPE_MAP[tripType] ?? 'OneWay';
+        const nationality = env.MYSTIFLY_NATIONALITY;
+        const pricingSourceType = env.MYSTIFLY_PRICING_SOURCE_TYPE;
 
-        if (!res.ok) {
-            logApiCall({ provider: 'mystifly_v2', endpoint, requestParams: logParams, responseStatus: res.status, durationMs: Date.now() - startMs, errorMessage: `HTTP ${res.status}`, searchId: params.searchId });
-            return [];
+        const passengerTypes: { Code: string; Quantity: number }[] = [];
+        if (params.adults > 0) passengerTypes.push({ Code: 'ADT', Quantity: params.adults });
+        if (params.children && params.children > 0) passengerTypes.push({ Code: 'CHD', Quantity: params.children });
+        if (params.infants && params.infants > 0) passengerTypes.push({ Code: 'INF', Quantity: params.infants });
+
+        const body = {
+            OriginDestinationInformations: segments.map(s => ({
+                DepartureDateTime: `${s.departureDate}T00:00:00`,
+                OriginLocationCode: s.origin,
+                DestinationLocationCode: s.destination,
+            })),
+            PassengerTypeQuantities: passengerTypes,
+            PricingSourceType: pricingSourceType,
+            Nationalities: [nationality],
+            Nationality: nationality,
+            NearByAirports: true,
+            CurrencyCode: 'USD',
+            TravelPreferences: {
+                AirTripType: airTripType,
+                CabinPreference: cabinCode,
+                MaxStopsQuantity: 'All',
+                PreferenceLevel: 'Preferred',
+                Preferences: {
+                    CabinClassPreference: { CabinType: cabinCode, PreferenceLevel: 'Preferred' },
+                },
+                VendorPreferenceCodes: null,
+                VendorExcludeCodes: null,
+            },
+            RequestOptions: 'TwoHundred',
+        };
+
+        const raw = await searchMystiflyV2Direct(body);
+
+        if (!raw.Success) {
+            const msg: string = raw.Message ?? '';
+            const isEmpty = msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no flights') || msg.toLowerCase().includes('no result');
+            if (isEmpty) {
+                logApiCall({ provider: 'mystifly_v2', endpoint, requestParams: logParams, responseStatus: 200, durationMs: Date.now() - startMs, responseSummary: { resultCount: 0 }, searchId: params.searchId });
+                return [];
+            }
+            throw new Error(`Mystifly V2 search failed: ${msg}`);
         }
 
-        const data = await res.json();
-        const flights: any[] = data.flights || [];
+        const results = normalizeMystiflyV2Results(raw, 200) as FlightResult[];
 
-        const results = flights.map((f: any) => ({
-            provider: "mystifly_v2",
-            offer_id: f.id || f.offerId,
-            price: f.price,
-            currency: f.currency,
-            airline: f.airlineName || f.airline,
-            departure_time: f.departureTime,
-            arrival_time: f.arrivalTime,
-            duration: f.durationMinutes || 0,
-            stops: f.stops || 0,
-            remaining_seats: f.seatsRemaining || null,
-            traceId: f.traceId,
-            brandedFare: {
-                brandName: f.brandName,
-                brandId: f.brandId,
-                fareType: f.fareType
-            },
-            segments: (f.segments || []).map((s: any) => ({
-                airline: s.airline,
-                airlineName: s.airlineName,
-                flightNumber: s.flightNumber,
-                origin: s.origin,
-                destination: s.destination,
-                departureTime: s.departureTime,
-                arrivalTime: s.arrivalTime,
-                duration: s.duration,
-                cabinClass: s.cabinClass
-            })),
-            raw: f
-        }));
-
+        console.log(`[MystiflyV2] ${results.length} results`);
         logApiCall({ provider: 'mystifly_v2', endpoint, requestParams: logParams, responseStatus: 200, durationMs: Date.now() - startMs, responseSummary: { resultCount: results.length }, searchId: params.searchId });
         return results;
     } catch (err: any) {
         logApiCall({ provider: 'mystifly_v2', endpoint, requestParams: logParams, durationMs: Date.now() - startMs, errorMessage: err.message, searchId: params.searchId });
+        console.error("[MystiflyV2] Search failed:", err.message);
         return [];
     }
 }
