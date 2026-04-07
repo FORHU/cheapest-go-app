@@ -84,7 +84,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
 
         const days = [];
         for (let i = 0; i < firstDay; i++) {
-            days.push(<div key={`pad-${i}`} className="size-8" />);
+            days.push(<div key={`pad-${i}`} className="size-8 mx-auto" />);
         }
 
         for (let day = 1; day <= daysInMonth; day++) {
@@ -105,9 +105,9 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                         e.stopPropagation();
                         handleDateClick(dateObj);
                     }}
-                    className={`size-10 flex items-center justify-center text-sm font-medium rounded-full transition-all relative
+                    className={`size-8 mx-auto my-0.5 flex items-center justify-center text-sm font-medium rounded-full transition-all relative
                         ${isDisabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20' : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10'}
-                        ${isSelected ? 'bg-blue-600 text-white shadow-lg z-10 scale-110' : 'text-slate-700 dark:text-slate-300'}
+                        ${isSelected ? 'bg-blue-600 text-white shadow-lg z-10' : 'text-slate-700 dark:text-slate-300'}
                         ${isToday && !isSelected ? 'ring-1 ring-blue-600/50' : ''}
                         ${isPast && !isSelected ? 'line-through decoration-slate-400/30' : ''}
                     `}
