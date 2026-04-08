@@ -33,7 +33,13 @@ export async function updateSession(request: NextRequest) {
     // Refresh the auth token — this is critical.
     // Do NOT use getSession() here; getUser() sends a request to the Supabase Auth
     // server every time to revalidate the token and is more secure.
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = null;
+    try {
+        const { data } = await supabase.auth.getUser();
+        user = data.user;
+    } catch (err) {
+        console.error('[middleware] Auth error during getUser:', err);
+    }
 
     // Protect /admin routes: redirect unauthenticated users to login.
     // Role authorization (admin vs user) is handled by the admin layout server component.
