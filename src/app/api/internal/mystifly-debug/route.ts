@@ -10,7 +10,7 @@ export async function GET() {
         .toISOString().split('T')[0];
 
     const raw: any = await mystiflyRequest('/api/v1/Search/Flight', {
-        Target: env.MYSTIFLY_TARGET || 'Production',
+        Target: process.env.MYSTIFLY_TARGET || 'Production',
         OriginDestinationInformations: [{
             DepartureDateTime: `${departDate}T00:00:00`,
             OriginLocationCode: 'CRK',

@@ -11,6 +11,7 @@ import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 import { useUserCurrency } from '@/stores/searchStore';
 import type { FarePolicy } from '@/types/flights';
 import { getAirportInfo } from '@/utils/airport-info';
+import { FareRulesPanel } from './FareRulesPanel';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
@@ -490,6 +491,13 @@ export default function FlightBookContent() {
                     <FarePolicyPanel
                         policy={offer.farePolicy}
                         policyChanged={(offer as any).policyChanged === true}
+                    />
+                )}
+
+                {/* Fare Rules — Mystifly only; fetched from airline via FareSourceCode */}
+                {(offer.provider === 'mystifly' || offer.provider === 'mystifly_v2') && (
+                    <FareRulesPanel
+                        fareSourceCode={offer.offerId.split('|')[0]}
                     />
                 )}
 

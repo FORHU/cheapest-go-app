@@ -526,6 +526,23 @@ function buildV2BookBody(v1Body: any, target: string, searchIdentifier?: string)
     return v2Body;
 }
 
+// ─── FareRules ──────────────────────────────────────────────────────
+
+/**
+ * Retrieve fare rules for a given FareSourceCode.
+ * FSC expires after ~20 minutes for pre-booking requests.
+ * Endpoint: POST /api/v1/FlightFareRules
+ */
+export async function getFareRules(
+    fareSourceCode: string,
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/v1/FlightFareRules', {
+        FareSourceCode: fareSourceCode,
+    }, sessionId, conversationId);
+}
+
 /**
  * Issue a ticket for a confirmed booking (UniqueID / PNR).
  */
