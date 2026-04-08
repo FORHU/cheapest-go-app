@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Step 3: Validate eligibility ──────────────────────────────
-        const eligibleStatuses = ['confirmed', 'ticketed', 'booked', 'pnr_created', 'cancel_failed'];
+        const eligibleStatuses = ['confirmed', 'ticketed', 'booked', 'pnr_created', 'awaiting_ticket', 'cancel_failed'];
         if (!eligibleStatuses.includes(booking.status)) {
             return NextResponse.json(
                 { success: false, error: `Cannot cancel booking in status: ${booking.status}` },
@@ -85,24 +85,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Rule 1: Block cancellation of departed flights
-        const { data: firstSegment } = await supabase
-            .from('flight_segments')
-            .select('departure')
-            .eq('booking_id', bookingId)
-            .order('departure', { ascending: true })
-            .limit(1)
-            .single();
-
-        if (firstSegment?.departure) {
-            const departureTime = new Date(firstSegment.departure);
-            if (departureTime <= new Date()) {
-                return NextResponse.json(
-                    { success: false, error: 'Cannot cancel a departed flight' },
-                    { status: 422 },
-                );
-            }
-        }
 
         // ── Step 4: Immediately set CANCEL_REQUESTED in DB ────────────
         // This prevents duplicate supplier calls if the user clicks twice.
@@ -124,8 +106,19 @@ export async function POST(req: NextRequest) {
             .in('status', eligibleStatuses)
             .select('id');
 
-        if (requestErr || !updatedRows || updatedRows.length === 0) {
-            throw new Error(`Failed to update status. The booking might have been updated concurrently.`);
+        if (requestErr) {
+            console.error('[cancel-booking] DB update error:', requestErr);
+            throw new Error(`DB error: ${requestErr.message}`);
+        }
+        if (!updatedRows || updatedRows.length === 0) {
+            // Re-fetch to find the real current status
+            const { data: refetched } = await supabase
+                .from('flight_bookings')
+                .select('status')
+                .eq('id', bookingId)
+                .single();
+            console.error(`[cancel-booking] Update matched 0 rows. DB status is: ${refetched?.status}, expected one of: ${eligibleStatuses.join(', ')}`);
+            throw new Error(`Cannot cancel: booking status is '${refetched?.status ?? 'unknown'}'`);
         }
 
         // ── Step 5: Call supplier adapter ─────────────────────────────
@@ -168,6 +161,8 @@ export async function POST(req: NextRequest) {
                 supplierError?.toLowerCase().includes('does not exist') ||
                 supplierError?.toLowerCase().includes('could not find'));
 
+            const requiresManualCancellation = /tkt-in-process|ticketed status|cancellation denied/i.test(supplierError ?? '');
+
             const finalStatus = isProviderMissing ? 'cancelled_provider_missing' : 'cancel_failed';
 
             const failLog = {
@@ -176,6 +171,7 @@ export async function POST(req: NextRequest) {
                 newStatus: finalStatus,
                 supplierError,
                 isProviderMissing,
+                requiresManualCancellation,
             };
 
             await supabase
@@ -189,10 +185,11 @@ export async function POST(req: NextRequest) {
 
             return NextResponse.json(
                 {
-                    success: isProviderMissing, // Treat provider missing as a "handled success"
+                    success: isProviderMissing,
                     status: finalStatus,
                     error: supplierError || 'Supplier rejected the cancellation request',
-                    providerMissing: isProviderMissing
+                    providerMissing: isProviderMissing,
+                    requiresManualCancellation,
                 },
                 { status: isProviderMissing ? 200 : 422 },
             );
@@ -298,17 +295,6 @@ export async function POST(req: NextRequest) {
 
         // ── Step 8: Send Emails ──────────────────────────────────────────
         // Fire email asynchronously (don't block the request)
-        let stripeRefundIdForEmail: string | undefined = undefined;
-        if (booking.payment_intent_id && refundAmount > 0 && refunded) {
-            // Retrieve the latest refund ID from the log
-            const logs: any[] = booking.cancellation_log ?? [];
-            stripeRefundIdForEmail = logs.find(l => l.newStatus === 'refunded')?.stripeRefundId;
-            // If this was just updated, it might be in our local refundedLog
-        }
-
-        // We capture any generated ID from the refund response if available from step 7
-        // (If stripeRefund happened, we know stripeError is undefined)
-
         fireCancellationEmails(
             supabase,
             booking,
@@ -348,32 +334,49 @@ interface CancelResult {
 }
 
 async function cancelMystifly(booking: any): Promise<CancelResult> {
-    const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-    // Load traceId / fareSourceCode from booking sessions or metadata
-    const { data: session } = await supabase
-        .from('booking_sessions')
-        .select('flight')
-        .eq('id', booking.session_id)
-        .maybeSingle();
+    const uniqueId = booking.pnr;
 
-    const flight = session?.flight as any;
-    const traceId = flight?.traceId ?? flight?.fareSourceCode ?? booking.pnr;
-
-    if (!traceId) {
-        return { success: false, error: 'No traceId/fareSourceCode found for Mystifly cancellation' };
+    if (!uniqueId) {
+        return { success: false, error: 'No PNR found for Mystifly cancellation' };
     }
 
-    console.log(`[cancel-booking] Mystifly cancel: PNR=${booking.pnr}, traceId=${traceId}`);
+    console.log(`[cancel-booking] Mystifly cancel via edge fn: PNR=${uniqueId}`);
 
-    // Mystifly cancellation is typically done by PNR via their void/cancel API.
-    // In sandbox this may always return success with no penalty data.
-    // TODO: integrate actual Mystifly void endpoint when live.
-    // For now, we return a sandbox-safe result:
+    const supabaseUrl = env.SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/mystifly-cancel`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+            'apikey': supabaseKey,
+        },
+        body: JSON.stringify({ uniqueId }),
+    });
+
+    let data: any;
+    try {
+        data = await res.json();
+    } catch {
+        return { success: false, error: `Mystifly cancel edge fn returned non-JSON (HTTP ${res.status})` };
+    }
+
+    if (!data.success) {
+        // If already cancelled on Mystifly's side, treat as success so we can proceed with refund
+        if (data.alreadyCancelled) {
+            console.warn(`[cancel-booking] Mystifly: booking already cancelled — treating as success`);
+            return { success: true, refundAmount: 0, penaltyAmount: 0, currency: 'USD' };
+        }
+        return { success: false, error: data.error ?? 'Mystifly cancellation failed' };
+    }
+
     return {
         success: true,
-        refundAmount: 0,  // To be replaced with actual supplier response
-        penaltyAmount: 0,
-        currency: 'USD',
+        refundAmount: data.refundAmount ?? 0,
+        penaltyAmount: data.penaltyAmount ?? 0,
+        currency: data.currency ?? 'USD',
+        cancellationId: data.cancellationId,
     };
 }
 

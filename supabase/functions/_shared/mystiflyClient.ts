@@ -526,6 +526,22 @@ function buildV2BookBody(v1Body: any, target: string, searchIdentifier?: string)
     return v2Body;
 }
 
+// ─── Cancel Booking ─────────────────────────────────────────────────
+
+/**
+ * Cancel a confirmed Mystifly booking by UniqueID (MF+8 digits).
+ * Endpoint: POST /api/v1/Booking/Cancel
+ */
+export async function cancelBooking(
+    uniqueId: string,
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/v1/Booking/Cancel', {
+        UniqueID: uniqueId,
+    }, sessionId, conversationId);
+}
+
 // ─── Booking Note ───────────────────────────────────────────────────
 
 /**

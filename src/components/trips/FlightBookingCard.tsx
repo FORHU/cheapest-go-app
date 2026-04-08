@@ -46,7 +46,7 @@ const flightStatusLabels: Record<string, string> = {
 };
 
 // Statuses that allow initiating (or retrying) a cancellation request
-const CANCELLABLE_STATUSES = new Set(['confirmed', 'ticketed', 'booked', 'pnr_created', 'cancel_failed', 'refund_failed']);
+const CANCELLABLE_STATUSES = new Set(['confirmed', 'ticketed', 'booked', 'pnr_created', 'awaiting_ticket', 'cancel_failed', 'refund_failed']);
 
 // ─── Cancel Confirmation Modal ───────────────────────────────────────
 
@@ -151,6 +151,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const [submittingNote, setSubmittingNote] = useState(false);
     const [noteSuccess, setNoteSuccess] = useState(false);
     const [noteError, setNoteError] = useState<string | null>(null);
+    const [existingNotes, setExistingNotes] = useState<{ note: string; created_at: string }[]>([]);
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const userCurrency = useUserCurrency();
@@ -165,7 +166,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
 
     const isUpcoming = firstSegment && new Date(firstSegment.departure) > new Date();
     const isPast = lastSegment && new Date(lastSegment.arrival) < new Date();
-    const canCancel = CANCELLABLE_STATUSES.has(localStatus) && isUpcoming;
+    const canCancel = CANCELLABLE_STATUSES.has(localStatus);
 
     let tripType = 'One-way';
     let mainDestination = lastSegment?.destination;
@@ -226,7 +227,12 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             const data = await res.json();
 
             if (!res.ok || !data.success) {
-                setCancelError(data.error || 'Cancellation failed. Please contact support.');
+                if (data.requiresManualCancellation) {
+                    setCancelError('This ticketed booking cannot be cancelled via API. Please email crm@myfarebox.com to request cancellation.');
+                } else {
+                    setCancelError(data.error || 'Cancellation failed. Please contact support.');
+                }
+                setLocalStatus('cancel_failed');
                 return;
             }
 
@@ -240,10 +246,23 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         }
     };
 
+    // ── Fetch existing notes ────────────────────────────────────────
+    const fetchNotes = async () => {
+        if (!booking.id) return;
+        try {
+            const res = await fetch(`/api/flights/booking-notes?bookingId=${booking.id}`);
+            const data = await res.json();
+            if (data.success) setExistingNotes(data.notes);
+        } catch {
+            // silently ignore
+        }
+    };
+
     // ── Trip Details handler ────────────────────────────────────────
     const handleViewTripDetails = async () => {
         if (showTripDetails) { setShowTripDetails(false); return; }
         setShowTripDetails(true);
+        fetchNotes();
         if (tripDetails) return; // already loaded
         setLoadingTripDetails(true);
         setTripDetailsError(null);
@@ -282,6 +301,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             if (data.success) {
                 setNoteSuccess(true);
                 setNoteText('');
+                fetchNotes();
             } else {
                 setNoteError(data.error || 'Could not add note');
             }
@@ -611,6 +631,24 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {tripDetailsError}
                             </div>
                         )}
+                        {/* Existing Notes */}
+                        {existingNotes.length > 0 && (
+                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 mb-2">
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Booking Notes</p>
+                                <div className="space-y-1.5">
+                                    {existingNotes.map((n, i) => (
+                                        <div key={i} className="flex items-start gap-2 text-xs bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-2 border border-slate-100 dark:border-slate-700">
+                                            <CheckCircle className="w-3 h-3 text-indigo-400 shrink-0 mt-0.5" />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-slate-700 dark:text-slate-300">{n.note}</p>
+                                                <p className="text-[10px] text-slate-400 mt-0.5">{new Date(n.created_at).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Add Note */}
                         <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Add Booking Note</p>
