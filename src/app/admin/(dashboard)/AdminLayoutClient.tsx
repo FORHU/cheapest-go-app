@@ -60,6 +60,11 @@ export function AdminLayoutClient({
                 subtitle: 'Manage roles and access permissions',
                 image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1600'
             },
+            revenue: {
+                title: 'Revenue Control',
+                subtitle: 'Monitor markup performance and profitability',
+                image: 'https://images.unsplash.com/photo-1554224155-1696413575b3?auto=format&fit=crop&q=80&w=1600'
+            },
             settings: {
                 title: 'Settings',
                 subtitle: 'Configure platform-wide preferences and security',

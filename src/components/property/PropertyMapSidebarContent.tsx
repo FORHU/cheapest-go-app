@@ -59,11 +59,8 @@ interface PropertyMapSidebarProps {
     propertyName?: string;
 }
 
-const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
-    hotelDetails,
-    coordinates,
-    propertyName,
-}) => {
+const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
+    ({ hotelDetails, coordinates, propertyName }) => {
     const mapRef = useRef<MapRef>(null);
     const gemsScrollRef = useRef<HTMLDivElement>(null);
     const [isLoaded, setIsLoaded] = useState(false);
@@ -987,6 +984,8 @@ const PropertyMapSidebarContent: React.FC<PropertyMapSidebarProps> = ({
             )}
         </div>
     );
-};
+});
+
+PropertyMapSidebarContent.displayName = 'PropertyMapSidebarContent';
 
 export default PropertyMapSidebarContent;

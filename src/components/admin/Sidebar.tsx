@@ -16,7 +16,8 @@ import {
     ChevronRight,
     Smartphone,
     Mail,
-    Shield
+    Shield,
+    Banknote
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -32,6 +33,7 @@ const navItems = [
     { label: 'Customers', href: '/admin/customers', icon: Users },
     { label: 'Users', href: '/admin/users', icon: Shield },
     { label: 'Suppliers', href: '/admin/suppliers', icon: Building2 },
+    { label: 'Revenue', href: '/admin/revenue', icon: Banknote },
     { label: 'Communication', href: '/admin/communication', icon: Mail },
     { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
