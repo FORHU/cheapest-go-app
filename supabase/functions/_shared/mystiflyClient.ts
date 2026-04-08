@@ -526,6 +526,52 @@ function buildV2BookBody(v1Body: any, target: string, searchIdentifier?: string)
     return v2Body;
 }
 
+// ─── Booking Note ───────────────────────────────────────────────────
+
+/**
+ * Add one or more notes to an existing Mystifly booking.
+ * UniqueID must start with MF followed by 8 digits.
+ * Endpoint: POST /api/v1/BookingNotes
+ */
+export async function addBookingNote(
+    uniqueId: string,
+    notes: string[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/v1/BookingNotes', {
+        UniqueID: uniqueId,
+        Notes: notes,
+    }, sessionId, conversationId);
+}
+
+// ─── TripDetails ────────────────────────────────────────────────────
+
+/**
+ * Retrieve full trip details for a confirmed booking.
+ * UniqueID is the booking reference (e.g. BKXXXXXXXX) returned by BookFlight.
+ * Endpoint: POST /api/v1/TripDetails
+ */
+export async function getTripDetails(
+    uniqueId: string,
+    sessionId?: string,
+    conversationId?: string,
+) {
+    // Try primary path first; fall back to alternative if 404
+    try {
+        return await mystiflyRequest('/api/v1/TripDetails', {
+            UniqueID: uniqueId,
+        }, sessionId, conversationId);
+    } catch (err: any) {
+        if (err?.status === 404) {
+            return await mystiflyRequest('/api/v1/GetTripDetails', {
+                UniqueID: uniqueId,
+            }, sessionId, conversationId);
+        }
+        throw err;
+    }
+}
+
 // ─── FareRules ──────────────────────────────────────────────────────
 
 /**
