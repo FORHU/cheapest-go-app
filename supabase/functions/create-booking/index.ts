@@ -23,7 +23,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 declare const Deno: any;
 
-import { bookFlight, bookFlightV2, revalidateFare, revalidateFareV2, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { bookFlightV2, revalidateFare, revalidateFareV2, ticketFlight, MystiflyError } from '../_shared/mystiflyClient.ts';
 import { createDuffelOrder } from '../_shared/duffelClient.ts';
 
 
@@ -94,6 +94,7 @@ interface ProviderBookingResult {
     rawPrice?: number;
     rawCurrency?: string;
     ticketNumbers?: string[];
+    holdAllowed?: boolean;
 }
 
 // ─── Gender Mapping ─────────────────────────────────────────────────
@@ -385,20 +386,47 @@ Deno.serve(async (req: Request) => {
                 }, 502);
             }
 
-            // Case B & C: PNR received — evaluate ticket status then capture
-            const ticketStatus = mystiflyRawData?.TicketStatus
-                ?? mystiflyRawData?.Status
-                ?? result.providerStatus
-                ?? 'pending';
+            // Per docs: BookFlight returns PNR. Then:
+            // HoldAllowed=true (Private/Public fare) → call OrderTicket to issue ticket
+            // HoldAllowed=false (WebFare) → BookFlight already issued ticket, check TicketStatus
 
-            const isTicketed = ticketStatus.toLowerCase() === 'ticketed'
-                || (result.ticketNumbers && result.ticketNumbers.length > 0);
+            // Extract raw ticket status from BookFlight response
+            const rawTicketStatus: string = String(
+                mystiflyRawData?.TicketStatus ?? mystiflyRawData?.Status ?? result.providerStatus ?? 'pending'
+            ).toLowerCase();
 
-            // Extract Mystifly TimeLimit for background polling
+            // Extract TimeLimit from BookFlight response for background polling
             const rawTimeLimit = mystiflyRawData?.TimeLimit
                 ?? mystiflyRawData?.BookingTimeLimit
                 ?? mystiflyRawData?.TicketTimeLimit;
             const ticketTimeLimit = rawTimeLimit ? new Date(rawTimeLimit).toISOString() : null;
+
+            let ticketStatus = rawTicketStatus;
+            let finalTicketNumbers: string[] = result.ticketNumbers ?? [];
+
+            // HoldAllowedTrue workflow: BookFlight → OrderTicket → TripDetails
+            const holdAllowed = result.holdAllowed ?? false;
+            if (holdAllowed) {
+                console.log(`[create-booking] HoldAllowed=true — calling OrderTicket for PNR: ${result.pnr}`);
+                try {
+                    // Per docs: OrderTicket only needs the MF UniqueID (PNR) from BookFlight response
+                    const orderTicketRaw = await ticketFlight(result.pnr);
+                    if (orderTicketRaw.Success) {
+                        ticketStatus = 'ticketed';
+                        finalTicketNumbers = extractTicketNumbers(orderTicketRaw.Data ?? {});
+                        console.log(`[create-booking] OrderTicket succeeded. Tickets: ${finalTicketNumbers.length}`);
+                    } else {
+                        // OrderTicket failed — booking exists but ticket not yet issued
+                        console.warn(`[create-booking] OrderTicket failed: ${orderTicketRaw.Message} — marking awaiting_ticket`);
+                        ticketStatus = 'pending';
+                    }
+                } catch (otErr: any) {
+                    console.warn(`[create-booking] OrderTicket error: ${otErr.message} — marking awaiting_ticket`);
+                    ticketStatus = 'pending';
+                }
+            }
+
+            const isTicketed = ticketStatus === 'ticketed' || finalTicketNumbers.length > 0;
 
             // Capture the authorized Stripe payment now that PNR is secured
             if (paymentIntentId) {
@@ -418,16 +446,12 @@ Deno.serve(async (req: Request) => {
                         console.error('[create-booking] Stripe capture failed:', captureData);
                     }
                 } catch (captureErr) {
-                    // Log but do NOT throw — PNR exists so booking is real
                     console.error('[create-booking] Stripe capture error (manual follow-up needed):', captureErr);
                 }
             }
 
-            // STEP 7A: Map to internal status
-            // isTicketed → 'ticketed'
-            // Pending/OnHold → 'awaiting_ticket' (poll later via poll-pending-tickets)
             const internalStatus = isTicketed ? 'ticketed' : 'awaiting_ticket';
-            console.log(`[create-booking] Mystifly ticket status: ${ticketStatus} → internal: ${internalStatus}`);
+            console.log(`[create-booking] Mystifly status: holdAllowed=${holdAllowed}, ticketStatus=${ticketStatus} → internal: ${internalStatus}`);
 
             // Insert flight_booking record
             const bookingPrice = result.rawPrice ?? bs.flight.price ?? 0;
@@ -463,10 +487,11 @@ Deno.serve(async (req: Request) => {
 
             const bookingId = booking.id;
 
-            // Save segments and passengers (same for all providers)
+            // Pass finalTicketNumbers into result so insertSegmentsAndPassengers can save them
+            result.ticketNumbers = finalTicketNumbers.length > 0 ? finalTicketNumbers : result.ticketNumbers;
+
             await insertSegmentsAndPassengers(supabase, bookingId, bs, result);
 
-            // Mark session complete
             await supabase.from('booking_sessions').update({ status: 'booked' }).eq('id', sessionId);
 
             const durationMs = Date.now() - startMs;
@@ -566,21 +591,26 @@ async function bookWithMystifly(
     provider: 'mystifly' | 'duffel' | 'mystifly_v2',
     onRawData?: (raw: any) => void,
 ): Promise<ProviderBookingResult> {
-    // Route strictly by provider — FareSourceCode must never cross API versions
-    const isV2Provider = provider === 'mystifly_v2';
-    console.log(`[create-booking] Mystifly routing: provider=${provider} → ${isV2Provider ? 'V2' : 'V1'} revalidate+book`);
+    // UUID-format FareSources (e.g. "3430ac34-593c-439c-...") are always V2 fares,
+    // even if the session was stored with provider='mystifly'. Detect and route correctly.
+    const rawFareCode = flight.traceId?.split('|')[0] ?? '';
+    const isUUIDFareSource = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawFareCode);
+    const isV2Provider = provider === 'mystifly_v2' || isUUIDFareSource;
+    console.log(`[create-booking] Mystifly routing: provider=${provider}, isUUID=${isUUIDFareSource} → ${isV2Provider ? 'V2' : 'V1'} book`);
 
     let fareSourceCode = flight.traceId;
     let conversationId: string | undefined = undefined;
     let sessionId: string | undefined = undefined;
+    let searchIdentifier: string | undefined = undefined;
 
-    // ── Extract tunneled IDs (FareSourceCode|ConversationId|SessionId) ──
+    // ── Extract tunneled IDs (FareSourceCode|ConversationId|SessionId|SearchIdentifier) ──
     if (fareSourceCode?.includes('|')) {
         const parts = fareSourceCode.split('|');
         fareSourceCode = parts[0];
         conversationId = parts[1];
         sessionId = parts[2];
-        console.log('[create-booking] Extracted tunneled IDs:', { conversationId, hasSessionId: !!sessionId });
+        searchIdentifier = parts[3];
+        console.log('[create-booking] Extracted tunneled IDs:', { conversationId, hasSessionId: !!sessionId, hasSearchId: !!searchIdentifier });
     }
 
     if (!fareSourceCode) {
@@ -594,14 +624,16 @@ async function bookWithMystifly(
     let revalResult: any = null;
     let revalidationSkipped = false;
 
+    // Revalidation is required per Mystifly API workflow docs before calling BookFlight.
+    // V2 endpoints (404 on demo) fall through to V1 /Revalidate/Flight automatically.
     try {
-        revalResult = await revalidateFn(fareSourceCode, sessionId, conversationId);
+        revalResult = await revalidateFn(fareSourceCode, sessionId, conversationId, searchIdentifier);
     } catch (revalErr: any) {
-        const isParse = revalErr?.type === 'PARSE' || /invalid json|empty response/i.test(revalErr?.message ?? '');
-        if (isV2Provider && isParse) {
-            // V2 revalidation endpoint may not exist — skip and proceed to booking.
-            // The booking API itself will validate the fare.
-            console.warn('[create-booking] V2 revalidation returned empty — skipping revalidation, proceeding to book');
+        const isSkippable = revalErr?.type === 'PARSE'
+            || /invalid json|empty response/i.test(revalErr?.message ?? '')
+            || /version mismatch|searchidentifier|invalid faresource/i.test(revalErr?.message ?? '');
+        if (isSkippable) {
+            console.warn('[create-booking] Revalidation skipped:', revalErr.message);
             revalidationSkipped = true;
         } else {
             throw revalErr;
@@ -616,8 +648,17 @@ async function bookWithMystifly(
             console.error('[create-booking] Mystifly Revalidation FAILED:', JSON.stringify(revalResult));
             const msg = revalResult.Message ?? '';
             const isUnavailable = /not available|not found|expired/i.test(msg);
-            throw new Error(isUnavailable ? 'Flight is no longer available' : `Fare revalidation failed: ${msg}`);
+            const isMissingSearchId = /searchIdentifier.*empty|cannot revalidate/i.test(msg);
+            if (isMissingSearchId) {
+                console.warn('[create-booking] SearchIdentifier error — skipping revalidation, proceeding to book');
+                revalidationSkipped = true;
+            } else {
+                throw new Error(isUnavailable ? 'Flight is no longer available' : `Fare revalidation failed: ${msg}`);
+            }
         }
+    }
+
+    if (!revalidationSkipped) {
 
         // Use updated FareSourceCode if revalidation returned a new one
         const revalData = revalResult.Data ?? {};
@@ -682,7 +723,39 @@ async function bookWithMystifly(
         }
     }
 
-    console.log('[create-booking] Revalidation parsed. Price:', revalidatedPrice, revalidatedCurrency, revalidationSkipped ? '(skipped)' : '');
+    // Per Mystifly docs, the Revalidation response may carry the SearchIdentifier
+    // needed for BookFlight. Extract it here if we didn't have one from search.
+    if (!revalidationSkipped && !searchIdentifier && revalResult) {
+        const revalData2 = revalResult.Data ?? {};
+        const revalSearchId: string =
+            revalResult.SearchIdentifier ??
+            revalData2.SearchIdentifier ??
+            revalData2.TraceId ??
+            revalData2.ConversationId ?? '';
+        if (revalSearchId) {
+            searchIdentifier = revalSearchId;
+            console.log('[create-booking] SearchIdentifier obtained from revalidation response:', searchIdentifier.slice(0, 36));
+        }
+    }
+
+    // Per docs: validate IsValid and HoldAllowed from Revalidation response.
+    // HoldAllowed=true → Private/Public fare → must call OrderTicket after BookFlight.
+    // HoldAllowed=false → WebFare → BookFlight issues ticket immediately.
+    let holdAllowed = false;
+    let isValid = true;
+    if (!revalidationSkipped && revalResult?.Success) {
+        const rd = revalResult.Data ?? {};
+        const itin = rd.FareItinerary ?? rd.PricedItineraries?.[0] ?? rd;
+        const fareInfo = itin.AirItineraryFareInfo ?? itin.AirItineraryPricingInfo ?? rd;
+        holdAllowed = fareInfo.HoldAllowed === true || rd.HoldAllowed === true;
+        isValid = fareInfo.IsValid !== false && rd.IsValid !== false; // default true if absent
+        console.log(`[create-booking] Revalidation tags: IsValid=${isValid}, HoldAllowed=${holdAllowed}`);
+        if (!isValid) {
+            throw new Error('Revalidation returned IsValid=false — fare is no longer valid');
+        }
+    }
+
+    console.log('[create-booking] Revalidation parsed. Price:', revalidatedPrice, revalidatedCurrency, revalidationSkipped ? '(skipped)' : '', 'hasSearchId:', !!searchIdentifier);
 
     const isDemo = (Deno.env.get('MYSTIFLY_BASE_URL') ?? '').includes('demo');
 
@@ -747,15 +820,46 @@ async function bookWithMystifly(
     }
 
 
-    // ── STEP: Book — version-paired, no cross-version retry ──
-    const bookFn = isV2Provider ? bookFlightV2 : bookFlight;
-    console.log(`[create-booking] Booking with ${isV2Provider ? 'V2' : 'V1'} function. FareSourceCode[:20]: ${fareSourceCode?.slice(0, 20)}`);
-    const raw = await bookFn(mystiflyBody, sessionId, conversationId);
+    // ── STEP: Book ──
+    // v2025-04-08-a: Route ALL Mystifly fares through bookFlightV2.
+    // The demo server's /api/v1/Book/Flight now rejects all fares with ERBUK103
+    // "API version mismatch", even for V1 base64 FareSources from V1 search.
+    // bookFlightV2 tries V2 OnePoint/Book (no SearchId), then V2 Book/Flight,
+    // then falls back to V1 Book/Flight — covering all endpoint combinations.
+    console.log(`[create-booking] v2025-04-08-a Booking via bookFlightV2 (covers V1+V2). FareSourceCode[:20]: ${fareSourceCode?.slice(0, 20)}, isV2Provider: ${isV2Provider}, hasSearchId: ${!!searchIdentifier}`);
 
+    const raw: any = await bookFlightV2(mystiflyBody, sessionId, conversationId, searchIdentifier);
+
+    console.log(`[create-booking] Book response: Success=${raw.Success}, Message=${raw.Message?.slice(0, 100)}`);
 
     if (!raw.Success) {
+        const msg: string = raw.Message ?? '';
+
+        // Mystifly returns "Booking already exists with one or more same PAX and segment. Ref# MFxxxxxxx"
+        // when we retry a booking that already succeeded at Mystifly but wasn't saved to our DB.
+        // Extract the PNR and treat this as a successful booking to avoid a stuck session.
+        const dupMatch = msg.match(/Ref#\s*(MF\w+)/i);
+        if (dupMatch) {
+            const recoveredPnr = dupMatch[1];
+            console.warn(`[create-booking] Duplicate booking detected — recovering PNR from Mystifly message: ${recoveredPnr}`);
+            return {
+                pnr: recoveredPnr,
+                providerStatus: 'confirmed',
+                rawPrice: revalidatedPrice,
+                rawCurrency: revalidatedCurrency,
+            };
+        }
+
+        // V2 UUID fares require SearchIdentifier which Mystifly doesn't return in search responses.
+        // Surface a user-friendly message rather than a cryptic 502.
+        const isSearchIdMissing = /searchidentifier.*empty|cannot bookflight.*searchidentifier/i.test(msg);
+        if (isSearchIdMissing) {
+            console.error('[create-booking] V2 fare cannot be booked — SearchIdentifier missing. FareSource:', rawFareCode.slice(0, 36));
+            throw new Error('This flight offer cannot be booked at this time. Please go back and select a different flight.');
+        }
+
         console.error('[create-booking] Mystifly Booking FAILED:', JSON.stringify(raw));
-        throw new Error(raw.Message ?? 'Mystifly booking failed');
+        throw new Error(msg || 'Mystifly booking failed');
     }
 
     const data = raw.Data ?? {};
@@ -776,6 +880,7 @@ async function bookWithMystifly(
         rawPrice: revalidatedPrice ?? (parseFloat(String(data.TotalFare ?? data.TotalPrice ?? '0')) || undefined),
         rawCurrency: revalidatedCurrency ?? (data.Currency ? String(data.Currency) : undefined),
         ticketNumbers: ticketNumbers.length > 0 ? ticketNumbers : undefined,
+        holdAllowed,
     };
 }
 

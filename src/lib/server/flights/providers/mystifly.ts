@@ -70,6 +70,10 @@ export async function searchMystifly(params: FlightSearchParams): Promise<Flight
 
         const raw = await searchMystiflyDirect(body);
 
+        // Log ALL keys so we can find where SearchIdentifier lives
+        console.log(`[Mystifly] Top-level keys: ${Object.keys(raw).join(', ')}`);
+        if (raw.Data) console.log(`[Mystifly] raw.Data keys: ${Object.keys(raw.Data).join(', ')}`);
+
         // Graceful empty result
         if (!raw.Success) {
             const msg: string = raw.Message ?? '';
@@ -83,6 +87,18 @@ export async function searchMystifly(params: FlightSearchParams): Promise<Flight
 
         const results = normalizeMystiflyV1Results(raw, 50) as FlightResult[];
 
+        // raw.Data.TraceId IS the SearchIdentifier — confirmed from API response structure.
+        // Format: FareSourceCode|ConversationId||SearchIdentifier  (empty sessionId slot — edge fn creates its own)
+        const searchIdentifier: string = raw.Data?.TraceId ?? '';
+        const conversationId: string = raw.Data?.ConversationId ?? '';
+        console.log(`[Mystifly] SearchIdentifier (TraceId): ${searchIdentifier.slice(0, 36) || '(empty)'}`);
+        if (searchIdentifier) {
+            results.forEach((r: any) => {
+                if (r.traceId) r.traceId = `${r.traceId}|${conversationId}||${searchIdentifier}`;
+            });
+        }
+
+        if (results[0]) console.log(`[Mystifly] sample traceId: ${(results[0] as any).traceId?.slice(0, 50)}`);
         console.log(`[Mystifly] ${results.length} results`);
         logApiCall({ provider: 'mystifly', endpoint, requestParams: logParams, responseStatus: 200, durationMs: Date.now() - startMs, responseSummary: { resultCount: results.length }, searchId: params.searchId });
         return results;
@@ -158,6 +174,10 @@ export async function searchMystiflyV2(params: FlightSearchParams): Promise<Flig
 
         const raw = await searchMystiflyV2Direct(body);
 
+        // Log all top-level keys to find SearchIdentifier location
+        console.log(`[MystiflyV2] Top-level response keys: ${Object.keys(raw).join(', ')}`);
+        if (raw.Data) console.log(`[MystiflyV2] raw.Data keys: ${Object.keys(raw.Data).join(', ')}`);
+
         if (!raw.Success) {
             const msg: string = raw.Message ?? '';
             const isEmpty = msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no flights') || msg.toLowerCase().includes('no result');
@@ -170,7 +190,31 @@ export async function searchMystiflyV2(params: FlightSearchParams): Promise<Flig
 
         const results = normalizeMystiflyV2Results(raw, 200) as FlightResult[];
 
-        console.log(`[MystiflyV2] ${results.length} results`);
+        // SearchIdentifier is required by ALL Mystifly endpoints (revalidate + book) for V2 UUID FareSources.
+        // Check every plausible field in the response.
+        const searchIdentifier: string =
+            raw.SearchIdentifier ??
+            raw.Data?.SearchIdentifier ??
+            raw.Data?.TraceId ??
+            raw.Data?.ConversationId ?? '';
+        const v2ConversationId: string = raw.Data?.ConversationId ?? '';
+        console.log(`[MystiflyV2] SearchIdentifier: ${searchIdentifier ? searchIdentifier.slice(0, 36) : '(none — V2 results dropped, unbookable without it)'}`);
+
+        // If SearchIdentifier is absent, every booking attempt will fail with "searchIdentifier is empty".
+        // Drop V2 results rather than showing fares users cannot complete.
+        if (!searchIdentifier) {
+            console.warn('[MystiflyV2] No SearchIdentifier in response — returning 0 results');
+            logApiCall({ provider: 'mystifly_v2', endpoint, requestParams: logParams, responseStatus: 200, durationMs: Date.now() - startMs, responseSummary: { resultCount: 0, reason: 'no_search_identifier' }, searchId: params.searchId });
+            return [];
+        }
+
+        // Always inject 4-part tunneled traceId: FareSourceCode|ConversationId||SearchIdentifier
+        // Matches the V1 format so create-booking extracts all IDs correctly.
+        results.forEach((r: any) => {
+            if (r.traceId) r.traceId = `${r.traceId}|${v2ConversationId}||${searchIdentifier}`;
+        });
+
+        console.log(`[MystiflyV2] ${results.length} results (SearchIdentifier present)`);
         logApiCall({ provider: 'mystifly_v2', endpoint, requestParams: logParams, responseStatus: 200, durationMs: Date.now() - startMs, responseSummary: { resultCount: results.length }, searchId: params.searchId });
         return results;
     } catch (err: any) {

@@ -21,7 +21,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, providerName: str
  */
 export async function searchFlights(params: FlightSearchParams): Promise<FlightOffer[]> {
     const TIMEOUT_MS = 12000; // 12 seconds
-    const TTL_MINUTES = 10;
+    const TTL_MINUTES = 0; // TODO: restore to 10 for production
 
     // 1. PERFORMANCE: Check for valid cached results first
     // NOTE: saveSearch must NOT be called before this — a freshly-created empty
@@ -29,15 +29,24 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     const cacheStart = Date.now();
     const cachedResults = await getExistingCachedResults(params, TTL_MINUTES);
     if (cachedResults && cachedResults.length > 0) {
-        console.log(`[Cache] Found valid hit for ${params.origin}->${params.destination} (TTL: ${TTL_MINUTES}m)`);
+        // Strip V2 UUID fares from cache — they require SearchIdentifier which Mystifly
+        // doesn't return in search responses, making them unbookable.
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const bookableResults = cachedResults.filter(r =>
+            r.provider !== 'mystifly_v2' || !UUID_RE.test(r.offer_id ?? '')
+        );
+        console.log(`[Cache] Found valid hit for ${params.origin}->${params.destination} (TTL: ${TTL_MINUTES}m, total: ${cachedResults.length}, bookable: ${bookableResults.length})`);
         logApiCall({
             provider: 'cache', endpoint: 'flight_results_cache', durationMs: Date.now() - cacheStart,
             requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate },
             responseStatus: 200,
-            responseSummary: { cacheHit: true, resultCount: cachedResults.length },
+            responseSummary: { cacheHit: true, resultCount: bookableResults.length },
             searchId: params.searchId,
         });
-        return cachedResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
+        if (bookableResults.length > 0) {
+            return bookableResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
+        }
+        // All cached results were unbookable V2 fares — fall through to live search
     }
     logApiCall({
         provider: 'cache', endpoint: 'flight_results_cache', durationMs: Date.now() - cacheStart,
@@ -59,7 +68,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     const providers = [
         { name: "Duffel", call: searchDuffel(params) },
         { name: "Mystifly", call: searchMystifly(params) },
-        { name: "MystiflyV2", call: searchMystiflyV2(params) }
+        { name: "MystiflyV2", call: searchMystiflyV2(params) },
     ];
 
     const settlement = await Promise.allSettled(

@@ -145,7 +145,7 @@ export function useFlightBooking() {
         // If the offer is already expired (e.g. user returns to the page hours later),
         // show an error immediately instead of letting them fill the form and fail at payment.
         const rawOffer = (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer;
-        const expiresAt = rawOffer?.expires_at ?? (parsedOffer as any).expires_at;
+        const expiresAt = rawOffer?.expires_at ?? (parsedOffer as any).expires_at ?? parsedOffer.lastTicketDate;
         if (expiresAt && new Date(expiresAt) < new Date()) {
             sessionStorage.removeItem('selectedFlight');
             setErrorMsg('This flight offer has expired. Please search again for current availability.');
@@ -182,7 +182,15 @@ export function useFlightBooking() {
 
                 if (error) throw error;
                 if (!data.success) throw new Error(data.error || 'Revalidation failed');
-                if (!data.seatsAvailable) throw new Error(data.error || 'Flight is no longer available. Please search again.');
+                if (!data.seatsAvailable) {
+                    // SearchIdentifier errors mean the revalidation API can't run — not that
+                    // the flight is unavailable. Soft-pass and let the booking API validate.
+                    const isSearchIdError = /searchIdentifier.*empty|cannot revalidate/i.test(data.error || '');
+                    if (!isSearchIdError) {
+                        throw new Error(data.error || 'Flight is no longer available. Please search again.');
+                    }
+                    console.warn('[useFlightBooking] SearchIdentifier revalidation error — soft-passing, proceeding with original offer');
+                }
 
                 const revalidatedOffer = {
                     ...parsedOffer,
@@ -437,6 +445,24 @@ export function useFlightBooking() {
                     return;
                 }
             } catch { /* ignore parse errors, let server validate */ }
+        }
+
+        // Re-check Duffel offer expiry right before charging.
+        // 5-min buffer: if the offer expires within 5 minutes it will almost certainly
+        // expire during the Stripe payment flow, causing a charge+refund cycle.
+        if (offer.provider === 'duffel') {
+            const rawOffer = (offer as any)._rawOffer || (offer as any).rawOffer;
+            // lastTicketDate is set to rawOffer.expires_at during normalization
+            const expiresAt = rawOffer?.expires_at ?? (offer as any).expires_at ?? offer.lastTicketDate;
+            if (expiresAt) {
+                const BUFFER_MS = 5 * 60 * 1000;
+                if (new Date(expiresAt).getTime() - BUFFER_MS < Date.now()) {
+                    sessionStorage.removeItem('selectedFlight');
+                    setErrorMsg('This flight offer has expired. Please search again for current availability.');
+                    setStep('error');
+                    return;
+                }
+            }
         }
 
         try {

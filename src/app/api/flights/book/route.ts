@@ -81,6 +81,43 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
+        // ── Mystifly V2 UUID FareSource guard — before creating any session or PaymentIntent ──
+        // V2 UUID FareSources require SearchIdentifier on all Mystifly endpoints (revalidate + book).
+        // Mystifly does not return SearchIdentifier in search responses, so these fares are unbookable.
+        // Fail here immediately rather than authorizing a charge we can't complete.
+        if (provider === 'mystifly_v2') {
+            const traceId: string = (flight as any).traceId ?? '';
+            const fareCode = traceId.split('|')[0];
+            const searchIdentifier = traceId.split('|')[3]; // tunneled format: FSC|convId||SearchId
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fareCode);
+            if (isUUID && !searchIdentifier) {
+                console.warn(`[/book] Rejecting unbookable V2 UUID fare (no SearchIdentifier): ${fareCode.slice(0, 18)}…`);
+                return NextResponse.json({
+                    success: false,
+                    error: 'This flight offer is not available for booking. Please go back and select a different flight.',
+                }, { status: 422 });
+            }
+        }
+
+        // ── Duffel offer expiry check — before charging anything ──
+        // Add a 5-minute buffer: if the offer expires within 5 min it will almost
+        // certainly expire during the Stripe payment flow, causing a charge+refund.
+        // Production offers last 24-48h so this buffer has no real-world impact.
+        if (provider === 'duffel') {
+            const rawOffer = (flight as any)._rawOffer;
+            // lastTicketDate is set to rawOffer.expires_at during normalization — use as fallback
+            const expiresAt = rawOffer?.expires_at ?? (flight as any).expires_at ?? (flight as any).lastTicketDate;
+            if (expiresAt) {
+                const BUFFER_MS = 5 * 60 * 1000; // 5 minutes
+                if (new Date(expiresAt).getTime() - BUFFER_MS < Date.now()) {
+                    return NextResponse.json({
+                        success: false,
+                        error: 'This flight offer has expired. Please search again for current availability.',
+                    }, { status: 409 });
+                }
+            }
+        }
+
         // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
         const revalStart = Date.now();
         const revalEndpoint = `${env.SUPABASE_URL}/functions/v1/revalidate-flight`;
@@ -104,10 +141,18 @@ export async function POST(req: NextRequest) {
         });
 
         if (!revalData.success || !revalData.seatsAvailable) {
-            return NextResponse.json({
-                success: false,
-                error: revalData.error || 'This flight is no longer available from the supplier. Please return to search.'
-            }, { status: 409 });
+            // Mystifly: SearchIdentifier is frequently missing from search responses.
+            // Soft-pass these errors and let the booking API validate the fare instead.
+            const isMystiflyProvider = provider === 'mystifly' || provider === 'mystifly_v2';
+            const isSearchIdError = /searchIdentifier.*empty|cannot revalidate/i.test(revalData.error || '');
+            if (isMystiflyProvider && isSearchIdError) {
+                console.warn('[/book] SearchIdentifier revalidation error — soft-passing for Mystifly, proceeding to booking');
+            } else {
+                return NextResponse.json({
+                    success: false,
+                    error: revalData.error || 'This flight is no longer available from the supplier. Please return to search.'
+                }, { status: 409 });
+            }
         }
 
         // Trust the edge function's priceChanged flag — it handles currency

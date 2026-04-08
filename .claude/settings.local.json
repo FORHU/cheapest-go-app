@@ -40,7 +40,8 @@
       "Bash(where \"google-chrome\")",
       "Read(//c/Program Files/Google/Chrome/Application/**)",
       "Bash('/c/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --no-sandbox --print-to-pdf=C:/Users/USER/Documents/GitHub/cheapest-go-app/docs/pricing-strategy.pdf --print-to-pdf-no-header --no-pdf-header-footer C:/Users/USER/Documents/GitHub/cheapest-go-app/docs/pricing-strategy.html)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(npx supabase:*)"
     ]
   }
 }

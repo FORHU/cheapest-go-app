@@ -183,7 +183,7 @@ export async function mystiflyRequest<T = any>(
         ConversationId: conversationId ?? body.ConversationId ?? crypto.randomUUID(),
     };
 
-    console.log(`[Mystifly] Request: ${endpoint} | Target: ${finalBody.Target} | ConversationId: ${finalBody.ConversationId}`);
+    console.log(`[Mystifly] Request: ${BASE_URL()}${endpoint} | Target: ${finalBody.Target} | ConversationId: ${finalBody.ConversationId}`);
 
     const buildInit = (s: string): RequestInit => ({
         method: 'POST',
@@ -326,17 +326,20 @@ export async function revalidateFareV2(
     fareSourceCode: string,
     sessionId?: string,
     conversationId?: string,
+    searchIdentifier?: string,
 ) {
     const target = getMystiflyTarget();
-    const body = { FareSourceCode: fareSourceCode, Target: target };
+    const body: any = { FareSourceCode: fareSourceCode, Target: target };
+    if (searchIdentifier) body.SearchIdentifier = searchIdentifier;
 
     // 1. Try V2 Revalidate/Flight
     try {
         console.log(`[mystiflyClient] V2 Revalidate (Revalidate/Flight). Target: ${target}`);
         return await mystiflyRequest('/api/v2/Revalidate/Flight', body, sessionId, conversationId);
     } catch (err: any) {
-        if (err?.type !== 'PARSE' && !err?.message?.includes('searchIdentifier')) throw err;
-        console.warn('[mystiflyClient] V2 Revalidate/Flight failed or returned empty — trying OnePoint');
+        const isFallthrough = err?.type === 'PARSE' || /version mismatch|searchidentifier|invalid faresource/i.test(err?.message ?? '');
+        if (!isFallthrough) throw err;
+        console.warn('[mystiflyClient] V2 Revalidate/Flight failed — trying OnePoint:', err.message);
     }
 
     // 2. Try V2 OnePoint/Revalidate
@@ -344,8 +347,9 @@ export async function revalidateFareV2(
         console.log(`[mystiflyClient] V2 Revalidate (OnePoint). Target: ${target}`);
         return await mystiflyRequest('/api/v2/OnePoint/Revalidate', body, sessionId, conversationId);
     } catch (err: any) {
-        if (err?.type !== 'PARSE') throw err;
-        console.warn('[mystiflyClient] V2 OnePoint/Revalidate also returned empty — falling back to V1');
+        const isFallthrough = err?.type === 'PARSE' || /version mismatch|searchidentifier|invalid faresource/i.test(err?.message ?? '');
+        if (!isFallthrough) throw err;
+        console.warn('[mystiflyClient] V2 OnePoint/Revalidate failed — falling back to V1:', err.message);
     }
 
     // 3. Final fallback: V1 Revalidate (FareSourceCodes work across versions)
@@ -356,21 +360,40 @@ export async function revalidateFareV2(
 // ─── V1 Book ────────────────────────────────────────────────────────
 
 /**
- * Book a V1 flight — V1 ONLY, no cross-version retry.
- * Must only be called for flights obtained from mystifly (V1) search.
- * Uses the centralized getMystiflyTarget() target.
+ * Book a V1 flight — V1 ONLY.
+ * Tries WITH SearchIdentifier first (required by newer Mystifly API).
+ * Falls back to WITHOUT SearchIdentifier if the API rejects the value
+ * (ERBUK103 "API version mismatch" means wrong SearchIdentifier value).
  */
 export async function bookFlight(
     body: any,
     sessionId?: string,
     conversationId?: string,
+    searchIdentifier?: string,
 ) {
     const target = getMystiflyTarget();
-    console.log(`[mystiflyClient] V1 Book. Target: ${target}`);
-    return mystiflyRequest('/api/v1/Book/Flight', {
-        ...body,
-        Target: target,
-    }, sessionId, conversationId);
+    const baseUrl = BASE_URL();
+    console.log(`[mystiflyClient] V1 Book. BASE_URL: ${baseUrl}, Target: ${target}, hasSearchId: ${!!searchIdentifier}`);
+
+    const bookBodyWith: any = { ...body, Target: target };
+    if (searchIdentifier) bookBodyWith.SearchIdentifier = searchIdentifier;
+
+    const res = await mystiflyRequest('/api/v1/Book/Flight', bookBodyWith, sessionId, conversationId);
+
+    // If the SearchIdentifier value we sent was rejected (ERBUK103 / "version mismatch"),
+    // retry WITHOUT it. Mystifly sometimes returns this when the TraceId is passed instead
+    // of a real SearchIdentifier.
+    if (!res.Success && searchIdentifier) {
+        const msg: string = res.Message ?? '';
+        const isVersionMismatch = /version mismatch|invalid faresource/i.test(msg);
+        if (isVersionMismatch) {
+            console.warn(`[mystiflyClient] V1 Book: SearchIdentifier caused ERBUK103 — retrying WITHOUT it`);
+            const bookBodyWithout: any = { ...body, Target: target };
+            return mystiflyRequest('/api/v1/Book/Flight', bookBodyWithout, sessionId, conversationId);
+        }
+    }
+
+    return res;
 }
 
 // ─── V2 Book ────────────────────────────────────────────────────────
@@ -388,31 +411,68 @@ export async function bookFlightV2(
     v1StyleBody: any,
     sessionId?: string,
     conversationId?: string,
+    searchIdentifier?: string,
 ) {
     const target = getMystiflyTarget();
 
-    // Try V2 Book/Flight first
+    // Fall through to next endpoint on ANY failure — we're trying multiple endpoints
+    // in order of preference, so any non-success should try the next one.
+    const shouldFallThrough = (res: any) => !res.Success;
+
+    // 1. Try V2 OnePoint/Book WITHOUT SearchIdentifier — this worked before the search migration.
+    //    OnePoint is a simplified flow that may not require SearchIdentifier.
+    try {
+        console.log(`[mystiflyClient] V2 Book (OnePoint, no SearchId). Target: ${target}`);
+        const v2Body = buildV2BookBody(v1StyleBody, target, undefined);
+        const res = await mystiflyRequest('/api/v2/OnePoint/Book', v2Body, sessionId, conversationId);
+        if (!shouldFallThrough(res)) {
+            console.log('[mystiflyClient] V2 OnePoint/Book (no SearchId) succeeded');
+            return res;
+        }
+        console.warn(`[mystiflyClient] V2 OnePoint/Book (no SearchId) failed: ${res.Message?.slice(0, 80)}`);
+    } catch (err: any) {
+        const isFallthrough = err?.type === 'PARSE' || /version mismatch|searchidentifier|invalid faresource/i.test(err?.message ?? '');
+        if (!isFallthrough) throw err;
+        console.warn('[mystiflyClient] V2 OnePoint/Book (no SearchId) failed, falling through:', err.message);
+    }
+
+    // 2. Try V2 OnePoint/Book WITH SearchIdentifier
+    if (searchIdentifier) {
+        try {
+            console.log(`[mystiflyClient] V2 Book (OnePoint, with SearchId). Target: ${target}`);
+            const v2Body = buildV2BookBody(v1StyleBody, target, searchIdentifier);
+            const res = await mystiflyRequest('/api/v2/OnePoint/Book', v2Body, sessionId, conversationId);
+            if (!shouldFallThrough(res)) {
+                console.log('[mystiflyClient] V2 OnePoint/Book (with SearchId) succeeded');
+                return res;
+            }
+            console.warn(`[mystiflyClient] V2 OnePoint/Book (with SearchId) failed: ${res.Message?.slice(0, 80)}`);
+        } catch (err: any) {
+            const isFallthrough = err?.type === 'PARSE' || /version mismatch|searchidentifier|invalid faresource/i.test(err?.message ?? '');
+            if (!isFallthrough) throw err;
+            console.warn('[mystiflyClient] V2 OnePoint/Book (with SearchId) failed, falling through:', err.message);
+        }
+    }
+
+    // 3. Try V2 Book/Flight with SearchIdentifier
     try {
         console.log(`[mystiflyClient] V2 Book (Book/Flight). Target: ${target}`);
-        const v2Body = buildV2BookBody(v1StyleBody, target);
-        return await mystiflyRequest('/api/v2/Book/Flight', v2Body, sessionId, conversationId);
+        const v2Body = buildV2BookBody(v1StyleBody, target, searchIdentifier);
+        const res = await mystiflyRequest('/api/v2/Book/Flight', v2Body, sessionId, conversationId);
+        if (!shouldFallThrough(res)) {
+            console.log('[mystiflyClient] V2 Book/Flight succeeded');
+            return res;
+        }
+        console.warn(`[mystiflyClient] V2 Book/Flight failed: ${res.Message?.slice(0, 80)}`);
     } catch (err: any) {
-        if (err?.type !== 'PARSE' && !err?.message?.includes('searchIdentifier')) throw err;
-        console.warn('[mystiflyClient] V2 Book/Flight failed or returned empty — trying OnePoint');
+        const isFallthrough = err?.type === 'PARSE' || /version mismatch|searchidentifier|invalid faresource/i.test(err?.message ?? '');
+        if (!isFallthrough) throw err;
+        console.warn('[mystiflyClient] V2 Book/Flight failed, falling through to V1:', err.message);
     }
 
-    // Try V2 OnePoint/Book
-    try {
-        console.log(`[mystiflyClient] V2 Book (OnePoint). Target: ${target}`);
-        const v2Body = buildV2BookBody(v1StyleBody, target);
-        return await mystiflyRequest('/api/v2/OnePoint/Book', v2Body, sessionId, conversationId);
-    } catch (err: any) {
-        if (err?.type !== 'PARSE') throw err;
-        console.warn('[mystiflyClient] V2 OnePoint/Book also returned empty — falling back to V1 /api/v1/Book/Flight');
-    }
-
-    // Final fallback: V1 Book (FareSourceCodes work across versions)
+    // 4. Final fallback: V1 Book
     console.log(`[mystiflyClient] V1 Book fallback for V2 fare. Target: ${target}`);
+    // V1 endpoint does not accept SearchIdentifier — sending it causes "API version mismatch"
     return mystiflyRequest('/api/v1/Book/Flight', {
         ...v1StyleBody,
         Target: target,
@@ -427,11 +487,14 @@ export async function bookFlightV2(
  *   - DateOfBirth in .000Z format
  *   - No leftover flat V1 passport fields
  */
-function buildV2BookBody(v1Body: any, target: string): any {
-    if (!v1Body.TravelerInfo?.AirTravelers) return { ...v1Body, Target: target };
+function buildV2BookBody(v1Body: any, target: string, searchIdentifier?: string): any {
+    if (!v1Body.TravelerInfo?.AirTravelers) return { ...v1Body, Target: target, ...(searchIdentifier ? { SearchIdentifier: searchIdentifier } : {}) };
 
     const v2Body = JSON.parse(JSON.stringify(v1Body)); // deep clone
     v2Body.Target = target;
+    if (searchIdentifier) {
+        v2Body.SearchIdentifier = searchIdentifier;
+    }
 
     v2Body.TravelerInfo.AirTravelers = v2Body.TravelerInfo.AirTravelers.map((pax: any) => {
         const v2Pax = { ...pax };
