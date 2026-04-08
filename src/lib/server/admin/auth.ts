@@ -13,7 +13,14 @@ export interface AdminAuthResult {
  */
 export async function requireAdmin(): Promise<AdminAuthResult | NextResponse> {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = null;
+    
+    try {
+        const { data } = await supabase.auth.getUser();
+        user = data.user;
+    } catch (err) {
+        console.error('[requireAdmin] Auth error:', err);
+    }
 
     if (!user) {
         return NextResponse.json(

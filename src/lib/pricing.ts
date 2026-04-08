@@ -80,10 +80,10 @@ export const BUNDLE_MARKUP = parseMarkupEnv('BUNDLE_MARKUP_PERCENTAGE', 0.12);
 // ── Stripe fee constants ─────────────────────────────────────────────────────
 
 /** Stripe percentage fee per transaction (2.9%) */
-const STRIPE_RATE = 0.029;
+export const STRIPE_RATE = 0.029;
 
 /** Stripe flat fee per transaction in major currency units (USD $0.30, GBP £0.20, etc.) */
-const STRIPE_FLAT_FEE = 0.30;
+export const STRIPE_FLAT_FEE = 0.30;
 
 // ── Core functions ───────────────────────────────────────────────────────────
 
@@ -139,8 +139,18 @@ export function toStripeAmount(price: number, currency: string): number {
  */
 export function estimateNetProfit(basePrice: number, markupRate: number): number {
     const { chargedPrice, markupAmount } = applyMarkup(basePrice, markupRate);
-    const stripeFee = round2(chargedPrice * STRIPE_RATE + STRIPE_FLAT_FEE);
+    const stripeFee = calculateStripeFee(chargedPrice);
     return round2(markupAmount - stripeFee);
+}
+
+/**
+ * Calculate Stripe fees for a given charged price.
+ *
+ * @param chargedPrice - Amount the customer actually paid
+ * @returns - Stripe fee amount
+ */
+export function calculateStripeFee(chargedPrice: number): number {
+    return round2(chargedPrice * STRIPE_RATE + STRIPE_FLAT_FEE);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

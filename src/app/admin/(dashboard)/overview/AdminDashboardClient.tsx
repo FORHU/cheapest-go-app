@@ -62,6 +62,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
             const financialRows = [
                 ['Daily Revenue', convertCurrency(revenueStats.dailyRevenue, 'PHP', defaultCurrency), defaultCurrency],
                 ['Monthly Revenue', convertCurrency(revenueStats.monthlyRevenue, 'PHP', defaultCurrency), defaultCurrency],
+                ['Total Markup', convertCurrency(revenueStats.totalMarkup, 'PHP', defaultCurrency), defaultCurrency],
                 ['Total Profit', convertCurrency(revenueStats.totalProfit, 'PHP', defaultCurrency), defaultCurrency],
                 ['Refund Rate', `${revenueStats.refundRate}%`, ''],
                 ['Failed Rate', `${revenueStats.failedRate}%`, ''],
@@ -134,10 +135,10 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                     {[
                         { label: 'Daily Revenue', value: formatCurrency(convertCurrency(revenueStats.dailyRevenue, 'PHP', defaultCurrency), defaultCurrency), trend: 'Today', icon: DollarSign, variant: 'blue' as const },
                         { label: 'Monthly Revenue', value: formatCurrency(convertCurrency(revenueStats.monthlyRevenue, 'PHP', defaultCurrency), defaultCurrency), trend: 'This Month', icon: TrendingUp },
+                        { label: 'Total Markup', value: formatCurrency(convertCurrency(revenueStats.totalMarkup, 'PHP', defaultCurrency), defaultCurrency), trend: 'Gross Gain', icon: Banknote, variant: 'amber' as const },
                         { label: 'Total Profit', value: formatCurrency(convertCurrency(revenueStats.totalProfit, 'PHP', defaultCurrency), defaultCurrency), trend: 'Total Net', icon: Coins, variant: 'emerald' as const },
                         { label: 'Refund Rate', value: `${revenueStats.refundRate}%`, trend: 'All Time', icon: RefreshCw },
                         { label: 'Failed Bookings', value: `${revenueStats.failedRate}%`, trend: 'All Time', icon: XCircle, variant: revenueStats.failedRate > 10 ? 'rose' as const : 'white' as const },
-                        { label: 'Pending Tickets', value: `${revenueStats.pendingRate}%`, trend: 'All Time', icon: Clock, variant: revenueStats.pendingRate > 10 ? 'amber' as const : 'white' as const },
                     ].map((stat, i) => (
                         <StatCard
                             key={i}
