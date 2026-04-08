@@ -281,6 +281,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     let dailyRevenue = 0;
     let monthlyRevenue = 0;
+    let totalMarkup = 0;
     let totalProfit = 0;
     const providerMap = new Map<string, number>();
     const providerProfitMap = new Map<string, number>();
@@ -308,6 +309,7 @@ export async function getDashboardData(): Promise<DashboardData> {
             if (bookingTime >= startOfDay) dailyRevenue += price;
             if (bookingTime >= startOfMonth) monthlyRevenue += price;
 
+            totalMarkup += Number(b.markup_amount || 0) * (b.currency === 'USD' ? PHP_RATE : 1);
             totalProfit += profitValue;
 
             providerMap.set(b.provider, (providerMap.get(b.provider) || 0) + price);
@@ -339,6 +341,7 @@ export async function getDashboardData(): Promise<DashboardData> {
             dailyRevenue: Math.round(dailyRevenue),
             monthlyRevenue: Math.round(monthlyRevenue),
             revenueByProvider,
+            totalMarkup: Math.round(totalMarkup),
             totalProfit: Math.round(totalProfit),
             refundRate: Math.round((refundCount / totalCount) * 100),
             failedRate: Math.round((failedCount / totalCount) * 100),

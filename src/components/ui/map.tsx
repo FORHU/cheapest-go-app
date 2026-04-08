@@ -128,161 +128,170 @@ const STANDARD_STYLE = {
 
 import { env } from '@/utils/env';
 
-const Map = React.forwardRef<MapRef, MapProps>(
-    (
-        {
-            className,
-            mapStyle = 'standard',
-            standardConfig,
-            enable3DTerrain = false,
-            terrainExaggeration = 1.5,
-            enable3DBuildings = false,
-            buildingColor = '#aaa',
-            buildingOpacity = 0.8,
-            children,
-            onLoad,
-            ...props
-        },
-        ref
-    ) => {
-        const isStandard = mapStyle === 'standard';
-        const internalRef = React.useRef<MapRef>(null);
-        const mapRef = (ref as React.RefObject<MapRef | null>) || internalRef;
-        const [isStyleLoaded, setIsStyleLoaded] = React.useState(false);
-        const [mapReady, setMapReady] = React.useState(false);
-        const [firstSymbolId, setFirstSymbolId] = React.useState<string>();
+const Map = React.memo(
+    React.forwardRef<MapRef, MapProps>(
+        (
+            {
+                className,
+                mapStyle = 'standard',
+                standardConfig,
+                enable3DTerrain = false,
+                terrainExaggeration = 1.5,
+                enable3DBuildings = false,
+                buildingColor = '#aaa',
+                buildingOpacity = 0.8,
+                children,
+                onLoad,
+                ...props
+            },
+            ref
+        ) => {
+            const isStandard = mapStyle === 'standard';
+            const internalRef = React.useRef<MapRef>(null);
+            const mapRef = (ref as React.RefObject<MapRef | null>) || internalRef;
+            const [isStyleLoaded, setIsStyleLoaded] = React.useState(false);
+            const [mapReady, setMapReady] = React.useState(false);
+            const [firstSymbolId, setFirstSymbolId] = React.useState<string>();
 
-        // Handle style loading and configuration
-        React.useEffect(() => {
-            const map = mapRef.current?.getMap();
-            if (!map || !mapReady) return;
+            // Handle style loading and configuration
+            React.useEffect(() => {
+                const map = mapRef.current?.getMap();
+                if (!map || !mapReady) return;
 
-            setIsStyleLoaded(false);
+                setIsStyleLoaded(false);
 
-            const setup = () => {
-                if (!map || !map.getStyle()) return;
-                
-                try {
-                    // Find the first symbol layer to insert 3D buildings underneath
-                    const layers = map.getStyle()?.layers;
-                    if (layers) {
-                        const firstSymbol = layers.find(l => l.type === 'symbol');
-                        if (firstSymbol) {
-                            setFirstSymbolId(firstSymbol.id);
-                        }
-                    }
+                const setup = () => {
+                    if (!map || !map.getStyle()) return;
 
-                    // Apply any runtime config overrides (e.g. non-default lightPreset)
-                    if (isStandard && standardConfig) {
-                        for (const [key, value] of Object.entries(standardConfig)) {
-                            if (value !== undefined) {
-                                map.setConfigProperty('basemap', key, value);
+                    try {
+                        // Find the first symbol layer to insert 3D buildings underneath
+                        const layers = map.getStyle()?.layers;
+                        if (layers) {
+                            const firstSymbol = layers.find((l) => l.type === 'symbol');
+                            if (firstSymbol) {
+                                setFirstSymbolId(firstSymbol.id);
                             }
                         }
-                    }
 
-                    // Add terrain programmatically after style loads
-                    if (enable3DTerrain) {
-                        if (!map.getSource('mapbox-dem')) {
-                            map.addSource('mapbox-dem', {
-                                type: 'raster-dem',
-                                url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
-                                tileSize: 512,
-                                maxzoom: 14,
+                        // Apply any runtime config overrides (e.g. non-default lightPreset)
+                        if (isStandard && standardConfig) {
+                            for (const [key, value] of Object.entries(standardConfig)) {
+                                if (value !== undefined) {
+                                    map.setConfigProperty('basemap', key, value);
+                                }
+                            }
+                        }
+
+                        // Add terrain programmatically after style loads
+                        if (enable3DTerrain) {
+                            if (!map.getSource('mapbox-dem')) {
+                                map.addSource('mapbox-dem', {
+                                    type: 'raster-dem',
+                                    url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                                    tileSize: 512,
+                                    maxzoom: 14,
+                                });
+                            }
+                            map.setTerrain({
+                                source: 'mapbox-dem',
+                                exaggeration: terrainExaggeration,
                             });
                         }
-                        map.setTerrain({
-                            source: 'mapbox-dem',
-                            exaggeration: terrainExaggeration,
-                        });
-                    }
 
-                    setIsStyleLoaded(true);
+                        setIsStyleLoaded(true);
+                    } catch (err) {
+                        console.warn('Map setup failed, retrying...', err);
+                        setTimeout(setup, 300);
+                    }
+                };
+
+                if (map.isStyleLoaded()) {
+                    setup();
+                } else {
+                    map.once('style.load', setup);
+                }
+            }, [
+                mapStyle,
+                mapReady,
+                isStandard,
+                standardConfig,
+                enable3DTerrain,
+                terrainExaggeration,
+            ]);
+
+            const token = env.MAPBOX_TOKEN;
+            if (!token) {
+                console.error('Mapbox token is missing!');
+            }
+
+            const handleLoad = React.useCallback(
+                (e: mapboxgl.MapboxEvent) => {
+                    setMapReady(true);
+                    onLoad?.(e);
+                },
+                [onLoad]
+            );
+
+            // Runtime config updates (e.g. switching lightPreset)
+            React.useEffect(() => {
+                if (!isStandard || !standardConfig || !isStyleLoaded) return;
+
+                const map = (mapRef as React.RefObject<MapRef | null>).current?.getMap();
+                if (!map) return;
+
+                try {
+                    for (const [key, value] of Object.entries(standardConfig)) {
+                        if (value !== undefined) {
+                            map.setConfigProperty('basemap', key, value);
+                        }
+                    }
                 } catch (err) {
-                    console.warn('Map setup failed, retrying...', err);
-                    setTimeout(setup, 300);
+                    console.warn('Failed to update config property', err);
                 }
-            };
+            }, [isStandard, standardConfig, mapRef, isStyleLoaded]);
 
-            if (map.isStyleLoaded()) {
-                setup();
-            } else {
-                map.once('style.load', setup);
-            }
-        }, [mapStyle, mapReady, isStandard, standardConfig, enable3DTerrain, terrainExaggeration]);
+            const resolvedStyle = isStandard ? STANDARD_STYLE : mapStyle;
 
-        const token = env.MAPBOX_TOKEN;
-        if (!token) {
-            console.error('Mapbox token is missing!');
-        }
-
-        const handleLoad = React.useCallback(
-            (e: mapboxgl.MapboxEvent) => {
-                setMapReady(true);
-                onLoad?.(e);
-            },
-            [onLoad]
-        );
-
-        // Runtime config updates (e.g. switching lightPreset)
-        React.useEffect(() => {
-            if (!isStandard || !standardConfig || !isStyleLoaded) return;
-
-            const map = (mapRef as React.RefObject<MapRef | null>).current?.getMap();
-            if (!map) return;
-
-            try {
-                for (const [key, value] of Object.entries(standardConfig)) {
-                    if (value !== undefined) {
-                        map.setConfigProperty('basemap', key, value);
-                    }
-                }
-            } catch (err) {
-                console.warn('Failed to update config property', err);
-            }
-        }, [isStandard, standardConfig, mapRef, isStyleLoaded]);
-
-        const resolvedStyle = isStandard ? STANDARD_STYLE : mapStyle;
-
-        return (
-            <div
-                className={cn(
-                    'relative w-full h-full min-h-[200px] rounded-lg overflow-hidden',
-                    className
-                )}
-            >
-                <MapboxMap
-                    ref={mapRef}
-                    mapboxAccessToken={env.MAPBOX_TOKEN}
-                    mapStyle={resolvedStyle as MapboxMapProps['mapStyle']}
-                    onLoad={handleLoad}
-                    {...props}
-                >
-                    {isStyleLoaded && (
-                        <>
-                            {!isStandard && enable3DTerrain && (
-                                <Source
-                                    id="mapbox-dem"
-                                    type="raster-dem"
-                                    url="mapbox://mapbox.mapbox-terrain-dem-v1"
-                                    tileSize={512}
-                                    maxzoom={14}
-                                />
-                            )}
-                            {!isStandard && enable3DBuildings && (
-                                <Buildings3DLayer
-                                    color={buildingColor}
-                                    opacity={buildingOpacity}
-                                    beforeId={firstSymbolId}
-                                />
-                            )}
-                            {children}
-                        </>
+            return (
+                <div
+                    className={cn(
+                        'relative w-full h-full min-h-[200px] rounded-lg overflow-hidden',
+                        className
                     )}
-                </MapboxMap>
-            </div>
-        );
-    }
+                >
+                    <MapboxMap
+                        ref={mapRef}
+                        mapboxAccessToken={env.MAPBOX_TOKEN}
+                        mapStyle={resolvedStyle as MapboxMapProps['mapStyle']}
+                        onLoad={handleLoad}
+                        {...props}
+                    >
+                        {isStyleLoaded && (
+                            <>
+                                {!isStandard && enable3DTerrain && (
+                                    <Source
+                                        id="mapbox-dem"
+                                        type="raster-dem"
+                                        url="mapbox://mapbox.mapbox-terrain-dem-v1"
+                                        tileSize={512}
+                                        maxzoom={14}
+                                    />
+                                )}
+                                {!isStandard && enable3DBuildings && (
+                                    <Buildings3DLayer
+                                        color={buildingColor}
+                                        opacity={buildingOpacity}
+                                        beforeId={firstSymbolId}
+                                    />
+                                )}
+                                {children}
+                            </>
+                        )}
+                    </MapboxMap>
+                </div>
+            );
+        }
+    )
 );
 
 Map.displayName = 'Map';
