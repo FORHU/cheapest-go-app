@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, ArrowUpRight, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency } from '@/lib/currency';
 
 interface DataPoint {
     date: string;
@@ -17,6 +19,7 @@ interface RevenueChartProps {
         weekly: DataPoint[];
         monthly: DataPoint[];
     };
+    defaultCurrency?: string;
 }
 
 function formatShortCurrency(value: number): string {
@@ -31,10 +34,19 @@ function formatDateLabel(dateStr: string, timeframe: string): string {
     return d.toLocaleDateString('en', { weekday: 'short', day: 'numeric' });
 }
 
-export function RevenueChart({ data }: RevenueChartProps) {
+export function RevenueChart({ data, defaultCurrency }: RevenueChartProps) {
+    const userCurrency = useUserCurrency();
+    const activeCurrency = defaultCurrency || userCurrency || 'PHP';
     const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-    const currentData = data[timeframe];
+
+    // Convert data to active currency
+    const currentData = React.useMemo(() => {
+        return data[timeframe].map(d => ({
+            ...d,
+            revenue: convertCurrency(d.revenue, 'PHP', activeCurrency)
+        }));
+    }, [data, timeframe, activeCurrency]);
 
     const maxRevenue = Math.max(...currentData.map(d => d.revenue), 100);
     // Round maxRevenue up to a nice number for Y-axis
@@ -118,7 +130,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
                     <div className="md:col-span-1 space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] transition-colors">Total Revenue</p>
                         <div className="flex items-baseline gap-2">
-                            <h4 className="text-3xl font-black text-slate-900 dark:text-white transition-colors">{formatCurrency(totalRevenue)}</h4>
+                            <h4 className="text-3xl font-black text-slate-900 dark:text-white transition-colors">{formatCurrency(totalRevenue, activeCurrency)}</h4>
                         </div>
                     </div>
                 </div>
@@ -263,7 +275,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
                                             textAnchor="middle"
                                             className="fill-white dark:fill-slate-900 text-[11px] font-bold"
                                         >
-                                            {formatCurrency(currentData[hoveredIndex].revenue)}
+                                            {formatCurrency(currentData[hoveredIndex].revenue, activeCurrency)}
                                         </text>
                                         <text
                                             x={points[hoveredIndex].x}
