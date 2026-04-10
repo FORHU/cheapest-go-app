@@ -25,11 +25,17 @@ import { PaginatedBookings } from '@/lib/server/admin';
 import { Booking } from '@/types/admin';
 import { toast } from 'sonner';
 import { DataTableFacetedFilter } from '../bookings/DataTableFacetedFilter';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency } from '@/lib/currency';
 
 interface RevenueBooking extends Booking {
     stripeFee: number;
+    stripeFeeProcessing: number;
+    stripeFeeFixed: number;
     netProfit: number;
     markupPercentage: number;
+    markupPlatform: number;
+    markupMargin: number;
 }
 
 interface RevenueClientProps {
@@ -47,6 +53,7 @@ interface RevenueClientProps {
         supplier: string;
         type: string;
     };
+    defaultCurrency?: string;
 }
 
 const StatCard = ({ title, value, icon: Icon, trend, color, subtitle }: any) => (
@@ -71,10 +78,12 @@ const StatCard = ({ title, value, icon: Icon, trend, color, subtitle }: any) => 
     </div>
 );
 
-export function RevenueClient({ data, searchParams }: RevenueClientProps) {
+export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueClientProps) {
     const router = useRouter();
     const pathname = usePathname();
     const currentSearchParams = useSearchParams();
+    const userCurrency = useUserCurrency();
+    const activeCurrency = defaultCurrency || userCurrency || 'PHP';
     const [isPending, startTransition] = React.useTransition();
     const [searchTerm, setSearchTerm] = useState(searchParams.q);
 
@@ -195,22 +204,22 @@ export function RevenueClient({ data, searchParams }: RevenueClientProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="Total Revenue"
-                    value={formatCurrency(stats.totalRevenue, 'PHP')}
+                    value={formatCurrency(convertCurrency(stats.totalRevenue, 'PHP', activeCurrency), activeCurrency)}
                     icon={DollarSign}
                     color="bg-blue-500"
                     subtitle="Gross Bookings Value"
                 />
                 <StatCard
                     title="Net Profit"
-                    value={formatCurrency(Math.abs(stats.totalProfitAfterFees), 'PHP')}
+                    value={formatCurrency(convertCurrency(stats.totalProfitAfterFees, 'PHP', activeCurrency), activeCurrency)}
                     icon={TrendingUp}
-                    color="bg-emerald-500"
+                    color={stats.totalProfitAfterFees >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}
                     trend={`${((stats.totalProfitAfterFees / (stats.totalRevenue || 1)) * 100).toFixed(1)}% margin`}
-                    subtitle="After Stripe Fees"
+                    subtitle={stats.totalProfitAfterFees >= 0 ? "After Stripe Fees" : "Net Loss detected"}
                 />
                 <StatCard
                     title="Stripe Fees"
-                    value={formatCurrency(stats.totalStripeFees, 'PHP')}
+                    value={formatCurrency(convertCurrency(stats.totalStripeFees, 'PHP', activeCurrency), activeCurrency)}
                     icon={DollarSign}
                     color="bg-rose-500"
                     subtitle="Processing Costs"
@@ -315,18 +324,46 @@ export function RevenueClient({ data, searchParams }: RevenueClientProps) {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="flex items-center justify-between gap-4 max-w-[200px]">
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Selling</span>
+                                                <div className="flex flex-col gap-1 py-1">
+                                                    <div className="flex items-center justify-between gap-4 max-w-[180px]">
+                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Selling</span>
                                                         <span className="text-xs font-black text-slate-900 dark:text-white">{formatCurrency(booking.totalAmount, booking.currency)}</span>
                                                     </div>
-                                                    <div className="flex items-center justify-between gap-4 max-w-[200px]">
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cost</span>
+                                                    <div className="flex items-center justify-between gap-4 max-w-[180px]">
+                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Provider</span>
                                                         <span className="text-xs font-bold text-slate-500">{formatCurrency(booking.supplierCost, booking.currency)}</span>
                                                     </div>
-                                                    <div className="flex items-center justify-between gap-4 max-w-[200px]">
-                                                        <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">Fees</span>
-                                                        <span className="text-xs font-bold text-rose-500">{formatCurrency(booking.stripeFee, booking.currency)}</span>
+                                                    
+                                                    {/* Decomposed Markup */}
+                                                    <div className="flex flex-col border-t border-slate-100 dark:border-white/5 mt-1 pt-1">
+                                                        <div className="flex items-center justify-between gap-4 max-w-[180px]">
+                                                            <span className="text-[9px] font-black text-violet-400 uppercase tracking-widest">Markup</span>
+                                                            <span className="text-xs font-bold text-violet-500">{formatCurrency(booking.markupAmount, booking.currency)}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-4 max-w-[180px] px-1.5 opacity-60">
+                                                            <span className="text-[8px] font-bold text-violet-400 uppercase">Platform Allocation</span>
+                                                            <span className="text-[10px] font-medium text-violet-500">{formatCurrency(booking.markupPlatform, booking.currency)}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-4 max-w-[180px] px-1.5 opacity-60">
+                                                            <span className="text-[8px] font-bold text-violet-400 uppercase">Operational Margin</span>
+                                                            <span className="text-[10px] font-medium text-violet-500">{formatCurrency(booking.markupMargin, booking.currency)}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Decomposed Fees */}
+                                                    <div className="flex flex-col mt-0.5">
+                                                        <div className="flex items-center justify-between gap-4 max-w-[180px]">
+                                                            <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest">Fees</span>
+                                                            <span className="text-xs font-bold text-rose-500">{formatCurrency(booking.stripeFee, booking.currency)}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-4 max-w-[180px] px-1.5 opacity-60">
+                                                            <span className="text-[8px] font-bold text-rose-400 uppercase">Stripe Processing</span>
+                                                            <span className="text-[10px] font-medium text-rose-500">{formatCurrency(booking.stripeFeeProcessing, booking.currency)}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-4 max-w-[180px] px-1.5 opacity-60">
+                                                            <span className="text-[8px] font-bold text-rose-400 uppercase">Transaction Fixed</span>
+                                                            <span className="text-[10px] font-medium text-rose-500">{formatCurrency(booking.stripeFeeFixed, booking.currency)}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -336,9 +373,11 @@ export function RevenueClient({ data, searchParams }: RevenueClientProps) {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="inline-flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-xl">
-                                                    <TrendingUp size={12} className="text-emerald-500" />
-                                                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(Math.abs(booking.netProfit), booking.currency)}</span>
+                                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl ${booking.netProfit >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
+                                                    <TrendingUp size={12} className={booking.netProfit >= 0 ? 'text-emerald-500' : 'text-rose-500 rotate-180'} />
+                                                    <span className={`text-sm font-black ${booking.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                        {formatCurrency(booking.netProfit, booking.currency)}
+                                                    </span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right pr-6">

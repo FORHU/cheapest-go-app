@@ -63,10 +63,10 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
             // Financial Metrics Section
             const financialHeaders = ['Metric', 'Value', 'Currency'];
             const financialRows = [
-                ['Daily Revenue', convertCurrency(revenueStats.dailyRevenue, 'PHP', defaultCurrency), defaultCurrency],
-                ['Monthly Revenue', convertCurrency(revenueStats.monthlyRevenue, 'PHP', defaultCurrency), defaultCurrency],
-                ['Total Markup', convertCurrency(revenueStats.totalMarkup, 'PHP', defaultCurrency), defaultCurrency],
-                ['Total Profit', convertCurrency(revenueStats.totalProfit, 'PHP', defaultCurrency), defaultCurrency],
+                ['Daily Revenue', convertCurrency(revenueStats.dailyRevenue, 'PHP', activeCurrency), activeCurrency],
+                ['Monthly Revenue', convertCurrency(revenueStats.monthlyRevenue, 'PHP', activeCurrency), activeCurrency],
+                ['Total Markup', convertCurrency(revenueStats.totalMarkup, 'PHP', activeCurrency), activeCurrency],
+                ['Total Profit', convertCurrency(revenueStats.totalProfit, 'PHP', activeCurrency), activeCurrency],
                 ['Refund Rate', `${revenueStats.refundRate}%`, ''],
                 ['Failed Rate', `${revenueStats.failedRate}%`, ''],
                 ['Pending Rate', `${revenueStats.pendingRate}%`, ''],
@@ -136,10 +136,10 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                     {[
-                        { label: 'Daily Revenue', value: formatCurrency(convertCurrency(revenueStats.dailyRevenue, 'PHP', defaultCurrency), defaultCurrency), trend: 'Today', icon: DollarSign, variant: 'blue' as const },
-                        { label: 'Monthly Revenue', value: formatCurrency(convertCurrency(revenueStats.monthlyRevenue, 'PHP', defaultCurrency), defaultCurrency), trend: 'This Month', icon: TrendingUp },
-                        { label: 'Total Markup', value: formatCurrency(convertCurrency(revenueStats.totalMarkup, 'PHP', defaultCurrency), defaultCurrency), trend: 'Gross Gain', icon: Banknote, variant: 'amber' as const },
-                        { label: 'Total Profit', value: formatCurrency(convertCurrency(revenueStats.totalProfit, 'PHP', defaultCurrency), defaultCurrency), trend: 'Total Net', icon: Coins, variant: 'emerald' as const },
+                        { label: 'Daily Revenue', value: formatCurrency(convertCurrency(revenueStats.dailyRevenue, 'PHP', activeCurrency), activeCurrency), trend: 'Today', icon: DollarSign, variant: 'blue' as const },
+                        { label: 'Monthly Revenue', value: formatCurrency(convertCurrency(revenueStats.monthlyRevenue, 'PHP', activeCurrency), activeCurrency), trend: 'This Month', icon: TrendingUp },
+                        { label: 'Total Markup', value: formatCurrency(convertCurrency(revenueStats.totalMarkup, 'PHP', activeCurrency), activeCurrency), trend: 'Gross Gain', icon: Banknote, variant: 'amber' as const },
+                        { label: 'Total Profit', value: formatCurrency(convertCurrency(revenueStats.totalProfit, 'PHP', activeCurrency), activeCurrency), trend: 'Total Net', icon: Coins, variant: 'emerald' as const },
                         { label: 'Refund Rate', value: `${revenueStats.refundRate}%`, trend: 'All Time', icon: RefreshCw },
                         { label: 'Failed Bookings', value: `${revenueStats.failedRate}%`, trend: 'All Time', icon: XCircle, variant: revenueStats.failedRate > 10 ? 'rose' as const : 'white' as const },
                     ].map((stat, i) => (
