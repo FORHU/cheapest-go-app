@@ -10,6 +10,7 @@ import type { BookingRecord, FlightBookingRecord } from '@/services/booking.serv
 import BookingCard from './BookingCard';
 import FlightBookingCard from './FlightBookingCard';
 import type { TripsData } from '@/lib/trips';
+import { createClient } from '@/utils/supabase/client';
 
 type TabValue = 'upcoming' | 'past' | 'all';
 const VALID_TABS: TabValue[] = ['upcoming', 'past', 'all'];
@@ -36,6 +37,34 @@ export function TripsContent({ initialData }: TripsContentProps) {
       router.push('/');
     }
   }, [user, isLoading, router]);
+
+  // Realtime: refresh page when any flight booking status changes (e.g. awaiting_ticket → ticketed)
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel('flight-booking-status')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'flight_bookings',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const oldStatus = payload.old?.status;
+          const newStatus = payload.new?.status;
+          if (oldStatus !== newStatus) {
+            console.log(`[trips] Booking status changed: ${oldStatus} → ${newStatus}, refreshing`);
+            router.refresh();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, router]);
 
   const rawTab = searchParams?.get('tab');
   const activeTab: TabValue = VALID_TABS.includes(rawTab as TabValue) ? (rawTab as TabValue) : 'upcoming';

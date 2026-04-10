@@ -147,9 +147,7 @@ export function SearchFetcher({
     });
     // allOffers holds the unfiltered list (used to populate the filter panel)
     const [allOffers, setAllOffers] = useState<FlightOffer[]>([]);
-    const [filterLoading, setFilterLoading] = useState(false);
     const abortRef = useRef<AbortController | null>(null);
-    const filterAbortRef = useRef<AbortController | null>(null);
     const searchBodyRef = useRef<object | null>(null);
 
     const handleSelect = useCallback((offer: FlightOffer) => {
@@ -237,48 +235,37 @@ export function SearchFetcher({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [origin, destination, departureDate, returnDate, adults, children, infants, cabinClass, retryKey]);
 
-    // ─── Re-fetch with filters when filter state changes (after initial load) ──
-    useEffect(() => {
-        if (state.status !== 'success' || !searchBodyRef.current) return;
-
-        filterAbortRef.current?.abort();
-        const controller = new AbortController();
-        filterAbortRef.current = controller;
-
-        setFilterLoading(true);
-
-        fetch('/api/flights/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ...searchBodyRef.current,
-                filters: {
-                    sortBy: filters.sortBy,
-                    maxStops: filters.maxStops,
-                    selectedAirlines: filters.selectedAirlines,
-                },
-            }),
-            signal: controller.signal,
-        })
-            .then(r => r.json())
-            .then(json => {
-                if (json.success) {
-                    const offers: FlightOffer[] = json.data?.offers ?? [];
-                    setState({ status: 'success', offers });
-                }
-            })
-            .catch(() => { /* aborted — ignore */ })
-            .finally(() => setFilterLoading(false));
-
-        return () => controller.abort();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filters]);
-
     // ─── Derived data ─────────────────────────────────────────────────────────
     const rawOffers = state.status === 'success' ? state.offers : [];
     // Airlines list always from the full unfiltered set so all options stay visible
     const airlines = useMemo(() => getAirlines(allOffers.length > 0 ? allOffers : rawOffers), [allOffers, rawOffers]);
-    const filteredOffers = rawOffers; // filtering is now done server-side
+
+    // Client-side filtering applied to cached allOffers — no re-fetch needed
+    const filteredOffers = useMemo(() => {
+        const base = allOffers.length > 0 ? allOffers : rawOffers;
+        let offers = [...base];
+        if (filters.maxStops !== null) {
+            offers = offers.filter(o => (o.totalStops ?? 0) <= filters.maxStops!);
+        }
+        if (filters.selectedAirlines.length > 0) {
+            offers = offers.filter(o => {
+                const name = getAirlineName(o);
+                return filters.selectedAirlines.includes(name);
+            });
+        }
+        if (filters.sortBy === 'price') {
+            offers.sort((a, b) => a.price.total - b.price.total);
+        } else if (filters.sortBy === 'duration') {
+            offers.sort((a, b) => (a.totalDuration ?? 0) - (b.totalDuration ?? 0));
+        } else if (filters.sortBy === 'departure') {
+            offers.sort((a, b) =>
+                new Date(a.segments[0]?.departure?.time ?? 0).getTime() -
+                new Date(b.segments[0]?.departure?.time ?? 0).getTime()
+            );
+        }
+        return offers;
+    }, [allOffers, rawOffers, filters]);
+
     const isLoading = state.status === 'loading' || state.status === 'loading_slow';
     const isSlowSearch = state.status === 'loading_slow';
     const hasResults = state.status === 'success';
@@ -396,25 +383,17 @@ export function SearchFetcher({
 
                 {/* Main results area */}
                 <div className="flex-1 min-w-0">
-                    {filterLoading && (
-                        <div className="flex items-center gap-2 text-xs text-slate-400 mb-3 px-1">
-                            <div className="w-3 h-3 border border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                            Applying filters...
-                        </div>
-                    )}
                     {hasResults && filteredOffers.length === 0 && allOffers.length > 0 ? (
                         <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center space-y-3">
                             <p className="text-lg font-bold text-slate-700 dark:text-slate-300">No flights match your filters</p>
                             <p className="text-sm text-slate-500">Try adjusting your filter criteria.</p>
                         </div>
                     ) : (
-                        <div className={filterLoading ? 'opacity-60 pointer-events-none transition-opacity' : 'transition-opacity'}>
-                            <FlightResults
-                                offers={filteredOffers}
-                                loading={isLoading}
-                                onSelect={handleSelect}
-                            />
-                        </div>
+                        <FlightResults
+                            offers={filteredOffers}
+                            loading={isLoading}
+                            onSelect={handleSelect}
+                        />
                     )}
                 </div>
             </div>

@@ -152,6 +152,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const [noteSuccess, setNoteSuccess] = useState(false);
     const [noteError, setNoteError] = useState<string | null>(null);
     const [existingNotes, setExistingNotes] = useState<{ note: string; created_at: string }[]>([]);
+    const [showVoidQuote, setShowVoidQuote] = useState(false);
+    const [voidQuoteData, setVoidQuoteData] = useState<any>(null);
+    const [loadingVoidQuote, setLoadingVoidQuote] = useState(false);
+    const [voidQuoteError, setVoidQuoteError] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const userCurrency = useUserCurrency();
@@ -166,7 +170,12 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
 
     const isUpcoming = firstSegment && new Date(firstSegment.departure) > new Date();
     const isPast = lastSegment && new Date(lastSegment.arrival) < new Date();
-    const canCancel = CANCELLABLE_STATUSES.has(localStatus);
+
+    // Check if last cancel attempt required manual intervention (ERCBK007 — ticketed booking)
+    const lastLog = booking.cancellation_log?.[booking.cancellation_log.length - 1];
+    const requiresManualCancellation = lastLog?.requiresManualCancellation === true;
+
+    const canCancel = CANCELLABLE_STATUSES.has(localStatus) && !requiresManualCancellation;
 
     let tripType = 'One-way';
     let mainDestination = lastSegment?.destination;
@@ -312,6 +321,69 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         }
     };
 
+    // ── Void Quote handler ──────────────────────────────────────────
+    const handleVoidQuote = async () => {
+        if (showVoidQuote) { setShowVoidQuote(false); return; }
+        setShowVoidQuote(true);
+        if (voidQuoteData) return; // already loaded
+        setLoadingVoidQuote(true);
+        setVoidQuoteError(null);
+        try {
+            // Auto-fetch tripDetails if not loaded yet (needed for eTicket numbers)
+            let resolvedTripDetails = tripDetails;
+            if (!resolvedTripDetails) {
+                const detailsRes = await fetch('/api/flights/trip-details', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uniqueId: booking.pnr }),
+                });
+                const detailsData = await detailsRes.json();
+                if (detailsData.success) {
+                    resolvedTripDetails = detailsData.travelItinerary;
+                    setTripDetails(resolvedTripDetails);
+                } else {
+                    setVoidQuoteError(detailsData.error || 'Could not load trip details to get e-ticket numbers.');
+                    setLoadingVoidQuote(false);
+                    return;
+                }
+            }
+
+            // Extract passengers + eTickets from tripDetails (CustomerInfos.CustomerInfo)
+            let passengers: any[] = [];
+            const itinInfo = resolvedTripDetails?.ItineraryInfo ?? resolvedTripDetails;
+            const customers: any[] = itinInfo?.CustomerInfos?.CustomerInfo ?? [];
+            if (customers.length > 0) {
+                passengers = customers.map((c: any) => ({
+                    firstName: c.PassengerFirstName ?? '',
+                    lastName: c.PassengerLastName ?? '',
+                    title: c.PassengerTitle ?? 'Mr',
+                    eTicket: c.ETicketNumber ?? '',
+                    passengerType: c.PassengerType ?? 'ADT',
+                }));
+            }
+            if (passengers.length === 0 || !passengers[0].eTicket) {
+                setVoidQuoteError('E-ticket numbers not found. This booking may not be ticketed yet.');
+                setLoadingVoidQuote(false);
+                return;
+            }
+            const res = await fetch('/api/flights/void-quote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mfRef: booking.pnr, passengers }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setVoidQuoteData(data);
+            } else {
+                setVoidQuoteError(data.error || 'Could not get void quote');
+            }
+        } catch {
+            setVoidQuoteError('Network error. Please try again.');
+        } finally {
+            setLoadingVoidQuote(false);
+        }
+    };
+
     // Helper to render the right side state chip
     const renderStateChip = () => {
         if (localStatus === 'cancel_requested') {
@@ -343,13 +415,17 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             );
         }
         if (localStatus === 'cancel_failed') {
-            return (
+            return requiresManualCancellation ? (
+                <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
+                    <AlertTriangle className="w-3 h-3 shrink-0" /> Email crm@myfarebox.com to cancel
+                </span>
+            ) : (
                 <span className="inline-flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400 font-medium whitespace-nowrap">
                     <XCircle className="w-3 h-3 shrink-0" /> Cancel failed — retry below
                 </span>
             );
         }
-        if (isUpcoming && localStatus === 'ticketed') {
+        if (isUpcoming && (localStatus === 'ticketed' || localStatus === 'awaiting_ticket')) {
             return (
                 <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" /> Upcoming Flight
@@ -452,7 +528,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     </div>
                 </div>
 
-                {/* ── Mystifly Trip Details toggle (mobile) ── */}
+                {/* ── Mystifly Trip Details + Void Quote toggles (mobile) ── */}
                 {booking.provider === 'mystifly' && booking.pnr && (
                     <div className="md:hidden border-t border-slate-100 dark:border-slate-800">
                         <button
@@ -462,6 +538,18 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                             <span className="flex items-center gap-1"><Plane className="w-3 h-3" /> Airline booking details</span>
                             {showTripDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
+                        {localStatus === 'ticketed' && (
+                            <button
+                                onClick={handleVoidQuote}
+                                className="w-full flex items-center justify-between px-2.5 py-2 text-[10px] text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 border-t border-slate-100 dark:border-slate-800 transition-colors"
+                            >
+                                <span className="flex items-center gap-1">
+                                    {loadingVoidQuote ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                                    Void quote
+                                </span>
+                                {!loadingVoidQuote && (showVoidQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                            </button>
+                        )}
                     </div>
                 )}
 
@@ -531,7 +619,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
 
                         {/* eTickets */}
                         <div className="mt-auto">
-                            {localStatus === 'ticketed' && booking.passengers?.some(p => p.ticket_number) && (
+                            {(localStatus === 'ticketed' || localStatus === 'awaiting_ticket') && booking.passengers?.some(p => p.ticket_number) && (
                                 <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
                                     <div className="flex items-center gap-1.5">
                                         <span className="text-emerald-500 font-bold px-1 py-0.5 rounded bg-emerald-50 dark:bg-emerald-900/30 text-[9px] uppercase border border-emerald-100 dark:border-emerald-800 shrink-0">E-TKT</span>
@@ -606,14 +694,26 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </div>
                     {/* Airline details button — desktop */}
                     {booking.provider === 'mystifly' && booking.pnr && (
-                        <button
-                            onClick={handleViewTripDetails}
-                            className="hidden md:flex w-full items-center justify-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg px-2 py-1.5 transition-colors"
-                        >
-                            <Plane className="w-3 h-3" />
-                            {showTripDetails ? 'Hide details' : 'Airline details'}
-                            {showTripDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </button>
+                        <div className="hidden md:flex flex-col gap-1.5">
+                            <button
+                                onClick={handleViewTripDetails}
+                                className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg px-2 py-1.5 transition-colors"
+                            >
+                                <Plane className="w-3 h-3" />
+                                {showTripDetails ? 'Hide details' : 'Airline details'}
+                                {showTripDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            </button>
+                            {localStatus === 'ticketed' && (
+                                <button
+                                    onClick={handleVoidQuote}
+                                    className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg px-2 py-1.5 transition-colors"
+                                >
+                                    {loadingVoidQuote ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                                    {showVoidQuote ? 'Hide void quote' : 'Void quote'}
+                                    {!loadingVoidQuote && (showVoidQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                                </button>
+                            )}
+                        </div>
                     )}
                     </div>
                 </div>
@@ -729,6 +829,56 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 </div>
                             );
                         })()}
+                    </div>
+                )}
+
+                {/* ── Void Quote Panel ── */}
+                {showVoidQuote && (
+                    <div className="border-t border-amber-100 dark:border-amber-900/30 px-3 lg:px-5 py-3 bg-amber-50/40 dark:bg-amber-900/10">
+                        <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-2">Void Quote</p>
+                        {loadingVoidQuote && (
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Fetching void quote…
+                            </div>
+                        )}
+                        {voidQuoteError && (
+                            <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {voidQuoteError}
+                            </div>
+                        )}
+                        {voidQuoteData && !loadingVoidQuote && (
+                            <div className="space-y-2 text-xs">
+                                <div className="flex flex-wrap gap-3 text-slate-600 dark:text-slate-400">
+                                    {voidQuoteData.ptrStatus && (
+                                        <span>Status: <strong className="text-slate-800 dark:text-slate-200">{voidQuoteData.ptrStatus}</strong></span>
+                                    )}
+                                    {voidQuoteData.voidingWindow && (
+                                        <span>Void window: <strong className="text-slate-800 dark:text-slate-200">{new Date(voidQuoteData.voidingWindow).toLocaleString()}</strong></span>
+                                    )}
+                                    {voidQuoteData.slaMinutes > 0 && (
+                                        <span>SLA: <strong className="text-slate-800 dark:text-slate-200">{voidQuoteData.slaMinutes} min</strong></span>
+                                    )}
+                                </div>
+                                {voidQuoteData.voidQuotes?.length > 0 && (
+                                    <div>
+                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Refund Breakdown</p>
+                                        <div className="space-y-1">
+                                            {voidQuoteData.voidQuotes.map((q: any, i: number) => (
+                                                <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-amber-100 dark:border-amber-800/30">
+                                                    <span className="text-slate-700 dark:text-slate-300">{q.Title} {q.FirstName} {q.LastName} <span className="text-slate-400">({q.PassengerType})</span></span>
+                                                    <div className="text-right shrink-0">
+                                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">{q.TotalRefundAmount} {q.Currency}</span>
+                                                        {(q.TotalVoidingFee > 0 || q.AdminCharges > 0) && (
+                                                            <p className="text-[10px] text-slate-400">Fee: {Number(q.TotalVoidingFee ?? 0) + Number(q.AdminCharges ?? 0)} {q.Currency}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

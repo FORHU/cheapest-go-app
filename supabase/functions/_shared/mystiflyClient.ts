@@ -235,7 +235,12 @@ export async function mystiflyRequest<T = any>(
         json = JSON.parse(text);
     } catch {
         const snippet = text.trim() ? text.slice(0, 500) : '[EMPTY RESPONSE]';
-        console.error(`[Mystifly] Response was not JSON from ${endpoint} (HTTP ${res.status}). Raw body:`, snippet);
+        // 404 with empty body is expected (e.g. TripDetails before booking is indexed)
+        if (res.status === 404) {
+            console.warn(`[Mystifly] 404 non-JSON from ${endpoint} — booking not indexed yet`);
+        } else {
+            console.error(`[Mystifly] Response was not JSON from ${endpoint} (HTTP ${res.status}). Raw body:`, snippet);
+        }
         throw new MystiflyError(
             `Mystifly ${endpoint} returned HTTP ${res.status} with non-JSON body: ${snippet.slice(0, 80)}`,
             'PARSE',
@@ -524,6 +529,33 @@ function buildV2BookBody(v1Body: any, target: string, searchIdentifier?: string)
     });
 
     return v2Body;
+}
+
+// ─── VoidQuote ──────────────────────────────────────────────────────
+
+/**
+ * Get a void quote for a ticketed booking.
+ * Returns refund amounts per passenger and the voiding window.
+ * Endpoint: POST /api/PostTicketingRequest (ptrType: "VoidQuote")
+ */
+export async function voidQuote(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/PostTicketingRequest', {
+        ptrType: 'VoidQuote',
+        mfRef,
+        AllowChildPassenger: true,
+        passengers,
+    }, sessionId, conversationId);
 }
 
 // ─── Cancel Booking ─────────────────────────────────────────────────
