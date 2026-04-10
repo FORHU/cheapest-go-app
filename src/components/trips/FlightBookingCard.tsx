@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { getAirlineName } from '@/utils/flight-utils';
@@ -711,8 +711,8 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                             )}
                         </div>
                     {/* Airline details button — desktop */}
-                    {booking.provider === 'mystifly' && booking.pnr && (
-                        <div className="hidden md:flex flex-col gap-1.5">
+                    <div className="hidden md:flex flex-col gap-1.5">
+                        {booking.provider === 'mystifly' && booking.pnr && (<>
                             <button
                                 onClick={handleViewTripDetails}
                                 className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg px-2 py-1.5 transition-colors"
@@ -731,8 +731,17 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     {!loadingVoidQuote && (showVoidQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                 </button>
                             )}
-                        </div>
-                    )}
+                        </>)}
+                        <a
+                            href={`/trips/invoice/${booking.id}?type=flight`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
+                        >
+                            <Receipt className="w-3 h-3" />
+                            Receipt
+                        </a>
+                    </div>
                     </div>
                 </div>
 
