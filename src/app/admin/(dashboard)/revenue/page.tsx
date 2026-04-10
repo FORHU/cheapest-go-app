@@ -51,9 +51,9 @@ export default async function AdminRevenuePage({
         const stripeFee = calculateStripeFee(booking.totalAmount);
         const stripeFeeProcessing = booking.totalAmount * 0.029;
         const stripeFeeFixed = 0.30;
-
+        
         const netProfit = markupAmount - stripeFee;
-
+        
         // Logical split for display: 70% Platform, 30% Operational Margin
         const markupPlatform = markupAmount * 0.7;
         const markupMargin = markupAmount * 0.3;

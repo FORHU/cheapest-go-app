@@ -310,9 +310,9 @@ export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueCl
                                                 <div className="flex flex-col">
                                                     <span className="font-black text-blue-600 dark:text-blue-400 text-xs tracking-tighter uppercase">{booking.bookingRef}</span>
                                                     <div className="flex items-center gap-1 mt-1">
-                                                        {booking.type === 'flight' ? <Plane size={10} className="text-slate-400" /> :
-                                                            (booking.type === 'bundle' || booking.type === 'hotel_bundle') ? <Layers size={10} className="text-violet-400" /> :
-                                                                <Building2 size={10} className="text-slate-400" />}
+                                                        {booking.type === 'flight' ? <Plane size={10} className="text-slate-400" /> : 
+                                                         (booking.type === 'bundle' || booking.type === 'hotel_bundle') ? <Layers size={10} className="text-violet-400" /> :
+                                                         <Building2 size={10} className="text-slate-400" />}
                                                         <span className="text-[10px] text-slate-400 font-bold uppercase">{booking.supplier}</span>
                                                     </div>
                                                 </div>
@@ -435,7 +435,7 @@ export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueCl
                     </div>
                 </div>
             </div>
-
+            
             {isPending && (
                 <div className="fixed bottom-8 right-8 z-50">
                     <div className="bg-white dark:bg-obsidian border border-slate-200 dark:border-white/10 shadow-2xl rounded-2xl px-6 py-3 flex items-center gap-3 animate-in slide-in-from-bottom-4">
