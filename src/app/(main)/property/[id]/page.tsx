@@ -178,7 +178,7 @@ export default async function PropertyPage({
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold leading-tight">Bundle Discount Active</p>
                                 <p className="text-[11px] text-violet-200 leading-tight mt-0.5 truncate">
-                                    Booking with flight <span className="font-mono text-white/80">{bundleFlightId.slice(0, 8)}…</span> — hotel charged at 12% instead of 15%
+                                    Bundle discount applied — you're saving 3% on this hotel
                                 </p>
                             </div>
                             <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-bold">

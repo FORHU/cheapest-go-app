@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { CheckCircle, PartyPopper, MapPin, Calendar, Mail } from 'lucide-react';
+import { CheckCircle, PartyPopper, MapPin, Calendar, Mail, Plane } from 'lucide-react';
 import { Confetti, Balloons } from '@/components/ui/Animations';
 
 interface BookingSuccessProps {
@@ -13,6 +13,9 @@ interface BookingSuccessProps {
     checkOut: Date | null;
     email: string;
     emailSent: boolean;
+    bundleFlightId?: string;
+    bundleSavings?: number;
+    currency?: string;
 }
 
 export function BookingSuccess({
@@ -22,6 +25,9 @@ export function BookingSuccess({
     checkOut,
     email,
     emailSent,
+    bundleFlightId,
+    bundleSavings,
+    currency = 'USD',
 }: BookingSuccessProps) {
     const router = useRouter();
 
@@ -122,7 +128,7 @@ export function BookingSuccess({
                         </div>
                     )}
 
-                    <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className={`flex items-center gap-2.5 sm:gap-3 ${bundleFlightId ? 'mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-slate-200 dark:border-white/10' : ''}`}>
                         <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                             <Mail className="text-green-600 dark:text-green-400 w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                         </div>
@@ -141,6 +147,30 @@ export function BookingSuccess({
                             </motion.div>
                         )}
                     </div>
+
+                    {bundleFlightId && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.65 }}
+                            className="flex items-center gap-2.5 sm:gap-3 px-3 py-2.5 bg-linear-to-r from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 rounded-xl border border-violet-200/60 dark:border-violet-700/30"
+                        >
+                            <div className="p-1.5 bg-violet-100 dark:bg-violet-900/40 rounded-lg shrink-0">
+                                <Plane className="text-violet-600 dark:text-violet-400 w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[10px] sm:text-xs text-violet-500 dark:text-violet-400">Flight + Hotel Bundle</p>
+                                <p className="font-medium text-violet-900 dark:text-violet-200 text-[12px] sm:text-sm">
+                                    Bundle discount applied
+                                </p>
+                            </div>
+                            {bundleSavings && bundleSavings > 0 && (
+                                <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] sm:text-xs font-bold">
+                                    -{new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(bundleSavings)} saved
+                                </span>
+                            )}
+                        </motion.div>
+                    )}
                 </motion.div>
 
                 <motion.div

@@ -145,7 +145,14 @@ export function CheckoutContent() {
 
     const searchParams = useSearchParams();
     // Present when user arrived from the post-flight-booking bundle upsell → triggers 12% bundle rate
-    const bundleFlightId = searchParams.get('bundleFlightId') || undefined;
+    const bundleFlightIdFromUrl = searchParams.get('bundleFlightId') || undefined;
+    // Persist to sessionStorage so it survives Stripe redirect (URL params are lost after payment)
+    useEffect(() => {
+        if (bundleFlightIdFromUrl) {
+            sessionStorage.setItem('bundleFlightId', bundleFlightIdFromUrl);
+        }
+    }, [bundleFlightIdFromUrl]);
+    const bundleFlightId = bundleFlightIdFromUrl || (typeof window !== 'undefined' ? sessionStorage.getItem('bundleFlightId') ?? undefined : undefined);
 
     useEffect(() => {
         // Sync currency from URL whenever it changes
@@ -386,6 +393,9 @@ export function CheckoutContent() {
 
     // Success screen
     if (isSuccess) {
+        sessionStorage.removeItem('bundleFlightId');
+        // savings = 3% of base price; base = bundlePrice / 1.12, so savings = totalPrice * 3/112
+        const bundleSavings = bundleFlightId && totalPrice ? Math.round(totalPrice * 3 / 112 * 100) / 100 : undefined;
         return (
             <BookingSuccess
                 propertyName={property?.name || "Grand Sierra Pines"}
@@ -394,6 +404,9 @@ export function CheckoutContent() {
                 checkOut={checkOut}
                 email={formData.email}
                 emailSent={emailSent}
+                bundleFlightId={bundleFlightId}
+                bundleSavings={bundleSavings}
+                currency={selectedCurrency}
             />
         );
     }
