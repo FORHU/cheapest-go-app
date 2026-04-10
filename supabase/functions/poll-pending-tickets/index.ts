@@ -79,24 +79,39 @@ Deno.serve(async (req: Request) => {
         try {
             const raw = await getTripDetails(booking.pnr);
 
-            const itinInfo = raw?.Data?.TravelItinerary?.ItineraryInfo
-                ?? raw?.TravelItinerary?.ItineraryInfo
+            // ── New structure: Data.TripDetailsResult.TravelItinerary ──
+            const travelItin = raw?.Data?.TripDetailsResult?.TravelItinerary
+                ?? raw?.Data?.TravelItinerary
+                ?? raw?.TravelItinerary
+                ?? null;
+
+            // New structure: PassengerInfos[].ETickets[].ETicketNumber
+            const passengerInfos: any[] = travelItin?.PassengerInfos ?? [];
+            const eTicketsNew = passengerInfos
+                .flatMap((p: any) => p?.ETickets ?? [])
+                .map((t: any) => t?.ETicketNumber)
+                .filter(Boolean);
+
+            // Legacy structure: ItineraryInfo.CustomerInfos.CustomerInfo[].ETicketNumber
+            const itinInfo = travelItin?.ItineraryInfo
                 ?? raw?.Data?.ItineraryInfo
                 ?? raw?.ItineraryInfo
                 ?? null;
-
             const customers: any[] = itinInfo?.CustomerInfos?.CustomerInfo ?? [];
-            const eTickets = customers
+            const eTicketsLegacy = customers
                 .map((c: any) => c.ETicketNumber)
                 .filter(Boolean);
 
-            const bookingStatus = String(
-                itinInfo?.ItineraryStatus ?? raw?.Data?.Status ?? ''
+            const eTickets = eTicketsNew.length > 0 ? eTicketsNew : eTicketsLegacy;
+
+            // Check ticket status from multiple possible fields
+            const ticketStatus = String(
+                travelItin?.TicketStatus ?? itinInfo?.ItineraryStatus ?? raw?.Data?.Status ?? ''
             ).toLowerCase();
 
             const isTicketed = eTickets.length > 0
-                || bookingStatus === 'ticketed'
-                || bookingStatus === 'confirmed';
+                || ticketStatus === 'ticketed'
+                || ticketStatus === 'confirmed';
 
             if (isTicketed) {
                 await supabase
@@ -110,12 +125,12 @@ Deno.serve(async (req: Request) => {
                 sendTicketIssuedEmail(booking, eTickets, supabase)
                     .catch(e => console.error('[poll-pending-tickets] email error:', e));
 
-            } else if (['failed', 'cancelled', 'voided', 'error'].includes(bookingStatus)) {
-                console.log(`[poll-pending-tickets] ❌ ${booking.pnr} failed (${bookingStatus}) — refunding`);
+            } else if (['failed', 'cancelled', 'voided', 'error'].includes(ticketStatus)) {
+                console.log(`[poll-pending-tickets] ❌ ${booking.pnr} failed (${ticketStatus}) — refunding`);
                 await handleRefund(booking, supabase);
                 results.failed++;
             } else {
-                console.log(`[poll-pending-tickets] ⏳ ${booking.pnr} still pending (${bookingStatus})`);
+                console.log(`[poll-pending-tickets] ⏳ ${booking.pnr} still pending (ticketStatus: ${ticketStatus}, eTickets: ${eTickets.length})`);
                 results.unchanged++;
             }
         } catch (err: any) {

@@ -348,19 +348,37 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 }
             }
 
-            // Extract passengers + eTickets from tripDetails (CustomerInfos.CustomerInfo)
+            // Extract passengers + eTickets — handle both new and legacy API structures
             let passengers: any[] = [];
-            const itinInfo = resolvedTripDetails?.ItineraryInfo ?? resolvedTripDetails;
-            const customers: any[] = itinInfo?.CustomerInfos?.CustomerInfo ?? [];
-            if (customers.length > 0) {
+
+            // New structure: PassengerInfos[].Passenger.PaxName + ETickets[]
+            const passengerInfos: any[] = resolvedTripDetails?.PassengerInfos ?? [];
+            if (passengerInfos.length > 0) {
+                passengers = passengerInfos.map((p: any) => {
+                    const pax = p.Passenger ?? p;
+                    const name = pax.PaxName ?? pax;
+                    const eTicket = (p.ETickets ?? [])[0]?.ETicketNumber ?? '';
+                    return {
+                        firstName: name.PassengerFirstName ?? '',
+                        lastName: name.PassengerLastName ?? '',
+                        title: name.PassengerTitle ?? 'MR',
+                        eTicket,
+                        passengerType: pax.PassengerType ?? 'ADT',
+                    };
+                });
+            } else {
+                // Legacy structure: ItineraryInfo.CustomerInfos.CustomerInfo[]
+                const itinInfo = resolvedTripDetails?.ItineraryInfo ?? resolvedTripDetails;
+                const customers: any[] = itinInfo?.CustomerInfos?.CustomerInfo ?? [];
                 passengers = customers.map((c: any) => ({
                     firstName: c.PassengerFirstName ?? '',
                     lastName: c.PassengerLastName ?? '',
-                    title: c.PassengerTitle ?? 'Mr',
+                    title: c.PassengerTitle ?? 'MR',
                     eTicket: c.ETicketNumber ?? '',
                     passengerType: c.PassengerType ?? 'ADT',
                 }));
             }
+
             if (passengers.length === 0 || !passengers[0].eTicket) {
                 setVoidQuoteError('E-ticket numbers not found. This booking may not be ticketed yet.');
                 setLoadingVoidQuote(false);
@@ -774,57 +792,109 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </div>
 
                         {tripDetails && !loadingTripDetails && (() => {
-                            const itinInfo = tripDetails.ItineraryInfo ?? tripDetails;
-                            const customers: any[] = itinInfo?.CustomerInfos?.CustomerInfo ?? [];
-                            const items: any[] = itinInfo?.ReservationItems?.Item ?? [];
-                            const pricing = itinInfo?.ItineraryPricing ?? tripDetails.ItineraryPricing;
+                            // New API structure: PassengerInfos[] + Itineraries[].ItineraryInfo.ReservationItems[]
+                            const passengerInfos: any[] = tripDetails.PassengerInfos ?? [];
+                            const reservationItems: any[] = (tripDetails.Itineraries ?? [])
+                                .flatMap((it: any) => it?.ItineraryInfo?.ReservationItems ?? []);
+                            const ptcBreakdowns: any[] = tripDetails.TripDetailsPTC_FareBreakdowns ?? [];
+                            const totalFare = ptcBreakdowns[0]?.TripDetailsPassengerFare?.TotalFare;
+
+                            // Legacy structure fallback
+                            const itinInfo = tripDetails.ItineraryInfo ?? null;
+                            const legacyCustomers: any[] = itinInfo?.CustomerInfos?.CustomerInfo ?? [];
+                            const legacyItems: any[] = itinInfo?.ReservationItems?.Item ?? [];
+                            const legacyPricing = itinInfo?.ItineraryPricing ?? tripDetails.ItineraryPricing;
+
+                            const hasNewStructure = passengerInfos.length > 0 || reservationItems.length > 0;
+
                             return (
                                 <div className="space-y-3 text-xs">
                                     {/* Passengers */}
-                                    {customers.length > 0 && (
-                                        <div>
-                                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Passengers</p>
-                                            <div className="space-y-1">
-                                                {customers.map((c: any, i: number) => (
-                                                    <div key={i} className="flex items-center justify-between gap-2">
-                                                        <span className="text-slate-700 dark:text-slate-300">{c.PassengerTitle} {c.PassengerFirstName} {c.PassengerLastName}</span>
-                                                        {c.ETicketNumber && (
-                                                            <span className="font-mono text-[10px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                                                                {c.ETicketNumber}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                ))}
+                                    {hasNewStructure ? (
+                                        passengerInfos.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Passengers</p>
+                                                <div className="space-y-1">
+                                                    {passengerInfos.map((p: any, i: number) => {
+                                                        const pax = p.Passenger ?? p;
+                                                        const name = pax.PaxName ?? pax;
+                                                        const eTicket = (p.ETickets ?? [])[0]?.ETicketNumber;
+                                                        return (
+                                                            <div key={i} className="flex items-center justify-between gap-2">
+                                                                <span className="text-slate-700 dark:text-slate-300">
+                                                                    {name.PassengerTitle} {name.PassengerFirstName} {name.PassengerLastName}
+                                                                </span>
+                                                                {eTicket && (
+                                                                    <span className="font-mono text-[10px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                                                                        {eTicket}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                        </div>
+                                        )
+                                    ) : (
+                                        legacyCustomers.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Passengers</p>
+                                                <div className="space-y-1">
+                                                    {legacyCustomers.map((c: any, i: number) => (
+                                                        <div key={i} className="flex items-center justify-between gap-2">
+                                                            <span className="text-slate-700 dark:text-slate-300">{c.PassengerTitle} {c.PassengerFirstName} {c.PassengerLastName}</span>
+                                                            {c.ETicketNumber && (
+                                                                <span className="font-mono text-[10px] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                                                                    {c.ETicketNumber}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )
                                     )}
                                     {/* Segments */}
-                                    {items.length > 0 && (
-                                        <div>
-                                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Flight Segments</p>
-                                            <div className="space-y-1.5">
-                                                {items.map((seg: any, i: number) => (
-                                                    <div key={i} className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                                                        <Plane className="w-3 h-3 text-indigo-400 shrink-0" />
-                                                        <span className="font-medium">{seg.DepartureAirportLocationCode} → {seg.ArrivalAirportLocationCode}</span>
-                                                        <span className="text-slate-400">·</span>
-                                                        <span>{seg.DepartureDateTime?.slice(0, 16).replace('T', ' ')}</span>
-                                                        {seg.FlightNumber && <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1 rounded">{seg.AirlineCode}{seg.FlightNumber}</span>}
-                                                    </div>
-                                                ))}
+                                    {(() => {
+                                        const items = hasNewStructure ? reservationItems : legacyItems;
+                                        return items.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Flight Segments</p>
+                                                <div className="space-y-1.5">
+                                                    {items.map((seg: any, i: number) => (
+                                                        <div key={i} className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                                                            <Plane className="w-3 h-3 text-indigo-400 shrink-0" />
+                                                            <span className="font-medium">{seg.DepartureAirportLocationCode} → {seg.ArrivalAirportLocationCode}</span>
+                                                            <span className="text-slate-400">·</span>
+                                                            <span>{seg.DepartureDateTime?.slice(0, 16).replace('T', ' ')}</span>
+                                                            {seg.FlightNumber && <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1 rounded">{seg.MarketingAirlineCode ?? seg.AirlineCode}{seg.FlightNumber}</span>}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        );
+                                    })()}
                                     {/* Pricing */}
-                                    {pricing && (
-                                        <div>
-                                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Pricing</p>
-                                            <div className="flex gap-4 text-slate-600 dark:text-slate-400">
-                                                {pricing.TotalFare && <span>Total: <strong className="text-slate-800 dark:text-slate-200">{pricing.TotalFare} {pricing.CurrencyCode}</strong></span>}
-                                                {pricing.BaseFare && <span>Base: {pricing.BaseFare}</span>}
-                                                {pricing.Taxes && <span>Taxes: {pricing.Taxes}</span>}
+                                    {hasNewStructure ? (
+                                        totalFare && (
+                                            <div>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Pricing</p>
+                                                <div className="flex gap-4 text-slate-600 dark:text-slate-400">
+                                                    <span>Total: <strong className="text-slate-800 dark:text-slate-200">{totalFare.Amount} {totalFare.CurrencyCode}</strong></span>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )
+                                    ) : (
+                                        legacyPricing && (
+                                            <div>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Pricing</p>
+                                                <div className="flex gap-4 text-slate-600 dark:text-slate-400">
+                                                    {legacyPricing.TotalFare && <span>Total: <strong className="text-slate-800 dark:text-slate-200">{legacyPricing.TotalFare} {legacyPricing.CurrencyCode}</strong></span>}
+                                                    {legacyPricing.BaseFare && <span>Base: {legacyPricing.BaseFare}</span>}
+                                                    {legacyPricing.Taxes && <span>Taxes: {legacyPricing.Taxes}</span>}
+                                                </div>
+                                            </div>
+                                        )
                                     )}
                                 </div>
                             );

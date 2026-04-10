@@ -596,25 +596,73 @@ export async function addBookingNote(
 // ─── TripDetails ────────────────────────────────────────────────────
 
 /**
+ * GET request helper for Mystifly endpoints that use path params (e.g. TripDetails/{MfRef}).
+ */
+async function mystiflyGet<T = any>(
+    endpoint: string,
+    sessionId?: string,
+): Promise<T> {
+    let sid = sessionId ?? await createSession();
+    const url = `${BASE_URL()}${endpoint}`;
+
+    console.log(`[Mystifly] GET ${url}`);
+
+    const buildInit = (s: string): RequestInit => ({
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${s}` },
+    });
+
+    let res = await fetchWithRetry(url, buildInit(sid), false);
+
+    if (res.status === 401) {
+        console.warn('[Mystifly] 401 on GET — refreshing session');
+        clearSessionCache();
+        sid = await createSession();
+        res = await fetchWithRetry(url, buildInit(sid), false);
+    }
+
+    const text = await res.text();
+    if (!text.trim()) {
+        if (res.status === 404) {
+            console.warn(`[Mystifly] 404 non-JSON from GET ${endpoint} — booking not indexed yet`);
+        } else {
+            console.error(`[Mystifly] Empty response from GET ${endpoint} (HTTP ${res.status})`);
+        }
+        throw new MystiflyError(`GET ${endpoint} returned HTTP ${res.status} with empty body`, 'PARSE', res.status);
+    }
+
+    let json: any;
+    try {
+        json = JSON.parse(text);
+    } catch {
+        console.error(`[Mystifly] Non-JSON from GET ${endpoint} (HTTP ${res.status}):`, text.slice(0, 200));
+        throw new MystiflyError(`GET ${endpoint} returned non-JSON (HTTP ${res.status})`, 'PARSE', res.status);
+    }
+
+    if (!res.ok) {
+        const detail = json?.Message ?? json?.error ?? text.slice(0, 300);
+        throw new MystiflyError(`GET ${endpoint} → ${res.status}: ${detail}`, 'CLIENT', res.status);
+    }
+
+    return json as T;
+}
+
+/**
  * Retrieve full trip details for a confirmed booking.
- * UniqueID is the booking reference (e.g. BKXXXXXXXX) returned by BookFlight.
- * Endpoint: POST /api/v1/TripDetails
+ * Uses GET /api/v1/TripDetails/{MfRef} (MfRef in URL path).
  */
 export async function getTripDetails(
     uniqueId: string,
     sessionId?: string,
-    conversationId?: string,
+    _conversationId?: string,
 ) {
-    // Try primary path first; fall back to alternative if 404
+    // Primary: GET /api/TripDetails/{MfRef} (no version prefix — confirmed from Swagger)
     try {
-        return await mystiflyRequest('/api/v1/TripDetails', {
-            UniqueID: uniqueId,
-        }, sessionId, conversationId);
+        return await mystiflyGet(`/api/TripDetails/${encodeURIComponent(uniqueId)}`, sessionId);
     } catch (err: any) {
         if (err?.status === 404) {
-            return await mystiflyRequest('/api/v1/GetTripDetails', {
-                UniqueID: uniqueId,
-            }, sessionId, conversationId);
+            // Fallback: GET /api/r1/TripDetails/{MfRef}
+            return await mystiflyGet(`/api/r1/TripDetails/${encodeURIComponent(uniqueId)}`, sessionId);
         }
         throw err;
     }

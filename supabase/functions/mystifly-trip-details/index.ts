@@ -53,7 +53,10 @@ Deno.serve(async (req: Request) => {
             });
         }
 
-        const travelItinerary = raw.Data?.TravelItinerary ?? raw.TravelItinerary ?? null;
+        const travelItinerary = raw.Data?.TripDetailsResult?.TravelItinerary
+            ?? raw.Data?.TravelItinerary
+            ?? raw.TravelItinerary
+            ?? null;
 
         console.log(`[mystifly-trip-details] Success for ${uniqueId}, ${durationMs}ms`);
 
