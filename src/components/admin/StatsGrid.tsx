@@ -7,14 +7,24 @@ import { StatCard } from '@/components/admin/StatCard';
 import { formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import type { DashboardData } from '@/types/admin';
+import { useUserCurrency, useSearchActions } from '@/stores/searchStore';
 
 interface StatsGridProps {
     liveStats: DashboardData['stats'];
     defaultCurrency?: string;
 }
 
-export function StatsGrid({ liveStats, defaultCurrency = 'PHP' }: StatsGridProps) {
-    const [currency, setCurrency] = useState(defaultCurrency);
+export function StatsGrid({ liveStats, defaultCurrency }: StatsGridProps) {
+    const userCurrency = useUserCurrency();
+    const { setUserCurrency } = useSearchActions();
+    const [currency, setCurrency] = useState(defaultCurrency || userCurrency || 'PHP');
+
+    // Sync with global currency changes only if the platform default is absent or if it's an explicit manual shift
+    React.useEffect(() => {
+        if (!defaultCurrency && userCurrency) {
+            setCurrency(userCurrency);
+        }
+    }, [userCurrency, defaultCurrency]);
 
     const convertValue = (value: number, targetCurrency: string) => {
         return convertCurrency(value, 'PHP', targetCurrency);
@@ -78,7 +88,10 @@ export function StatsGrid({ liveStats, defaultCurrency = 'PHP' }: StatsGridProps
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="rounded-xl border-slate-100 dark:border-white/10 dark:bg-obsidian p-2 shadow-2xl max-h-48 overflow-y-auto">
                                         {['PHP', 'USD', 'KRW', 'JPY', 'EUR', 'GBP', 'SGD', 'AUD', 'CAD', 'THB', 'MYR', 'CNY'].map(c => (
-                                            <DropdownMenuItem key={c} onClick={() => setCurrency(c)} className="text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer">
+                                            <DropdownMenuItem key={c} onClick={() => {
+                                                setCurrency(c);
+                                                setUserCurrency(c);
+                                            }} className="text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer">
                                                 {c} ({getCurrencySymbol(c)})
                                             </DropdownMenuItem>
                                         ))}
