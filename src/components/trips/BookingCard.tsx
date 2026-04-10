@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, XCircle, Pencil } from 'lucide-react';
+import { MapPin, XCircle, Pencil, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BookingRecord } from '@/services/booking.service';
 import CancellationModal from './CancellationModal';
@@ -234,8 +234,8 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         </div>
 
                         {/* Action buttons */}
-                        {isUpcoming && normalizedStatus === 'confirmed' && (
-                            <div className="flex flex-col gap-1.5 w-full">
+                        <div className="flex flex-col gap-1.5 w-full">
+                            {isUpcoming && normalizedStatus === 'confirmed' && (<>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setShowModifyModal(true); }}
                                     className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
@@ -250,8 +250,17 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                     <XCircle className="w-3 h-3" />
                                     Cancel
                                 </button>
-                            </div>
-                        )}
+                            </>)}
+                            <a
+                                href={`/trips/invoice/${booking.id}?type=hotel`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
+                            >
+                                <Receipt className="w-3 h-3" />
+                                Receipt
+                            </a>
+                        </div>
                     </div>
                 </div>
             </motion.div>

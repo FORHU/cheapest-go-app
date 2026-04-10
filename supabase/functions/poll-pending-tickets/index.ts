@@ -16,6 +16,7 @@ declare const Deno: any;
 
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
+const SITE_URL = Deno.env.get('NEXT_PUBLIC_SITE_URL') ?? 'https://k-travel-booking.vercel.app';
 
 // How long to wait before giving up and refunding (default 2 hours)
 const TICKET_TIMEOUT_HOURS = 2;
@@ -251,9 +252,11 @@ async function sendTicketIssuedEmail(
         return `<tr><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${s.airline}</strong><br><span style="color:#6b7280;font-size:13px;">${s.flight_number}</span></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${s.origin}</strong><br><span style="color:#6b7280;font-size:13px;">${dep}</span></td><td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;color:#9ca3af;">→</td><td style="padding:10px;border-bottom:1px solid #e5e7eb;"><strong>${s.destination}</strong><br><span style="color:#6b7280;font-size:13px;">${arr}</span></td></tr>`;
     }).join('');
 
+    const receiptUrl = `${SITE_URL}/trips/invoice/${booking.id}?type=flight`;
+
     const html = `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
 <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-  <h1 style="color:white;margin:0;">🎉 E-Ticket Issued!</h1>
+  <h1 style="color:white;margin:0;">E-Ticket Issued!</h1>
   <p style="color:rgba(255,255,255,0.9);margin:10px 0 0;">${route}</p>
 </div>
 <div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
@@ -262,6 +265,9 @@ async function sendTicketIssuedEmail(
   <p><strong>Total Paid:</strong> ${formattedPrice}</p>
   ${ticketHtml}
   <table style="width:100%;border-collapse:collapse;">${segRows}</table>
+  <div style="text-align:center;margin:24px 0 8px;">
+    <a href="${receiptUrl}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;">View / Download Receipt</a>
+  </div>
 </div>
 </body></html>`;
 

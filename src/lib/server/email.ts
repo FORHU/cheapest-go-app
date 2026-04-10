@@ -68,6 +68,7 @@ async function logEmail(params: {
 
 export interface SendBookingEmailParams {
     bookingId: string;
+    dbId?: string; // DB UUID — used for receipt link
     email: string;
     guestName: string;
     hotelName: string;
@@ -86,7 +87,9 @@ export interface SendBookingEmailResult {
 export async function sendBookingConfirmationEmail(
     params: SendBookingEmailParams
 ): Promise<SendBookingEmailResult> {
-    const { bookingId, email, guestName, hotelName, roomName, checkIn, checkOut, totalPrice, currency } = params;
+    const { bookingId, dbId, email, guestName, hotelName, roomName, checkIn, checkOut, totalPrice, currency } = params;
+    const siteUrl = env.SITE_URL;
+    const receiptUrl = dbId ? `${siteUrl}/trips/invoice/${dbId}?type=hotel` : null;
 
     if (!email || !bookingId) {
         return { success: false, error: 'Missing required fields' };
@@ -156,6 +159,13 @@ export async function sendBookingConfirmationEmail(
                 You'll receive additional details from the property closer to your check-in date.
             </p>
         </div>
+
+        ${receiptUrl ? `
+        <div style="text-align: center; margin: 24px 0 8px 0;">
+            <a href="${receiptUrl}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;">
+                View / Download Receipt
+            </a>
+        </div>` : ''}
 
         <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px;">
             If you have any questions, please don't hesitate to contact us.
@@ -531,6 +541,7 @@ export async function sendFlightBookingConfirmationEmail(
     params: SendFlightBookingEmailParams
 ): Promise<SendFlightBookingEmailResult> {
     const { bookingId, pnr, email, passengerName, provider, segments, tickets, totalPrice, currency } = params;
+    const flightReceiptUrl = `${env.SITE_URL}/trips/invoice/${bookingId}?type=flight`;
 
     if (!email || !bookingId) {
         return { success: false, error: 'Missing required fields' };
@@ -636,6 +647,12 @@ export async function sendFlightBookingConfirmationEmail(
                 Please save your PNR (<strong>${escapeHtml(pnr)}</strong>) for check-in and reference.
                 Arrive at the airport at least 2 hours before domestic flights or 3 hours before international flights.
             </p>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0 8px 0;">
+            <a href="${flightReceiptUrl}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;">
+                View / Download Receipt
+            </a>
         </div>
 
         <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px;">
