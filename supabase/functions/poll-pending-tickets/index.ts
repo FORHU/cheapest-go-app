@@ -119,6 +119,30 @@ Deno.serve(async (req: Request) => {
                     .update({ status: 'ticketed' })
                     .eq('id', booking.id);
 
+                // Update ticket_number on each passenger row
+                if (passengerInfos.length > 0) {
+                    for (const p of passengerInfos) {
+                        const pax = p.Passenger ?? p;
+                        const name = pax.PaxName ?? pax;
+                        const eTicket = (p.ETickets ?? [])[0]?.ETicketNumber;
+                        if (!eTicket) continue;
+                        const firstName = (name.PassengerFirstName ?? '').toLowerCase();
+                        const lastName = (name.PassengerLastName ?? '').toLowerCase();
+                        await supabase
+                            .from('passengers')
+                            .update({ ticket_number: eTicket })
+                            .eq('booking_id', booking.id)
+                            .ilike('first_name', firstName)
+                            .ilike('last_name', lastName);
+                    }
+                } else if (eTickets.length > 0) {
+                    // Legacy: assign first eTicket to first passenger
+                    await supabase
+                        .from('passengers')
+                        .update({ ticket_number: eTickets[0] })
+                        .eq('booking_id', booking.id);
+                }
+
                 console.log(`[poll-pending-tickets] ✅ ${booking.pnr} is now TICKETED (eTickets: ${eTickets.join(', ')})`);
                 results.ticketed++;
 
