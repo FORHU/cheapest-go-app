@@ -221,8 +221,10 @@ export function normalizeMystiflyOffer(
         let totalStops = 0;
 
         for (const odo of originDestOptions) {
-            totalStops += Number(odo.TotalStops) || 0;
             const options: any[] = odo.OriginDestinationOption ?? odo.FlightSegments ?? [];
+            // Derive stop count from actual segment count rather than odo.TotalStops which
+            // Mystifly often reports as 0 even for connecting flights.
+            totalStops += Math.max(0, options.length - 1);
 
             for (const opt of options) {
                 const fs = opt.FlightSegment ?? opt;
@@ -495,7 +497,9 @@ function normalizeMystiflyV2(
                 cabinClass: mapCabinClass(iref?.CabinClassCode ?? seg.CabinClassCode ?? 'Y'),
                 bookingClass: iref?.RBD ?? seg.ResBookDesigCode ?? seg.CabinClassCode,
                 fareBasis: iref?.FareBasisCodes,
-                itineraryIndex: odoIdx,
+                // Use the leg-grouped index (outbound=0, inbound=1) not the raw odo position.
+                // This ensures the FlightCard groups same-direction segments into one leg.
+                itineraryIndex: itineraryIndex,
             });
         }
 

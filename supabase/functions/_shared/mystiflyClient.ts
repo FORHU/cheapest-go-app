@@ -533,10 +533,19 @@ function buildV2BookBody(v1Body: any, target: string, searchIdentifier?: string)
 
 // ─── VoidQuote ──────────────────────────────────────────────────────
 
+export interface VoidOriginDestination {
+    originLocationCode: string;
+    destinationLocationCode: string;
+    cabinPreference: string;
+    departureDateTime: string;
+    flightNumber: number;
+    airlineCode: string;
+}
+
 /**
  * Get a void quote for a ticketed booking.
- * Returns refund amounts per passenger and the voiding window.
- * Endpoint: POST /api/PostTicketingRequest (ptrType: "VoidQuote")
+ * Returns voiding window and per-passenger refund amounts.
+ * Endpoint: POST /api/Void with AcceptQuote: "None"
  */
 export async function voidQuote(
     mfRef: string,
@@ -547,13 +556,18 @@ export async function voidQuote(
         eTicket: string;
         passengerType: string;
     }>,
+    originDestinations: VoidOriginDestination[],
     sessionId?: string,
     conversationId?: string,
 ) {
-    return mystiflyRequest('/api/PostTicketingRequest', {
-        ptrType: 'VoidQuote',
+    return mystiflyRequest('/api/Void', {
+        ptrType: 'None',
         mFRef: mfRef,
         AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'None',
+        PtrId: 0,
+        originDestinations,
         passengers: passengers.map(p => ({
             firstName: p.firstName,
             lastName: p.lastName,
@@ -564,12 +578,12 @@ export async function voidQuote(
     }, sessionId, conversationId);
 }
 
-// ─── Refund Quote ───────────────────────────────────────────────────
+// ─── Refund ─────────────────────────────────────────────────────────
 
 /**
- * Step 1 — Request a refund quote for a ticketed booking (post void-window).
- * Endpoint: POST /api/PostTicketingRequest (ptrType: "RefundQuote")
- * Returns a PTRId to use in subsequent GetQuote / AcceptRefund calls.
+ * Step 1 — Request a refund quote.
+ * Endpoint: POST /api/Refund with AcceptQuote: "None"
+ * Returns PTRId + RefundDetails breakdown to show user before confirming.
  */
 export async function refundQuote(
     mfRef: string,
@@ -580,12 +594,18 @@ export async function refundQuote(
         eTicket: string;
         passengerType: string;
     }>,
+    originDestinations: VoidOriginDestination[],
     sessionId?: string,
     conversationId?: string,
 ) {
-    return mystiflyRequest('/api/PostTicketingRequest', {
-        ptrType: 'RefundQuote',
+    return mystiflyRequest('/api/Refund', {
+        ptrType: 'None',
         mFRef: mfRef,
+        AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'None',
+        PtrId: 0,
+        originDestinations,
         passengers: passengers.map(p => ({
             firstName: p.firstName,
             lastName: p.lastName,
@@ -597,24 +617,9 @@ export async function refundQuote(
 }
 
 /**
- * Step 2 — Retrieve the refund quote details using PTRId from step 1.
- * Endpoint: POST /api/PostTicketingRequest (ptrType: "GetQuote")
- */
-export async function getRefundQuote(
-    ptrId: string,
-    sessionId?: string,
-    conversationId?: string,
-) {
-    return mystiflyRequest('/api/PostTicketingRequest', {
-        ptrType: 'GetQuote',
-        PTRId: ptrId,
-    }, sessionId, conversationId);
-}
-
-/**
- * Step 2b — Execute the refund after reviewing the RefundQuote.
- * Same body structure as RefundQuote but ptrType: "Refund".
- * Endpoint: POST /api/PostTicketingRequest (ptrType: "Refund")
+ * Step 2 — Execute the refund after the user confirms the quote.
+ * Endpoint: POST /api/Refund with AcceptQuote: "Accept"
+ * Pass back the PtrId and RefundDetails returned by the quote step.
  */
 export async function executeRefund(
     mfRef: string,
@@ -625,12 +630,21 @@ export async function executeRefund(
         eTicket: string;
         passengerType: string;
     }>,
+    ptrId: number,
+    originDestinations: VoidOriginDestination[],
+    refundDetails: any[],
     sessionId?: string,
     conversationId?: string,
 ) {
-    return mystiflyRequest('/api/PostTicketingRequest', {
-        ptrType: 'Refund',
+    return mystiflyRequest('/api/Refund', {
+        ptrType: 'None',
         mFRef: mfRef,
+        AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'Accept',
+        PtrId: ptrId,
+        originDestinations,
+        RefundDetails: refundDetails,
         passengers: passengers.map(p => ({
             firstName: p.firstName,
             lastName: p.lastName,
@@ -644,9 +658,9 @@ export async function executeRefund(
 // ─── Void ───────────────────────────────────────────────────────────
 
 /**
- * Execute a void (refund) for a ticketed booking.
- * Same structure as VoidQuote but ptrType: "Void".
- * Endpoint: POST /api/PostTicketingRequest (ptrType: "Void")
+ * Execute a void for a ticketed booking.
+ * Uses ptrType: "VoidQuote" with AcceptQuote: "Accept" to confirm.
+ * Endpoint: POST /api/PostTicketingRequest
  */
 export async function voidBooking(
     mfRef: string,
@@ -657,13 +671,19 @@ export async function voidBooking(
         eTicket: string;
         passengerType: string;
     }>,
+    ptrId: number,
+    originDestinations: VoidOriginDestination[],
     sessionId?: string,
     conversationId?: string,
 ) {
     return mystiflyRequest('/api/PostTicketingRequest', {
-        ptrType: 'Void',
+        ptrType: 'VoidQuote',
         mFRef: mfRef,
         AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'Accept',
+        PtrId: ptrId,
+        originDestinations,
         passengers: passengers.map(p => ({
             firstName: p.firstName,
             lastName: p.lastName,

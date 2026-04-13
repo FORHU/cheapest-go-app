@@ -1,21 +1,19 @@
 /**
  * Mystifly Refund — Supabase Edge Function
  *
- * Handles the post-ticketing refund flow per Mystifly docs:
- *   step=quote   → ptrType:"RefundQuote" — get quote & PTRId
- *   step=get     → ptrType:"GetQuote"    — fetch refund breakdown
- *   step=execute → ptrType:"Refund"      — execute the refund (mFRef + passengers)
+ * Handles the post-ticketing refund flow per Mystifly /api/Refund docs:
+ *   step=quote   → AcceptQuote:"None"   — get refund breakdown + PTRId
+ *   step=execute → AcceptQuote:"Accept" — execute the refund
  *
  * POST body:
- *   { step: "quote",   mfRef, passengers }
- *   { step: "get",     ptrId }
- *   { step: "execute", mfRef, passengers, bookingId? }
+ *   { step: "quote",   mfRef, passengers, originDestinations }
+ *   { step: "execute", mfRef, passengers, ptrId, originDestinations, refundDetails, bookingId? }
  */
 
 import { getCorsHeaders } from '../_shared/cors.ts';
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { refundQuote, getRefundQuote, executeRefund, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { refundQuote, executeRefund, MystiflyError, type VoidOriginDestination } from '../_shared/mystiflyClient.ts';
 
 declare const Deno: any;
 
@@ -29,19 +27,22 @@ Deno.serve(async (req: Request) => {
         const body = JSON.parse(await req.text());
         const { step } = body;
 
-        if (!step || !['quote', 'get', 'execute'].includes(step)) {
-            return jsonResponse(corsHeaders, { success: false, error: 'step must be "quote", "get", or "execute"' }, 400);
+        if (!step || !['quote', 'execute'].includes(step)) {
+            return jsonResponse(corsHeaders, { success: false, error: 'step must be "quote" or "execute"' }, 400);
         }
 
-        // ── Step 1: RefundQuote ──────────────────────────────────────
+        // ── Step 1: Refund Quote (AcceptQuote: "None") ───────────────
         if (step === 'quote') {
-            const { mfRef, passengers } = body;
+            const { mfRef, passengers, originDestinations } = body;
             if (!mfRef || !passengers?.length) {
                 return jsonResponse(corsHeaders, { success: false, error: 'mfRef and passengers are required' }, 400);
             }
+            if (!originDestinations?.length) {
+                return jsonResponse(corsHeaders, { success: false, error: 'originDestinations is required' }, 400);
+            }
 
             console.log(`[mystifly-refund] RefundQuote for ${mfRef}`);
-            const raw = await refundQuote(mfRef, passengers);
+            const raw = await refundQuote(mfRef, passengers, originDestinations as VoidOriginDestination[]);
             const durationMs = Date.now() - startMs;
             console.log(`[mystifly-refund] RefundQuote response:`, JSON.stringify(raw).slice(0, 500));
 
@@ -56,48 +57,33 @@ Deno.serve(async (req: Request) => {
                 success: true,
                 ptrId: data.PTRId ?? null,
                 ptrStatus: data.PTRStatus ?? null,
+                ptrFee: data.PTRFee ?? 0,
+                refundDetails: data.RefundDetails ?? [],
+                passengerChanges: data.PassengerChanges ?? data.RefundDetails ?? [],
+                totalAmountChanges: data.TotalAmountChanges ?? [],
                 mfRef: data.MfRef ?? mfRef,
                 durationMs,
             });
         }
 
-        // ── Step 2: GetQuote ─────────────────────────────────────────
-        if (step === 'get') {
-            const { ptrId } = body;
-            if (!ptrId) return jsonResponse(corsHeaders, { success: false, error: 'ptrId is required' }, 400);
-
-            console.log(`[mystifly-refund] GetQuote for PTRId ${ptrId}`);
-            const raw = await getRefundQuote(ptrId);
-            const durationMs = Date.now() - startMs;
-            console.log(`[mystifly-refund] GetQuote response:`, JSON.stringify(raw).slice(0, 500));
-
-            if (!raw.Success) {
-                const errors: any[] = raw.Data?.Errors ?? raw.Errors ?? [];
-                const msg = errors[0]?.Message ?? raw.Message ?? 'GetQuote failed';
-                return jsonResponse(corsHeaders, { success: false, error: msg, durationMs });
-            }
-
-            const data = raw.Data ?? raw;
-            return jsonResponse(corsHeaders, {
-                success: true,
-                ptrId: data.PTRId ?? ptrId,
-                ptrStatus: data.PTRStatus ?? null,
-                ptrFee: data.PTRFee ?? 0,
-                passengerChanges: data.PassengerChanges ?? [],
-                totalAmountChanges: data.TotalAmountChanges ?? [],
-                durationMs,
-            });
-        }
-
-        // ── Step 3: Execute Refund (ptrType: "Refund") ───────────────
+        // ── Step 2: Execute Refund (AcceptQuote: "Accept") ──────────
         if (step === 'execute') {
-            const { mfRef, passengers, bookingId } = body;
+            const { mfRef, passengers, ptrId, originDestinations, refundDetails, bookingId } = body;
             if (!mfRef || !passengers?.length) {
                 return jsonResponse(corsHeaders, { success: false, error: 'mfRef and passengers are required' }, 400);
             }
+            if (!originDestinations?.length) {
+                return jsonResponse(corsHeaders, { success: false, error: 'originDestinations is required' }, 400);
+            }
 
-            console.log(`[mystifly-refund] Executing Refund for ${mfRef}`);
-            const raw = await executeRefund(mfRef, passengers);
+            console.log(`[mystifly-refund] Executing Refund for ${mfRef}, ptrId: ${ptrId}`);
+            const raw = await executeRefund(
+                mfRef,
+                passengers,
+                Number(ptrId ?? 0),
+                originDestinations as VoidOriginDestination[],
+                refundDetails ?? [],
+            );
             const durationMs = Date.now() - startMs;
             console.log(`[mystifly-refund] Refund response:`, JSON.stringify(raw).slice(0, 500));
 
@@ -107,7 +93,7 @@ Deno.serve(async (req: Request) => {
                 return jsonResponse(corsHeaders, { success: false, error: msg, durationMs });
             }
 
-            // Mark booking as cancelled in DB
+            // Mark booking as refunded in DB
             if (bookingId) {
                 const supabaseUrl = Deno.env.get('SUPABASE_URL');
                 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -115,7 +101,7 @@ Deno.serve(async (req: Request) => {
                     const supabase = createClient(supabaseUrl, serviceRoleKey);
                     await supabase
                         .from('flight_bookings')
-                        .update({ status: 'cancelled', notes: `Refund submitted — MF: ${mfRef}` })
+                        .update({ status: 'refunded', notes: `Refund submitted — MF: ${mfRef}` })
                         .eq('id', bookingId);
                 }
             }

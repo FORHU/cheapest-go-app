@@ -4,13 +4,16 @@ import { env } from '@/utils/env';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-    const { mfRef, passengers } = await req.json();
+    const { mfRef, passengers, originDestinations } = await req.json();
 
     if (!mfRef) {
         return NextResponse.json({ success: false, error: 'mfRef is required' }, { status: 400 });
     }
     if (!passengers || !Array.isArray(passengers) || passengers.length === 0) {
         return NextResponse.json({ success: false, error: 'passengers array is required' }, { status: 400 });
+    }
+    if (!originDestinations || !Array.isArray(originDestinations) || originDestinations.length === 0) {
+        return NextResponse.json({ success: false, error: 'originDestinations array is required' }, { status: 400 });
     }
 
     const supabaseUrl = env.SUPABASE_URL;
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest) {
             'Authorization': `Bearer ${supabaseKey}`,
             'apikey': supabaseKey,
         },
-        body: JSON.stringify({ mfRef, passengers }),
+        body: JSON.stringify({ mfRef, passengers, originDestinations }),
     });
 
     const text = await res.text();

@@ -17,7 +17,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 declare const Deno: any;
 
-import { voidBooking, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { voidBooking, MystiflyError, type VoidOriginDestination } from '../_shared/mystiflyClient.ts';
 
 Deno.serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
 
     try {
         const body = JSON.parse(await req.text());
-        const { mfRef, passengers, bookingId } = body;
+        const { mfRef, passengers, bookingId, ptrId, originDestinations } = body;
 
         if (!mfRef) {
             return jsonResponse(corsHeaders, { success: false, error: 'mfRef is required' }, 400);
@@ -38,10 +38,13 @@ Deno.serve(async (req: Request) => {
         if (!passengers || !Array.isArray(passengers) || passengers.length === 0) {
             return jsonResponse(corsHeaders, { success: false, error: 'passengers array is required' }, 400);
         }
+        if (!originDestinations || !Array.isArray(originDestinations) || originDestinations.length === 0) {
+            return jsonResponse(corsHeaders, { success: false, error: 'originDestinations array is required' }, 400);
+        }
 
-        console.log(`[mystifly-void] Executing void for: ${mfRef}`);
+        console.log(`[mystifly-void] Executing void for: ${mfRef}, ptrId: ${ptrId}`);
 
-        const raw = await voidBooking(mfRef, passengers);
+        const raw = await voidBooking(mfRef, passengers, Number(ptrId ?? 0), originDestinations as VoidOriginDestination[]);
         const durationMs = Date.now() - startMs;
 
         console.log(`[mystifly-void] Raw response for ${mfRef}:`, JSON.stringify(raw).slice(0, 500));

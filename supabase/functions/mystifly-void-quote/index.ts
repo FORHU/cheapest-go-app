@@ -16,7 +16,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 declare const Deno: any;
 
-import { voidQuote, MystiflyError } from '../_shared/mystiflyClient.ts';
+import { voidQuote, MystiflyError, type VoidOriginDestination } from '../_shared/mystiflyClient.ts';
 
 Deno.serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
@@ -29,7 +29,7 @@ Deno.serve(async (req: Request) => {
 
     try {
         const body = JSON.parse(await req.text());
-        const { mfRef, passengers } = body;
+        const { mfRef, passengers, originDestinations } = body;
 
         if (!mfRef) {
             return jsonResponse(corsHeaders, { success: false, error: 'mfRef is required' }, 400);
@@ -37,10 +37,13 @@ Deno.serve(async (req: Request) => {
         if (!passengers || !Array.isArray(passengers) || passengers.length === 0) {
             return jsonResponse(corsHeaders, { success: false, error: 'passengers array is required' }, 400);
         }
+        if (!originDestinations || !Array.isArray(originDestinations) || originDestinations.length === 0) {
+            return jsonResponse(corsHeaders, { success: false, error: 'originDestinations array is required' }, 400);
+        }
 
         console.log(`[mystifly-void-quote] Getting void quote for: ${mfRef}`);
 
-        const raw = await voidQuote(mfRef, passengers);
+        const raw = await voidQuote(mfRef, passengers, originDestinations as VoidOriginDestination[]);
         const durationMs = Date.now() - startMs;
 
         console.log(`[mystifly-void-quote] Raw response for ${mfRef}:`, JSON.stringify(raw).slice(0, 500));
