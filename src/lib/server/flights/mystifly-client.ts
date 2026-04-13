@@ -265,7 +265,8 @@ export function normalizeMystiflyV1Results(raw: any, maxOffers = 50): any[] {
             let totalDurationMin = 0;
             let totalStops = 0;
 
-            for (const odo of originDestOptions) {
+            for (let odoIdx = 0; odoIdx < originDestOptions.length; odoIdx++) {
+                const odo = originDestOptions[odoIdx];
                 const options: any[] = odo.OriginDestinationOption ?? odo.FlightSegments ?? [];
                 // Derive stops from segment count — TotalStops from Mystifly is often 0 even for connections
                 totalStops += Math.max(0, options.length - 1);
@@ -291,6 +292,7 @@ export function normalizeMystiflyV1Results(raw: any, maxOffers = 50): any[] {
                         terminal: fs.DepartureTerminal,
                         arrivalTerminal: fs.ArrivalTerminal,
                         aircraft: fs.Equipment?.AirEquipType,
+                        itineraryIndex: odoIdx,
                     });
                 }
             }
@@ -384,20 +386,34 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
             // Segments
             const segments: any[] = [];
             let totalDurationMin = 0;
-            let totalStops = 0;
             let brandName: string | undefined;
             let checkedBags = 0;
+
+            const seenItineraryRefs: string[] = [];
+            let outboundDurationMin = 0;
+            let outboundSegCount = 0;
 
             for (const odo of (itin.OriginDestinations ?? [])) {
                 const seg = data.FlightSegmentList?.find((s: any) => s.SegmentRef === odo.SegmentRef);
                 if (!seg) continue;
+
+                // Track unique ItineraryRef values to assign itineraryIndex (outbound=0, return=1, etc.)
+                const itinRef = odo.ItineraryRef ?? '';
+                if (!seenItineraryRefs.includes(itinRef)) seenItineraryRefs.push(itinRef);
+                const itineraryIndex = seenItineraryRefs.indexOf(itinRef);
+                const isOutbound = itineraryIndex === 0;
+
                 const airlineCode = seg.OperatingCarrierCode ?? seg.MarketingCarriercode ?? '';
                 const flightNum = seg.OperatingFlightNumber ?? seg.MarketingFlightNumber ?? '';
                 const depTime = seg.DepartureDateTime ?? '';
                 const arrTime = seg.ArrivalDateTime ?? '';
                 const duration = Number(seg.JourneyDuration) || calculateDuration(depTime, arrTime);
                 totalDurationMin += duration;
-                totalStops += Number(seg.stops) || 0;
+
+                if (isOutbound) {
+                    outboundDurationMin += duration;
+                    outboundSegCount++;
+                }
 
                 const iref = data.ItineraryReferenceList?.find((i: any) => i.ItineraryRef === odo.ItineraryRef);
                 if (iref?.FareFamily && !brandName) brandName = iref.FareFamily;
@@ -420,13 +436,20 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
                     terminal: seg.DepartureTerminal,
                     arrivalTerminal: seg.ArrivalTerminal,
                     aircraft: seg.Equipment,
+                    itineraryIndex,
                 });
             }
 
             if (!segments.length) continue;
 
+            // Stop count = outbound segments - 1 (seg.stops is unreliable in V2 API responses).
+            // Display duration uses outbound leg only (not the combined round-trip total).
+            const displayStops = outboundSegCount > 0 ? outboundSegCount - 1 : 0;
+            const displayDuration = outboundDurationMin || totalDurationMin;
+            // Destination and arrivalTime from the last OUTBOUND segment, not the inbound return.
+            const outboundSegs = segments.filter(s => (s.itineraryIndex ?? 0) === 0);
             const firstSeg = segments[0];
-            const lastSeg = segments[segments.length - 1];
+            const lastSeg = outboundSegs[outboundSegs.length - 1] ?? segments[segments.length - 1];
 
             const isRefundable = fare?.IsRefundable === true
                 || fare?.FareType?.toLowerCase().includes('refund');
@@ -443,9 +466,9 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
                 airlineName: firstSeg.airlineName,
                 departure_time: firstSeg.departureTime,
                 arrival_time: lastSeg.arrivalTime,
-                duration: totalDurationMin,
-                durationMinutes: totalDurationMin,
-                stops: totalStops,
+                duration: displayDuration,
+                durationMinutes: displayDuration,
+                stops: displayStops,
                 remaining_seats: null,
                 checkedBags: checkedBags || undefined,
                 refundable: isRefundable,

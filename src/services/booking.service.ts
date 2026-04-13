@@ -237,6 +237,7 @@ export interface FlightSegmentRecord {
   destination: string;
   departure: string;
   arrival: string;
+  itinerary_index: number;
 }
 
 /**
@@ -259,7 +260,7 @@ export interface FlightBookingRecord {
   id: string;
   user_id: string;
   pnr: string;
-  provider: 'duffel' | 'mystifly';
+  provider: 'duffel' | 'mystifly' | 'mystifly_v2';
   total_price: number;
   currency?: string;
   trip_type?: 'one-way' | 'round-trip' | 'multi-city';

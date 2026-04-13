@@ -362,8 +362,11 @@ export function useFlightBooking() {
     });
 
     // ─── Confirm booking after Stripe payment succeeds ───────────────
-    // Calls /api/flights/confirm which verifies the PaymentIntent server-side
-    // and directly triggers create-booking. Works without stripe listen locally.
+    // Strategy: poll the DB every 2s AND kick off the confirm/create-booking call
+    // after 3s in parallel. Whatever resolves first wins. This means:
+    //   - Webhook fast path: booking appears in DB within ~5s → poll wins
+    //   - No webhook (local dev) or slow webhook: confirm/create-booking wins at ~20-25s
+    //     instead of waiting 15s before even starting it (was 35-45s total before)
     const pollForBooking = useCallback(async (paymentIntentId: string) => {
         const sessionId = bookingSessionIdRef.current;
 
@@ -372,10 +375,8 @@ export function useFlightBooking() {
             return;
         }
 
-        // Show a loading state while confirming
         setStep('submitting');
 
-        // Clear all flight booking session storage
         if (typeof window !== 'undefined') {
             sessionStorage.removeItem('flightPassengers');
             sessionStorage.removeItem('flightContact');
@@ -386,45 +387,88 @@ export function useFlightBooking() {
             sessionStorage.removeItem('flightBookingTs');
         }
 
-        try {
-            const res = await fetch('/api/flights/confirm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paymentIntentId, sessionId }),
-            });
+        let resolved = false;
 
-            const data = await res.json();
-
-            // Provider-level failure (e.g. Mystifly "Pending Need", fare expired, etc.)
-            // Payment was NOT captured in these cases — show error, not success.
-            if (!res.ok || data.success === false) {
-                const errMsg = data.error || 'Booking could not be completed. Your card has not been charged.';
-                setErrorMsg(errMsg);
-                setStep('error');
-                if (typeof window !== 'undefined') {
-                    sessionStorage.removeItem('flightBookingSessionId');
-                    sessionStorage.removeItem('flightPaymentIntentId');
-                    sessionStorage.removeItem('flightBookingTs');
+        // ── Confirm fallback (starts after 3s delay) ──────────────────
+        // Runs in parallel with DB polling. create-booking is idempotent so
+        // it's safe even if the webhook also fires.
+        const confirmPromise = new Promise<{ type: 'confirm'; data: any; ok: boolean }>(resolve => {
+            setTimeout(async () => {
+                if (resolved) return;
+                try {
+                    const res = await fetch('/api/flights/confirm', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ paymentIntentId, sessionId }),
+                    });
+                    const data = await res.json();
+                    resolve({ type: 'confirm', data, ok: res.ok });
+                } catch (e) {
+                    console.error('[pollForBooking] confirm fetch error:', e);
+                    resolve({ type: 'confirm', data: null, ok: false });
                 }
+            }, 3000);
+        });
+
+        // ── DB polling loop (every 2s, up to 45s total) ───────────────
+        const pollPromise = new Promise<{ type: 'poll'; data: any }>(resolve => {
+            const POLL_INTERVAL_MS = 2000;
+            const POLL_TIMEOUT_MS = 45000;
+            const pollStart = Date.now();
+
+            const tick = async () => {
+                if (resolved) return;
+                try {
+                    const statusRes = await fetch(`/api/flights/booking-status?sessionId=${encodeURIComponent(sessionId)}`);
+                    const statusData = await statusRes.json();
+                    if (statusData.found) {
+                        resolve({ type: 'poll', data: statusData });
+                        return;
+                    }
+                } catch { /* network hiccup, keep polling */ }
+
+                if (Date.now() - pollStart < POLL_TIMEOUT_MS) {
+                    setTimeout(tick, POLL_INTERVAL_MS);
+                }
+                // Polling timed out — confirmPromise will resolve eventually
+            };
+
+            setTimeout(tick, POLL_INTERVAL_MS); // first poll after 2s
+        });
+
+        // ── Race: whichever resolves first wins ───────────────────────
+        const winner = await Promise.race([pollPromise, confirmPromise]);
+        resolved = true;
+
+        if (winner.type === 'poll') {
+            const d = winner.data;
+            if (d.failed) {
+                setErrorMsg(d.error || 'Booking failed. Your payment has been automatically refunded.');
+                setStep('error');
                 return;
             }
-
-            if (data.success && data.pnr) {
-                setBookingResult(prev => ({
-                    ...prev,
-                    bookingId: data.bookingId,
-                    pnr: data.pnr,
-                    tickets: data.tickets,
-                }));
-            }
-            // Success — booking confirmed (PNR may still be pending for some providers)
+            if (d.pnr) setBookingResult(prev => ({ ...prev, bookingId: d.bookingId, pnr: d.pnr }));
             setStep('success');
-        } catch (e) {
-            // Network-level error — payment may already have been captured
-            // Show success to avoid confusion but log the error
-            console.error('[confirmBooking] Network error during confirm:', e);
-            setStep('success');
+            return;
         }
+
+        // confirm won
+        const { data, ok } = winner;
+        if (!data || !ok || data.success === false) {
+            const errMsg = data?.error || 'Booking could not be completed. Your card has not been charged.';
+            setErrorMsg(errMsg);
+            setStep('error');
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('flightBookingSessionId');
+                sessionStorage.removeItem('flightPaymentIntentId');
+                sessionStorage.removeItem('flightBookingTs');
+            }
+            return;
+        }
+        if (data.pnr) {
+            setBookingResult(prev => ({ ...prev, bookingId: data.bookingId, pnr: data.pnr, tickets: data.tickets }));
+        }
+        setStep('success');
     }, []);
 
 

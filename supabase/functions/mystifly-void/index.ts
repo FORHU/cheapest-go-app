@@ -1,22 +1,23 @@
 /**
- * Mystifly Void Quote — Supabase Edge Function
+ * Mystifly Void — Supabase Edge Function
  *
- * POST /functions/v1/mystifly-void-quote
+ * POST /functions/v1/mystifly-void
  *
- * Gets a void quote for a ticketed Mystifly booking.
- * Returns the voiding window and per-passenger refund amounts.
+ * Executes a void (refund) for a ticketed Mystifly booking.
+ * Call this AFTER getting a VoidQuote and confirming with the user.
  *
  * POST body: { mfRef: string, passengers: Array<{ firstName, lastName, title, eTicket, passengerType }> }
  *
- * Response: { success, ptrId, ptrStatus, voidingWindow, slaMinutes, voidQuotes, durationMs }
+ * Response: { success, ptrId, ptrStatus, slaMinutes, passengerChanges, totalAmountChanges, durationMs }
  */
 
 import { getCorsHeaders } from '../_shared/cors.ts';
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 declare const Deno: any;
 
-import { voidQuote, MystiflyError, type VoidOriginDestination } from '../_shared/mystiflyClient.ts';
+import { voidBooking, MystiflyError, type VoidOriginDestination } from '../_shared/mystiflyClient.ts';
 
 Deno.serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
@@ -29,7 +30,7 @@ Deno.serve(async (req: Request) => {
 
     try {
         const body = JSON.parse(await req.text());
-        const { mfRef, passengers, originDestinations } = body;
+        const { mfRef, passengers, bookingId, ptrId, originDestinations } = body;
 
         if (!mfRef) {
             return jsonResponse(corsHeaders, { success: false, error: 'mfRef is required' }, 400);
@@ -41,39 +42,54 @@ Deno.serve(async (req: Request) => {
             return jsonResponse(corsHeaders, { success: false, error: 'originDestinations array is required' }, 400);
         }
 
-        console.log(`[mystifly-void-quote] Getting void quote for: ${mfRef}`);
+        console.log(`[mystifly-void] Executing void for: ${mfRef}, ptrId: ${ptrId}`);
 
-        const raw = await voidQuote(mfRef, passengers, originDestinations as VoidOriginDestination[]);
+        const raw = await voidBooking(mfRef, passengers, Number(ptrId ?? 0), originDestinations as VoidOriginDestination[]);
         const durationMs = Date.now() - startMs;
 
-        console.log(`[mystifly-void-quote] Raw response for ${mfRef}:`, JSON.stringify(raw).slice(0, 500));
+        console.log(`[mystifly-void] Raw response for ${mfRef}:`, JSON.stringify(raw).slice(0, 500));
 
         if (!raw.Success) {
             const errors: any[] = raw.Data?.Errors ?? raw.Errors ?? [];
             const code = errors[0]?.Code ?? '';
-            const msg = errors[0]?.Message ?? raw.Message ?? 'Void quote failed';
-            console.warn(`[mystifly-void-quote] Failed (${code}): ${msg}`);
+            const msg = errors[0]?.Message ?? raw.Message ?? 'Void failed';
+            console.warn(`[mystifly-void] Failed (${code}): ${msg}`);
             return jsonResponse(corsHeaders, { success: false, error: msg, code, durationMs });
         }
 
         const data = raw.Data ?? raw;
 
+        // Update booking status to 'voided' in DB if bookingId provided
+        if (bookingId) {
+            const supabaseUrl = Deno.env.get('SUPABASE_URL');
+            const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+            if (supabaseUrl && serviceRoleKey) {
+                const supabase = createClient(supabaseUrl, serviceRoleKey);
+                await supabase
+                    .from('flight_bookings')
+                    .update({ status: 'cancelled', notes: `Voided via PostTicketingRequest PTR: ${data.PTRId ?? ''}` })
+                    .eq('id', bookingId);
+                console.log(`[mystifly-void] Booking ${bookingId} marked as cancelled`);
+            }
+        }
+
         return jsonResponse(corsHeaders, {
             success: true,
             ptrId: data.PTRId ?? null,
-            ptrStatus: data.PTRStatus ?? null,
-            voidingWindow: data.VoidingWindow ?? null,
+            ptrStatus: data.PTRStatus ?? data.Status ?? null,
             slaMinutes: data.SLAInMinutes ?? 0,
-            voidQuotes: data.VoidQuotes ?? [],
+            toBeVoidedBy: data.ToBeVoidedBy ?? null,
+            passengerChanges: data.PassengerChanges ?? [],
+            totalAmountChanges: data.TotalAmountChanges ?? [],
             mfRef: data.MfRef ?? mfRef,
             durationMs,
         });
     } catch (err: any) {
         const durationMs = Date.now() - startMs;
-        console.error('[mystifly-void-quote] Error:', err.message);
+        console.error('[mystifly-void] Error:', err.message);
         const status = err instanceof MystiflyError ? Math.max(err.status, 400) : 500;
         return jsonResponse(corsHeaders,
-            { success: false, error: err.message || 'Void quote failed', durationMs },
+            { success: false, error: err.message || 'Void failed', durationMs },
             status,
         );
     }

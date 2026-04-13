@@ -533,10 +533,19 @@ function buildV2BookBody(v1Body: any, target: string, searchIdentifier?: string)
 
 // ─── VoidQuote ──────────────────────────────────────────────────────
 
+export interface VoidOriginDestination {
+    originLocationCode: string;
+    destinationLocationCode: string;
+    cabinPreference: string;
+    departureDateTime: string;
+    flightNumber: number;
+    airlineCode: string;
+}
+
 /**
  * Get a void quote for a ticketed booking.
- * Returns refund amounts per passenger and the voiding window.
- * Endpoint: POST /api/PostTicketingRequest (ptrType: "VoidQuote")
+ * Returns voiding window and per-passenger refund amounts.
+ * Endpoint: POST /api/Void with AcceptQuote: "None"
  */
 export async function voidQuote(
     mfRef: string,
@@ -547,14 +556,141 @@ export async function voidQuote(
         eTicket: string;
         passengerType: string;
     }>,
+    originDestinations: VoidOriginDestination[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/Void', {
+        ptrType: 'None',
+        mFRef: mfRef,
+        AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'None',
+        PtrId: 0,
+        originDestinations,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+// ─── Refund ─────────────────────────────────────────────────────────
+
+/**
+ * Step 1 — Request a refund quote.
+ * Endpoint: POST /api/Refund with AcceptQuote: "None"
+ * Returns PTRId + RefundDetails breakdown to show user before confirming.
+ */
+export async function refundQuote(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    originDestinations: VoidOriginDestination[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/Refund', {
+        ptrType: 'None',
+        mFRef: mfRef,
+        AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'None',
+        PtrId: 0,
+        originDestinations,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+/**
+ * Step 2 — Execute the refund after the user confirms the quote.
+ * Endpoint: POST /api/Refund with AcceptQuote: "Accept"
+ * Pass back the PtrId and RefundDetails returned by the quote step.
+ */
+export async function executeRefund(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    ptrId: number,
+    originDestinations: VoidOriginDestination[],
+    refundDetails: any[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/Refund', {
+        ptrType: 'None',
+        mFRef: mfRef,
+        AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'Accept',
+        PtrId: ptrId,
+        originDestinations,
+        RefundDetails: refundDetails,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+// ─── Void ───────────────────────────────────────────────────────────
+
+/**
+ * Execute a void for a ticketed booking.
+ * Uses ptrType: "VoidQuote" with AcceptQuote: "Accept" to confirm.
+ * Endpoint: POST /api/PostTicketingRequest
+ */
+export async function voidBooking(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    ptrId: number,
+    originDestinations: VoidOriginDestination[],
     sessionId?: string,
     conversationId?: string,
 ) {
     return mystiflyRequest('/api/PostTicketingRequest', {
         ptrType: 'VoidQuote',
-        mfRef,
+        mFRef: mfRef,
         AllowChildPassenger: true,
-        passengers,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'Accept',
+        PtrId: ptrId,
+        originDestinations,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
     }, sessionId, conversationId);
 }
 
@@ -701,6 +837,24 @@ export async function ticketFlight(
 }
 
 
+
+export async function getTicketDisplay(mfRef: string, ticketNumber: string) {
+    const sid = await createSession();
+    const url = `${BASE_URL()}/api/Ticket/Details/${encodeURIComponent(mfRef)}/${encodeURIComponent(ticketNumber)}`;
+    console.log(`[Mystifly] TicketDisplay GET: ${url}`);
+    const res = await fetchWithRetry(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sid}`,
+            'Accept': 'application/json',
+        },
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw Object.assign(new Error(`TicketDisplay HTTP ${res.status}: ${text.slice(0, 200)}`), { status: res.status });
+    }
+    return res.json();
+}
 
 // ─── Fetch Helpers ──────────────────────────────────────────────────
 
