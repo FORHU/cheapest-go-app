@@ -9,10 +9,19 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<BaseProps> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>('light');
 
+  // Read persisted theme on first mount
+  useEffect(() => {
+    const saved = localStorage.getItem('theme') as Theme | null;
+    if (saved === 'dark' || saved === 'light') {
+      setTheme(saved);
+    }
+  }, []);
+
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
+    localStorage.setItem('theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {

@@ -82,7 +82,6 @@ const Header = () => {
 
           {/* NavLinks */}
           <nav className="hidden lg:flex items-center gap-3">
-            <NavLink href="#" external>List Your Property</NavLink>
             <NavLink href="#" external>Support</NavLink>
           </nav>
 
@@ -258,13 +257,6 @@ const Header = () => {
                 </div>
 
                 <div className="my-1 mx-4 border-t border-slate-200 dark:border-white/10" />
-
-                <a
-                  href="#"
-                  className="flex items-center gap-3 px-4 min-h-[44px] text-[13px] font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                >
-                  List your property
-                </a>
 
                 <a
                   href="#"

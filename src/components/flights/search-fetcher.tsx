@@ -144,6 +144,8 @@ export function SearchFetcher({
         sortBy: 'price',
         selectedAirlines: [],
         maxStops: null,
+        refundableOnly: false,
+        selectedProviders: [],
     });
     // allOffers holds the unfiltered list (used to populate the filter panel)
     const [allOffers, setAllOffers] = useState<FlightOffer[]>([]);
@@ -246,6 +248,12 @@ export function SearchFetcher({
         let offers = [...base];
         if (filters.maxStops !== null) {
             offers = offers.filter(o => (o.totalStops ?? 0) <= filters.maxStops!);
+        }
+        if (filters.refundableOnly) {
+            offers = offers.filter(o => o.refundable === true);
+        }
+        if (filters.selectedProviders.length > 0) {
+            offers = offers.filter(o => filters.selectedProviders.includes(o.provider as any));
         }
         if (filters.selectedAirlines.length > 0) {
             offers = offers.filter(o => {

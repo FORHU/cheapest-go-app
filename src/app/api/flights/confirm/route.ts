@@ -140,11 +140,27 @@ export async function POST(req: NextRequest) {
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
         };
 
-        const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
-            method: 'POST',
-            headers: edgeFnHeaders,
-            body: JSON.stringify({ sessionId }),
-        });
+        const bookingAbort = new AbortController();
+        const bookingTimeout = setTimeout(() => bookingAbort.abort(), 55_000); // 55s — under Vercel's 60s limit
+
+        let bookingRes: Response;
+        try {
+            bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
+                method: 'POST',
+                headers: edgeFnHeaders,
+                body: JSON.stringify({ sessionId }),
+                signal: bookingAbort.signal,
+            });
+        } catch (fetchErr: any) {
+            clearTimeout(bookingTimeout);
+            const isTimeout = fetchErr?.name === 'AbortError';
+            console.error('[/confirm] create-booking fetch error:', fetchErr.message);
+            return NextResponse.json(
+                { success: false, error: isTimeout ? 'Booking timed out. Please check your trips page.' : `Booking service unreachable: ${fetchErr.message}` },
+                { status: 502 },
+            );
+        }
+        clearTimeout(bookingTimeout);
 
         const rawText = await bookingRes.text();
         console.log('[/confirm] create-booking raw response (status', bookingRes.status, '):', rawText);
@@ -184,6 +200,30 @@ export async function POST(req: NextRequest) {
                 status: bookingData.status,
                 ticketStatus: bookingData.ticketStatus,
                 source: 'confirm-fallback',
+            });
+        }
+
+        // create-booking returned failure — but the Stripe webhook may have run
+        // concurrently and saved the booking while we were waiting. Do a final DB
+        // check before surfacing the error to the user.
+        const { data: lateBooking } = await supabase
+            .from('flight_bookings')
+            .select('id, pnr, status, payment_intent_id')
+            .eq('session_id', sessionId)
+            .maybeSingle();
+
+        if (lateBooking?.pnr) {
+            console.log('[/confirm] Late webhook booking found after create-booking failure. PNR:', lateBooking.pnr);
+            if (!bookingData.alreadyBooked) {
+                fireBookingEmail(supabase, sessionId, { bookingId: lateBooking.id, pnr: lateBooking.pnr, status: lateBooking.status }, provider)
+                    .catch(e => console.error('[/confirm] Email error:', e));
+            }
+            return NextResponse.json({
+                success: true,
+                bookingId: lateBooking.id,
+                pnr: lateBooking.pnr,
+                status: lateBooking.status,
+                source: 'late-webhook',
             });
         }
 

@@ -26,7 +26,9 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
   const [isMobileCurrencyOpen, setIsMobileCurrencyOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const currencyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => setMounted(true), []);
 
   const userCurrency = useUserCurrency();
   const userCountry = useUserCountry();
@@ -131,11 +133,6 @@ const Header = () => {
               </AnimatePresence>
             </div>
 
-            {/* List your property */}
-            <a href="#" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
-              List Your Property
-            </a>
-
             {/* Support */}
             <a href="#" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors">
               Support
@@ -151,7 +148,7 @@ const Header = () => {
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
             >
-              {theme === 'dark' ? <Sun className="w-5 h-5 text-white" /> : <Moon className="w-5 h-5 text-slate-700" />}
+              {mounted && (theme === 'dark' ? <Sun className="w-5 h-5 text-white" /> : <Moon className="w-5 h-5 text-slate-700" />)}
             </button>
 
             {/* Sign in Dropdown */}
@@ -263,13 +260,6 @@ const Header = () => {
                   href="#"
                   className="flex items-center gap-2 px-3 min-h-[38px] text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
-                  List your property
-                </a>
-
-                <a
-                  href="#"
-                  className="flex items-center gap-2 px-3 min-h-[38px] text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                >
                   Support
                 </a>
 
@@ -287,8 +277,8 @@ const Header = () => {
                   onClick={() => { toggleTheme(); }}
                   className="flex items-center gap-2 px-3 min-h-[38px] w-full text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
-                  {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-500" /> : <Moon className="w-4 h-4 text-blue-500" />}
-                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                  {mounted && (theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-500" /> : <Moon className="w-4 h-4 text-blue-500" />)}
+                  {mounted ? (theme === 'dark' ? 'Light mode' : 'Dark mode') : 'Theme'}
                 </button>
 
                 <div className="my-1.5 mx-3 border-t border-slate-200 dark:border-white/10" />
