@@ -224,8 +224,45 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
 
             <style>{`
                 @media print {
-                    body { background: white; }
+                    /* Hide everything on the page by default */
+                    body > * { display: none !important; }
+
+                    /* Show only the root wrapper that contains the invoice */
+                    body > div { display: block !important; }
+
+                    /* Hide header, footer, nav, dev tools, fixed overlays */
+                    header, footer, nav,
+                    [data-react-scan], [id*="react-scan"],
+                    [class*="react-scan"], [class*="fps"],
+                    [class*="GlobalSparkle"], [class*="sparkle"],
+                    [class*="pwa"], [class*="PWA"],
+                    [class*="AuthModal"], [class*="Toaster"],
+                    [style*="position: fixed"], [style*="position:fixed"] {
+                        display: none !important;
+                    }
+
+                    /* Invoice wrapper */
+                    body { background: white !important; margin: 0; }
                     .print\\:hidden { display: none !important; }
+                    .print\\:shadow-none { box-shadow: none !important; }
+                    .print\\:rounded-none { border-radius: 0 !important; }
+
+                    /* Tighten spacing so it fits on one page */
+                    .max-w-3xl { max-width: 100% !important; }
+                    .py-8 { padding-top: 12px !important; padding-bottom: 12px !important; }
+                    .px-8 { padding-left: 24px !important; padding-right: 24px !important; }
+                    .pt-8 { padding-top: 16px !important; }
+                    .pb-8 { padding-bottom: 12px !important; }
+                    .py-5 { padding-top: 10px !important; padding-bottom: 10px !important; }
+                    .py-4 { padding-top: 8px !important; padding-bottom: 8px !important; }
+                    .mb-4 { margin-bottom: 0 !important; }
+                    .mt-14 { margin-top: 16px !important; }
+                    .rounded-2xl { border-radius: 0 !important; }
+                    .shadow-lg { box-shadow: none !important; }
+
+                    /* Force single page */
+                    html, body { height: auto !important; }
+                    @page { margin: 10mm 12mm; size: A4; }
                 }
             `}</style>
         </div>

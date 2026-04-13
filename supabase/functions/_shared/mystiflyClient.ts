@@ -552,9 +552,48 @@ export async function voidQuote(
 ) {
     return mystiflyRequest('/api/PostTicketingRequest', {
         ptrType: 'VoidQuote',
-        mfRef,
+        mFRef: mfRef,
         AllowChildPassenger: true,
-        passengers,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+// ─── Void ───────────────────────────────────────────────────────────
+
+/**
+ * Execute a void (refund) for a ticketed booking.
+ * Same structure as VoidQuote but ptrType: "Void".
+ * Endpoint: POST /api/PostTicketingRequest (ptrType: "Void")
+ */
+export async function voidBooking(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/PostTicketingRequest', {
+        ptrType: 'Void',
+        mFRef: mfRef,
+        AllowChildPassenger: true,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
     }, sessionId, conversationId);
 }
 

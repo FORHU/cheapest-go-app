@@ -156,6 +156,9 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const [voidQuoteData, setVoidQuoteData] = useState<any>(null);
     const [loadingVoidQuote, setLoadingVoidQuote] = useState(false);
     const [voidQuoteError, setVoidQuoteError] = useState<string | null>(null);
+    const [confirmingVoid, setConfirmingVoid] = useState(false);
+    const [voidResult, setVoidResult] = useState<any>(null);
+    const [voidError, setVoidError] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const userCurrency = useUserCurrency();
@@ -399,6 +402,53 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             setVoidQuoteError('Network error. Please try again.');
         } finally {
             setLoadingVoidQuote(false);
+        }
+    };
+
+    const handleConfirmVoid = async () => {
+        if (!voidQuoteData) return;
+        setConfirmingVoid(true);
+        setVoidError(null);
+        try {
+            // Rebuild passengers from voidQuoteData or tripDetails
+            const passengerInfos: any[] = tripDetails?.PassengerInfos ?? [];
+            let passengers: any[] = passengerInfos.map((p: any) => {
+                const pax = p.Passenger ?? p;
+                const name = pax.PaxName ?? pax;
+                return {
+                    firstName: name.PassengerFirstName ?? '',
+                    lastName: name.PassengerLastName ?? '',
+                    title: name.PassengerTitle ?? 'MR',
+                    eTicket: (p.ETickets ?? [])[0]?.ETicketNumber ?? '',
+                    passengerType: pax.PassengerType ?? 'ADT',
+                };
+            });
+            // Fallback: use voidQuotes passenger data
+            if (passengers.length === 0 && voidQuoteData.voidQuotes?.length > 0) {
+                passengers = voidQuoteData.voidQuotes.map((q: any) => ({
+                    firstName: q.FirstName ?? '',
+                    lastName: q.LastName ?? '',
+                    title: q.Title ?? 'MR',
+                    eTicket: q.ETicketNumber ?? '',
+                    passengerType: q.PassengerType ?? 'ADT',
+                }));
+            }
+            const res = await fetch('/api/flights/void', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mfRef: booking.pnr, passengers, bookingId: booking.id }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setVoidResult(data);
+                setLocalStatus('cancelled');
+            } else {
+                setVoidError(data.error || 'Void failed. Please try again.');
+            }
+        } catch {
+            setVoidError('Network error. Please try again.');
+        } finally {
+            setConfirmingVoid(false);
         }
     };
 
@@ -954,6 +1004,30 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                                 </div>
                                             ))}
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* Confirm Void / result */}
+                                {voidResult ? (
+                                    <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800/40">
+                                        <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                                        Void submitted (PTR: {voidResult.ptrId ?? '—'}). Refund will be processed within {voidResult.slaMinutes > 0 ? `${voidResult.slaMinutes} min` : 'the SLA window'}.
+                                    </div>
+                                ) : (
+                                    <div className="pt-1 space-y-1.5">
+                                        {voidError && (
+                                            <div className="flex items-center gap-2 text-xs text-red-500 dark:text-red-400">
+                                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {voidError}
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={handleConfirmVoid}
+                                            disabled={confirmingVoid}
+                                            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
+                                        >
+                                            {confirmingVoid ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                                            {confirmingVoid ? 'Processing void…' : 'Confirm Void & Refund'}
+                                        </button>
                                     </div>
                                 )}
                             </div>
