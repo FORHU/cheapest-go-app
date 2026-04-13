@@ -850,6 +850,23 @@ async function bookWithMystifly(
             };
         }
 
+        // "Pending Need" (PN): Mystifly created the booking but the carrier hasn't confirmed
+        // seats yet. The PNR (UniqueID) is still returned. Save it as awaiting_ticket and
+        // let the ticket poller handle the eventual confirmation — do NOT cancel Stripe.
+        const isPendingNeed = /pending need|awaiting carrier|pending airline pnr|booking.{0,30}unconfirmed/i.test(msg);
+        const pendingPnr = raw.Data?.UniqueID ?? raw.UniqueID ?? '';
+        if (isPendingNeed && pendingPnr) {
+            console.warn(`[create-booking] Pending Need booking — PNR: ${pendingPnr}. Carrier confirmation pending.`);
+            if (onRawData) onRawData(raw.Data ?? {});
+            return {
+                pnr: pendingPnr,
+                providerStatus: 'pending_need',
+                rawPrice: revalidatedPrice,
+                rawCurrency: revalidatedCurrency,
+                holdAllowed: false,
+            };
+        }
+
         // V2 UUID fares require SearchIdentifier which Mystifly doesn't return in search responses.
         // Surface a user-friendly message rather than a cryptic 502.
         const isSearchIdMissing = /searchidentifier.*empty|cannot bookflight.*searchidentifier/i.test(msg);
@@ -1020,6 +1037,7 @@ async function insertSegmentsAndPassengers(
         destination: seg.destination,
         departure: seg.departureTime,
         arrival: seg.arrivalTime,
+        itinerary_index: seg.itineraryIndex ?? 0,
     }));
 
     if (segments.length > 0) {

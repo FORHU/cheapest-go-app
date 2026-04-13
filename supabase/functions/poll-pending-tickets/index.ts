@@ -10,7 +10,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { getTripDetails } from "../_shared/mystiflyClient.ts";
+import { getTripDetails, ticketFlight } from "../_shared/mystiflyClient.ts";
 
 declare const Deno: any;
 
@@ -155,7 +155,26 @@ Deno.serve(async (req: Request) => {
                 await handleRefund(booking, supabase);
                 results.failed++;
             } else {
-                console.log(`[poll-pending-tickets] ⏳ ${booking.pnr} still pending (ticketStatus: ${ticketStatus}, eTickets: ${eTickets.length})`);
+                // If TripDetails shows BookingStatus=Booked with no ticket yet, this is a
+                // HoldAllowed (Private fare) booking where OrderTicket was never called or failed.
+                // Retry OrderTicket now — it's idempotent and safe to call again.
+                const bookingStatus = String(travelItin?.BookingStatus ?? '').toLowerCase();
+                if (bookingStatus === 'booked' && !ticketStatus) {
+                    console.log(`[poll-pending-tickets] 🎫 ${booking.pnr} is Booked but not ticketed — retrying OrderTicket`);
+                    try {
+                        const orderTicketRaw = await ticketFlight(booking.pnr);
+                        if (orderTicketRaw.Success) {
+                            console.log(`[poll-pending-tickets] ✅ OrderTicket succeeded for ${booking.pnr}`);
+                            // Let next poll cycle pick up the ticket numbers via TripDetails
+                        } else {
+                            console.warn(`[poll-pending-tickets] OrderTicket failed for ${booking.pnr}: ${orderTicketRaw.Message}`);
+                        }
+                    } catch (otErr: any) {
+                        console.warn(`[poll-pending-tickets] OrderTicket error for ${booking.pnr}: ${otErr.message}`);
+                    }
+                } else {
+                    console.log(`[poll-pending-tickets] ⏳ ${booking.pnr} still pending (ticketStatus: ${ticketStatus}, bookingStatus: ${bookingStatus}, eTickets: ${eTickets.length})`);
+                }
                 results.unchanged++;
             }
         } catch (err: any) {
