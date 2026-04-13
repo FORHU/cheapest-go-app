@@ -676,8 +676,11 @@ export async function voidBooking(
     sessionId?: string,
     conversationId?: string,
 ) {
-    return mystiflyRequest('/api/PostTicketingRequest', {
-        ptrType: 'VoidQuote',
+    // Per Mystifly docs: both void-quote and void-execute use POST /api/Void.
+    // AcceptQuote controls the step: "None" = get quote, "Accept" = confirm void.
+    // ptrType must be "None" (not "VoidQuote") per the documented request schema.
+    return mystiflyRequest('/api/Void', {
+        ptrType: 'None',
         mFRef: mfRef,
         AllowChildPassenger: true,
         reissueQuoteRequestType: 'None',

@@ -1086,8 +1086,6 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </>)}
                         <a
                             href={`/trips/invoice/${booking.id}?type=flight`}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
                         >
                             <Receipt className="w-3 h-3" />
@@ -1358,17 +1356,24 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     <div>
                                         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Refund Breakdown</p>
                                         <div className="space-y-1">
-                                            {voidQuoteData.voidQuotes.map((q: any, i: number) => (
-                                                <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-amber-100 dark:border-amber-800/30">
-                                                    <span className="text-slate-700 dark:text-slate-300">{q.Title} {q.FirstName} {q.LastName} <span className="text-slate-400">({q.PassengerType})</span></span>
-                                                    <div className="text-right shrink-0">
-                                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">{q.TotalRefundAmount} {q.Currency}</span>
-                                                        {(q.TotalVoidingFee > 0 || q.AdminCharges > 0) && (
-                                                            <p className="text-[10px] text-slate-400">Fee: {Number(q.TotalVoidingFee ?? 0) + Number(q.AdminCharges ?? 0)} {q.Currency}</p>
-                                                        )}
+                                            {voidQuoteData.voidQuotes.map((q: any, i: number) => {
+                                                // RefundDetails fields per Mystifly doc: TotalRefund, CancellationCharge, AdminFee
+                                                // Passenger identity comes from TicketNumber + PassengerType (no name fields)
+                                                const refundAmt = q.TotalRefund ?? q.TotalRefundAmount;
+                                                const fee = Number(q.CancellationCharge ?? q.TotalVoidingFee ?? 0) + Number(q.AdminFee ?? q.AdminCharges ?? 0);
+                                                const label = [q.TicketNumber, q.PassengerType].filter(Boolean).join(' · ');
+                                                return (
+                                                    <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-amber-100 dark:border-amber-800/30">
+                                                        <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px]">{label || `Pax ${i + 1}`}</span>
+                                                        <div className="text-right shrink-0">
+                                                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">{refundAmt ?? '—'} {q.Currency}</span>
+                                                            {fee > 0 && (
+                                                                <p className="text-[10px] text-slate-400">Fee: {fee} {q.Currency}</p>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -1437,19 +1442,24 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     <div>
                                         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Refund Breakdown</p>
                                         <div className="space-y-1">
-                                            {refundQuoteData.passengerChanges.map((p: any, i: number) => (
-                                                <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-blue-100 dark:border-blue-800/30">
-                                                    <span className="text-slate-700 dark:text-slate-300">
-                                                        {p.Title} {p.FirstName} {p.LastName} <span className="text-slate-400">({p.PassengerType})</span>
-                                                    </span>
-                                                    <div className="text-right shrink-0">
-                                                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">{p.TotalRefundAmount} {p.Currency}</span>
-                                                        {p.TotalPenalty > 0 && (
-                                                            <p className="text-[10px] text-slate-400">Penalty: {p.TotalPenalty} {p.Currency}</p>
-                                                        )}
+                                            {refundQuoteData.passengerChanges.map((p: any, i: number) => {
+                                                // RefundDetails fields per Mystifly doc: TotalRefund, CancellationCharge
+                                                // Passenger identity: TicketNumber + PassengerType (no name fields in RefundDetails)
+                                                const refundAmt = p.TotalRefund ?? p.TotalRefundAmount;
+                                                const penalty = Number(p.CancellationCharge ?? p.TotalPenalty ?? 0);
+                                                const label = [p.TicketNumber, p.PassengerType].filter(Boolean).join(' · ');
+                                                return (
+                                                    <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-blue-100 dark:border-blue-800/30">
+                                                        <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px]">{label || `Pax ${i + 1}`}</span>
+                                                        <div className="text-right shrink-0">
+                                                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">{refundAmt ?? '—'} {p.Currency}</span>
+                                                            {penalty > 0 && (
+                                                                <p className="text-[10px] text-slate-400">Penalty: {penalty} {p.Currency}</p>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
