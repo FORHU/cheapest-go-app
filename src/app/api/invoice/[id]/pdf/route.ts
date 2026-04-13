@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { formatCurrency, calculateNights } from '@/lib/utils';
-import ReactPDF from '@react-pdf/renderer';
+import { renderToBuffer } from '@react-pdf/renderer';
+import React from 'react';
 import { InvoicePdfDocument } from './InvoicePdfDocument';
 
 export const dynamic = 'force-dynamic';
@@ -17,15 +18,15 @@ export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const { id } = await params;
-    const type = req.nextUrl.searchParams.get('type') || 'flight';
+    try {
+        const { id } = await params;
+        const type = req.nextUrl.searchParams.get('type') || 'flight';
 
     const { user, supabase, error: authError } = await getAuthenticatedUser();
     if (authError || !user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Admin check
     const { data: profile } = await supabase
         .from('profiles')
         .select('role')
@@ -87,7 +88,8 @@ export async function GET(
                     holder_last_name: meta?.holder?.lastName || meta?.holder_last_name || '',
                     holder_email: meta?.holder?.email || meta?.holder_email || meta?.contact_email || '',
                     booking_id: unified.external_id || unified.id.slice(0, 8).toUpperCase(),
-                    type: unified.type
+                    type: unified.type,
+                    user_id: unified.user_id // Added user_id mapping
                 };
             }
 
@@ -117,7 +119,8 @@ export async function GET(
                         type: p.type || 'ADT',
                         ticket_number: p.ticketNumber || p.ticket_number || '',
                     })),
-                    type: unified.type
+                    type: unified.type,
+                    user_id: unified.user_id // Added user_id mapping
                 };
             }
         }
@@ -134,12 +137,17 @@ export async function GET(
     // ── Resolve customer email ──
     let customerEmail = user.email || '';
     if (isAdmin && !isHotel && booking.user_id) {
-        const { data: ownerProfile } = await db
-            .from('profiles')
-            .select('email')
-            .eq('id', booking.user_id)
-            .single();
-        if (ownerProfile?.email) customerEmail = ownerProfile.email;
+        try {
+            const { data: ownerProfile } = await db
+                .from('profiles')
+                .select('email')
+                .eq('id', booking.user_id)
+                .single();
+            if (ownerProfile?.email) customerEmail = ownerProfile.email;
+        } catch (err) {
+            console.error('Failed to fetch owner profile for admin:', err);
+            // Non-critical: customerEmail remains admin's email as fallback
+        }
     }
 
     // ── Prepare data for the PDF ──
@@ -148,7 +156,7 @@ export async function GET(
         year: 'numeric', month: 'long', day: 'numeric',
     });
     const currency = booking.currency || 'PHP';
-    const totalPrice = Number(booking.total_price);
+    const totalPrice = Number(booking.total_price || booking.charged_price || 0);
 
     const billedTo = effectiveIsHotel
         ? {
@@ -178,7 +186,7 @@ export async function GET(
         hotelDetails = {
             propertyName: booking.property_name || '',
             roomName: booking.room_name || '',
-            dates: `${checkInFmt} → ${checkOutFmt}`,
+            dates: `${checkInFmt} -> ${checkOutFmt}`,
             nights,
             guests: `${booking.guests_adults} adult${booking.guests_adults !== 1 ? 's' : ''}${
                 booking.guests_children > 0 ? `, ${booking.guests_children} child${booking.guests_children !== 1 ? 'ren' : ''}` : ''
@@ -192,7 +200,7 @@ export async function GET(
         flightDetails = {
             segments: (booking.flight_segments ?? []).map((seg: any) => ({
                 airline: `${seg.airline || ''} ${seg.flight_number || ''}`.trim(),
-                route: `${seg.origin || ''} → ${seg.destination || ''}`,
+                route: `${seg.origin || ''} -> ${seg.destination || ''}`,
                 date: seg.departure
                     ? new Date(seg.departure).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                     : '',
@@ -210,8 +218,8 @@ export async function GET(
     const provider = isHotel ? 'Hotel Partner' : (booking.provider || '');
 
     // ── Render the PDF to Buffer ──
-    const pdfBuffer = await ReactPDF.renderToBuffer(
-        InvoicePdfDocument({
+    const pdfBuffer = await renderToBuffer(
+        React.createElement(InvoicePdfDocument, {
             invoiceNumber,
             issuedDate,
             billedTo,
@@ -227,12 +235,20 @@ export async function GET(
 
     const filename = `CheapestGo-Receipt-${invoiceNumber}.pdf`;
 
-    return new NextResponse(pdfBuffer, {
-        status: 200,
-        headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${filename}"`,
-            'Content-Length': String(pdfBuffer.length),
-        },
-    });
+        return new NextResponse(pdfBuffer, {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `attachment; filename="${filename}"`,
+                'Content-Length': String(pdfBuffer.length),
+            },
+        });
+    } catch (error: any) {
+        console.error('PDF Generation Error:', error);
+        return NextResponse.json({
+            error: 'Detailed PDF generation failed',
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
+    }
 }
