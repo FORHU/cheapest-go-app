@@ -166,10 +166,11 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const [voidError, setVoidError] = useState<string | null>(null);
     // Refund Quote state
     const [showRefundQuote, setShowRefundQuote] = useState(false);
-    const [refundStep, setRefundStep] = useState<'idle' | 'quoting' | 'quoted' | 'getting' | 'got' | 'accepting' | 'accepted'>('idle');
+    const [refundStep, setRefundStep] = useState<'idle' | 'quoting' | 'got' | 'accepting' | 'accepted'>('idle');
     const [refundPtrId, setRefundPtrId] = useState<string | null>(null);
     const [refundPassengers, setRefundPassengers] = useState<any[]>([]);
     const [refundQuoteData, setRefundQuoteData] = useState<any>(null);
+    const [refundDetails, setRefundDetails] = useState<any[]>([]);
     const [refundError, setRefundError] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const [fareEligibility, setFareEligibility] = useState<{ isVoidable: boolean; isRefundable: boolean } | null>(null);
@@ -480,10 +481,19 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 setLoadingVoidQuote(false);
                 return;
             }
+            const originDestinations = (booking.flight_segments ?? []).map(s => ({
+                originLocationCode: s.origin,
+                destinationLocationCode: s.destination,
+                cabinPreference: '',
+                departureDateTime: s.departure,
+                flightNumber: parseInt(s.flight_number?.replace(/\D/g, '') || '0', 10),
+                airlineCode: s.airline,
+            }));
+
             const res = await fetch('/api/flights/void-quote', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mfRef: booking.pnr, passengers }),
+                body: JSON.stringify({ mfRef: booking.pnr, passengers, originDestinations }),
             });
             const data = await res.json();
             if (data.success) {
@@ -526,10 +536,25 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     passengerType: q.PassengerType ?? 'ADT',
                 }));
             }
+            const originDestinations = (booking.flight_segments ?? []).map(s => ({
+                originLocationCode: s.origin,
+                destinationLocationCode: s.destination,
+                cabinPreference: '',
+                departureDateTime: s.departure,
+                flightNumber: parseInt(s.flight_number?.replace(/\D/g, '') || '0', 10),
+                airlineCode: s.airline,
+            }));
+
             const res = await fetch('/api/flights/void', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mfRef: booking.pnr, passengers, bookingId: booking.id }),
+                body: JSON.stringify({
+                    mfRef: booking.pnr,
+                    passengers,
+                    bookingId: booking.id,
+                    ptrId: voidQuoteData.ptrId ?? 0,
+                    originDestinations,
+                }),
             });
             const data = await res.json();
             if (data.success) {
@@ -604,30 +629,27 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 return;
             }
 
-            // Step 1: RefundQuote
+            const originDestinations = (booking.flight_segments ?? []).map(s => ({
+                originLocationCode: s.origin,
+                destinationLocationCode: s.destination,
+                cabinPreference: '',
+                departureDateTime: s.departure,
+                flightNumber: parseInt(s.flight_number?.replace(/\D/g, '') || '0', 10),
+                airlineCode: s.airline,
+            }));
+
             const res = await fetch('/api/flights/refund', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ step: 'quote', mfRef: booking.pnr, passengers }),
+                body: JSON.stringify({ step: 'quote', mfRef: booking.pnr, passengers, originDestinations }),
             });
             const data = await res.json();
             if (!data.success) { setRefundError(data.error || 'RefundQuote failed.'); setRefundStep('idle'); return; }
 
-            const ptrId = data.ptrId;
-            setRefundPtrId(ptrId);
+            setRefundPtrId(data.ptrId);
             setRefundPassengers(passengers);
-            setRefundStep('getting');
-
-            // Step 2: GetQuote
-            const res2 = await fetch('/api/flights/refund', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ step: 'get', ptrId }),
-            });
-            const data2 = await res2.json();
-            if (!data2.success) { setRefundError(data2.error || 'GetQuote failed.'); setRefundStep('quoted'); return; }
-
-            setRefundQuoteData(data2);
+            setRefundDetails(data.refundDetails ?? []);
+            setRefundQuoteData(data);
             setRefundStep('got');
         } catch {
             setRefundError('Network error. Please try again.');
@@ -643,7 +665,22 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             const res = await fetch('/api/flights/refund', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ step: 'execute', mfRef: booking.pnr, passengers: refundPassengers, bookingId: booking.id }),
+                body: JSON.stringify({
+                    step: 'execute',
+                    mfRef: booking.pnr,
+                    passengers: refundPassengers,
+                    bookingId: booking.id,
+                    ptrId: refundPtrId ?? 0,
+                    originDestinations: (booking.flight_segments ?? []).map(s => ({
+                        originLocationCode: s.origin,
+                        destinationLocationCode: s.destination,
+                        cabinPreference: '',
+                        departureDateTime: s.departure,
+                        flightNumber: parseInt(s.flight_number?.replace(/\D/g, '') || '0', 10),
+                        airlineCode: s.airline,
+                    })),
+                    refundDetails,
+                }),
             });
             const data = await res.json();
             if (data.success) {
@@ -804,7 +841,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 </div>
 
                 {/* ── Mystifly Trip Details + Void Quote toggles (mobile) ── */}
-                {booking.provider === 'mystifly' && booking.pnr && (
+                {(booking.provider === 'mystifly' || booking.provider === 'mystifly_v2') && booking.pnr && (
                     <div className="md:hidden border-t border-slate-100 dark:border-slate-800">
                         <button
                             onClick={handleViewTripDetails}
@@ -836,10 +873,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     className="w-full flex items-center justify-between px-2.5 py-2 text-[10px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-t border-slate-100 dark:border-slate-800 transition-colors"
                                 >
                                     <span className="flex items-center gap-1">
-                                        {['quoting', 'getting', 'accepting'].includes(refundStep) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                                        {['quoting', 'accepting'].includes(refundStep) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
                                         Refund quote
                                     </span>
-                                    {!['quoting', 'getting', 'accepting'].includes(refundStep) && (showRefundQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                                    {!['quoting', 'accepting'].includes(refundStep) && (showRefundQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                 </button>
                             ) : (
                                 <div className="flex items-center gap-1.5 px-2.5 py-2 text-[10px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
@@ -1005,7 +1042,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </div>
                     {/* Airline details button — desktop */}
                     <div className="hidden md:flex flex-col gap-1.5">
-                        {booking.provider === 'mystifly' && booking.pnr && (<>
+                        {(booking.provider === 'mystifly' || booking.provider === 'mystifly_v2') && booking.pnr && (<>
                             <button
                                 onClick={handleViewTripDetails}
                                 className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg px-2 py-1.5 transition-colors"
@@ -1035,9 +1072,9 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                         onClick={handleRefundQuote}
                                         className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
                                     >
-                                        {['quoting', 'getting', 'accepting'].includes(refundStep) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                                        {['quoting', 'accepting'].includes(refundStep) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
                                         {showRefundQuote ? 'Hide refund quote' : 'Refund quote'}
-                                        {!['quoting', 'getting', 'accepting'].includes(refundStep) && (showRefundQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                                        {!['quoting', 'accepting'].includes(refundStep) && (showRefundQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                     </button>
                                 ) : (
                                     <div className="flex w-full items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 cursor-default">
@@ -1369,10 +1406,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     <div className="border-t border-blue-100 dark:border-blue-900/30 px-3 lg:px-5 py-3 bg-blue-50/40 dark:bg-blue-900/10">
                         <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">Refund Quote</p>
 
-                        {['quoting', 'getting'].includes(refundStep) && (
+                        {refundStep === 'quoting' && (
                             <div className="flex items-center gap-2 text-xs text-slate-500">
                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                {refundStep === 'quoting' ? 'Requesting refund quote…' : 'Fetching refund breakdown…'}
+                                Requesting refund quote…
                             </div>
                         )}
 

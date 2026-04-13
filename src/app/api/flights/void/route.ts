@@ -4,7 +4,7 @@ import { env } from '@/utils/env';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-    const { mfRef, passengers, bookingId } = await req.json();
+    const { mfRef, passengers, bookingId, ptrId, originDestinations } = await req.json();
 
     if (!mfRef) {
         return NextResponse.json({ success: false, error: 'mfRef is required' }, { status: 400 });
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
             'Authorization': `Bearer ${supabaseKey}`,
             'apikey': supabaseKey,
         },
-        body: JSON.stringify({ mfRef, passengers, bookingId }),
+        body: JSON.stringify({ mfRef, passengers, bookingId, ptrId, originDestinations }),
     });
 
     const text = await res.text();

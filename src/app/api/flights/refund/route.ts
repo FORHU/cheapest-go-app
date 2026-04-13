@@ -7,8 +7,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { step } = body;
 
-    if (!step || !['quote', 'get', 'execute'].includes(step)) {
-        return NextResponse.json({ success: false, error: 'step must be "quote", "get", or "execute"' }, { status: 400 });
+    if (!step || !['quote', 'execute'].includes(step)) {
+        return NextResponse.json({ success: false, error: 'step must be "quote" or "execute"' }, { status: 400 });
     }
 
     const supabaseUrl = env.SUPABASE_URL;
