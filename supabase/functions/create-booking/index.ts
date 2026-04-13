@@ -85,6 +85,10 @@ interface BookingSession {
     payment_intent_id?: string | null;  // Set by /api/flights/book after PaymentIntent creation
     capture_method?: string;
     fare_policy?: Record<string, unknown> | null;
+    original_price?: number;
+    charged_price?: number;
+    markup_pct?: number;
+    currency?: string;
 }
 
 interface ProviderBookingResult {
@@ -477,6 +481,10 @@ Deno.serve(async (req: Request) => {
                     ),
                     session_id: sessionId,
                     fare_policy: bs.fare_policy || null,
+                    // Financial audit columns
+                    supplier_cost: bookingPrice,
+                    charged_price: bs.charged_price || null,
+                    markup_pct: bs.markup_pct || null,
                 })
                 .select('id')
                 .single();
@@ -537,6 +545,10 @@ Deno.serve(async (req: Request) => {
                 ...(result.providerOrderId ? { provider_order_id: result.providerOrderId } : {}),
                 session_id: sessionId,
                 fare_policy: bs.fare_policy || null,
+                // Financial audit columns
+                supplier_cost: bookingPrice,
+                charged_price: bs.charged_price || null,
+                markup_pct: bs.markup_pct || null,
             })
             .select('id')
             .single();
