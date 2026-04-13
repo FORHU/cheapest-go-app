@@ -31,43 +31,25 @@ export default async function AdminRevenuePage({
 
     // Set fixed markup percentages based on type as per policy, not calculated from raw numbers
     const enrichedBookings = rawData.bookings.map(booking => {
-        let markupPercentage = 15; // default hotel
-        if (booking.type === 'flight') markupPercentage = 8;
-        if (booking.type === 'bundle' || booking.type === 'hotel_bundle') markupPercentage = 12;
-
-        // Determine actual markup amount. If DB says 0, try to derive it from supplier cost.
-        // If supplier cost is same as total (legacy flat), use policy fallback.
-        let markupAmount = booking.markupAmount;
-        if (markupAmount === 0) {
-            if (booking.supplierCost > 0 && booking.supplierCost < booking.totalAmount) {
-                markupAmount = booking.totalAmount - booking.supplierCost;
-            } else {
-                // Theoretical fallback based on policy: markup = total * (rate / (1+rate))
-                const rate = markupPercentage / 100;
-                markupAmount = booking.totalAmount * (rate / (1 + rate));
-            }
-        }
-
-        const stripeFee = calculateStripeFee(booking.totalAmount);
-        const stripeFeeProcessing = booking.totalAmount * 0.029;
-        const stripeFeeFixed = 0.30;
-        
-        const netProfit = markupAmount - stripeFee;
+        // The booking is already enriched by getBookingsList, but we add revenue-dashboard specific splits here
+        const b = booking as any;
+        const markupAmount = b.markupAmount;
         
         // Logical split for display: 70% Platform, 30% Operational Margin
         const markupPlatform = markupAmount * 0.7;
         const markupMargin = markupAmount * 0.3;
 
+        // Strip processing/fixed breakdown
+        const stripeFeeProcessing = b.totalAmount * 0.029;
+        const stripeFeeFixed = 0.30;
+
         return {
-            ...booking,
-            markupAmount,
+            ...b,
             markupPlatform,
             markupMargin,
-            stripeFee,
             stripeFeeProcessing,
             stripeFeeFixed,
-            netProfit,
-            markupPercentage
+            netProfit: b.profit // getBookingsList already calculated profit after fees
         };
     });
 

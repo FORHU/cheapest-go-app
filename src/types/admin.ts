@@ -113,6 +113,7 @@ export interface Booking {
     pnr: string;
     paymentIntentId: string;
     isRefundable: boolean;
+    markup_pct?: number;
     metadata?: Record<string, any>;
 }
 

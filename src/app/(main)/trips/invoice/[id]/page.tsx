@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/server/auth';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { formatCurrency, calculateNights } from '@/lib/utils';
 import { PrintButton } from './PrintButton';
 
@@ -15,37 +16,101 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     const { user, supabase, error: authError } = await getAuthenticatedUser();
     if (authError || !user) redirect('/login');
 
+    // Check if viewer is an admin — admins can view any customer's receipt
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+    const isAdmin = profile?.role === 'admin';
+
+    // Use admin client (bypasses RLS) for admin users, regular client for customers
+    const db = isAdmin ? createAdminClient() : supabase;
+
     const isHotel = type === 'hotel';
 
     let booking: any = null;
 
     if (isHotel) {
         // Hotels: id param may be DB UUID or external booking_id
-        const { data: byUuid } = await supabase
-            .from('bookings')
-            .select('*')
-            .eq('id', id)
-            .eq('user_id', user.id)
-            .single();
+        let query = db.from('bookings').select('*').eq('id', id);
+        if (!isAdmin) query = query.eq('user_id', user.id);
+        const { data: byUuid } = await query.single();
+
         if (byUuid) {
             booking = byUuid;
         } else {
-            const { data: byBookingId } = await supabase
-                .from('bookings')
-                .select('*')
-                .eq('booking_id', id)
-                .eq('user_id', user.id)
-                .single();
+            let fallbackQuery = db.from('bookings').select('*').eq('booking_id', id);
+            if (!isAdmin) fallbackQuery = fallbackQuery.eq('user_id', user.id);
+            const { data: byBookingId } = await fallbackQuery.single();
             booking = byBookingId;
         }
     } else {
-        const { data } = await supabase
-            .from('flight_bookings')
-            .select('*, flight_segments(*), passengers(*)')
-            .eq('id', id)
-            .eq('user_id', user.id)
-            .single();
+        let query = db.from('flight_bookings').select('*, flight_segments(*), passengers(*)').eq('id', id);
+        if (!isAdmin) query = query.eq('user_id', user.id);
+        const { data } = await query.single();
         booking = data;
+    }
+
+    // Fallback: check unified_bookings (newer bookings live here)
+    if (!booking) {
+        let uQuery = db.from('unified_bookings').select('*').eq('id', id);
+        if (!isAdmin) uQuery = uQuery.eq('user_id', user.id);
+        const { data: unified } = await uQuery.single();
+
+        if (unified) {
+            const meta = unified.metadata as any;
+            // Map unified_bookings shape to the format the invoice renderer expects
+            if (unified.type === 'hotel') {
+                booking = {
+                    id: unified.id,
+                    created_at: unified.created_at,
+                    total_price: unified.total_price,
+                    currency: unified.currency,
+                    status: unified.status,
+                    // Hotel fields from metadata
+                    property_name: meta?.property_name || meta?.hotelName || meta?.hotel_name || 'Hotel Stay',
+                    room_name: meta?.room_name || meta?.roomName || meta?.room_type || '',
+                    check_in: meta?.check_in || meta?.checkIn || '',
+                    check_out: meta?.check_out || meta?.checkOut || '',
+                    guests_adults: meta?.guests?.adults ?? meta?.guests_adults ?? 1,
+                    guests_children: meta?.guests?.children ?? meta?.guests_children ?? 0,
+                    holder_first_name: meta?.holder?.firstName || meta?.holder_first_name || '',
+                    holder_last_name: meta?.holder?.lastName || meta?.holder_last_name || '',
+                    holder_email: meta?.holder?.email || meta?.holder_email || meta?.contact_email || '',
+                    booking_id: unified.external_id || unified.id.slice(0, 8).toUpperCase(),
+                    _isUnified: true,
+                };
+            } else {
+                // Flight from unified_bookings
+                const segments = meta?.segments || meta?.flight_segments || [];
+                const passengers = meta?.passengers || [];
+                booking = {
+                    id: unified.id,
+                    created_at: unified.created_at,
+                    total_price: unified.total_price,
+                    currency: unified.currency,
+                    status: unified.status,
+                    pnr: meta?.pnr || unified.external_id || '',
+                    provider: unified.provider,
+                    trip_type: meta?.trip_type || meta?.tripType || 'one-way',
+                    flight_segments: segments.map((s: any) => ({
+                        airline: s.airline || s.airlineName || '',
+                        flight_number: s.flight_number || s.flightNumber || '',
+                        origin: s.origin || s.departure_airport || '',
+                        destination: s.destination || s.arrival_airport || '',
+                        departure: s.departure || s.departureTime || s.departure_time || '',
+                    })),
+                    passengers: passengers.map((p: any) => ({
+                        first_name: p.firstName || p.first_name || '',
+                        last_name: p.lastName || p.last_name || '',
+                        type: p.type || 'ADT',
+                        ticket_number: p.ticketNumber || p.ticket_number || '',
+                    })),
+                    _isUnified: true,
+                };
+            }
+        }
     }
 
     if (!booking) notFound();
@@ -56,6 +121,19 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     });
     const currency = booking.currency || 'PHP';
     const totalPrice = booking.total_price;
+
+    // Resolve customer email for the "Billed to" section
+    // For hotels it comes from the booking record; for flights we need the booking owner's email
+    let customerEmail = user.email;
+    if (isAdmin && !isHotel && booking.user_id) {
+        const { data: ownerProfile } = await db
+            .from('profiles')
+            .select('email')
+            .eq('id', booking.user_id)
+            .single();
+        if (ownerProfile?.email) customerEmail = ownerProfile.email;
+    }
+
 
     return (
         <div className="min-h-screen bg-slate-100 dark:bg-slate-950 py-8 px-4">
@@ -94,7 +172,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                             <p className="text-sm font-semibold text-slate-800 dark:text-white">
                                 {booking.passengers?.[0]?.first_name} {booking.passengers?.[0]?.last_name}
                             </p>
-                            <p className="text-xs text-slate-500">{user.email}</p>
+                            <p className="text-xs text-slate-500">{customerEmail}</p>
                         </>
                     )}
                 </div>

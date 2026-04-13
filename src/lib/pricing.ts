@@ -71,11 +71,11 @@
 /** 8% — flights are price-transparent; must stay competitive vs Google Flights */
 export const FLIGHT_MARKUP = parseMarkupEnv('FLIGHT_MARKUP_PERCENTAGE', 0.08);
 
-/** 15% — hotels are price-opaque; aligns with industry OTA standard */
-export const HOTEL_MARKUP = parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.15);
+/** 12% — hotels (Standard) adjusted as per latest financial directive */
+export const HOTEL_MARKUP = parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.12);
 
-/** 12% — blended rate for future flight+hotel bundles */
-export const BUNDLE_MARKUP = parseMarkupEnv('BUNDLE_MARKUP_PERCENTAGE', 0.12);
+/** 15% — blended rate for flight+hotel bundles adjusted as per latest financial directive */
+export const BUNDLE_MARKUP = parseMarkupEnv('BUNDLE_MARKUP_PERCENTAGE', 0.15);
 
 // ── Stripe fee constants ─────────────────────────────────────────────────────
 
@@ -151,6 +151,64 @@ export function estimateNetProfit(basePrice: number, markupRate: number): number
  */
 export function calculateStripeFee(chargedPrice: number): number {
     return round2(chargedPrice * STRIPE_RATE + STRIPE_FLAT_FEE);
+}
+
+/**
+ * Enriches a booking object with financial details (markup, supplier cost, net profit).
+ * Uses estimated formulas if data is missing from the database.
+ * 
+ * Formulas (per latest directive):
+ * - Standard (Flight): totalPrice / 1.08 (8% markup)
+ * - Standard (Hotel):  totalPrice / 1.12 (12% markup)
+ * - Bundle:           totalPrice / 1.15 (15% markup)
+ */
+export function enrichBookingFinances<T extends { 
+    type: string; 
+    totalAmount: number; 
+    supplierCost: number; 
+    markupAmount: number; 
+    profit: number;
+    markup_pct?: number;
+}>(booking: T): T & { 
+    markupPercentage: number; 
+    stripeFee: number;
+    isEstimated: boolean;
+} {
+    let markupRate = HOTEL_MARKUP; // default
+    if (booking.type === 'flight') markupRate = FLIGHT_MARKUP;
+    if (booking.type === 'bundle' || booking.type === 'hotel_bundle') markupRate = BUNDLE_MARKUP;
+
+    // Use stored markup percentage if available
+    if (booking.markup_pct) {
+        markupRate = booking.markup_pct;
+    }
+
+    let supplierCost = booking.supplierCost;
+    let markupAmount = booking.markupAmount;
+    let isEstimated = false;
+
+    // Fallback logic for missing financial data
+    if (supplierCost === 0 || supplierCost === booking.totalAmount) {
+        // supplierCost = totalPrice / (1 + rate)
+        supplierCost = round2(booking.totalAmount / (1 + markupRate));
+        markupAmount = round2(booking.totalAmount - supplierCost);
+        isEstimated = true;
+    } else if (markupAmount === 0 && supplierCost < booking.totalAmount) {
+        markupAmount = round2(booking.totalAmount - supplierCost);
+    }
+
+    const stripeFee = calculateStripeFee(booking.totalAmount);
+    const netProfit = round2(markupAmount - stripeFee);
+
+    return {
+        ...booking,
+        supplierCost,
+        markupAmount,
+        profit: netProfit,
+        markupPercentage: Number((markupRate * 100).toFixed(2)),
+        stripeFee,
+        isEstimated
+    };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

@@ -9,7 +9,9 @@ import {
     adminRestoreBooking,
     getMonitoringData,
     adminRetryBooking,
-    adminCancelAwaitingTicket
+    adminCancelAwaitingTicket,
+    resendBookingEmail,
+    getEmailLogs
 } from '@/lib/server/admin';
 import { logAdminAction } from '@/lib/server/admin/audit';
 
@@ -22,7 +24,7 @@ export async function POST(req: Request) {
         const { action, bookingId, reason } = body;
 
         // Audit all mutating booking actions
-        const mutatingActions = ['recheck', 'cancel', 'refund', 'restore', 'retry_booking', 'cancel_awaiting_ticket'];
+        const mutatingActions = ['recheck', 'cancel', 'refund', 'restore', 'retry_booking', 'cancel_awaiting_ticket', 'resend_email'];
         if (mutatingActions.includes(action)) {
             logAdminAction({
                 action: `booking_${action}`,
@@ -53,6 +55,12 @@ export async function POST(req: Request) {
                     .or(`booking_id.eq.${bookingId},booking_id.eq.${bookingId.slice(0, 8).toUpperCase()}`)
                     .order('requested_at', { ascending: false });
                 return NextResponse.json({ success: true, data: historyRes.data || [] });
+            case 'email_logs':
+                const logsData = await getEmailLogs({ bookingId });
+                return NextResponse.json({ success: true, data: logsData.logs || [] });
+            case 'resend_email':
+                const resendResult = await resendBookingEmail(bookingId);
+                return NextResponse.json(resendResult);
             case 'restore':
                 const restoreResult = await adminRestoreBooking(bookingId);
                 return NextResponse.json(restoreResult);
