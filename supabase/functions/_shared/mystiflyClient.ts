@@ -713,7 +713,91 @@ export async function cancelBooking(
     }, sessionId, conversationId);
 }
 
-// ─── Booking Note ───────────────────────────────────────────────────
+// ─── Reissue (Date/Flight Change) ───────────────────────────────────
+
+export interface ReissueOriginDestination {
+    originLocationCode: string;
+    destinationLocationCode: string;
+    cabinPreference: string;   // IATA cabin code: "Y"=Economy, "C"=Business, "F"=First
+    departureDateTime: string; // Date only: "YYYY-MM-DD"
+    flightNumber: number;      // 0 = any / auto-select
+    airlineCode: string;
+}
+
+/**
+ * Step 1 — Request a reissue quote.
+ * Endpoint: POST /api/PostTicketingRequest (ptrType: "ReissueQuote", AcceptQuote: "None")
+ * Returns PTRId + exchange quote (fare difference) to show user before confirming.
+ */
+export async function reissueQuote(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    originDestinations: ReissueOriginDestination[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/PostTicketingRequest', {
+        ptrType: 'ReissueQuote',
+        mFRef: mfRef,
+        AllowChildPassenger: false,
+        reissueQuoteRequestType: 'SEGMENT',
+        AcceptQuote: 'None',
+        PtrId: 0,
+        originDestinations,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+/**
+ * Step 2 — Accept and execute the reissue.
+ * Endpoint: POST /api/PostTicketingRequest (ptrType: "ReissueQuote", AcceptQuote: "Accept")
+ * Pass back the PtrId from step 1.
+ */
+export async function executeReissue(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    ptrId: number,
+    originDestinations: ReissueOriginDestination[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/PostTicketingRequest', {
+        ptrType: 'ReissueQuote',
+        mFRef: mfRef,
+        AllowChildPassenger: false,
+        reissueQuoteRequestType: 'SEGMENT',
+        AcceptQuote: 'Accept',
+        PtrId: ptrId,
+        originDestinations,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+
 
 /**
  * Add one or more notes to an existing Mystifly booking.
