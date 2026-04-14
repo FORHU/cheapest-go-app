@@ -147,8 +147,15 @@ Deno.serve(async (req: Request) => {
             // re-extract policy from the Order response and overwrite this if changed.
             const storedFlight = body.flightPayload?.flight as any;
             let farePolicy: NormalizedFarePolicy | undefined;
-            if (storedFlight?.conditions) {
-                farePolicy = { ...normalizeDuffelPolicy(storedFlight), policyVersion: 'revalidated', policySource: 'duffel' };
+            // Use pre-normalized farePolicy if already present (set during search)
+            if (storedFlight?.farePolicy) {
+                farePolicy = { ...storedFlight.farePolicy, policyVersion: 'revalidated', policySource: 'duffel' };
+            } else {
+                // Fall back to re-normalizing from raw offer conditions
+                const rawConditions = storedFlight?.conditions ?? storedFlight?.raw?.conditions ?? storedFlight?._rawOffer?.conditions;
+                if (rawConditions) {
+                    farePolicy = { ...normalizeDuffelPolicy({ conditions: rawConditions }), policyVersion: 'revalidated', policySource: 'duffel' };
+                }
             }
 
             const nowIso = new Date().toISOString();
