@@ -2,15 +2,16 @@
 
 import React, { useRef, useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, Navigation, Car, Bike, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
+import { MapPin, Navigation, Car, Bike, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize, ChevronLeft, ChevronRight, Layers, Star, Home } from 'lucide-react';
 import { Map } from '@/components/ui/map';
 import { Marker, NavigationControl, Source, Layer, GeolocateControl } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
 import { useMapboxDirections } from '../mapbox/hooks/useMapboxDirections';
 import { useMapboxSearch } from '../mapbox/hooks/useMapboxSearch';
+import { env } from '@/utils/env';
+import { PoiDetailsModal } from './PoiDetailsModal';
 import { useMapDetails } from '@/components/mapbox/hooks/useMapDetails';
 import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel';
-import { env } from '@/utils/env';
 
 const GOOGLE_MAPS_SEARCH_URL = 'https://www.google.com/maps/search/?api=1';
 
@@ -91,6 +92,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
     // POI State
     const [activePoiId, setActivePoiId] = useState<string | null>(null);
     const [selectedNativePoi, setSelectedNativePoi] = useState<any>(null);
+    const [modalPoi, setModalPoi] = useState<any>(null);
 
     // Directions State
     const [showDirections, setShowDirections] = useState(false);
@@ -250,104 +252,149 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
     React.useEffect(() => {
         if (!isLoaded || !hasCoordinates || !env.MAPBOX_TOKEN) return;
 
+        const controller = new AbortController();
+        const { signal } = controller;
+
+        // Concurrency limiter: run at most `limit` async tasks in parallel
+        const pLimit = (limit: number) => {
+            let active = 0;
+            const queue: (() => void)[] = [];
+            const next = () => { if (queue.length > 0 && active < limit) { active++; queue.shift()!(); } };
+            return <T,>(fn: () => Promise<T>): Promise<T> =>
+                new Promise<T>((resolve, reject) => {
+                    const run = () => fn().then(resolve, reject).finally(() => { active--; next(); });
+                    queue.push(run);
+                    next();
+                });
+        };
+
         const fetchTopGems = async () => {
             setIsFetchingGems(true);
+            setNearbyGems([]); // Clear immediately so UI shows loading state
             try {
-                const results: any[] = [];
                 const categories = selectedCategory === 'all'
                     ? ['tourism', 'park', 'restaurant', 'museum']
                     : (selectedCategory === 'attraction' ? ['park', 'tourism', 'museum', 'monument', 'viewpoint', 'attraction'] : [selectedCategory]);
 
+                // Clear directions when switching categories for a clean view
+                if (showDirections) clearDirections();
+
                 const fetchPromises = categories.map(cat =>
-                    fetch(`https://api.mapbox.com/search/searchbox/v1/category/${encodeURIComponent(cat)}?access_token=${env.MAPBOX_TOKEN}&language=en&limit=15&proximity=${coordinates.lng},${coordinates.lat}`)
+                    fetch(`https://api.mapbox.com/search/searchbox/v1/category/${encodeURIComponent(cat)}?access_token=${env.MAPBOX_TOKEN}&language=en&limit=25&proximity=${coordinates.lng},${coordinates.lat}`, { signal })
                         .then(res => res.json())
                         .catch(() => ({ features: [] }))
                 );
 
                 const categoryResponses = await Promise.all(fetchPromises);
+                if (signal.aborted) return;
+
                 const uniqueFeatures: Record<string, any> = {};
 
                 categoryResponses.forEach(data => {
                     if (data.features) {
                         data.features.forEach((f: any) => {
-                            if (!uniqueFeatures[f.properties.mapbox_id]) {
-                                uniqueFeatures[f.properties.mapbox_id] = f;
+                            const name = f.properties.name || f.properties.place_name || f.properties.name_en;
+                            // Deduplicate by name to keep the list clean and diverse
+                            if (name && !uniqueFeatures[name]) {
+                                uniqueFeatures[name] = f;
                             }
                         });
                     }
                 });
 
-                // --- STAGE 2: DEEP RETRIEVAL FOR REAL IMAGES from Mapbox ---
-                const retrievePromises = Object.values(uniqueFeatures).slice(0, 20).map(async (f: any) => {
-                    const id = f.properties.mapbox_id;
-                    try {
-                        const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/retrieve/${id}?access_token=${env.MAPBOX_TOKEN}&session_token=${mapboxSessionToken}`);
-                        const data = await res.json();
-                        const retrievedFeature = data.features?.[0];
+                // Cap features to avoid overwhelming the browser/server with requests
+                const MAX_FEATURES = 20;
+                const featuresToProcess = Object.values(uniqueFeatures).slice(0, MAX_FEATURES);
+                const limiter = pLimit(6); // increased concurrency for proxy requests
 
-                        const name = retrievedFeature?.properties?.name || f.properties.name;
-                        const lat = retrievedFeature?.geometry?.coordinates[1] || f.geometry.coordinates[1];
-                        const lng = retrievedFeature?.geometry?.coordinates[0] || f.geometry.coordinates[0];
+                // Keep track of total resolved to know when fallback applies
+                let resolvedCount = 0;
+                
+                // --- STAGE 2: STREAM ENRICHMENT FOR REAL IMAGES AND METADATA ---
+                // We bypass Mapbox retrieve entirely to save ~20 API calls, as geometry is already provided.
+                const retrievePromises = featuresToProcess.map((f: any) =>
+                    limiter(async () => {
+                        if (signal.aborted) return null;
+                        try {
+                            const name = f.properties.name || f.properties.place_name || f.properties.name_en;
+                            const lat = f.geometry.coordinates[1];
+                            const lng = f.geometry.coordinates[0];
 
-                        // Priority 1: Mapbox/Foursquare native photo URL (metadata.image_url)
-                        // Priority 2: Mapbox Extended images array (metadata.images)
-                        // Priority 3: Mapbox Vivid Satellite 'Drone' Snippet (High-res 45° real-world shot)
-                        const metadata = retrievedFeature?.properties?.metadata;
-                        const imageUrl = metadata?.image_url || metadata?.images?.[0] || getMapboxPoiImage(name, lat, lng);
+                            // Call our enhanced API for REAL photos and Google metadata (rating, etc.)
+                            const proxyUrl = `/api/poi-photo?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}&full=true`;
+                            const proxyRes = await fetch(proxyUrl, { signal });
+                            const proxyData = await proxyRes.json();
 
-                        return {
-                            name,
-                            category: retrievedFeature?.properties?.category_en?.[0] || f.properties.category || 'Attraction',
-                            icon: f.properties.maki === 'restaurant' ? Utensils : (f.properties.maki === 'park' ? Trees : Landmark),
-                            coordinates: { lat, lng },
-                            imageUrl
-                        };
-                    } catch (e) {
-                        return {
-                            name: f.properties.name,
-                            category: f.properties.category_en?.[0] || 'Attraction',
-                            icon: f.properties.maki === 'restaurant' ? Utensils : (f.properties.maki === 'park' ? Trees : Landmark),
-                            coordinates: { lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] },
-                            imageUrl: getMapboxPoiImage(f.properties.name || 'POI', f.geometry.coordinates[1], f.geometry.coordinates[0])
-                        };
-                    }
-                });
+                            const result = {
+                                name,
+                                category: proxyData.vicinity || f.properties.category_en?.[0] || f.properties.category || 'Attraction',
+                                icon: (f.properties.maki?.includes('restaurant') || f.properties.maki?.includes('cafe') || f.properties.maki?.includes('bar')) ? Utensils : (f.properties.maki?.includes('park') || f.properties.maki?.includes('garden')) ? Trees : Landmark,
+                                coordinates: { lat, lng },
+                                imageUrl: getMapboxPoiImage(name, lat, lng),
+                                rating: proxyData.rating,
+                                userRatingsTotal: proxyData.userRatingsTotal,
+                                reviews: proxyData.reviews || [],
+                                phone: proxyData.phone || null,
+                                website: proxyData.website || null
+                            };
 
-                results.push(...(await Promise.all(retrievePromises)));
+                            // Stream the result to State immediately if it meets quality!
+                            if (typeof result.rating === 'number' && result.rating >= 3 && !signal.aborted) {
+                                setNearbyGems(prev => {
+                                    // ensure no duplicates in stream
+                                    if (prev.find(p => p.name === result.name)) return prev;
+                                    return [...prev, result];
+                                });
+                            }
+                            return result;
+                        } catch (e: any) {
+                            if (e?.name === 'AbortError') return null;
+                            console.error('Gem enrichment failed:', e);
+                            return null;
+                        } finally {
+                            resolvedCount++;
+                            // ── Fallback for Baguio City (Only if sparse after all done) ──
+                            if (resolvedCount === featuresToProcess.length && !signal.aborted) {
+                                setNearbyGems(prev => {
+                                    const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
+                                    if (prev.length < 5 && isBaguio) {
+                                        const newGems = [...prev];
+                                        BAGUIO_DEFAULT_GEMS.forEach(gem => {
+                                            const gCat = gem.category.toLowerCase();
+                                            const sCat = selectedCategory === 'restaurant' ? 'dining' : selectedCategory;
+                                            const matchesCat = selectedCategory === 'all' ||
+                                                gCat.includes(sCat) ||
+                                                (selectedCategory === 'attraction' && (gCat.includes('sightseeing') || gCat.includes('landmark') || gCat.includes('park') || gCat.includes('nature')));
 
-                // ── Fallback for Baguio City (Only if sparse) ──
-                const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
-                if (results.length < 5 && isBaguio) {
-                    BAGUIO_DEFAULT_GEMS.forEach(gem => {
-                        const gCat = gem.category.toLowerCase();
-                        const sCat = selectedCategory === 'restaurant' ? 'dining' : selectedCategory;
-                        const matchesCat = selectedCategory === 'all' ||
-                            gCat.includes(sCat) ||
-                            (selectedCategory === 'attraction' && (gCat.includes('sightseeing') || gCat.includes('landmark') || gCat.includes('park') || gCat.includes('nature')));
-
-                        if (matchesCat && !results.find(r => r.name === gem.name)) {
-                            const imageUrl = getMapboxPoiImage(gem.name, gem.coordinates.lat, gem.coordinates.lng);
-                            results.push({
-                                ...gem,
-                                imageUrl
-                            });
+                                            if (matchesCat && !newGems.find(r => r.name === gem.name)) {
+                                                const imageUrl = getMapboxPoiImage(gem.name, gem.coordinates.lat, gem.coordinates.lng);
+                                                newGems.push({ ...gem, imageUrl });
+                                            }
+                                        });
+                                        return newGems;
+                                    }
+                                    return prev;
+                                });
+                            }
                         }
-                    });
-                }
+                    })
+                );
 
-                setNearbyGems(results.slice(0, 20));
-                // Clear directions when switching categories for a clean view
-                if (showDirections) clearDirections();
-            } catch (err) {
+                // Wait for all streams to settle, though UI is already updating
+                await Promise.all(retrievePromises);
+
+            } catch (err: any) {
+                if (err?.name === 'AbortError') return;
                 console.error('Fetching gems failed:', err);
                 const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
                 if (isBaguio && selectedCategory === 'all') setNearbyGems(BAGUIO_DEFAULT_GEMS);
             } finally {
-                setIsFetchingGems(false);
+                if (!signal.aborted) setIsFetchingGems(false);
             }
         };
 
         fetchTopGems();
+        return () => controller.abort();
     }, [isLoaded, hasCoordinates, coordinates, getPoiDetails, selectedCategory]);
 
     // Determine which markers/route should be active
@@ -501,11 +548,11 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     e.stopPropagation();
                                     setShowDetailsPanel(true);
                                 }}
-                                className="absolute top-4 left-4 z-20 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer flex items-center gap-2 group"
+                                className="absolute top-4 left-4 z-20 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-1 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer flex items-center gap-1 group"
                             >
-                                <Layers className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors" />
-                                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
-                                <svg className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <Layers className="w-3 h-3 text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors" />
+                                <div className="w-px h-2 bg-slate-200 dark:bg-slate-700" />
+                                <svg className="w-2 h-2 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
@@ -566,47 +613,93 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     </Marker>
                                 )}
 
-                                {/* Hotel Pin */}
+                                {/* Hotel Marker (Circular Style) */}
                                 <Marker
                                     latitude={coordinates.lat}
                                     longitude={coordinates.lng}
-                                    anchor="bottom"
+                                    anchor="center"
                                     onClick={(e) => {
                                         if (showDirections) return;
                                         e.originalEvent.stopPropagation();
                                         setActivePoiId(activePoiId === 'hotel' ? null : 'hotel');
+                                        setSelectedNativePoi(null);
                                     }}
                                 >
-                                    <div className="flex flex-col items-center cursor-pointer group">
-                                        {showDirections ? (
-                                            <div className="drop-shadow-xl transform transition-transform hover:scale-110">
-                                                <svg width="28" height="34" viewBox="0 0 24 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M12 0C5.37 0 0 5.37 0 12C0 21 12 30 12 30C12 30 24 21 24 12C24 5.37 18.63 0 12 0Z" fill="#db2777" stroke="white" strokeWidth="2" />
-                                                    <circle cx="12" cy="12" r="4" fill="white" />
-                                                </svg>
-                                            </div>
-                                        ) : (
-                                            <div className="relative mb-1 transform transition-all duration-300 group-hover:scale-110 group-active:scale-95 drop-shadow-xl">
-                                                <svg width="36" height="42" viewBox="0 0 36 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <path
-                                                        d="M18 42C18 42 36 28.1143 36 18C36 7.88571 27.9411 0 18 0C8.05888 0 0 7.88571 0 18C0 28.1143 18 42 18 42Z"
-                                                        fill={activePoiId === 'hotel' || !activePoiId ? '#db2777' : '#64748b'}
-                                                        stroke="white"
-                                                        strokeWidth="2"
-                                                    />
-                                                    <circle cx="18" cy="18" r="6" fill="white" />
-                                                </svg>
+                                    <div className={`flex flex-col items-center cursor-pointer group transition-all duration-300 ${activePoiId === 'hotel' ? 'scale-125 z-20' : 'hover:scale-110'}`}>
+                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shadow-xl border border-pink-500 transition-all duration-300
+                                            ${activePoiId === 'hotel'
+                                                ? 'bg-pink-600 border-white scale-110'
+                                                : 'bg-white dark:bg-slate-900 border-pink-100 dark:border-pink-900/30'
+                                            }`}
+                                        >
+                                            <Home size={10} className={`${activePoiId === 'hotel' ? 'text-white' : 'text-pink-600'}`} />
+                                        </div>
+                                        {!showDirections && (
+                                            <div className="mt-1 px-1 py-[1px] bg-white/95 dark:bg-slate-800 rounded shadow-md border border-slate-200 dark:border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                                <span className="text-[7px] font-bold text-slate-800 dark:text-slate-100">{name}</span>
                                             </div>
                                         )}
-                                        {showDirections ? (
-                                            <div className="w-4 h-1.5 bg-black/20 rounded-full mt-1 blur-[2px]" />
-                                        ) : (
-                                            <div className="px-2 py-0.5 bg-white/95 dark:bg-slate-800 rounded shadow-md border border-slate-200 dark:border-slate-700">
-                                                <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">{name}</span>
-                                            </div>
+                                        {activePoiId === 'hotel' && (
+                                            <div className="w-2 h-[2px] bg-black/20 rounded-full mt-1 blur-[1px]" />
                                         )}
                                     </div>
                                 </Marker>
+
+                                {/* Selected Native POI Marker Overlay */}
+                                {!showDirections && selectedNativePoi && !nearbyGems.find(g => g.name === selectedNativePoi.name) && (
+                                    <Marker
+                                        latitude={selectedNativePoi.coordinates.lat}
+                                        longitude={selectedNativePoi.coordinates.lng}
+                                        anchor="center"
+                                        onClick={(e) => {
+                                            e.originalEvent.stopPropagation();
+                                            setModalPoi(selectedNativePoi);
+                                            setActivePoiId(selectedNativePoi.name);
+                                        }}
+                                    >
+                                        <div className="flex flex-col items-center scale-125 z-20">
+                                            <div className="w-4 h-4 rounded-full flex items-center justify-center bg-blue-500 border border-white shadow-xl">
+                                                {React.createElement(selectedNativePoi.icon || Landmark, { size: 7, className: 'text-white' })}
+                                            </div>
+                                            <div className="w-1.5 h-[2px] bg-black/20 rounded-full mt-0.5 blur-[1px]" />
+                                        </div>
+                                    </Marker>
+                                )}
+
+                                {/* Nearby Gems POI Markers */}
+                                {!showDirections && nearbyGems.map((gem, idx) => {
+                                    const isActive = activePoiId === gem.name;
+                                    const GemIcon = gem.icon || Landmark;
+                                    return (
+                                        <Marker
+                                            key={`gem-${gem.name}-${idx}`}
+                                            latitude={gem.coordinates.lat}
+                                            longitude={gem.coordinates.lng}
+                                            anchor="center"
+                                            onClick={(e) => {
+                                                e.originalEvent.stopPropagation();
+                                                setSelectedNativePoi(gem);
+                                                setActivePoiId(gem.name);
+                                                setModalPoi(gem);
+                                                mapRef.current?.flyTo({ center: [gem.coordinates.lng, gem.coordinates.lat], zoom: 17, pitch: 45, duration: 800 });
+                                            }}
+                                        >
+                                            <div className={`flex flex-col items-center cursor-pointer group transition-all duration-200 ${isActive ? 'scale-125 z-10' : 'hover:scale-110'}`}>
+                                                <div className={`w-4 h-4 rounded-full flex items-center justify-center shadow-lg border transition-colors duration-200
+                                                    ${isActive
+                                                        ? 'bg-blue-500 border-white'
+                                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 hover:border-blue-400'
+                                                    }`}
+                                                >
+                                                    <GemIcon size={7} className={`${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`} />
+                                                </div>
+                                                {isActive && (
+                                                    <div className="w-1.5 h-[2px] bg-black/20 rounded-full mt-0.5 blur-[1px]" />
+                                                )}
+                                            </div>
+                                        </Marker>
+                                    );
+                                })}
                             </>
                         )}
                     </Map>
@@ -614,22 +707,22 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                     {/* Map Legend (Bottom-left) */}
                     {showDirections && origin && (
                         <div className="absolute bottom-6 left-3 z-20 pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg px-2.5 py-2 space-y-2">
-                                <h4 className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 px-0.5">Map Legend</h4>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white shadow-sm shrink-0" />
-                                    <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Starting Point</span>
+                            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg px-1.5 py-1 space-y-1">
+                                <h4 className="text-[6px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5 px-0.5">Map Legend</h4>
+                                <div className="flex items-center gap-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 border border-white shadow-sm shrink-0" />
+                                    <span className="text-[7px] font-semibold text-slate-700 dark:text-slate-300">Starting Point</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-pink-600 border border-white shadow-sm shrink-0" />
-                                    <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Destination</span>
+                                <div className="flex items-center gap-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-pink-600 border border-white shadow-sm shrink-0" />
+                                    <span className="text-[7px] font-semibold text-slate-700 dark:text-slate-300">Destination</span>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {/* Directions panel Overlay */}
-                    <div className="absolute top-1.5 left-1.5 right-11 z-20 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[340px] sm:right-auto md:top-3">
+                    <div className="absolute top-2 left-2 right-14 z-20 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[170px] md:top-3">
                         {!showDirections ? (
                             <button
                                 onClick={() => {
@@ -637,16 +730,16 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     setActivePoiId(null);
                                     setSelectedNativePoi(null);
                                 }}
-                                className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg px-3 py-2 flex items-center gap-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-[0.98] cursor-pointer"
+                                className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg px-1.5 py-1 flex items-center gap-1 text-[7px] font-bold text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-[0.98] cursor-pointer"
                             >
-                                <Navigation size={12} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                                <Navigation size={8} className="text-blue-600 dark:text-blue-400 shrink-0" />
                                 <span className="truncate">Get directions...</span>
                             </button>
                         ) : (
                             <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow overflow-hidden">
                                 {/* Origin row */}
-                                <div className="flex items-center gap-1.5 px-2 py-1 border-b border-slate-100 dark:border-slate-800">
-                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0" />
+                                <div className="flex items-center gap-1 px-1 py-0.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="w-1 h-1 bg-emerald-500 rounded-full shrink-0" />
                                     <div className="flex-1 relative">
                                         <input
                                             type="text"
@@ -656,24 +749,24 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                             onFocus={() => originResults.length > 0 && setShowOriginResults(true)}
                                             placeholder="Where from?"
                                             autoFocus
-                                            className="w-full text-[10px] text-slate-800 dark:text-slate-200 bg-transparent placeholder-slate-400 focus:outline-none"
+                                            className="w-full text-[7px] text-slate-800 dark:text-slate-200 bg-transparent placeholder-slate-400 focus:outline-none"
                                         />
                                         {isSearching && (
-                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 border border-blue-500 border-t-transparent rounded-full animate-spin" />
                                         )}
                                     </div>
                                     {originQuery && (
                                         <button onClick={() => { clearSearch(); }} className="shrink-0 text-slate-400 hover:text-slate-600">
-                                            <X size={10} />
+                                            <X size={7} />
                                         </button>
                                     )}
                                 </div>
                                 {/* Destination row */}
-                                <div className="flex items-center gap-1.5 px-2 py-1">
-                                    <div className="w-1.5 h-1.5 bg-pink-500 rounded-full shrink-0" />
-                                    <span className="text-[10px] text-slate-500 dark:text-slate-400 flex-1 truncate">{name}</span>
+                                <div className="flex items-center gap-1 px-1 py-0.5">
+                                    <div className="w-1 h-1 bg-pink-500 rounded-full shrink-0" />
+                                    <span className="text-[7px] text-slate-500 dark:text-slate-400 flex-1 truncate">{name}</span>
                                     <button onClick={clearDirections} className="shrink-0 text-slate-400 hover:text-slate-600">
-                                        <X size={10} />
+                                        <X size={7} />
                                     </button>
                                 </div>
 
@@ -681,30 +774,30 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                 <div className="flex border-t border-slate-100 dark:border-slate-800">
                                     <button 
                                         onClick={() => setTransportProfile('driving-traffic')}
-                                        className={`flex-1 py-1.5 flex justify-center transition-colors ${transportProfile === 'driving-traffic' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                        className={`flex-1 py-0.5 flex justify-center transition-colors ${transportProfile === 'driving-traffic' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
                                     >
-                                        <Car size={14} />
+                                        <Car size={9} />
                                     </button>
                                     <button 
                                         onClick={() => setTransportProfile('walking')}
-                                        className={`flex-1 py-1.5 flex justify-center transition-colors ${transportProfile === 'walking' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                        className={`flex-1 py-0.5 flex justify-center transition-colors ${transportProfile === 'walking' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
                                     >
-                                        <Footprints size={14} />
+                                        <Footprints size={9} />
                                     </button>
                                     <button 
                                         onClick={() => setTransportProfile('cycling')}
-                                        className={`flex-1 py-1.5 flex justify-center transition-colors ${transportProfile === 'cycling' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                        className={`flex-1 py-0.5 flex justify-center transition-colors ${transportProfile === 'cycling' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
                                     >
-                                        <Bike size={14} />
+                                        <Bike size={9} />
                                     </button>
                                     <button 
                                         onClick={() => {
                                             const url = `https://www.google.com/maps/dir/?api=1&origin=${origin ? `${origin.lat},${origin.lng}` : ''}&destination=${coordinates.lat},${coordinates.lng}&travelmode=transit`;
                                             window.open(url, '_blank');
                                         }}
-                                        className="flex-1 py-1.5 flex justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                                        className="flex-1 py-0.5 flex justify-center text-slate-400 hover:text-slate-600 transition-colors"
                                     >
-                                        <Bus size={14} />
+                                        <Bus size={9} />
                                     </button>
                                 </div>
 
@@ -715,9 +808,9 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                             <button
                                                 key={r.id}
                                                 onMouseDown={() => handleSelectOrigin(r)}
-                                                className="w-full text-left px-2 py-1 text-[10px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0"
+                                                className="w-full text-left px-1 py-0.5 text-[7px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-1 border-b border-slate-100 dark:border-slate-800 last:border-0"
                                             >
-                                                <Search size={9} className="text-slate-400 shrink-0" />
+                                                <Search size={6} className="text-slate-400 shrink-0" />
                                                 <span className="line-clamp-1">{r.name}</span>
                                             </button>
                                         ))}
@@ -726,34 +819,34 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
                                 {/* Travel times */}
                                 {origin && (
-                                    <div className="border-t border-slate-100 dark:border-slate-800 px-2 py-1 flex items-center gap-1.5">
+                                    <div className="border-t border-slate-100 dark:border-slate-800 px-1 py-0.5 flex items-center gap-1">
                                         {isFetchingOriginRoute ? (
-                                            <div className="flex items-center gap-1 text-[9px] text-slate-400">
-                                                <div className="w-2.5 h-2.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                            <div className="flex items-center gap-1 text-[6px] text-slate-400">
+                                                <div className="w-1.5 h-1.5 border border-blue-500 border-t-transparent rounded-full animate-spin" />
                                                 Calculating...
                                             </div>
                                         ) : (
                                             <>
                                                 {originTravelTime !== null && transportProfile === 'driving-traffic' && (
-                                                    <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
-                                                        <Car size={9} className="text-blue-600 dark:text-blue-400" />
-                                                        <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300">{formatDuration(originTravelTime)} </span>
+                                                    <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-1 py-[1px] rounded">
+                                                        <Car size={6} className="text-blue-600 dark:text-blue-400" />
+                                                        <span className="text-[6px] font-bold text-blue-700 dark:text-blue-300">{formatDuration(originTravelTime)} </span>
                                                     </div>
                                                 )}
                                                 {originWalkingTime !== null && transportProfile === 'walking' && (
-                                                    <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
-                                                        <Footprints size={9} className="text-emerald-600 dark:text-emerald-400" />
-                                                        <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300">{formatDuration(originWalkingTime)}</span>
+                                                    <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-1 py-[1px] rounded">
+                                                        <Footprints size={6} className="text-emerald-600 dark:text-emerald-400" />
+                                                        <span className="text-[6px] font-bold text-emerald-700 dark:text-emerald-300">{formatDuration(originWalkingTime)}</span>
                                                     </div>
                                                 )}
                                                 {originCyclingTime !== null && transportProfile === 'cycling' && (
-                                                    <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-900/30 px-1.5 py-0.5 rounded">
-                                                        <Bike size={9} className="text-purple-600 dark:text-purple-400" />
-                                                        <span className="text-[9px] font-bold text-purple-700 dark:text-purple-300">{formatDuration(originCyclingTime)}</span>
+                                                    <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-900/30 px-1 py-[1px] rounded">
+                                                        <Bike size={6} className="text-purple-600 dark:text-purple-400" />
+                                                        <span className="text-[6px] font-bold text-purple-700 dark:text-purple-300">{formatDuration(originCyclingTime)}</span>
                                                     </div>
                                                 )}
                                                 {originTravelTime === null && originWalkingTime === null && origin && !isFetchingOriginRoute && (
-                                                    <span className="text-[9px] text-slate-400">No route found</span>
+                                                    <span className="text-[6px] text-slate-400">No route found</span>
                                                 )}
                                             </>
                                         )}
@@ -765,24 +858,24 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
                     {/* POI info card */}
                     {displayInfo && !showDirections && (
-                        <div className="absolute top-16 left-3 sm:top-16 sm:left-4 z-10 w-[200px] sm:w-[260px] bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-left-4 duration-300">
-                            <div className="p-2 sm:p-4 relative">
+                        <div className="absolute top-16 left-3 sm:top-16 sm:left-4 z-10 w-[85px] sm:w-[110px] bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-left-4 duration-300">
+                            <div className="p-1 sm:p-1.5 relative">
                                 <button
                                     onClick={() => { setActivePoiId(null); setSelectedNativePoi(null); }}
-                                    className="absolute top-1 right-1 sm:top-3 sm:right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                                    className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                                 >
-                                    <X size={16} className="w-3 h-3 sm:w-4 sm:h-4" />
+                                    <X size={8} className="w-2 h-2" />
                                 </button>
-                                <div className="pr-4 sm:pr-6 space-y-0.5 sm:space-y-1.5">
-                                    <h3 className="font-bold text-slate-900 dark:text-white text-[11px] sm:text-sm leading-tight">{displayInfo.name}</h3>
-                                    <p className="text-[9px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-tight">{displayInfo.address}</p>
+                                <div className="pr-2 mt-0.5 sm:pr-3 space-y-0.5 sm:space-y-0.5">
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-[6px] sm:text-[8px] leading-tight">{displayInfo.name}</h3>
+                                    <p className="text-[5px] sm:text-[6px] text-slate-500 dark:text-slate-400 leading-tight">{displayInfo.address}</p>
 
                                     {displayInfo.distance > 0 && (
-                                        <div className="flex items-center gap-1 sm:gap-1.5 pt-0.5 sm:pt-1">
-                                            <div className="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                                                <Navigation size={10} className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-slate-600 dark:text-slate-400" />
+                                        <div className="flex items-center gap-0.5 sm:gap-1 pt-0.5 sm:pt-0.5">
+                                            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                                                <Navigation size={6} className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-slate-600 dark:text-slate-400" />
                                             </div>
-                                            <span className="text-[8px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                                            <span className="text-[5px] sm:text-[6px] font-medium text-slate-600 dark:text-slate-400">
                                                 {displayInfo.distance.toFixed(2)} km from property
                                             </span>
                                         </div>
@@ -790,70 +883,69 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
                                     {/* Travel times from hotel to POI */}
                                     {(poiTravelTime !== null || poiWalkingTime !== null) && (
-                                        <div className="flex items-center gap-2 pt-1">
+                                        <div className="flex items-center gap-1 pt-0.5">
                                             {poiTravelTime !== null && (
-                                                <div className="flex items-center gap-1">
-                                                    <Car size={10} className="text-blue-600 dark:text-blue-400" />
-                                                    <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiTravelTime)}</span>
+                                                <div className="flex items-center gap-0.5">
+                                                    <Car size={6} className="text-blue-600 dark:text-blue-400" />
+                                                    <span className="text-[5px] sm:text-[6px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiTravelTime)}</span>
                                                 </div>
                                             )}
                                             {poiWalkingTime !== null && (
-                                                <div className="flex items-center gap-1">
-                                                    <Footprints size={10} className="text-emerald-600 dark:text-emerald-400" />
-                                                    <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiWalkingTime)}</span>
+                                                <div className="flex items-center gap-0.5">
+                                                    <Footprints size={6} className="text-emerald-600 dark:text-emerald-400" />
+                                                    <span className="text-[5px] sm:text-[6px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiWalkingTime)}</span>
                                                 </div>
                                             )}
                                             {poiCyclingTime !== null && (
-                                                <div className="flex items-center gap-1">
-                                                    <Bike size={10} className="text-purple-600 dark:text-purple-400" />
-                                                    <span className="text-[9px] sm:text-[11px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiCyclingTime)}</span>
+                                                <div className="flex items-center gap-0.5">
+                                                    <Bike size={6} className="text-purple-600 dark:text-purple-400" />
+                                                    <span className="text-[5px] sm:text-[6px] font-semibold text-slate-700 dark:text-slate-300">{formatDuration(poiCyclingTime)}</span>
                                                 </div>
                                             )}
                                         </div>
                                     )}
 
-                                    <div className="pt-1 sm:pt-2">
+                                    <div className="pt-0.5 sm:pt-1">
                                         <a
                                             href={`${GOOGLE_MAPS_SEARCH_URL}&query=${encodeURIComponent(displayInfo.name)}&query_place_id=${displayInfo.coordinates?.lat},${displayInfo.coordinates?.lng}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-[8px] sm:text-[11px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                                            className="text-[5px] sm:text-[6px] font-medium text-blue-600 hover:text-blue-700 hover:underline"
                                         >
                                             View on Google Maps
                                         </a>
                                     </div>
                                 </div>
                             </div>
-                            <div className="absolute -left-2 top-8 w-4 h-4 bg-white dark:bg-slate-900 border-l border-t border-slate-200 dark:border-slate-700 transform -rotate-45 -z-10 hidden sm:block" />
+                            <div className="absolute -left-1 top-4 w-2 h-2 bg-white dark:bg-slate-900 border-l border-t border-slate-200 dark:border-slate-700 transform -rotate-45 -z-10 hidden sm:block" />
                         </div>
                     )}
 
                     {/* Map Controls */}
-                    <div className="absolute right-3 bottom-5 flex flex-col gap-2 items-end z-40">
+                    <div className={`absolute right-3 flex flex-col gap-1 items-end z-40 transition-all duration-300 ${nearbyGems.length > 0 && !isFullscreen ? 'bottom-[65px] sm:bottom-[75px]' : 'bottom-5'}`}>
                         <button
                             onClick={() => setIsFullscreen(f => !f)}
-                            className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 p-2.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95"
+                            className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 p-1 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center w-4 h-4"
                             title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
                         >
-                            {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+                            {isFullscreen ? <Minimize size={8} /> : <Maximize size={8} />}
                         </button>
                         <button
                             onClick={handleRecenter}
-                            className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-1.5 group"
+                            className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 text-[6px] font-bold px-1 py-0.5 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center gap-0.5 group"
                             suppressHydrationWarning
                         >
-                            <Navigation size={11} className="group-hover:rotate-12 transition-transform" />
-                            Re-center
+                            <Navigation size={6} className="group-hover:rotate-12 transition-transform" />
+                            <span className="hidden sm:inline">Recenter</span>
                         </button>
                     </div>
 
                     {/* Visual "Places to Visit" Image Bar */}
-                    <div className={`absolute z-30 transition-all duration-500 ease-in-out group/nearby ${isFullscreen
-                            ? 'left-5 top-[120px] bottom-[120px] w-48 flex flex-col gap-2 overflow-y-auto no-scrollbar py-4 px-2 bg-black/10 backdrop-blur rounded-2xl'
-                            : 'bottom-[74px] sm:bottom-20 left-1/2 -translate-x-1/2 w-[96%] sm:w-[94%] flex flex-col gap-2'
-                        }`}>
+                    <div className={`absolute z-30 transition-all duration-500 ease-in-out group/nearby left-1/2 -translate-x-1/2 w-[98%] sm:w-[94%] flex flex-col gap-0.5 sm:gap-1 
+                        ${isFullscreen ? 'bottom-4 px-2' : 'bottom-[37px] sm:bottom-[40px]'}
+                    `}>
                         {/* Category Filter Pills */}
-                        <div className={`flex gap-1.5 overflow-x-auto no-scrollbar px-0.5 ${isFullscreen ? 'flex-col mb-2' : 'flex-row'}`}>
+                        <div className="flex gap-1 overflow-x-auto no-scrollbar w-full px-0.5 pb-0.5">
                             {POI_FILTERS.map(filter => {
                                 const isSelected = selectedCategory === filter.id;
                                 const Icon = filter.icon;
@@ -861,39 +953,38 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     <button
                                         key={filter.id}
                                         onClick={() => setSelectedCategory(filter.id)}
-                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all duration-300 shadow-sm shrink-0
+                                        className={`flex items-center gap-0.5 px-1 py-[1px] rounded-full border transition-all duration-300 shadow-sm shrink-0
                                                 ${isSelected
                                                 ? 'bg-blue-600 border-blue-600 text-white scale-105'
                                                 : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
                                             }
                                             `}
                                     >
-                                        <Icon size={10} />
-                                        <span className="text-[9px] font-bold whitespace-nowrap uppercase tracking-tighter">{filter.label}</span>
+                                        <Icon size={6} />
+                                        <span className="text-[6px] font-bold whitespace-nowrap uppercase tracking-tighter">{filter.label}</span>
                                     </button>
                                 );
                             })}
                         </div>
 
                         <div className="relative flex flex-row w-full group/imagebar">
-                            {/* Previous Button (PC only, horizontal mode) */}
-                            {!isFullscreen && nearbyGems.length > 0 && (
+                            {/* Previous Button (PC only) */}
+                            {nearbyGems.length > 0 && (
                                 <button
                                     onClick={() => scrollGems('left')}
-                                    className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-40 w-8 h-8 items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100 hover:bg-white"
+                                    className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-40 w-4 h-4 items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100 hover:bg-white"
                                 >
-                                    <ChevronLeft size={16} />
+                                    <ChevronLeft size={8} />
                                 </button>
                             )}
 
                             <div
                                 ref={gemsScrollRef}
-                                className={`flex gap-2.5 overflow-x-auto no-scrollbar scroll-smooth px-1 py-1 w-full ${isFullscreen ? 'flex-col overflow-y-auto no-scrollbar' : 'flex-row'
-                                    }`}
+                                className="flex gap-1.5 overflow-x-auto no-scrollbar scroll-smooth px-0.5 py-0.5 w-full flex-row"
                             >
                                 {(isFetchingGems ? Array(6).fill(0) : nearbyGems).map((poi, idx) => {
                                     if (isFetchingGems) {
-                                        return <div key={idx} className="flex-shrink-0 w-32 h-20 sm:w-40 sm:h-24 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />;
+                                        return <div key={idx} className="flex-shrink-0 w-12 h-8 sm:w-14 sm:h-9 md:w-16 md:h-10 bg-slate-200 dark:bg-slate-800 rounded-lg animate-pulse" />;
                                     }
                                     const isActive = activePoiId === poi.name;
                                     // 100% Mapbox Native Image
@@ -913,9 +1004,9 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                                 }
                                             }}
                                             className={`group relative flex-shrink-0 transition-all duration-300 transform hover:scale-[1.03] active:scale-95
-                                            ${isFullscreen ? 'w-full aspect-[4/3]' : 'w-28 h-18 sm:w-32 sm:h-20 md:w-40 md:h-24'}
-                                            ${isActive ? 'ring-2 ring-blue-500 shadow-xl' : 'shadow-md'}
-                                            rounded-xl overflow-hidden
+                                            w-12 h-8 sm:w-14 sm:h-9 md:w-18 md:h-10
+                                            ${isActive ? 'ring-1 ring-blue-500 shadow-xl' : 'shadow-md'}
+                                            rounded-lg overflow-hidden
                                         `}
                                         >
                                             {/* Background Image */}
@@ -926,21 +1017,29 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                             />
 
                                             {/* Overlay Gradient */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+
+                                            {/* Star Rating Overlay */}
+                                            {poi.rating && (
+                                                <div className="absolute top-1 left-1 bg-black/40 backdrop-blur-md rounded-full px-1 py-[1px] flex items-center gap-0.5 border border-white/20 shadow-sm">
+                                                    <Star size={4} className="text-yellow-400 fill-yellow-400" />
+                                                    <span className="text-[5px] font-bold text-white tracking-tighter">{poi.rating}</span>
+                                                </div>
+                                            )}
 
                                             {/* Content */}
-                                            <div className="absolute inset-0 p-2 flex flex-col justify-end items-start text-white text-left">
-                                                <div className="flex items-center gap-1 mb-0.5 opacity-80">
-                                                    {React.createElement(poi.icon, { size: 10, className: 'shrink-0' })}
-                                                    <span className="text-[8px] sm:text-[9px] font-medium uppercase tracking-wider truncate">{poi.category}</span>
+                                            <div className="absolute inset-0 p-1 flex flex-col justify-end items-start text-white text-left">
+                                                <div className="flex items-center gap-0.5 mb-[1px] opacity-90 drop-shadow-sm">
+                                                    {React.createElement(poi.icon, { size: 4, className: 'shrink-0' })}
+                                                    <span className="text-[5px] font-semibold uppercase tracking-wider truncate">{poi.category}</span>
                                                 </div>
-                                                <h4 className="text-[10px] sm:text-[11px] font-bold leading-tight line-clamp-2">{poi.name}</h4>
+                                                <h4 className="text-[5px] sm:text-[6px] font-bold leading-tight line-clamp-2 drop-shadow-md">{poi.name}</h4>
                                             </div>
 
                                             {/* Selection Indicators */}
                                             {isActive && (
-                                                <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-blue-500 rounded-full border border-white">
-                                                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                                                <div className="absolute top-1 right-1 flex items-center justify-center w-2.5 h-2.5 bg-blue-500 rounded-full border border-white">
+                                                    <div className="w-1 h-1 bg-white rounded-full" />
                                                 </div>
                                             )}
                                         </button>
@@ -952,9 +1051,9 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                             {!isFullscreen && nearbyGems.length > 0 && (
                                 <button
                                     onClick={() => scrollGems('right')}
-                                    className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-40 w-8 h-8 items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100 hover:bg-white"
+                                    className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 z-40 w-4 h-4 items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100 hover:bg-white"
                                 >
-                                    <ChevronRight size={16} />
+                                    <ChevronRight size={8} />
                                 </button>
                             )}
                         </div>
@@ -982,6 +1081,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                 </div>,
                 document.body
             )}
+            <PoiDetailsModal isOpen={!!modalPoi} onClose={() => setModalPoi(null)} poi={modalPoi} />
         </div>
     );
 });
