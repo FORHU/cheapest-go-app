@@ -35,9 +35,9 @@ const MAP_TYPE_TILES: MapTypeTile[] = [
     },
 ];
 
-function TransitIcon() {
+function TransitIcon({ size = 'w-8 h-8' }: { size?: string }) {
     return (
-        <svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <svg viewBox="0 0 24 24" className={size} fill="none" stroke="currentColor" strokeWidth={1.5}>
             <rect x="6" y="3" width="12" height="15" rx="2" />
             <circle cx="9" cy="14" r="1" fill="currentColor" />
             <circle cx="15" cy="14" r="1" fill="currentColor" />
@@ -46,9 +46,9 @@ function TransitIcon() {
     );
 }
 
-function TrafficIcon() {
+function TrafficIcon({ size = 'w-8 h-8' }: { size?: string }) {
     return (
-        <svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <svg viewBox="0 0 24 24" className={size} fill="none" stroke="currentColor" strokeWidth={1.5}>
             <rect x="7" y="2" width="10" height="20" rx="3" />
             <circle cx="12" cy="7" r="1.5" fill="currentColor" className="text-red-400" />
             <circle cx="12" cy="12" r="1.5" fill="currentColor" className="text-yellow-400" />
@@ -57,9 +57,9 @@ function TrafficIcon() {
     );
 }
 
-function BikingIcon() {
+function BikingIcon({ size = 'w-8 h-8' }: { size?: string }) {
     return (
-        <svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <svg viewBox="0 0 24 24" className={size} fill="none" stroke="currentColor" strokeWidth={1.5}>
             <circle cx="6" cy="17" r="3" />
             <circle cx="18" cy="17" r="3" />
             <path d="M6 17l4-8 4 8M10 9h4l4 8" />
@@ -68,9 +68,9 @@ function BikingIcon() {
     );
 }
 
-function TerrainIcon() {
+function TerrainIcon({ size = 'w-8 h-8' }: { size?: string }) {
     return (
-        <svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <svg viewBox="0 0 24 24" className={size} fill="none" stroke="currentColor" strokeWidth={1.5}>
             <path d="M2 20l7-12 5 8 3-4 5 8H2z" fill="currentColor" fillOpacity={0.15} />
             <path d="M18 10l-2.5 2.5L13 10l-2.5 2.5L8 10" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M2 20l7-12 5 8 3-4 5 8" />
@@ -78,12 +78,12 @@ function TerrainIcon() {
     );
 }
 
-const DETAIL_ICONS: Record<string, React.ReactNode> = {
-    transit: <TransitIcon />,
-    traffic: <TrafficIcon />,
-    biking: <BikingIcon />,
-    terrain: <TerrainIcon />,
-};
+const getDetailIcons = (sizeClass: string): Record<string, React.ReactNode> => ({
+    transit: <TransitIcon size={sizeClass} />,
+    traffic: <TrafficIcon size={sizeClass} />,
+    biking: <BikingIcon size={sizeClass} />,
+    terrain: <TerrainIcon size={sizeClass} />,
+});
 
 interface MapDetailsPanelProps {
     isOpen: boolean;
@@ -94,6 +94,7 @@ interface MapDetailsPanelProps {
     onDetailToggle: (id: string) => void;
     showLabels: boolean;
     onLabelsToggle: () => void;
+    isFullscreen?: boolean;
 }
 
 export function MapDetailsPanel({
@@ -105,34 +106,39 @@ export function MapDetailsPanel({
     onDetailToggle,
     showLabels,
     onLabelsToggle,
+    isFullscreen = true,
 }: MapDetailsPanelProps) {
     if (!isOpen) return null;
 
     return (
-        <div className="absolute top-3 left-3 z-[60] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-[300px] overflow-hidden">
+        <div className={`absolute top-3 left-3 z-[60] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300
+            ${isFullscreen ? 'w-[300px]' : 'w-[200px] sm:w-[240px]'}
+        `}>
             {/* Header */}
-            <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Map details</h3>
+            <div className={`flex items-center justify-between ${isFullscreen ? 'px-4 pt-4 pb-2' : 'px-3 pt-3 pb-1.5'}`}>
+                <h3 className={`${isFullscreen ? 'text-base font-semibold' : 'text-xs font-bold'} text-slate-900 dark:text-slate-100 uppercase tracking-wide`}>Map details</h3>
                 <button
                     onClick={onClose}
                     className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
-                    <X className="w-5 h-5 text-slate-500" />
+                    <X className={`${isFullscreen ? 'w-5 h-5' : 'w-4 h-4'} text-slate-500`} />
                 </button>
             </div>
 
             {/* Map details toggles */}
-            <div className="px-4 pb-3">
-                <div className="grid grid-cols-3 gap-2">
+            <div className={`${isFullscreen ? 'px-4 pb-3' : 'px-2 pb-1.5'}`}>
+                <div className={`grid grid-cols-3 ${isFullscreen ? 'gap-2' : 'gap-1'}`}>
                     {details.map((detail) => {
                         const isDisabled = detail.id === 'terrain' && mapType !== 'default-3d';
+                        const icons = getDetailIcons(isFullscreen ? 'w-8 h-8' : 'w-5 h-5');
                         return (
                         <button
                             key={detail.id}
                             onClick={() => onDetailToggle(detail.id)}
                             disabled={isDisabled}
                             className={`
-                                flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all cursor-pointer
+                                flex flex-col items-center gap-1 rounded-xl border-2 transition-all cursor-pointer
+                                ${isFullscreen ? 'p-2' : 'p-1'}
                                 ${
                                     isDisabled
                                         ? 'opacity-50 cursor-not-allowed border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50'
@@ -147,10 +153,10 @@ export function MapDetailsPanel({
                                     detail.enabled && !isDisabled ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500'
                                 }`}
                             >
-                                {DETAIL_ICONS[detail.id]}
+                                {icons[detail.id]}
                             </div>
                             <span
-                                className={`text-[11px] font-medium ${
+                                className={`${isFullscreen ? 'text-xs font-medium' : 'text-[9px] font-semibold'} ${
                                     detail.enabled && !isDisabled ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'
                                 }`}
                             >
@@ -163,17 +169,17 @@ export function MapDetailsPanel({
             </div>
 
             {/* Map type */}
-            <div className="px-4 pb-3">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-0.5">
+            <div className={`${isFullscreen ? 'px-4 pb-3' : 'px-2 pb-1.5'}`}>
+                <p className={`${isFullscreen ? 'text-xs mb-2' : 'text-[9px] mb-1'} font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-0.5`}>
                     Map type
                 </p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className={`grid grid-cols-3 ${isFullscreen ? 'gap-2' : 'gap-1'}`}>
                     {MAP_TYPE_TILES.map((tile) => (
                         <button
                             key={tile.id}
                             onClick={() => onMapTypeChange(tile.id)}
                             className={`
-                                flex flex-col items-center gap-1.5 rounded-xl border-2 overflow-hidden transition-all cursor-pointer
+                                flex flex-col items-center gap-1 rounded-xl border-2 overflow-hidden transition-all cursor-pointer
                                 ${
                                     mapType === tile.id
                                         ? 'border-blue-500'
@@ -182,11 +188,11 @@ export function MapDetailsPanel({
                             `}
                         >
                             <div
-                                className="w-full h-14 bg-cover bg-center"
+                                className={`w-full bg-cover bg-center ${isFullscreen ? 'h-14' : 'h-6'}`}
                                 style={{ background: tile.thumbnail }}
                             />
                             <span
-                                className={`text-[11px] font-medium pb-1.5 ${
+                                className={`${isFullscreen ? 'text-xs pb-1.5' : 'text-[9px] pb-0.5'} font-medium ${
                                     mapType === tile.id ? 'text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'
                                 }`}
                             >
@@ -198,19 +204,21 @@ export function MapDetailsPanel({
             </div>
 
             {/* Labels toggle */}
-            <div className="px-5 pb-5 pt-1 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 mt-2">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Labels</span>
+            <div className={`${isFullscreen ? 'px-5 pb-5 pt-1' : 'px-3 pb-2 pt-1'} flex items-center justify-between border-t border-slate-100 dark:border-slate-800 mt-1`}>
+                <span className={`${isFullscreen ? 'text-sm' : 'text-xs'} font-medium text-slate-700 dark:text-slate-300`}>Labels</span>
                 <button
                     onClick={onLabelsToggle}
                     className={`
-                        relative w-11 h-6 rounded-full transition-colors cursor-pointer
+                        relative rounded-full transition-colors cursor-pointer
+                        ${isFullscreen ? 'w-11 h-6' : 'w-8 h-4.5'}
                         ${showLabels ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}
                     `}
                 >
                     <span
                         className={`
-                            absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-lg transition-transform
-                            ${showLabels ? 'translate-x-5' : 'translate-x-0'}
+                            absolute top-0.5 left-0.5 bg-white rounded-full shadow-lg transition-transform
+                            ${isFullscreen ? 'w-4 h-4 translate-y-0.5' : 'w-3.5 h-3.5'}
+                            ${showLabels ? (isFullscreen ? 'translate-x-5' : 'translate-x-3.5') : 'translate-x-0'}
                         `}
                     />
                 </button>

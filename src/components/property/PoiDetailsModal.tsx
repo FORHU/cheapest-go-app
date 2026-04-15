@@ -92,9 +92,15 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                 <Globe size={16} /> Website
                             </a>
                         )}
-                        <a href={`https://www.google.com/maps/search/?api=1&query=${poi.coordinates.lat},${poi.coordinates.lng}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors text-sm font-semibold">
-                            <MapPin size={16} /> Directions
-                        </a>
+                        {poi.coordinates ? (
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${poi.coordinates.lat},${poi.coordinates.lng}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors text-sm font-semibold">
+                                <MapPin size={16} /> Directions
+                            </a>
+                        ) : (
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poi.name)}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors text-sm font-semibold">
+                                <MapPin size={16} /> Directions
+                            </a>
+                        )}
                     </div>
 
                     {/* Detailed Reviews */}
