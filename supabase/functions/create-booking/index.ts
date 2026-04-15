@@ -76,7 +76,7 @@ interface SessionFlight {
 interface BookingSession {
     id: string;
     user_id: string;
-    provider: 'mystifly' | 'duffel' | 'mystifly_v2';
+    provider: 'mystifly_v2' | 'duffel';
     flight: SessionFlight;
     passengers: SessionPassenger[];
     contact: SessionContact;
@@ -85,10 +85,20 @@ interface BookingSession {
     payment_intent_id?: string | null;  // Set by /api/flights/book after PaymentIntent creation
     capture_method?: string;
     fare_policy?: Record<string, unknown> | null;
+<<<<<<< HEAD
     original_price?: number;
     charged_price?: number;
     markup_pct?: number;
     currency?: string;
+=======
+    seat_service_ids?: string[];
+    seat_total?: number;
+    // Duffel pre-order — stored by /api/flights/book so we skip re-booking
+    duffel_pre_order_id?: string | null;
+    duffel_pre_order_pnr?: string | null;
+    duffel_pre_order_tickets?: string[] | null;
+    duffel_pre_order_ticketed?: boolean | null;
+>>>>>>> 740b1c9438ae4d94b64583e12fd0f3d0cb2e5b31
 }
 
 interface ProviderBookingResult {
@@ -178,7 +188,11 @@ Deno.serve(async (req: Request) => {
         //      'pending'            — Duffel: session untouched
         //      'initiated'          — Mystifly: /book updated session after PaymentIntent created
         //      'payment_authorized' — Mystifly: Stripe webhook set before calling us
-        const claimableStatuses = ['pending', 'initiated', 'payment_authorized'];
+        // 'payment_initiated' = set by /api/flights/book after Stripe PI is created (all providers)
+        // 'initiated'         = legacy Mystifly status (kept for backwards-compat)
+        // 'payment_authorized'= Mystifly after Stripe webhook marks the hold
+        // 'pending'           = initial state (Duffel before /book runs)
+        const claimableStatuses = ['pending', 'initiated', 'payment_initiated', 'payment_authorized'];
 
         if (!claimableStatuses.includes(bs.status)) {
             // Fast-path: session is already terminal — no point trying to UPDATE
@@ -257,7 +271,7 @@ Deno.serve(async (req: Request) => {
             rawOfferType: typeof bs.flight._rawOffer,
         });
 
-        const isMystifly = bs.provider === 'mystifly' || bs.provider === 'mystifly_v2';
+        const isMystifly = bs.provider === 'mystifly_v2';
 
         // ── 2. Call Provider to Book ──
         let result: ProviderBookingResult;
@@ -265,7 +279,7 @@ Deno.serve(async (req: Request) => {
 
         if (isMystifly) {
             try {
-                result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact, bs.provider, (raw) => { mystiflyRawData = raw; });
+                result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact, 'mystifly_v2', (raw) => { mystiflyRawData = raw; });
             } catch (mystiflyErr: any) {
                 // Mystifly booking failed — immediately cancel the authorized PaymentIntent.
                 // The card was only held (requires_capture), never charged. Release the hold.
@@ -297,55 +311,78 @@ Deno.serve(async (req: Request) => {
                 }, 502);
             }
         } else if (bs.provider === 'duffel') {
-            try {
-                result = await bookWithDuffel(bs.flight, bs.passengers, bs.contact);
-            } catch (duffelErr: any) {
-                console.error('[create-booking] Duffel Booking FAILED:', duffelErr.message);
+            // ── Check for pre-created order (from /api/flights/book Step 1.5) ──
+            // /api/flights/book creates the Duffel order synchronously before Stripe
+            // and stores the result directly in the booking_sessions row.
+            // Read it here — no Stripe API call needed.
+            const paymentIntentId = bs.payment_intent_id;
+            const preOrderId = bs.duffel_pre_order_id ?? null;
+            const preOrderPnr = bs.duffel_pre_order_pnr ?? null;
+            const preOrderTickets: string[] = bs.duffel_pre_order_tickets ?? [];
+            const preOrderIsTicketed = bs.duffel_pre_order_ticketed ?? false;
 
-                // If payment was authorized/captured, we must refund
-                const paymentIntentId = bs.payment_intent_id;
-                if (paymentIntentId) {
-                    console.warn('[create-booking] Duffel failed after payment — attempting automatic Stripe refund');
-                    try {
-                        const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
-                        await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}/cancel`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Basic ${btoa(stripeSecretKey + ':')}`,
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                        });
-                        // Also try refund if it was already captured
-                        await fetch(`https://api.stripe.com/v1/refunds`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Basic ${btoa(stripeSecretKey + ':')}`,
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: new URLSearchParams({ payment_intent: paymentIntentId }).toString(),
-                        });
-                    } catch (refundErr) {
-                        console.error('[create-booking] Automatic refund failed (manual intervention needed):', refundErr);
+            console.log(`[create-booking] Duffel pre-order check: id=${preOrderId} pnr=${preOrderPnr} ticketed=${preOrderIsTicketed}`);
+
+            if (preOrderId && preOrderPnr) {
+                // Use the pre-created order — no Duffel API call needed
+                console.log(`[create-booking] Using pre-created Duffel order: ${preOrderId} / ${preOrderPnr}`);
+                result = {
+                    pnr: preOrderPnr,
+                    providerOrderId: preOrderId,
+                    providerStatus: preOrderIsTicketed ? 'ticketed' : 'booked',
+                    ticketNumbers: preOrderTickets,
+                };
+            } else {
+                console.warn(`[create-booking] No pre-order found in session — falling back to live Duffel booking`);
+                // Fallback: create Duffel order now (offer may have expired — handled by error below)
+                try {
+                    result = await bookWithDuffel(bs.flight, bs.passengers, bs.contact, bs.seat_service_ids ?? [], bs.seat_total ?? 0);
+                } catch (duffelErr: any) {
+                    console.error('[create-booking] Duffel Booking FAILED:', duffelErr.message);
+
+                    // If payment was authorized/captured, we must refund
+                    if (paymentIntentId) {
+                        console.warn('[create-booking] Duffel failed after payment — attempting automatic Stripe refund');
+                        try {
+                            const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+                            await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}/cancel`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Basic ${btoa(stripeSecretKey + ':')}`,
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                            });
+                            // Also try refund if it was already captured
+                            await fetch(`https://api.stripe.com/v1/refunds`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Basic ${btoa(stripeSecretKey + ':')}`,
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: new URLSearchParams({ payment_intent: paymentIntentId }).toString(),
+                            });
+                        } catch (refundErr) {
+                            console.error('[create-booking] Automatic refund failed (manual intervention needed):', refundErr);
+                        }
                     }
+
+                    await supabase.from('booking_sessions').update({ status: 'failed' }).eq('id', sessionId);
+
+                    // Build a user-friendly error — strip raw JSON dumps
+                    const isDuffel500 = duffelErr.status >= 500;
+                    const isExpired = /expired|no longer available|not found|gone|422/i.test(duffelErr.message ?? '') || duffelErr.status === 422;
+                    const friendlyError = isExpired
+                        ? 'This flight offer has expired. Your payment has been automatically refunded. Please search again for current availability.'
+                        : isDuffel500
+                        ? 'The airline system is temporarily unavailable. Your payment has been automatically refunded.'
+                        : `${duffelErr.message}. Your payment has been automatically refunded.`;
+                    console.error('[create-booking] Duffel error details:', duffelErr.message);
+
+                    return jsonResponse(corsHeaders, {
+                        success: false,
+                        error: friendlyError,
+                    }, 502);
                 }
-
-                await supabase.from('booking_sessions').update({ status: 'failed' }).eq('id', sessionId);
-
-                // Build a user-friendly error — strip raw JSON dumps
-                const isDuffel500 = duffelErr.status >= 500;
-                const isExpired = /expired|no longer available|not found|gone|422/i.test(duffelErr.message ?? '') || duffelErr.status === 422;
-                // Check expired first — a 422 "offer expired" should not show the generic 500 message
-                const friendlyError = isExpired
-                    ? 'This flight offer has expired. Your payment has been automatically refunded. Please search again for current availability.'
-                    : isDuffel500
-                    ? 'The airline system is temporarily unavailable. Your payment has been automatically refunded.'
-                    : `${duffelErr.message}. Your payment has been automatically refunded.`;
-                console.error('[create-booking] Duffel error details:', duffelErr.message);
-
-                return jsonResponse(corsHeaders, {
-                    success: false,
-                    error: friendlyError,
-                }, 502);
             }
         } else {
             return jsonResponse(corsHeaders, { success: false, error: `Unknown provider: ${bs.provider}` }, 400);
@@ -600,11 +637,10 @@ async function bookWithMystifly(
     flight: SessionFlight,
     passengers: SessionPassenger[],
     contact: SessionContact,
-    provider: 'mystifly' | 'duffel' | 'mystifly_v2',
+    provider: 'mystifly_v2',
     onRawData?: (raw: any) => void,
 ): Promise<ProviderBookingResult> {
-    // UUID-format FareSources (e.g. "3430ac34-593c-439c-...") are always V2 fares,
-    // even if the session was stored with provider='mystifly'. Detect and route correctly.
+    // UUID-format FareSources (e.g. "3430ac34-593c-439c-...") are V2 fares.
     const rawFareCode = flight.traceId?.split('|')[0] ?? '';
     const isUUIDFareSource = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawFareCode);
     const isV2Provider = provider === 'mystifly_v2' || isUUIDFareSource;
@@ -919,6 +955,8 @@ async function bookWithDuffel(
     flight: SessionFlight,
     passengers: SessionPassenger[],
     contact: SessionContact,
+    seatServiceIds: string[] = [],
+    seatTotal: number = 0,
 ): Promise<ProviderBookingResult> {
     const rawOffer = flight._rawOffer as any;
     if (!rawOffer || !rawOffer.id) {
@@ -972,17 +1010,24 @@ async function bookWithDuffel(
             );
         }
 
-        const duffelPayload = {
+        const totalAmount = seatServiceIds.length > 0 && seatTotal > 0
+            ? (parseFloat(rawOffer.total_amount) + seatTotal).toFixed(2)
+            : rawOffer.total_amount;
+
+        const duffelPayload: Record<string, unknown> = {
             type: 'instant',
             selected_offers: [offerId],
             passengers: orderPassengers,
             payments: [
                 {
                     type: 'balance',
-                    amount: rawOffer.total_amount,
+                    amount: totalAmount,
                     currency: rawOffer.total_currency,
                 }
             ],
+            ...(seatServiceIds.length > 0 ? {
+                services: seatServiceIds.map(id => ({ id, quantity: 1 })),
+            } : {}),
         };
 
         // Retry once on Duffel 500 (transient server errors)

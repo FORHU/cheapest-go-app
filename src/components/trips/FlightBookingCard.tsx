@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { getAirlineName } from '@/utils/flight-utils';
@@ -172,12 +172,43 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const [refundQuoteData, setRefundQuoteData] = useState<any>(null);
     const [refundDetails, setRefundDetails] = useState<any[]>([]);
     const [refundError, setRefundError] = useState<string | null>(null);
+    // Reissue (date/flight change) state
+    const [showReissue, setShowReissue] = useState(false);
+    const [reissueStep, setReissueStep] = useState<'idle'|'quoting'|'got'|'accepting'|'accepted'>('idle');
+    const [reissueQuoteData, setReissueQuoteData] = useState<any>(null);
+    const [reissueError, setReissueError] = useState<string | null>(null);
+    const [reissuePtrId, setReissuePtrId] = useState<number | null>(null);
+    const [reissuePassengers, setReissuePassengers] = useState<any[]>([]);
+    const [reissueNewSegments, setReissueNewSegments] = useState<{
+        originLocationCode: string;
+        destinationLocationCode: string;
+        departureDate: string;     // "YYYY-MM-DD" — Mystifly wants date only
+        cabinPreference: string;   // "Y"=Economy "C"=Business "F"=First
+        flightNumber: number;
+        airlineCode: string;
+        label: string;
+    }[]>([]);
     const [mounted, setMounted] = useState(false);
-    const [fareEligibility, setFareEligibility] = useState<{ isVoidable: boolean; isRefundable: boolean } | null>(null);
+    const [fareEligibility, setFareEligibility] = useState<{ isVoidable: boolean; isRefundable: boolean; isChangeable?: boolean } | null>(null);
     const [loadingEligibility, setLoadingEligibility] = useState(false);
     useEffect(() => setMounted(true), []);
 
-    // Derive void/refund eligibility from TripDetails whenever it loads
+    const isMystifly = booking.provider === 'mystifly_v2';
+    const isDuffel = booking.provider === 'duffel';
+
+    // For Duffel: read fare_policy stored on the booking — no API call needed
+    useEffect(() => {
+        if (!isDuffel) return;
+        const fp = (booking as any).fare_policy;
+        if (!fp) return;
+        setFareEligibility({
+            isVoidable: false, // Duffel has no void concept
+            isRefundable: fp.isRefundable === true,
+            isChangeable: fp.isChangeable === true,
+        });
+    }, [isDuffel, (booking as any).fare_policy]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // For Mystifly: derive void/refund eligibility from TripDetails whenever it loads
     useEffect(() => {
         if (!tripDetails) return;
         const ptcBreakdowns: any[] = tripDetails.TripDetailsPTC_FareBreakdowns ?? [];
@@ -197,7 +228,6 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
 
     // Silently auto-fetch TripDetails for ticketed Mystifly bookings to check eligibility
     useEffect(() => {
-        const isMystifly = booking.provider === 'mystifly' || booking.provider === 'mystifly_v2';
         if (localStatus !== 'ticketed' || !booking.pnr || !isMystifly || tripDetails || loadingEligibility) return;
         let cancelled = false;
         setLoadingEligibility(true);
@@ -696,6 +726,144 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         }
     };
 
+    // ── Reissue handlers ────────────────────────────────────────────
+    const handleOpenReissue = () => {
+        if (showReissue) { setShowReissue(false); return; }
+        setShowReissue(true);
+        setReissueStep('idle');
+        setReissueError(null);
+        setReissueQuoteData(null);
+        // Pre-fill segment editors from existing booking segments
+        // Group segments by itinerary_index — Mystifly wants one FlightOption per leg
+        const allSegs = [...(booking.flight_segments ?? [])].sort(
+            (a, b) => new Date(a.departure).getTime() - new Date(b.departure).getTime(),
+        );
+        const byItinerary = new Map<number, NonNullable<typeof booking.flight_segments>>();
+        for (const s of allSegs) {
+            const idx = s.itinerary_index ?? 0;
+            if (!byItinerary.has(idx)) byItinerary.set(idx, []);
+            byItinerary.get(idx)!.push(s);
+        }
+        // Fallback: if all segments share index 0 on a round-trip, split at midpoint
+        if (byItinerary.size === 1 && booking.trip_type === 'round-trip' && allSegs.length >= 2) {
+            const mid = Math.ceil(allSegs.length / 2);
+            byItinerary.set(0, allSegs.slice(0, mid));
+            byItinerary.set(1, allSegs.slice(mid));
+        }
+        const itinLabels = ['Outbound', 'Return', 'Leg 3', 'Leg 4'];
+        const segs = Array.from(byItinerary.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([itinIdx, segments]) => {
+                const first = segments[0];
+                const last = segments[segments.length - 1];
+                return {
+                    originLocationCode: first.origin,
+                    destinationLocationCode: last.destination,
+                    departureDate: first.departure
+                        ? first.departure.replace('Z', '').replace(/\.\d+$/, '').slice(0, 10)
+                        : '',
+                    cabinPreference: 'Y',
+                    flightNumber: 0,
+                    airlineCode: first.airline || '',
+                    label: itinLabels[itinIdx] ?? `Leg ${itinIdx + 1}`,
+                };
+            });
+        setReissueNewSegments(segs);
+    };
+
+    const handleReissueQuote = async () => {
+        setReissueStep('quoting');
+        setReissueError(null);
+        try {
+            // Build passengers from TripDetails (eTickets required by Mystifly)
+            let resolvedTripDetails = tripDetails;
+            if (!resolvedTripDetails) {
+                const r = await fetch('/api/flights/trip-details', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uniqueId: booking.pnr }),
+                });
+                const d = await r.json();
+                if (d.success) { resolvedTripDetails = d.travelItinerary; setTripDetails(resolvedTripDetails); }
+                else { setReissueError(d.error || 'Could not load trip details.'); setReissueStep('idle'); return; }
+            }
+            let passengers: any[] = (resolvedTripDetails?.PassengerInfos ?? []).map((p: any, idx: number) => {
+                const pax = p.Passenger ?? p; const name = pax.PaxName ?? pax;
+                return { firstName: name.PassengerFirstName ?? '', lastName: name.PassengerLastName ?? '',
+                    title: name.PassengerTitle ?? 'MR',
+                    eTicket: (p.ETickets ?? [])[0]?.ETicketNumber || booking.passengers?.[idx]?.ticket_number || '',
+                    passengerType: pax.PassengerType ?? 'ADT' };
+            });
+            if (passengers.length === 0 && booking.passengers?.length) {
+                passengers = booking.passengers.map(p => ({
+                    firstName: p.first_name, lastName: p.last_name, title: 'MR',
+                    eTicket: p.ticket_number ?? '', passengerType: p.type ?? 'ADT',
+                }));
+            }
+            if (!passengers[0]?.eTicket) {
+                setReissueError('E-ticket numbers not found. Booking may not be fully ticketed yet.');
+                setReissueStep('idle'); return;
+            }
+            setReissuePassengers(passengers);
+
+            const originDestinations = reissueNewSegments.map(s => ({
+                originLocationCode: s.originLocationCode,
+                destinationLocationCode: s.destinationLocationCode,
+                cabinPreference: s.cabinPreference,
+                departureDateTime: s.departureDate,
+                flightNumber: s.flightNumber,
+                airlineCode: s.airlineCode,
+            }));
+            const res = await fetch('/api/flights/reissue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ step: 'quote', mfRef: booking.pnr, passengers, originDestinations }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setReissueQuoteData(data);
+                setReissuePtrId(data.ptrId ?? null);
+                setReissueStep('got');
+            } else {
+                setReissueError(data.error || 'Could not get reissue quote.');
+                setReissueStep('idle');
+            }
+        } catch {
+            setReissueError('Network error. Please try again.');
+            setReissueStep('idle');
+        }
+    };
+
+    const handleConfirmReissue = async () => {
+        setReissueStep('accepting');
+        setReissueError(null);
+        try {
+            const originDestinations = reissueNewSegments.map(s => ({
+                originLocationCode: s.originLocationCode,
+                destinationLocationCode: s.destinationLocationCode,
+                cabinPreference: s.cabinPreference,
+                departureDateTime: s.departureDate,
+                flightNumber: s.flightNumber,
+                airlineCode: s.airlineCode,
+            }));
+            const res = await fetch('/api/flights/reissue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    step: 'execute', mfRef: booking.pnr,
+                    passengers: reissuePassengers, ptrId: reissuePtrId ?? 0,
+                    originDestinations, bookingId: booking.id,
+                }),
+            });
+            const data = await res.json();
+            if (data.success) { setReissueStep('accepted'); setLocalStatus('reissued' as any); }
+            else { setReissueError(data.error || 'Reissue failed. Please try again.'); setReissueStep('got'); }
+        } catch {
+            setReissueError('Network error. Please try again.');
+            setReissueStep('got');
+        }
+    };
+
     // Helper to render the right side state chip
     const renderStateChip = () => {
         if (localStatus === 'cancel_requested') {
@@ -841,7 +1009,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 </div>
 
                 {/* ── Mystifly Trip Details + Void Quote toggles (mobile) ── */}
-                {(booking.provider === 'mystifly' || booking.provider === 'mystifly_v2') && booking.pnr && (
+                {isMystifly && booking.pnr && (
                     <div className="md:hidden border-t border-slate-100 dark:border-slate-800">
                         <button
                             onClick={handleViewTripDetails}
@@ -965,8 +1133,8 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                             })()}
                         </div>
 
-                        {/* eTickets */}
-                        <div className="mt-auto">
+                        {/* eTickets + fare policy badges */}
+                        <div className="mt-auto space-y-1.5">
                             {(localStatus === 'ticketed' || localStatus === 'awaiting_ticket') && booking.passengers?.some(p => p.ticket_number) && (
                                 <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
                                     <div className="flex items-center gap-1.5">
@@ -980,6 +1148,35 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                             </span>
                                         ))}
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Fare policy badges — shown once eligibility loads */}
+                            {fareEligibility !== null && (
+                                <div className="flex flex-wrap gap-1.5">
+                                    {fareEligibility.isVoidable ? (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                            <CheckCircle className="w-3 h-3 shrink-0" /> Free cancellation
+                                        </span>
+                                    ) : fareEligibility.isRefundable ? (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                                            <RotateCcw className="w-3 h-3 shrink-0" /> Refundable
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                            <XCircle className="w-3 h-3 shrink-0" /> Non-refundable
+                                        </span>
+                                    )}
+                                    {isDuffel && fareEligibility.isChangeable && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                                            <ArrowLeftRight className="w-3 h-3 shrink-0" /> Changeable
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                            {loadingEligibility && (
+                                <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                                    <Loader2 className="w-3 h-3 animate-spin" /> Checking fare policy…
                                 </div>
                             )}
                         </div>
@@ -1042,7 +1239,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </div>
                     {/* Airline details button — desktop */}
                     <div className="hidden md:flex flex-col gap-1.5">
-                        {(booking.provider === 'mystifly' || booking.provider === 'mystifly_v2') && booking.pnr && (<>
+                        {isMystifly && booking.pnr && (<>
                             <button
                                 onClick={handleViewTripDetails}
                                 className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg px-2 py-1.5 transition-colors"
@@ -1083,6 +1280,17 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     </div>
                                 )}
                             </>)}
+                            {/* Reissue / Change Flight button — upcoming ticketed only */}
+                            {isUpcoming && (
+                                <button
+                                    onClick={handleOpenReissue}
+                                    className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg px-2 py-1.5 transition-colors"
+                                >
+                                    <ArrowLeftRight className="w-3 h-3" />
+                                    {showReissue ? 'Hide change flight' : 'Change flight'}
+                                    {showReissue ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                </button>
+                            )}
                         </>)}
                         <a
                             href={`/trips/invoice/${booking.id}?type=flight`}
@@ -1481,6 +1689,134 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 </div>
                             </div>
                         ) : null}
+                    </div>
+                )}
+
+                {/* ── Reissue / Change Flight Panel ── */}
+                {showReissue && (
+                    <div className="border-t border-violet-100 dark:border-violet-900/30 px-3 lg:px-5 py-3 bg-violet-50/40 dark:bg-violet-900/10">
+                        <p className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wide mb-2">Change Flight (Reissue)</p>
+                        {reissueStep === 'accepted' ? (
+                            <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800/40">
+                                <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                                Reissue submitted. Your updated itinerary will be confirmed shortly.
+                            </div>
+                        ) : (
+                            <div className="space-y-3 text-xs">
+                                {/* Segment editors */}
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">New Flight Details</p>
+                                    {reissueNewSegments.map((seg, i) => (
+                                        <div key={i} className="bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2.5 border border-violet-100 dark:border-violet-800/30 space-y-2">
+                                            <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                                {seg.label}: {seg.originLocationCode} → {seg.destinationLocationCode}
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] text-slate-400 block mb-0.5">New Departure Date</label>
+                                                    <input
+                                                        type="date"
+                                                        value={seg.departureDate}
+                                                        onChange={e => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, departureDate: e.target.value } : s))}
+                                                        className="w-full text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] text-slate-400 block mb-0.5">Airline Code</label>
+                                                    <input
+                                                        type="text"
+                                                        maxLength={3}
+                                                        placeholder="7C"
+                                                        value={seg.airlineCode}
+                                                        onChange={e => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, airlineCode: e.target.value.toUpperCase() } : s))}
+                                                        className="w-full text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400 font-mono uppercase"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] text-slate-400 block mb-0.5">Cabin</label>
+                                                    <select
+                                                        value={seg.cabinPreference}
+                                                        onChange={e => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, cabinPreference: e.target.value } : s))}
+                                                        className="w-full text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                                    >
+                                                        <option value="Y">Economy (Y)</option>
+                                                        <option value="C">Business (C)</option>
+                                                        <option value="F">First (F)</option>
+                                                        <option value="S">Premium Eco (S)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {reissueError && (
+                                    <div className="flex items-center gap-2 text-xs text-red-500 dark:text-red-400">
+                                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {reissueError}
+                                    </div>
+                                )}
+
+                                {/* Get Quote button */}
+                                {reissueStep !== 'got' && reissueStep !== 'accepting' && (
+                                    <button
+                                        onClick={handleReissueQuote}
+                                        disabled={reissueStep === 'quoting' || reissueNewSegments.length === 0}
+                                        className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
+                                    >
+                                        {reissueStep === 'quoting' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowLeftRight className="w-3.5 h-3.5" />}
+                                        {reissueStep === 'quoting' ? 'Getting quote…' : 'Get Reissue Quote'}
+                                    </button>
+                                )}
+
+                                {/* Quote result */}
+                                {reissueQuoteData && (reissueStep === 'got' || reissueStep === 'accepting') && (
+                                    <div className="space-y-2">
+                                        <div className="flex flex-wrap gap-3 text-slate-600 dark:text-slate-400">
+                                            {reissueQuoteData.priceChange != null && (
+                                                <span>Price change: <strong className={reissueQuoteData.priceChange >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}>
+                                                    {reissueQuoteData.priceChange >= 0 ? '+' : ''}{reissueQuoteData.priceChange}
+                                                </strong></span>
+                                            )}
+                                        </div>
+                                        {reissueQuoteData.passengerChanges?.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Change Breakdown</p>
+                                                <div className="space-y-1">
+                                                    {reissueQuoteData.passengerChanges.map((p: any, i: number) => {
+                                                        const changeAmt = p.PriceChange ?? p.TotalChange ?? p.TotalFare;
+                                                        const label = [p.TicketNumber, p.PassengerType].filter(Boolean).join(' · ');
+                                                        return (
+                                                            <div key={i} className="flex items-center justify-between gap-2 bg-white dark:bg-slate-800/60 rounded-lg px-2.5 py-2 border border-violet-100 dark:border-violet-800/30">
+                                                                <span className="text-slate-700 dark:text-slate-300 font-mono text-[10px]">{label || `Pax ${i + 1}`}</span>
+                                                                <span className={`font-semibold text-[11px] ${(changeAmt ?? 0) >= 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                                                    {changeAmt != null ? `${changeAmt >= 0 ? '+' : ''}${changeAmt}` : '—'} {p.Currency}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="pt-1 space-y-1.5">
+                                            <button
+                                                onClick={handleConfirmReissue}
+                                                disabled={reissueStep === 'accepting'}
+                                                className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-500 disabled:opacity-60 rounded-lg px-3 py-2 transition-colors"
+                                            >
+                                                {reissueStep === 'accepting' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                                                {reissueStep === 'accepting' ? 'Processing change…' : 'Confirm Flight Change'}
+                                            </button>
+                                            <button
+                                                onClick={() => { setReissueStep('idle'); setReissueQuoteData(null); setReissueError(null); }}
+                                                className="w-full text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 py-1 transition-colors"
+                                            >
+                                                ← Edit and get new quote
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

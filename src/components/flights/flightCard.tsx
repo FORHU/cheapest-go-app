@@ -24,6 +24,12 @@ function formatDuration(minutes: number): string {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+function providerLabel(provider: string): string {
+    if (provider === 'mystifly_v2' || provider === 'mystifly') return 'Mystifly';
+    if (provider === 'duffel') return 'Duffel';
+    return provider;
+}
+
 function stopsLabel(stops: number): string {
     if (stops === 0) return 'Nonstop';
     if (stops === 1) return '1 stop';
@@ -244,7 +250,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             {(primary.cabinClass || 'economy').replace('_', ' ')}
                         </span>
                         <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
-                            {offer.provider}
+                            {providerLabel(offer.provider)}
                         </span>
                         {offer.alternatives && offer.alternatives.length > 0 && (
                             <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-600 text-white font-bold animate-pulse shadow-sm shadow-indigo-500/50">
@@ -361,7 +367,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                             </span>
                                         </div>
                                         <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
-                                            {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')} · {alt.provider}
+                                            {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')} · {providerLabel(alt.provider)}
                                         </p>
                                         <button
                                             onClick={(e) => {

@@ -32,7 +32,7 @@ interface FlightBooking {
     id: string;
     user_id: string;
     pnr: string;
-    provider: 'mystifly' | 'duffel';
+    provider: 'mystifly_v2' | 'duffel';
     total_price: number;
     status: string;
     provider_order_id?: string;
@@ -113,7 +113,7 @@ Deno.serve(async (req: Request) => {
         // ── 2. Call Provider Ticketing Endpoint ──
         let result: TicketResult;
 
-        if (fb.provider === 'mystifly') {
+        if (fb.provider === 'mystifly_v2') {
             result = await ticketWithMystifly(fb.pnr);
         } else if (fb.provider === 'duffel') {
             // Duffel orders are retrieved by their order ID, which we saved in provider_order_id column

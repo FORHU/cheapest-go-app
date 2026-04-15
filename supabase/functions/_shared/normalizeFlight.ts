@@ -340,7 +340,7 @@ export function normalizeMystiflyOffer(
 
             cabinClass: firstSeg.cabinClass,
             refundable: farePol.isRefundable,
-            farePolicy: { ...farePol, policyVersion: 'search', policySource: 'mystifly_v1' },
+            farePolicy: { ...farePol, policyVersion: 'search', policySource: 'mystifly_v2' },
             seatsRemaining,
 
             normalizedPriceUsd,

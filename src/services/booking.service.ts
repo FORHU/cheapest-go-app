@@ -260,7 +260,7 @@ export interface FlightBookingRecord {
   id: string;
   user_id: string;
   pnr: string;
-  provider: 'duffel' | 'mystifly' | 'mystifly_v2';
+  provider: 'duffel' | 'mystifly_v2';
   total_price: number;
   currency?: string;
   trip_type?: 'one-way' | 'round-trip' | 'multi-city';

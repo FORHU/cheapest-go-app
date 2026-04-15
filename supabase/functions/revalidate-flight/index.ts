@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
             }, 400);
         }
 
-        if (body.provider !== 'mystifly' && body.provider !== 'mystifly_v2' && body.provider !== 'duffel') {
+        if (body.provider !== 'mystifly_v2' && body.provider !== 'duffel') {
             return jsonResponse(corsHeaders, {
                 success: false,
                 error: `Unknown provider: ${body.provider}`,
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
         // ── Route to provider ──
         let result: RevalidateResult;
 
-        if (body.provider === 'mystifly' || body.provider === 'mystifly_v2') {
+        if (body.provider === 'mystifly_v2') {
             result = await revalidateMystifly(body, oldPrice, startMs);
         } else {
             // Duffel — re-read policy from the stored flight offer in the booking session.
@@ -147,8 +147,15 @@ Deno.serve(async (req: Request) => {
             // re-extract policy from the Order response and overwrite this if changed.
             const storedFlight = body.flightPayload?.flight as any;
             let farePolicy: NormalizedFarePolicy | undefined;
-            if (storedFlight?.conditions) {
-                farePolicy = { ...normalizeDuffelPolicy(storedFlight), policyVersion: 'revalidated', policySource: 'duffel' };
+            // Use pre-normalized farePolicy if already present (set during search)
+            if (storedFlight?.farePolicy) {
+                farePolicy = { ...storedFlight.farePolicy, policyVersion: 'revalidated', policySource: 'duffel' };
+            } else {
+                // Fall back to re-normalizing from raw offer conditions
+                const rawConditions = storedFlight?.conditions ?? storedFlight?.raw?.conditions ?? storedFlight?._rawOffer?.conditions;
+                if (rawConditions) {
+                    farePolicy = { ...normalizeDuffelPolicy({ conditions: rawConditions }), policyVersion: 'revalidated', policySource: 'duffel' };
+                }
             }
 
             const nowIso = new Date().toISOString();
@@ -241,8 +248,8 @@ async function revalidateMystifly(
     //    SearchIdentifier on ALL revalidate endpoints (V1 and V2), but SearchIdentifier
     //    is only returned by V2 search and is often empty/missing. Skipping here is
     //    safe because the booking API validates the fare independently.
-    if (body.provider === 'mystifly' || body.provider === 'mystifly_v2') {
-        console.warn(`[revalidate-flight] ${body.provider}: skipping revalidation (SearchIdentifier unreliable) — soft-passing with original price`);
+    if (body.provider === 'mystifly_v2') {
+        console.warn(`[revalidate-flight] mystifly_v2: skipping revalidation (SearchIdentifier unreliable) — soft-passing with original price`);
         return {
             success: true,
             priceChanged: false,
@@ -350,7 +357,7 @@ async function revalidateMystifly(
     freshFarePolicy = {
         ...normalizeMystiflyV1Policy(freshItinerary),
         policyVersion: 'revalidated',
-        policySource: 'mystifly_v1',
+        policySource: 'mystifly_v2',
     };
 
     // ── Safety: if price extraction returned 0 but Mystifly said Success,

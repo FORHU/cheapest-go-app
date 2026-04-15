@@ -7,7 +7,7 @@ interface FlightFiltersProps {
     onFilterChange: (filters: FilterState) => void;
 }
 
-export type FlightProvider = "mystifly" | "mystifly_v2" | "duffel";
+export type FlightProvider = "mystifly_v2" | "duffel";
 
 export interface FilterState {
     sortBy: "price" | "duration" | "departure";
@@ -134,8 +134,7 @@ export default function FlightFilters({ airlines, onFilterChange }: FlightFilter
                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Provider</p>
                 <div className="flex flex-col gap-2">
                     {([
-                        { value: "mystifly" as FlightProvider, label: "Mystifly", sub: "V1 fares" },
-                        { value: "mystifly_v2" as FlightProvider, label: "Mystifly V2", sub: "Branded fares" },
+                        { value: "mystifly_v2" as FlightProvider, label: "Mystifly", sub: "Branded fares" },
                         { value: "duffel" as FlightProvider, label: "Duffel", sub: "NDC fares" },
                     ]).map(({ value, label, sub }) => {
                         const active = state.selectedProviders.includes(value);

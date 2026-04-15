@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Step 5: Call supplier adapter ─────────────────────────────
-        const isMystifly = booking.provider === 'mystifly' || booking.provider === 'mystifly_v2';
+        const isMystifly = booking.provider === 'mystifly_v2';
         let supplierSuccess = false;
         let refundAmount = 0;
         let penaltyAmount = 0;
