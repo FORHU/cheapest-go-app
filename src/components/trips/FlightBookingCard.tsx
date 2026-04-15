@@ -193,7 +193,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const [loadingEligibility, setLoadingEligibility] = useState(false);
     useEffect(() => setMounted(true), []);
 
-    const isMystifly = booking.provider === 'mystifly' || booking.provider === 'mystifly_v2';
+    const isMystifly = booking.provider === 'mystifly_v2';
     const isDuffel = booking.provider === 'duffel';
 
     // For Duffel: read fare_policy stored on the booking — no API call needed

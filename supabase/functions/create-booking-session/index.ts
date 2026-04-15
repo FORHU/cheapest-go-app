@@ -43,7 +43,7 @@ interface BookingSessionContact {
 
 interface CreateBookingSessionBody {
     userId: string;
-    provider: 'mystifly' | 'duffel' | 'mystifly_v2';
+    provider: 'mystifly_v2' | 'duffel';
     flight: Record<string, unknown>;
     passengers: BookingSessionPassenger[];
     contact: BookingSessionContact;
@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
         if (!body.userId) {
             return jsonResponse(corsHeaders, { success: false, error: 'userId is required' }, 400);
         }
-        if (!body.provider || !['mystifly', 'duffel', 'mystifly_v2'].includes(body.provider)) {
+        if (!body.provider || !['mystifly_v2', 'duffel'].includes(body.provider)) {
             return jsonResponse(corsHeaders, { success: false, error: 'invalid provider string passed' }, 400);
         }
         if (!body.flight || typeof body.flight !== 'object') {
@@ -169,7 +169,7 @@ Deno.serve(async (req: Request) => {
         // but it remains sanitized for Mystifly as a legacy safeguard.
         const sanitizedFlight = { ...body.flight } as Record<string, unknown>;
 
-        if (body.provider === 'mystifly' || body.provider === 'mystifly_v2') {
+        if (body.provider === 'mystifly_v2') {
             delete sanitizedFlight.rawOffer;
             delete sanitizedFlight._raw;
             delete sanitizedFlight._rawOffer;

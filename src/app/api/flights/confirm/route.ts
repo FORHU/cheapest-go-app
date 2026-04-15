@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         // ── Step 1: Verify payment server-side (never trust the client) ──────
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
         const provider = paymentIntent.metadata?.provider ?? '';
-        const isMystifly = provider === 'mystifly' || provider === 'mystifly_v2';
+        const isMystifly = provider === 'mystifly_v2';
 
         // Validate this PaymentIntent belongs to this session
         if (paymentIntent.metadata?.bookingSessionId !== sessionId) {

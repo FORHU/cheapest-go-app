@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         const userId = user.id;
 
         // ── Validate ──
-        if (!provider || !['duffel', 'mystifly', 'mystifly_v2'].includes(provider)) {
+        if (!provider || !['duffel', 'mystifly_v2'].includes(provider)) {
             return NextResponse.json({ success: false, error: 'invalid provider string passed' }, { status: 400 });
         }
         if (!flight || typeof flight !== 'object') {
@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
         if (!revalData.success || !revalData.seatsAvailable) {
             // Mystifly: SearchIdentifier is frequently missing from search responses.
             // Soft-pass these errors and let the booking API validate the fare instead.
-            const isMystiflyProvider = provider === 'mystifly' || provider === 'mystifly_v2';
+            const isMystiflyProvider = provider === 'mystifly_v2';
             const isSearchIdError = /searchIdentifier.*empty|cannot revalidate/i.test(revalData.error || '');
             if (isMystiflyProvider && isSearchIdError) {
                 console.warn('[/book] SearchIdentifier revalidation error — soft-passing for Mystifly, proceeding to booking');
@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
 
         const serverFarePolicy = revalData.farePolicy || farePolicy;
         const sanitizedFlight = { ...flight };
-        if (provider === 'mystifly' || provider === 'mystifly_v2') {
+        if (provider === 'mystifly_v2') {
             delete (sanitizedFlight as any).rawOffer;
             delete (sanitizedFlight as any)._rawOffer;
         }
@@ -467,7 +467,7 @@ export async function POST(req: NextRequest) {
 
         // ── Step 2: Create Stripe PaymentIntent ──
         const stripeStart = Date.now();
-        const isMystifly = provider === 'mystifly' || provider === 'mystifly_v2';
+        const isMystifly = provider === 'mystifly_v2';
 
         // Apply platform markup before charging the customer.
         // The provider (Duffel/Mystifly) is billed the original fare from our balance.

@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ received: true });
         }
 
-        if (provider !== 'mystifly' && provider !== 'mystifly_v2') {
+        if (provider !== 'mystifly_v2') {
             // Only Mystifly uses manual capture — ignore for other providers
             return NextResponse.json({ received: true });
         }
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
                     'booking'
                 );
                 // Send confirmation email — fire-and-forget (webhook fires exactly once)
-                fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, pi.metadata?.provider ?? 'mystifly')
+                fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, pi.metadata?.provider ?? 'mystifly_v2')
                     .catch(e => console.error('[Webhook] Mystifly email error:', e));
 
                 // Financial ledger: log payment event
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
                         bookingId: bookingData.bookingId,
                         amount: pi.amount / 100,
                         currency: (pi.currency || 'usd').toUpperCase(),
-                        provider: 'mystifly',
+                        provider: 'mystifly_v2',
                         transactionId: pi.id,
                         metadata: { sessionId: bookingSessionId, pnr: bookingData.pnr },
                     });
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
         }
 
         // skip Mystifly here — it's handled by amount_capturable_updated above
-        if (provider === 'mystifly' || provider === 'mystifly_v2') {
+        if (provider === 'mystifly_v2') {
             return NextResponse.json({ received: true });
         }
 

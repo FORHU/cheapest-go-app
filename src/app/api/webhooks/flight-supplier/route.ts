@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
         }
         // Mystifly Webhook Strategy (Hypothetical PNR event payload)
         else if (payload.event_type && (payload.pnr || payload.order_id)) {
-            provider = 'mystifly';
+            provider = 'mystifly_v2';
             referenceId = payload.pnr || payload.order_id;
 
             if (payload.event_type === 'ticket_issued') {

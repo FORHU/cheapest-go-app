@@ -76,7 +76,7 @@ interface SessionFlight {
 interface BookingSession {
     id: string;
     user_id: string;
-    provider: 'mystifly' | 'duffel' | 'mystifly_v2';
+    provider: 'mystifly_v2' | 'duffel';
     flight: SessionFlight;
     passengers: SessionPassenger[];
     contact: SessionContact;
@@ -264,7 +264,7 @@ Deno.serve(async (req: Request) => {
             rawOfferType: typeof bs.flight._rawOffer,
         });
 
-        const isMystifly = bs.provider === 'mystifly' || bs.provider === 'mystifly_v2';
+        const isMystifly = bs.provider === 'mystifly_v2';
 
         // ── 2. Call Provider to Book ──
         let result: ProviderBookingResult;
@@ -272,7 +272,7 @@ Deno.serve(async (req: Request) => {
 
         if (isMystifly) {
             try {
-                result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact, bs.provider, (raw) => { mystiflyRawData = raw; });
+                result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact, 'mystifly_v2', (raw) => { mystiflyRawData = raw; });
             } catch (mystiflyErr: any) {
                 // Mystifly booking failed — immediately cancel the authorized PaymentIntent.
                 // The card was only held (requires_capture), never charged. Release the hold.
@@ -622,11 +622,10 @@ async function bookWithMystifly(
     flight: SessionFlight,
     passengers: SessionPassenger[],
     contact: SessionContact,
-    provider: 'mystifly' | 'duffel' | 'mystifly_v2',
+    provider: 'mystifly_v2',
     onRawData?: (raw: any) => void,
 ): Promise<ProviderBookingResult> {
-    // UUID-format FareSources (e.g. "3430ac34-593c-439c-...") are always V2 fares,
-    // even if the session was stored with provider='mystifly'. Detect and route correctly.
+    // UUID-format FareSources (e.g. "3430ac34-593c-439c-...") are V2 fares.
     const rawFareCode = flight.traceId?.split('|')[0] ?? '';
     const isUUIDFareSource = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawFareCode);
     const isV2Provider = provider === 'mystifly_v2' || isUUIDFareSource;

@@ -553,7 +553,7 @@ export default function FlightBookContent() {
                 )}
 
                 {/* Fare Rules — Mystifly only; fetched from airline via FareSourceCode */}
-                {(offer.provider === 'mystifly' || offer.provider === 'mystifly_v2') && (
+                {offer.provider === 'mystifly_v2' && (
                     <FareRulesPanel
                         fareSourceCode={offer.offerId.split('|')[0]}
                     />

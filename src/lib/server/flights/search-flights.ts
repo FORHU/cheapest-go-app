@@ -1,6 +1,6 @@
 import { FlightResultCache, FlightSearchParams, FlightSearch, FlightOffer, FlightResult } from "@/types/flights";
 import { searchDuffel } from "./providers/duffel";
-import { searchMystifly, searchMystiflyV2 } from "./providers/mystifly";
+import { searchMystiflyV2 } from "./providers/mystifly";
 import { createClient } from "@/utils/supabase/server";
 import { normalizedToFlightOffer } from "@/utils/flight-utils";
 import { logApiCall } from "@/lib/server/api-logger";
@@ -29,8 +29,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     const cacheStart = Date.now();
     const cachedResults = await getExistingCachedResults(params, TTL_MINUTES);
     if (cachedResults && cachedResults.length > 0) {
-        // Strip V2 UUID fares from cache — they require SearchIdentifier which Mystifly
-        // doesn't return in search responses, making them unbookable.
+        // Mystifly V2 fares cached without a SearchIdentifier are unbookable — drop them.
         const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const bookableResults = cachedResults.filter(r =>
             r.provider !== 'mystifly_v2' || !UUID_RE.test(r.offer_id ?? '')
@@ -67,7 +66,6 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     // 3. Fetch from providers in parallel with resilience (allSettled)
     const providers = [
         { name: "Duffel", call: searchDuffel(params) },
-        { name: "Mystifly", call: searchMystifly(params) },
         { name: "MystiflyV2", call: searchMystiflyV2(params) },
     ];
 
@@ -223,6 +221,7 @@ export async function cacheResults(searchId: string, results: FlightResult[]): P
         arrival_time: r.arrival_time,
         duration: r.duration,
         stops: r.stops ?? 0,
+        refundable: (r as any).refundable ?? false,
         raw: r.raw,
     }));
 
