@@ -107,11 +107,12 @@ export async function POST(req: NextRequest) {
 
         try {
             // Mark session as payment_authorized before calling create-booking
+            // Accept both 'initiated' (legacy) and 'payment_initiated' (current /book sets this)
             await supabase
                 .from('booking_sessions')
                 .update({ status: 'payment_authorized' })
                 .eq('id', bookingSessionId)
-                .eq('status', 'initiated');
+                .in('status', ['initiated', 'payment_initiated']);
 
             const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
                 method: 'POST',

@@ -4,6 +4,8 @@ import { useMutation } from '@tanstack/react-query';
 import { z } from 'zod';
 import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/lib/schemas/flight';
 import type { FlightOffer } from '@/types/flights';
+import type { SelectedSeat } from '@/types/seatMap';
+import type { SelectedBag } from '@/types/bags';
 import { createClient } from '@/utils/supabase/client';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
@@ -11,6 +13,7 @@ export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error
 export function useFlightBooking() {
     const router = useRouter();
     const [offer, setOffer] = useState<FlightOffer | null>(null);
+    const [offerExpiresAt, setOfferExpiresAt] = useState<Date | null>(null);
     const [step, setStep] = useState<BookingStep>('form');
     const [errorMsg, setErrorMsg] = useState('');
     const [bookingResult, setBookingResult] = useState<{
@@ -48,6 +51,9 @@ export function useFlightBooking() {
     const idempotencyKeyRef = useRef<string>(generateId());
     // Tracks the booking session ID after Stripe payment, for PNR confirmation
     const bookingSessionIdRef = useRef<string | null>(null);
+
+    const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([]);
+    const [selectedBags, setSelectedBags] = useState<SelectedBag[]>([]);
 
     const [passengers, setPassengers] = useState<FlightPassengerForm[]>(() => {
         if (typeof window !== 'undefined') {
@@ -146,12 +152,16 @@ export function useFlightBooking() {
         // show an error immediately instead of letting them fill the form and fail at payment.
         const rawOffer = (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer;
         const expiresAt = rawOffer?.expires_at ?? (parsedOffer as any).expires_at ?? parsedOffer.lastTicketDate;
-        if (expiresAt && new Date(expiresAt) < new Date()) {
-            sessionStorage.removeItem('selectedFlight');
-            setErrorMsg('This flight offer has expired. Please search again for current availability.');
-            setStep('error');
-            setOffer(parsedOffer);
-            return;
+        if (expiresAt) {
+            const expiryDate = new Date(expiresAt);
+            if (expiryDate < new Date()) {
+                sessionStorage.removeItem('selectedFlight');
+                setErrorMsg('This flight offer has expired. Please search again for current availability.');
+                setStep('error');
+                setOffer(parsedOffer);
+                return;
+            }
+            setOfferExpiresAt(expiryDate);
         }
 
         if (parsedOffer.farePolicy?.policyVersion === 'revalidated') {
@@ -206,6 +216,10 @@ export function useFlightBooking() {
                 if (isMounted) {
                     sessionStorage.setItem('selectedFlight', JSON.stringify(revalidatedOffer));
                     setOffer(revalidatedOffer);
+                    // Re-extract expiry from the revalidated offer's raw offer
+                    const rRaw = (revalidatedOffer as any)._rawOffer || (revalidatedOffer as any).rawOffer;
+                    const rExpiry = rRaw?.expires_at ?? (revalidatedOffer as any).expires_at ?? revalidatedOffer.lastTicketDate;
+                    if (rExpiry) setOfferExpiresAt(new Date(rExpiry));
                 }
             } catch (err) {
                 console.error('[useFlightBooking] Revalidation failed:', err);
@@ -239,13 +253,18 @@ export function useFlightBooking() {
     };
 
     const bookMutation = useMutation({
-        mutationFn: async ({ offer, passengers, contact }: { offer: FlightOffer, passengers: FlightPassengerForm[], contact: FlightContactForm }) => {
+        mutationFn: async ({ offer, passengers, contact, seats, bags }: { offer: FlightOffer, passengers: FlightPassengerForm[], contact: FlightContactForm, seats: SelectedSeat[], bags: SelectedBag[] }) => {
             // Client-side auth check (fast-fail UX; server re-verifies via JWT)
             const { data: { user } } = await createClient().auth.getUser();
 
             if (!user) {
                 throw new Error("unauthenticated");
             }
+
+            const seatServiceIds = seats.map(s => s.serviceId);
+            const seatTotal = seats.reduce((sum, s) => sum + s.price, 0);
+            const bagServiceIds = bags.map(b => b.serviceId);
+            const bagTotal = bags.reduce((sum, b) => sum + b.price, 0);
 
             // CRITICAL-2 FIX: Do NOT send rawOffer/_raw — server rebuilds from normalized data
             const flightPayload = {
@@ -285,6 +304,8 @@ export function useFlightBooking() {
                     contact,
                     idempotencyKey: idempotencyKeyRef.current,
                     farePolicy: offer.farePolicy,
+                    ...(seatServiceIds.length > 0 ? { seatServiceIds, seatTotal } : {}),
+                    ...(bagServiceIds.length > 0 ? { bagServiceIds, bagTotal } : {}),
                 }),
             });
 
@@ -491,27 +512,21 @@ export function useFlightBooking() {
             } catch { /* ignore parse errors, let server validate */ }
         }
 
-        // Re-check Duffel offer expiry right before charging.
-        // 5-min buffer: if the offer expires within 5 minutes it will almost certainly
-        // expire during the Stripe payment flow, causing a charge+refund cycle.
+        // Duffel offer expiry: no client-side buffer needed — the server's auto-refresh
+        // handles expired offers by creating a new offer_request. Only block if the
+        // offer is already past its expiry AND no rawOffer is available to refresh with.
         if (offer.provider === 'duffel') {
             const rawOffer = (offer as any)._rawOffer || (offer as any).rawOffer;
-            // lastTicketDate is set to rawOffer.expires_at during normalization
-            const expiresAt = rawOffer?.expires_at ?? (offer as any).expires_at ?? offer.lastTicketDate;
-            if (expiresAt) {
-                const BUFFER_MS = 5 * 60 * 1000;
-                if (new Date(expiresAt).getTime() - BUFFER_MS < Date.now()) {
-                    sessionStorage.removeItem('selectedFlight');
-                    setErrorMsg('This flight offer has expired. Please search again for current availability.');
-                    setStep('error');
-                    return;
-                }
+            if (!rawOffer?.id) {
+                setErrorMsg('Flight offer data missing. Please go back and select the flight again.');
+                setStep('error');
+                return;
             }
         }
 
         try {
             flightBookingSchema.parse({ passengers, contact });
-            bookMutation.mutate({ offer, passengers, contact });
+            bookMutation.mutate({ offer, passengers, contact, seats: selectedSeats, bags: selectedBags });
         } catch (error) {
             if (error instanceof z.ZodError) {
                 setErrorMsg(error.issues[0].message);
@@ -523,11 +538,12 @@ export function useFlightBooking() {
 
     return {
         offer,
+        offerExpiresAt,
         step,
-        setStep, // Exported to allow manual transition if needed
+        setStep,
         errorMsg,
         bookingResult,
-        clientSecret, // Exported for Stripe Elements provider
+        clientSecret,
         passengers,
         contact,
         updatePassenger,
@@ -535,7 +551,11 @@ export function useFlightBooking() {
         removePassenger,
         setContact,
         handleSubmit,
-        pollForBooking, // Called by StripeEmbeddedCheckout onSuccess to start PNR polling
+        selectedSeats,
+        setSelectedSeats,
+        selectedBags,
+        setSelectedBags,
+        pollForBooking,
         router,
     };
 }

@@ -59,6 +59,8 @@ interface CreateBookingSessionBody {
         policyVersion?: string;
         rawSupplierPolicy?: unknown;
     };
+    seatServiceIds?: string[];
+    seatTotal?: number;
 }
 
 // ─── Handler ────────────────────────────────────────────────────────
@@ -204,6 +206,10 @@ Deno.serve(async (req: Request) => {
                     policy_version: body.farePolicy.policyVersion === 'revalidated' ? 'revalidated' : 'search',
                     policy_locked: body.farePolicy.policyVersion === 'revalidated',
                 } : { policy_locked: false }),
+                ...(body.seatServiceIds?.length ? {
+                    seat_service_ids: body.seatServiceIds,
+                    seat_total: body.seatTotal ?? 0,
+                } : {}),
             });
 
         if (dbError) {

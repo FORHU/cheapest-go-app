@@ -1,8 +1,8 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight } from 'lucide-react';
+import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage } from 'lucide-react';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
@@ -12,6 +12,8 @@ import { useUserCurrency } from '@/stores/searchStore';
 import type { FarePolicy } from '@/types/flights';
 import { getAirportInfo } from '@/utils/airport-info';
 import { FareRulesPanel } from './FareRulesPanel';
+import SeatMapPanel from '@/components/flights/SeatMapPanel';
+import BagSelectionPanel from '@/components/flights/BagSelectionPanel';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
@@ -89,9 +91,44 @@ function FarePolicyPanel({ policy, policyChanged }: FarePolicyPanelProps) {
 // ─── Component ───────────────────────────────────────────────────────
 
 
+// ─── Offer expiry countdown ──────────────────────────────────────────
+
+function useCountdown(expiresAt: Date | null) {
+    const [secsLeft, setSecsLeft] = React.useState<number | null>(null);
+    useEffect(() => {
+        if (!expiresAt) return;
+        const tick = () => setSecsLeft(Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)));
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [expiresAt]);
+    return secsLeft;
+}
+
+function OfferExpiryBanner({ expiresAt }: { expiresAt: Date }) {
+    const secsLeft = useCountdown(expiresAt);
+    if (secsLeft === null || secsLeft > 10 * 60) return null; // Only show under 10 min
+    const mins = Math.floor(secsLeft / 60);
+    const secs = secsLeft % 60;
+    const isUrgent = secsLeft < 2 * 60;
+    return (
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium mb-3 border ${
+            isUrgent
+                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+                : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+        }`}>
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            {secsLeft === 0
+                ? 'This offer has expired — please search again.'
+                : `Offer expires in ${mins}:${String(secs).padStart(2, '0')} — complete your booking before time runs out.`}
+        </div>
+    );
+}
+
 export default function FlightBookContent() {
     const {
         offer,
+        offerExpiresAt,
         step,
         errorMsg,
         bookingResult,
@@ -102,11 +139,18 @@ export default function FlightBookContent() {
         removePassenger,
         setContact,
         handleSubmit,
+        selectedSeats,
+        setSelectedSeats,
+        selectedBags,
+        setSelectedBags,
         router,
         clientSecret,
         setStep,
         pollForBooking,
     } = useFlightBooking();
+
+    const [bagsOpen, setBagsOpen] = React.useState(false);
+    const [seatsOpen, setSeatsOpen] = React.useState(false);
     const targetCurrency = useUserCurrency();
 
     // ─── Loading ─────────────────────────────────────────────────────
@@ -172,15 +216,24 @@ export default function FlightBookContent() {
                             : <>Your card has <strong>not</strong> been charged. Please try a different flight or date.</>
                         }
                     </p>
+                    {/* Only show Try Again if the error happened before payment was taken */}
+                    {!errorMsg?.includes('automatically refunded') && !errorMsg?.includes('expired') && (
+                        <button
+                            onClick={() => setStep('form')}
+                            className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors"
+                        >
+                            Try Again
+                        </button>
+                    )}
                     <button
                         onClick={() => router.push('/flights/search')}
-                        className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors"
+                        className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
                         Search Again
                     </button>
                     <button
                         onClick={() => router.back()}
-                        className="w-full mt-2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="w-full mt-2 py-2.5 text-slate-400 dark:text-slate-500 font-medium text-xs hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                     >
                         Go Back
                     </button>
@@ -486,6 +539,11 @@ export default function FlightBookContent() {
                     )}
                 </div>
 
+                {/* Offer expiry countdown — only for Duffel */}
+                {offerExpiresAt && offer.provider === 'duffel' && (
+                    <OfferExpiryBanner expiresAt={offerExpiresAt} />
+                )}
+
                 {/* Fare Policy Panel — shown from search-stage policy, updated after revalidation */}
                 {offer.farePolicy && (
                     <FarePolicyPanel
@@ -714,6 +772,85 @@ export default function FlightBookContent() {
                             </div>
                         </div>
 
+                        {/* ── Duffel extras: bags + seats (optional, inline) ──── */}
+                        {offer.provider === 'duffel' && (
+                            <div className="space-y-2">
+                                {/* Bags */}
+                                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setBagsOpen(o => !o)}
+                                        className="w-full flex items-center gap-3 px-3 lg:px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center shrink-0">
+                                            <Luggage className="w-4 h-4 text-sky-500" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[12px] lg:text-sm font-semibold text-slate-800 dark:text-slate-200">Extra Bags</p>
+                                            <p className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">
+                                                {selectedBags.length > 0
+                                                    ? `${selectedBags.length} bag${selectedBags.length > 1 ? 's' : ''} added · +${new Intl.NumberFormat('en-US', { style: 'currency', currency: offer.price.currency }).format(selectedBags.reduce((s, b) => s + b.price, 0))}`
+                                                    : 'Optional — add checked or carry-on bags'}
+                                            </p>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
+                                            {bagsOpen ? '▲' : '▼'}
+                                        </span>
+                                    </button>
+                                    {bagsOpen && (
+                                        <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
+                                            <BagSelectionPanel
+                                                offerId={(offer as any)._rawOffer?.id ?? (offer as any).resultIndex ?? offer.offerId}
+                                                duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? []).map((p: any) => p.id)}
+                                                passengerCount={passengers.length}
+                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                selectedBags={selectedBags}
+                                                onBagsChange={setSelectedBags}
+                                                currency={offer.price.currency}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Seats */}
+                                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSeatsOpen(o => !o)}
+                                        className="w-full flex items-center gap-3 px-3 lg:px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                                            <Armchair className="w-4 h-4 text-indigo-500" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[12px] lg:text-sm font-semibold text-slate-800 dark:text-slate-200">Seat Selection</p>
+                                            <p className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">
+                                                {selectedSeats.length > 0
+                                                    ? `${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''} selected · +${new Intl.NumberFormat('en-US', { style: 'currency', currency: offer.price.currency }).format(selectedSeats.reduce((s, x) => s + x.price, 0))}`
+                                                    : 'Optional — pick your seat on the cabin map'}
+                                            </p>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
+                                            {seatsOpen ? '▲' : '▼'}
+                                        </span>
+                                    </button>
+                                    {seatsOpen && (
+                                        <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
+                                            <SeatMapPanel
+                                                offerId={(offer as any)._rawOffer?.id ?? (offer as any).resultIndex ?? offer.offerId}
+                                                segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
+                                                passengerCount={passengers.length}
+                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                selectedSeats={selectedSeats}
+                                                onSeatsChange={setSelectedSeats}
+                                                currency={offer.price.currency}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Status/Error Message */}
                         {errorMsg && (() => {
                             const isPending = errorMsg?.toLowerCase().includes('pending');
@@ -745,7 +882,13 @@ export default function FlightBookContent() {
                                 </>
                             ) : (
                                 <>
-                                    Confirm Booking · {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
+                                    Confirm Booking · {formatPrice(
+                                        offer.price.total
+                                            + selectedSeats.reduce((s, x) => s + x.price, 0)
+                                            + selectedBags.reduce((s, b) => s + b.price, 0),
+                                        offer.price.currency,
+                                        targetCurrency,
+                                    )}
                                 </>
                             )}
                         </button>

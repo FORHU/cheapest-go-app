@@ -88,9 +88,11 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
         }
     });
 
-    // 4. Update cache with new results
+    // 4. Update cache with new results — fire-and-forget so it never blocks search response
     if (allResults.length > 0 && searchId) {
-        await cacheResults(searchId, allResults);
+        cacheResults(searchId, allResults).catch(err =>
+            console.error("[Cache] Background cache write failed:", err.message)
+        );
 
         // 5. Log Analytics — fire and forget
         logSearchAnalytics(params, allResults).catch(err =>
@@ -203,30 +205,33 @@ export async function saveSearch(params: FlightSearchParams): Promise<FlightSear
 
 /**
  * Caches flight results for a specific search.
+ * Inserts in chunks of 50 to avoid Supabase statement timeouts on large result sets.
  */
 export async function cacheResults(searchId: string, results: FlightResult[]): Promise<void> {
     const supabase = await createClient();
+    const CHUNK_SIZE = 50;
 
-    const { error } = await supabase
-        .from('flight_results_cache')
-        .insert(
-            results.map(r => ({
-                id: crypto.randomUUID(),
-                search_id: searchId,
-                provider: r.provider,
-                offer_id: r.offer_id,
-                price: r.price,
-                currency: r.currency,
-                airline: r.airline,
-                departure_time: r.departure_time,
-                arrival_time: r.arrival_time,
-                duration: r.duration,
-                stops: r.stops ?? 0,
-                raw: r.raw
-            }))
-        );
+    const rows = results.map(r => ({
+        id: crypto.randomUUID(),
+        search_id: searchId,
+        provider: r.provider,
+        offer_id: r.offer_id,
+        price: r.price,
+        currency: r.currency,
+        airline: r.airline,
+        departure_time: r.departure_time,
+        arrival_time: r.arrival_time,
+        duration: r.duration,
+        stops: r.stops ?? 0,
+        raw: r.raw,
+    }));
 
-    if (error) {
-        console.error("[Cache] Failed to cache results:", error.message);
+    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+        const chunk = rows.slice(i, i + CHUNK_SIZE);
+        const { error } = await supabase.from('flight_results_cache').insert(chunk);
+        if (error) {
+            console.error(`[Cache] Failed to cache chunk ${i / CHUNK_SIZE + 1}:`, error.message);
+            // Don't abort — partial cache is better than none
+        }
     }
 }
