@@ -157,7 +157,7 @@ const s = StyleSheet.create({
         borderRadius: 4,
         paddingHorizontal: 12,
         paddingVertical: 4,
-        transform: [{ rotate: '-12deg' }],
+        transform: 'rotate(-12deg)',
     },
     paidText: {
         color: '#10b981',

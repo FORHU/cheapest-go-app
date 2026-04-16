@@ -25,6 +25,7 @@ interface StandardStyleConfig {
     showTraffic?: boolean;
     showTransit?: boolean;
     showPedestrianRoads?: boolean;
+    language?: string;
     colorBuildings?: string;
     colorLand?: string;
     colorWater?: string;
@@ -119,6 +120,7 @@ const STANDARD_STYLE = {
                 showTraffic: false,
                 showTransit: false,
                 showPedestrianRoads: true,
+                language: 'en',
             },
         },
     ],
@@ -164,6 +166,21 @@ const Map = React.memo(
                     if (!map || !map.getStyle()) return;
 
                     try {
+                        // Global language set (Standard + others)
+                        // Note: For Standard, we use setConfigProperty. For others we iterate layers.
+                        if (!isStandard) {
+                            const style = map.getStyle();
+                            style?.layers?.forEach((layer: any) => {
+                                if (layer.type === 'symbol' && layer.layout?.['text-field']) {
+                                    map.setLayoutProperty(layer.id, 'text-field', [
+                                        'coalesce',
+                                        ['get', 'name_en'],
+                                        ['get', 'name'],
+                                    ]);
+                                }
+                            });
+                        }
+
                         // Find the first symbol layer to insert 3D buildings underneath
                         const layers = map.getStyle()?.layers;
                         if (layers) {

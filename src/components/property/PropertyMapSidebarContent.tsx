@@ -359,7 +359,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                     setNearbyGems(initialGems);
 
                     // --- STAGE 2: PRIORITIZED STREAM ENRICHMENT ---
-                    const limiter = pLimit(4); // lower concurrency for stability
+                    const limiter = pLimit(8); // Increased concurrency for optimized backend
 
                     let resolvedCount = 0;
 
@@ -592,7 +592,6 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                         >
                             <NavigationControl position="top-right" showCompass={false} />
 
-
                             {/* ── Map Details Panel ── */}
                             <MapDetailsPanel
                                 isOpen={showDetailsPanel}
@@ -607,27 +606,23 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                             />
                             <GeolocateControl position="top-right" positionOptions={{ enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }} />
                             
-                            {/* ── Map Controls (Fullscreen/Recenter) ── */}
-                            <div className={`absolute bottom-4 right-3 flex flex-row gap-2 items-center z-40 transition-all duration-300 ${!isFullscreen ? 'scale-90 origin-bottom-right' : ''}`}>
-                                <button
-                                    onClick={() => setIsFullscreen(f => !f)}
-                                    className={`bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-slate-700 dark:text-slate-300 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center
-                                        ${isFullscreen ? 'p-2.5 w-10 h-10' : 'p-2 w-9 h-9'}
-                                    `}
-                                    title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-                                >
-                                    {isFullscreen ? <Minimize size={isFullscreen ? 20 : 18} /> : <Maximize size={isFullscreen ? 20 : 18} />}
-                                </button>
-                                <button
-                                    onClick={handleRecenter}
-                                    className={`bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-blue-600 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center
-                                        ${isFullscreen ? 'p-2.5 w-10 h-10' : 'p-2 w-9 h-9'}
-                                    `}
-                                    title="Recenter Map"
-                                >
-                                    <Navigation size={isFullscreen ? 20 : 18} fill="currentColor" />
-                                </button>
-                            </div>
+                            {/* ── Map Controls (Mobile-Minimized Overlay) ── */}
+                            {!isFullscreen && (
+                                <div className="absolute right-2 bottom-2 flex flex-row gap-1.5 items-center z-40 lg:hidden">
+                                    <button
+                                        onClick={() => setIsFullscreen(true)}
+                                        className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm text-slate-700 dark:text-slate-300 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 p-1.5 w-8 h-8 transition-all active:scale-95 flex items-center justify-center"
+                                    >
+                                        <Maximize size={14} />
+                                    </button>
+                                    <button
+                                        onClick={handleRecenter}
+                                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-blue-600 rounded-full shadow-xl border border-slate-200 dark:border-slate-700 p-1.5 w-8 h-8 transition-all active:scale-95 flex items-center justify-center"
+                                    >
+                                        <Navigation size={14} fill="currentColor" />
+                                    </button>
+                                </div>
+                            )}
 
                             {isLoaded && (
                                 <>
@@ -1052,27 +1047,47 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                     : 'relative lg:absolute lg:bottom-2 lg:left-1/2 lg:-translate-x-1/2 lg:w-[96%] lg:z-30 w-full mt-3 lg:mt-0'
                 }
             `}>
-                {/* Category Filter Pills */}
-                <div className="flex items-center  gap-2 w-full px-1 sm:px-2 pb-1 lg:px-0">
-                    {POI_FILTERS.map(filter => {
-                        const isSelected = selectedCategory === filter.id;
-                        const Icon = filter.icon;
-                        return (
-                            <button
-                                key={filter.id}
-                                onClick={() => setSelectedCategory(filter.id)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 shadow-sm shrink-0
-                                        ${isSelected
-                                        ? 'bg-blue-600 border-blue-600 text-white scale-105'
-                                        : 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
-                                    }
-                                    `}
-                            >
-                                <Icon size={14} />
-                                <span className="text-[10px] font-bold whitespace-nowrap uppercase tracking-normal">{filter.label}</span>
-                            </button>
-                        );
-                    })}
+                {/* Category Filter Pills & Desktop/Fullscreen Controls */}
+                <div className="flex items-center justify-between gap-2 w-full px-1 sm:px-2 pb-1 lg:px-0">
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                        {POI_FILTERS.map(filter => {
+                            const isSelected = selectedCategory === filter.id;
+                            const Icon = filter.icon;
+                            return (
+                                <button
+                                    key={filter.id}
+                                    onClick={() => setSelectedCategory(filter.id)}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 shadow-sm shrink-0
+                                            ${isSelected
+                                            ? 'bg-blue-600 border-blue-600 text-white scale-105'
+                                            : 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
+                                        }
+                                        `}
+                                >
+                                    <Icon size={14} />
+                                    <span className="text-[10px] font-bold whitespace-nowrap uppercase tracking-normal">{filter.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Integrated Map Controls (for LG or Fullscreen) */}
+                    <div className={`items-center gap-1.5 shrink-0 ${isFullscreen ? 'flex' : 'hidden lg:flex'}`}>
+                        <button
+                            onClick={() => setIsFullscreen(f => !f)}
+                            className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm text-slate-700 dark:text-slate-300 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center"
+                            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                        >
+                            {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+                        </button>
+                        <button
+                            onClick={handleRecenter}
+                            className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-blue-600 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center"
+                            title="Recenter Map"
+                        >
+                            <Navigation size={14} fill="currentColor" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="relative flex flex-row w-full group/imagebar">

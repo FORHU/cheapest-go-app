@@ -89,8 +89,14 @@ async function tryGooglePlaces(name: string, lat: string, lng: string) {
 
         if (nearbyData.status === 'OK') {
             const results = nearbyData.results || [];
-            for (const candidate of results.slice(0, 3)) {
-                const { photoUrl, reviews, details } = await findPhotoInCandidate(candidate);
+            // Optimistically process top 3 candidates in parallel
+            const candidateResults = await Promise.all(
+                results.slice(0, 3).map((candidate: any) => findPhotoInCandidate(candidate))
+            );
+
+            for (let i = 0; i < candidateResults.length; i++) {
+                const { photoUrl, reviews, details } = candidateResults[i];
+                const candidate = results[i];
                 if (photoUrl || reviews.length > 0) {
                     return {
                         photoUrl,
@@ -113,8 +119,14 @@ async function tryGooglePlaces(name: string, lat: string, lng: string) {
         
         if (searchData.status === 'OK') {
             const results = searchData.results || [];
-            for (const candidate of results.slice(0, 3)) {
-                const { photoUrl, reviews, details } = await findPhotoInCandidate(candidate);
+            // Parallelize top candidates
+            const candidateResults = await Promise.all(
+                results.slice(0, 3).map((candidate: any) => findPhotoInCandidate(candidate))
+            );
+
+            for (let i = 0; i < candidateResults.length; i++) {
+                const { photoUrl, reviews, details } = candidateResults[i];
+                const candidate = results[i];
                 if (photoUrl || reviews.length > 0) {
                     return {
                         photoUrl,
@@ -197,7 +209,10 @@ export async function GET(req: NextRequest) {
         return new Response('Missing name parameter', { status: 400 });
     }
 
-    const cacheKey = `${name}|${lat}|${lng}|${full}`;
+    // Round coordinates to ~11m precision to improve cache hits for slight position shifts
+    const roundedLat = parseFloat(lat).toFixed(4);
+    const roundedLng = parseFloat(lng).toFixed(4);
+    const cacheKey = `${name}|${roundedLat}|${roundedLng}|${full}`;
 
     // Return cached result if available
     const cached = getCached(cacheKey);
