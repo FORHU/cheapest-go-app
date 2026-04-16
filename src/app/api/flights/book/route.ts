@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal } = body as {
+        const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal, confirmedPrice } = body as {
             provider: string;
             flight: FlightOffer;
             passengers: any[];
@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
             seatTotal?: number;
             bagServiceIds?: string[];
             bagTotal?: number;
+            confirmedPrice?: number;
         };
 
         // Use server-verified user ID
@@ -267,14 +268,32 @@ export async function POST(req: NextRequest) {
             }));
 
             const offerTotal = parseFloat(rawOffer.total_amount ?? '0');
-            const seatExtra = seatServiceIds?.length ? (seatTotal ?? 0) : 0;
-            const bagExtra = bagServiceIds?.length ? (bagTotal ?? 0) : 0;
-            const orderTotal = (offerTotal + seatExtra + bagExtra).toFixed(2);
+
+            // Server-side: derive service prices from rawOffer.available_services.
+            // Never use client-sent seatTotal/bagTotal for the Duffel order payment amount —
+            // Duffel validates payments.amount and will reject if it doesn't match.
+            const availableSvcs: any[] = rawOffer.available_services ?? [];
+            let computedSeatExtra = 0;
+            let computedBagExtra = 0;
+            for (const id of (seatServiceIds ?? [])) {
+                const svc = availableSvcs.find((s: any) => s.id === id);
+                if (svc) computedSeatExtra += parseFloat(svc.total_amount ?? '0');
+                else console.warn(`[/book] Duffel: seat service ${id} not in available_services — excluding from order`);
+            }
+            for (const id of (bagServiceIds ?? [])) {
+                const svc = availableSvcs.find((s: any) => s.id === id);
+                if (svc) computedBagExtra += parseFloat(svc.total_amount ?? '0');
+                else console.warn(`[/book] Duffel: bag service ${id} not in available_services — excluding from order`);
+            }
+
+            const orderTotal = (offerTotal + computedSeatExtra + computedBagExtra).toFixed(2);
 
             const duffelHeaders = {
                 'Authorization': `Bearer ${duffelToken}`,
                 'Duffel-Version': 'v2',
                 'Content-Type': 'application/json',
+                // Idempotency key prevents duplicate orders if the request is retried
+                'Idempotency-Key': idempotencyKey ?? '',
             };
 
             // includeServices: true only on the first attempt with the original offer.
@@ -411,8 +430,25 @@ export async function POST(req: NextRequest) {
                     // After refreshing to a new offer, the old service IDs are invalid.
                     // Drop them — user will be billed only the base fare on the refreshed offer.
                     const freshTotal = parseFloat(freshOffer.total_amount ?? '0').toFixed(2);
+                    const oldPriceNum = parseFloat(rawOffer.total_amount ?? '0');
+                    const newPriceNum = parseFloat(freshOffer.total_amount ?? '0');
+                    const priceDelta = Math.abs(newPriceNum - oldPriceNum);
 
                     console.log(`[/book] Auto-refresh succeeded: ${activeOffer.id} → ${freshOffer.id} | price: ${activeOffer.total_amount} → ${freshOffer.total_amount} | carrier: ${targetCarrier}`);
+
+                    // If the price changed by more than $0.50, require explicit user confirmation
+                    // rather than silently charging a different amount.
+                    // Skip this check if the client already confirmed the new price.
+                    const priceAlreadyConfirmed = confirmedPrice !== undefined && Math.abs(confirmedPrice - newPriceNum) < 0.01;
+                    if (priceDelta > 0.50 && !priceAlreadyConfirmed) {
+                        return NextResponse.json({
+                            success: false,
+                            error: 'price_changed',
+                            oldPrice: oldPriceNum,
+                            newPrice: newPriceNum,
+                            currency: freshOffer.total_currency ?? rawOffer.total_currency ?? 'USD',
+                        }, { status: 409 });
+                    }
 
                     activeOffer = freshOffer;
                     activePassengers = refreshedPassengers;
@@ -438,10 +474,13 @@ export async function POST(req: NextRequest) {
                 console.error('[/book] Duffel pre-order failed:', duffelOrderRes.status, rawErrMsg);
                 const isPhoneErr = /phone_number/i.test(rawErrMsg);
                 const isExpiredErr = duffelOrderRes.status === 422 || /expired|no longer available|select another offer/i.test(rawErrMsg);
+                const isSeatErr = /seat|service.*unavailable|no longer.*available.*service/i.test(rawErrMsg) && !isExpiredErr;
                 const errMsg = isPhoneErr
                     ? 'Invalid phone number format. Please check your phone number and country code.'
                     : isExpiredErr
                     ? 'This flight is no longer available. Please search again for current prices.'
+                    : isSeatErr
+                    ? 'One or more selected seats are no longer available. Please choose different seats or continue without seat selection.'
                     : rawErrMsg || 'Flight booking failed. Please try again.';
                 return NextResponse.json({ success: false, error: errMsg }, { status: isExpiredErr ? 409 : 400 });
             }
@@ -470,9 +509,16 @@ export async function POST(req: NextRequest) {
         const isMystifly = provider === 'mystifly_v2';
 
         // Apply platform markup before charging the customer.
-        // The provider (Duffel/Mystifly) is billed the original fare from our balance.
+        // For Duffel: use the order's actual locked total (already validated by Duffel, includes services).
+        //   This prevents a tampered client flightTotal from reducing the Stripe charge below what
+        //   Duffel charges our balance. The Duffel order creation above rejects mismatched amounts,
+        //   so duffelPreOrder.orderTotal is authoritative.
+        // For Mystifly: use revalidated client price + server-clamped extras (no order to reference).
         // See src/lib/pricing.ts for the full strategy rationale.
-        const totalWithSeats = flightTotal + (seatTotal ?? 0) + (bagTotal ?? 0);
+        const stripeBase = (provider === 'duffel' && duffelPreOrder)
+            ? parseFloat(duffelPreOrder.orderTotal)
+            : flightTotal + Math.max(0, seatTotal ?? 0) + Math.max(0, bagTotal ?? 0);
+        const totalWithSeats = stripeBase;
         const pricing = applyMarkup(totalWithSeats, FLIGHT_MARKUP);
         const flightStripeAmount = toStripeAmount(pricing.chargedPrice, flightCurrency);
 

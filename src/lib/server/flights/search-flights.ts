@@ -21,7 +21,9 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, providerName: str
  */
 export async function searchFlights(params: FlightSearchParams): Promise<FlightOffer[]> {
     const TIMEOUT_MS = 12000; // 12 seconds
-    const TTL_MINUTES = 0; // TODO: restore to 10 for production
+    // Cache TTL: configurable via env var. Defaults to 10 min in production, 0 (disabled) otherwise.
+    // Set FLIGHT_CACHE_TTL_MINUTES=0 in .env.local to disable during development.
+    const TTL_MINUTES = parseInt(process.env.FLIGHT_CACHE_TTL_MINUTES ?? (process.env.NODE_ENV === 'production' ? '10' : '0'), 10);
 
     // 1. PERFORMANCE: Check for valid cached results first
     // NOTE: saveSearch must NOT be called before this — a freshly-created empty

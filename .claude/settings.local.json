@@ -44,7 +44,10 @@
       "Bash(npx supabase:*)",
       "Bash(claude mcp:*)",
       "Skill(update-config)",
-      "Skill(update-config:*)"
+      "Skill(update-config:*)",
+      "WebFetch(domain:duffel.com)",
+      "WebSearch",
+      "WebFetch(domain:changelog.duffel.com)"
     ]
   }
 }
