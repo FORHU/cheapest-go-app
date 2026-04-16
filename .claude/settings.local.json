@@ -47,7 +47,9 @@
       "Skill(update-config:*)",
       "WebFetch(domain:duffel.com)",
       "WebSearch",
-      "WebFetch(domain:changelog.duffel.com)"
+      "WebFetch(domain:changelog.duffel.com)",
+      "WebFetch(domain:travelgate.mcp.kapa.ai)",
+      "WebFetch(domain:docs.travelgate.com)"
     ]
   }
 }
