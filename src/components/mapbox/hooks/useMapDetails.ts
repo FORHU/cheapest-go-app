@@ -38,6 +38,7 @@ export function useMapDetails() {
         showPlaceLabels: showLabels,
         showTraffic: trafficEnabled,
         showTransit: transitEnabled,
+        language: 'en',
     }), [showLabels, trafficEnabled, transitEnabled]);
 
     const handleMapTypeChange = useCallback((type: MapTypeId) => {

@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/utils/supabase/admin';
 import { Booking } from '@/types/admin';
 import { checkRefundability } from './recovery';
+import { enrichBookingFinances } from '@/lib/pricing';
 
 export interface BookingsListParams {
     page?: number;
@@ -136,6 +137,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
                 pnr,
                 paymentIntentId: meta?.payment_intent_id || meta?.paymentIntentId || '',
                 isRefundable: checkRefundability(item, 'unified_bookings').refundable,
+                markup_pct: item.markup_pct,
                 metadata: meta
             };
         }),
@@ -180,10 +182,10 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             supplier: item.provider,
             customerName: passengerMap[item.id]?.name || 'Anonymous User',
             email: item.booking_sessions?.contact?.email || '',
-            totalAmount: Number(item.total_price),
-            supplierCost: Number(item.total_price),
-            markupAmount: 0,
-            profit: 0,
+            totalAmount: Number(item.charged_price || item.total_price),
+            supplierCost: Number(item.supplier_cost || item.total_price),
+            markupAmount: Number((item.charged_price || item.total_price) - (item.supplier_cost || item.total_price)),
+            profit: 0, // Calculated in UI enrichment
             currency: item.currency || 'USD',
             status: item.status === 'booked' ? 'confirmed' : item.status,
             paymentStatus: ['booked', 'ticketed', 'confirmed', 'awaiting_ticket'].includes(item.status) ? 'paid' :
@@ -195,11 +197,15 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             pnr: item.pnr,
             paymentIntentId: item.payment_intent_id || '',
             isRefundable: checkRefundability(item, 'flight_bookings').refundable,
+            markup_pct: item.markup_pct,
             metadata: {
                 passengers: passengerMap[item.id]?.list || [],
             }
         }))
     ];
+
+    // Apply financial enrichment
+    allBookings = allBookings.map(b => enrichBookingFinances(b));
 
     // 6. Apply Search Filter (Server-side but after merge due to cross-table complexity)
     if (searchTerm) {
