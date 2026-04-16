@@ -111,12 +111,12 @@ export function MapDetailsPanel({
     if (!isOpen) return null;
 
     return (
-        <div className={`absolute top-3 left-3 z-[60] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300
-            ${isFullscreen ? 'w-[300px]' : 'w-[200px] sm:w-[240px]'}
+        <div className={`absolute top-2 left-2 z-[60] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300
+            ${isFullscreen ? 'w-[300px]' : 'w-[170px] sm:w-[220px]'}
         `}>
             {/* Header */}
-            <div className={`flex items-center justify-between ${isFullscreen ? 'px-4 pt-4 pb-2' : 'px-3 pt-3 pb-1.5'}`}>
-                <h3 className={`${isFullscreen ? 'text-base font-semibold' : 'text-xs font-bold'} text-slate-900 dark:text-slate-100 uppercase tracking-wide`}>Map details</h3>
+            <div className={`flex items-center justify-between ${isFullscreen ? 'px-4 pt-4 pb-2' : 'px-2.5 pt-2.5 pb-1'}`}>
+                <h3 className={`${isFullscreen ? 'text-base font-semibold' : 'text-[10px] font-bold'} text-slate-900 dark:text-slate-100 uppercase tracking-wide`}>Map details</h3>
                 <button
                     onClick={onClose}
                     className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
@@ -156,7 +156,7 @@ export function MapDetailsPanel({
                                 {icons[detail.id]}
                             </div>
                             <span
-                                className={`${isFullscreen ? 'text-xs font-medium' : 'text-[9px] font-semibold'} ${
+                                className={`${isFullscreen ? 'text-xs font-medium' : 'text-[8px] leading-tight font-semibold'} ${
                                     detail.enabled && !isDisabled ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'
                                 }`}
                             >
@@ -192,7 +192,7 @@ export function MapDetailsPanel({
                                 style={{ background: tile.thumbnail }}
                             />
                             <span
-                                className={`${isFullscreen ? 'text-xs pb-1.5' : 'text-[9px] pb-0.5'} font-medium ${
+                                className={`${isFullscreen ? 'text-xs pb-1.5' : 'text-[8px] pb-0.5'} font-medium ${
                                     mapType === tile.id ? 'text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'
                                 }`}
                             >

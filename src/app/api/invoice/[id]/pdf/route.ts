@@ -230,7 +230,7 @@ export async function GET(
             bookingType,
             provider,
             formattedTotal,
-        })
+        }) as any
     );
 
     const filename = `CheapestGo-Receipt-${invoiceNumber}.pdf`;
