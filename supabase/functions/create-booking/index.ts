@@ -85,6 +85,12 @@ interface BookingSession {
     payment_intent_id?: string | null;  // Set by /api/flights/book after PaymentIntent creation
     capture_method?: string;
     fare_policy?: Record<string, unknown> | null;
+<<<<<<< HEAD
+    original_price?: number;
+    charged_price?: number;
+    markup_pct?: number;
+    currency?: string;
+=======
     seat_service_ids?: string[];
     seat_total?: number;
     // Duffel pre-order — stored by /api/flights/book so we skip re-booking
@@ -92,6 +98,7 @@ interface BookingSession {
     duffel_pre_order_pnr?: string | null;
     duffel_pre_order_tickets?: string[] | null;
     duffel_pre_order_ticketed?: boolean | null;
+>>>>>>> 740b1c9438ae4d94b64583e12fd0f3d0cb2e5b31
 }
 
 interface ProviderBookingResult {
@@ -511,6 +518,10 @@ Deno.serve(async (req: Request) => {
                     ),
                     session_id: sessionId,
                     fare_policy: bs.fare_policy || null,
+                    // Financial audit columns
+                    supplier_cost: bookingPrice,
+                    charged_price: bs.charged_price || null,
+                    markup_pct: bs.markup_pct || null,
                 })
                 .select('id')
                 .single();
@@ -571,6 +582,10 @@ Deno.serve(async (req: Request) => {
                 ...(result.providerOrderId ? { provider_order_id: result.providerOrderId } : {}),
                 session_id: sessionId,
                 fare_policy: bs.fare_policy || null,
+                // Financial audit columns
+                supplier_cost: bookingPrice,
+                charged_price: bs.charged_price || null,
+                markup_pct: bs.markup_pct || null,
             })
             .select('id')
             .single();

@@ -16,7 +16,8 @@ import {
     ChevronRight,
     Smartphone,
     Mail,
-    Shield
+    Shield,
+    Banknote
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -32,6 +33,7 @@ const navItems = [
     { label: 'Customers', href: '/admin/customers', icon: Users },
     { label: 'Users', href: '/admin/users', icon: Shield },
     { label: 'Suppliers', href: '/admin/suppliers', icon: Building2 },
+    { label: 'Revenue', href: '/admin/revenue', icon: Banknote },
     { label: 'Communication', href: '/admin/communication', icon: Mail },
     { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
@@ -119,29 +121,6 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
                 <NavigationGroup title="Menu" items={navItems.slice(0, 6)} />
                 <NavigationGroup title="General" items={navItems.slice(6)} />
 
-                {/* Sidebar Widget (Download App) - Hidden when collapsed */}
-                {!isCollapsed && (
-                    <div className="mt-10 px-4">
-                        <div className="bg-slate-900 rounded-3xl p-6 relative overflow-hidden group">
-                            {/* Decorative Patterns */}
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full -mr-16 -mt-16" />
-                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-500/10 blur-3xl rounded-full -ml-12 -mb-12" />
-
-                            <div className="relative z-10 space-y-4">
-                                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-emerald-400">
-                                    <Smartphone size={16} />
-                                </div>
-                                <h5 className="text-xs font-bold text-white uppercase tracking-widest">Mobile App</h5>
-                                <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
-                                    Experience Donezo on your mobile device.
-                                </p>
-                                <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-500 text-white border-0 text-[10px] font-black uppercase tracking-wider rounded-xl py-3 h-auto shadow-lg shadow-blue-600/20">
-                                    Download
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Bottom Actions: Collapse Toggle */}

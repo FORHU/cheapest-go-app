@@ -33,6 +33,7 @@ export interface RevenueStats {
     dailyRevenue: number;
     monthlyRevenue: number;
     revenueByProvider: { provider: string; amount: number }[];
+    totalMarkup: number;
     totalProfit: number;
     refundRate: number;
     failedRate: number;
@@ -95,7 +96,7 @@ export interface DashboardData {
 export interface Booking {
     id: string;
     bookingRef: string;
-    type: "flight" | "hotel";
+    type: "flight" | "hotel" | "bundle" | "hotel_bundle";
     supplier: string;
     customerName: string;
     email: string;
@@ -112,6 +113,7 @@ export interface Booking {
     pnr: string;
     paymentIntentId: string;
     isRefundable: boolean;
+    markup_pct?: number;
     metadata?: Record<string, any>;
 }
 

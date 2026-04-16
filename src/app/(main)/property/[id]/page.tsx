@@ -209,7 +209,7 @@ export default async function PropertyPage({
                         {/* Mobile map — shown below PropertyOverview strictly on small screens */}
                         <div className="lg:hidden" id="location-mobile">
                             <FadeInUp delay={0.28}>
-                                <div className="h-[280px] md:h-[350px]">
+                                <div className="w-full">
                                     <PropertyMapSidebar {...mapProps} />
                                 </div>
                             </FadeInUp>
