@@ -7,7 +7,7 @@ import { Map } from '@/components/ui/map';
 import { Marker, NavigationControl, Source, Layer, GeolocateControl } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
 import { useMapboxDirections } from '../mapbox/hooks/useMapboxDirections';
-import { useMapboxSearch } from '../mapbox/hooks/useMapboxSearch';
+import { useGoogleSearch } from '../mapbox/hooks/useGoogleSearch';
 import { env } from '@/utils/env';
 import { PoiDetailsModal } from './PoiDetailsModal';
 import { useMapDetails } from '@/components/mapbox/hooks/useMapDetails';
@@ -22,6 +22,9 @@ const POI_FILTERS = [
     { id: 'all', label: 'All Discovery', icon: Search },
     { id: 'restaurant', label: 'Dining', icon: Utensils },
     { id: 'attraction', label: 'Attractions & Parks', icon: Landmark },
+    { id: 'grocery', label: 'Groceries', icon: ShoppingBasket },
+    { id: 'medical', label: 'Hospitals & Health', icon: Pill },
+    { id: 'transit', label: 'Transit', icon: Bus },
 ];
 
 /**
@@ -32,13 +35,37 @@ const getMapboxPoiImage = (name: string, lat: number, lng: number) => {
     return `/api/poi-photo?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}`;
 };
 
-const BAGUIO_DEFAULT_GEMS = [
-    { name: 'Burnham Park', category: 'Park', icon: Trees, coordinates: { lat: 16.4124, lng: 120.5946 } },
-    { name: 'Mines View Park', category: 'Sightseeing', icon: Landmark, coordinates: { lat: 16.4231, lng: 120.6274 } },
-    { name: 'Session Road', category: 'Shopping', icon: ShoppingBasket, coordinates: { lat: 16.4138, lng: 120.5971 } },
-    { name: 'Good Taste Cafe', category: 'Dining', icon: Utensils, coordinates: { lat: 16.4162, lng: 120.5937 } },
-    { name: 'Chaya Baguio', category: 'Dining', icon: Utensils, coordinates: { lat: 16.3986, lng: 120.5847 } },
-    { name: 'Vizco\'s Restaurant', category: 'Dining', icon: Utensils, coordinates: { lat: 16.4135, lng: 120.5975 } },
+const BAGUIO_DEFAULT_GEMS: any[] = [
+    { 
+        type: 'Feature', 
+        geometry: { type: 'Point', coordinates: [120.5946, 16.4124] },
+        properties: { name: 'Burnham Park', category: 'Park', icon: Trees, rating: 4.5 }
+    },
+    { 
+        type: 'Feature', 
+        geometry: { type: 'Point', coordinates: [120.6274, 16.4231] },
+        properties: { name: 'Mines View Park', category: 'Sightseeing', icon: Landmark, rating: 4.4 }
+    },
+    { 
+        type: 'Feature', 
+        geometry: { type: 'Point', coordinates: [120.5971, 16.4138] },
+        properties: { name: 'Session Road', category: 'Shopping', icon: ShoppingBasket, rating: 4.6 }
+    },
+    { 
+        type: 'Feature', 
+        geometry: { type: 'Point', coordinates: [120.5937, 16.4162] },
+        properties: { name: 'Good Taste Cafe', category: 'Dining', icon: Utensils, rating: 4.7 }
+    },
+    { 
+        type: 'Feature', 
+        geometry: { type: 'Point', coordinates: [120.5847, 16.3986] },
+        properties: { name: 'Chaya Baguio', category: 'Dining', icon: Utensils, rating: 4.8 }
+    },
+    { 
+        type: 'Feature', 
+        geometry: { type: 'Point', coordinates: [120.5975, 16.4135] },
+        properties: { name: 'Vizco\'s Restaurant', category: 'Dining', icon: Utensils, rating: 4.5 }
+    },
 ];
 
 
@@ -78,6 +105,9 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             { id: 'lodging', label: 'Stay', icon: Bed, keywords: ['hotel', 'motel', 'lodging', 'accommodation', 'resort'] },
             { id: 'nature', label: 'Explore', icon: Trees, keywords: ['park', 'garden', 'nature', 'viewpoint', 'forest', 'trail'] },
             { id: 'explore', label: 'Attractions', icon: Landmark, keywords: ['attraction', 'museum', 'monument', 'landmark', 'sightseeing', 'tourism', 'zoo', 'aquarium', 'gallery'] },
+            { id: 'grocery', label: 'Grocery', icon: ShoppingBasket, keywords: ['grocery', 'supermarket', 'convenience', 'shop', 'market', 'mall'] },
+            { id: 'medical', label: 'Health', icon: Pill, keywords: ['hospital', 'clinic', 'medical', 'pharmacy', 'doctor', 'dentist'] },
+            { id: 'transit', label: 'Transit', icon: Bus, keywords: ['bus', 'train', 'station', 'transit', 'subway', 'metro', 'airport'] },
         ];
 
         const getMapPoiCategory = useCallback((mapboxFeature: any) => {
@@ -134,6 +164,8 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         const [isFetchingGems, setIsFetchingGems] = useState(false);
         const [selectedCategory, setSelectedCategory] = useState('all');
         const [transportProfile, setTransportProfile] = useState<'driving-traffic' | 'driving' | 'walking' | 'cycling'>('driving-traffic');
+        const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+        const [isLocating, setIsLocating] = useState(false);
 
         // Initial hydration fix
         React.useEffect(() => {
@@ -221,8 +253,25 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             origin,
             handleOriginSearch,
             handleSelectOrigin,
+            reverseGeocode,
             clearSearch
-        } = useMapboxSearch({ proximity: userLocation || (hasCoordinates ? coordinates : undefined) });
+        } = useGoogleSearch({ proximity: userLocation || (hasCoordinates ? coordinates : undefined) });
+
+        const handleLocateMe = async () => {
+            if (!navigator.geolocation) return;
+            setIsLocating(true);
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+                    setIsLocating(false);
+                },
+                (err) => {
+                    console.error('Locate Me failed:', err);
+                    setIsLocating(false);
+                },
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        };
 
         const clearDirections = useCallback(() => {
             setShowDirections(false);
@@ -306,9 +355,19 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                 setIsFetchingGems(true);
                 setNearbyGems([]); // Clear immediately so UI shows loading state
                 try {
-                    const categories = selectedCategory === 'all'
-                        ? ['tourism', 'park', 'restaurant', 'museum']
-                        : (selectedCategory === 'attraction' ? ['park', 'tourism', 'museum', 'monument', 'viewpoint', 'attraction'] : [selectedCategory]);
+                    const getSearchCategories = (id: string) => {
+                        switch (id) {
+                            case 'all': return ['tourism', 'park', 'restaurant', 'museum'];
+                            case 'restaurant': return ['restaurant', 'cafe', 'bar', 'food'];
+                            case 'attraction': return ['park', 'tourism', 'museum', 'monument', 'viewpoint', 'attraction'];
+                            case 'grocery': return ['grocery_store', 'supermarket', 'convenience_store', 'market'];
+                            case 'medical': return ['hospital', 'pharmacy', 'medical_clinic', 'doctor'];
+                            case 'transit': return ['bus_station', 'train_station', 'subway_station', 'airport'];
+                            default: return [id];
+                        }
+                    };
+
+                    const categories = getSearchCategories(selectedCategory);
 
                     // Clear directions when switching categories for a clean view
                     if (showDirections) clearDirections();
@@ -344,79 +403,112 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                     // --- STAGE 1: IMMEDIATE STUB DISPLAY ---
                     const initialGems = featuresToProcess.map((f: any) => {
                         const name = f.properties.name || f.properties.place_name || f.properties.name_en;
-                        const lat = f.geometry.coordinates[1];
                         const lng = f.geometry.coordinates[0];
+                        const lat = f.geometry.coordinates[1];
+                        
+                        // Augment the existing Mapbox feature with our custom discovery properties
                         return {
-                            name,
-                            category: f.properties.category_en?.[0] || f.properties.category || 'Attraction',
-                            icon: (f.properties.maki?.includes('restaurant') || f.properties.maki?.includes('cafe') || f.properties.maki?.includes('bar')) ? Utensils : (f.properties.maki?.includes('park') || f.properties.maki?.includes('garden')) ? Trees : Landmark,
-                            coordinates: { lat, lng },
-                            imageUrl: getMapboxPoiImage(name, lat, lng), // Mapbox static placeholder
-                            isStub: true // marker to know it's not enriched yet
+                            ...f,
+                            properties: {
+                                ...f.properties,
+                                name,
+                                category: f.properties.category_en?.[0] || f.properties.category || 'Attraction',
+                                icon: (f.properties.maki?.includes('restaurant') || f.properties.maki?.includes('cafe') || f.properties.maki?.includes('bar')) ? Utensils : (f.properties.maki?.includes('park') || f.properties.maki?.includes('garden')) ? Trees : Landmark,
+                                imageUrl: getMapboxPoiImage(name, lat, lng),
+                                isStub: true
+                            }
                         };
                     });
 
                     setNearbyGems(initialGems);
 
                     // --- STAGE 2: PRIORITIZED STREAM ENRICHMENT ---
-                    const limiter = pLimit(8); // Increased concurrency for optimized backend
-
+                    const limiter = pLimit(8); 
                     let resolvedCount = 0;
 
-                    const retrievePromises = initialGems.map((stub, idx) =>
+                    const retrievePromises = initialGems.map((featureStub, idx) =>
                         limiter(async () => {
                             if (signal.aborted) return null;
 
-                            // Add a sequential delay for background items to prioritize visible ones
+                            const name = featureStub.properties.name;
+                            const lng = featureStub.geometry.coordinates[0];
+                            const lat = featureStub.geometry.coordinates[1];
+
                             if (idx >= 6) {
                                 await new Promise(r => setTimeout(r, 800 + (idx * 150)));
                             }
 
                             try {
-                                const { name, coordinates: { lat, lng } } = stub;
+                                const lowerCat = featureStub.properties.category.toLowerCase();
+                                const enrichmentIcon = 
+                                    (lowerCat.includes('hospital') || lowerCat.includes('pharmacy') || lowerCat.includes('medical')) ? Pill :
+                                    (lowerCat.includes('supermarket') || lowerCat.includes('grocery') || lowerCat.includes('shop')) ? ShoppingBasket :
+                                    (lowerCat.includes('bus') || lowerCat.includes('station') || lowerCat.includes('transit')) ? Bus :
+                                    (lowerCat.includes('restaurant') || lowerCat.includes('cafe') || lowerCat.includes('food')) ? Utensils :
+                                    (lowerCat.includes('park') || lowerCat.includes('garden')) ? Trees : 
+                                    Landmark;
+
                                 const proxyUrl = `/api/poi-photo?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}&full=true`;
                                 const proxyRes = await fetch(proxyUrl, { signal });
                                 const proxyData = await proxyRes.json();
 
-                                const enrichedData = {
-                                    ...stub,
-                                    category: proxyData.vicinity || stub.category,
-                                    rating: proxyData.rating,
-                                    userRatingsTotal: proxyData.userRatingsTotal,
-                                    reviews: proxyData.reviews || [],
-                                    phone: proxyData.phone || null,
-                                    website: proxyData.website || null,
-                                    isStub: false
+                                const enrichedFeature = {
+                                    ...featureStub,
+                                    properties: {
+                                        ...featureStub.properties,
+                                        icon: enrichmentIcon,
+                                        category: proxyData.vicinity || featureStub.properties.category,
+                                        rating: proxyData.rating,
+                                        userRatingsTotal: proxyData.userRatingsTotal,
+                                        reviews: proxyData.reviews || [],
+                                        phone: proxyData.phone || null,
+                                        website: proxyData.website || null,
+                                        isStub: false
+                                    }
                                 };
 
-                                // Update the specific stub in state
+                                // Update the specific feature in state
                                 if (!signal.aborted) {
-                                    setNearbyGems(prev => prev.map(g => g.name === name ? enrichedData : g));
+                                    if (enrichedFeature.properties.rating && enrichedFeature.properties.rating >= 3) {
+                                        setNearbyGems(prev => prev.map(g => g.properties.name === name ? enrichedFeature : g));
+                                    } else {
+                                        setNearbyGems(prev => prev.filter(g => g.properties.name !== name));
+                                    }
                                 }
-                                return enrichedData;
+                                return enrichedFeature;
                             } catch (e: any) {
                                 if (e?.name === 'AbortError') return null;
-                                console.error(`Gem enrichment failed for ${stub.name}:`, e);
+                                console.error(`Gem enrichment failed for ${name}:`, e);
                                 return null;
                             } finally {
                                 resolvedCount++;
                                 if (resolvedCount === initialGems.length && !signal.aborted) {
-                                    // ── Final Baguio Fallback logic (Only if still sparse) ──
+                                    // ── Final Baguio Fallback logic ──
                                     setNearbyGems(prev => {
-                                        const enrichedCount = prev.filter(p => !p.isStub).length;
+                                        const enrichedCount = prev.filter(p => !p.properties.isStub).length;
                                         const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
 
                                         if (enrichedCount < 5 && isBaguio) {
                                             const newGems = [...prev];
-                                            BAGUIO_DEFAULT_GEMS.forEach(gem => {
-                                                const gCat = gem.category.toLowerCase();
+                                            BAGUIO_DEFAULT_GEMS.forEach(gemFeature => {
+                                                const gemName = gemFeature.properties.name;
+                                                const gemLng = gemFeature.geometry.coordinates[0];
+                                                const gemLat = gemFeature.geometry.coordinates[1];
+                                                
+                                                const gCat = gemFeature.properties.category.toLowerCase();
                                                 const sCat = selectedCategory === 'restaurant' ? 'dining' : selectedCategory;
                                                 const matchesCat = selectedCategory === 'all' ||
                                                     gCat.includes(sCat) ||
                                                     (selectedCategory === 'attraction' && (gCat.includes('sightseeing') || gCat.includes('landmark') || gCat.includes('park')));
 
-                                                if (matchesCat && !newGems.find(r => r.name === gem.name)) {
-                                                    newGems.push({ ...gem, imageUrl: getMapboxPoiImage(gem.name, gem.coordinates.lat, gem.coordinates.lng) });
+                                                if (matchesCat && !newGems.find(r => r.properties.name === gemName)) {
+                                                    newGems.push({ 
+                                                        ...gemFeature, 
+                                                        properties: {
+                                                            ...gemFeature.properties,
+                                                            imageUrl: getMapboxPoiImage(gemName, gemLat, gemLng)
+                                                        }
+                                                    });
                                                 }
                                             });
                                             return newGems;
@@ -428,7 +520,6 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                         })
                     );
 
-                    // Wait for all streams to settle, though UI is already updating
                     await Promise.all(retrievePromises);
 
                 } catch (err: any) {
@@ -699,20 +790,20 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     </Marker>
 
                                     {/* Selected Native POI Marker Overlay */}
-                                    {!showDirections && selectedNativePoi && !nearbyGems.find(g => g.name === selectedNativePoi.name) && (
+                                    {!showDirections && selectedNativePoi && !nearbyGems.find(g => (g.properties?.name || g.name) === (selectedNativePoi.properties?.name || selectedNativePoi.name)) && (
                                         <Marker
-                                            latitude={selectedNativePoi.coordinates.lat}
-                                            longitude={selectedNativePoi.coordinates.lng}
+                                            latitude={selectedNativePoi.geometry?.coordinates[1] || selectedNativePoi.coordinates.lat}
+                                            longitude={selectedNativePoi.geometry?.coordinates[0] || selectedNativePoi.coordinates.lng}
                                             anchor="center"
                                             onClick={(e) => {
                                                 e.originalEvent.stopPropagation();
                                                 setModalPoi(selectedNativePoi);
-                                                setActivePoiId(selectedNativePoi.name);
+                                                setActivePoiId(selectedNativePoi.properties?.name || selectedNativePoi.name);
                                             }}
                                         >
                                             <div className="flex flex-col items-center scale-125 z-20">
                                                 <div className="w-6 h-6 rounded-full flex items-center justify-center bg-blue-500 border border-white shadow-xl">
-                                                    {React.createElement(selectedNativePoi.icon || Landmark, { size: 12, className: 'text-white' })}
+                                                    {React.createElement((selectedNativePoi.properties?.icon || selectedNativePoi.icon) || Landmark, { size: 12, className: 'text-white' })}
                                                 </div>
                                                 <div className="w-2 h-[3px] bg-black/20 rounded-full mt-1 blur-[1px]" />
                                             </div>
@@ -722,7 +813,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     {/* Nearby Gems POI Markers */}
                                     {!showDirections && nearbyGems
                                         .filter(gem => {
-                                            const cat = (gem.category || '').toLowerCase();
+                                            const cat = (gem.properties?.category || gem.category || '').toLowerCase();
                                             const matched = MAP_FILTER_CONFIG.find(filter =>
                                                 activeMapFilters.includes(filter.id) &&
                                                 filter.keywords.some(kw => cat.includes(kw))
@@ -730,20 +821,24 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                             return !!matched;
                                         })
                                         .map((gem, idx) => {
-                                            const isActive = activePoiId === gem.name;
-                                            const GemIcon = gem.icon || Landmark;
+                                            const name = gem.properties?.name || gem.name;
+                                            const isActive = activePoiId === name;
+                                            const GemIcon = (gem.properties?.icon || gem.icon) || Landmark;
+                                            const lng = gem.geometry?.coordinates[0] || gem.coordinates.lng;
+                                            const lat = gem.geometry?.coordinates[1] || gem.coordinates.lat;
+
                                             return (
                                                 <Marker
-                                                    key={`gem-${gem.name}-${idx}`}
-                                                    latitude={gem.coordinates.lat}
-                                                    longitude={gem.coordinates.lng}
+                                                    key={`gem-${name}-${idx}`}
+                                                    latitude={lat}
+                                                    longitude={lng}
                                                     anchor="center"
                                                     onClick={(e) => {
                                                         e.originalEvent.stopPropagation();
                                                         setSelectedNativePoi(gem);
-                                                        setActivePoiId(gem.name);
+                                                        setActivePoiId(name);
                                                         setModalPoi(gem);
-                                                        mapRef.current?.flyTo({ center: [gem.coordinates.lng, gem.coordinates.lat], zoom: 17, pitch: 45, duration: 800 });
+                                                        mapRef.current?.flyTo({ center: [lng, lat], zoom: 17, pitch: 45, duration: 800 });
                                                     }}
                                                 >
                                                     <div className={`flex flex-col items-center cursor-pointer group transition-all duration-200 ${isActive ? 'scale-125 z-10' : 'hover:scale-110'}`}>
@@ -804,9 +899,9 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     <span className="truncate">Get directions...</span>
                                 </button>
                             ) : (
-                                <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow overflow-hidden">
+                                <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden transition-all duration-300">
                                     {/* Origin row */}
-                                    <div className="flex items-center gap-2 px-2 py-1.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center gap-2 px-2.5 py-1 border-b border-slate-100 dark:border-slate-800">
                                         <div className="w-2 h-2 bg-emerald-500 rounded-full shrink-0" />
                                         <div className="flex-1 relative">
                                             <input
@@ -817,24 +912,39 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                                 onFocus={() => originResults.length > 0 && setShowOriginResults(true)}
                                                 placeholder="Where from?"
                                                 autoFocus
-                                                className="w-full text-xs text-slate-800 dark:text-slate-200 bg-transparent placeholder-slate-400 focus:outline-none"
+                                                className="w-full text-[10px] sm:text-xs text-slate-800 dark:text-slate-200 bg-transparent placeholder-slate-400 focus:outline-none py-0.5"
                                             />
                                             {isSearching && (
                                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                                             )}
                                         </div>
-                                        {originQuery && (
-                                            <button onClick={() => { clearSearch(); }} className="shrink-0 text-slate-400 hover:text-slate-600">
-                                                <X size={14} />
-                                            </button>
-                                        )}
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            {originQuery ? (
+                                                <button onClick={() => { clearSearch(); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
+                                                    <X size={14} />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={handleLocateMe}
+                                                    disabled={isLocating}
+                                                    title="Use my current location"
+                                                    className="p-1 text-blue-500 hover:text-blue-600 transition-colors disabled:opacity-50"
+                                                >
+                                                    {isLocating ? (
+                                                        <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                                    ) : (
+                                                        <Navigation size={14} fill="currentColor" />
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     {/* Destination row */}
-                                    <div className="flex items-center gap-2 px-2 py-1.5">
+                                    <div className="flex items-center gap-2 px-2.5 py-1">
                                         <div className="w-2 h-2 bg-pink-500 rounded-full shrink-0" />
-                                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 flex-1 truncate">{name}</span>
-                                        <button onClick={clearDirections} className="shrink-0 text-slate-400 hover:text-slate-600">
-                                            <X size={14} />
+                                        <span className="text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 flex-1 truncate">{name}</span>
+                                        <button onClick={clearDirections} className="shrink-0 text-slate-400 hover:text-slate-600 p-0.5">
+                                            <X size={12} />
                                         </button>
                                     </div>
 
@@ -842,30 +952,30 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     <div className="flex border-t border-slate-100 dark:border-slate-800">
                                         <button
                                             onClick={() => setTransportProfile('driving-traffic')}
-                                            className={`flex-1 py-1.5 flex justify-center transition-colors ${transportProfile === 'driving-traffic' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                            className={`flex-1 py-1 flex justify-center transition-colors ${transportProfile === 'driving-traffic' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
                                         >
-                                            <Car size={16} />
+                                            <Car size={14} />
                                         </button>
                                         <button
                                             onClick={() => setTransportProfile('walking')}
-                                            className={`flex-1 py-1.5 flex justify-center transition-colors ${transportProfile === 'walking' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                            className={`flex-1 py-1 flex justify-center transition-colors ${transportProfile === 'walking' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
                                         >
-                                            <Footprints size={16} />
+                                            <Footprints size={14} />
                                         </button>
                                         <button
                                             onClick={() => setTransportProfile('cycling')}
-                                            className={`flex-1 py-1.5 flex justify-center transition-colors ${transportProfile === 'cycling' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                            className={`flex-1 py-1 flex justify-center transition-colors ${transportProfile === 'cycling' ? 'text-blue-600 bg-blue-50/50 dark:bg-blue-900/20' : 'text-slate-400 hover:text-slate-600'}`}
                                         >
-                                            <Bike size={16} />
+                                            <Bike size={14} />
                                         </button>
                                         <button
                                             onClick={() => {
                                                 const url = `https://www.google.com/maps/dir/?api=1&origin=${origin ? `${origin.lat},${origin.lng}` : ''}&destination=${coordinates.lat},${coordinates.lng}&travelmode=transit`;
                                                 window.open(url, '_blank');
                                             }}
-                                            className="flex-1 py-1.5 flex justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                                            className="flex-1 py-1 flex justify-center text-slate-400 hover:text-slate-600 transition-colors"
                                         >
-                                            <Bus size={16} />
+                                            <Bus size={14} />
                                         </button>
                                     </div>
 
@@ -887,7 +997,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
                                     {/* Travel times */}
                                     {origin && (
-                                        <div className="border-t border-slate-100 dark:border-slate-800 px-2 py-1.5 flex items-center gap-2">
+                                        <div className="border-t border-slate-100 dark:border-slate-800 px-2 py-1 flex items-center gap-2">
                                             {isFetchingOriginRoute ? (
                                                 <div className="flex items-center gap-2 text-[10px] text-slate-400">
                                                     <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -1047,31 +1157,59 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                     : 'relative lg:absolute lg:bottom-2 lg:left-1/2 lg:-translate-x-1/2 lg:w-[96%] lg:z-30 w-full mt-3 lg:mt-0'
                 }
             `}>
-                {/* Category Filter Pills & Desktop/Fullscreen Controls */}
+                {/* Category Filter Dropdown & Controls */}
                 <div className="flex items-center justify-between gap-2 w-full px-1 sm:px-2 pb-1 lg:px-0">
-                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                        {POI_FILTERS.map(filter => {
-                            const isSelected = selectedCategory === filter.id;
-                            const Icon = filter.icon;
-                            return (
-                                <button
-                                    key={filter.id}
-                                    onClick={() => setSelectedCategory(filter.id)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 shadow-sm shrink-0
-                                            ${isSelected
-                                            ? 'bg-blue-600 border-blue-600 text-white scale-105'
-                                            : 'bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
-                                        }
-                                        `}
-                                >
-                                    <Icon size={14} />
-                                    <span className="text-[10px] font-bold whitespace-nowrap uppercase tracking-normal">{filter.label}</span>
-                                </button>
-                            );
-                        })}
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white shadow-lg hover:border-blue-400 transition-all active:scale-95 group"
+                        >
+                            {React.createElement(POI_FILTERS.find(f => f.id === selectedCategory)?.icon || Search, { size: 14, className: 'text-blue-500' })}
+                            <span className="text-[10px] font-bold uppercase tracking-wider">
+                                {POI_FILTERS.find(f => f.id === selectedCategory)?.label || 'Discovery'}
+                            </span>
+                            <ChevronRight size={14} className={`text-slate-400 transition-transform duration-300 ${isCategoryDropdownOpen ? '-rotate-90' : 'rotate-90'}`} />
+                        </button>
+
+                        {/* Dropdown Card (Opens Upwards) */}
+                        {isCategoryDropdownOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsCategoryDropdownOpen(false)} />
+                                <div className="absolute bottom-full left-0 mb-2 w-48 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                    <div className="p-1.5 space-y-0.5">
+                                        <div className="px-3 py-1.5 mb-1 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Select Mode</div>
+                                        {POI_FILTERS.map(filter => {
+                                            const isSelected = selectedCategory === filter.id;
+                                            const Icon = filter.icon;
+                                            return (
+                                                <button
+                                                    key={filter.id}
+                                                    onClick={() => {
+                                                        setSelectedCategory(filter.id);
+                                                        setIsCategoryDropdownOpen(false);
+                                                    }}
+                                                    className={`flex items-center justify-between w-full px-3 py-2 rounded-xl transition-all duration-200 group/item
+                                                        ${isSelected 
+                                                            ? 'bg-blue-600 text-white shadow-md' 
+                                                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                                        }
+                                                    `}
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Icon size={14} className={isSelected ? 'text-white' : 'text-slate-400 group-hover/item:text-blue-500'} />
+                                                        <span className="text-[11px] font-bold uppercase tracking-normal">{filter.label}</span>
+                                                    </div>
+                                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
 
-                    {/* Integrated Map Controls (for LG or Fullscreen) */}
+                    {/* Integrated Map Controls */}
                     <div className={`items-center gap-1.5 shrink-0 ${isFullscreen ? 'flex' : 'hidden lg:flex'}`}>
                         <button
                             onClick={() => setIsFullscreen(f => !f)}
@@ -1105,25 +1243,28 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                         ref={gemsScrollRef}
                         className="flex gap-1.5 overflow-x-auto no-scrollbar scroll-smooth px-0.5 py-0.5 w-full flex-row"
                     >
-                        {(isFetchingGems ? Array(6).fill(0) : nearbyGems).map((poi, idx) => {
+                        {(isFetchingGems ? Array(12).fill(0) : nearbyGems.filter(poi => poi.properties?.isStub || (poi.properties?.rating && poi.properties?.rating >= 3))).map((poi, idx) => {
                             if (isFetchingGems) {
                                 return <div key={idx} className="flex-shrink-0 w-32 h-20 sm:w-40 sm:h-24 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />;
                             }
-                            const isActive = activePoiId === poi.name;
-                            const imageUrl = poi.imageUrl || getMapboxPoiImage(poi.name, poi.coordinates.lat, poi.coordinates.lng);
+                            const name = poi.properties?.name || poi.name;
+                            const isActive = activePoiId === name;
+                            const lng = poi.geometry?.coordinates[0] || poi.coordinates.lng;
+                            const lat = poi.geometry?.coordinates[1] || poi.coordinates.lat;
+                            const imageUrl = poi.properties?.imageUrl || (poi.imageUrl || getMapboxPoiImage(name, lat, lng));
 
                             return (
                                 <button
-                                    key={`${poi.name}-${idx}`}
+                                    key={`${name}-${idx}`}
                                     onClick={() => {
                                         if (isActive) {
                                             setActivePoiId(null);
                                             setSelectedNativePoi(null);
                                         } else {
                                             setSelectedNativePoi(poi);
-                                            setActivePoiId(poi.name);
+                                            setActivePoiId(name);
                                             setModalPoi(poi);
-                                            mapRef.current?.flyTo({ center: [poi.coordinates.lng, poi.coordinates.lat], zoom: 17, pitch: 45, duration: 800 });
+                                            mapRef.current?.flyTo({ center: [lng, lat], zoom: 17, pitch: 45, duration: 800 });
                                         }
                                     }}
                                     className={`group relative flex-shrink-0 transition-all duration-300 transform hover:scale-[1.03] active:scale-95
@@ -1134,25 +1275,25 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                 >
                                     <Image
                                         src={imageUrl}
-                                        alt={poi.name}
+                                        alt={name}
                                         fill
                                         sizes="(max-width: 640px) 128px, 160px"
                                         className={`object-cover transition-transform duration-500 group-hover:scale-110 ${isActive ? 'scale-110' : ''}`}
                                         loading="lazy"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent" />
-                                    {poi.rating && (
+                                    {poi.properties?.rating && (
                                         <div className="absolute top-2 left-2 bg-black/40 backdrop-blur-md rounded-full px-2 py-0.5 flex items-center gap-1 border border-white/20 shadow-sm">
                                             <Star size={10} className="text-yellow-400 fill-yellow-400" />
-                                            <span className="text-[10px] font-bold text-white tracking-tight">{poi.rating}</span>
+                                            <span className="text-[10px] font-bold text-white tracking-tight">{poi.properties.rating}</span>
                                         </div>
                                     )}
                                     <div className="absolute inset-0 p-3 flex flex-col justify-end items-start text-white text-left">
                                         <div className="flex items-center gap-1 mb-1 opacity-95 drop-shadow-sm">
-                                            {React.createElement(poi.icon, { size: 10, className: 'shrink-0' })}
-                                            <span className="text-[9px] font-semibold uppercase tracking-wider truncate">{poi.category}</span>
+                                            {React.createElement(poi.properties?.icon || poi.icon, { size: 10, className: 'shrink-0' })}
+                                            <span className="text-[9px] font-semibold uppercase tracking-wider truncate">{poi.properties?.category || poi.category}</span>
                                         </div>
-                                        <h4 className="text-[10px] sm:text-xs font-bold leading-tight line-clamp-2 drop-shadow-md">{poi.name}</h4>
+                                        <h4 className="text-[10px] sm:text-xs font-bold leading-tight line-clamp-2 drop-shadow-md">{name}</h4>
                                     </div>
                                     {isActive && (
                                         <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-blue-500 rounded-full border border-white">
