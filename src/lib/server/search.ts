@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { autocompleteLiteApi } from './liteapi';
 import { extractCountryCode } from '@/lib/constants/countries';
 
@@ -7,10 +8,36 @@ export interface AutocompleteResult {
     subtitle: string;
     countryCode: string;
     id?: string;
+    /** TravelgateX TGX-context destination code (populated once FastX catalog is synced) */
+    code?: string;
 }
 
+async function fetchAutocomplete(query: string): Promise<AutocompleteResult[]> {
+    const res = await autocompleteLiteApi(query);
+    if (!res?.data) return [];
+
+    return res.data.map((item: Record<string, unknown>) => {
+        const cityName = (item.displayName || item.name || '') as string;
+        const address = (item.formattedAddress || item.address || '') as string;
+        return {
+            type: 'city' as const,
+            title: cityName,
+            subtitle: address,
+            countryCode: extractCountryCode(address, cityName),
+            id: (item.placeId || item.id) as string | undefined,
+        };
+    });
+}
+
+const getCachedAutocomplete = unstable_cache(
+    fetchAutocomplete,
+    ['autocomplete-destinations'],
+    { revalidate: 300 } // 5-minute server-side cache shared across all users
+);
+
 /**
- * Autocomplete destinations via LiteAPI.
+ * Autocomplete destinations via LiteAPI with server-side caching.
+ * Same query returns cached results for all users — no per-tab staleTime needed.
  */
 export async function autocompleteDestinations(
     query: string
@@ -20,30 +47,8 @@ export async function autocompleteDestinations(
     }
 
     try {
-        const res = await autocompleteLiteApi(query);
-
-        if (res && res.data) {
-            const mapped: AutocompleteResult[] = res.data.map((item: Record<string, unknown>) => {
-                const cityName = (item.displayName || item.name || '') as string;
-                const address = (item.formattedAddress || item.address || '') as string;
-
-                // LiteAPI /data/places doesn't return countryCode directly.
-                // Extract it from formattedAddress (e.g., "South Korea" → "KR")
-                // Falls back to displayName for city-states (e.g., "Singapore")
-                const countryCode = extractCountryCode(address, cityName);
-
-                return {
-                    type: 'city' as const,
-                    title: cityName,
-                    subtitle: address,
-                    countryCode,
-                    id: (item.placeId || item.id) as string | undefined,
-                };
-            });
-            return { success: true, data: mapped };
-        }
-
-        return { success: true, data: [] };
+        const data = await getCachedAutocomplete(query);
+        return { success: true, data };
     } catch (error) {
         console.error('[autocompleteDestinations] Error:', error);
         return {
