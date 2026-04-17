@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Droplets, Wind, Thermometer, Sun, Sunrise, Sunset, Umbrella, X, Cloud } from 'lucide-react';
+import { Droplets, Wind, Thermometer, Sun, Sunrise, Sunset, Umbrella, X, Cloud, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { WeatherData } from '@/hooks/useWeather';
 
 interface WeatherWidgetProps {
@@ -23,10 +23,13 @@ const formatTime = (isoStr: string) => {
 const getDayLabel = (dateStr: string, idx: number) => {
     if (idx === 0) return 'Today';
     if (idx === 1) return 'Tomorrow';
+    if (!dateStr || dateStr === 'undefined') return '---';
     try {
-        return new Date(dateStr + 'T00:00:00').toLocaleDateString([], { weekday: 'short' });
+        const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString([], { weekday: 'short' });
     } catch {
-        return dateStr;
+        return dateStr || '---';
     }
 };
 
@@ -49,6 +52,7 @@ const WeatherIcon = ({ url, size = 20 }: { url: string | null; size?: number }) 
 export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading, isFullscreen = true }) => {
     const [open, setOpen] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
     // Close popover on outside click
     useEffect(() => {
@@ -95,19 +99,25 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading
 
             {/* ── Popover Panel (opens downward) ── */}
             {open && (
-                <div className="absolute top-full -right-2 sm:right-0 mt-2 w-[260px] sm:w-[290px] max-w-[calc(100vw-32px)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-top-2 origin-top-right duration-300 z-50 overflow-hidden">
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-3 pt-3 pb-2">
-                        <div className="flex items-center gap-2.5">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-sky-100 to-blue-50 dark:from-sky-900/40 dark:to-blue-900/30">
-                                <WeatherIcon url={current.iconUrl} size={28} />
+                <div className={`absolute top-full -right-4 sm:right-0 mt-2 max-w-[calc(100vw-32px)] max-h-[50vh] sm:max-h-none overflow-y-auto custom-weather-scrollbar bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-top-2 origin-top-right duration-300 z-50
+                    ${isFullscreen ? 'w-[240px]' : 'w-[210px]'} sm:w-[320px]`}
+                >
+                    {/* Header - Sticky on mobile scroll */}
+                    <div className={`sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl flex items-center justify-between border-b border-transparent
+                        ${isFullscreen ? 'px-2 sm:px-4 pt-2.5 sm:pt-3 pb-2' : 'px-1.5 pt-2 pb-1.5'}
+                    `}>
+                        <div className="flex items-center gap-1.5 sm:gap-2.5">
+                            <div className={`flex items-center justify-center rounded-lg bg-gradient-to-br from-sky-100 to-blue-50 dark:from-sky-900/40 dark:to-blue-900/30
+                                ${isFullscreen ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-7 h-7'}
+                            `}>
+                                <WeatherIcon url={current.iconUrl} size={isFullscreen ? 24 : 18} />
                             </div>
                             <div>
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-xl font-extrabold text-slate-900 dark:text-white">{current.temp}°</span>
-                                    <span className="text-[9px] font-medium text-slate-400 uppercase">{units.temp.replace('°', '')}</span>
+                                    <span className={`font-extrabold text-slate-900 dark:text-white ${isFullscreen ? 'text-lg sm:text-xl' : 'text-sm'}`}>{current.temp}°</span>
+                                    <span className="text-[8px] font-medium text-slate-400 uppercase">{units.temp.replace('°', '')}</span>
                                 </div>
-                                <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 leading-tight">{current.description}</p>
+                                <p className={`font-semibold text-slate-500 dark:text-slate-400 leading-tight ${isFullscreen ? 'text-[10px]' : 'text-[8px]'}`}>{current.description}</p>
                             </div>
                         </div>
                         <button
@@ -120,8 +130,8 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading
 
                     <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
 
-                    {/* Quick stats */}
-                    <div className="grid grid-cols-3 gap-1.5 px-3 py-2">
+                    {/* Quick stats (Hidden in mini mode) */}
+                    <div className={`grid grid-cols-3 gap-1 py-2 ${isFullscreen ? 'px-3' : 'hidden sm:grid px-2'}`}>
                         <div className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg bg-slate-50/80 dark:bg-slate-800/60">
                             <Thermometer size={12} className="text-orange-500" />
                             <span className="text-[8px] text-slate-400 font-medium">Feels like</span>
@@ -141,9 +151,9 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading
                         </div>
                     </div>
 
-                    {/* UV + Sunrise/Sunset */}
+                    {/* UV + Sunrise/Sunset (Hidden in mini mode) */}
                     {daily[0] && (
-                        <div className="flex items-center gap-1.5 px-3 pb-2 flex-wrap">
+                        <div className={`items-center gap-1.5 pb-2 flex-wrap ${isFullscreen ? 'flex px-3' : 'hidden sm:flex px-2'}`}>
                             {uvInfo && uv !== null && (
                                 <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50/80 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700">
                                     <Sun size={9} className={uvInfo.color} />
@@ -167,13 +177,29 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading
 
                     {/* Hourly forecast */}
                     {hourly.length > 0 && (
-                        <div className="px-3 pb-2">
-                            <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Next hours</p>
-                            <div className="flex gap-1 overflow-x-auto no-scrollbar scroll-smooth pb-0.5">
-                                {hourly.slice(0, 8).map((h, i) => (
-                                    <div key={i} className="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg bg-slate-50/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 shrink-0 min-w-[40px]">
-                                        <span className="text-[8px] font-semibold text-slate-400">
-                                            {h.hour === 0 ? '12a' : h.hour < 12 ? `${h.hour}a` : h.hour === 12 ? '12p' : `${h.hour - 12}p`}
+                        <div className={`pb-2 relative group ${isFullscreen ? 'px-3' : 'px-2'}`}>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Next hours</p>
+                                <div className="flex gap-1">
+                                    <button 
+                                        onClick={() => scrollRef.current?.scrollBy({ left: -100, behavior: 'smooth' })}
+                                        className="p-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        <ChevronLeft size={12} />
+                                    </button>
+                                    <button 
+                                        onClick={() => scrollRef.current?.scrollBy({ left: 100, behavior: 'smooth' })}
+                                        className="p-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        <ChevronRight size={12} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div ref={scrollRef} className="flex gap-2 overflow-x-auto scroll-smooth pb-2 custom-weather-scrollbar">
+                                {hourly.slice(0, 12).map((h, i) => (
+                                    <div key={i} className="flex flex-col items-center gap-1 px-1.5 py-1.5 rounded-xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 shrink-0 min-w-[60px] transition-all hover:bg-slate-100/80 dark:hover:bg-slate-700/60 hover:scale-[1.02] active:scale-[0.98]">
+                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter whitespace-nowrap">
+                                            {h.hour === null || h.hour === undefined ? '--' : h.hour === 0 ? '12 AM' : h.hour < 12 ? `${h.hour} AM` : h.hour === 12 ? '12 PM' : `${h.hour - 12} PM`}
                                         </span>
                                         <WeatherIcon url={h.iconUrl} size={16} />
                                         <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200">{h.temp}°</span>
@@ -189,14 +215,14 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading
                         </div>
                     )}
 
-                    {/* 3-day forecast */}
+                    {/* 3-day forecast (Hidden on mobile to save map space) */}
                     {daily.length > 0 && (
-                        <div className="px-3 pb-3">
+                        <div className="hidden sm:block px-3 sm:px-4 pb-3">
                             <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Forecast</p>
                             <div className="space-y-0.5">
                                 {daily.map((d, i) => (
-                                    <div key={d.date} className="flex items-center gap-2 px-1.5 py-1 rounded-lg hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 w-[52px] shrink-0">{getDayLabel(d.date, i)}</span>
+                                    <div key={d.date} className="flex items-center gap-3 px-1.5 py-1 rounded-lg hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 w-[60px] shrink-0">{getDayLabel(d.date, i)}</span>
                                         <WeatherIcon url={d.iconUrl} size={18} />
                                         {d.precipChance > 0 && (
                                             <div className="flex items-center gap-0.5 shrink-0">

@@ -60,10 +60,13 @@ export async function GET(request: NextRequest) {
         const hourlyForecast = [];
         if (hourlyData?.forecastHours) {
             for (const h of hourlyData.forecastHours.slice(0, 12)) {
-                const hourTime = new Date(h.displayDateTime || h.interval?.startTime);
+                const startTime = h.interval?.startTime || h.displayDateTime;
+                const hourTime = new Date(startTime);
+                const hour = isNaN(hourTime.getHours()) ? 0 : hourTime.getHours();
+                
                 hourlyForecast.push({
-                    time: h.displayDateTime || h.interval?.startTime,
-                    hour: hourTime.getHours(),
+                    time: startTime,
+                    hour,
                     temp: Math.round(h.temperature?.degrees ?? 0),
                     iconUrl: h.weatherCondition?.iconBaseUri ? `${h.weatherCondition.iconBaseUri}.svg` : null,
                     description: h.weatherCondition?.description?.text || '',
@@ -75,11 +78,13 @@ export async function GET(request: NextRequest) {
         // Build daily forecast
         const dailyForecast = [];
         if (dailyData?.forecastDays) {
-            for (const d of dailyData.forecastDays.slice(0, 3)) {
+            for (const [i, d] of dailyData.forecastDays.slice(0, 3).entries()) {
                 const daytime = d.daytimeForecast || {};
                 const nighttime = d.nighttimeForecast || {};
+                const dateStr = d.interval?.startTime?.split('T')[0] || d.displayDate;
+                
                 dailyForecast.push({
-                    date: d.displayDate || d.interval?.startTime?.split('T')[0],
+                    date: dateStr,
                     tempMax: Math.round(d.maxTemperature?.degrees ?? daytime.temperature?.degrees ?? 0),
                     tempMin: Math.round(d.minTemperature?.degrees ?? nighttime.temperature?.degrees ?? 0),
                     iconUrl: daytime.weatherCondition?.iconBaseUri
