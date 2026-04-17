@@ -13,32 +13,55 @@ import { env } from '@/utils/env';
  * redundant API calls on repeat page views.
  */
 
-// ── In-memory cache ──────────────────────────────────────────────
-interface CacheEntry {
-    url: string;
-    timestamp: number;
-}
-const CACHE = new Map<string, CacheEntry>();
-const CACHE_MAX = 500;
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+import { createClient } from '@supabase/supabase-js';
 
-function getCached(key: string): string | null {
-    const entry = CACHE.get(key);
-    if (!entry) return null;
-    if (Date.now() - entry.timestamp > CACHE_TTL) {
-        CACHE.delete(key);
+// We use the service role to bypass RLS since this is a server-side route
+const supabaseAdmin = createClient(
+    env.SUPABASE_URL,
+    env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// We define a 30-day cache TTL for generic metadata searches to avoid heavy Google API costs
+const CACHE_TTL_DAYS = 30;
+
+async function getCached(key: string): Promise<string | null> {
+    try {
+        const { data: cached, error } = await supabaseAdmin
+            .from('place_cache')
+            .select('data, cached_at')
+            .eq('place_id', key)
+            .single();
+
+        if (error || !cached) return null;
+
+        const ageInMs = new Date().getTime() - new Date(cached.cached_at).getTime();
+        const maxAgeInMs = CACHE_TTL_DAYS * 24 * 60 * 60 * 1000;
+
+        if (ageInMs > maxAgeInMs) {
+             return null; // Stale, let it refetch
+        }
+        
+        // Since the old memory cache stored strings (URLs or stringified JSON), 
+        // we'll accommodate that by returning the stringified data.
+        return typeof cached.data === 'string' ? cached.data : JSON.stringify(cached.data);
+    } catch(e) {
         return null;
     }
-    return entry.url;
 }
 
-function setCache(key: string, url: string) {
-    if (CACHE.size >= CACHE_MAX) {
-        // Evict oldest entry
-        const oldest = CACHE.keys().next().value;
-        if (oldest) CACHE.delete(oldest);
+async function setCache(key: string, dataStr: string) {
+    try {
+        await supabaseAdmin
+            .from('place_cache')
+            .upsert({ 
+                place_id: key, 
+                // Store as JSON if possible to leverage JSONB, otherwise store as raw string in a json wrapper
+                data: dataStr.startsWith('{') ? JSON.parse(dataStr) : { value: dataStr },
+                cached_at: new Date().toISOString()
+            });
+    } catch(e) {
+        console.error('Failed to set Supabase cache:', e);
     }
-    CACHE.set(key, { url, timestamp: Date.now() });
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -215,12 +238,24 @@ export async function GET(req: NextRequest) {
     const cacheKey = `${name}|${roundedLat}|${roundedLng}|${full}`;
 
     // Return cached result if available
-    const cached = getCached(cacheKey);
+    const cached = await getCached(cacheKey);
     if (cached) {
         if (full) {
-            return NextResponse.json(JSON.parse(cached));
+             // Depending on how it was stored, it might be raw JSON or { value: string }
+             try {
+                const parsed = JSON.parse(cached);
+                return NextResponse.json(parsed.value ? parsed.value : parsed);
+             } catch(e) {
+                return NextResponse.json(cached); // It was already an object
+             }
         }
-        return NextResponse.redirect(cached);
+        // Proxy redirect hit
+        try {
+            const parsed = JSON.parse(cached);
+            return NextResponse.redirect(parsed.value || parsed);
+        } catch(e) {
+             return NextResponse.redirect(cached);
+        }
     }
 
     try {
@@ -268,7 +303,7 @@ export async function GET(req: NextRequest) {
         }
 
         if (full) {
-            setCache(cacheKey, JSON.stringify(resultMetadata));
+            await setCache(cacheKey, JSON.stringify(resultMetadata));
             return NextResponse.json(resultMetadata);
         } else {
             // PROXY MODE: Fetch and stream the actual image bytes to bypass browser restrictions
@@ -289,7 +324,7 @@ export async function GET(req: NextRequest) {
                 // Use arrayBuffer for compatibility with all environments; performance is fine for small POI photos
                 const buffer = await imgRes.arrayBuffer();
                 
-                setCache(cacheKey, resultMetadata.photoUrl); // Cache the SUCCESSFUL URL only
+                await setCache(cacheKey, JSON.stringify({ value: resultMetadata.photoUrl })); // Cache the SUCCESSFUL URL only
                 
                 return new NextResponse(buffer, {
                     headers: {
