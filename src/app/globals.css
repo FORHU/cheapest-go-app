@@ -444,3 +444,28 @@ body {
     padding: 8px 12px;
   }
 }
+/* Weather Widget Custom Scrollbar / Slider */
+.custom-weather-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.custom-weather-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-weather-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.2);
+  border-radius: 10px;
+}
+
+.dark .custom-weather-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.custom-weather-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.4);
+}
+
+.dark .custom-weather-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
