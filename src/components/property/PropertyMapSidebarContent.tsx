@@ -286,7 +286,10 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             cyclingTime: poiCyclingTime
         } = useMapboxDirections({
             origin: hasCoordinates ? { lat: coordinates.lat, lng: coordinates.lng } : null,
-            destination: selectedNativePoi ? { lat: selectedNativePoi.coordinates.lat, lng: selectedNativePoi.coordinates.lng } : null,
+            destination: selectedNativePoi ? { 
+                lat: selectedNativePoi.geometry?.coordinates[1] ?? selectedNativePoi.coordinates?.lat, 
+                lng: selectedNativePoi.geometry?.coordinates[0] ?? selectedNativePoi.coordinates?.lng 
+            } : null,
             enabled: !!selectedNativePoi && hasCoordinates && !showDirections,
             profile: transportProfile
         });
@@ -552,10 +555,17 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             distance: 0,
             coordinates,
         } : selectedNativePoi ? {
-            name: selectedNativePoi.name,
-            address: selectedNativePoi.category,
-            distance: coordinates ? getDistance(coordinates.lat, coordinates.lng, selectedNativePoi.coordinates.lat, selectedNativePoi.coordinates.lng) : 0,
-            coordinates: selectedNativePoi.coordinates,
+            name: selectedNativePoi.properties?.name ?? selectedNativePoi.name,
+            address: selectedNativePoi.properties?.category ?? selectedNativePoi.category,
+            distance: coordinates ? getDistance(
+                coordinates.lat, 
+                coordinates.lng, 
+                selectedNativePoi.geometry?.coordinates[1] ?? selectedNativePoi.coordinates?.lat, 
+                selectedNativePoi.geometry?.coordinates[0] ?? selectedNativePoi.coordinates?.lng
+            ) : 0,
+            coordinates: selectedNativePoi.geometry?.coordinates 
+                ? { lat: selectedNativePoi.geometry.coordinates[1], lng: selectedNativePoi.geometry.coordinates[0] } 
+                : selectedNativePoi.coordinates,
         } : null;
 
         const onMapClick = useCallback((event: any) => {
