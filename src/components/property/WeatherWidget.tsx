@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { Droplets, Wind, Thermometer, Sun, Sunrise, Sunset, Umbrella, X, Cloud, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { WeatherData } from '@/hooks/useWeather';
 
@@ -44,7 +45,7 @@ const getUvLabel = (uv: number) => {
 /** Google Weather icon or fallback cloud icon */
 const WeatherIcon = ({ url, size = 20 }: { url: string | null; size?: number }) => {
     if (url) {
-        return <img src={url} alt="" width={size} height={size} className="shrink-0 select-none" draggable={false} />;
+        return <Image src={url} alt="" width={size} height={size} className="shrink-0 select-none" draggable={false} unoptimized />;
     }
     return <Cloud size={size} className="text-slate-400 shrink-0" />;
 };

@@ -5,12 +5,16 @@ import { env } from '@/utils/env';
 import { FlightOffer, FarePolicy } from '@/types/flights';
 import { logApiCall } from '@/lib/server/api-logger';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+    const csrfError = checkCsrf(req);
+    if (csrfError) return csrfError;
+
     // 5 booking attempts per minute per IP
     const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book' });
     if (!rl.success) {
@@ -608,9 +612,9 @@ export async function POST(req: NextRequest) {
 
     } catch (err: any) {
         console.error('[/book] Error:', err);
-        return NextResponse.json({
-            success: false,
-            error: err.message || 'An unexpected error occurred'
-        }, { status: 500 });
+        const message = process.env.NODE_ENV === 'production'
+            ? 'An unexpected error occurred. Please try again.'
+            : (err.message || 'An unexpected error occurred');
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 }

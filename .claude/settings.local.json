@@ -49,7 +49,10 @@
       "WebSearch",
       "WebFetch(domain:changelog.duffel.com)",
       "WebFetch(domain:travelgate.mcp.kapa.ai)",
-      "WebFetch(domain:docs.travelgate.com)"
+      "WebFetch(domain:docs.travelgate.com)",
+      "Bash(python3 -c ' *)",
+      "Bash(printf '%s' 'test')",
+      "Read(//tmp/**)"
     ]
   }
 }

@@ -31,7 +31,7 @@ export default async function SearchPage(props: {
     // ─── MAP VIEW: split layout ────────────────────
     if (viewMode === 'map') {
         return (
-            <main className="h-[calc(100vh-64px)] w-full overflow-hidden">
+            <main className="h-[calc(100dvh-64px)] w-full overflow-hidden">
                 <Suspense
                     fallback={
                         <div className="flex h-full w-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
