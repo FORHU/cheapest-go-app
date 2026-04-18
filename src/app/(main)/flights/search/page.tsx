@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from "next/link";
 import { SearchFetcher } from "@/components/flights/search-fetcher";
 import { SectionHeader } from "@/components/ui";
@@ -5,6 +6,31 @@ import BackButton from "@/components/common/BackButton";
 import type { CabinClass } from "@/types/flights";
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+    searchParams,
+}: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+    const sp = await searchParams;
+    const origin = (sp.origin as string) || (sp.origin0 as string) || '';
+    const destination = (sp.destination as string) || (sp.dest0 as string) || '';
+
+    const title = origin && destination
+        ? `Flights ${origin} → ${destination} | CheapestGo`
+        : 'Flight Search Results | CheapestGo';
+
+    const description = origin && destination
+        ? `Compare and book the cheapest flights from ${origin} to ${destination}. Find the best deals on CheapestGo.`
+        : 'Compare and book cheap flights worldwide. Find the best deals on CheapestGo.';
+
+    return {
+        title,
+        description,
+        robots: { index: false, follow: false },
+        alternates: { canonical: '/flights/search' },
+    };
+}
 
 /**
  * SearchPage — Server Component (fast shell).
