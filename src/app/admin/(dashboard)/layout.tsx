@@ -1,6 +1,12 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import { createClient } from '@/utils/supabase/server';
+
+export const metadata: Metadata = {
+  title: 'Admin | CheapestGo',
+  robots: { index: false, follow: false },
+};
 import { redirect } from 'next/navigation';
 import { AdminLayoutClient } from './AdminLayoutClient';
 

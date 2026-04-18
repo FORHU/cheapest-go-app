@@ -1,5 +1,11 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import FlightBookContent from './FlightBookContent';
+
+export const metadata: Metadata = {
+  title: 'Book Flight | CheapestGo',
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = 'force-dynamic';
 
