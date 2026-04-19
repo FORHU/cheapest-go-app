@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import type { MapRef } from 'react-map-gl/mapbox';
 
 export interface PoiData {
@@ -94,7 +94,12 @@ export const useMapInteractions = ({
     }, [onSelectId, onSelectPoi]);
 
     // Handle hover states manually to bypass interactiveLayerIds limitations in Standard style
+    const lastMoveTime = useRef<number>(0);
     const onMouseMove = useCallback((e: any) => {
+        const now = Date.now();
+        if (now - lastMoveTime.current < 50) return; // throttle to ~20fps
+        lastMoveTime.current = now;
+
         const map = e.target;
         if (!map || !e.point) return;
 

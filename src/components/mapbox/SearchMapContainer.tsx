@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MappableProperty } from './utils/buildGeoJson';
 import { useMapboxInstance } from './hooks/useMapboxInstance';
 import { useMapMarkers } from './hooks/useMapMarkers';
@@ -73,12 +73,21 @@ export const SearchMapContainer = React.memo(({
 
     // 5. Derived State
     const targetCurrency = useUserCurrency();
-    const selectedProperty = mappableProperties.find((p: MappableProperty) => p.id === selectedId) || null;
-    const hoveredProperty = mappableProperties.find((p: MappableProperty) => p.id === hoveredId) || null;
+    const selectedProperty = useMemo(
+        () => mappableProperties.find((p: MappableProperty) => p.id === selectedId) ?? null,
+        [mappableProperties, selectedId]
+    );
+    const hoveredProperty = useMemo(
+        () => mappableProperties.find((p: MappableProperty) => p.id === hoveredId) ?? null,
+        [mappableProperties, hoveredId]
+    );
     
     // Preview logic: prefer hover state for quick feedback, fallback to selected
-    const previewProperty = hoveredProperty || selectedProperty;
-    const activePoi = hoveredPoi || selectedPoi;
+    const previewProperty = useMemo(
+        () => hoveredProperty || selectedProperty,
+        [hoveredProperty, selectedProperty]
+    );
+    const activePoi = useMemo(() => hoveredPoi || selectedPoi, [hoveredPoi, selectedPoi]);
 
 
 
@@ -95,9 +104,12 @@ export const SearchMapContainer = React.memo(({
         return (R * c).toFixed(2);
     };
 
-    const poiDistance = previewProperty && activePoi 
-        ? calculateDistance(previewProperty.coordinates, activePoi.coordinates)
-        : null;
+    const poiDistance = useMemo(
+        () => previewProperty && activePoi
+            ? calculateDistance(previewProperty.coordinates, activePoi.coordinates)
+            : null,
+        [previewProperty, activePoi]
+    );
 
     // POI Route Logic
     // 6. Fetch Real Road GPS Route — only when a POI is *clicked* (selectedPoi)
@@ -111,26 +123,21 @@ export const SearchMapContainer = React.memo(({
 
         const fetchRoute = async () => {
             try {
-                // Driving Route — fetch alternatives, pick shortest by distance
-                const drivingQuery = await fetch(
-                    `https://api.mapbox.com/directions/v5/mapbox/driving/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?geometries=geojson&overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`
-                );
-                const drivingJson = await drivingQuery.json();
+                const drivingUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?geometries=geojson&overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`;
+                const walkingUrl = `https://api.mapbox.com/directions/v5/mapbox/walking/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`;
+
+                const [drivingJson, walkingJson] = await Promise.all([
+                    fetch(drivingUrl).then(r => r.json()),
+                    fetch(walkingUrl).then(r => r.json()),
+                ]);
 
                 if (drivingJson.code === 'Ok' && drivingJson.routes?.length) {
-                    // Sort all alternatives by distance (metres), pick the shortest
                     const shortestDriving = drivingJson.routes.reduce((best: any, r: any) =>
                         r.distance < best.distance ? r : best
                     );
                     setRouteGeometry(shortestDriving.geometry);
                     setCarDuration(`${Math.max(1, Math.round(shortestDriving.duration / 60))} min`);
                 }
-
-                // Walking Route — fetch alternatives, pick shortest for time estimate
-                const walkingQuery = await fetch(
-                    `https://api.mapbox.com/directions/v5/mapbox/walking/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`
-                );
-                const walkingJson = await walkingQuery.json();
 
                 if (walkingJson.code === 'Ok' && walkingJson.routes?.length) {
                     const shortestWalking = walkingJson.routes.reduce((best: any, r: any) =>
@@ -146,12 +153,11 @@ export const SearchMapContainer = React.memo(({
         fetchRoute();
     }, [previewProperty, selectedPoi]);
 
-    // POI Route Logic (Real Geometry)
-    const poiRouteData: any = routeGeometry ? {
+    const poiRouteData = useMemo(() => routeGeometry ? {
         type: 'Feature',
         properties: {},
         geometry: routeGeometry
-    } : null;
+    } : null, [routeGeometry]);
 
     const {
         mapType,
@@ -191,8 +197,6 @@ export const SearchMapContainer = React.memo(({
                         <ClusterLayer
                             geoJsonData={geoJsonData}
                             shouldCluster={shouldCluster}
-                            selectedId={selectedId}
-                            hoveredId={hoveredId}
                         />
 
                         {mappableProperties.map(property => (
