@@ -41,6 +41,7 @@ interface MapProps extends Omit<MapboxMapProps, 'mapStyle' | 'terrain'> {
     enable3DBuildings?: boolean;
     buildingColor?: string;
     buildingOpacity?: number;
+    antialias?: boolean;
 }
 
 function Buildings3DLayer({
@@ -111,8 +112,8 @@ const STANDARD_STYLE = {
                 show3dObjects: true,
                 show3dBuildings: true,
                 show3dTrees: true,
-                show3dLandmarks: true,
-                show3dFacades: true,
+                show3dLandmarks: false,
+                show3dFacades: false,
                 showPlaceLabels: true,
                 showPointOfInterestLabels: true,
                 showRoadLabels: true,
@@ -142,6 +143,7 @@ const Map = React.memo(
                 enable3DBuildings = false,
                 buildingColor = '#aaa',
                 buildingOpacity = 0.8,
+                antialias = true,
                 children,
                 onLoad,
                 ...props
@@ -166,11 +168,11 @@ const Map = React.memo(
                     if (!map || !map.getStyle()) return;
 
                     try {
+                        const style = map.getStyle();
+                        
                         // Global language set (Standard + others)
-                        // Note: For Standard, we use setConfigProperty. For others we iterate layers.
-                        if (!isStandard) {
-                            const style = map.getStyle();
-                            style?.layers?.forEach((layer: any) => {
+                        if (!isStandard && style?.layers) {
+                            style.layers.forEach((layer: any) => {
                                 if (layer.type === 'symbol' && layer.layout?.['text-field']) {
                                     map.setLayoutProperty(layer.id, 'text-field', [
                                         'coalesce',
@@ -182,21 +184,20 @@ const Map = React.memo(
                         }
 
                         // Find the first symbol layer to insert 3D buildings underneath
-                        const layers = map.getStyle()?.layers;
-                        if (layers) {
-                            const firstSymbol = layers.find((l) => l.type === 'symbol');
+                        if (style?.layers) {
+                            const firstSymbol = style.layers.find((l) => l.type === 'symbol');
                             if (firstSymbol) {
                                 setFirstSymbolId(firstSymbol.id);
                             }
                         }
 
-                        // Apply any runtime config overrides (e.g. non-default lightPreset)
+                        // Apply initial runtime config for standard style
                         if (isStandard && standardConfig) {
-                            for (const [key, value] of Object.entries(standardConfig)) {
+                            Object.entries(standardConfig).forEach(([key, value]) => {
                                 if (value !== undefined) {
                                     map.setConfigProperty('basemap', key, value);
                                 }
-                            }
+                            });
                         }
 
                         // Add terrain programmatically after style loads
@@ -231,7 +232,7 @@ const Map = React.memo(
                 mapStyle,
                 mapReady,
                 isStandard,
-                standardConfig,
+                // Note: standardConfig is excluded here to avoid setup reset on every config change.
                 enable3DTerrain,
                 terrainExaggeration,
             ]);
@@ -249,23 +250,33 @@ const Map = React.memo(
                 [onLoad]
             );
 
-            // Runtime config updates (e.g. switching lightPreset)
+            // Optimized runtime config updates (e.g. switching lightPreset)
+            // Uses a separate effect to apply properties without triggering the full setup logic.
+            const lastConfigRef = React.useRef<string>('');
             React.useEffect(() => {
                 if (!isStandard || !standardConfig || !isStyleLoaded) return;
 
-                const map = (mapRef as React.RefObject<MapRef | null>).current?.getMap();
+                const map = mapRef.current?.getMap();
                 if (!map) return;
 
+                const configStr = JSON.stringify(standardConfig);
+                if (configStr === lastConfigRef.current) return;
+                lastConfigRef.current = configStr;
+
                 try {
-                    for (const [key, value] of Object.entries(standardConfig)) {
+                    Object.entries(standardConfig).forEach(([key, value]) => {
                         if (value !== undefined) {
-                            map.setConfigProperty('basemap', key, value);
+                            // Check CURRENT value to avoid redundant sets
+                            const current = (map as any).getConfigProperty?.('basemap', key);
+                            if (current !== value) {
+                                map.setConfigProperty('basemap', key, value);
+                            }
                         }
-                    }
+                    });
                 } catch (err) {
                     console.warn('Failed to update config property', err);
                 }
-            }, [isStandard, standardConfig, mapRef, isStyleLoaded]);
+            }, [isStandard, standardConfig, isStyleLoaded, mapRef]);
 
             const resolvedStyle = isStandard ? STANDARD_STYLE : mapStyle;
 
@@ -281,6 +292,8 @@ const Map = React.memo(
                         mapboxAccessToken={env.MAPBOX_TOKEN}
                         mapStyle={resolvedStyle as MapboxMapProps['mapStyle']}
                         onLoad={handleLoad}
+                        reuseMaps
+                        antialias={antialias}
                         {...props}
                     >
                         {isStyleLoaded && (
