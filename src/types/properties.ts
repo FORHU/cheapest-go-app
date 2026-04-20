@@ -48,6 +48,8 @@ export interface Property {
     distance?: string;
     /** Board/meal plan types from LiteAPI: "Breakfast included", "Room only", etc. */
     boardTypes?: string[];
+    /** City name from the search query — used for flight bundle upsell destination */
+    city?: string;
 }
 
 export const uniqueTabs = ['Tents', 'Boats', 'Tree House', 'Resorts'];

@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal, confirmedPrice } = body as {
+        const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal, confirmedPrice, bundleHotelId } = body as {
             provider: string;
             flight: FlightOffer;
             passengers: any[];
@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
             bagServiceIds?: string[];
             bagTotal?: number;
             confirmedPrice?: number;
+            bundleHotelId?: string;
         };
 
         // Use server-verified user ID
@@ -548,6 +549,8 @@ export async function POST(req: NextRequest) {
                     duffelTickets: duffelPreOrder.tickets.join(','),
                     duffelIsTicketed: String(duffelPreOrder.isTicketed),
                 } : {}),
+                // Bundle link — hotel booking ID this flight is paired with
+                ...(bundleHotelId ? { bundleHotelId, type: 'flight_bundle' } : { type: 'flight' }),
             },
             description: `Flight Booking: ${flight.segments[0]?.origin} to ${flight.segments[flight.segments.length - 1]?.destination}`,
         });

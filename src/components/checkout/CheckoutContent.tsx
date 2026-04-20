@@ -407,6 +407,7 @@ export function CheckoutContent() {
                 bundleFlightId={bundleFlightId}
                 bundleSavings={bundleSavings}
                 currency={selectedCurrency}
+                hotelDestination={property?.city}
             />
         );
     }
@@ -442,7 +443,7 @@ export function CheckoutContent() {
                     {!user && (
                         <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4 rounded-lg">
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                <LogIn className="text-amber-600 dark:text-amber-400 flex-shrink-0" size={24} />
+                                <LogIn className="text-amber-600 dark:text-amber-400 shrink-0" size={24} />
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-amber-800 dark:text-amber-200">Sign in to complete your booking</h3>
                                     <p className="text-sm text-amber-600 dark:text-amber-400">

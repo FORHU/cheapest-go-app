@@ -76,8 +76,8 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
         const missingFields: string[] = [];
 
         segmentsToSearch.forEach((segment, index) => {
-            if (!segment?.origin) missingFields.push(isRoundTrip && index === 1 ? 'return origin' : `segment ${index + 1} origin`);
-            if (!segment?.destination) missingFields.push(isRoundTrip && index === 1 ? 'return destination' : `segment ${index + 1} destination`);
+            if (!segment?.origin?.code) missingFields.push(isRoundTrip && index === 1 ? 'return origin airport' : `segment ${index + 1} origin airport`);
+            if (!segment?.destination?.code) missingFields.push(isRoundTrip && index === 1 ? 'return destination airport' : `segment ${index + 1} destination airport`);
             if (!segment?.date) missingFields.push(isRoundTrip && index === 1 ? 'return date' : `segment ${index + 1} date`);
         });
 
