@@ -22,6 +22,19 @@ import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
 import { Layers } from 'lucide-react';
 
+// Haversine distance — defined outside component to avoid re-creation on every render
+const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
+    const R = 6371;
+    const dLat = (l2.lat - l1.lat) * (Math.PI / 180);
+    const dLng = (l2.lng - l1.lng) * (Math.PI / 180);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(l1.lat * (Math.PI / 180)) * Math.cos(l2.lat * (Math.PI / 180)) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return (R * c).toFixed(2);
+};
+
 const getMapboxPoiImage = (name: string, lat: number, lng: number) => {
     return `/api/poi-photo?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}`;
 };
@@ -159,11 +172,11 @@ export const SearchMapContainer = React.memo(({
         fetchRoute();
     }, [previewProperty, selectedPoi]);
 
-    const poiRouteData = useMemo(() => routeGeometry ? {
-        type: 'Feature',
+    const poiRouteData = useMemo(() => routeGeometry ? ({
+        type: 'Feature' as const,
         properties: {},
         geometry: routeGeometry
-    } : null, [routeGeometry]);
+    }) : null, [routeGeometry]);
 
     const {
         mapType,

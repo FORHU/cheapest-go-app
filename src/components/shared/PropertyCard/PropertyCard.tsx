@@ -215,7 +215,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             currency={sourceCurrency}
                             imageUrl={imgSrc}
                             deepLink={property?.id ? `/property/${property.id}` : '#'}
-                            snapshot={property}
+                            snapshot={property as any}
                             size="sm"
                         />
                     </div>
@@ -337,7 +337,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                         currency={property.currency || 'KRW'}
                         imageUrl={property.image}
                         deepLink={`/property/${property.id}`}
-                        snapshot={property}
+                        snapshot={property as any}
                         size="sm"
                     />
                 </div>

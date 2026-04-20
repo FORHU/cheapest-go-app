@@ -97,7 +97,7 @@ export const useMapInteractions = ({
     const lastMoveTime = useRef<number>(0);
     const onMouseMove = useCallback((e: any) => {
         const now = Date.now();
-        if (now - lastMoveTime.current < 50) return; // throttle to ~20fps
+        if (now - lastMoveTime.current < 80) return; // throttle to ~12fps
         lastMoveTime.current = now;
 
         const map = e.target;

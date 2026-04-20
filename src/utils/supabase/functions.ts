@@ -11,18 +11,35 @@ export async function invokeEdgeFunction<T = any>(
     const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
     const method = options?.method || 'POST';
 
-    const response = await fetch(functionUrl, {
-        method,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-            'apikey': supabaseKey,
-            ...options?.headers
-        },
-        body: body ? JSON.stringify(body) : undefined
-    });
+    const maxRetries = 3;
+    let fallbackRetryDelay = 1000;
 
-    if (!response.ok) {
+    for (let i = 0; i <= maxRetries; i++) {
+        const response = await fetch(functionUrl, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey,
+                ...options?.headers
+            },
+            body: body ? JSON.stringify(body) : undefined
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return data as T;
+        }
+
+        if (response.status === 429 && i < maxRetries) {
+            // Get retry-after header if available, otherwise use exponential backoff
+            const retryAfter = response.headers.get('retry-after');
+            const delay = retryAfter ? parseInt(retryAfter) * 1000 : fallbackRetryDelay * Math.pow(2, i);
+            console.warn(`LiteAPI Rate limit hit (429). Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+        }
+
         let errorText = '';
         try {
             errorText = await response.text();
@@ -42,8 +59,7 @@ export async function invokeEdgeFunction<T = any>(
         throw new Error(`Error invoking ${functionName}: ${friendly}${details && !isHtml ? ` — ${details}` : ''}`);
     }
 
-    const data = await response.json();
-    return data as T;
+    throw new Error(`Error invoking ${functionName}: Max retries exceeded`);
 }
 
 // Specific helper for liteapi-search

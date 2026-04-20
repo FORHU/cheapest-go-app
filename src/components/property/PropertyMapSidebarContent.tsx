@@ -15,6 +15,7 @@ import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel'
 import Image from 'next/image';
 import { useWeather } from '@/hooks/useWeather';
 import { WeatherWidget } from './WeatherWidget';
+import { isLocationInKorea } from '@/utils/geo';
 
 const GOOGLE_MAPS_SEARCH_URL = 'https://www.google.com/maps/search/?api=1';
 
@@ -366,6 +367,58 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                 setIsFetchingGems(true);
                 setNearbyGems([]); // Clear immediately so UI shows loading state
                 try {
+                    const inKorea = isLocationInKorea(coordinates.lat, coordinates.lng);
+
+                    if (inKorea && env.KAKAO_REST_API_KEY) {
+                        try {
+                            const searchQuery = selectedCategory === 'all' 
+                                ? '관광명소' 
+                                : selectedCategory === 'restaurant' 
+                                    ? '맛집' 
+                                    : selectedCategory === 'attraction' 
+                                        ? '명소' 
+                                        : selectedCategory === 'grocery' 
+                                            ? '마트' 
+                                            : selectedCategory === 'medical' 
+                                                ? '병원' 
+                                                : selectedCategory === 'transit' 
+                                                    ? '역' 
+                                                    : selectedCategory;
+
+                            const res = await fetch(`/api/kakao/search?query=${encodeURIComponent(searchQuery)}&x=${coordinates.lng}&y=${coordinates.lat}&radius=5000`, { signal });
+                            const data = await res.json();
+                            
+                            if (data.documents) {
+                                const kakaoGems = data.documents.map((p: any) => {
+                                    const lng = parseFloat(p.x);
+                                    const lat = parseFloat(p.y);
+                                    const cat = (p.category_name || '').split(' > ').pop() || 'Attraction';
+                                    
+                                    return {
+                                        type: 'Feature',
+                                        geometry: { type: 'Point', coordinates: [lng, lat] },
+                                        properties: {
+                                            name: p.place_name,
+                                            category: cat,
+                                            icon: (cat.includes('식당') || cat.includes('카페') || cat.includes('음식점')) ? Utensils : (cat.includes('공원') || cat.includes('산')) ? Trees : Landmark,
+                                            imageUrl: getMapboxPoiImage(p.place_name, lat, lng),
+                                            address: p.road_address_name || p.address_name,
+                                            phone: p.phone,
+                                            externalUrl: p.place_url,
+                                            isStub: false, // Kakao data is already detailed
+                                            isKakao: true
+                                        }
+                                    };
+                                });
+                                setNearbyGems(kakaoGems);
+                                setIsFetchingGems(false);
+                                return;
+                            }
+                        } catch (err) {
+                            console.error('Kakao fallback failed, trying Mapbox:', err);
+                        }
+                    }
+
                     const getSearchCategories = (id: string) => {
                         switch (id) {
                             case 'all': return ['tourism', 'park', 'restaurant', 'museum'];

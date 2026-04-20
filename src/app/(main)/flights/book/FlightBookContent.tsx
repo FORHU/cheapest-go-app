@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage } from 'lucide-react';
+import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage, Sparkles } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
@@ -151,6 +151,7 @@ export default function FlightBookContent() {
         clientSecret,
         setStep,
         pollForBooking,
+        setErrorMsg,
     } = useFlightBooking();
 
     const [bagsOpen, setBagsOpen] = React.useState(false);

@@ -18,11 +18,22 @@ import LocationSection from '@/components/property/LocationSectionDynamic';
 
 export async function generateMetadata({
     params,
+    searchParams
 }: {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
     const { id } = await params;
-    const { property, fetchedDetails } = await fetchPropertyData(id, {});
+    const searchParamsResult = await searchParams;
+    const { property, fetchedDetails } = await fetchPropertyData(id, {
+        offerId: searchParamsResult.offerId as string,
+        checkIn: searchParamsResult.checkIn as string,
+        checkOut: searchParamsResult.checkOut as string,
+        adults: searchParamsResult.adults as string,
+        children: searchParamsResult.children as string,
+        rooms: searchParamsResult.rooms as string,
+        currency: searchParamsResult.currency as string,
+    });
     if (!property) return {};
 
     const city = fetchedDetails?.city || fetchedDetails?.details?.city || '';
