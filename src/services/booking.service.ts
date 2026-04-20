@@ -126,7 +126,7 @@ export interface BookingRecord {
   holder_first_name: string;
   holder_last_name: string;
   holder_email: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'cancelled_refunded' | 'cancelled_refund_failed';
   special_requests?: string;
   created_at: string;
   updated_at: string;

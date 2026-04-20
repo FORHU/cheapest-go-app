@@ -63,6 +63,22 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Booking not found' }, { status: 404 });
         }
 
+        // ── PI ID recovery for legacy bookings ────────────────────────
+        // Older Duffel bookings may have payment_intent_id = null in flight_bookings
+        // because the booking_sessions.payment_intent_id column update failed silently.
+        // Recover it from the session so the Stripe refund can proceed correctly.
+        if (!booking.payment_intent_id && booking.session_id) {
+            const { data: sessionRow } = await supabase
+                .from('booking_sessions')
+                .select('payment_intent_id')
+                .eq('id', booking.session_id)
+                .maybeSingle();
+            if (sessionRow?.payment_intent_id) {
+                console.log(`[cancel-booking] Recovered payment_intent_id from session: ${sessionRow.payment_intent_id}`);
+                (booking as any).payment_intent_id = sessionRow.payment_intent_id;
+            }
+        }
+
         // ── Security: booking must belong to authenticated user ───────
         if (booking.user_id !== user.id) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
@@ -133,6 +149,8 @@ export async function POST(req: NextRequest) {
         let refundCurrency = booking.refund_currency ?? booking.supplier_currency ?? 'USD';
         let supplierError: string | undefined;
         let supplierCancellationId: string | undefined;
+        // FIX 1: declared here so it's in scope for the failure-path handler below
+        let requiresManualCancellation = false;
 
         if (booking.status === 'refund_failed') {
             // Airline already cancelled — reuse the stored refund amount and skip supplier call
@@ -156,10 +174,14 @@ export async function POST(req: NextRequest) {
                     supplierSuccess = result.success;
                     // SECURITY: Cap refund amount
                     refundAmount = Math.min(result.refundAmount ?? 0, booking.total_price);
-                    penaltyAmount = result.penaltyAmount ?? 0;
+                    // FIX 2: penaltyAmount was always 0 — derive from supplier total vs refund
+                    penaltyAmount = result.penaltyAmount ?? (booking.total_price - (result.refundAmount ?? 0));
                     refundCurrency = result.currency ?? 'USD';
                     supplierError = result.error;
                     supplierCancellationId = result.cancellationId;
+                    // FIX 1: capture requiresManualCancellation from result (avoids out-of-scope ReferenceError)
+                    requiresManualCancellation = result.requiresManualCancellation === true
+                        || /tkt-in-process|ticketed status|cancellation denied/i.test(supplierError ?? '');
                 }
             } catch (supplierErr: any) {
                 supplierError = supplierErr.message;
@@ -172,7 +194,7 @@ export async function POST(req: NextRequest) {
                 supplierError?.toLowerCase().includes('does not exist') ||
                 supplierError?.toLowerCase().includes('could not find'));
 
-            const requiresManualCancellation = /tkt-in-process|ticketed status|cancellation denied/i.test(supplierError ?? '');
+            // requiresManualCancellation is set above in the Duffel branch (FIX 1)
 
             const failLog = {
                 at: new Date().toISOString(),
@@ -272,6 +294,8 @@ export async function POST(req: NextRequest) {
         // refund_failed → refund_pending (admin retry via dashboard).
         let refunded = false;
         let stripeError: string | undefined;
+        // FIX 3: cache the PI so we don't fetch it twice (once for refund, once for merchant email)
+        let cachedPi: Awaited<ReturnType<typeof stripe.paymentIntents.retrieve>> | null = null;
 
         if (booking.payment_intent_id && refundAmount > 0) {
             try {
@@ -279,11 +303,16 @@ export async function POST(req: NextRequest) {
                 // booking.payment_currency can be null/wrong (e.g. Duffel GBP routes stored as null,
                 // defaulting to 'usd'). Using the PI directly is the only safe source of truth.
                 const pi = await stripe.paymentIntents.retrieve(booking.payment_intent_id!);
+                cachedPi = pi; // cache for merchant email block below
                 const piAmount = pi.amount;
                 const piCurrency = pi.currency.toLowerCase();
 
+                console.log(`[cancel-booking:stripe] PI retrieved: id=${booking.payment_intent_id} status=${pi.status} amount=${piAmount} currency=${piCurrency}`);
+                console.log(`[cancel-booking:stripe] Supplier refund: amount=${refundAmount} penalty=${penaltyAmount} currency=${refundCurrency}`);
+
                 // Mystifly uses manual capture — if PI is still uncaptured, cancel it instead of refunding
                 if (pi.status === 'requires_capture') {
+                    console.log(`[cancel-booking:stripe] PI is uncaptured (Mystifly pre-ticket) — cancelling PI instead of refunding`);
                     await stripe.paymentIntents.cancel(booking.payment_intent_id!, { cancellation_reason: 'requested_by_customer' });
                     refunded = true;
                     console.log(`[cancel-booking] Uncaptured PI cancelled (Mystifly pre-ticket): ${booking.payment_intent_id}`);
@@ -299,21 +328,31 @@ export async function POST(req: NextRequest) {
                 const supplierCurrency = refundCurrency.toLowerCase();
                 let refundAmountCents: number;
 
+                // Always use piAmount as the basis — it's what the customer paid (includes markup/fees).
                 if (supplierCurrency === piCurrency) {
-                    // Currencies match — use supplier amount directly, capped at PI amount
-                    refundAmountCents = Math.min(Math.round(refundAmount * 100), piAmount);
-                } else {
-                    // Currency mismatch (e.g. Duffel refunds in USD, user paid in GBP/PHP).
-                    // Apply the supplier's penalty ratio (dimensionless) to the user's actual charge.
                     if (penaltyAmount > 0) {
                         const refundRatio = refundAmount / (refundAmount + penaltyAmount);
                         refundAmountCents = Math.round(piAmount * refundRatio);
+                        console.log(`[cancel-booking:stripe] Currencies match (${piCurrency}), penalty ratio=${refundRatio.toFixed(4)} → refundAmountCents=${refundAmountCents}`);
                     } else {
-                        refundAmountCents = piAmount; // full refund
+                        refundAmountCents = piAmount;
+                        console.log(`[cancel-booking:stripe] Currencies match (${piCurrency}), no penalty → full PI refund: refundAmountCents=${refundAmountCents}`);
                     }
                     refundAmountCents = Math.min(refundAmountCents, piAmount);
-                    console.warn(`[cancel-booking] Currency mismatch (supplier=${supplierCurrency}, pi=${piCurrency}) — refunding ${refundAmountCents} of ${piAmount} ${piCurrency} cents`);
+                } else {
+                    console.log(`[cancel-booking:stripe] Currency mismatch: supplier=${supplierCurrency} pi=${piCurrency} — using penalty ratio`);
+                    if (penaltyAmount > 0) {
+                        const refundRatio = refundAmount / (refundAmount + penaltyAmount);
+                        refundAmountCents = Math.round(piAmount * refundRatio);
+                        console.log(`[cancel-booking:stripe] Ratio=${refundRatio.toFixed(4)} → refundAmountCents=${refundAmountCents}`);
+                    } else {
+                        refundAmountCents = piAmount;
+                        console.log(`[cancel-booking:stripe] No penalty → full refund: refundAmountCents=${refundAmountCents}`);
+                    }
+                    refundAmountCents = Math.min(refundAmountCents, piAmount);
                 }
+
+                console.log(`[cancel-booking:stripe] Creating refund: amount=${refundAmountCents} ${piCurrency} cents (idempotencyKey=refund-${bookingId})`);
 
                 const stripeRefund = await stripe.refunds.create({
                     payment_intent: booking.payment_intent_id,
@@ -323,6 +362,8 @@ export async function POST(req: NextRequest) {
                 }, {
                     idempotencyKey: `refund-${bookingId}`
                 });
+
+                console.log(`[cancel-booking:stripe] Refund result: id=${stripeRefund.id} status=${stripeRefund.status}`);
 
                 if (stripeRefund.status === 'failed') {
                     throw new Error(`Stripe refund created but failed: ${stripeRefund.id}`);
@@ -366,27 +407,60 @@ export async function POST(req: NextRequest) {
                     })
                     .eq('id', bookingId);
             }
-        } else if (refundAmount === 0) {
-            // Non-refundable ticket — still move to refunded (zero refund)
-            refunded = true;
+        } else {
+            // Non-refundable ticket — move to 'cancelled' status (NOT 'refunded' as that implies money back)
+            console.log(`[cancel-booking] Non-refundable ticket detected (refundAmount=0). Updating status to cancelled.`);
             await supabase
                 .from('flight_bookings')
-                .update({ status: 'refunded' })
+                .update({ 
+                    status: 'cancelled',
+                    cancellation_log: [...(booking.cancellation_log ?? []), logEntry, cancelLog]
+                })
                 .eq('id', bookingId);
         }
 
         const durationMs = Date.now() - startMs;
         console.log(`[cancel-booking] Done: bookingId=${bookingId}, refunded=${refunded}, amount=${refundAmount} ${refundCurrency} in ${durationMs}ms`);
 
+        // ── Merchant-Level Pricing for Email ─────────────────────────────
+        // We want the user to see the amount they actually paid ($71.26), not the supplier total ($65.98).
+        let merchantTotalPaid = booking.total_price;
+        let merchantRefundAmount = refundAmount;
+        let merchantCurrency = refundCurrency;
+
+        // Scale the refund amount by the same ratio as the supplier refund
+        // FIX 3: re-use cachedPi from the refund block to avoid a duplicate Stripe API call
+        if (booking.payment_intent_id) {
+            try {
+                const pi = cachedPi ?? await stripe.paymentIntents.retrieve(booking.payment_intent_id);
+                merchantTotalPaid = pi.amount / 100;
+                merchantCurrency = pi.currency.toUpperCase();
+
+                if (refundAmount > 0) {
+                    const supplierTotal = booking.total_price || 1;
+                    const ratio = refundAmount / supplierTotal;
+                    merchantRefundAmount = merchantTotalPaid * ratio;
+                } else {
+                    merchantRefundAmount = 0;
+                }
+            } catch (e) {
+                console.error('[cancel-booking] Failed to fetch PI for merchant pricing:', e);
+            }
+        }
+
+        // Calculate merchant-level penalty to ensure: TotalPaid - Penalty = Refund
+        const merchantPenaltyAmount = merchantTotalPaid - merchantRefundAmount;
+
         // ── Step 8: Send Emails ──────────────────────────────────────────
         // Fire email asynchronously (don't block the request)
         fireCancellationEmails(
             supabase,
             booking,
-            refundAmount,
-            penaltyAmount,
-            refundCurrency,
-            refunded ? 'processed' : undefined // Simplification: we'll use a placeholder or check log above, wait, let me just pass a flag
+            merchantRefundAmount,
+            merchantPenaltyAmount,
+            merchantCurrency,
+            refunded ? 'processed' : undefined,
+            merchantTotalPaid
         ).catch(err => console.error('[cancel-booking] email error:', err));
 
         return NextResponse.json({
@@ -416,6 +490,7 @@ interface CancelResult {
     cancellationId?: string;
     error?: string;
     providerMissing?: boolean;
+    requiresManualCancellation?: boolean;
 }
 
 async function cancelMystifly(booking: any): Promise<CancelResult> {
@@ -503,9 +578,43 @@ async function cancelDuffel(booking: any): Promise<CancelResult> {
 
     console.log(`[cancel-booking] Duffel cancel: orderId=${orderId}`);
 
+    if (!duffelToken) return { success: false, error: 'Duffel token missing' };
+
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s fetch timeout
+
+        // Step 0: Get Order Details to check available_actions
+        const orderRes = await fetch(`https://api.duffel.com/air/orders/${orderId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${duffelToken}`,
+                'Duffel-Version': 'v2',
+            },
+            signal: controller.signal,
+        });
+
+        if (!orderRes.ok) {
+            const orderErr = await orderRes.json();
+            const errMsg = orderErr?.errors?.[0]?.message ?? 'Failed to fetch order status';
+            if (orderRes.status === 404) {
+                return { success: true, refundAmount: 0, penaltyAmount: booking.total_price || 0, currency: booking.currency || 'USD', providerMissing: true, error: 'Supplier order not found' };
+            }
+            return { success: false, error: errMsg };
+        }
+
+        const orderData = await orderRes.json();
+        const availableActions = orderData?.data?.available_actions ?? [];
+        const isCancellable = availableActions.includes('cancel');
+
+        if (!isCancellable) {
+            console.warn(`[cancel-booking] Order ${orderId} not cancellable via API. Available actions:`, availableActions);
+            return { 
+                success: false, 
+                requiresManualCancellation: true, 
+                error: 'This booking cannot be cancelled automatically via the API. Please contact support to request a manual cancellation.' 
+            };
+        }
 
         // Step 1: Create a cancellation (get refund preview)
         const cancellationRes = await fetch(`https://api.duffel.com/air/order_cancellations`, {
@@ -523,39 +632,8 @@ async function cancelDuffel(booking: any): Promise<CancelResult> {
         const cancellationData = await cancellationRes.json();
         if (!cancellationRes.ok) {
             const duffelError = cancellationData?.errors?.[0]?.message ?? '';
-            const status = cancellationRes.status;
-
-            // Scenario 4 Fix: Handle 422 for non-refundable tickets
-            // If the ticket is strictly non-refundable, Duffel might throw 422 on cancellation attempts.
-            // We intercept this to allow an "internal cancellation" so the user can clear their dashboard.
-            const isNonRefundableError = status === 422 || duffelError.toLowerCase().includes('non-refundable') || duffelError.toLowerCase().includes('cannot be cancelled');
-
-            if (isNonRefundableError || status === 404) {
-                const isNotFound = status === 404 || duffelError.toLowerCase().includes('not found') || duffelError.toLowerCase().includes('does not exist');
-                console.warn(`[cancel-booking] Duffel ${status} error — ${isNotFound ? 'resource missing' : 'non-refundable'}:`, duffelError);
-                return {
-                    success: false, // Return false but with enough info for the handler to decide
-                    providerMissing: isNotFound,
-                    refundAmount: 0,
-                    penaltyAmount: booking.total_price || 0,
-                    currency: booking.currency || 'USD',
-                    error: isNotFound ? 'Supplier record not found. Cancelled internally.' : 'Ticket is non-refundable. Cancelled internally.'
-                };
-            }
-
-            // Sandbox/test fallback: if Duffel rejects due to invalid token or test order,
-            // treat as a successful mock cancellation so dev/staging flows complete.
-            const isAuthOrTestError = duffelError.toLowerCase().includes('access token')
-                || duffelError.toLowerCase().includes('not a valid')
-                || status === 401
-                || status === 403;
-
-            if (isAuthOrTestError) {
-                console.warn('[cancel-booking] Duffel auth/test error — sandbox mock cancellation:', duffelError);
-                return { success: true, refundAmount: 0, penaltyAmount: 0, currency: 'USD' };
-            }
-
-            return { success: false, error: duffelError || 'Duffel cancellation init failed' };
+            // If the quote creation fails despite 'cancel' being an available action, it's a real failure
+            return { success: false, error: duffelError || 'Duffel cancellation quote failed' };
         }
 
         const cancellationId = cancellationData?.data?.id;
@@ -570,6 +648,7 @@ async function cancelDuffel(booking: any): Promise<CancelResult> {
                 'Duffel-Version': 'v2',
                 'Content-Type': 'application/json',
             },
+            signal: controller.signal,
         });
 
         if (!confirmRes.ok) {
@@ -597,7 +676,8 @@ async function fireCancellationEmails(
     refundAmount: number,
     penaltyAmount: number,
     currency: string,
-    isRefunded?: string
+    isRefunded?: string,
+    merchantTotalPaid?: number 
 ) {
     try {
         const [{ data: session }, { data: segments }] = await Promise.all([
@@ -630,7 +710,7 @@ async function fireCancellationEmails(
             email,
             passengerName,
             segments: mappedSegments,
-            totalPaid: booking.total_price || 0,
+            totalPaid: merchantTotalPaid ?? booking.total_price ?? 0,
             refundAmount,
             penaltyAmount,
             currency,

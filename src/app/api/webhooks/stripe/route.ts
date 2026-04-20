@@ -171,11 +171,24 @@ export async function POST(req: NextRequest) {
         console.log(`[Webhook] Duffel payment succeeded. Session: ${bookingSessionId}`);
 
         try {
-            // Idempotent: create-booking returns existing booking if /confirm already ran
+            // FIX 3: Optimistic session lock — prevents double-booking if Stripe delivers
+            // the webhook twice concurrently before the dedup table write completes.
+            // Matches the pattern used in the Mystifly path.
+            await supabase
+                .from('booking_sessions')
+                .update({ status: 'payment_authorized' })
+                .eq('id', bookingSessionId)
+                .in('status', ['initiated', 'payment_initiated']);
+
+            // Idempotent: create-booking returns existing booking if /confirm already ran.
+            // Pass piId directly — DO NOT rely solely on booking_sessions.payment_intent_id,
+            // which can be null if the Step 3a update in /api/flights/book failed silently
+            // (e.g. column doesn't exist yet). This ensures flight_bookings always gets the
+            // PI ID so cancel-booking can issue Stripe refunds correctly.
             const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ sessionId: bookingSessionId }),
+                body: JSON.stringify({ sessionId: bookingSessionId, paymentIntentId: pi.id }),
             });
 
             const bookingData = await bookingRes.json();
@@ -300,6 +313,32 @@ export async function POST(req: NextRequest) {
             }
         } catch (err) {
             console.error('[Stripe Webhook] Error cancelling orphaned Duffel order:', err);
+        }
+    }
+
+    // ── Refund Resilience: update booking status when Stripe confirms refund ──
+    else if (event.type === 'charge.refunded') {
+        const charge = event.data.object as Stripe.Charge;
+        const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : (charge.payment_intent as any)?.id;
+        
+        if (piId) {
+            console.log(`[Stripe Webhook] Charge refunded for PI: ${piId}. Updating booking status.`);
+            const { data: updated, error: updateErr } = await supabase
+                .from('flight_bookings')
+                .update({ 
+                    status: 'refunded',
+                    // Note: we don't overwrite refund_amount here because it might be partial,
+                    // and the cancel-booking route already set the expected amount.
+                })
+                .eq('payment_intent_id', piId)
+                .in('status', ['refund_pending', 'cancel_requested', 'confirmed', 'ticketed', 'booked', 'pnr_created', 'awaiting_ticket', 'cancel_failed'])
+                .select('id');
+
+            if (updateErr) {
+                console.error('[Stripe Webhook] Failed to update booking to refunded:', updateErr.message);
+            } else if (updated && updated.length > 0) {
+                console.log(`[Stripe Webhook] Successfully marked ${updated.length} booking(s) as refunded.`);
+            }
         }
     }
 

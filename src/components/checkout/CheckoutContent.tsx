@@ -533,10 +533,10 @@ export function CheckoutContent() {
                                                     View existing booking
                                                 </button>
                                                 <button
-                                                    onClick={() => setDuplicateBooking(null)}
+                                                    onClick={() => router.push('/')}
                                                     className="flex-1 py-2 text-xs font-medium border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                                                 >
-                                                    Dismiss
+                                                    Keep existing booking
                                                 </button>
                                             </div>
                                         </div>

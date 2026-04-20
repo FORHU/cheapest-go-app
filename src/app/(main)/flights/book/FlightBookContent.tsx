@@ -126,7 +126,17 @@ function OfferExpiryBanner({ expiresAt }: { expiresAt: Date }) {
     );
 }
 
+const FLIGHT_BOOKING_STEPS = [
+    'Verifying payment...',
+    'Securing your seat...',
+    'Confirming with the airline...',
+    'Finalizing booking details...',
+] as const;
+
 export default function FlightBookContent() {
+    const [bookingStepIdx, setBookingStepIdx] = React.useState(0);
+    const bookingStepTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
     const {
         offer,
         offerExpiresAt,
@@ -156,6 +166,21 @@ export default function FlightBookContent() {
 
     const [bagsOpen, setBagsOpen] = React.useState(false);
     const [seatsOpen, setSeatsOpen] = React.useState(false);
+
+    useEffect(() => {
+        if (step === 'submitting') {
+            setBookingStepIdx(0);
+            bookingStepTimer.current = setInterval(() => {
+                setBookingStepIdx(i => Math.min(i + 1, FLIGHT_BOOKING_STEPS.length - 1));
+            }, 4000);
+        } else {
+            if (bookingStepTimer.current) {
+                clearInterval(bookingStepTimer.current);
+                bookingStepTimer.current = null;
+            }
+        }
+        return () => { if (bookingStepTimer.current) clearInterval(bookingStepTimer.current); };
+    }, [step]);
     const targetCurrency = useUserCurrency();
 
     // ─── Loading ─────────────────────────────────────────────────────
@@ -173,16 +198,26 @@ export default function FlightBookContent() {
     // We stay in 'submitting' until the PNR arrives, then flip to 'success'.
     if (step === 'submitting' && clientSecret) {
         return (
-            <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50/60 via-white/40 to-indigo-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-emerald-950/60">
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 animate-pulse">
-                        <Plane className="w-8 h-8 text-white" />
-                    </div>
+            <main className="min-h-screen flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
+                    <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
                     <div>
-                        <p className="text-lg font-bold text-slate-900 dark:text-white">Confirming Your Booking</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Fetching your PNR reference…</p>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Confirming your booking</h2>
+                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium animate-pulse min-h-[20px]">
+                            {FLIGHT_BOOKING_STEPS[bookingStepIdx]}
+                        </p>
                     </div>
-                    <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+                    <div className="w-full space-y-2">
+                        {FLIGHT_BOOKING_STEPS.map((label, i) => (
+                            <div key={label} className={`flex items-center gap-2 text-xs ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
+                                <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${i < bookingStepIdx ? 'bg-green-500 text-white' : i === bookingStepIdx ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                    {i < bookingStepIdx ? '✓' : i + 1}
+                                </span>
+                                {label}
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Please don&apos;t close this page</p>
                 </div>
             </main>
         );
