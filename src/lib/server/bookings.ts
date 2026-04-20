@@ -443,14 +443,42 @@ export async function cancelBooking(
 
       if (paymentIntentId) {
         try {
+          // Always retrieve the PI to get the exact charged amount and currency.
+          // booking.currency may differ from the PI currency if LiteAPI returned a native
+          // currency (e.g. USD) while the user paid in PHP. The PI is the only source of truth.
+          const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+          const piAmount = pi.amount;
+          const piCurrency = pi.currency.toLowerCase();
+          const calcCurrency = calculation.currency.toLowerCase();
+          let refundAmountCents: number;
+
+          if (calcCurrency === piCurrency) {
+            refundAmountCents = Math.min(Math.round(calculation.refundAmount * 100), piAmount);
+          } else {
+            // Currency mismatch — apply penalty ratio to the user's actual charge
+            if (calculation.penaltyAmount > 0) {
+              const refundRatio = calculation.refundAmount / (calculation.refundAmount + calculation.penaltyAmount);
+              refundAmountCents = Math.round(piAmount * refundRatio);
+            } else {
+              refundAmountCents = piAmount; // full refund
+            }
+            refundAmountCents = Math.min(refundAmountCents, piAmount);
+            console.warn(`[cancelBooking] Currency mismatch (calc=${calcCurrency}, pi=${piCurrency}) — refunding ${refundAmountCents} of ${piAmount} ${piCurrency} cents`);
+          }
+
           const stripeRefund = await stripe.refunds.create({
             payment_intent: paymentIntentId,
-            amount: Math.round(calculation.refundAmount * 100),
+            amount: refundAmountCents,
             reason: 'requested_by_customer',
             metadata: { bookingId, type: 'hotel_cancellation', penaltyAmount: String(calculation.penaltyAmount) },
           }, { idempotencyKey: `hotel-refund-${bookingId}` });
+
+          if (stripeRefund.status === 'failed') {
+            throw new Error(`Stripe refund created but failed: ${stripeRefund.id}`);
+          }
+
           stripeRefundId = stripeRefund.id;
-          console.log(`[cancelBooking] Stripe refund issued: ${stripeRefundId} — ${calculation.refundAmount} ${calculation.currency}`);
+          console.log(`[cancelBooking] Stripe refund issued: ${stripeRefundId} — ${refundAmountCents} ${piCurrency} cents`);
 
           // Fire refund receipt email (non-blocking)
           supabase

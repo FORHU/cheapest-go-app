@@ -279,8 +279,23 @@ export async function POST(req: NextRequest) {
                 // booking.payment_currency can be null/wrong (e.g. Duffel GBP routes stored as null,
                 // defaulting to 'usd'). Using the PI directly is the only safe source of truth.
                 const pi = await stripe.paymentIntents.retrieve(booking.payment_intent_id!);
-                const piAmount = pi.amount;           // cents in pi.currency
+                const piAmount = pi.amount;
                 const piCurrency = pi.currency.toLowerCase();
+
+                // Mystifly uses manual capture — if PI is still uncaptured, cancel it instead of refunding
+                if (pi.status === 'requires_capture') {
+                    await stripe.paymentIntents.cancel(booking.payment_intent_id!, { cancellation_reason: 'requested_by_customer' });
+                    refunded = true;
+                    console.log(`[cancel-booking] Uncaptured PI cancelled (Mystifly pre-ticket): ${booking.payment_intent_id}`);
+                    await supabase
+                        .from('flight_bookings')
+                        .update({
+                            status: 'refunded',
+                            cancellation_log: [...(booking.cancellation_log ?? []), logEntry, cancelLog, refundPendingLog,
+                                { at: new Date().toISOString(), oldStatus: 'refund_pending', newStatus: 'refunded', note: 'PI cancelled (uncaptured)' }],
+                        })
+                        .eq('id', bookingId);
+                } else {
                 const supplierCurrency = refundCurrency.toLowerCase();
                 let refundAmountCents: number;
 
@@ -294,8 +309,7 @@ export async function POST(req: NextRequest) {
                         const refundRatio = refundAmount / (refundAmount + penaltyAmount);
                         refundAmountCents = Math.round(piAmount * refundRatio);
                     } else {
-                        // No penalty — full refund
-                        refundAmountCents = piAmount;
+                        refundAmountCents = piAmount; // full refund
                     }
                     refundAmountCents = Math.min(refundAmountCents, piAmount);
                     console.warn(`[cancel-booking] Currency mismatch (supplier=${supplierCurrency}, pi=${piCurrency}) — refunding ${refundAmountCents} of ${piAmount} ${piCurrency} cents`);
@@ -309,6 +323,10 @@ export async function POST(req: NextRequest) {
                 }, {
                     idempotencyKey: `refund-${bookingId}`
                 });
+
+                if (stripeRefund.status === 'failed') {
+                    throw new Error(`Stripe refund created but failed: ${stripeRefund.id}`);
+                }
 
                 if (stripeRefund.status === 'succeeded' || stripeRefund.status === 'pending') {
                     refunded = true;
@@ -328,6 +346,7 @@ export async function POST(req: NextRequest) {
                         })
                         .eq('id', bookingId);
                 }
+                } // end else (PI was captured)
             } catch (stripeErr: any) {
                 stripeError = stripeErr.message;
                 console.error('[cancel-booking] Stripe refund failed — moving to refund_failed:', stripeError);
