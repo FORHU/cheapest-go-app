@@ -232,12 +232,14 @@ export function CheckoutContent() {
             return;
         }
 
-        // Use server-calculated final price if voucher applied
+        // Always charge in selectedCurrency using the converted totalPrice.
+        // priceData.total is LiteAPI's raw amount (may be in IDR, USD, etc.) —
+        // using it directly with selectedCurrency would mismatch currency + amount.
         const chargeAmount = appliedVoucher
             ? appliedVoucher.finalPrice
-            : (priceData?.total || totalPrice || 0);
+            : totalPrice;
 
-        if (chargeAmount <= 0) {
+        if (!chargeAmount || chargeAmount <= 0) {
             toast.error("Invalid booking price. Please retry.");
             return;
         }
@@ -311,7 +313,7 @@ export function CheckoutContent() {
 
             const finalBookingPrice = appliedVoucher
                 ? appliedVoucher.finalPrice
-                : (priceData?.total || totalPrice || 0);
+                : totalPrice;
 
             // Fire-and-forget post-booking tasks
             const postBookingTasks: Promise<unknown>[] = [

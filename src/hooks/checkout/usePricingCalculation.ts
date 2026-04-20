@@ -54,9 +54,9 @@ export function usePricingCalculation({
         const rawTotal = priceData?.total ?? (rawRoomPrice + rawTaxes);
 
         // The currency the raw prices are denominated in.
-        // LiteAPI prebook always returns prices in the original search currency,
-        // regardless of the currency parameter we send. Use the room's stored currency.
-        const sourceCurrency = displayRoom.currency || selectedCurrency;
+        // When prebook data is present, use priceData.currency (authoritative from LiteAPI).
+        // Fall back to the room's stored search currency, then selectedCurrency.
+        const sourceCurrency = priceData?.currency || displayRoom.currency || selectedCurrency;
 
         // Apply client-side conversion when the display currency differs
         const roomPrice = convertCurrency(rawRoomPrice, sourceCurrency, selectedCurrency);
