@@ -30,6 +30,7 @@ interface PolicyData {
         check_out: string;
         status: string;
         policy_snapshot_id: string | null;
+        policy_type: string | null;
     };
     snapshot: BookingPolicySnapshot | null;
     tiers: PolicyTier[];
@@ -55,7 +56,8 @@ async function fetchPolicyData(
       check_in,
       check_out,
       status,
-      policy_snapshot_id
+      policy_snapshot_id,
+      policy_type
     `)
         .eq('booking_id', bookingId)
         .single();
@@ -155,14 +157,46 @@ export async function calculateCancellation(
 ): Promise<CancellationResult> {
     const data = await fetchPolicyData(supabase, bookingId);
 
-    // Default fallback if no policy data found (safe default = non-refundable)
+    // Default fallback if no policy snapshot found — use booking.policy_type as secondary signal
     if (!data || !data.snapshot) {
+        const policyType = data?.booking.policy_type;
+        const totalPrice = Number(data?.booking.total_price ?? 0);
+        const currency = data?.booking.currency || 'PHP';
+
+        if (policyType === 'free_cancellation') {
+            return {
+                isCancellable: true,
+                refundable: true,
+                refundAmount: totalPrice,
+                penaltyAmount: 0,
+                currency,
+                refundType: 'full_refund',
+                message: 'Free cancellation applies.',
+                appliedTier: null,
+                policyUsed: 'free_cancellation',
+            };
+        }
+
+        if (policyType === 'non_refundable') {
+            return {
+                isCancellable: true,
+                refundable: false,
+                refundAmount: 0,
+                penaltyAmount: totalPrice,
+                currency,
+                refundType: 'no_refund',
+                message: 'This booking is non-refundable.',
+                appliedTier: null,
+                policyUsed: 'non_refundable',
+            };
+        }
+
         return {
             isCancellable: false,
             refundable: false,
             refundAmount: 0,
-            penaltyAmount: 0, // Unknown amount, technically check total price?
-            currency: data?.booking.currency || 'PHP',
+            penaltyAmount: 0,
+            currency,
             refundType: 'no_refund',
             message: 'No active policy found. Cancellation checks require manual review.',
             appliedTier: null,

@@ -23,6 +23,7 @@ export function useFlightBooking() {
     const [step, setStep] = useState<BookingStep>('form');
     const [errorMsg, setErrorMsg] = useState('');
     const [priceChangedData, setPriceChangedData] = useState<PriceChangedData | null>(null);
+    const [duplicateBookingData, setDuplicateBookingData] = useState<{ existingBookingId: string; route: string; departureDate: string } | null>(null);
     const [bookingResult, setBookingResult] = useState<{
         bookingId?: string;
         pnr?: string;
@@ -320,9 +321,17 @@ export function useFlightBooking() {
             const data = await res.json();
             if (!data.success) {
                 if (data.error === 'price_changed') {
-                    // Encode as a structured error so onError can extract the prices
                     const err = new Error('price_changed') as any;
                     err.priceChangedData = { oldPrice: data.oldPrice, newPrice: data.newPrice, currency: data.currency };
+                    throw err;
+                }
+                if (data.code === 'DUPLICATE_BOOKING') {
+                    const err = new Error('duplicate_booking') as any;
+                    err.duplicateData = {
+                        existingBookingId: data.existingBookingId,
+                        route: data.route,
+                        departureDate: data.departureDate,
+                    };
                     throw err;
                 }
                 throw new Error(data.error || 'Booking failed');
@@ -383,6 +392,9 @@ export function useFlightBooking() {
                 }
             } else if (error.message === 'price_changed' && error.priceChangedData) {
                 setPriceChangedData(error.priceChangedData);
+                setStep('form');
+            } else if (error.message === 'duplicate_booking' && error.duplicateData) {
+                setDuplicateBookingData(error.duplicateData);
                 setStep('form');
             } else {
                 setErrorMsg(error.message || 'Booking failed. Please try again.');
@@ -565,6 +577,8 @@ export function useFlightBooking() {
         setStep,
         errorMsg,
         priceChangedData,
+        duplicateBookingData,
+        dismissDuplicateWarning: () => setDuplicateBookingData(null),
         bookingResult,
         clientSecret,
         passengers,
