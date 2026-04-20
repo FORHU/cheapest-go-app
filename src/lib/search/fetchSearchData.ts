@@ -292,6 +292,7 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
         refundableTag,
         distance: hotel.distance || hotel.details?.distance_from_center || hotel.details?.distance || undefined,
         boardTypes: hotel.boardTypes || [],
+        city: cityName,
     } as Property;
 }
 

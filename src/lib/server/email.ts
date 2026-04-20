@@ -1243,3 +1243,163 @@ export async function sendFlightCancellationRefundEmail(
         return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
     }
 }
+
+// ═════════════════════════════════════════════════════════════════════
+//  PRICE ALERT EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendPriceAlertEmailParams {
+    email: string;
+    origin: string;
+    destination: string;
+    newPrice: number;
+    oldPrice: number | null;
+    currency: string;
+    cabin: string;
+    adults: number;
+    searchUrl: string;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  HOTEL REFUND RECEIPT EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendHotelRefundEmailParams {
+    bookingId: string;
+    email: string;
+    guestName: string;
+    hotelName: string;
+    roomName: string;
+    checkIn: string;
+    checkOut: string;
+    refundAmount: number;
+    currency: string;
+    stripeRefundId?: string;
+}
+
+export async function sendHotelRefundEmail(params: SendHotelRefundEmailParams): Promise<{ success: boolean; error?: string }> {
+    const { bookingId, email, guestName, hotelName, roomName, checkIn, checkOut, refundAmount, currency, stripeRefundId } = params;
+    if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
+
+    const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
+
+    const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Refund Confirmed</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="color:white;margin:0;font-size:28px;">✅ Refund Confirmed</h1>
+    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(hotelName)}</p>
+  </div>
+  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+    <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
+    <p style="margin:0 0 20px 0;">Your refund of <strong>${fmt(refundAmount)}</strong> for your cancelled reservation at <strong>${escapeHtml(hotelName)}</strong> has been successfully processed and is on its way back to your original payment method.</p>
+
+    <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
+      <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Refund Details</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-weight:600;font-family:monospace;">${escapeHtml(bookingId)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Property:</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(hotelName)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Room:</td><td style="padding:8px 0;">${escapeHtml(roomName)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Check-in:</td><td style="padding:8px 0;">${escapeHtml(checkIn)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Check-out:</td><td style="padding:8px 0;">${escapeHtml(checkOut)}</td></tr>
+        ${stripeRefundId ? `<tr><td style="padding:8px 0;color:#6b7280;">Refund Reference:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(stripeRefundId)}</td></tr>` : ''}
+        <tr style="border-top:1px solid #e5e7eb;"><td style="padding:12px 0 8px 0;color:#6b7280;font-weight:600;">Refund Amount:</td><td style="padding:12px 0 8px 0;font-weight:700;font-size:20px;color:#059669;">${fmt(refundAmount)}</td></tr>
+      </table>
+    </div>
+
+    <div style="background:#f0fdf4;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #22c55e;">
+      <p style="margin:0;color:#15803d;font-size:14px;">
+        <strong>When will I see it?</strong><br>
+        Refunds typically appear within <strong>3–5 business days</strong> for credit cards, or up to 10 business days for debit cards. If you haven't received it after 10 days, contact your bank with the Refund Reference above.
+      </p>
+    </div>
+
+    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing CheapestGo. We hope to see you again soon.</p>
+  </div>
+  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+  </div>
+</body>
+</html>`;
+
+    const resendApiKey = env.RESEND_API_KEY;
+    const subject = `Refund Confirmed – ${fmt(refundAmount)} for ${hotelName}`;
+
+    try {
+        if (resendApiKey) {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from: 'CheapestGo <no-reply@mail.cheapestgo.com>', to: [email], subject, html: emailHtml }),
+            });
+            const text = await res.text();
+            if (res.ok) {
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'refund', status: 'sent' });
+                return { success: true };
+            }
+            await logEmail({ bookingId, recipient: email, subject, emailType: 'refund', status: 'failed', errorMessage: text, htmlBody: emailHtml });
+            return { success: false, error: `Resend ${res.status}: ${text}` };
+        }
+        await logEmail({ bookingId, recipient: email, subject, emailType: 'refund', status: 'queued', htmlBody: emailHtml });
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendHotelRefundEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  PRICE ALERT EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Promise<{ success: boolean; error?: string }> {
+    const { email, origin, destination, newPrice, oldPrice, currency, cabin, adults, searchUrl } = params;
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+
+    const formattedNew = new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(newPrice);
+    const formattedOld = oldPrice ? new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(oldPrice) : null;
+    const drop = oldPrice ? Math.round(((oldPrice - newPrice) / oldPrice) * 100) : null;
+    const cabinLabel = cabin.replace('_', ' ');
+
+    const emailHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+<div style="background:linear-gradient(135deg,#10b981,#059669);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+  <h1 style="color:white;margin:0;font-size:24px;">Price Drop Alert!</h1>
+  <p style="color:rgba(255,255,255,0.9);margin:8px 0 0">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</p>
+</div>
+<div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+  <p style="margin:0 0 20px">Great news! The price for your tracked route has ${drop && drop > 0 ? `dropped by <strong>${drop}%</strong>` : 'changed'}.</p>
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin:0 0 20px;text-align:center;">
+    ${formattedOld ? `<p style="margin:0 0 4px;font-size:13px;color:#6b7280;text-decoration:line-through;">${escapeHtml(formattedOld)}</p>` : ''}
+    <p style="margin:0;font-size:32px;font-weight:800;color:#059669;">${escapeHtml(formattedNew)}</p>
+    <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">${adults} adult${adults > 1 ? 's' : ''} &middot; ${escapeHtml(cabinLabel)}</p>
+  </div>
+  <a href="${escapeHtml(searchUrl)}" style="display:block;background:#059669;color:white;text-decoration:none;text-align:center;padding:14px 24px;border-radius:8px;font-weight:700;font-size:16px;margin:0 0 20px">Book Now</a>
+  <p style="font-size:12px;color:#9ca3af;text-align:center;margin:0">Prices change frequently. This fare may not be available when you search.</p>
+</div>
+</body></html>`;
+
+    if (!RESEND_API_KEY) return { success: false, error: 'RESEND_API_KEY not configured' };
+
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from: 'CheapestGo Alerts <alerts@cheapestgo.com>',
+                to: email,
+                subject: `Price drop: ${origin} \u2192 ${destination} now ${formattedNew}`,
+                html: emailHtml,
+            }),
+        });
+        if (!res.ok) {
+            const err = await res.text();
+            return { success: false, error: err };
+        }
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
