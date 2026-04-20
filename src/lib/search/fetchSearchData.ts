@@ -22,6 +22,7 @@ export interface SearchParams {
     countryCode?: string;
     currency?: string;
     placeId?: string;
+    destinationCode?: string;
     hotelName?: string;
     starRating?: string;
     minRating?: string;
@@ -42,6 +43,7 @@ export interface SearchQueryParams {
     cityName: string;
     countryCode: string;
     placeId?: string;
+    destinationCode?: string;
     query: string;
     hotelName?: string;
     starRating?: number[];
@@ -165,6 +167,7 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
     }
 
     const placeId = typeof params.placeId === 'string' ? params.placeId : undefined;
+    const destinationCode = typeof params.destinationCode === 'string' ? params.destinationCode : undefined;
 
     // Currency comes from the user's locale preference (URL param), NOT the destination
     const currency = typeof params.currency === 'string' && params.currency
@@ -183,6 +186,7 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         // Send countryCode even if placeId exists. LiteAPI sometimes needs it for smaller cities
         countryCode: countryCode,
         placeId,
+        destinationCode,
         query: destination,
     };
 
@@ -301,15 +305,8 @@ const getCachedSearchProperties = unstable_cache(
 
         if (data?.data && Array.isArray(data.data)) {
             const results = data.data
-                .map((hotel: any) =>
-                    transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency)
-                )
-                .filter(
-                    (prop: Property) =>
-                        prop.name &&
-                        !prop.name.match(/^Hotel\s+lp[a-z0-9]+$/i) &&
-                        !prop.name.match(/^lp[a-z0-9]+$/i)
-                );
+                .map((hotel: any) => transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency))
+                .filter((prop: Property) => prop.name && prop.price > 0);
 
             // Throw on empty so unstable_cache does not store the empty result —
             // next request retries live instead of serving a stale cache miss.
@@ -332,7 +329,8 @@ const getCachedSearchProperties = unstable_cache(
 export async function fetchSearchProperties(params: SearchParams): Promise<Property[]> {
     const queryParams = buildSearchQueryParams(params);
     try {
-        return await getCachedSearchProperties(queryParams);
+        const result = await getCachedSearchProperties(queryParams);
+        return result;
     } catch (e) {
         if (e instanceof Error && e.message !== 'NO_RESULTS') {
             console.error("Failed to fetch properties:", e);

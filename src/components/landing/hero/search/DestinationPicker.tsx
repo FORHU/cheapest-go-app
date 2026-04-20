@@ -51,7 +51,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
             return result.success ? result.data : [];
         },
         enabled: debouncedQuery.length >= 2,
-        staleTime: 1000 * 60 * 5,
+        staleTime: 0,
         placeholderData: (prev) => prev,
     });
 
@@ -177,7 +177,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                         {query && (
                             <>
                                 <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[10px] font-mono font-medium uppercase text-slate-500 tracking-wider`}>
-                                    LiteAPI Results
+                                    Destinations
                                 </div>
                                 {suggestions.length > 0 ? (
                                     suggestions.map((item, i) => (

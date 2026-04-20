@@ -10,12 +10,19 @@ import { createClient } from '@/utils/supabase/client';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
+export interface PriceChangedData {
+    oldPrice: number;
+    newPrice: number;
+    currency: string;
+}
+
 export function useFlightBooking() {
     const router = useRouter();
     const [offer, setOffer] = useState<FlightOffer | null>(null);
     const [offerExpiresAt, setOfferExpiresAt] = useState<Date | null>(null);
     const [step, setStep] = useState<BookingStep>('form');
     const [errorMsg, setErrorMsg] = useState('');
+    const [priceChangedData, setPriceChangedData] = useState<PriceChangedData | null>(null);
     const [bookingResult, setBookingResult] = useState<{
         bookingId?: string;
         pnr?: string;
@@ -306,11 +313,18 @@ export function useFlightBooking() {
                     farePolicy: offer.farePolicy,
                     ...(seatServiceIds.length > 0 ? { seatServiceIds, seatTotal } : {}),
                     ...(bagServiceIds.length > 0 ? { bagServiceIds, bagTotal } : {}),
+                    ...((offer as any)._confirmedPrice !== undefined ? { confirmedPrice: (offer as any)._confirmedPrice } : {}),
                 }),
             });
 
             const data = await res.json();
             if (!data.success) {
+                if (data.error === 'price_changed') {
+                    // Encode as a structured error so onError can extract the prices
+                    const err = new Error('price_changed') as any;
+                    err.priceChangedData = { oldPrice: data.oldPrice, newPrice: data.newPrice, currency: data.currency };
+                    throw err;
+                }
                 throw new Error(data.error || 'Booking failed');
             }
 
@@ -357,27 +371,23 @@ export function useFlightBooking() {
             }
             sessionStorage.removeItem('selectedFlight');
         },
-        onError: (error) => {
+        onError: (error: any) => {
             if (error.message === "unauthenticated") {
                 setErrorMsg("You need to sign in to complete your booking.");
-                setStep('form'); // CRITICAL FIX: reset loading state
+                setStep('form');
                 if (typeof window !== 'undefined') {
-                    // Import the store and open the modal
                     import('@/stores/authStore').then(({ useAuthStore }) => {
                         const redirectPath = window.location.pathname + window.location.search;
                         useAuthStore.getState().openAuthModal('email', redirectPath);
                     });
                 }
+            } else if (error.message === 'price_changed' && error.priceChangedData) {
+                setPriceChangedData(error.priceChangedData);
+                setStep('form');
             } else {
                 setErrorMsg(error.message || 'Booking failed. Please try again.');
                 setStep('error');
-                // Keep the same idempotency key for the same offer retry
-                if (error?.message === "unauthenticated") {
-                    // do nothing to idempotency, they just need to log in
-                } else {
-                    // If it failed for other reasons, generate a new key for next attempt
-                    idempotencyKeyRef.current = generateId();
-                }
+                idempotencyKeyRef.current = generateId();
             }
         }
     });
@@ -493,6 +503,18 @@ export function useFlightBooking() {
     }, []);
 
 
+    const confirmPriceChange = () => {
+        if (!offer || !priceChangedData) return;
+        setPriceChangedData(null);
+        // Re-submit with the confirmed new price baked into the offer so the server skips the check
+        const confirmedOffer = {
+            ...offer,
+            price: { ...offer.price, total: priceChangedData.newPrice },
+            _confirmedPrice: priceChangedData.newPrice,
+        } as FlightOffer;
+        bookMutation.mutate({ offer: confirmedOffer, passengers, contact, seats: selectedSeats, bags: selectedBags });
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!offer) return;
@@ -542,6 +564,7 @@ export function useFlightBooking() {
         step,
         setStep,
         errorMsg,
+        priceChangedData,
         bookingResult,
         clientSecret,
         passengers,
@@ -551,6 +574,7 @@ export function useFlightBooking() {
         removePassenger,
         setContact,
         handleSubmit,
+        confirmPriceChange,
         selectedSeats,
         setSelectedSeats,
         selectedBags,

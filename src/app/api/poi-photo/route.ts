@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/utils/env';
+import { rateLimit } from '@/lib/server/rate-limit';
 
 /**
  * POI Photo Proxy — fetches REAL venue photos (interior/exterior).
@@ -222,6 +223,12 @@ async function tryFoursquare(name: string, lat: string, lng: string): Promise<st
 
 
 export async function GET(req: NextRequest) {
+    // 30 requests per minute per IP — prevents Foursquare/Google quota exhaustion
+    const rl = rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'poi-photo' });
+    if (!rl.success) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
     const { searchParams } = new URL(req.url);
     const name = searchParams.get('name') || '';
     const lat = searchParams.get('lat') || '0';

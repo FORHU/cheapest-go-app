@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { confirmAndSaveBooking } from '@/lib/server/bookings';
 import { stripe } from '@/lib/stripe/server';
@@ -6,12 +7,16 @@ import { sendBookingConfirmationEmail } from '@/lib/server/email';
 import { revalidatePath } from 'next/cache';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { safeError } from '@/lib/server/safe-error';
+import { checkCsrf } from '@/lib/server/csrf';
 import { bookingConfirmSchema } from '@/lib/schemas/booking';
 
 export const dynamic = 'force-dynamic';
 
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    const csrfError = checkCsrf(req);
+    if (csrfError) return csrfError;
+
     // 5 booking confirmations per minute per IP
     const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-confirm' });
     if (!rl.success) {
@@ -67,18 +72,34 @@ export async function POST(req: Request) {
                 'booking'
             );
 
-            // Send confirmation email to guest (fire-and-forget, non-blocking)
-            sendBookingConfirmationEmail({
-                bookingId: result.data?.bookingId || '',
-                email: body.holder?.email || user.email || '',
-                guestName: `${body.holder?.firstName || ''} ${body.holder?.lastName || ''}`.trim(),
-                hotelName: body.propertyName || '',
-                roomName: body.roomName || '',
-                checkIn: body.checkIn || '',
-                checkOut: body.checkOut || '',
-                totalPrice: result.data?.totalPrice || 0,
-                currency: result.data?.currency || body.currency || 'PHP',
-            }).catch(e => console.error('[confirm] Email error:', e));
+            // Send confirmation email with retry (max 3 attempts, exponential backoff)
+            const sendEmailWithRetry = async (attempt = 1): Promise<void> => {
+                try {
+                    await sendBookingConfirmationEmail({
+                        bookingId: result.data?.bookingId || '',
+                        email: body.holder?.email || user.email || '',
+                        guestName: `${body.holder?.firstName || ''} ${body.holder?.lastName || ''}`.trim(),
+                        hotelName: body.propertyName || '',
+                        roomName: body.roomName || '',
+                        checkIn: body.checkIn || '',
+                        checkOut: body.checkOut || '',
+                        totalPrice: result.data?.totalPrice || 0,
+                        currency: result.data?.currency || body.currency || 'PHP',
+                    });
+                } catch (e) {
+                    if (attempt < 3) {
+                        await new Promise(r => setTimeout(r, 1000 * attempt));
+                        return sendEmailWithRetry(attempt + 1);
+                    }
+                    console.error(`[confirm] Email failed after ${attempt} attempts:`, e);
+                    createNotification(
+                        'Email Delivery Failed',
+                        `Confirmation email failed for booking ${result.data?.bookingId || ''} (${body.holder?.email || user.email}). Manual resend required.`,
+                        'system'
+                    );
+                }
+            };
+            sendEmailWithRetry();
 
             // Structured financial event log for hotel payment
             if (body.paymentIntentId) {

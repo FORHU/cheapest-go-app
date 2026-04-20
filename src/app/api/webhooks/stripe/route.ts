@@ -231,6 +231,78 @@ export async function POST(req: NextRequest) {
         }
     }
 
+    // ── Duffel: cancel orphaned pre-order when payment fails ────────────────
+    else if (
+        event.type === 'payment_intent.payment_failed' ||
+        event.type === 'payment_intent.canceled'
+    ) {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const { bookingSessionId, duffelOrderId, provider } = pi.metadata ?? {};
+
+        if (provider !== 'duffel' || !duffelOrderId) {
+            return NextResponse.json({ received: true });
+        }
+
+        console.log(`[Stripe Webhook] Duffel payment failed/cancelled — cancelling pre-order ${duffelOrderId}`);
+
+        try {
+            const duffelToken = process.env.DUFFEL_TOKEN;
+            if (!duffelToken) {
+                console.error('[Stripe Webhook] DUFFEL_TOKEN not set — cannot cancel orphaned order');
+                return NextResponse.json({ received: true });
+            }
+
+            // Step 1: Create a cancellation
+            const cancelRes = await fetch('https://api.duffel.com/air/order_cancellations', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${duffelToken}`,
+                    'Duffel-Version': 'v2',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data: { order_id: duffelOrderId } }),
+            });
+
+            if (!cancelRes.ok) {
+                const errData = await cancelRes.json().catch(() => ({}));
+                console.warn(`[Stripe Webhook] Duffel cancellation init failed (${cancelRes.status}):`, errData?.errors?.[0]?.message);
+            } else {
+                const cancelData = await cancelRes.json();
+                const cancellationId = cancelData?.data?.id;
+
+                // Step 2: Confirm the cancellation
+                if (cancellationId) {
+                    const confirmRes = await fetch(
+                        `https://api.duffel.com/air/order_cancellations/${cancellationId}/actions/confirm`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${duffelToken}`,
+                                'Duffel-Version': 'v2',
+                                'Content-Type': 'application/json',
+                            },
+                        }
+                    );
+                    console.log(confirmRes.ok
+                        ? `[Stripe Webhook] Orphaned Duffel order ${duffelOrderId} cancelled successfully`
+                        : `[Stripe Webhook] Duffel cancellation confirm failed (${confirmRes.status})`
+                    );
+                }
+            }
+
+            // Mark the booking session as payment_failed
+            if (bookingSessionId) {
+                await supabase
+                    .from('booking_sessions')
+                    .update({ status: 'payment_failed' })
+                    .eq('id', bookingSessionId)
+                    .in('status', ['payment_initiated', 'initiated']);
+            }
+        } catch (err) {
+            console.error('[Stripe Webhook] Error cancelling orphaned Duffel order:', err);
+        }
+    }
+
     else {
         console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }

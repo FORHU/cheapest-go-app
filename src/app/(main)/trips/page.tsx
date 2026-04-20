@@ -1,4 +1,10 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
+
+export const metadata: Metadata = {
+  title: 'My Trips | CheapestGo',
+  robots: { index: false, follow: false },
+};
 import { redirect } from 'next/navigation';
 import { fetchTripsData } from '@/lib/trips';
 import { TripsContent } from '@/components/trips';

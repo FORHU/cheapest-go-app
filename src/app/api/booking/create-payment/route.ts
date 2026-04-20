@@ -34,15 +34,25 @@ export async function POST(req: NextRequest) {
             bundleFlightId?: string;
         };
 
+        // Supported currencies — prevents charging in unsupported/invalid currencies
+        const SUPPORTED_CURRENCIES = new Set([
+            'usd', 'eur', 'gbp', 'aud', 'cad', 'sgd', 'hkd', 'jpy', 'krw',
+            'thb', 'php', 'myr', 'idr', 'inr', 'aed', 'nzd', 'chf', 'sek',
+            'nok', 'dkk', 'brl', 'mxn', 'zar', 'try', 'pln', 'czk', 'huf',
+        ]);
+
         // Validate
         if (!prebookId) {
             return NextResponse.json({ success: false, error: 'prebookId is required' }, { status: 400 });
         }
-        if (!amount || amount <= 0) {
-            return NextResponse.json({ success: false, error: 'Valid amount is required' }, { status: 400 });
+        if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 1_000_000) {
+            return NextResponse.json({ success: false, error: 'Valid amount is required (must be between 0 and 1,000,000)' }, { status: 400 });
         }
         if (!currency) {
             return NextResponse.json({ success: false, error: 'Currency is required' }, { status: 400 });
+        }
+        if (!SUPPORTED_CURRENCIES.has(currency.toLowerCase())) {
+            return NextResponse.json({ success: false, error: `Unsupported currency: ${currency}` }, { status: 400 });
         }
 
         // Apply platform markup — bundle rate (12%) when paired with a flight, standalone rate (15%) otherwise.
@@ -80,9 +90,9 @@ export async function POST(req: NextRequest) {
         });
     } catch (err: any) {
         console.error('[create-payment] Error:', err);
-        return NextResponse.json(
-            { success: false, error: err.message || 'Failed to create payment' },
-            { status: 500 }
-        );
+        const message = process.env.NODE_ENV === 'production'
+            ? 'Failed to create payment. Please try again.'
+            : (err.message || 'Failed to create payment');
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 }

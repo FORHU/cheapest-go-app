@@ -1,9 +1,36 @@
+import type { Metadata } from 'next';
 import Link from "next/link";
 import { SearchFetcher } from "@/components/flights/search-fetcher";
 import { SectionHeader } from "@/components/ui";
+import BackButton from "@/components/common/BackButton";
 import type { CabinClass } from "@/types/flights";
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+    searchParams,
+}: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+    const sp = await searchParams;
+    const origin = (sp.origin as string) || (sp.origin0 as string) || '';
+    const destination = (sp.destination as string) || (sp.dest0 as string) || '';
+
+    const title = origin && destination
+        ? `Flights ${origin} → ${destination} | CheapestGo`
+        : 'Flight Search Results | CheapestGo';
+
+    const description = origin && destination
+        ? `Compare and book the cheapest flights from ${origin} to ${destination}. Find the best deals on CheapestGo.`
+        : 'Compare and book cheap flights worldwide. Find the best deals on CheapestGo.';
+
+    return {
+        title,
+        description,
+        robots: { index: false, follow: false },
+        alternates: { canonical: '/flights/search' },
+    };
+}
 
 /**
  * SearchPage — Server Component (fast shell).
@@ -57,12 +84,15 @@ export default async function SearchPage({
         .join(' · ');
 
     return (
-        <main className="min-h-screen py-12 px-4 md:py-20 overflow-x-hidden">
+        <main className="min-h-screen pt-4 pb-12 px-4 md:pt-6 md:pb-20 overflow-x-hidden">
             <div className="max-w-7xl mx-auto space-y-12">
-                <SectionHeader
-                    title={`${origin} → ${destination}`}
-                    subtitle={subtitle}
-                />
+                <div>
+                    <BackButton href="/" bareIcon className="mb-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shadow-sm p-0!" />
+                    <SectionHeader
+                        title={`${origin} → ${destination}`}
+                        subtitle={subtitle}
+                    />
+                </div>
 
                 {/*
                   * SearchFetcher is a client component.

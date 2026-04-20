@@ -204,12 +204,15 @@ export const useSearchModule = (): UseSearchModuleReturn => {
 
         // Destination
         params.set('destination', destValue!);
-        // Include placeId and countryCode for accurate API results
         if (state.destination?.countryCode) {
             params.set('countryCode', state.destination.countryCode);
         }
         if (state.destination?.id) {
             params.set('placeId', state.destination.id);
+        }
+        // TravelgateX destination code (from autocomplete)
+        if (state.destination?.code) {
+            params.set('destinationCode', state.destination.code);
         }
 
         // Currency: based on user's locale (from store), not the destination

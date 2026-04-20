@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "travelgate-docs": {
+      "type": "http",
+      "url": "https://travelgate.mcp.kapa.ai"
+    }
+  }
+}
