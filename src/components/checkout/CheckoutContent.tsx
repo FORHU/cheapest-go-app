@@ -146,13 +146,20 @@ export function CheckoutContent() {
     const searchParams = useSearchParams();
     // Present when user arrived from the post-flight-booking bundle upsell → triggers 12% bundle rate
     const bundleFlightIdFromUrl = searchParams.get('bundleFlightId') || undefined;
+    
+    // Save locally so it survives re-renders after we wipe sessionStorage on success
+    const [bundleFlightId, setBundleFlightId] = useState<string | undefined>(undefined);
+
     // Persist to sessionStorage so it survives Stripe redirect (URL params are lost after payment)
     useEffect(() => {
+        const stored = typeof window !== 'undefined' ? sessionStorage.getItem('bundleFlightId') : undefined;
         if (bundleFlightIdFromUrl) {
             sessionStorage.setItem('bundleFlightId', bundleFlightIdFromUrl);
+            setBundleFlightId(bundleFlightIdFromUrl);
+        } else if (stored) {
+            setBundleFlightId(stored);
         }
     }, [bundleFlightIdFromUrl]);
-    const bundleFlightId = bundleFlightIdFromUrl || (typeof window !== 'undefined' ? sessionStorage.getItem('bundleFlightId') ?? undefined : undefined);
 
     useEffect(() => {
         // Sync currency from URL whenever it changes
@@ -394,8 +401,14 @@ export function CheckoutContent() {
     const displayTotalPrice = appliedVoucher ? appliedVoucher.finalPrice : totalPrice;
 
     // Success screen
+    useEffect(() => {
+        if (isSuccess && typeof window !== 'undefined') {
+            sessionStorage.removeItem('bundleFlightId');
+            sessionStorage.setItem('hasAlreadyBookedHotel', 'true');
+        }
+    }, [isSuccess]);
+
     if (isSuccess) {
-        sessionStorage.removeItem('bundleFlightId');
         // savings = 3% of base price; base = bundlePrice / 1.12, so savings = totalPrice * 3/112
         const bundleSavings = bundleFlightId && totalPrice ? Math.round(totalPrice * 3 / 112 * 100) / 100 : undefined;
         return (

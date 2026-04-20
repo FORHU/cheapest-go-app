@@ -8,6 +8,8 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
+import { parseDuffelOffer } from '@/lib/server/flights/providers/duffel';
+import { normalizedToFlightOffer } from '@/utils/flight-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -440,6 +442,21 @@ export async function POST(req: NextRequest) {
                     const priceDelta = Math.abs(newPriceNum - oldPriceNum);
 
                     console.log(`[/book] Auto-refresh succeeded: ${activeOffer.id} → ${freshOffer.id} | price: ${activeOffer.total_amount} → ${freshOffer.total_amount} | carrier: ${targetCarrier}`);
+
+                    // If the user had seat or bag selections, they are NO LONGER VALID on the refreshed offer.
+                    // We must return the new offer to the client so the client can swap its state, clear
+                    // the chosen seats/bags, and ask the user to re-select.
+                    const hadAncillaries = (seatServiceIds && seatServiceIds.length > 0) || (bagServiceIds && bagServiceIds.length > 0);
+                    if (hadAncillaries) {
+                        const parsedFreshOffer = parseDuffelOffer(freshOffer);
+                        const tripType = parsedFreshOffer.segments?.some((s: any) => s.segmentIndex > 0) ? 'round-trip' : 'one-way';
+                        const flightOffer = normalizedToFlightOffer(parsedFreshOffer, tripType);
+                        return NextResponse.json({
+                            success: false,
+                            error: 'offer_replaced',
+                            newOffer: flightOffer,
+                        }, { status: 409 });
+                    }
 
                     // If the price changed by more than $0.50, require explicit user confirmation
                     // rather than silently charging a different amount.

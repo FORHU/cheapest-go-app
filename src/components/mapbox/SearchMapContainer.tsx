@@ -14,12 +14,17 @@ import { Source, Layer, Marker } from 'react-map-gl/mapbox';
 import { PoiPopup } from './components/PoiPopup';
 import { MapMarker } from '../map/MapMarker';
 import { MapSearchOverlay } from './components/MapSearchOverlay';
-import { Layers } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency } from '@/lib/currency';
 import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
-import { useUserCurrency } from '@/stores/searchStore';
-import { convertCurrency } from '@/lib/currency';
+import { Layers } from 'lucide-react';
+
+const getMapboxPoiImage = (name: string, lat: number, lng: number) => {
+    return `/api/poi-photo?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}`;
+};
 
 interface SearchMapContainerProps {
     properties: MappableProperty[];
@@ -45,6 +50,7 @@ export const SearchMapContainer = React.memo(({
 
     // 2. Data Preparation
     const { mappableProperties, geoJsonData, shouldCluster } = useMapMarkers(properties);
+    const router = useRouter();
 
     // POI Selection/Hover State
     const [selectedPoi, setSelectedPoi] = React.useState<PoiData | null>(null);
@@ -252,7 +258,17 @@ export const SearchMapContainer = React.memo(({
             {/* ── Map Search Overlay (Centered) ── */}
             <MapSearchOverlay
                 className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[60%] sm:w-[320px] md:w-[400px]"
-                onSelect={(r) => mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, pitch: 45, bearing: -10, duration: 1200 })}
+                onSelect={(r) => {
+                    // 1. Move the map visually
+                    mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, pitch: 45, bearing: -10, duration: 1200 });
+                    
+                    // 2. Trigger a global search refresh by updating URL
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('destination', r.name);
+                    params.set('lat', r.lat.toString());
+                    params.set('lng', r.lng.toString());
+                    router.push(`/search?${params.toString()}`);
+                }}
             />
 
             {/* ── Layers button (Top-left) ── */}

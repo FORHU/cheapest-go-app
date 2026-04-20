@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { Map } from '@/components/ui/map';
 import type { StandardStyleConfig } from '@/components/ui/map';
-import { Marker, Popup, NavigationControl, GeolocateControl } from 'react-map-gl/mapbox';
+import { Marker, Popup, NavigationControl, GeolocateControl, Source, Layer } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
 import {
     Star,
