@@ -3,6 +3,8 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { applyMarkup, toStripeAmount, HOTEL_MARKUP, BUNDLE_MARKUP } from '@/lib/pricing';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,13 +25,15 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { prebookId, amount, currency, holderEmail, propertyName, roomName, bundleFlightId } = body as {
+        const { prebookId, amount, currency, holderEmail, propertyName, roomName, bundleFlightId, checkIn, checkOut } = body as {
             prebookId: string;
             amount: number;
             currency: string;
             holderEmail: string;
             propertyName?: string;
             roomName?: string;
+            checkIn?: string;
+            checkOut?: string;
             /** If set, user is bundling this hotel with a completed flight booking → 12% bundle rate applies instead of 15% standalone */
             bundleFlightId?: string;
         };
@@ -53,6 +57,34 @@ export async function POST(req: NextRequest) {
         }
         if (!SUPPORTED_CURRENCIES.has(currency.toLowerCase())) {
             return NextResponse.json({ success: false, error: `Unsupported currency: ${currency}` }, { status: 400 });
+        }
+
+        // ── Duplicate booking guard ──
+        // Warn if the user already has an active booking for the same property + overlapping dates.
+        if (propertyName && checkIn && checkOut) {
+            const svc = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+            const ACTIVE_STATUSES = ['confirmed', 'pending', 'completed'];
+            const { data: existing } = await svc
+                .from('bookings')
+                .select('booking_id, check_in, check_out')
+                .eq('user_id', user.id)
+                .eq('property_name', propertyName)
+                .in('status', ACTIVE_STATUSES)
+                .lt('check_in', checkOut)   // overlap: existing starts before new ends
+                .gt('check_out', checkIn)   // overlap: existing ends after new starts
+                .limit(1)
+                .maybeSingle();
+
+            if (existing) {
+                return NextResponse.json({
+                    success: false,
+                    code: 'DUPLICATE_BOOKING',
+                    existingBookingId: existing.booking_id,
+                    existingCheckIn: existing.check_in,
+                    existingCheckOut: existing.check_out,
+                    error: `You already have an active booking at ${propertyName} for overlapping dates.`,
+                }, { status: 409 });
+            }
         }
 
         // Apply platform markup — bundle rate (12%) when paired with a flight, standalone rate (15%) otherwise.
