@@ -7,7 +7,7 @@
 export async function apiFetch<T = any>(
     url: string,
     body?: Record<string, unknown>
-): Promise<{ success: true; data: T } | { success: false; error: string }> {
+): Promise<{ success: true; data: T } | { success: false; error: string; [key: string]: unknown }> {
     try {
         const res = await fetch(url, {
             method: 'POST',
@@ -18,7 +18,9 @@ export async function apiFetch<T = any>(
         const json = await res.json();
 
         if (!res.ok) {
+            // Spread full JSON so callers can inspect extra fields (e.g. code, existingBookingId)
             return {
+                ...json,
                 success: false,
                 error: json?.error || `Request failed with status ${res.status}`,
             };

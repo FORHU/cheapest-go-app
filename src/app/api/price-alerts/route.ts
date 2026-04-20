@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { env } from '@/utils/env';
+import { sendPriceAlertConfirmationEmail } from '@/lib/server/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,5 +84,16 @@ export async function POST(req: NextRequest) {
         .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Send confirmation email (non-blocking)
+    sendPriceAlertConfirmationEmail({
+        email: user.email!,
+        origin,
+        destination,
+        cabin: cabin_class as string,
+        adults: adultsNum,
+        targetPrice: typeof target_price === 'number' && target_price > 0 ? target_price : null,
+    }).catch(e => console.error('[price-alerts] Confirmation email failed:', e));
+
     return NextResponse.json({ success: true, data }, { status: 201 });
 }

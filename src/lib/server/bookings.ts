@@ -429,7 +429,7 @@ export async function cancelBooking(
     if (calculation.refundable && calculation.refundAmount > 0) {
       // A. Log refund request
       const { success: reqSuccess, refundLogId, error: reqError } =
-        await createRefundRequest(supabase, bookingId, calculation);
+        await createRefundRequest(supabase, bookingId, calculation, user.id);
 
       if (!reqSuccess || !refundLogId) {
         console.error('[cancelBooking] Failed to create refund request:', reqError);
