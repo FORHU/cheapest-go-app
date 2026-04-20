@@ -234,7 +234,31 @@ export async function POST(req: NextRequest) {
 
         if (booking.payment_intent_id && refundAmount > 0) {
             try {
-                const refundAmountCents = Math.round(refundAmount * 100);
+                // Resolve refund amount in the payment currency.
+                // Supplier refund may be in a different currency (e.g. Duffel → USD, user paid PHP).
+                // When currencies differ: retrieve the PI for the exact charged amount, then apply
+                // the supplier's penalty ratio (dimensionless) to what the user actually paid.
+                const paymentCurrency = (booking.payment_currency ?? 'usd').toLowerCase();
+                const supplierCurrency = refundCurrency.toLowerCase();
+                let refundAmountCents: number;
+
+                if (supplierCurrency === paymentCurrency) {
+                    refundAmountCents = Math.round(refundAmount * 100);
+                } else {
+                    const pi = await stripe.paymentIntents.retrieve(booking.payment_intent_id);
+                    const piAmount = pi.amount; // exact amount charged, in smallest payment_currency unit
+                    if (penaltyAmount > 0) {
+                        // Use supplier penalty ratio (currency-neutral) applied to user's paid amount
+                        const refundRatio = refundAmount / (refundAmount + penaltyAmount);
+                        refundAmountCents = Math.round(piAmount * refundRatio);
+                    } else {
+                        // No penalty info — full refund (supplier said fully refundable)
+                        refundAmountCents = piAmount;
+                    }
+                    refundAmountCents = Math.min(refundAmountCents, piAmount); // never exceed what was charged
+                    console.warn(`[cancel-booking] Currency mismatch (supplier=${supplierCurrency}, payment=${paymentCurrency}) — refunding ${refundAmountCents} ${paymentCurrency} cents`);
+                }
+
                 const stripeRefund = await stripe.refunds.create({
                     payment_intent: booking.payment_intent_id,
                     amount: refundAmountCents,
