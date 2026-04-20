@@ -23,6 +23,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { CommandPalette } from './CommandPalette';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Notification } from '@/types/admin';
 import {
@@ -260,7 +261,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-600/20 ring-2 ring-white dark:ring-white/10 ring-offset-2 dark:ring-offset-transparent overflow-hidden transition-transform group-hover:scale-105">
                         {user?.avatar ? (
-                            <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                            <Image src={user.avatar} alt="Profile" width={40} height={40} className="w-full h-full object-cover" />
                         ) : (
                             <User size={20} />
                         )}

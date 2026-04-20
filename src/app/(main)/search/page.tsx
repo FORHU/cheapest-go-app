@@ -10,8 +10,10 @@ import { fetchSearchProperties, fetchFacilities } from '@/lib/search';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-    title: 'Search Results - CheapestGo',
-    description: 'Find your perfect stay.',
+    title: 'Search Hotels & Stays | CheapestGo',
+    description: 'Find and book the cheapest hotels, apartments, and unique stays worldwide. Compare prices and discover your perfect accommodation on CheapestGo.',
+    robots: { index: false, follow: false },
+    alternates: { canonical: '/search' },
 };
 
 export default async function SearchPage(props: {
@@ -29,7 +31,7 @@ export default async function SearchPage(props: {
     // ─── MAP VIEW: split layout ────────────────────
     if (viewMode === 'map') {
         return (
-            <main className="h-[calc(100vh-64px)] w-full overflow-hidden">
+            <main className="h-[calc(100dvh-64px)] w-full overflow-hidden">
                 <Suspense
                     fallback={
                         <div className="flex h-full w-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
