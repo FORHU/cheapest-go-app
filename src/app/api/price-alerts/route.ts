@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { env } from '@/utils/env';
+import { sendPriceAlertConfirmationEmail } from '@/lib/server/email';
 
 export const dynamic = 'force-dynamic';
 

@@ -23,6 +23,7 @@ export function useFlightBooking() {
     const [step, setStep] = useState<BookingStep>('form');
     const [errorMsg, setErrorMsg] = useState('');
     const [priceChangedData, setPriceChangedData] = useState<PriceChangedData | null>(null);
+    const [duplicateBookingData, setDuplicateBookingData] = useState<{ existingBookingId: string; route: string; departureDate: string } | null>(null);
     const [bookingResult, setBookingResult] = useState<{
         bookingId?: string;
         pnr?: string;
@@ -328,7 +329,6 @@ export function useFlightBooking() {
             const data = await res.json();
             if (!data.success) {
                 if (data.error === 'price_changed') {
-                    // Encode as a structured error so onError can extract the prices
                     const err = new Error('price_changed') as any;
                     err.priceChangedData = { oldPrice: data.oldPrice, newPrice: data.newPrice, currency: data.currency };
                     throw err;
@@ -603,6 +603,8 @@ export function useFlightBooking() {
         errorMsg,
         setErrorMsg,
         priceChangedData,
+        duplicateBookingData,
+        dismissDuplicateWarning: () => setDuplicateBookingData(null),
         bookingResult,
         clientSecret,
         passengers,

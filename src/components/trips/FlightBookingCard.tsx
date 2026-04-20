@@ -38,7 +38,7 @@ const flightStatusLabels: Record<string, string> = {
     awaiting_ticket: 'Ticketing',
     ticketed: 'Confirmed',
     failed: 'Failed',
-    cancel_requested: 'Cancelling…',
+    cancel_requested: 'Cancellation Stuck',
     cancel_failed: 'Cancel Failed',
     cancelled: 'Cancelled',
     refund_pending: 'Refund Pending',
@@ -48,7 +48,7 @@ const flightStatusLabels: Record<string, string> = {
 };
 
 // Statuses that allow initiating (or retrying) a cancellation request
-const CANCELLABLE_STATUSES = new Set(['confirmed', 'ticketed', 'booked', 'pnr_created', 'awaiting_ticket', 'cancel_failed', 'refund_failed']);
+const CANCELLABLE_STATUSES = new Set(['confirmed', 'ticketed', 'booked', 'pnr_created', 'awaiting_ticket', 'cancel_failed', 'refund_failed', 'cancel_requested']);
 
 // ─── Cancel Confirmation Modal ───────────────────────────────────────
 
@@ -886,7 +886,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         if (localStatus === 'cancel_requested') {
             return (
                 <span className="inline-flex items-center gap-1 text-[10px] text-orange-600 dark:text-orange-400 font-medium whitespace-nowrap">
-                    <Loader2 className="w-3 h-3 animate-spin shrink-0" /> Cancelling…
+                    <AlertTriangle className="w-3 h-3 shrink-0" /> Cancellation stuck — retry below
                 </span>
             );
         }

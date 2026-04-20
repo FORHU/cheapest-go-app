@@ -9,6 +9,7 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { safeError } from '@/lib/server/safe-error';
 import { checkCsrf } from '@/lib/server/csrf';
 import { bookingConfirmSchema } from '@/lib/schemas/booking';
+import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,32 @@ export async function POST(req: NextRequest) {
                     { success: false, error: 'Payment does not belong to this user' },
                     { status: 403 }
                 );
+            }
+
+            // Idempotency: if a booking already exists for this PaymentIntent, return it.
+            // This handles the case where confirm succeeded but the client retried (network error,
+            // double-click that bypassed the UI guard, etc.).
+            const { createClient: createSvc } = await import('@supabase/supabase-js');
+            const svc = createSvc(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+            const { data: existingBooking } = await svc
+                .from('bookings')
+                .select('booking_id, status, total_price, currency')
+                .eq('payment_intent_id', body.paymentIntentId)
+                .maybeSingle();
+
+            if (existingBooking) {
+                console.log(`[confirm] Idempotent return — booking already exists for PI ${body.paymentIntentId}: ${existingBooking.booking_id}`);
+                return Response.json({
+                    success: true,
+                    data: {
+                        bookingId: existingBooking.booking_id,
+                        status: existingBooking.status,
+                        policyType: 'standard',
+                        policySummary: '',
+                        totalPrice: existingBooking.total_price,
+                        currency: existingBooking.currency,
+                    },
+                });
             }
         }
 

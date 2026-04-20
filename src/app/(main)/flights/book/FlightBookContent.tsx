@@ -143,6 +143,8 @@ export default function FlightBookContent() {
         handleSubmit,
         confirmPriceChange,
         priceChangedData,
+        duplicateBookingData,
+        dismissDuplicateWarning,
         selectedSeats,
         setSelectedSeats,
         selectedBags,
@@ -956,6 +958,37 @@ export default function FlightBookContent() {
                                         className="flex-1 py-2 rounded-lg bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 font-medium text-[11px] lg:text-sm transition-colors hover:bg-amber-50 dark:hover:bg-amber-900/30"
                                     >
                                         Search again
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Duplicate booking warning */}
+                        {duplicateBookingData && (
+                            <div className="rounded-xl border-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 lg:p-4 space-y-2.5">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-[11px] lg:text-sm font-bold text-red-800 dark:text-red-300">You already have a flight booked on this day</p>
+                                        <p className="text-[11px] lg:text-sm text-red-700 dark:text-red-400 mt-0.5">
+                                            An active booking was found departing <span className="font-semibold">{duplicateBookingData.route}</span> on <span className="font-semibold">{duplicateBookingData.departureDate}</span>. Cancel the existing booking first, or go back.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => router.push(`/trips?highlight=${duplicateBookingData.existingBookingId}`)}
+                                        className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-[11px] lg:text-sm transition-colors"
+                                    >
+                                        View existing booking
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => router.push('/')}
+                                        className="flex-1 py-2 rounded-lg bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 font-medium text-[11px] lg:text-sm transition-colors hover:bg-red-50 dark:hover:bg-red-900/30"
+                                    >
+                                        Keep existing booking
                                     </button>
                                 </div>
                             </div>

@@ -93,6 +93,61 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
+        // ── Duplicate flight booking guard ──
+        // Duffel segments use iata_code; Mystifly uses iataCode or plain string — handle all.
+        {
+            const { createClient: createSvc } = await import('@supabase/supabase-js');
+            const svc = createSvc(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+
+            const rawFlight = flight as any;
+            // Duffel: slices[0].segments[0]; Mystifly: segments[0]
+            const firstSeg = rawFlight.slices?.[0]?.segments?.[0] ?? rawFlight.segments?.[0];
+            const extractIata = (loc: any): string => {
+                if (!loc) return '';
+                if (typeof loc === 'string') return loc;
+                return loc.iata_code ?? loc.iataCode ?? loc.code ?? '';
+            };
+            const origin = extractIata(firstSeg?.origin);
+            // Duffel departure field is departing_at; Mystifly uses departureTime / departure
+            const departureDate = (firstSeg?.departing_at ?? firstSeg?.departureTime ?? firstSeg?.departure ?? '').slice(0, 10);
+
+            if (origin && departureDate) {
+                // Step 1: get all active booking IDs for this user
+                const { data: activeBookings } = await svc
+                    .from('flight_bookings')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .not('status', 'in', '(cancelled,cancelled_provider_missing,refunded,cancel_failed,cancel_requested)');
+
+                if (activeBookings?.length) {
+                    const activeIds = activeBookings.map((b: any) => b.id);
+
+                    // Step 2: check if any of those bookings has a segment departing from the same
+                    // origin on the same day — covers connecting flights too
+                    const { data: existingSeg } = await svc
+                        .from('flight_segments')
+                        .select('booking_id')
+                        .in('booking_id', activeIds)
+                        .eq('origin', origin)
+                        .gte('departure', `${departureDate}T00:00:00`)
+                        .lt('departure', `${departureDate}T23:59:59`)
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (existingSeg) {
+                        return NextResponse.json({
+                            success: false,
+                            code: 'DUPLICATE_BOOKING',
+                            existingBookingId: existingSeg.booking_id,
+                            route: origin,
+                            departureDate,
+                            error: `You already have an active flight booking departing ${origin} on ${departureDate}.`,
+                        }, { status: 409 });
+                    }
+                }
+            }
+        }
+
         // ── Mystifly V2 UUID FareSource guard — before creating any session or PaymentIntent ──
         // V2 UUID FareSources require SearchIdentifier on all Mystifly endpoints (revalidate + book).
         // Mystifly does not return SearchIdentifier in search responses, so these fares are unbookable.
