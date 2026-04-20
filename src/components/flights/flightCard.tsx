@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Plane, ArrowRight, Luggage, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer, FlightSegmentDetail } from '@/types/flights';
 import { formatPrice } from '@/utils/flight-utils';
-
+import SaveButton from '@/components/common/SaveButton';
 
 import { useUserCurrency } from '@/stores/searchStore';
 
@@ -297,13 +297,25 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => onSelect?.(offer)}
-                        className="px-4 lg:px-6 py-1 lg:py-2 rounded-full lg:rounded-lg lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs lg:text-base transition-colors flex items-center justify-center gap-1 shrink-0"
-                    >
-                        Select
-                        <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <SaveButton
+                            type="flight"
+                            title={`${primary.departure.airport} → ${last.arrival.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
+                            subtitle={`${primary.airline.name} · ${formatDuration(offer.totalDuration)} · ${stopsLabel(offer.totalStops)}`}
+                            price={offer.price.total}
+                            currency={offer.price.currency}
+                            deepLink={`/flights/search?origin=${primary.departure.airport}&destination=${last.arrival.airport}&departure=${primary.departure.time?.slice(0, 10) ?? ''}`}
+                            snapshot={{ offerId: offer.offerId, provider: offer.provider }}
+                            size="sm"
+                        />
+                        <button
+                            onClick={() => onSelect?.(offer)}
+                            className="px-4 lg:px-6 py-1 lg:py-2 rounded-full lg:rounded-lg lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs lg:text-base transition-colors flex items-center justify-center gap-1 shrink-0"
+                        >
+                            Select
+                            <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
 

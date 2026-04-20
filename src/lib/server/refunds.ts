@@ -25,6 +25,7 @@ export interface LiteApiRefundInfo {
         currency?: string;
         status?: string;
     };
+    stripeRefundId?: string;
 }
 
 // ============================================================================

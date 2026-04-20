@@ -15,6 +15,8 @@ import {
   getBookingDetailsLiteApi,
 } from './liteapi';
 import { normalizeLiteApiPolicy } from './policy-normalizer';
+import { stripe } from '@/lib/stripe/server';
+import { sendHotelRefundEmail } from './email';
 import type {
   PrebookParams,
   BookingParams,
@@ -294,6 +296,7 @@ async function _confirmAndSaveBookingInner(
       voucher_code: params.voucherCode ?? null,
       discount_amount: params.discountAmount ?? 0,
       policy_type: snapshot.policyType,
+      payment_intent_id: params.paymentIntentId ?? null,
     };
 
     const snapshotPayload = {
@@ -405,85 +408,107 @@ export async function cancelBooking(
     const calculation = await calculateCancellation(supabase, bookingId);
     console.log('[cancelBooking] Calculation:', calculation);
 
-    // 3. Call LiteAPI to cancel
-    // LiteAPI's PUT /bookings/{id} cancels AND refunds the original card automatically.
+    // 3. Fetch payment_intent_id for Stripe refund
+    const { data: paymentRow } = await supabase
+      .from('bookings')
+      .select('payment_intent_id')
+      .eq('booking_id', bookingId)
+      .single();
+    const paymentIntentId = paymentRow?.payment_intent_id as string | null;
+
+    // 4. Call LiteAPI to cancel (marks booking cancelled on their side)
     const result = await cancelBookingLiteApi({ bookingId });
 
-    // Extract refund info from LiteAPI's response
     const liteApiInfo: LiteApiRefundInfo = {
       cancellationId: result?.data?.cancellationId,
       refund: result?.data?.refund,
     };
-    console.log('[cancelBooking] LiteAPI refund info:', liteApiInfo);
+    console.log('[cancelBooking] LiteAPI cancellation result:', liteApiInfo);
 
-    // 4. Handle Refund Logic
+    // 5. Handle Refund Logic
     if (calculation.refundable && calculation.refundAmount > 0) {
-      // A. Create Refund Log
+      // A. Log refund request
       const { success: reqSuccess, refundLogId, error: reqError } =
         await createRefundRequest(supabase, bookingId, calculation);
 
       if (!reqSuccess || !refundLogId) {
         console.error('[cancelBooking] Failed to create refund request:', reqError);
-        const status = 'cancelled_refund_failed';
-        await supabase
-          .from('bookings')
-          .update({
-            status,
-            updated_at: new Date().toISOString()
-          })
-          .eq('booking_id', bookingId);
-        return {
-          success: true,
-          data: {
-            bookingId,
-            status,
-            message: 'Cancelled, but refund logging failed. Contact support.'
-          }
-        };
+        await supabase.from('bookings').update({ status: 'cancelled_refund_failed', updated_at: new Date().toISOString() }).eq('booking_id', bookingId);
+        return { success: true, data: { bookingId, status: 'cancelled_refund_failed', message: 'Cancelled, but refund logging failed. Contact support.' } };
       }
 
-      // B. Record the LiteAPI refund in our refund_logs
-      // LiteAPI already processed the refund — we just record it.
-      const processResult = await processRefund(supabase, refundLogId, liteApiInfo);
-      const status = processResult.success ? 'cancelled_refunded' : 'cancelled_refund_failed';
-      const message = processResult.success
-        ? 'Booking cancelled and refund processed.'
-        : 'Booking cancelled. Refund recording failed — contact support.';
+      // B. Issue Stripe refund — we collected payment via Stripe, LiteAPI does NOT refund on our behalf
+      let stripeRefundId: string | undefined;
+      let stripeError: string | undefined;
+
+      if (paymentIntentId) {
+        try {
+          const stripeRefund = await stripe.refunds.create({
+            payment_intent: paymentIntentId,
+            amount: Math.round(calculation.refundAmount * 100),
+            reason: 'requested_by_customer',
+            metadata: { bookingId, type: 'hotel_cancellation', penaltyAmount: String(calculation.penaltyAmount) },
+          }, { idempotencyKey: `hotel-refund-${bookingId}` });
+          stripeRefundId = stripeRefund.id;
+          console.log(`[cancelBooking] Stripe refund issued: ${stripeRefundId} — ${calculation.refundAmount} ${calculation.currency}`);
+
+          // Fire refund receipt email (non-blocking)
+          supabase
+            .from('bookings')
+            .select('holder_email, holder_first_name, holder_last_name, property_name, room_name, check_in, check_out')
+            .eq('booking_id', bookingId)
+            .single()
+            .then(({ data: b }) => {
+              if (!b?.holder_email) return;
+              sendHotelRefundEmail({
+                bookingId,
+                email: b.holder_email,
+                guestName: `${b.holder_first_name || ''} ${b.holder_last_name || ''}`.trim(),
+                hotelName: b.property_name || '',
+                roomName: b.room_name || '',
+                checkIn: b.check_in || '',
+                checkOut: b.check_out || '',
+                refundAmount: calculation.refundAmount,
+                currency: calculation.currency,
+                stripeRefundId,
+              }).catch(e => console.error('[cancelBooking] Refund email failed:', e));
+            });
+        } catch (err: any) {
+          stripeError = err.message;
+          console.error('[cancelBooking] Stripe refund failed:', stripeError);
+        }
+      } else {
+        console.warn(`[cancelBooking] No payment_intent_id on booking ${bookingId} — Stripe refund skipped. Manual refund required.`);
+      }
+
+      // C. Record result in refund_logs
+      const processResult = await processRefund(supabase, refundLogId, { ...liteApiInfo, stripeRefundId });
+      const refundSucceeded = stripeRefundId && processResult.success;
+      const status = refundSucceeded ? 'cancelled_refunded' : 'cancelled_refund_failed';
+
+      await supabase.from('bookings').update({ status, updated_at: new Date().toISOString() }).eq('booking_id', bookingId);
 
       return {
         success: true,
         data: {
           bookingId,
           status,
-          message,
+          message: refundSucceeded
+            ? 'Booking cancelled and refund processed.'
+            : `Booking cancelled. Refund ${stripeError ? `failed: ${stripeError}` : 'pending — contact support.'}`,
           refund: {
             id: refundLogId,
             amount: calculation.refundAmount,
             currency: calculation.currency,
-            status: processResult.success ? 'processed' : 'failed'
-          }
-        }
+            status: refundSucceeded ? 'processed' : 'failed',
+          },
+        },
       };
 
     } else {
-      // Non-refundable flow
-      const status = 'cancelled';
-      await supabase
-        .from('bookings')
-        .update({
-          status, // e.g., cancelled_non_refundable? Standard 'cancelled' is fine.
-          updated_at: new Date().toISOString()
-        })
-        .eq('booking_id', bookingId);
-
-      return {
-        success: true,
-        data: {
-          bookingId,
-          status,
-          message: 'Booking cancelled. Non-refundable.'
-        }
-      };
+      // Non-refundable
+      await supabase.from('bookings').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('booking_id', bookingId);
+      return { success: true, data: { bookingId, status: 'cancelled', message: 'Booking cancelled. Non-refundable.' } };
     }
 
   } catch (error) {
@@ -592,7 +617,7 @@ export async function saveBookingToDatabase(
   try {
     const data = validation.data;
 
-    const { error: insertError } = await supabase.from('bookings').insert({
+    const { error: insertError } = await supabase.from('bookings').upsert({
       booking_id: data.bookingId,
       user_id: user.id,
       property_name: data.propertyName,
@@ -610,7 +635,7 @@ export async function saveBookingToDatabase(
       status: 'confirmed',
       special_requests: data.specialRequests,
       cancellation_policy: data.cancellationPolicy,
-    });
+    }, { onConflict: 'booking_id', ignoreDuplicates: true });
 
     if (insertError) {
       console.error('[saveBookingToDatabase] Error:', insertError);
