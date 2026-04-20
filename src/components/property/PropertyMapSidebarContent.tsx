@@ -167,9 +167,17 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
         const [isLocating, setIsLocating] = useState(false);
 
+        const handleLoad = useCallback(() => {
+            setIsLoaded(true);
+        }, []);
+
         // Initial hydration fix
         React.useEffect(() => {
             setMounted(true);
+            // Ensure isLoaded is set if map is already initialized (fixes navigation bugs)
+            if (mapRef.current?.getMap()?.loaded()) {
+                setIsLoaded(true);
+            }
         }, []);
 
         const formatDuration = (mins: number) => {
@@ -623,7 +631,8 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             }
 
             const map = mapRef.current.getMap();
-            const features = map.queryRenderedFeatures(event.point, { layers: ['gems-layer'] });
+            const hasGemsLayer = map.getLayer('gems-layer');
+            const features = hasGemsLayer ? map.queryRenderedFeatures(event.point, { layers: ['gems-layer'] }) : [];
             
             if (features.length > 0) {
                 const gem = features[0];
@@ -697,9 +706,6 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             }
         }, [origin, hasCoordinates, coordinates, showDirections]);
 
-        const handleLoad = useCallback(() => {
-            setIsLoaded(true);
-        }, []);
 
         // POI Icons are shown automatically by streets-v12. (No need to scale manually)
 
@@ -708,7 +714,8 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             const map = mapRef.current.getMap();
             if (!map || !map.loaded()) return;
             
-            const features = map.queryRenderedFeatures(event.point, { layers: ['gems-layer'] });
+            const hasGemsLayer = map.getLayer('gems-layer');
+            const features = hasGemsLayer ? map.queryRenderedFeatures(event.point, { layers: ['gems-layer'] }) : [];
             if (features.length > 0) {
                 map.getCanvas().style.cursor = 'pointer';
                 return;

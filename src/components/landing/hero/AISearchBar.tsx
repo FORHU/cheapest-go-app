@@ -65,6 +65,8 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
 
     // Switch tab + detect bundle context from URL params on mount
     const [isBundleMode, setIsBundleMode] = useState(false);
+    const [hasAlreadyBookedFlight, setHasAlreadyBookedFlight] = useState(false);
+
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const params = new URLSearchParams(window.location.search);
@@ -73,6 +75,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
             setSearchMode(mode);
         }
         if (params.get('bundleHotelId')) setIsBundleMode(true);
+        setHasAlreadyBookedFlight(sessionStorage.getItem('hasAlreadyBookedFlight') === 'true');
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -175,7 +178,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
             <SearchModeToggle mode={searchMode} onModeChange={handleModeChange} />
 
             {/* Bundle instruction banner */}
-            {isBundleMode && searchMode === 'flights' && (
+            {isBundleMode && searchMode === 'flights' && !hasAlreadyBookedFlight && (
                 <motion.div
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}

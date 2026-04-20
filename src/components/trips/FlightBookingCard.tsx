@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
@@ -59,11 +61,25 @@ interface CancelModalProps {
 }
 
 function CancelModal({ booking, onConfirm, onClose, isLoading, error }: CancelModalProps) {
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-            <div
-                className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 max-w-md w-full p-6 animate-in zoom-in-95 duration-200"
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
+
+    if (!mounted) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 max-w-md w-full p-6 overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -108,7 +124,7 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error }: CancelMo
                 )}
 
                 {/* Buttons */}
-                <div className="flex gap-3">
+                <div className="flex gap-3 mt-2">
                     <button
                         onClick={onClose}
                         disabled={isLoading}
@@ -131,8 +147,9 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error }: CancelMo
                         )}
                     </button>
                 </div>
-            </div>
-        </div>
+            </motion.div>
+        </div>,
+        document.body
     );
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FlightResults } from '@/components/flights/flightResultsList';
 import FlightFilters, { type FilterState } from '@/components/flights/filters';
 import type { FlightOffer, CabinClass } from '@/types/flights';
@@ -152,11 +152,18 @@ export function SearchFetcher({
     const abortRef = useRef<AbortController | null>(null);
     const searchBodyRef = useRef<object | null>(null);
 
+    const searchParams = useSearchParams();
+    const bundleHotelId = searchParams.get('bundleHotelId');
+
     const handleSelect = useCallback((offer: FlightOffer) => {
         sessionStorage.setItem('selectedFlight', JSON.stringify(offer));
         sessionStorage.setItem('flightSearchPassengers', JSON.stringify({ adults, children, infants }));
-        router.push('/flights/book');
-    }, [router, adults, children, infants]);
+        let url = '/flights/book';
+        if (bundleHotelId) {
+            url += `?bundleHotelId=${bundleHotelId}`;
+        }
+        router.push(url);
+    }, [router, adults, children, infants, bundleHotelId]);
 
     useEffect(() => {
         // Cancel any previous in-flight request
