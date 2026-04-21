@@ -104,9 +104,9 @@ export default function FlightFilters({ airlines, onFilterChange }: FlightFilter
                 <label className="flex items-center justify-between cursor-pointer group">
                     <div>
                         <span className="text-sm font-bold text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                            Free Cancellation
+                            Refundable fares
                         </span>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Show refundable fares only</p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Fares that allow cancellation with a refund (fees may apply)</p>
                     </div>
                     <button
                         role="switch"

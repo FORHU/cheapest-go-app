@@ -29,8 +29,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data });
 }
 
-import { sendPriceAlertConfirmationEmail } from '@/lib/server/email';
-
 export async function POST(req: NextRequest) {
     const rl = rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'price-alerts-post' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });

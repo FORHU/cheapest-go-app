@@ -257,7 +257,7 @@ export function SearchFetcher({
             offers = offers.filter(o => (o.totalStops ?? 0) <= filters.maxStops!);
         }
         if (filters.refundableOnly) {
-            offers = offers.filter(o => o.refundable === true);
+            offers = offers.filter(o => (o.farePolicy?.isRefundable ?? o.refundable) === true);
         }
         if (filters.selectedProviders.length > 0) {
             offers = offers.filter(o => filters.selectedProviders.includes(o.provider as any));

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, ChevronDown, CalendarDays, Loader2, Sparkles, X } from 'lucide-react';
+import { useUserCurrency } from '@/stores/searchStore';
+import { formatPrice } from '@/utils/flight-utils';
 
 interface DayPrice {
     price: number;
@@ -36,8 +38,8 @@ function priceColorClass(price: number, min: number, max: number) {
     return 'text-red-500 dark:text-red-400';
 }
 
-function fmt(price: number, currency: string) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
+function fmt(price: number, currency: string, targetCurrency?: string) {
+    return formatPrice(price, currency, targetCurrency);
 }
 
 function closestDates(dates: string[], anchor: string, n: number): string[] {
@@ -54,6 +56,7 @@ export default function PriceCalendar({
 }: PriceCalendarProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const targetCurrency = useUserCurrency();
 
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
@@ -186,7 +189,7 @@ export default function PriceCalendar({
                     ) : monthMinEntry ? (
                         <span className="mr-1 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
                             <Sparkles size={9} />
-                            From {fmt(monthMinEntry[1].price, monthMinEntry[1].currency)}
+                            From {fmt(monthMinEntry[1].price, monthMinEntry[1].currency, targetCurrency)}
                         </span>
                     ) : null
                 )}
@@ -256,7 +259,7 @@ export default function PriceCalendar({
                                     key={day}
                                     onClick={() => handleDay(day)}
                                     disabled={past}
-                                    title={p ? `${fmt(p.price, p.currency)} — click to search` : 'Click to search this date'}
+                                    title={p ? `${fmt(p.price, p.currency, targetCurrency)} — click to search` : 'Click to search this date'}
                                     className={`flex flex-col items-center justify-center rounded-lg py-1 min-h-[44px] transition-all
                                         ${past ? 'opacity-25 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 hover:scale-105 active:scale-95'}
                                         ${selected ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-400 dark:ring-blue-600' : ''}
@@ -270,7 +273,7 @@ export default function PriceCalendar({
                                     </span>
                                     {p ? (
                                         <span className={`text-[9px] font-bold mt-0.5 leading-none ${priceColorClass(p.price, min, max)}`}>
-                                            {fmt(p.price, p.currency)}
+                                            {fmt(p.price, p.currency, targetCurrency)}
                                         </span>
                                     ) : !past && loadingLive ? (
                                         <span className="mt-0.5 w-7 h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 animate-pulse" />

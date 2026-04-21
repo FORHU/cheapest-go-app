@@ -675,7 +675,7 @@ export async function POST(req: NextRequest) {
                         const hadAncillaries = (seatServiceIds && seatServiceIds.length > 0) || (bagServiceIds && bagServiceIds.length > 0);
                         if (hadAncillaries) {
                             const parsedFreshOffer = parseDuffelOffer(freshOffer);
-                            const tripType = parsedFreshOffer.segments?.some((s) => s.segmentIndex > 0) ? 'round-trip' : 'one-way';
+                            const tripType = parsedFreshOffer.segments?.some((s: any) => s.segmentIndex > 0) ? 'round-trip' : 'one-way';
                             const flightOffer = normalizedToFlightOffer(parsedFreshOffer, tripType);
                             return NextResponse.json({
                                 success: false,
@@ -709,13 +709,13 @@ export async function POST(req: NextRequest) {
                             }, { status: 409 });
                         }
 
-                        duffelOrderRes = attempt2.res;
+                        duffelOrderRes = attempt2.res!;
                         duffelOrderData = attempt2.data;
-                        activeTotal = attempt2.finalTotal;
+                        activeTotal = attempt2.finalTotal!;
                         activeOffer = freshOffer;
                         activePassengers = refreshedPassengers;
 
-                        console.log(, duffelOrderRes.ok ? 'OK' : JSON.stringify(duffelOrderData?.errors?.[0]));
+                        console.log( duffelOrderRes.ok ? 'OK' : JSON.stringify(duffelOrderData?.errors?.[0]));
 
                         if (duffelOrderRes.ok) {
                             attempt2Success = true;
