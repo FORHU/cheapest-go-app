@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     const token = env.DUFFEL_TOKEN;
+    console.log(`[bags] offerId=${offerId} tokenEnv=${token?.startsWith('duffel_test_') ? 'test' : token?.startsWith('duffel_live_') ? 'live' : 'unknown'}`);
     if (!token) {
         return NextResponse.json({ success: false, error: 'Duffel not configured' }, { status: 503 });
     }
@@ -41,7 +42,11 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         const msg = err?.errors?.[0]?.message ?? `Duffel services error ${res.status}`;
-        return NextResponse.json({ success: false, error: msg }, { status: res.status });
+        console.error(`[bags] Duffel ${res.status} for offer ${offerId}:`, msg);
+        const clientMsg = res.status === 404
+            ? 'This offer has expired. Please go back and search again for updated prices.'
+            : msg;
+        return NextResponse.json({ success: false, error: clientMsg }, { status: res.status });
     }
 
     const json = await res.json();
@@ -111,5 +116,8 @@ export async function POST(req: NextRequest) {
         return true;
     });
 
+    if (unique.length === 0) {
+        console.log(`[bags] Duffel returned 0 bag services for offer ${offerId} (airline doesn't support ancillaries)`);
+    }
     return NextResponse.json({ success: true, bagOptions: unique });
 }

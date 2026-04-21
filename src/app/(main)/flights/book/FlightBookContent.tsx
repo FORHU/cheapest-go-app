@@ -127,6 +127,18 @@ function OfferExpiryBanner({ expiresAt }: { expiresAt: Date }) {
     );
 }
 
+function AncillaryExpiredNotice() {
+    return (
+        <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Not available for this offer</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+                This fare is no longer available for ancillary services. You can still proceed with your booking — seats and bags can be managed directly with the airline.
+            </p>
+        </div>
+    );
+}
+
 const FLIGHT_BOOKING_STEPS = [
     'Verifying payment...',
     'Securing your seat...',
@@ -168,6 +180,46 @@ export default function FlightBookContent() {
 
     const [bagsOpen, setBagsOpen] = React.useState(false);
     const [seatsOpen, setSeatsOpen] = React.useState(false);
+    const [refreshingOffer, setRefreshingOffer] = React.useState(false);
+    const [refreshFailed, setRefreshFailed] = React.useState(false);
+    const [currentOfferId, setCurrentOfferId] = React.useState<string | null>(null);
+    const refreshAttempted = React.useRef(false);
+
+    const effectiveOfferId = currentOfferId
+        ?? (offer as any)?.raw?.id
+        ?? (offer as any)?._rawOffer?.id
+        ?? offer?.offerId
+        ?? '';
+
+    const refreshOffer = React.useCallback(async () => {
+        // Only ever attempt once — prevents infinite loop on repeated 404s
+        if (refreshAttempted.current) return;
+        refreshAttempted.current = true;
+
+        const rawOffer = (offer as any)?._rawOffer ?? (offer as any)?.raw;
+        if (!rawOffer) { setRefreshFailed(true); return; }
+
+        setRefreshingOffer(true);
+        try {
+            const res = await fetch('/api/flights/offer-refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rawOffer }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success && data.newOfferId) {
+                setCurrentOfferId(data.newOfferId);
+                setSelectedBags([]);
+                setSelectedSeats([]);
+            } else {
+                setRefreshFailed(true);
+            }
+        } catch {
+            setRefreshFailed(true);
+        } finally {
+            setRefreshingOffer(false);
+        }
+    }, [offer, setSelectedBags, setSelectedSeats]);
 
     useEffect(() => {
         if (step === 'submitting') {
@@ -909,15 +961,26 @@ export default function FlightBookContent() {
                                     </button>
                                     {bagsOpen && (
                                         <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
-                                            <BagSelectionPanel
-                                                offerId={(offer as any)._rawOffer?.id ?? (offer as any).resultIndex ?? offer.offerId}
-                                                duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? []).map((p: any) => p.id)}
-                                                passengerCount={passengers.length}
-                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
-                                                selectedBags={selectedBags}
-                                                onBagsChange={setSelectedBags}
-                                                currency={offer.price.currency}
-                                            />
+                                            {refreshingOffer ? (
+                                                <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Refreshing offer…
+                                                </div>
+                                            ) : refreshFailed ? (
+                                                <AncillaryExpiredNotice />
+                                            ) : (
+                                                <BagSelectionPanel
+                                                    key={effectiveOfferId}
+                                                    offerId={effectiveOfferId}
+                                                    duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? (offer as any).raw?.passengers ?? []).map((p: any) => p.id)}
+                                                    passengerCount={passengers.length}
+                                                    passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                    selectedBags={selectedBags}
+                                                    onBagsChange={setSelectedBags}
+                                                    currency={offer.price.currency}
+                                                    onOfferExpired={refreshOffer}
+                                                />
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -946,16 +1009,27 @@ export default function FlightBookContent() {
                                     </button>
                                     {seatsOpen && (
                                         <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
-                                            <SeatMapPanel
-                                                offerId={(offer as any)._rawOffer?.id ?? (offer as any).resultIndex ?? offer.offerId}
-                                                segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
-                                                passengerCount={passengers.length}
-                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
-                                                selectedSeats={selectedSeats}
-                                                onSeatsChange={setSelectedSeats}
-                                                currency={offer.price.currency}
-                                                onDone={() => setSeatsOpen(false)}
-                                            />
+                                            {refreshingOffer ? (
+                                                <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Refreshing offer…
+                                                </div>
+                                            ) : refreshFailed ? (
+                                                <AncillaryExpiredNotice />
+                                            ) : (
+                                                <SeatMapPanel
+                                                    key={effectiveOfferId}
+                                                    offerId={effectiveOfferId}
+                                                    segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
+                                                    passengerCount={passengers.length}
+                                                    passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                    selectedSeats={selectedSeats}
+                                                    onSeatsChange={setSelectedSeats}
+                                                    currency={offer.price.currency}
+                                                    onDone={() => setSeatsOpen(false)}
+                                                    onOfferExpired={refreshOffer}
+                                                />
+                                            )}
                                         </div>
                                     )}
                                 </div>

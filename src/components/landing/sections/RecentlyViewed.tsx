@@ -2,23 +2,46 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { History, Clock } from 'lucide-react';
+import { History, Clock, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { SectionHeader, Badge, PriceDisplay } from '@/components/ui';
-import { useRecentSearches } from '@/stores';
+import { useRecentSearches, useSearchStore } from '@/stores';
 import { type RecentItem } from '@/types';
 import { getCurrencySymbol } from '@/lib/currency';
-import { useUserCurrency } from '@/stores/searchStore';
+import { useUserCurrency, type Destination } from '@/stores/searchStore';
 
 interface RecentCardProps {
   item: RecentItem;
+  destination: Destination;
   index: number;
 }
 
-const RecentCard: React.FC<RecentCardProps> = ({ item, index }) => {
+const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => {
   const [mounted, setMounted] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
   const userCurrency = useUserCurrency();
   const symbol = getCurrencySymbol(mounted ? userCurrency : 'KRW');
+  const router = useRouter();
+  const setDestination = useSearchStore((s) => s.setDestination);
+  const setDestinationQuery = useSearchStore((s) => s.setDestinationQuery);
+
+  const handleClick = () => {
+    if (loading) return;
+    setLoading(true);
+    setDestination(destination);
+    setDestinationQuery(destination.title);
+    if (destination.type === 'airport') {
+      router.push('/flights');
+    } else {
+      const params = new URLSearchParams({ destination: destination.title });
+      if (destination.countryCode) params.set('countryCode', destination.countryCode);
+      if (destination.id) params.set('placeId', destination.id);
+      if (destination.code) params.set('destinationCode', destination.code);
+      router.push(`/search?${params.toString()}`);
+    }
+  };
+
   return (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
@@ -27,10 +50,18 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, index }) => {
     transition={{ delay: index * 0.08 }}
   >
     <motion.div
-      whileHover={{ scale: 1.02, y: -2 }}
+      onClick={handleClick}
+      whileHover={loading ? {} : { scale: 1.02, y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className="flex gap-2 sm:gap-3 p-2.5 sm:p-3 min-h-[88px] sm:min-h-[92px] bg-white dark:bg-slate-900/80 rounded-2xl border border-alabaster-border dark:border-obsidian-border shadow-md dark:shadow-black/20 cursor-pointer group"
+      className={`relative flex gap-2 sm:gap-3 p-2.5 sm:p-3 min-h-[88px] sm:min-h-[92px] bg-white dark:bg-slate-900/80 rounded-2xl border border-alabaster-border dark:border-obsidian-border shadow-md dark:shadow-black/20 overflow-hidden group ${loading ? 'cursor-wait' : 'cursor-pointer'}`}
     >
+      {/* Loading overlay */}
+      {loading && (
+        <div className="absolute inset-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] rounded-2xl flex items-center justify-center z-10">
+          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+        </div>
+      )}
+
       {/* Thumbnail — responsive */}
       <div className="relative w-14 h-14 min-[380px]:w-[4.5rem] min-[380px]:h-[4.5rem] sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0">
         <div
@@ -62,19 +93,19 @@ const RecentlyViewed = () => {
   // Get recent searches from Zustand store
   const recentSearches = useRecentSearches();
 
-  // Convert Zustand data to display format or use default mock data
-  const displayItems: RecentItem[] = recentSearches.length > 0
-    ? recentSearches.map((search, index) => ({
+  if (recentSearches.length === 0) return null;
+
+  const displayItems = recentSearches.map((search, index) => ({
+    item: {
       id: String(index),
       destination: search.title,
       dates: 'Recently searched',
       type: search.type === 'airport' ? 'Flight' : 'Stay',
       image: `https://picsum.photos/seed/${search.title.toLowerCase().replace(/\s/g, '')}/200/150`,
       price: 0,
-    }))
-    : [];
-
-  if (displayItems.length === 0) return null;
+    } as RecentItem,
+    destination: search,
+  }));
 
   return (
     <section className="w-full pt-6 sm:pt-10 pb-2">
@@ -89,9 +120,9 @@ const RecentlyViewed = () => {
 
         {/* Scrollable Container */}
         <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
-          {displayItems.map((item, i) => (
+          {displayItems.map(({ item, destination }, i) => (
             <div key={item.id} className="w-[85vw] sm:w-[calc(50%-8px)] lg:w-[calc(25%-12px)] flex-none snap-start">
-              <RecentCard item={item} index={i} />
+              <RecentCard item={item} destination={destination} index={i} />
             </div>
           ))}
         </div>

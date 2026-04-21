@@ -17,6 +17,8 @@ interface SeatMapPanelProps {
     onUnavailable?: () => void;
     /** Called when the user explicitly clicks "Done" or "Skip" */
     onDone?: () => void;
+    /** Called when the offer has expired (404/422) so the parent can fetch a fresh offer */
+    onOfferExpired?: () => void;
 }
 
 export default function SeatMapPanel({
@@ -29,6 +31,7 @@ export default function SeatMapPanel({
     currency,
     onUnavailable,
     onDone,
+    onOfferExpired,
 }: SeatMapPanelProps) {
     const [seatMaps, setSeatMaps] = useState<NormalizedSegmentSeatMap[]>([]);
     const [loading, setLoading] = useState(true);
@@ -46,9 +49,13 @@ export default function SeatMapPanel({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ offerId, segments }),
         })
-            .then(r => r.json())
-            .then(data => {
+            .then(async r => {
+                const data = await r.json();
                 if (cancelled) return;
+                if ((r.status === 404 || r.status === 422) && onOfferExpired) {
+                    onOfferExpired();
+                    return;
+                }
                 if (!data.success) throw new Error(data.error || 'Failed to load seat map');
                 const maps = data.seatMaps ?? [];
                 setSeatMaps(maps);
@@ -150,7 +157,9 @@ export default function SeatMapPanel({
                 <div>
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Seat map not available</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        This airline doesn't support seat selection for this flight through our booking system.
+                        {error
+                            ? `Could not load seat map: ${error}`
+                            : 'This airline doesn\'t support seat selection for this flight through our booking system.'}
                     </p>
                 </div>
             </div>

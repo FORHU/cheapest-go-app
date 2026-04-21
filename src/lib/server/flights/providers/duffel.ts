@@ -131,6 +131,13 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
     const firstSeg = allSegments[0];
     const lastSeg = allSegments[allSegments.length - 1];
 
+    const refundCond = offer.conditions?.refund_before_departure;
+    const changeCond = offer.conditions?.change_before_departure;
+    const isRefundable = refundCond?.allowed === true;
+    const isChangeable = changeCond?.allowed === true;
+    const refundPenalty = refundCond?.penalty_amount != null ? parseFloat(refundCond.penalty_amount) : null;
+    const changePenalty = changeCond?.penalty_amount != null ? parseFloat(changeCond.penalty_amount) : null;
+
     return {
         provider: "duffel",
         offer_id: offer.id,
@@ -143,6 +150,17 @@ export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
         stops: offer.slices.reduce((acc: number, s: any) => acc + (s.segments.length - 1), 0),
         remaining_seats: offer.available_seats || null,
         segments: allSegments,
+        refundable: isRefundable,
+        farePolicy: {
+            isRefundable,
+            isChangeable,
+            refundPenaltyAmount: refundPenalty,
+            refundPenaltyCurrency: refundCond?.penalty_currency ?? null,
+            changePenaltyAmount: changePenalty,
+            changePenaltyCurrency: changeCond?.penalty_currency ?? null,
+            policyVersion: 'search' as const,
+            policySource: 'duffel' as const,
+        },
         raw: offer
     } as any;
 }

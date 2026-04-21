@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, Luggage, ShoppingBag, AlertTriangle, Plus, Minus, Check } from 'lucide-react';
+import { Loader2, Luggage, ShoppingBag, AlertTriangle, Plus, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NormalizedBagOption, SelectedBag } from '@/types/bags';
 
@@ -16,6 +16,8 @@ interface BagSelectionPanelProps {
     currency: string;
     /** Called when no bag services are available so the parent can skip */
     onUnavailable?: () => void;
+    /** Called when the offer has expired (404) so the parent can fetch a fresh offer */
+    onOfferExpired?: () => void;
 }
 
 export default function BagSelectionPanel({
@@ -27,6 +29,7 @@ export default function BagSelectionPanel({
     onBagsChange,
     currency,
     onUnavailable,
+    onOfferExpired,
 }: BagSelectionPanelProps) {
     const [options, setOptions] = useState<NormalizedBagOption[]>([]);
     const [loading, setLoading] = useState(true);
@@ -42,9 +45,13 @@ export default function BagSelectionPanel({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ offerId, duffelPassengerIds }),
         })
-            .then(r => r.json())
-            .then(data => {
+            .then(async r => {
+                const data = await r.json();
                 if (cancelled) return;
+                if (r.status === 404 && onOfferExpired) {
+                    onOfferExpired();
+                    return;
+                }
                 if (!data.success) throw new Error(data.error || 'Failed to load bag options');
                 const opts: NormalizedBagOption[] = data.bagOptions ?? [];
                 setOptions(opts);
@@ -102,7 +109,9 @@ export default function BagSelectionPanel({
                 <div>
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Bag upgrades not available</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Extra bag selection isn't supported for this flight.
+                        {error
+                            ? `Could not load bag options: ${error}`
+                            : 'Extra bag selection isn\'t supported for this flight.'}
                     </p>
                 </div>
             </div>

@@ -27,7 +27,13 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         const msg = err?.errors?.[0]?.message ?? `Duffel seat map error ${res.status}`;
-        return NextResponse.json({ success: false, error: msg }, { status: res.status });
+        console.error(`[seat-map] Duffel ${res.status} for offer ${offerId}:`, msg);
+        const clientMsg = res.status === 404
+            ? 'This offer has expired. Please go back and search again for updated prices.'
+            : res.status === 422
+                ? 'Seat selection is not available for this flight.'
+                : msg;
+        return NextResponse.json({ success: false, error: clientMsg }, { status: res.status });
     }
 
     const json = await res.json();
@@ -37,6 +43,9 @@ export async function POST(req: NextRequest) {
         normalizeEntry(entry, idx, segments)
     );
 
+    if (normalized.length === 0) {
+        console.log(`[seat-map] Duffel returned 0 seat maps for offer ${offerId} (airline doesn't support seat selection)`);
+    }
     return NextResponse.json({ success: true, seatMaps: normalized });
 }
 
