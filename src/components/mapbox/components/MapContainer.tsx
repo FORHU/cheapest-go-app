@@ -16,6 +16,7 @@ interface MapContainerProps {
     onLoad: (e: any) => void;
     onClick: (e: any) => void;
     onMouseMove: (e: any) => void;
+    onMoveEnd?: (e: any) => void;
     children?: React.ReactNode;
     hideLayersButton?: boolean;
     mapStyle?: string;
@@ -29,6 +30,7 @@ export const MapContainer = ({
     onLoad,
     onClick,
     onMouseMove,
+    onMoveEnd,
     children,
     hideLayersButton = false,
     mapStyle: propMapStyle,
@@ -68,6 +70,7 @@ export const MapContainer = ({
             maxPitch={60}
             onClick={onClick}
             onMouseMove={onMouseMove}
+            onMoveEnd={onMoveEnd}
             onLoad={onLoad}
             enable3DBuildings={false}
             className={`rounded-none min-h-0 w-full h-full ${children ? '' : ''}`}

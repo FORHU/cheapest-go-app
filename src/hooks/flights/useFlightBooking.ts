@@ -150,7 +150,12 @@ export function useFlightBooking() {
         let parsedOffer: FlightOffer;
         try {
             parsedOffer = JSON.parse(raw);
+            if (!parsedOffer || !parsedOffer.price || !parsedOffer.price.total || !parsedOffer.segments) {
+                // Failsafe for invalid cache structure (e.g. leftover unmapped raw objects)
+                throw new Error("Invalid cached flight format");
+            }
         } catch {
+            sessionStorage.removeItem('selectedFlight');
             router.replace('/');
             return;
         }
@@ -188,10 +193,10 @@ export function useFlightBooking() {
                         provider: parsedOffer.provider,
                         userId: user?.id || 'anonymous',
                         flightPayload: {
-                            oldPrice: parsedOffer.price.total,
-                            currency: parsedOffer.price.currency,
-                            traceId: parsedOffer.provider.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
-                            flight: parsedOffer.provider === 'duffel'
+                            oldPrice: parsedOffer?.price?.total,
+                            currency: parsedOffer?.price?.currency,
+                            traceId: parsedOffer?.provider?.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
+                            flight: parsedOffer?.provider === 'duffel'
                                 ? ((parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
                                 : undefined,
                         }
@@ -262,6 +267,8 @@ export function useFlightBooking() {
 
     const bookMutation = useMutation({
         mutationFn: async ({ offer, passengers, contact, seats, bags }: { offer: FlightOffer, passengers: FlightPassengerForm[], contact: FlightContactForm, seats: SelectedSeat[], bags: SelectedBag[] }) => {
+            const bundleHotelId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('bundleHotelId') : null;
+
             // Client-side auth check (fast-fail UX; server re-verifies via JWT)
             const { data: { user } } = await createClient().auth.getUser();
 
@@ -315,6 +322,7 @@ export function useFlightBooking() {
                     ...(seatServiceIds.length > 0 ? { seatServiceIds, seatTotal } : {}),
                     ...(bagServiceIds.length > 0 ? { bagServiceIds, bagTotal } : {}),
                     ...((offer as any)._confirmedPrice !== undefined ? { confirmedPrice: (offer as any)._confirmedPrice } : {}),
+                    ...(bundleHotelId ? { bundleHotelId } : {}),
                 }),
             });
 
@@ -325,13 +333,9 @@ export function useFlightBooking() {
                     err.priceChangedData = { oldPrice: data.oldPrice, newPrice: data.newPrice, currency: data.currency };
                     throw err;
                 }
-                if (data.code === 'DUPLICATE_BOOKING') {
-                    const err = new Error('duplicate_booking') as any;
-                    err.duplicateData = {
-                        existingBookingId: data.existingBookingId,
-                        route: data.route,
-                        departureDate: data.departureDate,
-                    };
+                if (data.error === 'offer_replaced') {
+                    const err = new Error('offer_replaced') as any;
+                    err.newOffer = data.newOffer;
                     throw err;
                 }
                 throw new Error(data.error || 'Booking failed');
@@ -393,9 +397,22 @@ export function useFlightBooking() {
             } else if (error.message === 'price_changed' && error.priceChangedData) {
                 setPriceChangedData(error.priceChangedData);
                 setStep('form');
-            } else if (error.message === 'duplicate_booking' && error.duplicateData) {
-                setDuplicateBookingData(error.duplicateData);
+                idempotencyKeyRef.current = generateId();
+            } else if (error.message === 'offer_replaced' && error.newOffer) {
+                // The edge case where the flight offer expired, auto-refresh was successful,
+                // but the old seat/bag service IDs were rendered invalid. We swap the offer
+                // and force the user to reselect seats on the new offer ID without losing passenger data.
+                if (typeof window !== 'undefined') sessionStorage.setItem('selectedFlight', JSON.stringify(error.newOffer));
+                setOffer(error.newOffer);
+                const rRaw = (error.newOffer as any)._rawOffer || (error.newOffer as any).rawOffer;
+                const rExpiry = rRaw?.expires_at ?? error.newOffer.expires_at ?? error.newOffer.lastTicketDate;
+                if (rExpiry) setOfferExpiresAt(new Date(rExpiry));
+                
+                setSelectedSeats([]);
+                setSelectedBags([]);
+                setErrorMsg('Your flight offer expired. We refreshed it with the latest availability, but your seat and bag selections were cleared. Please reselect them and try again.');
                 setStep('form');
+                idempotencyKeyRef.current = generateId();
             } else {
                 setErrorMsg(error.message || 'Booking failed. Please try again.');
                 setStep('error');
@@ -570,12 +587,21 @@ export function useFlightBooking() {
         }
     };
 
+    // Clear "expired" error when user starts reselecting
+    useEffect(() => {
+        if (errorMsg.toLowerCase().includes('expired') || errorMsg.toLowerCase().includes('cleared')) {
+            setErrorMsg('');
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedSeats, selectedBags]);
+
     return {
         offer,
         offerExpiresAt,
         step,
         setStep,
         errorMsg,
+        setErrorMsg,
         priceChangedData,
         duplicateBookingData,
         dismissDuplicateWarning: () => setDuplicateBookingData(null),

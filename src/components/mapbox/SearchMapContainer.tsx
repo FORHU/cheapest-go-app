@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MappableProperty } from './utils/buildGeoJson';
 import { useMapboxInstance } from './hooks/useMapboxInstance';
 import { useMapMarkers } from './hooks/useMapMarkers';
@@ -14,12 +14,30 @@ import { Source, Layer, Marker } from 'react-map-gl/mapbox';
 import { PoiPopup } from './components/PoiPopup';
 import { MapMarker } from '../map/MapMarker';
 import { MapSearchOverlay } from './components/MapSearchOverlay';
-import { Layers } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useUserCurrency } from '@/stores/searchStore';
+import { convertCurrency } from '@/lib/currency';
 import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
-import { useUserCurrency } from '@/stores/searchStore';
-import { convertCurrency } from '@/lib/currency';
+import { Layers } from 'lucide-react';
+
+// Haversine distance — defined outside component to avoid re-creation on every render
+const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
+    const R = 6371;
+    const dLat = (l2.lat - l1.lat) * (Math.PI / 180);
+    const dLng = (l2.lng - l1.lng) * (Math.PI / 180);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(l1.lat * (Math.PI / 180)) * Math.cos(l2.lat * (Math.PI / 180)) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return (R * c).toFixed(2);
+};
+
+const getMapboxPoiImage = (name: string, lat: number, lng: number) => {
+    return `/api/poi-photo?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}`;
+};
 
 interface SearchMapContainerProps {
     properties: MappableProperty[];
@@ -45,6 +63,7 @@ export const SearchMapContainer = React.memo(({
 
     // 2. Data Preparation
     const { mappableProperties, geoJsonData, shouldCluster } = useMapMarkers(properties);
+    const router = useRouter();
 
     // POI Selection/Hover State
     const [selectedPoi, setSelectedPoi] = React.useState<PoiData | null>(null);
@@ -73,12 +92,21 @@ export const SearchMapContainer = React.memo(({
 
     // 5. Derived State
     const targetCurrency = useUserCurrency();
-    const selectedProperty = mappableProperties.find((p: MappableProperty) => p.id === selectedId) || null;
-    const hoveredProperty = mappableProperties.find((p: MappableProperty) => p.id === hoveredId) || null;
+    const selectedProperty = useMemo(
+        () => mappableProperties.find((p: MappableProperty) => p.id === selectedId) ?? null,
+        [mappableProperties, selectedId]
+    );
+    const hoveredProperty = useMemo(
+        () => mappableProperties.find((p: MappableProperty) => p.id === hoveredId) ?? null,
+        [mappableProperties, hoveredId]
+    );
     
     // Preview logic: prefer hover state for quick feedback, fallback to selected
-    const previewProperty = hoveredProperty || selectedProperty;
-    const activePoi = hoveredPoi || selectedPoi;
+    const previewProperty = useMemo(
+        () => hoveredProperty || selectedProperty,
+        [hoveredProperty, selectedProperty]
+    );
+    const activePoi = useMemo(() => hoveredPoi || selectedPoi, [hoveredPoi, selectedPoi]);
 
 
 
@@ -95,9 +123,12 @@ export const SearchMapContainer = React.memo(({
         return (R * c).toFixed(2);
     };
 
-    const poiDistance = previewProperty && activePoi 
-        ? calculateDistance(previewProperty.coordinates, activePoi.coordinates)
-        : null;
+    const poiDistance = useMemo(
+        () => previewProperty && activePoi
+            ? calculateDistance(previewProperty.coordinates, activePoi.coordinates)
+            : null,
+        [previewProperty, activePoi]
+    );
 
     // POI Route Logic
     // 6. Fetch Real Road GPS Route — only when a POI is *clicked* (selectedPoi)
@@ -111,26 +142,21 @@ export const SearchMapContainer = React.memo(({
 
         const fetchRoute = async () => {
             try {
-                // Driving Route — fetch alternatives, pick shortest by distance
-                const drivingQuery = await fetch(
-                    `https://api.mapbox.com/directions/v5/mapbox/driving/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?geometries=geojson&overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`
-                );
-                const drivingJson = await drivingQuery.json();
+                const drivingUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?geometries=geojson&overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`;
+                const walkingUrl = `https://api.mapbox.com/directions/v5/mapbox/walking/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`;
+
+                const [drivingJson, walkingJson] = await Promise.all([
+                    fetch(drivingUrl).then(r => r.json()),
+                    fetch(walkingUrl).then(r => r.json()),
+                ]);
 
                 if (drivingJson.code === 'Ok' && drivingJson.routes?.length) {
-                    // Sort all alternatives by distance (metres), pick the shortest
                     const shortestDriving = drivingJson.routes.reduce((best: any, r: any) =>
                         r.distance < best.distance ? r : best
                     );
                     setRouteGeometry(shortestDriving.geometry);
                     setCarDuration(`${Math.max(1, Math.round(shortestDriving.duration / 60))} min`);
                 }
-
-                // Walking Route — fetch alternatives, pick shortest for time estimate
-                const walkingQuery = await fetch(
-                    `https://api.mapbox.com/directions/v5/mapbox/walking/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`
-                );
-                const walkingJson = await walkingQuery.json();
 
                 if (walkingJson.code === 'Ok' && walkingJson.routes?.length) {
                     const shortestWalking = walkingJson.routes.reduce((best: any, r: any) =>
@@ -146,12 +172,11 @@ export const SearchMapContainer = React.memo(({
         fetchRoute();
     }, [previewProperty, selectedPoi]);
 
-    // POI Route Logic (Real Geometry)
-    const poiRouteData: any = routeGeometry ? {
-        type: 'Feature',
+    const poiRouteData = useMemo(() => routeGeometry ? ({
+        type: 'Feature' as const,
         properties: {},
         geometry: routeGeometry
-    } : null;
+    }) : null, [routeGeometry]);
 
     const {
         mapType,
@@ -191,8 +216,6 @@ export const SearchMapContainer = React.memo(({
                         <ClusterLayer
                             geoJsonData={geoJsonData}
                             shouldCluster={shouldCluster}
-                            selectedId={selectedId}
-                            hoveredId={hoveredId}
                         />
 
                         {mappableProperties.map(property => (
@@ -248,7 +271,17 @@ export const SearchMapContainer = React.memo(({
             {/* ── Map Search Overlay (Centered) ── */}
             <MapSearchOverlay
                 className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[60%] sm:w-[320px] md:w-[400px]"
-                onSelect={(r) => mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, pitch: 45, bearing: -10, duration: 1200 })}
+                onSelect={(r) => {
+                    // 1. Move the map visually
+                    mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, pitch: 45, bearing: -10, duration: 1200 });
+                    
+                    // 2. Trigger a global search refresh by updating URL
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('destination', r.name);
+                    params.set('lat', r.lat.toString());
+                    params.set('lng', r.lng.toString());
+                    router.push(`/search?${params.toString()}`);
+                }}
             />
 
             {/* ── Layers button (Top-left) ── */}

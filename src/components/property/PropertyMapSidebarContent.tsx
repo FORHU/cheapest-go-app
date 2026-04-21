@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MapPin, Navigation, Car, Bike, X, GraduationCap, Trees, Utensils, Building2, Landmark, Coffee, Library, Pill, ShoppingBasket, Banknote, Church, Bus, Footprints, Search, Maximize, Minimize, ChevronLeft, ChevronRight, Layers, Star, Home, Bed } from 'lucide-react';
 import { Map } from '@/components/ui/map';
@@ -15,6 +15,7 @@ import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel'
 import Image from 'next/image';
 import { useWeather } from '@/hooks/useWeather';
 import { WeatherWidget } from './WeatherWidget';
+import { isLocationInKorea } from '@/utils/geo';
 
 const GOOGLE_MAPS_SEARCH_URL = 'https://www.google.com/maps/search/?api=1';
 
@@ -167,9 +168,17 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
         const [isLocating, setIsLocating] = useState(false);
 
+        const handleLoad = useCallback(() => {
+            setIsLoaded(true);
+        }, []);
+
         // Initial hydration fix
         React.useEffect(() => {
             setMounted(true);
+            // Ensure isLoaded is set if map is already initialized (fixes navigation bugs)
+            if (mapRef.current?.getMap()?.loaded()) {
+                setIsLoaded(true);
+            }
         }, []);
 
         const formatDuration = (mins: number) => {
@@ -358,6 +367,58 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                 setIsFetchingGems(true);
                 setNearbyGems([]); // Clear immediately so UI shows loading state
                 try {
+                    const inKorea = isLocationInKorea(coordinates.lat, coordinates.lng);
+
+                    if (inKorea && env.KAKAO_REST_API_KEY) {
+                        try {
+                            const searchQuery = selectedCategory === 'all' 
+                                ? '관광명소' 
+                                : selectedCategory === 'restaurant' 
+                                    ? '맛집' 
+                                    : selectedCategory === 'attraction' 
+                                        ? '명소' 
+                                        : selectedCategory === 'grocery' 
+                                            ? '마트' 
+                                            : selectedCategory === 'medical' 
+                                                ? '병원' 
+                                                : selectedCategory === 'transit' 
+                                                    ? '역' 
+                                                    : selectedCategory;
+
+                            const res = await fetch(`/api/kakao/search?query=${encodeURIComponent(searchQuery)}&x=${coordinates.lng}&y=${coordinates.lat}&radius=5000`, { signal });
+                            const data = await res.json();
+                            
+                            if (data.documents) {
+                                const kakaoGems = data.documents.map((p: any) => {
+                                    const lng = parseFloat(p.x);
+                                    const lat = parseFloat(p.y);
+                                    const cat = (p.category_name || '').split(' > ').pop() || 'Attraction';
+                                    
+                                    return {
+                                        type: 'Feature',
+                                        geometry: { type: 'Point', coordinates: [lng, lat] },
+                                        properties: {
+                                            name: p.place_name,
+                                            category: cat,
+                                            icon: (cat.includes('식당') || cat.includes('카페') || cat.includes('음식점')) ? Utensils : (cat.includes('공원') || cat.includes('산')) ? Trees : Landmark,
+                                            imageUrl: getMapboxPoiImage(p.place_name, lat, lng),
+                                            address: p.road_address_name || p.address_name,
+                                            phone: p.phone,
+                                            externalUrl: p.place_url,
+                                            isStub: false, // Kakao data is already detailed
+                                            isKakao: true
+                                        }
+                                    };
+                                });
+                                setNearbyGems(kakaoGems);
+                                setIsFetchingGems(false);
+                                return;
+                            }
+                        } catch (err) {
+                            console.error('Kakao fallback failed, trying Mapbox:', err);
+                        }
+                    }
+
                     const getSearchCategories = (id: string) => {
                         switch (id) {
                             case 'all': return ['tourism', 'park', 'restaurant', 'museum'];
@@ -428,6 +489,11 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                     // --- STAGE 2: PRIORITIZED STREAM ENRICHMENT ---
                     const limiter = pLimit(8); 
                     let resolvedCount = 0;
+                    
+                    // PERFORMANCE: Buffer results to avoid rapid-fire state updates
+                    let gemBuffer: any[] = [...initialGems];
+                    let lastUpdate = Date.now();
+                    const UPDATE_INTERVAL = 800; // Increased interval for better performance
 
                     const retrievePromises = initialGems.map((featureStub, idx) =>
                         limiter(async () => {
@@ -438,11 +504,11 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                             const lat = featureStub.geometry.coordinates[1];
 
                             if (idx >= 6) {
-                                await new Promise(r => setTimeout(r, 800 + (idx * 150)));
+                                await new Promise(r => setTimeout(r, 600 + (idx * 100)));
                             }
 
                             try {
-                                const lowerCat = featureStub.properties.category.toLowerCase();
+                                const lowerCat = (featureStub.properties.category || '').toLowerCase();
                                 const enrichmentIcon = 
                                     (lowerCat.includes('hospital') || lowerCat.includes('pharmacy') || lowerCat.includes('medical')) ? Pill :
                                     (lowerCat.includes('supermarket') || lowerCat.includes('grocery') || lowerCat.includes('shop')) ? ShoppingBasket :
@@ -470,12 +536,22 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     }
                                 };
 
-                                // Update the specific feature in state
                                 if (!signal.aborted) {
-                                    if (enrichedFeature.properties.rating && enrichedFeature.properties.rating >= 3) {
-                                        setNearbyGems(prev => prev.map(g => g.properties.name === name ? enrichedFeature : g));
+                                    const hasLowRating = enrichedFeature.properties.rating !== undefined && 
+                                                       enrichedFeature.properties.rating !== null && 
+                                                       enrichedFeature.properties.rating < 3;
+                                    
+                                    // Efficiently update the buffer
+                                    if (!hasLowRating) {
+                                        gemBuffer = gemBuffer.map(g => g.properties.name === name ? enrichedFeature : g);
                                     } else {
-                                        setNearbyGems(prev => prev.filter(g => g.properties.name !== name));
+                                        gemBuffer = gemBuffer.filter(g => g.properties.name !== name);
+                                    }
+
+                                    // Periodic state update to keep UI fluid
+                                    if (Date.now() - lastUpdate > UPDATE_INTERVAL || resolvedCount === initialGems.length - 1) {
+                                        setNearbyGems([...gemBuffer]);
+                                        lastUpdate = Date.now();
                                     }
                                 }
                                 return enrichedFeature;
@@ -486,6 +562,9 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                             } finally {
                                 resolvedCount++;
                                 if (resolvedCount === initialGems.length && !signal.aborted) {
+                                    // Final sync
+                                    setNearbyGems([...gemBuffer]);
+                                    
                                     // ── Final Baguio Fallback logic ──
                                     setNearbyGems(prev => {
                                         const enrichedCount = prev.filter(p => !p.properties.isStub).length;
@@ -544,6 +623,28 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         // Determine which route is currently active
         const activeRouteGeometry = showDirections && origin ? originRouteGeometry : poiRouteGeometry;
 
+        const gemsGeojson = useMemo(() => {
+            const visibleGems = !showDirections ? nearbyGems.filter(gem => {
+                const cat = (gem.properties?.category || gem.category || '').toLowerCase();
+                const matched = MAP_FILTER_CONFIG.find(filter =>
+                    activeMapFilters.includes(filter.id) &&
+                    filter.keywords.some(kw => cat.includes(kw))
+                );
+                return !!matched;
+            }) : [];
+
+            return {
+                type: 'FeatureCollection',
+                features: visibleGems.map(gem => ({
+                    ...gem,
+                    properties: {
+                        ...gem.properties,
+                        isActive: activePoiId === (gem.properties?.name || gem.name)
+                    }
+                }))
+            };
+        }, [nearbyGems, showDirections, activeMapFilters, activePoiId]);
+
         const routeGeojson = React.useMemo(() => {
             if (!activeRouteGeometry) return { type: 'FeatureCollection', features: [] };
             return { type: 'Feature', properties: {}, geometry: activeRouteGeometry };
@@ -583,10 +684,27 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             }
 
             const map = mapRef.current.getMap();
-            const features = map.queryRenderedFeatures(event.point);
+            const hasGemsLayer = map.getLayer('gems-layer');
+            const features = hasGemsLayer ? map.queryRenderedFeatures(event.point, { layers: ['gems-layer'] }) : [];
+            
+            if (features.length > 0) {
+                const gem = features[0];
+                const props = gem.properties;
+                const name = props?.name;
+                const coords = (gem.geometry as any).coordinates;
+                
+                setSelectedNativePoi(gem);
+                setActivePoiId(name);
+                setModalPoi(gem);
+                mapRef.current?.flyTo({ center: [coords[0], coords[1]], zoom: 17, pitch: 45, duration: 800 });
+                return;
+            }
+
+            // Fallback to checking for general POIs if no gem was clicked
+            const allFeatures = map.queryRenderedFeatures(event.point);
             const skipPatterns = ['road', 'building', 'land', 'water', 'boundary', 'admin', 'tunnel', 'bridge', 'path', 'street'];
 
-            const poiFeature = features.find((f: any) => {
+            const poiFeature = allFeatures.find((f: any) => {
                 const layerId = (f.layer?.id || '').toLowerCase();
                 const sourceName = (f.source || '').toLowerCase();
                 const hasName = f.properties?.name || f.properties?.name_en;
@@ -641,9 +759,6 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             }
         }, [origin, hasCoordinates, coordinates, showDirections]);
 
-        const handleLoad = useCallback(() => {
-            setIsLoaded(true);
-        }, []);
 
         // POI Icons are shown automatically by streets-v12. (No need to scale manually)
 
@@ -651,9 +766,17 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             if (!mapRef.current || showDirections) return;
             const map = mapRef.current.getMap();
             if (!map || !map.loaded()) return;
-            const features = map.queryRenderedFeatures(event.point);
+            
+            const hasGemsLayer = map.getLayer('gems-layer');
+            const features = hasGemsLayer ? map.queryRenderedFeatures(event.point, { layers: ['gems-layer'] }) : [];
+            if (features.length > 0) {
+                map.getCanvas().style.cursor = 'pointer';
+                return;
+            }
+
+            const allFeatures = map.queryRenderedFeatures(event.point);
             const skipPatterns = ['road', 'building', 'land', 'water', 'boundary', 'admin', 'tunnel', 'bridge', 'path', 'street'];
-            const poiFeature = features.find((f: any) => {
+            const poiFeature = allFeatures.find((f: any) => {
                 const layerId = (f.layer?.id || '').toLowerCase();
                 const sourceName = (f.source || '').toLowerCase();
                 const hasName = f.properties?.name || f.properties?.name_en;
@@ -820,53 +943,42 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                         </Marker>
                                     )}
 
-                                    {/* Nearby Gems POI Markers */}
-                                    {!showDirections && nearbyGems
-                                        .filter(gem => {
-                                            const cat = (gem.properties?.category || gem.category || '').toLowerCase();
-                                            const matched = MAP_FILTER_CONFIG.find(filter =>
-                                                activeMapFilters.includes(filter.id) &&
-                                                filter.keywords.some(kw => cat.includes(kw))
-                                            );
-                                            return !!matched;
-                                        })
-                                        .map((gem, idx) => {
-                                            const name = gem.properties?.name || gem.name;
-                                            const isActive = activePoiId === name;
-                                            const GemIcon = (gem.properties?.icon || gem.icon) || Landmark;
-                                            const lng = gem.geometry?.coordinates[0] || gem.coordinates.lng;
-                                            const lat = gem.geometry?.coordinates[1] || gem.coordinates.lat;
-
-                                            return (
-                                                <Marker
-                                                    key={`gem-${name}-${idx}`}
-                                                    latitude={lat}
-                                                    longitude={lng}
-                                                    anchor="center"
-                                                    onClick={(e) => {
-                                                        e.originalEvent.stopPropagation();
-                                                        setSelectedNativePoi(gem);
-                                                        setActivePoiId(name);
-                                                        setModalPoi(gem);
-                                                        mapRef.current?.flyTo({ center: [lng, lat], zoom: 17, pitch: 45, duration: 800 });
-                                                    }}
-                                                >
-                                                    <div className={`flex flex-col items-center cursor-pointer group transition-all duration-200 ${isActive ? 'scale-125 z-10' : 'hover:scale-110'}`}>
-                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shadow-lg border transition-colors duration-200
-                                                    ${isActive
-                                                                ? 'bg-blue-500 border-white'
-                                                                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 hover:border-blue-400'
-                                                            }`}
-                                                        >
-                                                            <GemIcon size={12} className={`${isActive ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`} />
-                                                        </div>
-                                                        {isActive && (
-                                                            <div className="w-2 h-[3px] bg-black/20 rounded-full mt-1 blur-[1px]" />
-                                                        )}
-                                                    </div>
-                                                </Marker>
-                                            );
-                                        })}
+                                    {/* Nearby Gems POI Source & Layer */}
+                                    <Source id="gems-source" type="geojson" data={gemsGeojson as any}>
+                                        <Layer
+                                            id="gems-layer"
+                                            type="symbol"
+                                            layout={{
+                                                'icon-image': [
+                                                    'match',
+                                                    ['get', 'category'],
+                                                    'Restaurant', 'restaurant',
+                                                    'Dining', 'restaurant',
+                                                    'Cafe', 'cafe',
+                                                    'Park', 'park',
+                                                    'Shopping', 'shop',
+                                                    'Grocery', 'shop',
+                                                    'Hospital', 'hospital',
+                                                    'Transit', 'bus',
+                                                    'attraction'
+                                                ],
+                                                'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 15, 1.2],
+                                                'icon-allow-overlap': true,
+                                                'text-field': ['get', 'name'],
+                                                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular'],
+                                                'text-size': 10,
+                                                'text-offset': [0, 1.5],
+                                                'text-anchor': 'top',
+                                                'text-optional': true
+                                            }}
+                                            paint={{
+                                                'text-color': '#1e293b',
+                                                'text-halo-color': '#ffffff',
+                                                'text-halo-width': 1.5,
+                                                'icon-opacity': ['case', ['boolean', ['get', 'isActive'], false], 1, 0.8]
+                                            }}
+                                        />
+                                    </Source>
                                 </>
                             )}
                         </Map>
@@ -1352,5 +1464,8 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
     });
 
 PropertyMapSidebarContent.displayName = 'PropertyMapSidebarContent';
+
+
+Map.displayName = 'Map';
 
 export default PropertyMapSidebarContent;

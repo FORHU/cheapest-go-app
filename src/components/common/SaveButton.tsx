@@ -55,7 +55,8 @@ export default function SaveButton({
 
         try {
             if (saved && savedId) {
-                await fetch(`/api/saved-trips/${savedId}`, { method: 'DELETE' });
+                const res = await fetch(`/api/saved-trips/${savedId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
                 setSaved(false);
                 setSavedId(null);
             } else {
@@ -64,16 +65,26 @@ export default function SaveButton({
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ type, title, subtitle, price, currency, image_url: imageUrl, deep_link: deepLink, snapshot }),
                 });
+
                 if (res.status === 401) {
-                    // Not logged in — could show a toast here
+                    console.warn('[SaveButton] Unauthorized: User must be logged in to save trips.');
+                    // Optionally: window.location.href = '/login'; or show modal
                     return;
                 }
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(err.error || `Save failed: ${res.status}`);
+                }
+
                 const json = await res.json();
                 if (json.success) {
                     setSaved(true);
                     setSavedId(json.data?.id ?? null);
                 }
             }
+        } catch (error) {
+            console.error('[SaveButton] Error:', error);
         } finally { setLoading(false); }
     };
 

@@ -8,6 +8,8 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
+import { parseDuffelOffer } from '@/lib/server/flights/providers/duffel';
+import { normalizedToFlightOffer } from '@/utils/flight-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -669,18 +671,31 @@ export async function POST(req: NextRequest) {
                             }, { status: 409 });
                         }
 
+                        // Seats/bags from the original offer are invalid on a refreshed offer — ask client to re-select.
+                        const hadAncillaries = (seatServiceIds && seatServiceIds.length > 0) || (bagServiceIds && bagServiceIds.length > 0);
+                        if (hadAncillaries) {
+                            const parsedFreshOffer = parseDuffelOffer(freshOffer);
+                            const tripType = parsedFreshOffer.segments?.some((s) => s.segmentIndex > 0) ? 'round-trip' : 'one-way';
+                            const flightOffer = normalizedToFlightOffer(parsedFreshOffer, tripType);
+                            return NextResponse.json({
+                                success: false,
+                                error: 'offer_replaced',
+                                newOffer: flightOffer,
+                            }, { status: 409 });
+                        }
+
                         // Try place order with NEW idempotency key for this retry
                         const attempt2 = await tryPlaceOrder(freshOffer.id, refreshedPassengers, freshTotalStr, freshOffer.total_currency, false, crypto.randomUUID());
-                        
+
                         if (attempt2.res?.status && attempt2.res.status >= 500) {
-                            console.error(`[/book] Supplier returned ${attempt2.res.status}. Breaking retry loop.`);
+                            console.error();
                             duffelOrderRes = attempt2.res;
                             duffelOrderData = attempt2.data;
                             break;
                         }
 
                         if (attempt2.isOfferUnavailable) {
-                            console.warn(`[/book] Refresh offer ${freshOffer.id} unavailable — trying next...`);
+                            console.warn();
                             continue;
                         }
 
@@ -693,15 +708,15 @@ export async function POST(req: NextRequest) {
                                 currency: attempt2.newCurrency,
                             }, { status: 409 });
                         }
-                        
-                        duffelOrderRes = attempt2.res!;
+
+                        duffelOrderRes = attempt2.res;
                         duffelOrderData = attempt2.data;
-                        activeTotal = attempt2.finalTotal!;
+                        activeTotal = attempt2.finalTotal;
                         activeOffer = freshOffer;
                         activePassengers = refreshedPassengers;
 
-                        console.log(`[/book] Retry order status: ${duffelOrderRes.status}`, duffelOrderRes.ok ? 'OK' : JSON.stringify(duffelOrderData?.errors?.[0]));
-                        
+                        console.log(, duffelOrderRes.ok ? 'OK' : JSON.stringify(duffelOrderData?.errors?.[0]));
+
                         if (duffelOrderRes.ok) {
                             attempt2Success = true;
                             break;

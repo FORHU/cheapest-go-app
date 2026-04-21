@@ -304,6 +304,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             subtitle={`${primary.airline.name} · ${formatDuration(offer.totalDuration)} · ${stopsLabel(offer.totalStops)}`}
                             price={offer.price.total}
                             currency={offer.price.currency}
+                            imageUrl={`https://pics.avs.io/40/40/${(primary.airline.code || '').toUpperCase()}.png`}
                             deepLink={`/flights/search?origin=${primary.departure.airport}&destination=${last.arrival.airport}&departure=${primary.departure.time?.slice(0, 10) ?? ''}`}
                             snapshot={{ offerId: offer.offerId, provider: offer.provider }}
                             size="sm"

@@ -28,32 +28,3 @@ export const clusterCountLayer: LayerProps = {
     },
 };
 
-export const unclusteredPointLayer: LayerProps = {
-    id: 'unclustered-point',
-    type: 'circle',
-    source: 'properties',
-    filter: ['!', ['has', 'point_count']],
-    paint: {
-        'circle-color': '#ffffff',
-        'circle-radius': 18,
-        'circle-stroke-width': 1,
-        'circle-stroke-color': 'rgba(0,0,0,0.12)',
-        'circle-blur': 0,
-    },
-};
-
-export const unclusteredPointTextLayer: LayerProps = {
-    id: 'unclustered-point-text',
-    type: 'symbol',
-    source: 'properties',
-    filter: ['!', ['has', 'point_count']],
-    layout: {
-        'text-field': ['get', 'formattedPrice'],
-        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-        'text-size': 11,
-        'text-offset': [0, 0],
-    },
-    paint: {
-        'text-color': '#0f172a',
-    },
-};

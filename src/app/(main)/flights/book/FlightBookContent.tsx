@@ -2,7 +2,8 @@
 
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage } from 'lucide-react';
+import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage, Sparkles } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
@@ -162,6 +163,7 @@ export default function FlightBookContent() {
         clientSecret,
         setStep,
         pollForBooking,
+        setErrorMsg,
     } = useFlightBooking();
 
     const [bagsOpen, setBagsOpen] = React.useState(false);
@@ -182,6 +184,21 @@ export default function FlightBookContent() {
         return () => { if (bookingStepTimer.current) clearInterval(bookingStepTimer.current); };
     }, [step]);
     const targetCurrency = useUserCurrency();
+    const searchParams = useSearchParams();
+    const isBundledWithHotel = searchParams.has('bundleHotelId');
+    const [hasAlreadyBookedHotel, setHasAlreadyBookedHotel] = React.useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setHasAlreadyBookedHotel(sessionStorage.getItem('hasAlreadyBookedHotel') === 'true');
+        }
+    }, []);
+
+    useEffect(() => {
+        if (step === 'success' && typeof window !== 'undefined') {
+            sessionStorage.setItem('hasAlreadyBookedFlight', 'true');
+        }
+    }, [step]);
 
     // ─── Loading ─────────────────────────────────────────────────────
 
@@ -349,7 +366,9 @@ export default function FlightBookContent() {
                         transition={{ delay: 0.4 }}
                         className="text-xs lg:text-base text-slate-500 dark:text-slate-400 mb-4 lg:mb-6"
                     >
-                        Your flight has been booked successfully.
+                        {isBundledWithHotel 
+                            ? "Your flight has been successfully added to your bundle."
+                            : "Your flight has been booked successfully."}
                     </motion.p>
 
                     {/* Booking Details Card */}
@@ -377,7 +396,17 @@ export default function FlightBookContent() {
                         </div>
                         <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
                             <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">Total</span>
-                            <span className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}</span>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white">
+                                    {formatPrice(offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}
+                                </span>
+                                {isBundledWithHotel && (
+                                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
+                                        <Sparkles className="w-2.5 h-2.5" />
+                                        Bundle discount applied
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         {bookingResult.tickets && bookingResult.tickets.length > 0 && (
                             <div className="flex justify-between items-start pt-1">
@@ -454,7 +483,7 @@ export default function FlightBookContent() {
                         const bundleParam = bookingResult.bookingId ? `&bundleFlightId=${bookingResult.bookingId}` : '';
                         const hotelUrl = `/search?destination=${encodeURIComponent(cityName)}&checkIn=${depDate}&checkOut=${checkOut}&adults=1${countryCode ? `&countryCode=${countryCode}` : ''}${bundleParam}`;
                         const dest = cityName;
-                        return depDate ? (
+                        return (depDate && !isBundledWithHotel) ? (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -1007,13 +1036,25 @@ export default function FlightBookContent() {
                                 <div className={`flex items-center gap-1.5 lg:gap-2 p-2.5 lg:p-4 rounded-lg lg:rounded-xl border ${isPending
                                     ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
                                     : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
-                                    } text-[11px] lg:text-sm`}>
+                                    } text-[11px] lg:text-sm relative`}>
                                     {isPending ? (
                                         <Info className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
                                     ) : (
                                         <AlertTriangle className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
                                     )}
-                                    {errorMsg || 'Booking failed. Please try again.'}
+                                    <span className="pr-6">
+                                        {errorMsg || 'Booking failed. Please try again.'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setErrorMsg('');
+                                        }}
+                                        className="absolute right-2 lg:right-3 p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors"
+                                    >
+                                        <X className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                    </button>
                                 </div>
                             );
                         })()}
