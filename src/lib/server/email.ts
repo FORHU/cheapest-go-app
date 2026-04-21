@@ -15,10 +15,10 @@ function escapeHtml(str: string): string {
 // ─── Email Logging ────────────────────────────────────────────────────
 
 export type EmailLogStatus = 'queued' | 'sent' | 'failed';
-export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket';
+export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket' | 'price_alert';
 
 async function logEmail(params: {
-    bookingId: string;
+    bookingId?: string;
     recipient: string;
     subject: string;
     emailType: EmailType;
@@ -47,7 +47,7 @@ async function logEmail(params: {
     const { error } = await supabase
         .from('email_logs')
         .insert([{
-            booking_id: params.bookingId,
+            booking_id: params.bookingId || null,
             recipient: params.recipient,
             subject: params.subject,
             email_type: params.emailType,
@@ -1350,7 +1350,98 @@ export async function sendHotelRefundEmail(params: SendHotelRefundEmailParams): 
 }
 
 // ═════════════════════════════════════════════════════════════════════
-//  PRICE ALERT EMAIL
+//  PRICE ALERT CONFIRMATION EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface PriceAlertConfirmationParams {
+    email: string;
+    origin: string;
+    destination: string;
+    cabin: string;
+    adults: number;
+    alertId?: string;
+}
+
+export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirmationParams): Promise<{ success: boolean; error?: string }> {
+    const { email, origin, destination, cabin, adults, alertId } = params;
+    const resendApiKey = env.RESEND_API_KEY;
+    const cabinLabel = cabin.replace('_', ' ');
+
+    const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+<div style="background:linear-gradient(135deg,#6366f1,#4f46e5);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+  <h1 style="color:white;margin:0;font-size:24px;">Price Alert Active! ✈️</h1>
+  <p style="color:rgba(255,255,255,0.9);margin:8px 0 0">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</p>
+</div>
+<div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+  <p style="margin:0 0 20px">We've started tracking prices for your trip. You'll be the first to know when fares drop!</p>
+  
+  <div style="background:#f8fafc;border-radius:8px;padding:20px;margin:0 0 20px;">
+    <h3 style="margin:0 0 12px;font-size:14px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Your Alert Settings</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:4px 0;color:#64748b;">Route:</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</td></tr>
+      <tr><td style="padding:4px 0;color:#64748b;">Cabin:</td><td style="padding:4px 0;text-transform:capitalize;">${escapeHtml(cabinLabel)}</td></tr>
+      <tr><td style="padding:4px 0;color:#64748b;">Passengers:</td><td style="padding:4px 0;">${adults} adult${adults > 1 ? 's' : ''}</td></tr>
+    </table>
+  </div>
+
+  <div style="border-top:1px solid #e2e8f0;padding-top:20px;">
+    <h4 style="margin:0 0 8px;font-size:15px;">What happens next?</h4>
+    <p style="margin:0;font-size:14px;color:#475569;">Our system checks live prices daily. If we find a lower fare for your route, we'll send you an alert with a direct link to book the deal.</p>
+  </div>
+</div>
+<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">
+  &copy; ${new Date().getFullYear()} CheapestGo. All rights reserved.
+</div>
+</body></html>`;
+
+    if (!resendApiKey) return { success: false, error: 'RESEND_API_KEY not configured' };
+
+    const subject = `Watching prices: ${origin} \u2192 ${destination}`;
+
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from: 'CheapestGo Alerts <no-reply@mail.cheapestgo.com>',
+                to: [email],
+                subject,
+                html: emailHtml,
+            }),
+        });
+
+        if (res.ok) {
+            await logEmail({
+                recipient: email,
+                subject,
+                emailType: 'price_alert',
+                status: 'sent',
+                metadata: { alertId, type: 'confirmation' }
+            });
+            return { success: true };
+        }
+        
+        const err = await res.text();
+        await logEmail({
+            recipient: email,
+            subject,
+            emailType: 'price_alert',
+            status: 'failed',
+            errorMessage: err,
+            metadata: { alertId, type: 'confirmation' }
+        });
+        return { success: false, error: err };
+    } catch (error) {
+        console.error('[sendPriceAlertConfirmationEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  PRICE DROP ALERT EMAIL
 // ═════════════════════════════════════════════════════════════════════
 
 export async function sendPriceAlertConfirmationEmail(params: {
@@ -1414,7 +1505,7 @@ export async function sendPriceAlertConfirmationEmail(params: {
 
 export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Promise<{ success: boolean; error?: string }> {
     const { email, origin, destination, newPrice, oldPrice, currency, cabin, adults, searchUrl } = params;
-    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    const resendApiKey = env.RESEND_API_KEY;
 
     const formattedNew = new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(newPrice);
     const formattedOld = oldPrice ? new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(oldPrice) : null;
@@ -1425,7 +1516,7 @@ export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Pr
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
 <div style="background:linear-gradient(135deg,#10b981,#059669);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
-  <h1 style="color:white;margin:0;font-size:24px;">Price Drop Alert!</h1>
+  <h1 style="color:white;margin:0;font-size:24px;">Price Drop Alert! 📉</h1>
   <p style="color:rgba(255,255,255,0.9);margin:8px 0 0">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</p>
 </div>
 <div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
@@ -1440,25 +1531,45 @@ export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Pr
 </div>
 </body></html>`;
 
-    if (!RESEND_API_KEY) return { success: false, error: 'RESEND_API_KEY not configured' };
+    if (!resendApiKey) return { success: false, error: 'RESEND_API_KEY not configured' };
+
+    const subject = `Price drop: ${origin} \u2192 ${destination} now ${formattedNew}`;
 
     try {
         const res = await fetch('https://api.resend.com/emails', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+            headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                from: 'CheapestGo Alerts <alerts@cheapestgo.com>',
-                to: email,
-                subject: `Price drop: ${origin} \u2192 ${destination} now ${formattedNew}`,
+                from: 'CheapestGo Alerts <alerts@mail.cheapestgo.com>',
+                to: [email],
+                subject,
                 html: emailHtml,
             }),
         });
-        if (!res.ok) {
-            const err = await res.text();
-            return { success: false, error: err };
+
+        if (res.ok) {
+            await logEmail({
+                recipient: email,
+                subject,
+                emailType: 'price_alert',
+                status: 'sent',
+                metadata: { type: 'drop_alert' }
+            });
+            return { success: true };
         }
-        return { success: true };
+
+        const err = await res.text();
+        await logEmail({
+            recipient: email,
+            subject,
+            emailType: 'price_alert',
+            status: 'failed',
+            errorMessage: err,
+            metadata: { type: 'drop_alert' }
+        });
+        return { success: false, error: err };
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+        console.error('[sendPriceAlertEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send' };
     }
 }

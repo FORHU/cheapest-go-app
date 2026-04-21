@@ -74,55 +74,7 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
         const offers = json.data?.offers || [];
 
         // 3. Normalize Results
-        const results = offers.map((offer: any): FlightResult => {
-            const firstSlice = offer.slices[0];
-            const allSegments: any[] = [];
-            
-            offer.slices.forEach((slice: any, sliceIdx: number) => {
-                slice.segments.forEach((seg: any) => {
-                    allSegments.push({
-                        segmentIndex: sliceIdx,
-                        airline: seg.operating_carrier?.iata_code || seg.marketing_carrier?.iata_code,
-                        airlineName: seg.operating_carrier?.name || seg.marketing_carrier?.name,
-                        origin: seg.origin.iata_code,
-                        destination: seg.destination.iata_code,
-                        flightNumber: `${seg.marketing_carrier.iata_code}${seg.marketing_carrier_flight_number}`,
-                        departure: {
-                            airport: seg.origin.iata_code,
-                            terminal: seg.origin_terminal,
-                            time: seg.departing_at
-                        },
-                        arrival: {
-                            airport: seg.destination.iata_code,
-                            terminal: seg.destination_terminal,
-                            time: seg.arriving_at
-                        },
-                        duration: parseDuffelDuration(seg.duration),
-                        stops: 0,
-                        aircraft: seg.aircraft?.name,
-                        cabinClass: seg.passengers?.[0]?.cabin_class || params.cabinClass
-                    });
-                });
-            });
-
-            const firstSeg = allSegments[0];
-            const lastSeg = allSegments[allSegments.length - 1];
-
-            return {
-                provider: "duffel",
-                offer_id: offer.id,
-                price: parseFloat(offer.total_amount),
-                currency: offer.total_currency,
-                airline: offer.owner.name,
-                departure_time: firstSeg.departure.time,
-                arrival_time: lastSeg.arrival.time,
-                duration: offer.slices.reduce((acc: number, s: any) => acc + parseDuffelDuration(s.duration), 0),
-                stops: offer.slices.reduce((acc: number, s: any) => acc + (s.segments.length - 1), 0),
-                remaining_seats: offer.available_seats || null,
-                segments: allSegments,
-                raw: offer
-            } as any; // Cast to any to allow extra fields for normalization
-        });
+        const results = offers.map((offer: any) => parseDuffelOffer(offer, params.cabinClass));
 
         logApiCall({
             provider: 'duffel', endpoint: DUFFEL_API_URL,
@@ -144,6 +96,55 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
         console.error("[Duffel] Search failed:", error.message);
         return [];
     }
+}
+
+export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {
+    const allSegments: any[] = [];
+    
+    offer.slices.forEach((slice: any, sliceIdx: number) => {
+        slice.segments.forEach((seg: any) => {
+            allSegments.push({
+                segmentIndex: sliceIdx,
+                airline: seg.operating_carrier?.iata_code || seg.marketing_carrier?.iata_code,
+                airlineName: seg.operating_carrier?.name || seg.marketing_carrier?.name,
+                origin: seg.origin.iata_code,
+                destination: seg.destination.iata_code,
+                flightNumber: `${seg.marketing_carrier.iata_code}${seg.marketing_carrier_flight_number}`,
+                departure: {
+                    airport: seg.origin.iata_code,
+                    terminal: seg.origin_terminal,
+                    time: seg.departing_at
+                },
+                arrival: {
+                    airport: seg.destination.iata_code,
+                    terminal: seg.destination_terminal,
+                    time: seg.arriving_at
+                },
+                duration: parseDuffelDuration(seg.duration),
+                stops: 0,
+                aircraft: seg.aircraft?.name,
+                cabinClass: seg.passengers?.[0]?.cabin_class || cabinClassFallback
+            });
+        });
+    });
+
+    const firstSeg = allSegments[0];
+    const lastSeg = allSegments[allSegments.length - 1];
+
+    return {
+        provider: "duffel",
+        offer_id: offer.id,
+        price: parseFloat(offer.total_amount),
+        currency: offer.total_currency,
+        airline: offer.owner.name,
+        departure_time: firstSeg?.departure?.time,
+        arrival_time: lastSeg?.arrival?.time,
+        duration: offer.slices.reduce((acc: number, s: any) => acc + parseDuffelDuration(s.duration), 0),
+        stops: offer.slices.reduce((acc: number, s: any) => acc + (s.segments.length - 1), 0),
+        remaining_seats: offer.available_seats || null,
+        segments: allSegments,
+        raw: offer
+    } as any;
 }
 
 /**

@@ -7,6 +7,7 @@ import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
 import { type Property } from '@/types';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
+import SaveButton from '@/components/common/SaveButton';
 
 /**
  * Unified PropertyCard component variants
@@ -193,7 +194,6 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                         />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-
                     {displayBadges.length > 0 && (
                         <motion.div
                             initial={{ x: -20, opacity: 0 }}
@@ -201,10 +201,24 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             transition={{ delay: index * 0.1 + 0.3 }}
                             className={`absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 py-px sm:px-3 sm:py-1 ${badgeClasses[badgeColor]} text-white text-[9px] sm:text-xs font-medium rounded-full flex items-center gap-0.5 sm:gap-1 shadow-lg landscape-badge`}
                         >
-                            {badgeColor === 'blue' && <Star size={8} fill="currentColor" className="flex-shrink-0 sm:w-[10px] sm:h-[10px]" />}
+                            {badgeColor === 'blue' && <Star size={10} fill="currentColor" className="flex-shrink-0" />}
                             {displayBadges[0]}
                         </motion.div>
                     )}
+                    
+                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10">
+                        <SaveButton
+                            type="hotel"
+                            title={displayName}
+                            subtitle={displayLocation}
+                            price={rawPrice}
+                            currency={sourceCurrency}
+                            imageUrl={imgSrc}
+                            deepLink={property?.id ? `/property/${property.id}` : '#'}
+                            snapshot={property as any}
+                            size="sm"
+                        />
+                    </div>
                 </div>
 
                 <div className="p-1.5 sm:p-3 md:p-4 landscape-compact-content flex flex-col flex-1">
@@ -314,14 +328,19 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                     )}
                 </div>
                 {/* Heart icon */}
-                <button
-                    className="absolute top-3 left-3 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/90 dark:bg-slate-800/90 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                </button>
+                <div className="absolute top-3 left-3 z-10">
+                    <SaveButton
+                        type="hotel"
+                        title={property.name}
+                        subtitle={property.location}
+                        price={property.price}
+                        currency={property.currency || 'KRW'}
+                        imageUrl={property.image}
+                        deepLink={`/property/${property.id}`}
+                        snapshot={property as any}
+                        size="sm"
+                    />
+                </div>
             </div>
 
             {/* Content Section */}

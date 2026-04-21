@@ -66,8 +66,12 @@ export function useWeather({ lat, lng, enabled = true }: UseWeatherOptions) {
 
         try {
             const res = await fetch(`/api/weather?lat=${lat}&lng=${lng}`);
-            if (!res.ok) throw new Error('Failed to fetch weather');
             const data = await res.json();
+            
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to fetch weather');
+            }
+            
             setWeather(data);
         } catch (err: any) {
             console.error('Weather fetch error:', err);

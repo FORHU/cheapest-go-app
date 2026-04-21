@@ -29,7 +29,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data });
 }
 
-/** POST /api/price-alerts — create an alert */
+import { sendPriceAlertConfirmationEmail } from '@/lib/server/email';
+
 export async function POST(req: NextRequest) {
     const rl = rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'price-alerts-post' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
@@ -85,15 +86,17 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // Send confirmation email (non-blocking)
-    sendPriceAlertConfirmationEmail({
-        email: user.email!,
-        origin,
-        destination,
-        cabin: cabin_class as string,
-        adults: adultsNum,
-        targetPrice: typeof target_price === 'number' && target_price > 0 ? target_price : null,
-    }).catch(e => console.error('[price-alerts] Confirmation email failed:', e));
+    // Send confirmation email in background
+    if (data) {
+        void sendPriceAlertConfirmationEmail({
+            email: user.email!,
+            origin: data.origin,
+            destination: data.destination,
+            cabin: data.cabin_class,
+            adults: data.adults,
+            alertId: data.id
+        }).catch(err => console.error('[PriceAlert] Email failed:', err));
+    }
 
     return NextResponse.json({ success: true, data }, { status: 201 });
 }

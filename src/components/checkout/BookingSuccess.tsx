@@ -33,6 +33,13 @@ export function BookingSuccess({
     hotelDestination,
 }: BookingSuccessProps) {
     const router = useRouter();
+    const [hasAlreadyBookedFlight, setHasAlreadyBookedFlight] = React.useState(false);
+
+    React.useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setHasAlreadyBookedFlight(sessionStorage.getItem('hasAlreadyBookedFlight') === 'true');
+        }
+    }, []);
 
     // Build hotel → flight upsell URL.
     // Suggest flying IN near check-in, flying HOME near check-out.

@@ -3,6 +3,7 @@
  * These are pure functions that can be used in server components.
  */
 
+import { cache } from 'react';
 import { preBook, getHotelDetails } from '@/utils/supabase/functions';
 import { type Property } from '@/types';
 export type PropertyData = Property;
@@ -141,11 +142,12 @@ export function createFallbackProperty(id: string, preBookResult: any, currency:
 /**
  * Main data fetching function for property page.
  * Handles prebook, hotel details, and fallbacks.
+ * Wrapped in React.cache to avoid redundant hits in generateMetadata + Page component.
  */
-export async function fetchPropertyData(
+export const fetchPropertyData = cache(async (
     id: string,
     searchParams: SearchParamsInput
-): Promise<FetchPropertyResult> {
+): Promise<FetchPropertyResult> => {
     let preBookResult = null;
     let fetchedDetails = null;
 
@@ -234,4 +236,4 @@ export async function fetchPropertyData(
     }
 
     return { property, fetchedDetails, preBookResult };
-}
+});

@@ -198,7 +198,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                             </div>
                                         </div>
                                         <div className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white ml-2 text-right shrink-0 whitespace-nowrap">
-                                            {currencySymbol}{convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                            {currencySymbol}{mounted ? convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency).toLocaleString('en-US', { maximumFractionDigits: 0 }) : rate.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                             <div className="text-[8px] text-slate-500 font-normal">/night</div>
                                         </div>
                                     </label>
