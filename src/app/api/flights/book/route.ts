@@ -826,13 +826,12 @@ export async function POST(req: NextRequest) {
         const { createClient } = await import('@supabase/supabase-js');
         const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-        // Step 3a: Update critical fields (PI id + status). Must succeed.
+        // Step 3a: Critical — PI id + status only. Must not fail.
         const { error: sessionUpdateError } = await supabase
             .from('booking_sessions')
             .update({
                 payment_intent_id: paymentIntent.id,
                 status: 'payment_initiated',
-                currency: flightCurrency,
             })
             .eq('id', sessionId);
 
@@ -840,17 +839,18 @@ export async function POST(req: NextRequest) {
             console.error('[/book] CRITICAL — failed to save payment_intent_id to session:', sessionUpdateError.message);
         }
 
-        // Step 3a-ii: Pricing audit fields (non-critical — columns may not exist yet).
+        // Step 3a-ii: Audit fields (non-critical — columns may not exist yet).
         await supabase
             .from('booking_sessions')
             .update({
+                currency: flightCurrency,
                 original_price: pricing.originalPrice,
                 charged_price: pricing.chargedPrice,
                 markup_pct: pricing.markupRate,
             })
             .eq('id', sessionId)
             .then(({ error }) => {
-                if (error) console.warn('[/book] Pricing audit fields not saved (add columns to booking_sessions):', error.message);
+                if (error) console.warn('[/book] Audit fields not saved (run migration):', error.message);
             });
 
         // Step 3b: Store Duffel pre-order data (separate update to isolate schema issues).

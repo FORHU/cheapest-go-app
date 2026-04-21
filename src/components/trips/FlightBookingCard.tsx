@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
-import { getAirlineName } from '@/utils/flight-utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 
@@ -321,7 +320,13 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
 
             if (!res.ok || !data.success) {
                 if (data.requiresManualCancellation) {
-                    setCancelError('This ticketed booking cannot be cancelled via API. Please email crm@myfarebox.com to request cancellation.');
+                    const isMystifly = booking.provider === 'mystifly_v2';
+                    setCancelError(
+                        isMystifly
+                            ? 'This ticketed booking cannot be cancelled via API. Please email crm@myfarebox.com to request cancellation.'
+                            : 'This booking cannot be cancelled online. Please contact us at crm@cheapestgo.com to request a manual cancellation.'
+                    );
+                    setShowCancelModal(false);
                 } else {
                     setCancelError(data.error || 'Cancellation failed. Please contact support.');
                 }
@@ -897,7 +902,8 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         if (localStatus === 'cancel_failed') {
             return requiresManualCancellation ? (
                 <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
-                    <AlertTriangle className="w-3 h-3 shrink-0" /> Email crm@myfarebox.com to cancel
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    {booking.provider === 'mystifly_v2' ? 'Email crm@myfarebox.com to cancel' : 'Contact support to cancel'}
                 </span>
             ) : (
                 <span className="inline-flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400 font-medium whitespace-nowrap">
