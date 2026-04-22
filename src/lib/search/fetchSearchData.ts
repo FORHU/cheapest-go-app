@@ -192,7 +192,7 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         checkout: formatSearchDate(rawCheckout) || "2026-06-05",
         adults: Number(params.adults) || 2,
         children: Number(params.children) || 0,
-        childrenAges, // Pass children ages for proper LiteAPI occupancy
+        childrenAges,
         rooms: Number(params.rooms) || 1,
         guest_nationality: typeof params.nationality === 'string' && params.nationality ? params.nationality : "KR",
         currency,
@@ -218,11 +218,17 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
 }
 
 
-// Extract price from hotel room types
+// Extract price from hotel — handles both TravelgateX (hotel.price) and LiteAPI (roomTypes) formats
 function extractPrice(hotel: any): { price: number; originalPrice?: number } {
     let price = 0;
     let originalPrice = undefined;
 
+    // TravelgateX: price is a top-level number
+    if (typeof hotel.price === 'number' && hotel.price > 0) {
+        return { price: hotel.price, originalPrice };
+    }
+
+    // LiteAPI: price is nested inside roomTypes[0].rates[0].retailRate.total
     if (hotel.roomTypes && hotel.roomTypes.length > 0) {
         const firstRoom = hotel.roomTypes[0];
         if (firstRoom.rates && firstRoom.rates.length > 0) {
@@ -316,7 +322,7 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
 // spellings (checkIn vs checkin) don't produce separate cache entries.
 const getCachedSearchProperties = unstable_cache(
     async (queryParams: SearchQueryParams): Promise<Property[]> => {
-        const data = await searchLiteApi(queryParams);
+        const data = await searchLiteApi(queryParams as unknown as Record<string, unknown>);
 
         if (data?.data && Array.isArray(data.data)) {
             const results = data.data

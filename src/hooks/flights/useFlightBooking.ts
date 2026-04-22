@@ -163,7 +163,7 @@ export function useFlightBooking() {
         // Duffel offers have a hard expiry — check it before allowing the user to proceed.
         // If the offer is already expired (e.g. user returns to the page hours later),
         // show an error immediately instead of letting them fill the form and fail at payment.
-        const rawOffer = (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer;
+        const rawOffer = (parsedOffer as any).raw || (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer;
         const expiresAt = rawOffer?.expires_at ?? (parsedOffer as any).expires_at ?? parsedOffer.lastTicketDate;
         if (expiresAt) {
             const expiryDate = new Date(expiresAt);
@@ -197,7 +197,7 @@ export function useFlightBooking() {
                             currency: parsedOffer?.price?.currency,
                             traceId: parsedOffer?.provider?.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
                             flight: parsedOffer?.provider === 'duffel'
-                                ? ((parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
+                                ? ((parsedOffer as any).raw || (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
                                 : undefined,
                         }
                     }
@@ -230,7 +230,7 @@ export function useFlightBooking() {
                     sessionStorage.setItem('selectedFlight', JSON.stringify(revalidatedOffer));
                     setOffer(revalidatedOffer);
                     // Re-extract expiry from the revalidated offer's raw offer
-                    const rRaw = (revalidatedOffer as any)._rawOffer || (revalidatedOffer as any).rawOffer;
+                    const rRaw = (revalidatedOffer as any).raw || (revalidatedOffer as any)._rawOffer || (revalidatedOffer as any).rawOffer;
                     const rExpiry = rRaw?.expires_at ?? (revalidatedOffer as any).expires_at ?? revalidatedOffer.lastTicketDate;
                     if (rExpiry) setOfferExpiresAt(new Date(rExpiry));
                 }
@@ -304,7 +304,7 @@ export function useFlightBooking() {
                 })),
                 // CRITICAL FIX: Only Duffel require the raw offer to complete booking
                 ...(offer.provider === 'duffel' ? {
-                    _rawOffer: (offer as any)._rawOffer || (offer as any).rawOffer || offer,
+                    _rawOffer: (offer as any).raw || (offer as any)._rawOffer || (offer as any).rawOffer || offer,
                 } : {}),
             };
 
@@ -404,7 +404,7 @@ export function useFlightBooking() {
                 // and force the user to reselect seats on the new offer ID without losing passenger data.
                 if (typeof window !== 'undefined') sessionStorage.setItem('selectedFlight', JSON.stringify(error.newOffer));
                 setOffer(error.newOffer);
-                const rRaw = (error.newOffer as any)._rawOffer || (error.newOffer as any).rawOffer;
+                const rRaw = (error.newOffer as any).raw || (error.newOffer as any)._rawOffer || (error.newOffer as any).rawOffer;
                 const rExpiry = rRaw?.expires_at ?? error.newOffer.expires_at ?? error.newOffer.lastTicketDate;
                 if (rExpiry) setOfferExpiresAt(new Date(rExpiry));
                 
@@ -567,7 +567,7 @@ export function useFlightBooking() {
         // handles expired offers by creating a new offer_request. Only block if the
         // offer is already past its expiry AND no rawOffer is available to refresh with.
         if (offer.provider === 'duffel') {
-            const rawOffer = (offer as any)._rawOffer || (offer as any).rawOffer;
+            const rawOffer = (offer as any).raw || (offer as any)._rawOffer || (offer as any).rawOffer;
             if (!rawOffer?.id) {
                 setErrorMsg('Flight offer data missing. Please go back and select the flight again.');
                 setStep('error');

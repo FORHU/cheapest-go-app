@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, XCircle, Pencil, Receipt, CheckCircle, RotateCcw, Ban } from 'lucide-react';
+import { MapPin, XCircle, Pencil, Receipt, CheckCircle, RotateCcw, Ban, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BookingRecord } from '@/services/booking.service';
 import CancellationModal from './CancellationModal';
@@ -155,6 +155,14 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                     </button>
                                 </div>
                             )}
+                            {normalizedStatus === 'cancelled_refund_failed' && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
+                                    className="flex items-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-700 rounded px-1.5 py-0.5 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors shrink-0"
+                                >
+                                    <AlertTriangle className="w-3 h-3" /> Retry refund
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -279,6 +287,15 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                     Cancel
                                 </button>
                             </>)}
+                            {normalizedStatus === 'cancelled_refund_failed' && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
+                                    className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg px-2 py-1.5 transition-colors"
+                                >
+                                    <AlertTriangle className="w-3 h-3" />
+                                    Retry refund
+                                </button>
+                            )}
                             <a
                                 href={`/trips/invoice/${booking.id}?type=hotel`}
                                 target="_blank"

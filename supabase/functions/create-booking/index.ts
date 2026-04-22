@@ -24,7 +24,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 declare const Deno: any;
 
 import { bookFlightV2, revalidateFare, revalidateFareV2, ticketFlight, MystiflyError } from '../_shared/mystiflyClient.ts';
-import { createDuffelOrder } from '../_shared/duffelClient.ts';
+import { createDuffelOrder, getDuffelOrder } from '../_shared/duffelClient.ts';
 
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -85,12 +85,10 @@ interface BookingSession {
     payment_intent_id?: string | null;  // Set by /api/flights/book after PaymentIntent creation
     capture_method?: string;
     fare_policy?: Record<string, unknown> | null;
-<<<<<<< HEAD
     original_price?: number;
     charged_price?: number;
     markup_pct?: number;
     currency?: string;
-=======
     seat_service_ids?: string[];
     seat_total?: number;
     // Duffel pre-order — stored by /api/flights/book so we skip re-booking
@@ -98,7 +96,6 @@ interface BookingSession {
     duffel_pre_order_pnr?: string | null;
     duffel_pre_order_tickets?: string[] | null;
     duffel_pre_order_ticketed?: boolean | null;
->>>>>>> 740b1c9438ae4d94b64583e12fd0f3d0cb2e5b31
 }
 
 interface ProviderBookingResult {
@@ -148,11 +145,14 @@ Deno.serve(async (req: Request) => {
 
     try {
         // ── Parse Request ──
-        const { sessionId } = JSON.parse(await req.text());
+        const { sessionId, paymentIntentId: webhookPiId } = JSON.parse(await req.text());
 
         if (!sessionId) {
             return jsonResponse(corsHeaders, { success: false, error: 'sessionId is required' }, 400);
         }
+
+        // webhookPiId: passed by the Stripe webhook handler so we have the PI ID even when
+        // booking_sessions.payment_intent_id is null (e.g. column missing or update failed).
 
         // ── Supabase Admin Client ──
         const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -176,6 +176,11 @@ Deno.serve(async (req: Request) => {
         }
 
         const bs = session as BookingSession;
+
+        // Resolve the authoritative PI ID: prefer the one passed directly from the webhook
+        // (which always has it from the Stripe event), fall back to the session column.
+        // This fixes the root cause of null payment_intent_id in flight_bookings.
+        const resolvedPaymentIntentId = webhookPiId ?? bs.payment_intent_id ?? null;
 
         // ── Atomic status claim — prevents double-booking when webhook and
         //    /api/flights/confirm race each other. Only one UPDATE will succeed.
@@ -283,7 +288,7 @@ Deno.serve(async (req: Request) => {
             } catch (mystiflyErr: any) {
                 // Mystifly booking failed — immediately cancel the authorized PaymentIntent.
                 // The card was only held (requires_capture), never charged. Release the hold.
-                const paymentIntentId = bs.payment_intent_id;
+                const paymentIntentId = resolvedPaymentIntentId;
                 if (paymentIntentId) {
                     try {
                         const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')!;
@@ -315,7 +320,7 @@ Deno.serve(async (req: Request) => {
             // /api/flights/book creates the Duffel order synchronously before Stripe
             // and stores the result directly in the booking_sessions row.
             // Read it here — no Stripe API call needed.
-            const paymentIntentId = bs.payment_intent_id;
+            const paymentIntentId = resolvedPaymentIntentId;
             const preOrderId = bs.duffel_pre_order_id ?? null;
             const preOrderPnr = bs.duffel_pre_order_pnr ?? null;
             const preOrderTickets: string[] = bs.duffel_pre_order_tickets ?? [];
@@ -391,7 +396,7 @@ Deno.serve(async (req: Request) => {
         // ── 3. Mystifly: check PNR and handle payment capture / cancel ──
         // (PNR check for Duffel is handled implicitly - if we reach here, it succeeded)
         if (isMystifly) {
-            const paymentIntentId = bs.payment_intent_id;
+            const paymentIntentId = resolvedPaymentIntentId;
 
             if (!result.pnr) {
                 // Case A: No PNR returned — booking failed
@@ -507,7 +512,7 @@ Deno.serve(async (req: Request) => {
                     total_price: bookingPrice,
                     currency: bookingCurrency,
                     status: internalStatus,
-                    payment_intent_id: paymentIntentId ?? null,
+                    payment_intent_id: resolvedPaymentIntentId,  // use resolved ID (webhook > session)
                     ticket_time_limit: ticketTimeLimit,
                     trip_type: bs.flight.tripType ?? (
                         bs.flight.segments?.length === 1 ? 'one-way'
@@ -581,6 +586,7 @@ Deno.serve(async (req: Request) => {
                 ),
                 ...(result.providerOrderId ? { provider_order_id: result.providerOrderId } : {}),
                 session_id: sessionId,
+                payment_intent_id: resolvedPaymentIntentId,  // use resolved ID (webhook > session)
                 fare_policy: bs.fare_policy || null,
                 // Financial audit columns
                 supplier_cost: bookingPrice,
@@ -1050,22 +1056,43 @@ async function bookWithDuffel(
             throw new Error('Duffel booking failed: no order ID returned');
         }
 
-        const airlinePnr = order.booking_reference ?? order.id;
-
-        // Extract Duffel tickets
-        const documents = order.documents || [];
-        const ticketNumbers = documents
+        // Implementation Loop: If not ticketed yet, wait 5s and refresh once
+        // This solves the "Processing" stuck state for fast but not instant ticketing.
+        let finalOrder = order;
+        let documents = finalOrder.documents || [];
+        let ticketNumbers = documents
             .filter((doc: any) => doc.type === 'electronic_ticket')
             .map((doc: any) => doc.unique_identifier);
+        
+        let isTicketed = ticketNumbers.length > 0 || !!finalOrder.booking_reference;
 
-        const isTicketed = ticketNumbers.length > 0 || !!order.booking_reference;
+        if (!isTicketed) {
+            console.log(`[bookWithDuffel] Order ${finalOrder.id} not ticketed yet. Waiting 5s for refresh...`);
+            await new Promise(r => setTimeout(r, 5000));
+            try {
+                const refreshed = await getDuffelOrder(finalOrder.id);
+                if (refreshed?.data) {
+                    finalOrder = refreshed.data;
+                    documents = finalOrder.documents || [];
+                    ticketNumbers = documents
+                        .filter((doc: any) => doc.type === 'electronic_ticket')
+                        .map((doc: any) => doc.unique_identifier);
+                    isTicketed = ticketNumbers.length > 0 || !!finalOrder.booking_reference;
+                    console.log(`[bookWithDuffel] Order ${finalOrder.id} refreshed. Ticketed: ${isTicketed}`);
+                }
+            } catch (refreshErr) {
+                console.warn('[bookWithDuffel] Refresh order failed:', refreshErr);
+            }
+        }
+
+        const airlinePnr = finalOrder.booking_reference ?? finalOrder.id;
 
         return {
             pnr: airlinePnr,
-            providerOrderId: order.id,
+            providerOrderId: finalOrder.id,
             providerStatus: isTicketed ? 'ticketed' : 'confirmed',
-            rawPrice: parseFloat(order.total_amount ?? '0') || undefined,
-            rawCurrency: order.total_currency ?? undefined,
+            rawPrice: parseFloat(finalOrder.total_amount ?? '0') || undefined,
+            rawCurrency: finalOrder.total_currency ?? undefined,
             ticketNumbers: ticketNumbers.length > 0 ? ticketNumbers : undefined,
         };
     } catch (e: any) {

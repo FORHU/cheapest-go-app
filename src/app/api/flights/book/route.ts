@@ -289,6 +289,11 @@ export async function POST(req: NextRequest) {
             const duffelToken = env.DUFFEL_TOKEN;
             if (!duffelToken) throw new Error('Duffel not configured.');
 
+            const isSandbox = duffelToken.startsWith('duffel_test_');
+            const priceTolerance = isSandbox ? 10.00 : 0.50;
+            const refreshPoolSize = isSandbox ? 3 : 2;
+            console.log(`[/book] Duffel ${isSandbox ? 'SANDBOX' : 'LIVE'} mode: tolerance=${priceTolerance}, pool=${refreshPoolSize}`);
+
             // Build Duffel passenger objects using the offer's passenger IDs
             const duffelPaxTemplates: any[] = rawOffer.passengers ?? [];
 
@@ -350,13 +355,14 @@ export async function POST(req: NextRequest) {
 
             const orderTotal = (offerTotal + computedSeatExtra + computedBagExtra).toFixed(2);
 
-            const duffelHeaders = {
+            const getDuffelHeaders = (currKey: string) => ({
                 'Authorization': `Bearer ${duffelToken}`,
                 'Duffel-Version': 'v2',
                 'Content-Type': 'application/json',
-                // Idempotency key prevents duplicate orders if the request is retried
-                'Idempotency-Key': idempotencyKey ?? '',
-            };
+                'Idempotency-Key': currKey,
+            });
+
+            let currentIdempotencyKey = idempotencyKey ?? crypto.randomUUID();
 
             // includeServices: true only on the first attempt with the original offer.
             // On auto-refresh all service IDs (seats + bags) are invalid for the new offer — omit them.
@@ -380,17 +386,181 @@ export async function POST(req: NextRequest) {
             let activePassengers = orderPassengers;
             let activeTotal = orderTotal;
 
-            // ── Attempt 1: Place order with current offer (include seat services) ──
-            let duffelOrderRes = await fetch('https://api.duffel.com/air/orders', {
-                method: 'POST',
-                headers: duffelHeaders,
-                body: JSON.stringify({ data: buildOrderBody(activeOffer.id, activePassengers, activeTotal, activeOffer.total_currency, true) }),
-            });
+            const tryPlaceOrder = async (offerId: string, paxList: any[], total: string, currency: string, includeServices: boolean, key: string): Promise<{
+                isPriceChangedError: boolean;
+                isOfferUnavailable: boolean;
+                oldPrice?: number;
+                newPrice?: number;
+                newCurrency?: string;
+                res?: Response;
+                data?: any;
+                finalTotal?: string;
+                finalCurrency?: string;
+            }> => {
+                let currentTotal = total;
+                let currentCurrency = currency;
+                let activeHeaders = getDuffelHeaders(key);
 
-            let duffelOrderData = await duffelOrderRes.json();
+                // 12-second timeout: Duffel sometimes hangs before returning a 500.
+                // AbortController lets us bail out instead of waiting 20+ seconds.
+                const orderAbort = new AbortController();
+                const orderTimeout = setTimeout(() => orderAbort.abort(), 12000);
 
-            // ── Auto-refresh: if offer expired (422), create a new offer_request and retry ──
-            if (duffelOrderRes.status === 422) {
+                let res: Response;
+                let data: any;
+                try {
+                    res = await fetch('https://api.duffel.com/air/orders', {
+                        method: 'POST',
+                        headers: activeHeaders,
+                        body: JSON.stringify({ data: buildOrderBody(offerId, paxList, currentTotal, currentCurrency, includeServices) }),
+                        signal: orderAbort.signal,
+                    });
+                    data = await res.json();
+                } catch (fetchErr: any) {
+                    clearTimeout(orderTimeout);
+                    if (fetchErr?.name === 'AbortError') {
+                        console.error(`[/book] Duffel order fetch timed out after 12s for offer ${offerId}`);
+                        // Return a synthetic 504 response so the caller can map it to a supplier outage
+                        const syntheticRes = new Response(JSON.stringify({ errors: [{ code: 'timeout', message: 'Duffel order creation timed out' }] }), { status: 504 });
+                        return { isPriceChangedError: false, isOfferUnavailable: false, res: syntheticRes, data: { errors: [{ code: 'timeout', message: 'Airline booking system timed out. Please try again.' }] }, finalTotal: currentTotal, finalCurrency: currentCurrency };
+                    }
+                    throw fetchErr;
+                }
+                clearTimeout(orderTimeout);
+
+                // If offer unavailable, signal for immediate retry with next offer
+                if (res.status === 422 && data?.errors?.[0]?.code === 'offer_no_longer_available') {
+                    console.warn(`[/book] order 422 offer_no_longer_available on ${offerId}.`);
+                    return { isPriceChangedError: false, isOfferUnavailable: true };
+                }
+
+                // ── Handle price_changed with authoritative Price Action + Internal Retry Loop ──
+                // We allow up to 2 internal attempts to "catch" a fast-moving price.
+                let internalAttempts = 0;
+                while (res.status === 422 && data?.errors?.[0]?.code === 'price_changed' && internalAttempts < 2) {
+                    internalAttempts++;
+                    const currentId = data?.errors?.[0]?.source?.offer_id ?? offerId;
+                    console.warn(`[/book] order 422 price_changed on ${currentId} (internal attempt ${internalAttempts}). Performing live Price Action.`);
+
+                    const priceAbort = new AbortController();
+                    const priceTimeout = setTimeout(() => priceAbort.abort(), 10000);
+                    let liveRes: Response;
+                    let liveData: any;
+                    try {
+                        liveRes = await fetch(`https://api.duffel.com/air/offers/${currentId}/actions/price`, {
+                            method: 'POST',
+                            headers: getDuffelHeaders(crypto.randomUUID()),
+                            body: JSON.stringify({ data: {} }),
+                            signal: priceAbort.signal,
+                        });
+                        liveData = await liveRes.json();
+                    } catch (priceErr: any) {
+                        clearTimeout(priceTimeout);
+                        console.error(`[/book] Price Action request failed: ${priceErr.message}`);
+                        break;
+                    }
+                    clearTimeout(priceTimeout);
+
+                    if (liveRes.ok && liveData?.data) {
+                        const pricedOffer = liveData.data;
+                        const pricedId = pricedOffer.id;
+
+                        if (pricedId !== currentId) {
+                            console.log(`[/book] Priced offer ID differs: ${currentId} -> ${pricedId}`);
+                        }
+
+                        const availableSvcs: any[] = pricedOffer.available_services ?? [];
+                        let newSeatExtra = 0;
+                        let newBagExtra = 0;
+                        if (includeServices) {
+                            for (const id of (seatServiceIds ?? [])) {
+                                const svc = availableSvcs.find((s: any) => s.id === id);
+                                if (svc) newSeatExtra += parseFloat(svc.total_amount ?? '0');
+                            }
+                            for (const id of (bagServiceIds ?? [])) {
+                                const svc = availableSvcs.find((s: any) => s.id === id);
+                                if (svc) newBagExtra += parseFloat(svc.total_amount ?? '0');
+                            }
+                        }
+
+                        const freshBase = parseFloat(pricedOffer.total_amount ?? '0');
+                        const newTotalNum = freshBase + newSeatExtra + newBagExtra;
+                        const newTotalStr = newTotalNum.toFixed(2);
+                        const oldTotalNum = parseFloat(currentTotal);
+                        const priceDelta = Math.abs(newTotalNum - oldTotalNum);
+
+                        const priceAlreadyConfirmed = confirmedPrice !== undefined && (newTotalNum <= (confirmedPrice + priceTolerance));
+
+                        currentCurrency = pricedOffer.total_currency ?? currentCurrency;
+
+                        // If price delta is large and not confirmed (or above confirmed+buffer), return 409 to user
+                        if (priceDelta > priceTolerance && !priceAlreadyConfirmed) {
+                            return { isPriceChangedError: true, isOfferUnavailable: false, oldPrice: oldTotalNum, newPrice: newTotalNum, newCurrency: currentCurrency };
+                        }
+
+                        console.warn(`[/book] Retrying order with new total ${newTotalStr} and ${pricedId === currentId ? 'same' : 'NEW priced'} ID: ${pricedId}`);
+                        currentTotal = newTotalStr;
+
+                        // Per Duffel: retry after 4xx requires a fresh idempotency key
+                        const retryKey = crypto.randomUUID();
+                        const retryAbort = new AbortController();
+                        const retryTimeout = setTimeout(() => retryAbort.abort(), 12000);
+                        try {
+                            res = await fetch('https://api.duffel.com/air/orders', {
+                                method: 'POST',
+                                headers: getDuffelHeaders(retryKey),
+                                body: JSON.stringify({ data: buildOrderBody(pricedId, paxList, currentTotal, currentCurrency, includeServices) }),
+                                signal: retryAbort.signal,
+                            });
+                            data = await res.json();
+                        } catch (retryErr: any) {
+                            clearTimeout(retryTimeout);
+                            console.error(`[/book] Retry order fetch failed: ${retryErr.message}`);
+                            break;
+                        }
+                        clearTimeout(retryTimeout);
+
+                        // If it succeeds or fails with something else, break or handle in next iteration
+                        if (res.ok) break;
+                    } else {
+                        console.error(`[/book] Price Action failed (${liveRes.status} on ${currentId}) — cannot proceed with internal retry.`);
+                        break;
+                    }
+                }
+
+                return { isPriceChangedError: false, isOfferUnavailable: false, res, data, finalTotal: currentTotal, finalCurrency: currentCurrency };
+            };
+
+
+            let duffelOrderRes: Response;
+            let duffelOrderData: any;
+
+            // ── Attempt 1: Place order with current offer (handle price_changed internally) ──
+            const attempt1 = await tryPlaceOrder(activeOffer.id, activePassengers, activeTotal, activeOffer.total_currency, true, currentIdempotencyKey);
+            if (attempt1.isPriceChangedError) {
+                return NextResponse.json({
+                    success: false,
+                    error: 'price_changed',
+                    oldPrice: attempt1.oldPrice,
+                    newPrice: attempt1.newPrice,
+                    currency: attempt1.newCurrency,
+                }, { status: 409 });
+            }
+            
+            // If Attempt 1 failed with 'offer_no_longer_available', duffelOrderRes will be set below
+            // in the auto-refresh block. If it succeeded, we assign here.
+            if (!attempt1.isOfferUnavailable) {
+                duffelOrderRes = attempt1.res!;
+                duffelOrderData = attempt1.data;
+                activeTotal = attempt1.finalTotal!;
+            } else {
+                // Mock a 422 to trigger the refresh block below
+                duffelOrderRes = { status: 422 } as Response;
+                duffelOrderData = { errors: [{ code: 'offer_no_longer_available' }] };
+            }
+
+            // ── Auto-refresh: if offer expired (422) but NOT price_changed ──
+            if (duffelOrderRes.status === 422 && duffelOrderData?.errors?.[0]?.code !== 'price_changed') {
                 console.warn('[/book] Duffel offer expired (422) — attempting auto-refresh');
                 console.warn('[/book] Raw offer slices:', JSON.stringify(rawOffer.slices?.map((sl: any) => ({
                     origin: sl.origin?.iata_code,
@@ -407,7 +577,6 @@ export async function POST(req: NextRequest) {
                         const origin = sl.origin?.iata_code ?? sl.segments?.[0]?.origin?.iata_code;
                         const destination = sl.destination?.iata_code
                             ?? sl.segments?.[sl.segments.length - 1]?.destination?.iata_code;
-                        // departure_date exists at slice level in Duffel responses
                         const departure_date = sl.departure_date
                             ?? sl.segments?.[0]?.departing_at?.slice(0, 10);
                         return { origin, destination, departure_date };
@@ -421,16 +590,14 @@ export async function POST(req: NextRequest) {
 
                     if (slices.length === 0) throw new Error('Cannot rebuild offer_request: no valid slices found in rawOffer');
 
-                    // Determine cabin class from the original offer
                     const cabinClass: string = rawOffer.cabin_class
                         ?? rawOffer.slices?.[0]?.segments?.[0]?.passengers?.[0]?.cabin_class_marketing_name?.toLowerCase()
                         ?? 'economy';
 
-                    // Create new offer_request with return_offers=true for inline results
                     console.warn(`[/book] Creating offer_request: slices=${JSON.stringify(slices)} pax=${JSON.stringify(paxTypes)} cabin=${cabinClass}`);
                     const orRes = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true', {
                         method: 'POST',
-                        headers: duffelHeaders,
+                        headers: getDuffelHeaders(crypto.randomUUID()),
                         body: JSON.stringify({ data: { slices, passengers: paxTypes, cabin_class: cabinClass } }),
                     });
                     const orData = await orRes.json();
@@ -439,15 +606,13 @@ export async function POST(req: NextRequest) {
                         throw new Error(`offer_request failed (${orRes.status}): ${orData?.errors?.[0]?.message ?? 'unknown error'}`);
                     }
 
-                    // Offers come back inline when return_offers=true
                     let offers: any[] = orData.data?.offers ?? [];
                     console.warn(`[/book] offer_request returned ${offers.length} offers. offer_request_id=${orData.data?.id}`);
 
-                    // If no inline offers, fetch them separately (some Duffel configs need this)
                     if (offers.length === 0 && orData.data?.id) {
                         const offersRes = await fetch(
                             `https://api.duffel.com/air/offers?offer_request_id=${orData.data.id}&limit=50`,
-                            { headers: duffelHeaders }
+                            { headers: getDuffelHeaders(crypto.randomUUID()) }
                         );
                         const offersData = await offersRes.json();
                         offers = offersData.data ?? [];
@@ -456,12 +621,12 @@ export async function POST(req: NextRequest) {
 
                     if (offers.length === 0) throw new Error('No offers available for this route — flight may be fully booked or unavailable');
 
-                    // Find best match: prefer same operating carrier, then closest price
                     const targetCarrier = rawOffer.validating_carrier_iata_code
                         ?? rawOffer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code
                         ?? rawOffer.slices?.[0]?.segments?.[0]?.marketing_carrier?.iata_code;
                     const targetTotal = parseFloat(rawOffer.total_amount ?? '0');
 
+                    // Filter matching offers by carrier
                     const matchingOffers = targetCarrier
                         ? offers.filter((o: any) => {
                             const carrier = o.validating_carrier_iata_code
@@ -471,74 +636,96 @@ export async function POST(req: NextRequest) {
                           })
                         : offers;
 
-                    const pool = matchingOffers.length > 0 ? matchingOffers : offers;
-                    const freshOffer = pool.reduce((best: any, o: any) => {
-                        if (!best) return o;
-                        const diff = Math.abs(parseFloat(o.total_amount) - targetTotal);
-                        const bestDiff = Math.abs(parseFloat(best.total_amount ?? '999999') - targetTotal);
-                        return diff < bestDiff ? o : best;
-                    }, null as any);
-
-                    if (!freshOffer) throw new Error('Could not select a fresh offer from results');
-
-                    // Rebuild passengers with new offer's passenger IDs
-                    const freshPaxTemplates: any[] = freshOffer.passengers ?? [];
-                    const refreshedPassengers = activePassengers.map((pax: any, idx: number) => ({
-                        ...pax,
-                        id: freshPaxTemplates[idx]?.id ?? pax.id,
-                    }));
-
-                    // Per Duffel docs: seat service IDs (ase_...) are specific to an offer.
-                    // After refreshing to a new offer, the old service IDs are invalid.
-                    // Drop them — user will be billed only the base fare on the refreshed offer.
-                    const freshTotal = parseFloat(freshOffer.total_amount ?? '0').toFixed(2);
-                    const oldPriceNum = parseFloat(rawOffer.total_amount ?? '0');
-                    const newPriceNum = parseFloat(freshOffer.total_amount ?? '0');
-                    const priceDelta = Math.abs(newPriceNum - oldPriceNum);
-
-                    console.log(`[/book] Auto-refresh succeeded: ${activeOffer.id} → ${freshOffer.id} | price: ${activeOffer.total_amount} → ${freshOffer.total_amount} | carrier: ${targetCarrier}`);
-
-                    // If the user had seat or bag selections, they are NO LONGER VALID on the refreshed offer.
-                    // We must return the new offer to the client so the client can swap its state, clear
-                    // the chosen seats/bags, and ask the user to re-select.
-                    const hadAncillaries = (seatServiceIds && seatServiceIds.length > 0) || (bagServiceIds && bagServiceIds.length > 0);
-                    if (hadAncillaries) {
-                        const parsedFreshOffer = parseDuffelOffer(freshOffer);
-                        const tripType = parsedFreshOffer.segments?.some((s: any) => s.segmentIndex > 0) ? 'round-trip' : 'one-way';
-                        const flightOffer = normalizedToFlightOffer(parsedFreshOffer, tripType);
-                        return NextResponse.json({
-                            success: false,
-                            error: 'offer_replaced',
-                            newOffer: flightOffer,
-                        }, { status: 409 });
-                    }
-
-                    // If the price changed by more than $0.50, require explicit user confirmation
-                    // rather than silently charging a different amount.
-                    // Skip this check if the client already confirmed the new price.
-                    const priceAlreadyConfirmed = confirmedPrice !== undefined && Math.abs(confirmedPrice - newPriceNum) < 0.01;
-                    if (priceDelta > 0.50 && !priceAlreadyConfirmed) {
-                        return NextResponse.json({
-                            success: false,
-                            error: 'price_changed',
-                            oldPrice: oldPriceNum,
-                            newPrice: newPriceNum,
-                            currency: freshOffer.total_currency ?? rawOffer.total_currency ?? 'USD',
-                        }, { status: 409 });
-                    }
-
-                    activeOffer = freshOffer;
-                    activePassengers = refreshedPassengers;
-                    activeTotal = freshTotal;
-
-                    // ── Attempt 2: Place order with refreshed offer ──
-                    duffelOrderRes = await fetch('https://api.duffel.com/air/orders', {
-                        method: 'POST',
-                        headers: duffelHeaders,
-                        body: JSON.stringify({ data: buildOrderBody(activeOffer.id, activePassengers, activeTotal, activeOffer.total_currency) }),
+                    const sortedPool = (matchingOffers.length > 0 ? matchingOffers : offers).sort((a: any, b: any) => {
+                        const diffA = Math.abs(parseFloat(a.total_amount) - targetTotal);
+                        const diffB = Math.abs(parseFloat(b.total_amount) - targetTotal);
+                        return diffA - diffB;
                     });
-                    duffelOrderData = await duffelOrderRes.json();
-                    console.log(`[/book] Retry order status: ${duffelOrderRes.status}`, duffelOrderRes.ok ? 'OK' : JSON.stringify(duffelOrderData?.errors?.[0]));
+
+                    // ── Attempt 2: Loop through top matching offers ──
+                    let attempt2Success = false;
+                    const maxAttempts = Math.min(sortedPool.length, refreshPoolSize);
+                    for (let i = 0; i < maxAttempts; i++) {
+                        const freshOffer = sortedPool[i];
+                        console.log(`[/book] Attempting refresh offer ${i + 1}/${maxAttempts}: ${freshOffer.id}`);
+
+                        const freshPaxTemplates: any[] = freshOffer.passengers ?? [];
+                        const refreshedPassengers = activePassengers.map((pax: any, idx: number) => ({
+                            ...pax,
+                            id: freshPaxTemplates[idx]?.id ?? pax.id,
+                        }));
+
+                        const freshBaseTotal = parseFloat(freshOffer.total_amount ?? '0');
+                        const freshTotalStr = freshBaseTotal.toFixed(2);
+                        const oldPriceNum = parseFloat(rawOffer.total_amount ?? '0');
+                        const priceDelta = Math.abs(freshBaseTotal - oldPriceNum);
+
+                        const priceAlreadyConfirmed = confirmedPrice !== undefined && (freshBaseTotal <= (confirmedPrice + 0.50));
+                        if (priceDelta > 0.50 && !priceAlreadyConfirmed) {
+                            return NextResponse.json({
+                                success: false,
+                                error: 'price_changed',
+                                oldPrice: oldPriceNum,
+                                newPrice: freshBaseTotal,
+                                currency: freshOffer.total_currency ?? rawOffer.total_currency ?? 'USD',
+                            }, { status: 409 });
+                        }
+
+                        // Seats/bags from the original offer are invalid on a refreshed offer — ask client to re-select.
+                        const hadAncillaries = (seatServiceIds && seatServiceIds.length > 0) || (bagServiceIds && bagServiceIds.length > 0);
+                        if (hadAncillaries) {
+                            const parsedFreshOffer = parseDuffelOffer(freshOffer);
+                            const tripType = parsedFreshOffer.segments?.some((s: any) => s.segmentIndex > 0) ? 'round-trip' : 'one-way';
+                            const flightOffer = normalizedToFlightOffer(parsedFreshOffer, tripType);
+                            return NextResponse.json({
+                                success: false,
+                                error: 'offer_replaced',
+                                newOffer: flightOffer,
+                            }, { status: 409 });
+                        }
+
+                        // Try place order with NEW idempotency key for this retry
+                        const attempt2 = await tryPlaceOrder(freshOffer.id, refreshedPassengers, freshTotalStr, freshOffer.total_currency, false, crypto.randomUUID());
+
+                        if (attempt2.res?.status && attempt2.res.status >= 500) {
+                            console.error();
+                            duffelOrderRes = attempt2.res;
+                            duffelOrderData = attempt2.data;
+                            break;
+                        }
+
+                        if (attempt2.isOfferUnavailable) {
+                            console.warn();
+                            continue;
+                        }
+
+                        if (attempt2.isPriceChangedError) {
+                            return NextResponse.json({
+                                success: false,
+                                error: 'price_changed',
+                                oldPrice: attempt2.oldPrice,
+                                newPrice: attempt2.newPrice,
+                                currency: attempt2.newCurrency,
+                            }, { status: 409 });
+                        }
+
+                        duffelOrderRes = attempt2.res!;
+                        duffelOrderData = attempt2.data;
+                        activeTotal = attempt2.finalTotal!;
+                        activeOffer = freshOffer;
+                        activePassengers = refreshedPassengers;
+
+                        console.log( duffelOrderRes.ok ? 'OK' : JSON.stringify(duffelOrderData?.errors?.[0]));
+
+                        if (duffelOrderRes.ok) {
+                            attempt2Success = true;
+                            break;
+                        }
+                    }
+
+                    if (!attempt2Success && !duffelOrderRes?.ok) {
+                        throw new Error('Fresh offers also unavailable or failed booking.');
+                    }
 
                 } catch (refreshErr: any) {
                     console.error('[/book] Offer auto-refresh failed:', refreshErr.message);
@@ -547,19 +734,33 @@ export async function POST(req: NextRequest) {
             }
 
             if (!duffelOrderRes.ok) {
+                const status = duffelOrderRes.status;
                 const rawErrMsg = duffelOrderData?.errors?.[0]?.message ?? '';
-                console.error('[/book] Duffel pre-order failed:', duffelOrderRes.status, rawErrMsg);
+                const code = duffelOrderData?.errors?.[0]?.code ?? '';
+                const requestId = duffelOrderData?.meta?.request_id ?? '';
+
+                console.error(`[/book] Duffel pre-order failed: status=${status} code=${code} msg="${rawErrMsg}" request_id=${requestId}`);
+
                 const isPhoneErr = /phone_number/i.test(rawErrMsg);
-                const isExpiredErr = duffelOrderRes.status === 422 || /expired|no longer available|select another offer/i.test(rawErrMsg);
+                const isExpiredErr = status === 422 || /expired|no longer available|select another offer/i.test(rawErrMsg);
                 const isSeatErr = /seat|service.*unavailable|no longer.*available.*service/i.test(rawErrMsg) && !isExpiredErr;
+                const isSupplierOutage = status >= 500;
+
                 const errMsg = isPhoneErr
                     ? 'Invalid phone number format. Please check your phone number and country code.'
                     : isExpiredErr
                     ? 'This flight is no longer available. Please search again for current prices.'
                     : isSeatErr
                     ? 'One or more selected seats are no longer available. Please choose different seats or continue without seat selection.'
+                    : isSupplierOutage
+                    ? 'The airline\'s booking system is currently experiencing technical difficulties. Please try again in a few minutes or choose a different flight.'
                     : rawErrMsg || 'Flight booking failed. Please try again.';
-                return NextResponse.json({ success: false, error: errMsg }, { status: isExpiredErr ? 409 : 400 });
+
+                let httpStatus = 400;
+                if (isExpiredErr) httpStatus = 409;
+                if (isSupplierOutage) httpStatus = 502; // Bad Gateway
+
+                return NextResponse.json({ success: false, error: errMsg, requestId }, { status: httpStatus });
             }
 
             const order = duffelOrderData.data;
@@ -640,25 +841,32 @@ export async function POST(req: NextRequest) {
         const { createClient } = await import('@supabase/supabase-js');
         const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-        // Step 3a: Update critical fields (PI id + status). Must succeed.
+        // Step 3a: Critical — PI id + status only. Must not fail.
         const { error: sessionUpdateError } = await supabase
             .from('booking_sessions')
             .update({
                 payment_intent_id: paymentIntent.id,
                 status: 'payment_initiated',
-                original_price: pricing.originalPrice,
-                charged_price: pricing.chargedPrice,
-                markup_pct: pricing.markupRate,
-                currency: flightCurrency,
             })
             .eq('id', sessionId);
 
         if (sessionUpdateError) {
-            console.error('[/book] Failed to update booking session (critical fields):', sessionUpdateError.message);
-            // Don't fail the request — Stripe PI is already created. create-booking
-            // will fall back to live booking which may fail, but the user won't be
-            // charged without a booking. Log for investigation.
+            console.error('[/book] CRITICAL — failed to save payment_intent_id to session:', sessionUpdateError.message);
         }
+
+        // Step 3a-ii: Audit fields (non-critical — columns may not exist yet).
+        await supabase
+            .from('booking_sessions')
+            .update({
+                currency: flightCurrency,
+                original_price: pricing.originalPrice,
+                charged_price: pricing.chargedPrice,
+                markup_pct: pricing.markupRate,
+            })
+            .eq('id', sessionId)
+            .then(({ error }) => {
+                if (error) console.warn('[/book] Audit fields not saved (run migration):', error.message);
+            });
 
         // Step 3b: Store Duffel pre-order data (separate update to isolate schema issues).
         if (duffelPreOrder) {

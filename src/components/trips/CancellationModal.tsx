@@ -26,6 +26,7 @@ interface CancellationModalProps {
 }
 
 export default function CancellationModal({ booking, isOpen, onClose, onCancelled }: CancellationModalProps) {
+    const isRefundRetry = booking.status === 'cancelled_refund_failed';
     const [mounted, setMounted] = useState(false);
     useEffect(() => {
         setMounted(true);
@@ -118,7 +119,7 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                     <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
                                 </div>
                                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                                    Cancel Booking
+                                    {isRefundRetry ? 'Retry Refund' : 'Cancel Booking'}
                                 </h2>
                             </div>
                             <button
@@ -216,7 +217,7 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                 disabled={cancelMutation.isPending}
                                 className="flex-1 py-3 px-4 text-slate-700 dark:text-slate-300 font-medium rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
                             >
-                                Keep Booking
+                                {isRefundRetry ? 'Close' : 'Keep Booking'}
                             </button>
                             <button
                                 onClick={handleCancel}
@@ -226,10 +227,10 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                 {cancelMutation.isPending ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                        Cancelling...
+                                        {isRefundRetry ? 'Retrying...' : 'Cancelling...'}
                                     </>
                                 ) : (
-                                    'Cancel Booking'
+                                    isRefundRetry ? 'Retry Refund' : 'Cancel Booking'
                                 )}
                             </button>
                         </div>

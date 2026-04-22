@@ -16,6 +16,8 @@ interface SaveButtonProps {
     className?: string;
 }
 
+let tripsPromise: Promise<any> | null = null;
+
 export default function SaveButton({
     type, title, subtitle, price, currency = 'USD',
     imageUrl, deepLink, snapshot, size = 'md', className = '',
@@ -30,9 +32,10 @@ export default function SaveButton({
         let cancelled = false;
         (async () => {
             try {
-                const res = await fetch('/api/saved-trips');
-                if (!res.ok) { setChecked(true); return; }
-                const json = await res.json();
+                if (!tripsPromise) {
+                    tripsPromise = fetch('/api/saved-trips').then(r => r.ok ? r.json() : { data: [] });
+                }
+                const json = await tripsPromise;
                 const match = (json.data ?? []).find((t: any) => t.deep_link === deepLink);
                 if (!cancelled) {
                     setSaved(!!match);

@@ -127,7 +127,29 @@ function OfferExpiryBanner({ expiresAt }: { expiresAt: Date }) {
     );
 }
 
+function AncillaryExpiredNotice() {
+    return (
+        <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Not available for this offer</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+                This fare is no longer available for ancillary services. You can still proceed with your booking — seats and bags can be managed directly with the airline.
+            </p>
+        </div>
+    );
+}
+
+const FLIGHT_BOOKING_STEPS = [
+    'Verifying payment...',
+    'Securing your seat...',
+    'Confirming with the airline...',
+    'Finalizing booking details...',
+] as const;
+
 export default function FlightBookContent() {
+    const [bookingStepIdx, setBookingStepIdx] = React.useState(0);
+    const bookingStepTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
     const {
         offer,
         offerExpiresAt,
@@ -158,6 +180,61 @@ export default function FlightBookContent() {
 
     const [bagsOpen, setBagsOpen] = React.useState(false);
     const [seatsOpen, setSeatsOpen] = React.useState(false);
+    const [refreshingOffer, setRefreshingOffer] = React.useState(false);
+    const [refreshFailed, setRefreshFailed] = React.useState(false);
+    const [currentOfferId, setCurrentOfferId] = React.useState<string | null>(null);
+    const refreshAttempted = React.useRef(false);
+
+    const effectiveOfferId = currentOfferId
+        ?? (offer as any)?.raw?.id
+        ?? (offer as any)?._rawOffer?.id
+        ?? offer?.offerId
+        ?? '';
+
+    const refreshOffer = React.useCallback(async () => {
+        // Only ever attempt once — prevents infinite loop on repeated 404s
+        if (refreshAttempted.current) return;
+        refreshAttempted.current = true;
+
+        const rawOffer = (offer as any)?._rawOffer ?? (offer as any)?.raw;
+        if (!rawOffer) { setRefreshFailed(true); return; }
+
+        setRefreshingOffer(true);
+        try {
+            const res = await fetch('/api/flights/offer-refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rawOffer }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success && data.newOfferId) {
+                setCurrentOfferId(data.newOfferId);
+                setSelectedBags([]);
+                setSelectedSeats([]);
+            } else {
+                setRefreshFailed(true);
+            }
+        } catch {
+            setRefreshFailed(true);
+        } finally {
+            setRefreshingOffer(false);
+        }
+    }, [offer, setSelectedBags, setSelectedSeats]);
+
+    useEffect(() => {
+        if (step === 'submitting') {
+            setBookingStepIdx(0);
+            bookingStepTimer.current = setInterval(() => {
+                setBookingStepIdx(i => Math.min(i + 1, FLIGHT_BOOKING_STEPS.length - 1));
+            }, 4000);
+        } else {
+            if (bookingStepTimer.current) {
+                clearInterval(bookingStepTimer.current);
+                bookingStepTimer.current = null;
+            }
+        }
+        return () => { if (bookingStepTimer.current) clearInterval(bookingStepTimer.current); };
+    }, [step]);
     const targetCurrency = useUserCurrency();
     const searchParams = useSearchParams();
     const isBundledWithHotel = searchParams.has('bundleHotelId');
@@ -190,16 +267,26 @@ export default function FlightBookContent() {
     // We stay in 'submitting' until the PNR arrives, then flip to 'success'.
     if (step === 'submitting' && clientSecret) {
         return (
-            <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50/60 via-white/40 to-indigo-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-emerald-950/60">
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 animate-pulse">
-                        <Plane className="w-8 h-8 text-white" />
-                    </div>
+            <main className="min-h-screen flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
+                    <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
                     <div>
-                        <p className="text-lg font-bold text-slate-900 dark:text-white">Confirming Your Booking</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Fetching your PNR reference…</p>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Confirming your booking</h2>
+                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium animate-pulse min-h-[20px]">
+                            {FLIGHT_BOOKING_STEPS[bookingStepIdx]}
+                        </p>
                     </div>
-                    <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+                    <div className="w-full space-y-2">
+                        {FLIGHT_BOOKING_STEPS.map((label, i) => (
+                            <div key={label} className={`flex items-center gap-2 text-xs ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
+                                <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${i < bookingStepIdx ? 'bg-green-500 text-white' : i === bookingStepIdx ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                    {i < bookingStepIdx ? '✓' : i + 1}
+                                </span>
+                                {label}
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Please don&apos;t close this page</p>
                 </div>
             </main>
         );
@@ -874,15 +961,26 @@ export default function FlightBookContent() {
                                     </button>
                                     {bagsOpen && (
                                         <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
-                                            <BagSelectionPanel
-                                                offerId={(offer as any)._rawOffer?.id ?? (offer as any).resultIndex ?? offer.offerId}
-                                                duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? []).map((p: any) => p.id)}
-                                                passengerCount={passengers.length}
-                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
-                                                selectedBags={selectedBags}
-                                                onBagsChange={setSelectedBags}
-                                                currency={offer.price.currency}
-                                            />
+                                            {refreshingOffer ? (
+                                                <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Refreshing offer…
+                                                </div>
+                                            ) : refreshFailed ? (
+                                                <AncillaryExpiredNotice />
+                                            ) : (
+                                                <BagSelectionPanel
+                                                    key={effectiveOfferId}
+                                                    offerId={effectiveOfferId}
+                                                    duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? (offer as any).raw?.passengers ?? []).map((p: any) => p.id)}
+                                                    passengerCount={passengers.length}
+                                                    passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                    selectedBags={selectedBags}
+                                                    onBagsChange={setSelectedBags}
+                                                    currency={offer.price.currency}
+                                                    onOfferExpired={refreshOffer}
+                                                />
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -911,16 +1009,27 @@ export default function FlightBookContent() {
                                     </button>
                                     {seatsOpen && (
                                         <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
-                                            <SeatMapPanel
-                                                offerId={(offer as any)._rawOffer?.id ?? (offer as any).resultIndex ?? offer.offerId}
-                                                segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
-                                                passengerCount={passengers.length}
-                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
-                                                selectedSeats={selectedSeats}
-                                                onSeatsChange={setSelectedSeats}
-                                                currency={offer.price.currency}
-                                                onDone={() => setSeatsOpen(false)}
-                                            />
+                                            {refreshingOffer ? (
+                                                <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Refreshing offer…
+                                                </div>
+                                            ) : refreshFailed ? (
+                                                <AncillaryExpiredNotice />
+                                            ) : (
+                                                <SeatMapPanel
+                                                    key={effectiveOfferId}
+                                                    offerId={effectiveOfferId}
+                                                    segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
+                                                    passengerCount={passengers.length}
+                                                    passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                    selectedSeats={selectedSeats}
+                                                    onSeatsChange={setSelectedSeats}
+                                                    currency={offer.price.currency}
+                                                    onDone={() => setSeatsOpen(false)}
+                                                    onOfferExpired={refreshOffer}
+                                                />
+                                            )}
                                         </div>
                                     )}
                                 </div>

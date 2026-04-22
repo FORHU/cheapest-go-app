@@ -6,7 +6,6 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
-import { getAirlineName } from '@/utils/flight-utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 
@@ -99,8 +98,8 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error }: CancelMo
                     <ul className="list-disc list-inside space-y-1 text-amber-700 dark:text-amber-400/90">
                         {booking.fare_policy?.isRefundable === false ? (
                             <>
-                                <li className="font-bold text-red-600 dark:text-red-400">This ticket is strictly non-refundable.</li>
-                                <li>You will receive $0 back if you cancel.</li>
+                                <li className="font-bold text-red-600 dark:text-red-400">The fare rules indicate this ticket is non-refundable.</li>
+                                <li>{booking.provider === 'duffel' ? 'The actual refund amount will be confirmed by the airline at the time of cancellation — you may still receive a partial or full refund.' : 'You will receive $0 back if you cancel.'}</li>
                             </>
                         ) : (
                             <>
@@ -240,7 +239,8 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     useEffect(() => {
         if (!fareEligibility) return;
         if (!fareEligibility.isVoidable) { setShowVoidQuote(false); setVoidQuoteData(null); setVoidQuoteError(null); }
-        if (!fareEligibility.isRefundable) { setShowRefundQuote(false); setRefundStep('idle'); setRefundError(null); }
+        // For Duffel, always allow the refund quote panel — Duffel's cancellation API is the source of truth, not the stored fare_policy flag
+        if (!fareEligibility.isRefundable && !isDuffel) { setShowRefundQuote(false); setRefundStep('idle'); setRefundError(null); }
     }, [fareEligibility]);
 
     // Silently auto-fetch TripDetails for ticketed Mystifly bookings to check eligibility
@@ -338,7 +338,13 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
 
             if (!res.ok || !data.success) {
                 if (data.requiresManualCancellation) {
-                    setCancelError('This ticketed booking cannot be cancelled via API. Please email crm@myfarebox.com to request cancellation.');
+                    const isMystifly = booking.provider === 'mystifly_v2';
+                    setCancelError(
+                        isMystifly
+                            ? 'This ticketed booking cannot be cancelled via API. Please email crm@myfarebox.com to request cancellation.'
+                            : 'This booking cannot be cancelled online. Please contact us at crm@cheapestgo.com to request a manual cancellation.'
+                    );
+                    setShowCancelModal(false);
                 } else {
                     setCancelError(data.error || 'Cancellation failed. Please contact support.');
                 }
@@ -914,7 +920,8 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         if (localStatus === 'cancel_failed') {
             return requiresManualCancellation ? (
                 <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
-                    <AlertTriangle className="w-3 h-3 shrink-0" /> Email crm@myfarebox.com to cancel
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    {booking.provider === 'mystifly_v2' ? 'Email crm@myfarebox.com to cancel' : 'Contact support to cancel'}
                 </span>
             ) : (
                 <span className="inline-flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400 font-medium whitespace-nowrap">
@@ -1052,7 +1059,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     <XCircle className="w-3 h-3 shrink-0" /> Void not available (airline policy)
                                 </div>
                             )}
-                            {fareEligibility === null || fareEligibility.isRefundable ? (
+                            {fareEligibility === null || fareEligibility.isRefundable || isDuffel ? (
                                 <button
                                     onClick={handleRefundQuote}
                                     className="w-full flex items-center justify-between px-2.5 py-2 text-[10px] text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-t border-slate-100 dark:border-slate-800 transition-colors"
@@ -1179,6 +1186,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
                                             <RotateCcw className="w-3 h-3 shrink-0" /> Refundable
                                         </span>
+                                    ) : isDuffel ? (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                            <XCircle className="w-3 h-3 shrink-0" /> Fare rules: Non-refundable
+                                        </span>
                                     ) : (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800">
                                             <XCircle className="w-3 h-3 shrink-0" /> Non-refundable
@@ -1281,7 +1292,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                         <span>Void not available</span>
                                     </div>
                                 )}
-                                {fareEligibility === null || fareEligibility.isRefundable ? (
+                                {fareEligibility === null || fareEligibility.isRefundable || isDuffel ? (
                                     <button
                                         onClick={handleRefundQuote}
                                         className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
