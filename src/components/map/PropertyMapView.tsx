@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MapRef, MapMouseEvent } from 'react-map-gl/mapbox';
 import { NavigationControl, Popup } from 'react-map-gl/mapbox';
 import { Navigation, Layers } from 'lucide-react';
@@ -112,11 +112,23 @@ const PropertyMapView = React.memo(function PropertyMapView({
     onViewDetails,
 }: PropertyMapViewProps) {
     const mapRef = useRef<MapRef>(null);
+    const [isMapLoaded, setIsMapLoaded] = useState(false);
     const [poiPopup, setPoiPopup] = useState<POIState | null>(null);
     const [hoveredPOI, setHoveredPOI] = useState<POIState | null>(null);
-    // Track last hovered POI name to skip redundant state updates
     const hoveredPOINameRef = useRef<string | null>(null);
+    const lastMouseMoveRef = useRef<number>(0);
+    const lastFittedKeyRef = useRef<string | null>(null);
     const targetCurrency = useUserCurrency();
+
+    // Pre-compute display prices once per properties/currency change instead of
+    // calling convertCurrency() for every marker on every render.
+    const markerPrices = useMemo(() => {
+        const prices: Record<string, number> = {};
+        for (const p of properties) {
+            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
+        }
+        return prices;
+    }, [properties, targetCurrency]);
 
     const {
         mapType,
@@ -204,8 +216,12 @@ const PropertyMapView = React.memo(function PropertyMapView({
     );
 
     const handleMouseMove = useCallback((e: MapMouseEvent) => {
-        // Skip if a click popup is already showing — don't double-render
         if (poiPopup) return;
+
+        // Throttle to ~50ms (~20fps) — queryRenderedFeatures is a GPU read
+        const now = Date.now();
+        if (now - lastMouseMoveRef.current < 50) return;
+        lastMouseMoveRef.current = now;
 
         const map = mapRef.current?.getMap();
         if (!map) return;
@@ -213,13 +229,11 @@ const PropertyMapView = React.memo(function PropertyMapView({
         const poi = detectPOI(map, [e.point.x, e.point.y], e.lngLat);
         const name = poi?.name ?? null;
 
-        // Only update React state when the hovered POI actually changes
         if (name === hoveredPOINameRef.current) return;
         hoveredPOINameRef.current = name;
 
         setHoveredPOI(poi);
 
-        // Update map cursor
         const canvas = map.getCanvas();
         canvas.style.cursor = poi ? 'pointer' : '';
     }, [poiPopup]);
@@ -233,11 +247,13 @@ const PropertyMapView = React.memo(function PropertyMapView({
         }
     }, []);
 
-    const handleMapLoad = useCallback(() => {
-        if (properties.length === 0) return;
-
+    const fitBounds = useCallback(() => {
         const map = mapRef.current;
-        if (!map) return;
+        if (!map || properties.length === 0) return;
+
+        const key = properties.map(p => p.id).join(',');
+        if (lastFittedKeyRef.current === key) return;
+        lastFittedKeyRef.current = key;
 
         if (properties.length === 1) {
             map.flyTo({
@@ -249,17 +265,21 @@ const PropertyMapView = React.memo(function PropertyMapView({
         }
 
         map.fitBounds(
-            [
-                [bounds.minLng, bounds.minLat],
-                [bounds.maxLng, bounds.maxLat],
-            ],
-            {
-                padding: { top: 60, bottom: 60, left: 60, right: 60 },
-                maxZoom: 15,
-                duration: 0,
-            }
+            [[bounds.minLng, bounds.minLat], [bounds.maxLng, bounds.maxLat]],
+            { padding: { top: 60, bottom: 60, left: 60, right: 60 }, maxZoom: 15, duration: 0 }
         );
-    }, [properties.length, bounds]);
+    }, [properties, bounds]);
+
+    const handleMapLoad = useCallback(() => {
+        setIsMapLoaded(true);
+        fitBounds();
+    }, [fitBounds]);
+
+    // Re-fit when properties arrive after the map is already loaded
+    useEffect(() => {
+        if (!isMapLoaded) return;
+        fitBounds();
+    }, [isMapLoaded, fitBounds]);
 
     return (
         <div className="relative w-full h-full">
@@ -289,7 +309,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
                     <MapMarker
                         key={property.id}
                         property={property}
-                        displayPrice={convertCurrency(property.price, property.currency || 'USD', targetCurrency)}
+                        displayPrice={markerPrices[property.id] ?? 0}
                         displayCurrency={targetCurrency}
                         isSelected={selectedId === property.id}
                         isHovered={hoveredId === property.id}
