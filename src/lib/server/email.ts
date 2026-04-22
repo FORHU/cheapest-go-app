@@ -1444,6 +1444,65 @@ export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirma
 //  PRICE DROP ALERT EMAIL
 // ═════════════════════════════════════════════════════════════════════
 
+export async function sendPriceAlertConfirmationEmail(params: {
+    email: string;
+    origin: string;
+    destination: string;
+    cabin: string;
+    adults: number;
+    targetPrice?: number | null;
+    currency?: string;
+}): Promise<{ success: boolean; error?: string }> {
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    if (!RESEND_API_KEY) return { success: false, error: 'RESEND_API_KEY not configured' };
+
+    const { email, origin, destination, cabin, adults, targetPrice, currency = 'USD' } = params;
+    const cabinLabel = cabin.replace('_', ' ');
+    const formattedTarget = targetPrice
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(targetPrice)
+        : null;
+
+    const emailHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+<div style="background:linear-gradient(135deg,#7c3aed,#4f46e5);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+  <h1 style="color:white;margin:0;font-size:24px;">🔔 Price Alert Set!</h1>
+  <p style="color:rgba(255,255,255,0.9);margin:8px 0 0">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</p>
+</div>
+<div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+  <p style="margin:0 0 20px">We're now tracking prices for your route. You'll receive an email as soon as prices drop.</p>
+  <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:20px;margin:0 0 20px;">
+    <p style="margin:0 0 8px;font-weight:700;color:#4f46e5;">Alert Summary</p>
+    <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>Route:</strong> ${escapeHtml(origin)} → ${escapeHtml(destination)}</p>
+    <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>Cabin:</strong> ${escapeHtml(cabinLabel)}</p>
+    <p style="margin:0 0 4px;font-size:14px;color:#374151;"><strong>Passengers:</strong> ${adults} adult${adults > 1 ? 's' : ''}</p>
+    ${formattedTarget ? `<p style="margin:4px 0 0;font-size:14px;color:#374151;"><strong>Target price:</strong> ${escapeHtml(formattedTarget)}</p>` : ''}
+  </div>
+  <p style="font-size:12px;color:#9ca3af;text-align:center;margin:0">Prices are checked daily. You can manage your alerts in your account.</p>
+</div>
+</body></html>`;
+
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from: 'CheapestGo Alerts <alerts@cheapestgo.com>',
+                to: email,
+                subject: `Price alert set: ${origin} → ${destination}`,
+                html: emailHtml,
+            }),
+        });
+        if (!res.ok) {
+            const err = await res.text();
+            return { success: false, error: err };
+        }
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
 export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Promise<{ success: boolean; error?: string }> {
     const { email, origin, destination, newPrice, oldPrice, currency, cabin, adults, searchUrl } = params;
     const resendApiKey = env.RESEND_API_KEY;

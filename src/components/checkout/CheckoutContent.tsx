@@ -23,7 +23,7 @@ import {
 } from '@/hooks';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api/client';
-import { LogIn } from 'lucide-react';
+import { AlertTriangle, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import BackButton from '@/components/common/BackButton';
 import AuthModal from '@/components/auth/AuthModal';
@@ -62,6 +62,8 @@ const BOOKING_STEPS = [
 ] as const;
 
 export function CheckoutContent() {
+    const router = useRouter();
+
     // Booking store selectors
     const property = useProperty();
     const selectedRoom = useSelectedRoom();
@@ -117,6 +119,13 @@ export function CheckoutContent() {
     const [step, setStep] = useState<'form' | 'payment'>('form');
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+
+    // Duplicate booking warning dialog state
+    const [duplicateBooking, setDuplicateBooking] = useState<{
+        existingBookingId: string;
+        existingCheckIn?: string;
+        existingCheckOut?: string;
+    } | null>(null);
 
     // Booking confirmation progress overlay
     const [bookingStepIdx, setBookingStepIdx] = useState(0);
@@ -262,11 +271,22 @@ export function CheckoutContent() {
                     holderEmail: formData.email,
                     propertyName: property?.name || 'Hotel',
                     roomName: selectedRoom?.title || 'Room',
+                    checkIn: checkIn?.toISOString().slice(0, 10),
+                    checkOut: checkOut?.toISOString().slice(0, 10),
                     ...(bundleFlightId ? { bundleFlightId } : {}),
                 }
             );
 
             if (!result.success) {
+                const raw = result as unknown as Record<string, unknown>;
+                if (raw.code === 'DUPLICATE_BOOKING' && typeof raw.existingBookingId === 'string') {
+                    setDuplicateBooking({
+                        existingBookingId: raw.existingBookingId,
+                        existingCheckIn: typeof raw.existingCheckIn === 'string' ? raw.existingCheckIn : undefined,
+                        existingCheckOut: typeof raw.existingCheckOut === 'string' ? raw.existingCheckOut : undefined,
+                    });
+                    return;
+                }
                 throw new Error('error' in result ? result.error : 'Failed to create payment session');
             }
 
@@ -505,6 +525,36 @@ export function CheckoutContent() {
                         <div className="lg:col-span-2 space-y-2.5 lg:space-y-6">
                             {step === 'form' ? (
                                 <>
+                                    {/* Duplicate booking inline banner */}
+                                    {duplicateBooking && (
+                                        <div className="rounded-xl border-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 lg:p-4 space-y-2.5">
+                                            <div className="flex items-center gap-2">
+                                                <AlertTriangle className="text-red-500 dark:text-red-400 shrink-0" size={18} />
+                                                <p className="text-sm font-bold text-red-700 dark:text-red-300">
+                                                    You already have a booking at {property?.name}
+                                                    {duplicateBooking.existingCheckIn && duplicateBooking.existingCheckOut && (
+                                                        <> ({new Date(duplicateBooking.existingCheckIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(duplicateBooking.existingCheckOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})</>
+                                                    )} for overlapping dates.
+                                                </p>
+                                            </div>
+                                            <p className="text-xs text-red-600 dark:text-red-400">Cancel your existing booking first, or go back and keep it.</p>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => router.push(`/trips?highlight=${duplicateBooking.existingBookingId}`)}
+                                                    className="flex-1 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                                                >
+                                                    View existing booking
+                                                </button>
+                                                <button
+                                                    onClick={() => setDuplicateBooking(null)}
+                                                    className="flex-1 py-2 text-xs font-medium border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                                                >
+                                                    Dismiss
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <UserDetailsForm
                                         formData={formData}
                                         onInputChange={handleInputChange}
