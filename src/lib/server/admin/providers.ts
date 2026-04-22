@@ -385,7 +385,7 @@ async function fetchMystiflyData(): Promise<ProviderIntegrationsData['mystifly']
 // ── LiteAPI (Supabase DB + Edge health) ─────────────────
 
 async function fetchLiteApiData(): Promise<ProviderIntegrationsData['liteapi']> {
-    const configured = !!env.NEXT_PUBLIC_SUPABASE_URL && !!env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const configured = !!env.SUPABASE_URL && !!env.SUPABASE_ANON_KEY;
 
     if (!configured) {
         return { status: 'not_configured', searchCount: null, bookingCount: null };
