@@ -94,6 +94,13 @@ export const SearchMapContainer = React.memo(({
 
     // 5. Derived State
     const targetCurrency = useUserCurrency();
+    const markerPrices = useMemo(() => {
+        const prices: Record<string, number> = {};
+        for (const p of mappableProperties) {
+            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
+        }
+        return prices;
+    }, [mappableProperties, targetCurrency]);
     const selectedProperty = useMemo(
         () => mappableProperties.find((p: MappableProperty) => p.id === selectedId) ?? null,
         [mappableProperties, selectedId]
@@ -112,19 +119,6 @@ export const SearchMapContainer = React.memo(({
 
 
 
-    // Distance calculation helper
-    const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
-        const R = 6371; // km
-        const dLat = (l2.lat - l1.lat) * (Math.PI / 180);
-        const dLng = (l2.lng - l1.lng) * (Math.PI / 180);
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(l1.lat * (Math.PI / 180)) * Math.cos(l2.lat * (Math.PI / 180)) *
-            Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return (R * c).toFixed(2);
-    };
-
     const poiDistance = useMemo(
         () => previewProperty && activePoi
             ? calculateDistance(previewProperty.coordinates, activePoi.coordinates)
@@ -132,8 +126,8 @@ export const SearchMapContainer = React.memo(({
         [previewProperty, activePoi]
     );
 
-    // POI Route Logic
-    // 6. Fetch Real Road GPS Route — only when a POI is *clicked* (selectedPoi)
+    // 6. Fetch Real Road GPS Route — debounced so rapid hover/select changes
+    // don't fire multiple in-flight Mapbox Directions requests.
     React.useEffect(() => {
         if (!previewProperty || !selectedPoi) {
             setRouteGeometry(null);
@@ -142,10 +136,13 @@ export const SearchMapContainer = React.memo(({
             return;
         }
 
-        const fetchRoute = async () => {
+        const timer = setTimeout(async () => {
             try {
-                const drivingUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?geometries=geojson&overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`;
-                const walkingUrl = `https://api.mapbox.com/directions/v5/mapbox/walking/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`;
+                const base = `https://api.mapbox.com/directions/v5/mapbox`;
+                const coords = `${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}`;
+                const token = `access_token=${env.MAPBOX_TOKEN}`;
+                const drivingUrl = `${base}/driving/${coords}?geometries=geojson&overview=full&steps=true&alternatives=true&${token}`;
+                const walkingUrl = `${base}/walking/${coords}?overview=full&steps=true&alternatives=true&${token}`;
 
                 const [drivingJson, walkingJson] = await Promise.all([
                     fetch(drivingUrl).then(r => r.json()),
@@ -153,25 +150,25 @@ export const SearchMapContainer = React.memo(({
                 ]);
 
                 if (drivingJson.code === 'Ok' && drivingJson.routes?.length) {
-                    const shortestDriving = drivingJson.routes.reduce((best: any, r: any) =>
+                    const shortest = drivingJson.routes.reduce((best: any, r: any) =>
                         r.distance < best.distance ? r : best
                     );
-                    setRouteGeometry(shortestDriving.geometry);
-                    setCarDuration(`${Math.max(1, Math.round(shortestDriving.duration / 60))} min`);
+                    setRouteGeometry(shortest.geometry);
+                    setCarDuration(`${Math.max(1, Math.round(shortest.duration / 60))} min`);
                 }
 
                 if (walkingJson.code === 'Ok' && walkingJson.routes?.length) {
-                    const shortestWalking = walkingJson.routes.reduce((best: any, r: any) =>
+                    const shortest = walkingJson.routes.reduce((best: any, r: any) =>
                         r.distance < best.distance ? r : best
                     );
-                    setWalkDuration(`${Math.max(1, Math.round(shortestWalking.duration / 60))} min`);
+                    setWalkDuration(`${Math.max(1, Math.round(shortest.duration / 60))} min`);
                 }
             } catch (err) {
                 console.error('Directions error:', err);
             }
-        };
+        }, 400);
 
-        fetchRoute();
+        return () => clearTimeout(timer);
     }, [previewProperty, selectedPoi]);
 
     const poiRouteData = useMemo(() => routeGeometry ? ({
@@ -267,7 +264,7 @@ export const SearchMapContainer = React.memo(({
                             <MapMarker
                                 key={property.id}
                                 property={property}
-                                displayPrice={convertCurrency(property.price, property.currency || 'USD', targetCurrency)}
+                                displayPrice={markerPrices[property.id] ?? 0}
                                 displayCurrency={targetCurrency}
                                 isSelected={property.id === selectedId}
                                 isHovered={property.id === hoveredId}
