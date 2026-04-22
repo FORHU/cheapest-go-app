@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, History, Plane, Building2, X } from 'lucide-react';
+import { MapPin, History, Plane, Building2, Globe, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
 import { apiFetch } from '@/lib/api/client';
@@ -85,6 +85,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
         switch (type) {
             case 'history': return <History size={18} />;
             case 'airport': return <Plane size={18} />;
+            case 'country': return <Globe size={18} />;
             default: return <Building2 size={18} />;
         }
     };
@@ -174,38 +175,59 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                         )}
 
                         {/* 2. Autocomplete Suggestions */}
-                        {query && (
-                            <>
-                                <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[10px] font-mono font-medium uppercase text-slate-500 tracking-wider`}>
-                                    Destinations
-                                </div>
-                                {suggestions.length > 0 ? (
-                                    suggestions.map((item, i) => (
-                                        <div
-                                            key={i}
-                                            onClick={() => handleSelect(item)}
-                                            className={`${forceOpen ? 'px-2' : 'px-6'} py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-start gap-3 cursor-pointer group`}
-                                        >
-                                            <div className="mt-0.5 text-slate-400 group-hover:text-blue-500">
-                                                {getIcon(item.type)}
-                                            </div>
-                                            <div className="flex-1">
-                                                <h5 className="text-sm font-bold group-hover:text-blue-500 text-slate-900 dark:text-white">
-                                                    {item.title}
-                                                </h5>
-                                                <p className="text-xs font-normal text-slate-400 truncate max-w-[280px]">
-                                                    {item.subtitle}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
+                        {query && (() => {
+                            const countries = suggestions.filter(s => s.type === 'country');
+                            const cities = suggestions.filter(s => s.type !== 'country');
+
+                            if (suggestions.length === 0) {
+                                return (
                                     <div className="px-6 py-4 text-center text-slate-400 text-sm">
-                                        {loading ? "Searching..." : "No results found"}
+                                        {loading ? 'Searching...' : 'No results found'}
                                     </div>
-                                )}
-                            </>
-                        )}
+                                );
+                            }
+
+                            const renderItem = (item: Destination, i: number) => (
+                                <div
+                                    key={i}
+                                    onClick={() => handleSelect(item)}
+                                    className={`${forceOpen ? 'px-2' : 'px-6'} py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-start gap-3 cursor-pointer group`}
+                                >
+                                    <div className={`mt-0.5 text-slate-400 ${item.type === 'country' ? 'group-hover:text-emerald-500' : 'group-hover:text-blue-500'}`}>
+                                        {getIcon(item.type)}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h5 className={`text-sm font-bold text-slate-900 dark:text-white ${item.type === 'country' ? 'group-hover:text-emerald-500' : 'group-hover:text-blue-500'}`}>
+                                            {item.title}
+                                        </h5>
+                                        <p className="text-xs font-normal text-slate-400 truncate max-w-[280px]">
+                                            {item.subtitle}
+                                        </p>
+                                    </div>
+                                </div>
+                            );
+
+                            return (
+                                <>
+                                    {countries.length > 0 && (
+                                        <>
+                                            <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[10px] font-mono font-medium uppercase text-slate-500 tracking-wider`}>
+                                                Countries
+                                            </div>
+                                            {countries.map(renderItem)}
+                                        </>
+                                    )}
+                                    {cities.length > 0 && (
+                                        <>
+                                            <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[10px] font-mono font-medium uppercase text-slate-500 tracking-wider ${countries.length > 0 ? 'mt-1' : ''}`}>
+                                                Cities
+                                            </div>
+                                            {cities.map(renderItem)}
+                                        </>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
                 </motion.div>
             )}

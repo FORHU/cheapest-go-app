@@ -44,10 +44,22 @@ const MapPopup = React.memo(function MapPopup({
     const isLandscape = useIsLandscapeMobile();
     const targetCurrency = useUserCurrency();
     const sourceCurrency = property.currency || 'USD';
-    const displayPrice = convertCurrency(property.price, sourceCurrency, targetCurrency);
-    const displayOriginalPrice = property.originalPrice
-        ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency)
-        : undefined;
+    const displayPrice = React.useMemo(
+        () => convertCurrency(property.price, sourceCurrency, targetCurrency),
+        [property.price, sourceCurrency, targetCurrency]
+    );
+    const displayOriginalPrice = React.useMemo(
+        () => property.originalPrice
+            ? convertCurrency(property.originalPrice, sourceCurrency, targetCurrency)
+            : undefined,
+        [property.originalPrice, sourceCurrency, targetCurrency]
+    );
+    const ratingLabel = React.useMemo(() => getRatingLabel(property.rating), [property.rating]);
+
+    // Keep a stable ref to onClose so the effect never needs to re-run when the
+    // parent re-renders and passes a new function identity.
+    const onCloseRef = React.useRef(onClose);
+    useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
     useEffect(() => {
         let startY = 0;
@@ -60,39 +72,34 @@ const MapPopup = React.memo(function MapPopup({
 
         const handleTouchMove = (e: TouchEvent) => {
             if (!startY || !startX) return;
-            const currentY = e.touches[0].clientY;
-            const currentX = e.touches[0].clientX;
-            const diffY = Math.abs(currentY - startY);
-            const diffX = Math.abs(currentX - startX);
-
-            // If user swipes more than 10px in any direction, close the popup
-            if (diffY > 10 || diffX > 10) {
-                onClose();
-            }
+            const diffY = Math.abs(e.touches[0].clientY - startY);
+            const diffX = Math.abs(e.touches[0].clientX - startX);
+            if (diffY > 10 || diffX > 10) onCloseRef.current();
         };
 
-        // Global listeners catch swipes anywhere on the screen (even over the popup or other UI)
+        const handleMapClose = () => onCloseRef.current();
+
         window.addEventListener('touchstart', handleTouchStart, { passive: true });
         window.addEventListener('touchmove', handleTouchMove, { passive: true });
 
-        // Map-specific listeners for desktop dragging or scrolling
         const map = mapRef?.current?.getMap();
         if (map) {
-            map.on('dragstart', onClose);
-            map.on('zoomstart', onClose);
-            map.on('wheel', onClose);
+            map.on('dragstart', handleMapClose);
+            map.on('zoomstart', handleMapClose);
+            map.on('wheel', handleMapClose);
         }
 
         return () => {
             window.removeEventListener('touchstart', handleTouchStart);
             window.removeEventListener('touchmove', handleTouchMove);
             if (map) {
-                map.off('dragstart', onClose);
-                map.off('zoomstart', onClose);
-                map.off('wheel', onClose);
+                map.off('dragstart', handleMapClose);
+                map.off('zoomstart', handleMapClose);
+                map.off('wheel', handleMapClose);
             }
         };
-    }, [mapRef, onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mapRef])
     return (
         <Popup
             latitude={property.coordinates.lat}
@@ -148,7 +155,7 @@ const MapPopup = React.memo(function MapPopup({
                             {property.rating.toFixed(1)}
                         </span>
                         <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300">
-                            {getRatingLabel(property.rating)}
+                            {ratingLabel}
                         </span>
                     </div>
 

@@ -1451,7 +1451,6 @@ export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirma
 //  PRICE DROP ALERT EMAIL
 // ═════════════════════════════════════════════════════════════════════
 
-
 export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Promise<{ success: boolean; error?: string }> {
     const { email, origin, destination, newPrice, oldPrice, currency, cabin, adults, searchUrl } = params;
     const resendApiKey = env.RESEND_API_KEY;
