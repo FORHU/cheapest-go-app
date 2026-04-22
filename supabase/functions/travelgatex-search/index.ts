@@ -177,8 +177,8 @@ Deno.serve(async (req: Request) => {
   }
 
   const TRAVELGATEX_API_KEY = Deno.env.get('TRAVELGATEX_API_KEY');
-  const TRAVELGATEX_CODE = Deno.env.get('TRAVELGATEX_CODE') || '2';
-  const TRAVELGATEX_CLIENT = Deno.env.get('TRAVELGATEX_CLIENT') || 'FORHU_INC';
+  const TRAVELGATEX_ACCESS_CODE = Deno.env.get('TRAVELGATEX_CODE') || '37606';
+  const TRAVELGATEX_CLIENT = Deno.env.get('TRAVELGATEX_CLIENT') || 'forhuinc';
   const ENDPOINT = 'https://api.travelgate.com';
 
   try {
@@ -241,11 +241,11 @@ Deno.serve(async (req: Request) => {
         client: TRAVELGATEX_CLIENT,
         context: 'TGX',
         testMode: false,
-        timeout: 15000,
+        timeout: 25000,
         suppliers: [
           {
             code: 'FASTX',
-            accesses: [{ accessId: TRAVELGATEX_CODE }],
+            accesses: [{ accessId: TRAVELGATEX_ACCESS_CODE }],
           },
         ],
       },
@@ -277,6 +277,9 @@ Deno.serve(async (req: Request) => {
 
     const searchData = result.data?.hotelX?.search;
 
+    // DEBUG: log full response for diagnosis
+    console.log('[TravelgateX] Full searchData:', JSON.stringify(searchData).substring(0, 2000));
+
     if (searchData?.errors?.length > 0) {
       console.warn('[TravelgateX] Search errors:', JSON.stringify(searchData.errors));
     }
@@ -288,7 +291,15 @@ Deno.serve(async (req: Request) => {
     console.log(`[TravelgateX] API: ${t2 - t1}ms, options: ${options.length}`);
 
     if (options.length === 0) {
-      return new Response(JSON.stringify({ data: [] }), {
+      return new Response(JSON.stringify({
+        data: [],
+        _debug: {
+          errors: searchData?.errors || [],
+          warnings: searchData?.warnings || [],
+          destCode,
+          ms: t2 - t1,
+        },
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'MISS' },
         status: 200,
       });
