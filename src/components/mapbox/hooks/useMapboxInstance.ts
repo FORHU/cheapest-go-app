@@ -16,9 +16,14 @@ export const useMapboxInstance = () => {
         }
     }, []);
 
+    const handleMapStyleChange = useCallback(() => {
+        setIsMapLoaded(false);
+    }, []);
+
     return {
         mapRef,
         isMapLoaded,
         handleMapLoad,
+        handleMapStyleChange,
     };
 };

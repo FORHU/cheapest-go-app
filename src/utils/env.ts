@@ -32,8 +32,6 @@ export const env = {
     // Google Places
     GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
 
-    // Kakao Rest API 
-    KAKAO_REST_API_KEY: process.env.KAKAO_REST_API_KEY,
 
     // Site
     SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://k-travel-booking.vercel.app',
@@ -50,6 +48,8 @@ export const env = {
     TRAVELGATE_API_KEY: process.env.TRAVELGATE_API_KEY,
     TRAVELGATE_CODE: process.env.TRAVELGATE_CODE,
     TRAVELGATE_ENDPOINT_URL: process.env.TRAVELGATE_ENDPOINT_URL,
+    // Foursquare
+    FOURSQUARE_API_KEY: process.env.FOURSQUARE_SERVICE_API_KEY,
 };
 
 /**

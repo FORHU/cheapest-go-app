@@ -58,6 +58,36 @@ export function useKakaoSearch({ proximity }: UseKakaoSearchParams = {}) {
         }, 400);
     }, [proximity]);
 
+    const fetchRecommendations = useCallback(async (lat: number, lng: number) => {
+        setIsSearching(true);
+        try {
+            // Fetch multiple categories for a rich "recommended" set
+            // AT4: Tourist Attraction, FD6: Food, CE7: Cafe, CT1: Culture
+            const categories = ['관광명소', '맛집', '카페', '문화시설'];
+            const promises = categories.map(query => 
+                fetch(`/api/kakao/search?query=${encodeURIComponent(query)}&y=${lat}&x=${lng}&radius=5000`)
+                    .then(res => res.json())
+                    .catch(() => ({ documents: [] }))
+            );
+
+            const results = await Promise.all(promises);
+            const allDocs = results.flatMap(r => r.documents || []);
+            
+            // Deduplicate by ID
+            const uniqueDocs = Array.from(new Map(allDocs.map(item => [item.id, item])).values());
+            
+            const normalized = uniqueDocs.map(normalizeKakaoPoi);
+            setResults(normalized);
+            return normalized;
+        } catch (err) {
+            console.error('Kakao Recommendations error:', err);
+            setResults([]);
+            return [];
+        } finally {
+            setIsSearching(false);
+        }
+    }, []);
+
     const clearSearch = useCallback(() => {
         setResults([]);
     }, []);
@@ -66,6 +96,8 @@ export function useKakaoSearch({ proximity }: UseKakaoSearchParams = {}) {
         results,
         isSearching,
         handleSearch,
+        fetchRecommendations,
         clearSearch,
     };
 }
+

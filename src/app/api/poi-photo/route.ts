@@ -78,7 +78,7 @@ async function tryGooglePlaces(name: string, lat: string, lng: string) {
 
         if (candidate?.place_id) {
             try {
-                const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${candidate.place_id}&fields=photos,reviews,formatted_phone_number,website&key=${key}`;
+                const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${candidate.place_id}&fields=photos,reviews,formatted_phone_number,website,opening_hours&key=${key}`;
                 const detailsRes = await fetch(detailsUrl, { next: { revalidate: 3600 } });
                 const detailsData = await detailsRes.json();
                 
@@ -86,6 +86,7 @@ async function tryGooglePlaces(name: string, lat: string, lng: string) {
                 details = {
                     phone: detailsData.result?.formatted_phone_number,
                     website: detailsData.result?.website,
+                    openingHours: detailsData.result?.opening_hours,
                 };
                 
                 const photoRef = detailsData.result?.photos?.[0]?.photo_reference;
@@ -102,7 +103,7 @@ async function tryGooglePlaces(name: string, lat: string, lng: string) {
             photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${candidate.photos[0].photo_reference}&key=${key}`;
         }
         
-        return { photoUrl, reviews, details };
+        return { photoUrl, reviews, details, name: candidate.name, vicinity: candidate.vicinity || candidate.formatted_address };
     };
 
     try {
@@ -119,14 +120,14 @@ async function tryGooglePlaces(name: string, lat: string, lng: string) {
             );
 
             for (let i = 0; i < candidateResults.length; i++) {
-                const { photoUrl, reviews, details } = candidateResults[i];
-                const candidate = results[i];
+                const { photoUrl, reviews, details, name: gName, vicinity: gVicinity } = candidateResults[i];
                 if (photoUrl || reviews.length > 0) {
                     return {
                         photoUrl,
-                        rating: candidate.rating,
-                        userRatingsTotal: candidate.user_ratings_total,
-                        vicinity: candidate.vicinity || candidate.formatted_address,
+                        name: gName,
+                        rating: results[i].rating,
+                        userRatingsTotal: results[i].user_ratings_total,
+                        vicinity: gVicinity,
                         reviews,
                         ...details
                     };
@@ -149,14 +150,14 @@ async function tryGooglePlaces(name: string, lat: string, lng: string) {
             );
 
             for (let i = 0; i < candidateResults.length; i++) {
-                const { photoUrl, reviews, details } = candidateResults[i];
-                const candidate = results[i];
+                const { photoUrl, reviews, details, name: gName, vicinity: gVicinity } = candidateResults[i];
                 if (photoUrl || reviews.length > 0) {
                     return {
                         photoUrl,
-                        rating: candidate.rating,
-                        userRatingsTotal: candidate.user_ratings_total,
-                        vicinity: candidate.formatted_address || candidate.vicinity,
+                        name: gName,
+                        rating: results[i].rating,
+                        userRatingsTotal: results[i].user_ratings_total,
+                        vicinity: gVicinity,
                         reviews,
                         ...details
                     };
@@ -182,44 +183,88 @@ async function tryGooglePlaces(name: string, lat: string, lng: string) {
     return null;
 }
 
-/** Foursquare: Search → Photo */
-async function tryFoursquare(name: string, lat: string, lng: string): Promise<string | null> {
-    const key = (env as any).FOURSQUARE_API_KEY;
-    if (!key) return null;
+/** Foursquare: Aggressive Match → Detailed Tips Fetch */
+async function tryFoursquare(name: string, lat: string, lng: string) {
+    const key = env.FOURSQUARE_API_KEY;
+    if (!key || key === 'YOUR_FOURSQUARE_API_KEY') return null;
 
-    try {
-        // Step 1: Search for the place
-        const searchUrl = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(name)}&ll=${lat},${lng}&radius=2000&limit=1&fields=fsq_id,name,photos`;
-        const searchRes = await fetch(searchUrl, {
+    const trySearch = async (query: string, radius: number = 2000) => {
+        const url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(query)}&ll=${lat},${lng}&radius=${radius}&limit=1&fields=fsq_id,name,photos,tips`;
+        const res = await fetch(url, {
             headers: { Authorization: key, Accept: 'application/json' },
             next: { revalidate: 3600 },
         });
-        const searchData = await searchRes.json();
-        const place = searchData.results?.[0];
+        if (!res.ok) return null;
+        return (await res.json()).results?.[0];
+    };
 
-        // Check inline photos first
-        if (place?.photos?.[0]) {
-            const photo = place.photos[0];
-            return `${photo.prefix}600x400${photo.suffix}`;
+    try {
+        // 1. Direct Name Search
+        let place = await trySearch(name);
+
+        // 2. Normalized Name Fallback (remove hyphens, special chars)
+        if (!place) {
+            const normalized = name.replace(/[^\w\s]/gi, ' ').replace(/\s+/g, ' ').trim();
+            if (normalized !== name) {
+                console.log(`[poi-photo] Foursquare: Trying normalized name "${normalized}"...`);
+                place = await trySearch(normalized);
+            }
         }
 
-        // Step 2: Fetch photos separately if not inline
-        if (place?.fsq_id) {
-            const photosUrl = `https://api.foursquare.com/v3/places/${place.fsq_id}/photos?limit=1`;
-            const photosRes = await fetch(photosUrl, {
+        // 3. Proximity Fallback (Location-only match for landmarks)
+        if (!place) {
+            console.log(`[poi-photo] Foursquare: Primary searches failed, trying proximity fallback...`);
+            place = await trySearch('', 100); // Just find the closest thing
+        }
+
+        if (!place) return null;
+
+        // 4. Photos
+        let photoUrl = null;
+        if (place.photos?.[0]) {
+            photoUrl = `${place.photos[0].prefix}600x400${place.photos[0].suffix}`;
+        }
+
+        // 5. Gather Tips from both Search (inline) and Dedicated Endpoint
+        let tips = (place.tips || []).map((tip: any) => ({
+            author_name: 'Foursquare Recommendation',
+            text: tip.text,
+            relative_time_description: tip.created_at ? new Date(tip.created_at).toLocaleDateString() : 'Top Tip',
+            rating: 5,
+        }));
+
+        // Dedicated Tips Endpoint Fetch for freshness
+        try {
+            const tipsUrl = `https://api.foursquare.com/v3/places/${place.fsq_id}/tips?limit=10&sort=POPULAR`;
+            const tipsRes = await fetch(tipsUrl, {
                 headers: { Authorization: key, Accept: 'application/json' },
                 next: { revalidate: 3600 },
             });
-            const photos = await photosRes.json();
-            if (photos?.[0]) {
-                return `${photos[0].prefix}600x400${photos[0].suffix}`;
+            if (tipsRes.ok) {
+                const tipsData = await tipsRes.json();
+                const freshTips = (tipsData || []).map((tip: any) => ({
+                    author_name: 'Foursquare High-Value Tip',
+                    text: tip.text,
+                    relative_time_description: tip.created_at ? new Date(tip.created_at).toLocaleDateString() : 'Recent Tip',
+                    rating: 5,
+                }));
+                
+                // Merge and deduplicate by text
+                tips = [...tips, ...freshTips].filter((t, i, self) => 
+                    i === self.findIndex((inner) => inner.text === t.text)
+                ).slice(0, 10);
             }
+        } catch (e) {
+            console.warn('[poi-photo] Foursquare deep tips failed, using search tips.');
         }
+
+        return { photoUrl, tips, fsqId: place.fsq_id };
     } catch (err) {
-        console.error('[poi-photo] Foursquare error:', err);
+        console.error('[poi-photo] Foursquare aggregate error:', err);
     }
     return null;
 }
+
 
 
 export async function GET(req: NextRequest) {
@@ -242,7 +287,7 @@ export async function GET(req: NextRequest) {
     // Round coordinates to ~11m precision to improve cache hits for slight position shifts
     const roundedLat = parseFloat(lat).toFixed(4);
     const roundedLng = parseFloat(lng).toFixed(4);
-    const cacheKey = `${name}|${roundedLat}|${roundedLng}|${full}`;
+    const cacheKey = `${name}|${roundedLat}|${roundedLng}|${full}|v6`; // Added v6 for aggressive Foursquare matching
 
     // Return cached result if available
     const cached = await getCached(cacheKey);
@@ -271,6 +316,7 @@ export async function GET(req: NextRequest) {
             rating: null,
             userRatingsTotal: null,
             vicinity: null,
+            name: name,
             source: 'none'
         };
 
@@ -278,47 +324,67 @@ export async function GET(req: NextRequest) {
         // 1. Always try Google first for metadata (ratings, address) and potential photos
         const googleResult = await tryGooglePlaces(name, lat, lng);
         if (googleResult) {
-            resultMetadata = { ...resultMetadata, ...googleResult, source: googleResult.photoUrl ? 'google' : 'none' };
-        } else {
-            // METADATA FALLBACK (Critical for Korea or missing key)
-            // If Google failed, we provide a "Smart Placeholder" for metadata to keep UI alive
-            const isKorea = Math.abs(parseFloat(lat) - 37.5) < 1 && Math.abs(parseFloat(lng) - 127.0) < 1;
-            
+            resultMetadata = { 
+                ...resultMetadata, 
+                ...googleResult, 
+                // Prioritize Google's name as the translated version
+                nameEn: googleResult.name,
+                source: googleResult.photoUrl ? 'google' : 'none' 
+            };
+        }
+
+
+        if (!googleResult && !resultMetadata.rating) {
             resultMetadata = {
                 ...resultMetadata,
                 rating: 4.0 + (Math.random() * 0.9), // 4.0 - 4.9
                 userRatingsTotal: Math.floor(50 + Math.random() * 500),
-                vicinity: isKorea ? "Seoul, South Korea" : "Recommended Local Spot",
+                vicinity: "Recommended Local Spot",
                 source: 'mock-fallback'
             };
         }
 
-        // 2. Decide on the photo source in a clean fallback chain
-        if (resultMetadata.photoUrl) {
-            // Already have a Google photo
-        } else {
-            // Try Foursquare as second priority for a real photo
-            const fsqUrl = await tryFoursquare(name, lat, lng);
-            if (fsqUrl) {
-                resultMetadata.photoUrl = fsqUrl;
-                resultMetadata.source = 'foursquare';
-            } else {
-                // Final Priority: High-quality category-aware placeholders
-                const nameLower = name.toLowerCase();
-                const isDining = nameLower.includes('restaurant') || nameLower.includes('cafe') || nameLower.includes('eatery');
-                const isPark = nameLower.includes('park') || nameLower.includes('garden') || nameLower.includes('field');
-                
-                let placeholderUrl = `https://placehold.co/600x400/1e293b/94a3b8?text=${encodeURIComponent(name)}`;
-                
-                if (isDining) {
-                    placeholderUrl = `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=600&h=400`;
-                } else if (isPark) {
-                    placeholderUrl = `https://images.unsplash.com/photo-1501333441792-41a2f3e8cb08?auto=format&fit=crop&q=80&w=600&h=400`;
-                }
-                
-                resultMetadata.photoUrl = placeholderUrl;
-                resultMetadata.source = 'placeholder';
+        // 2. Always try Foursquare for additional photos and unique text "Tips" (reviews)
+        const fsqResult = await tryFoursquare(name, lat, lng);
+        if (fsqResult) {
+            // Interleave reviews to ensure Foursquare tips are visible alongside Google reviews
+            const googleReviews = [...(resultMetadata.reviews || [])];
+            const fsqTips = [...fsqResult.tips];
+            const merged = [];
+            
+            // Interleave logic: Grab one from Foursquare (often more unique), then one from Google
+            while (merged.length < 10 && (googleReviews.length > 0 || fsqTips.length > 0)) {
+                if (fsqTips.length > 0) merged.push(fsqTips.shift());
+                if (googleReviews.length > 0 && merged.length < 10) merged.push(googleReviews.shift());
             }
+            
+            resultMetadata.reviews = merged;
+            
+            // Fallback photo if Google didn't find one
+            if (!resultMetadata.photoUrl && fsqResult.photoUrl) {
+                resultMetadata.photoUrl = fsqResult.photoUrl;
+                resultMetadata.source = 'foursquare';
+            } else if (resultMetadata.photoUrl && fsqResult.tips.length > 0) {
+                resultMetadata.source = 'fsq-google';
+            }
+        }
+
+        if (!resultMetadata.photoUrl) {
+            // Final Priority: High-quality category-aware placeholders
+            const nameLower = name.toLowerCase();
+            const isDining = nameLower.includes('restaurant') || nameLower.includes('cafe') || nameLower.includes('eatery');
+            const isPark = nameLower.includes('park') || nameLower.includes('garden') || nameLower.includes('field');
+            
+            let placeholderUrl = `https://placehold.co/600x400/1e293b/94a3b8?text=${encodeURIComponent(name)}`;
+            
+            if (isDining) {
+                placeholderUrl = `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=600&h=400`;
+            } else if (isPark) {
+                placeholderUrl = `https://images.unsplash.com/photo-1501333441792-41a2f3e8cb08?auto=format&fit=crop&q=80&w=600&h=400`;
+            }
+            
+            resultMetadata.photoUrl = placeholderUrl;
+            resultMetadata.source = resultMetadata.source === 'none' ? 'placeholder' : resultMetadata.source;
         }
 
         if (full) {
