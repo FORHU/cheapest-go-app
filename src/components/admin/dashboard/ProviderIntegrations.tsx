@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ExternalLink, CreditCard, Mail, Plane, Globe } from 'lucide-react';
+import { ExternalLink, CreditCard, Mail, Plane, Globe, Building2 } from 'lucide-react';
 import type { ProviderIntegrationsData, ProviderStatus } from '@/types/admin';
 
 interface ProviderIntegrationsProps {
@@ -143,6 +143,19 @@ export function ProviderIntegrations({ data }: ProviderIntegrationsProps) {
             >
                 <MetricRow label="Total Bookings" value={data.mystifly.bookingCount} />
                 <MetricRow label="Config Status" value={data.mystifly.configStatus?.replace(/_/g, ' ') ?? null} />
+            </ProviderCard>
+
+            {/* LiteAPI */}
+            <ProviderCard
+                name="LiteAPI"
+                icon={Building2}
+                status={data.liteapi.status}
+                dashboardUrl="https://liteapi.com"
+                iconBg="bg-rose-500/10 text-rose-500"
+                delay={0.2}
+            >
+                <MetricRow label="Total Searches" value={data.liteapi.searchCount} />
+                <MetricRow label="Total Bookings" value={data.liteapi.bookingCount} />
             </ProviderCard>
         </div>
     );

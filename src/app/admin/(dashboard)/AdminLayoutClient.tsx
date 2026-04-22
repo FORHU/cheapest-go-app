@@ -69,6 +69,11 @@ export function AdminLayoutClient({
                 title: 'Settings',
                 subtitle: 'Configure platform-wide preferences and security',
                 image: 'https://images.unsplash.com/photo-1454165833767-027ff33027ef?auto=format&fit=crop&q=80&w=1600'
+            },
+            duffel: {
+                title: 'Duffel',
+                subtitle: 'Live flight orders & integration health',
+                image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&q=80&w=1600'
             }
         };
         return configs[path] || configs.overview;

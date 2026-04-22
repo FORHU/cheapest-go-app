@@ -18,6 +18,7 @@ import { RevenueChart } from '@/components/admin/dashboard/RevenueChart';
 import { ConversionFunnel } from '@/components/admin/dashboard/ConversionFunnel';
 import { TopRoutes } from '@/components/admin/dashboard/TopRoutes';
 import { ProviderIntegrations } from '@/components/admin/dashboard/ProviderIntegrations';
+import { DuffelDashboard } from '@/components/admin/dashboard/DuffelDashboard';
 
 interface AdminDashboardClientProps {
     data: DashboardData;
@@ -45,6 +46,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
     const [isInsightsCollapsed, setIsInsightsCollapsed] = useState(false);
     const [isActivityCollapsed, setIsActivityCollapsed] = useState(false);
     const [isProvidersCollapsed, setIsProvidersCollapsed] = useState(false);
+    const [isDuffelCollapsed, setIsDuffelCollapsed] = useState(false);
 
     const handleDownloadReport = () => {
         try {
@@ -184,7 +186,37 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                 </AnimatePresence>
             </section>
 
-            {/* Performance Section */}
+            {/* Duffel Orders Section */}
+            <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Duffel Orders</h2>
+                    <button
+                        onClick={() => setIsDuffelCollapsed(!isDuffelCollapsed)}
+                        className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-400 flex items-center gap-2 group"
+                    >
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                            {isDuffelCollapsed ? 'Expand' : 'Collapse'}
+                        </span>
+                        {isDuffelCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                    </button>
+                </div>
+                <AnimatePresence>
+                    {!isDuffelCollapsed && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.5, ease: "circOut" }}
+                            className="overflow-hidden"
+                        >
+                            <div className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-xl p-8 shadow-md">
+                                <DuffelDashboard data={providerIntegrations.duffel} />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </section>
+
             <section className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Financial Performance</h2>
