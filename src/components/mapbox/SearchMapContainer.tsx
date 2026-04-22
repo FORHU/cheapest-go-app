@@ -21,6 +21,8 @@ import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
 import { Layers } from 'lucide-react';
+import { useKakaoSearch } from './hooks/useKakaoSearch';
+import { isLocationInKorea } from '@/utils/geo';
 
 // Haversine distance — defined outside component to avoid re-creation on every render
 const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
@@ -59,7 +61,7 @@ export const SearchMapContainer = React.memo(({
     searchOverlayClassName,
 }: SearchMapContainerProps) => {
     // 1. Map Instance
-    const { mapRef, isMapLoaded, handleMapLoad } = useMapboxInstance();
+    const { mapRef, isMapLoaded, handleMapLoad, handleMapStyleChange } = useMapboxInstance();
 
     // 2. Data Preparation
     const { mappableProperties, geoJsonData, shouldCluster } = useMapMarkers(properties);
@@ -92,6 +94,13 @@ export const SearchMapContainer = React.memo(({
 
     // 5. Derived State
     const targetCurrency = useUserCurrency();
+    const markerPrices = useMemo(() => {
+        const prices: Record<string, number> = {};
+        for (const p of mappableProperties) {
+            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
+        }
+        return prices;
+    }, [mappableProperties, targetCurrency]);
     const selectedProperty = useMemo(
         () => mappableProperties.find((p: MappableProperty) => p.id === selectedId) ?? null,
         [mappableProperties, selectedId]
@@ -110,19 +119,6 @@ export const SearchMapContainer = React.memo(({
 
 
 
-    // Distance calculation helper
-    const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
-        const R = 6371; // km
-        const dLat = (l2.lat - l1.lat) * (Math.PI / 180);
-        const dLng = (l2.lng - l1.lng) * (Math.PI / 180);
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(l1.lat * (Math.PI / 180)) * Math.cos(l2.lat * (Math.PI / 180)) *
-            Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return (R * c).toFixed(2);
-    };
-
     const poiDistance = useMemo(
         () => previewProperty && activePoi
             ? calculateDistance(previewProperty.coordinates, activePoi.coordinates)
@@ -130,8 +126,8 @@ export const SearchMapContainer = React.memo(({
         [previewProperty, activePoi]
     );
 
-    // POI Route Logic
-    // 6. Fetch Real Road GPS Route — only when a POI is *clicked* (selectedPoi)
+    // 6. Fetch Real Road GPS Route — debounced so rapid hover/select changes
+    // don't fire multiple in-flight Mapbox Directions requests.
     React.useEffect(() => {
         if (!previewProperty || !selectedPoi) {
             setRouteGeometry(null);
@@ -140,10 +136,13 @@ export const SearchMapContainer = React.memo(({
             return;
         }
 
-        const fetchRoute = async () => {
+        const timer = setTimeout(async () => {
             try {
-                const drivingUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?geometries=geojson&overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`;
-                const walkingUrl = `https://api.mapbox.com/directions/v5/mapbox/walking/${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}?overview=full&steps=true&alternatives=true&access_token=${env.MAPBOX_TOKEN}`;
+                const base = `https://api.mapbox.com/directions/v5/mapbox`;
+                const coords = `${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}`;
+                const token = `access_token=${env.MAPBOX_TOKEN}`;
+                const drivingUrl = `${base}/driving/${coords}?geometries=geojson&overview=full&steps=true&alternatives=true&${token}`;
+                const walkingUrl = `${base}/walking/${coords}?overview=full&steps=true&alternatives=true&${token}`;
 
                 const [drivingJson, walkingJson] = await Promise.all([
                     fetch(drivingUrl).then(r => r.json()),
@@ -151,25 +150,25 @@ export const SearchMapContainer = React.memo(({
                 ]);
 
                 if (drivingJson.code === 'Ok' && drivingJson.routes?.length) {
-                    const shortestDriving = drivingJson.routes.reduce((best: any, r: any) =>
+                    const shortest = drivingJson.routes.reduce((best: any, r: any) =>
                         r.distance < best.distance ? r : best
                     );
-                    setRouteGeometry(shortestDriving.geometry);
-                    setCarDuration(`${Math.max(1, Math.round(shortestDriving.duration / 60))} min`);
+                    setRouteGeometry(shortest.geometry);
+                    setCarDuration(`${Math.max(1, Math.round(shortest.duration / 60))} min`);
                 }
 
                 if (walkingJson.code === 'Ok' && walkingJson.routes?.length) {
-                    const shortestWalking = walkingJson.routes.reduce((best: any, r: any) =>
+                    const shortest = walkingJson.routes.reduce((best: any, r: any) =>
                         r.distance < best.distance ? r : best
                     );
-                    setWalkDuration(`${Math.max(1, Math.round(shortestWalking.duration / 60))} min`);
+                    setWalkDuration(`${Math.max(1, Math.round(shortest.duration / 60))} min`);
                 }
             } catch (err) {
                 console.error('Directions error:', err);
             }
-        };
+        }, 400);
 
-        fetchRoute();
+        return () => clearTimeout(timer);
     }, [previewProperty, selectedPoi]);
 
     const poiRouteData = useMemo(() => routeGeometry ? ({
@@ -188,9 +187,50 @@ export const SearchMapContainer = React.memo(({
         mapDetails,
         handleDetailToggle,
         terrainEnabled,
+        discoveryEnabled,
         mapStyleUrl,
         standardConfig,
     } = useMapDetails();
+
+    // 7. Kakao Discovery for Korea
+    const { results: recommendedPlaces, fetchRecommendations: fetchKakaoRecommendations } = useKakaoSearch();
+    const lastDiscoveryFetch = React.useRef<{ lat: number, lng: number } | null>(null);
+
+    React.useEffect(() => {
+        if (!isMapLoaded || !discoveryEnabled) return;
+
+        const center = mapRef.current?.getCenter();
+        if (!center) return;
+
+        const distance = lastDiscoveryFetch.current 
+            ? calculateDistance(lastDiscoveryFetch.current, { lat: center.lat, lng: center.lng }) 
+            : 1000;
+
+        if (Number(distance) > 2 && isLocationInKorea(center.lat, center.lng)) {
+            fetchKakaoRecommendations(center.lat, center.lng);
+            lastDiscoveryFetch.current = { lat: center.lat, lng: center.lng };
+        }
+    }, [isMapLoaded, discoveryEnabled, fetchKakaoRecommendations]);
+
+    // Construct GeoJSON for recommended places
+    const recommendedGeoJson = useMemo(() => ({
+        type: 'FeatureCollection' as const,
+        features: recommendedPlaces.map(p => ({
+            type: 'Feature' as const,
+            geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
+            properties: { 
+                name: p.name, 
+                category: p.category, 
+                isKakao: true,
+                id: p.id
+            }
+        }))
+    }), [recommendedPlaces]);
+
+    // Reset loading state on style change to prevent "Style not done loading" errors
+    React.useEffect(() => {
+        handleMapStyleChange();
+    }, [mapStyleUrl, handleMapStyleChange]);
 
     return (
         <div className="relative h-full w-full">
@@ -207,10 +247,12 @@ export const SearchMapContainer = React.memo(({
                     bearing: -10,
                 }}
                 onLoad={handleMapLoad}
+                onStyleReady={handleMapLoad}
                 onClick={handleMapClick}
                 onMouseMove={onMouseMove}
                 hideLayersButton={true}
             >
+
                 {isMapLoaded && (
                     <>
                         <ClusterLayer
@@ -222,7 +264,7 @@ export const SearchMapContainer = React.memo(({
                             <MapMarker
                                 key={property.id}
                                 property={property}
-                                displayPrice={convertCurrency(property.price, property.currency || 'USD', targetCurrency)}
+                                displayPrice={markerPrices[property.id] ?? 0}
                                 displayCurrency={targetCurrency}
                                 isSelected={property.id === selectedId}
                                 isHovered={property.id === hoveredId}
@@ -254,7 +296,80 @@ export const SearchMapContainer = React.memo(({
                                 onClose={() => setSelectedPoi(null)}
                             />
                         )}
+
+                        {discoveryEnabled && recommendedPlaces.length > 0 && (
+                            <Source id="discovery-source" type="geojson" data={recommendedGeoJson}>
+                                {/* Outer glow layer */}
+                                <Layer
+                                    id="discovery-poi-glow"
+                                    type="circle"
+                                    paint={{
+                                        'circle-radius': 12,
+                                        'circle-color': [
+                                            'match',
+                                            ['get', 'category'],
+                                            'restaurant', '#f43f5e',
+                                            'cafe', '#f97316',
+                                            'park', '#22c55e',
+                                            'transit', '#3b82f6',
+                                            '#8b5cf6'
+                                        ],
+                                        'circle-blur': 0.8,
+                                        'circle-opacity': 0.4
+                                    }}
+                                />
+                                <Layer
+                                    id="discovery-poi-layer"
+                                    type="circle"
+                                    paint={{
+                                        'circle-radius': [
+                                            'interpolate',
+                                            ['linear'],
+                                            ['zoom'],
+                                            10, 6,
+                                            15, 10
+                                        ],
+                                        'circle-color': [
+                                            'match',
+                                            ['get', 'category'],
+                                            'restaurant', '#f43f5e',
+                                            'cafe', '#f97316',
+                                            'park', '#22c55e',
+                                            'transit', '#3b82f6',
+                                            '#8b5cf6'
+                                        ],
+                                        'circle-stroke-width': 2,
+                                        'circle-stroke-color': '#fff'
+                                    }}
+                                />
+                                <Layer
+                                    id="discovery-poi-labels"
+                                    type="symbol"
+                                    layout={{
+                                        'text-field': ['get', 'name'],
+                                        'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+                                        'text-radial-offset': 1.2,
+                                        'text-justify': 'auto',
+                                        'text-size': [
+                                            'interpolate',
+                                            ['linear'],
+                                            ['zoom'],
+                                            12, 0,
+                                            15, 12
+                                        ],
+                                        'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                                    }}
+                                    paint={{
+                                        'text-color': '#334155',
+                                        'text-halo-color': '#ffffff',
+                                        'text-halo-width': 2,
+                                    }}
+                                />
+                            </Source>
+                        )}
                     </>
+
+
                 )}
 
                 <SelectedPropertyPopup

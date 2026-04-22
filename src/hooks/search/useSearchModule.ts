@@ -207,6 +207,9 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         if (state.destination?.countryCode) {
             params.set('countryCode', state.destination.countryCode);
         }
+        if (state.destination?.type === 'country') {
+            params.set('destinationType', 'country');
+        }
         if (state.destination?.id) {
             params.set('placeId', state.destination.id);
         }

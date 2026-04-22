@@ -5,7 +5,8 @@
 
 import { unstable_cache } from 'next/cache';
 import { type Property } from '@/types';
-import { searchLiteApi } from '@/lib/server/liteapi';
+import { searchLiteApi } from '@/utils/supabase/functions';
+import { COUNTRY_DEFAULT_CITY, COUNTRY_NAME_TO_CODE } from '@/lib/constants/countries';
 
 // Types
 export interface SearchParams {
@@ -20,6 +21,7 @@ export interface SearchParams {
     rooms?: string | number;
     nationality?: string;
     countryCode?: string;
+    destinationType?: string;
     currency?: string;
     placeId?: string;
     destinationCode?: string;
@@ -166,6 +168,18 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
             || '';
     }
 
+    // When the user searched by country name (not a city), LiteAPI returns 0
+    // results. Detect this by checking if the destination string is a known
+    // country name, then swap in the country's top tourist city for the API call.
+    const isCountryName = !!COUNTRY_NAME_TO_CODE[destination.toLowerCase().trim()];
+    const resolvedCountryCode = isCountryName
+        ? (COUNTRY_NAME_TO_CODE[destination.toLowerCase().trim()] ?? countryCode)
+        : countryCode;
+    if (isCountryName && !countryCode) countryCode = resolvedCountryCode;
+    const resolvedCityName = isCountryName
+        ? (COUNTRY_DEFAULT_CITY[resolvedCountryCode] ?? destination)
+        : destination;
+
     const placeId = typeof params.placeId === 'string' ? params.placeId : undefined;
     const destinationCode = typeof params.destinationCode === 'string' ? params.destinationCode : undefined;
 
@@ -182,12 +196,12 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         rooms: Number(params.rooms) || 1,
         guest_nationality: typeof params.nationality === 'string' && params.nationality ? params.nationality : "KR",
         currency,
-        cityName: destination,
+        cityName: resolvedCityName,
         // Send countryCode even if placeId exists. LiteAPI sometimes needs it for smaller cities
         countryCode: countryCode,
         placeId,
         destinationCode,
-        query: destination,
+        query: resolvedCityName,
     };
 
     // Add filter parameters if present

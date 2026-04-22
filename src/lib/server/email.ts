@@ -1360,12 +1360,18 @@ export interface PriceAlertConfirmationParams {
     cabin: string;
     adults: number;
     alertId?: string;
+    targetPrice?: number | null;
+    currency?: string;
 }
 
 export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirmationParams): Promise<{ success: boolean; error?: string }> {
-    const { email, origin, destination, cabin, adults, alertId } = params;
+    const { email, origin, destination, cabin, adults, alertId, targetPrice, currency = 'USD' } = params;
     const resendApiKey = env.RESEND_API_KEY;
     const cabinLabel = cabin.replace('_', ' ');
+
+    const formattedTarget = targetPrice
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(targetPrice)
+        : null;
 
     const emailHtml = `<!DOCTYPE html>
 <html>
@@ -1384,6 +1390,7 @@ export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirma
       <tr><td style="padding:4px 0;color:#64748b;">Route:</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</td></tr>
       <tr><td style="padding:4px 0;color:#64748b;">Cabin:</td><td style="padding:4px 0;text-transform:capitalize;">${escapeHtml(cabinLabel)}</td></tr>
       <tr><td style="padding:4px 0;color:#64748b;">Passengers:</td><td style="padding:4px 0;">${adults} adult${adults > 1 ? 's' : ''}</td></tr>
+      ${formattedTarget ? `<tr><td style="padding:4px 0;color:#64748b;">Target Price:</td><td style="padding:4px 0;font-weight:600;color:#4f46e5;">${escapeHtml(formattedTarget)}</td></tr>` : ''}
     </table>
   </div>
 

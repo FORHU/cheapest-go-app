@@ -28,15 +28,17 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
 
     // Extract properties safely (handles both GeoJSON Features and legacy objects)
     const props = poi.properties || poi;
-    const name = props.name || 'Location Details';
-    const category = props.category || 'Point of Interest';
+    const name = props.translatedName || props.name || 'Location Details';
+    const category = props.displayCategory || props.category || 'Point of Interest';
     const rating = props.rating;
     const userRatingsTotal = props.userRatingsTotal || 0;
     const imageUrl = props.imageUrl || poi.imageUrl;
-    const reviews = props.reviews || poi.reviews || [];
+    const reviews: Review[] = props.reviews || poi.reviews || [];
     const phone = props.phone || poi.phone;
     const website = props.website || poi.website;
+    const openingHours = props.openingHours || poi.openingHours;
     const icon = props.icon || poi.icon;
+    const isStub = props.isStub;
 
     // Extract coordinates safely
     const coords = poi.geometry?.coordinates 
@@ -79,7 +81,7 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                     {category}
                                 </span>
                             </div>
-                            <h2 className="text-2xl font-bold leading-tight mb-1">{name}</h2>
+                            <h2 className="text-2xl font-bold leading-tight mb-0.5">{name}</h2>
                             {typeof rating === 'number' && (
                                 <div className="flex items-center gap-2">
                                     <div className="flex items-center text-amber-400">
@@ -87,8 +89,10 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                             <Star key={i} size={14} className={i < Math.round(rating) ? 'fill-current' : 'text-white/30'} />
                                         ))}
                                     </div>
-                                    <span className="font-bold text-sm">{rating.toFixed(1)}</span>
-                                    <span className="text-white/70 text-xs">({userRatingsTotal} reviews)</span>
+                                    <span className="font-bold text-sm">{typeof rating === 'string' ? rating : rating.toFixed(1)}</span>
+                                    {userRatingsTotal > 0 && (
+                                        <span className="text-white/70 text-xs">({userRatingsTotal} reviews)</span>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -109,23 +113,51 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                 <Globe size={16} /> Website
                             </a>
                         )}
-                        {coords ? (
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors text-sm font-semibold">
-                                <MapPin size={16} /> Directions
-                            </a>
-                        ) : (
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors text-sm font-semibold">
-                                <MapPin size={16} /> Directions
-                            </a>
-                        )}
+                        <a 
+                            href={coords ? `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors text-sm font-semibold"
+                        >
+                            <MapPin size={16} /> Directions
+                        </a>
                     </div>
 
-                    {/* Detailed Reviews */}
+                    {/* Opening Hours */}
+                    {openingHours && (
+                        <div className="mb-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
+                                    <Clock size={16} className="text-blue-500" />
+                                    Opening Hours
+                                </div>
+                                {openingHours.open_now !== undefined && (
+                                    <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full ${openingHours.open_now ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                        {openingHours.open_now ? 'Open Now' : 'Closed'}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="space-y-1">
+                                {(openingHours.weekday_text || []).map((text: string, idx: number) => {
+                                    const isToday = text.toLowerCase().startsWith(new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase());
+                                    return (
+                                        <p key={idx} className={`text-xs ${isToday ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-500 dark:text-slate-400'}`}>
+                                            {text}
+                                        </p>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Reviews Section */}
                     {hasReviews ? (
                         <div className="space-y-4">
                             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <Quote size={18} className="text-slate-400" />
-                                Top Google Reviews
+                                {props.source === 'fsq-google' ? 'Google & Foursquare Reviews' :
+                                 props.source === 'foursquare' ? 'Foursquare Recommendations' : 
+                                 'Google Reviews'}
                             </h3>
                             <div className="grid gap-4">
                                 {reviews.map((r: Review, idx: number) => (
@@ -151,11 +183,16 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                             </div>
                                         </div>
                                         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                                            "{r.text}"
+                                            &ldquo;{r.text}&rdquo;
                                         </p>
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    ) : isStub ? (
+                        <div className="flex flex-col items-center justify-center py-8 gap-3">
+                            <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                            <p className="text-xs font-medium text-slate-500">Loading reviews...</p>
                         </div>
                     ) : (
                         <div className="text-center py-8">
