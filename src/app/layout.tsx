@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Inter_Tight, JetBrains_Mono } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
@@ -19,6 +19,11 @@ const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' 
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'optional' });
 
 const SITE_URL = env.SITE_URL;
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -55,6 +60,11 @@ export const metadata: Metadata = {
     description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
     images: [`${SITE_URL}/og-image.png`],
   },
+  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && {
+    verification: {
+      google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+    },
+  }),
 };
 
 export default function RootLayout({

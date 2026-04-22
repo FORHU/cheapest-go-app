@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import type { MapRef } from 'react-map-gl/mapbox';
 
 export const useMapboxInstance = () => {
@@ -9,9 +9,21 @@ export const useMapboxInstance = () => {
         setIsMapLoaded(true);
     }, []);
 
+    // Ensure isLoaded is set if map is already initialized (fixes navigation bugs)
+    React.useEffect(() => {
+        if (mapRef.current?.getMap()?.loaded()) {
+            setIsMapLoaded(true);
+        }
+    }, []);
+
+    const handleMapStyleChange = useCallback(() => {
+        setIsMapLoaded(false);
+    }, []);
+
     return {
         mapRef,
         isMapLoaded,
         handleMapLoad,
+        handleMapStyleChange,
     };
 };

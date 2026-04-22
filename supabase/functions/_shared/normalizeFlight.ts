@@ -221,8 +221,10 @@ export function normalizeMystiflyOffer(
         let totalStops = 0;
 
         for (const odo of originDestOptions) {
-            totalStops += Number(odo.TotalStops) || 0;
             const options: any[] = odo.OriginDestinationOption ?? odo.FlightSegments ?? [];
+            // Derive stop count from actual segment count rather than odo.TotalStops which
+            // Mystifly often reports as 0 even for connecting flights.
+            totalStops += Math.max(0, options.length - 1);
 
             for (const opt of options) {
                 const fs = opt.FlightSegment ?? opt;
@@ -338,7 +340,7 @@ export function normalizeMystiflyOffer(
 
             cabinClass: firstSeg.cabinClass,
             refundable: farePol.isRefundable,
-            farePolicy: { ...farePol, policyVersion: 'search', policySource: 'mystifly_v1' },
+            farePolicy: { ...farePol, policyVersion: 'search', policySource: 'mystifly_v2' },
             seatsRemaining,
 
             normalizedPriceUsd,
@@ -424,10 +426,23 @@ function normalizeMystiflyV2(
         let cabinBag = '';
 
         const odos: any[] = itin.OriginDestinations ?? [];
-        for (const odo of odos) {
+        // Use ItineraryRef to group ODOs into outbound (itineraryIndex 0) vs inbound (1+).
+        // For round-trip V2, OriginDestinations contains BOTH outbound and inbound ODOs.
+        // Stop count = segments in that direction - 1 (reliable; seg.stops is often absent).
+        const seenItinRefs: string[] = [];
+        let outboundDurationMin = 0;
+        let outboundSegCount = 0; // segments belonging to the outbound direction
+
+        for (let odoIdx = 0; odoIdx < odos.length; odoIdx++) {
+            const odo = odos[odoIdx];
             // Find segment by SegmentRef ID (not index)
             const seg = data.FlightSegmentList?.find((s: any) => s.SegmentRef === odo.SegmentRef);
             if (!seg) continue;
+
+            const itinRef = odo.ItineraryRef ?? String(odoIdx);
+            if (!seenItinRefs.includes(itinRef)) seenItinRefs.push(itinRef);
+            const itineraryIndex = seenItinRefs.indexOf(itinRef);
+            const isOutbound = itineraryIndex === 0;
 
             const airlineCode: string =
                 seg.OperatingCarrierCode ?? seg.MarketingCarriercode ?? '';
@@ -439,7 +454,11 @@ function normalizeMystiflyV2(
             const duration = Number(seg.JourneyDuration) || calculateDuration(depTime, arrTime);
 
             totalDurationMin += duration;
-            totalStops += Number(seg.stops) || 0;
+
+            if (isOutbound) {
+                outboundDurationMin += duration;
+                outboundSegCount++;
+            }
 
             // Get baggage & brand info from ItineraryRef
             const iref = data.ItineraryReferenceList?.find((i: any) => i.ItineraryRef === odo.ItineraryRef);
@@ -478,21 +497,33 @@ function normalizeMystiflyV2(
                 cabinClass: mapCabinClass(iref?.CabinClassCode ?? seg.CabinClassCode ?? 'Y'),
                 bookingClass: iref?.RBD ?? seg.ResBookDesigCode ?? seg.CabinClassCode,
                 fareBasis: iref?.FareBasisCodes,
+                // Use the leg-grouped index (outbound=0, inbound=1) not the raw odo position.
+                // This ensures the FlightCard groups same-direction segments into one leg.
+                itineraryIndex: itineraryIndex,
             });
         }
 
         if (!allSegments.length) return null;
 
         const firstSeg = allSegments[0];
-        const lastSeg = allSegments[allSegments.length - 1];
+        // For display: use the last segment of the OUTBOUND leg (odo index 0),
+        // not the last inbound segment which would give wrong destination/arrivalTime.
+        const outboundLastSeg = allSegments[outboundSegCount - 1] ?? allSegments[allSegments.length - 1];
+        const lastSeg = outboundLastSeg;
 
         _mystiflyCounter++;
         const id = `mystifly_${Date.now()}_${_mystiflyCounter}`;
 
         const farePol = normalizeMystiflyV2Policy(fare);
 
+        // Use outbound-only metrics for display (duration, stops, destination, arrivalTime).
+        // totalDurationMin still holds full round-trip total (used internally only).
+        // Stop count = segments in outbound direction - 1 (seg.stops is unreliable in V2).
+        const displayDuration = outboundDurationMin || totalDurationMin;
+        const displayStops = outboundSegCount > 0 ? outboundSegCount - 1 : totalStops;
+
         const normalizedPriceUsd = calculateNormalizedPriceUsd(totalPrice, currency);
-        const bestScore = calculateBestScore(normalizedPriceUsd, totalDurationMin, totalStops);
+        const bestScore = calculateBestScore(normalizedPriceUsd, displayDuration, displayStops);
         const stableId = generateUniqueOfferId(FlightProvider.MYSTIFLY_V2, allSegments, String(totalPrice), brandName || fare.FareType);
 
         return {
@@ -505,9 +536,9 @@ function normalizeMystiflyV2(
             destination: lastSeg.destination,
             departureTime: firstSeg.departureTime,
             arrivalTime: lastSeg.arrivalTime,
-            duration: formatDuration(totalDurationMin),
-            durationMinutes: totalDurationMin,
-            stops: totalStops,
+            duration: formatDuration(displayDuration),
+            durationMinutes: displayDuration,
+            stops: displayStops,
             price: totalPrice,
             currency,
             baseFare: totalBase,

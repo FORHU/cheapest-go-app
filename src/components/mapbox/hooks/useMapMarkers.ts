@@ -16,7 +16,7 @@ export const useMapMarkers = (properties: MappableProperty[]) => {
         return buildGeoJson(mappableProperties);
     }, [mappableProperties]);
 
-    const shouldCluster = mappableProperties.length > 100;
+    const shouldCluster = useMemo(() => mappableProperties.length > 20, [mappableProperties]);
 
     return {
         mappableProperties,

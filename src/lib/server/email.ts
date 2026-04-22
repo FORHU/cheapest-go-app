@@ -15,10 +15,10 @@ function escapeHtml(str: string): string {
 // ─── Email Logging ────────────────────────────────────────────────────
 
 export type EmailLogStatus = 'queued' | 'sent' | 'failed';
-export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket';
+export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket' | 'price_alert';
 
 async function logEmail(params: {
-    bookingId: string;
+    bookingId?: string;
     recipient: string;
     subject: string;
     emailType: EmailType;
@@ -47,7 +47,7 @@ async function logEmail(params: {
     const { error } = await supabase
         .from('email_logs')
         .insert([{
-            booking_id: params.bookingId,
+            booking_id: params.bookingId || null,
             recipient: params.recipient,
             subject: params.subject,
             email_type: params.emailType,
@@ -68,6 +68,7 @@ async function logEmail(params: {
 
 export interface SendBookingEmailParams {
     bookingId: string;
+    dbId?: string; // DB UUID — used for receipt link
     email: string;
     guestName: string;
     hotelName: string;
@@ -86,7 +87,9 @@ export interface SendBookingEmailResult {
 export async function sendBookingConfirmationEmail(
     params: SendBookingEmailParams
 ): Promise<SendBookingEmailResult> {
-    const { bookingId, email, guestName, hotelName, roomName, checkIn, checkOut, totalPrice, currency } = params;
+    const { bookingId, dbId, email, guestName, hotelName, roomName, checkIn, checkOut, totalPrice, currency } = params;
+    const siteUrl = env.SITE_URL;
+    const receiptUrl = dbId ? `${siteUrl}/trips/invoice/${dbId}?type=hotel` : null;
 
     if (!email || !bookingId) {
         return { success: false, error: 'Missing required fields' };
@@ -156,6 +159,13 @@ export async function sendBookingConfirmationEmail(
                 You'll receive additional details from the property closer to your check-in date.
             </p>
         </div>
+
+        ${receiptUrl ? `
+        <div style="text-align: center; margin: 24px 0 8px 0;">
+            <a href="${receiptUrl}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;">
+                View / Download Receipt
+            </a>
+        </div>` : ''}
 
         <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px;">
             If you have any questions, please don't hesitate to contact us.
@@ -531,6 +541,7 @@ export async function sendFlightBookingConfirmationEmail(
     params: SendFlightBookingEmailParams
 ): Promise<SendFlightBookingEmailResult> {
     const { bookingId, pnr, email, passengerName, provider, segments, tickets, totalPrice, currency } = params;
+    const flightReceiptUrl = `${env.SITE_URL}/trips/invoice/${bookingId}?type=flight`;
 
     if (!email || !bookingId) {
         return { success: false, error: 'Missing required fields' };
@@ -636,6 +647,12 @@ export async function sendFlightBookingConfirmationEmail(
                 Please save your PNR (<strong>${escapeHtml(pnr)}</strong>) for check-in and reference.
                 Arrive at the airport at least 2 hours before domestic flights or 3 hours before international flights.
             </p>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0 8px 0;">
+            <a href="${flightReceiptUrl}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;">
+                View / Download Receipt
+            </a>
         </div>
 
         <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 14px;">
@@ -1224,5 +1241,283 @@ export async function sendFlightCancellationRefundEmail(
     } catch (error) {
         console.error('[sendFlightCancellationRefundEmail] Error:', error);
         return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  PRICE ALERT EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendPriceAlertEmailParams {
+    email: string;
+    origin: string;
+    destination: string;
+    newPrice: number;
+    oldPrice: number | null;
+    currency: string;
+    cabin: string;
+    adults: number;
+    searchUrl: string;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  HOTEL REFUND RECEIPT EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface SendHotelRefundEmailParams {
+    bookingId: string;
+    email: string;
+    guestName: string;
+    hotelName: string;
+    roomName: string;
+    checkIn: string;
+    checkOut: string;
+    refundAmount: number;
+    currency: string;
+    stripeRefundId?: string;
+}
+
+export async function sendHotelRefundEmail(params: SendHotelRefundEmailParams): Promise<{ success: boolean; error?: string }> {
+    const { bookingId, email, guestName, hotelName, roomName, checkIn, checkOut, refundAmount, currency, stripeRefundId } = params;
+    if (!email || !bookingId) return { success: false, error: 'Missing required fields' };
+
+    const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(n);
+
+    const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Refund Confirmed</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+    <h1 style="color:white;margin:0;font-size:28px;">✅ Refund Confirmed</h1>
+    <p style="color:rgba(255,255,255,0.9);margin:10px 0 0 0;">${escapeHtml(hotelName)}</p>
+  </div>
+  <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;">
+    <p style="margin:0 0 20px 0;">Dear <strong>${escapeHtml(guestName)}</strong>,</p>
+    <p style="margin:0 0 20px 0;">Your refund of <strong>${fmt(refundAmount)}</strong> for your cancelled reservation at <strong>${escapeHtml(hotelName)}</strong> has been successfully processed and is on its way back to your original payment method.</p>
+
+    <div style="background:#f9fafb;padding:20px;border-radius:8px;margin:20px 0;">
+      <h2 style="margin:0 0 15px 0;font-size:18px;color:#374151;">Refund Details</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#6b7280;">Booking ID:</td><td style="padding:8px 0;font-weight:600;font-family:monospace;">${escapeHtml(bookingId)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Property:</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(hotelName)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Room:</td><td style="padding:8px 0;">${escapeHtml(roomName)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Check-in:</td><td style="padding:8px 0;">${escapeHtml(checkIn)}</td></tr>
+        <tr><td style="padding:8px 0;color:#6b7280;">Check-out:</td><td style="padding:8px 0;">${escapeHtml(checkOut)}</td></tr>
+        ${stripeRefundId ? `<tr><td style="padding:8px 0;color:#6b7280;">Refund Reference:</td><td style="padding:8px 0;font-family:monospace;font-size:13px;">${escapeHtml(stripeRefundId)}</td></tr>` : ''}
+        <tr style="border-top:1px solid #e5e7eb;"><td style="padding:12px 0 8px 0;color:#6b7280;font-weight:600;">Refund Amount:</td><td style="padding:12px 0 8px 0;font-weight:700;font-size:20px;color:#059669;">${fmt(refundAmount)}</td></tr>
+      </table>
+    </div>
+
+    <div style="background:#f0fdf4;padding:15px;border-radius:8px;margin:20px 0;border-left:4px solid #22c55e;">
+      <p style="margin:0;color:#15803d;font-size:14px;">
+        <strong>When will I see it?</strong><br>
+        Refunds typically appear within <strong>3–5 business days</strong> for credit cards, or up to 10 business days for debit cards. If you haven't received it after 10 days, contact your bank with the Refund Reference above.
+      </p>
+    </div>
+
+    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing CheapestGo. We hope to see you again soon.</p>
+  </div>
+  <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+  </div>
+</body>
+</html>`;
+
+    const resendApiKey = env.RESEND_API_KEY;
+    const subject = `Refund Confirmed – ${fmt(refundAmount)} for ${hotelName}`;
+
+    try {
+        if (resendApiKey) {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from: 'CheapestGo <no-reply@mail.cheapestgo.com>', to: [email], subject, html: emailHtml }),
+            });
+            const text = await res.text();
+            if (res.ok) {
+                await logEmail({ bookingId, recipient: email, subject, emailType: 'refund', status: 'sent' });
+                return { success: true };
+            }
+            await logEmail({ bookingId, recipient: email, subject, emailType: 'refund', status: 'failed', errorMessage: text, htmlBody: emailHtml });
+            return { success: false, error: `Resend ${res.status}: ${text}` };
+        }
+        await logEmail({ bookingId, recipient: email, subject, emailType: 'refund', status: 'queued', htmlBody: emailHtml });
+        return { success: false, error: 'RESEND_API_KEY not configured' };
+    } catch (error) {
+        console.error('[sendHotelRefundEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send email' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  PRICE ALERT CONFIRMATION EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export interface PriceAlertConfirmationParams {
+    email: string;
+    origin: string;
+    destination: string;
+    cabin: string;
+    adults: number;
+    alertId?: string;
+    targetPrice?: number | null;
+    currency?: string;
+}
+
+export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirmationParams): Promise<{ success: boolean; error?: string }> {
+    const { email, origin, destination, cabin, adults, alertId, targetPrice, currency = 'USD' } = params;
+    const resendApiKey = env.RESEND_API_KEY;
+    const cabinLabel = cabin.replace('_', ' ');
+
+    const formattedTarget = targetPrice
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(targetPrice)
+        : null;
+
+    const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+<div style="background:linear-gradient(135deg,#6366f1,#4f46e5);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+  <h1 style="color:white;margin:0;font-size:24px;">Price Alert Active! ✈️</h1>
+  <p style="color:rgba(255,255,255,0.9);margin:8px 0 0">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</p>
+</div>
+<div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+  <p style="margin:0 0 20px">We've started tracking prices for your trip. You'll be the first to know when fares drop!</p>
+  
+  <div style="background:#f8fafc;border-radius:8px;padding:20px;margin:0 0 20px;">
+    <h3 style="margin:0 0 12px;font-size:14px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Your Alert Settings</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr><td style="padding:4px 0;color:#64748b;">Route:</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</td></tr>
+      <tr><td style="padding:4px 0;color:#64748b;">Cabin:</td><td style="padding:4px 0;text-transform:capitalize;">${escapeHtml(cabinLabel)}</td></tr>
+      <tr><td style="padding:4px 0;color:#64748b;">Passengers:</td><td style="padding:4px 0;">${adults} adult${adults > 1 ? 's' : ''}</td></tr>
+      ${formattedTarget ? `<tr><td style="padding:4px 0;color:#64748b;">Target Price:</td><td style="padding:4px 0;font-weight:600;color:#4f46e5;">${escapeHtml(formattedTarget)}</td></tr>` : ''}
+    </table>
+  </div>
+
+  <div style="border-top:1px solid #e2e8f0;padding-top:20px;">
+    <h4 style="margin:0 0 8px;font-size:15px;">What happens next?</h4>
+    <p style="margin:0;font-size:14px;color:#475569;">Our system checks live prices daily. If we find a lower fare for your route, we'll send you an alert with a direct link to book the deal.</p>
+  </div>
+</div>
+<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">
+  &copy; ${new Date().getFullYear()} CheapestGo. All rights reserved.
+</div>
+</body></html>`;
+
+    if (!resendApiKey) return { success: false, error: 'RESEND_API_KEY not configured' };
+
+    const subject = `Watching prices: ${origin} \u2192 ${destination}`;
+
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from: 'CheapestGo Alerts <no-reply@mail.cheapestgo.com>',
+                to: [email],
+                subject,
+                html: emailHtml,
+            }),
+        });
+
+        if (res.ok) {
+            await logEmail({
+                recipient: email,
+                subject,
+                emailType: 'price_alert',
+                status: 'sent',
+                metadata: { alertId, type: 'confirmation' }
+            });
+            return { success: true };
+        }
+        
+        const err = await res.text();
+        await logEmail({
+            recipient: email,
+            subject,
+            emailType: 'price_alert',
+            status: 'failed',
+            errorMessage: err,
+            metadata: { alertId, type: 'confirmation' }
+        });
+        return { success: false, error: err };
+    } catch (error) {
+        console.error('[sendPriceAlertConfirmationEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send' };
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  PRICE DROP ALERT EMAIL
+// ═════════════════════════════════════════════════════════════════════
+
+export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Promise<{ success: boolean; error?: string }> {
+    const { email, origin, destination, newPrice, oldPrice, currency, cabin, adults, searchUrl } = params;
+    const resendApiKey = env.RESEND_API_KEY;
+
+    const formattedNew = new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(newPrice);
+    const formattedOld = oldPrice ? new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(oldPrice) : null;
+    const drop = oldPrice ? Math.round(((oldPrice - newPrice) / oldPrice) * 100) : null;
+    const cabinLabel = cabin.replace('_', ' ');
+
+    const emailHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+<div style="background:linear-gradient(135deg,#10b981,#059669);padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+  <h1 style="color:white;margin:0;font-size:24px;">Price Drop Alert! 📉</h1>
+  <p style="color:rgba(255,255,255,0.9);margin:8px 0 0">${escapeHtml(origin)} &rarr; ${escapeHtml(destination)}</p>
+</div>
+<div style="background:#fff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+  <p style="margin:0 0 20px">Great news! The price for your tracked route has ${drop && drop > 0 ? `dropped by <strong>${drop}%</strong>` : 'changed'}.</p>
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin:0 0 20px;text-align:center;">
+    ${formattedOld ? `<p style="margin:0 0 4px;font-size:13px;color:#6b7280;text-decoration:line-through;">${escapeHtml(formattedOld)}</p>` : ''}
+    <p style="margin:0;font-size:32px;font-weight:800;color:#059669;">${escapeHtml(formattedNew)}</p>
+    <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">${adults} adult${adults > 1 ? 's' : ''} &middot; ${escapeHtml(cabinLabel)}</p>
+  </div>
+  <a href="${escapeHtml(searchUrl)}" style="display:block;background:#059669;color:white;text-decoration:none;text-align:center;padding:14px 24px;border-radius:8px;font-weight:700;font-size:16px;margin:0 0 20px">Book Now</a>
+  <p style="font-size:12px;color:#9ca3af;text-align:center;margin:0">Prices change frequently. This fare may not be available when you search.</p>
+</div>
+</body></html>`;
+
+    if (!resendApiKey) return { success: false, error: 'RESEND_API_KEY not configured' };
+
+    const subject = `Price drop: ${origin} \u2192 ${destination} now ${formattedNew}`;
+
+    try {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from: 'CheapestGo Alerts <alerts@mail.cheapestgo.com>',
+                to: [email],
+                subject,
+                html: emailHtml,
+            }),
+        });
+
+        if (res.ok) {
+            await logEmail({
+                recipient: email,
+                subject,
+                emailType: 'price_alert',
+                status: 'sent',
+                metadata: { type: 'drop_alert' }
+            });
+            return { success: true };
+        }
+
+        const err = await res.text();
+        await logEmail({
+            recipient: email,
+            subject,
+            emailType: 'price_alert',
+            status: 'failed',
+            errorMessage: err,
+            metadata: { type: 'drop_alert' }
+        });
+        return { success: false, error: err };
+    } catch (error) {
+        console.error('[sendPriceAlertEmail] Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Failed to send' };
     }
 }

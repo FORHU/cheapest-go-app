@@ -1,6 +1,17 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+const STREET_WORDS = /\b(street|avenue|road|boulevard|drive|lane|purok|extension|ave|blvd|barangay|bgy|brgy)\b/i;
+
+/** Extract the city portion from a raw hotel address string. */
+export function extractCityFromAddress(location: string): string {
+    if (!location) return '';
+    const parts = location.split(',').map(p => p.trim()).filter(p => p.length > 2 && !/^\d+$/.test(p) && !p.includes('#'));
+    if (parts.length === 0) return location;
+    if (parts.length === 1) return parts[0];
+    return STREET_WORDS.test(parts[0]) ? (parts[1] || parts[0]) : parts[0];
+}
+
 /**
  * Utility function to merge class names
  * Combines clsx for conditional classes and tailwind-merge for conflict resolution

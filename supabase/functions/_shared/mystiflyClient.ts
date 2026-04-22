@@ -183,7 +183,7 @@ export async function mystiflyRequest<T = any>(
         ConversationId: conversationId ?? body.ConversationId ?? crypto.randomUUID(),
     };
 
-    console.log(`[Mystifly] Request: ${endpoint} | Target: ${finalBody.Target} | ConversationId: ${finalBody.ConversationId}`);
+    console.log(`[Mystifly] Request: ${BASE_URL()}${endpoint} | Target: ${finalBody.Target} | ConversationId: ${finalBody.ConversationId}`);
 
     const buildInit = (s: string): RequestInit => ({
         method: 'POST',
@@ -235,7 +235,12 @@ export async function mystiflyRequest<T = any>(
         json = JSON.parse(text);
     } catch {
         const snippet = text.trim() ? text.slice(0, 500) : '[EMPTY RESPONSE]';
-        console.error(`[Mystifly] Response was not JSON from ${endpoint} (HTTP ${res.status}). Raw body:`, snippet);
+        // 404 with empty body is expected (e.g. TripDetails before booking is indexed)
+        if (res.status === 404) {
+            console.warn(`[Mystifly] 404 non-JSON from ${endpoint} — booking not indexed yet`);
+        } else {
+            console.error(`[Mystifly] Response was not JSON from ${endpoint} (HTTP ${res.status}). Raw body:`, snippet);
+        }
         throw new MystiflyError(
             `Mystifly ${endpoint} returned HTTP ${res.status} with non-JSON body: ${snippet.slice(0, 80)}`,
             'PARSE',
@@ -326,17 +331,20 @@ export async function revalidateFareV2(
     fareSourceCode: string,
     sessionId?: string,
     conversationId?: string,
+    searchIdentifier?: string,
 ) {
     const target = getMystiflyTarget();
-    const body = { FareSourceCode: fareSourceCode, Target: target };
+    const body: any = { FareSourceCode: fareSourceCode, Target: target };
+    if (searchIdentifier) body.SearchIdentifier = searchIdentifier;
 
     // 1. Try V2 Revalidate/Flight
     try {
         console.log(`[mystiflyClient] V2 Revalidate (Revalidate/Flight). Target: ${target}`);
         return await mystiflyRequest('/api/v2/Revalidate/Flight', body, sessionId, conversationId);
     } catch (err: any) {
-        if (err?.type !== 'PARSE' && !err?.message?.includes('searchIdentifier')) throw err;
-        console.warn('[mystiflyClient] V2 Revalidate/Flight failed or returned empty — trying OnePoint');
+        const isFallthrough = err?.type === 'PARSE' || /version mismatch|searchidentifier|invalid faresource/i.test(err?.message ?? '');
+        if (!isFallthrough) throw err;
+        console.warn('[mystiflyClient] V2 Revalidate/Flight failed — trying OnePoint:', err.message);
     }
 
     // 2. Try V2 OnePoint/Revalidate
@@ -344,8 +352,9 @@ export async function revalidateFareV2(
         console.log(`[mystiflyClient] V2 Revalidate (OnePoint). Target: ${target}`);
         return await mystiflyRequest('/api/v2/OnePoint/Revalidate', body, sessionId, conversationId);
     } catch (err: any) {
-        if (err?.type !== 'PARSE') throw err;
-        console.warn('[mystiflyClient] V2 OnePoint/Revalidate also returned empty — falling back to V1');
+        const isFallthrough = err?.type === 'PARSE' || /version mismatch|searchidentifier|invalid faresource/i.test(err?.message ?? '');
+        if (!isFallthrough) throw err;
+        console.warn('[mystiflyClient] V2 OnePoint/Revalidate failed — falling back to V1:', err.message);
     }
 
     // 3. Final fallback: V1 Revalidate (FareSourceCodes work across versions)
@@ -356,21 +365,40 @@ export async function revalidateFareV2(
 // ─── V1 Book ────────────────────────────────────────────────────────
 
 /**
- * Book a V1 flight — V1 ONLY, no cross-version retry.
- * Must only be called for flights obtained from mystifly (V1) search.
- * Uses the centralized getMystiflyTarget() target.
+ * Book a V1 flight — V1 ONLY.
+ * Tries WITH SearchIdentifier first (required by newer Mystifly API).
+ * Falls back to WITHOUT SearchIdentifier if the API rejects the value
+ * (ERBUK103 "API version mismatch" means wrong SearchIdentifier value).
  */
 export async function bookFlight(
     body: any,
     sessionId?: string,
     conversationId?: string,
+    searchIdentifier?: string,
 ) {
     const target = getMystiflyTarget();
-    console.log(`[mystiflyClient] V1 Book. Target: ${target}`);
-    return mystiflyRequest('/api/v1/Book/Flight', {
-        ...body,
-        Target: target,
-    }, sessionId, conversationId);
+    const baseUrl = BASE_URL();
+    console.log(`[mystiflyClient] V1 Book. BASE_URL: ${baseUrl}, Target: ${target}, hasSearchId: ${!!searchIdentifier}`);
+
+    const bookBodyWith: any = { ...body, Target: target };
+    if (searchIdentifier) bookBodyWith.SearchIdentifier = searchIdentifier;
+
+    const res = await mystiflyRequest('/api/v1/Book/Flight', bookBodyWith, sessionId, conversationId);
+
+    // If the SearchIdentifier value we sent was rejected (ERBUK103 / "version mismatch"),
+    // retry WITHOUT it. Mystifly sometimes returns this when the TraceId is passed instead
+    // of a real SearchIdentifier.
+    if (!res.Success && searchIdentifier) {
+        const msg: string = res.Message ?? '';
+        const isVersionMismatch = /version mismatch|invalid faresource/i.test(msg);
+        if (isVersionMismatch) {
+            console.warn(`[mystiflyClient] V1 Book: SearchIdentifier caused ERBUK103 — retrying WITHOUT it`);
+            const bookBodyWithout: any = { ...body, Target: target };
+            return mystiflyRequest('/api/v1/Book/Flight', bookBodyWithout, sessionId, conversationId);
+        }
+    }
+
+    return res;
 }
 
 // ─── V2 Book ────────────────────────────────────────────────────────
@@ -388,31 +416,68 @@ export async function bookFlightV2(
     v1StyleBody: any,
     sessionId?: string,
     conversationId?: string,
+    searchIdentifier?: string,
 ) {
     const target = getMystiflyTarget();
 
-    // Try V2 Book/Flight first
+    // Fall through to next endpoint on ANY failure — we're trying multiple endpoints
+    // in order of preference, so any non-success should try the next one.
+    const shouldFallThrough = (res: any) => !res.Success;
+
+    // 1. Try V2 OnePoint/Book WITHOUT SearchIdentifier — this worked before the search migration.
+    //    OnePoint is a simplified flow that may not require SearchIdentifier.
+    try {
+        console.log(`[mystiflyClient] V2 Book (OnePoint, no SearchId). Target: ${target}`);
+        const v2Body = buildV2BookBody(v1StyleBody, target, undefined);
+        const res = await mystiflyRequest('/api/v2/OnePoint/Book', v2Body, sessionId, conversationId);
+        if (!shouldFallThrough(res)) {
+            console.log('[mystiflyClient] V2 OnePoint/Book (no SearchId) succeeded');
+            return res;
+        }
+        console.warn(`[mystiflyClient] V2 OnePoint/Book (no SearchId) failed: ${res.Message?.slice(0, 80)}`);
+    } catch (err: any) {
+        const isFallthrough = err?.type === 'PARSE' || /version mismatch|searchidentifier|invalid faresource/i.test(err?.message ?? '');
+        if (!isFallthrough) throw err;
+        console.warn('[mystiflyClient] V2 OnePoint/Book (no SearchId) failed, falling through:', err.message);
+    }
+
+    // 2. Try V2 OnePoint/Book WITH SearchIdentifier
+    if (searchIdentifier) {
+        try {
+            console.log(`[mystiflyClient] V2 Book (OnePoint, with SearchId). Target: ${target}`);
+            const v2Body = buildV2BookBody(v1StyleBody, target, searchIdentifier);
+            const res = await mystiflyRequest('/api/v2/OnePoint/Book', v2Body, sessionId, conversationId);
+            if (!shouldFallThrough(res)) {
+                console.log('[mystiflyClient] V2 OnePoint/Book (with SearchId) succeeded');
+                return res;
+            }
+            console.warn(`[mystiflyClient] V2 OnePoint/Book (with SearchId) failed: ${res.Message?.slice(0, 80)}`);
+        } catch (err: any) {
+            const isFallthrough = err?.type === 'PARSE' || /version mismatch|searchidentifier|invalid faresource/i.test(err?.message ?? '');
+            if (!isFallthrough) throw err;
+            console.warn('[mystiflyClient] V2 OnePoint/Book (with SearchId) failed, falling through:', err.message);
+        }
+    }
+
+    // 3. Try V2 Book/Flight with SearchIdentifier
     try {
         console.log(`[mystiflyClient] V2 Book (Book/Flight). Target: ${target}`);
-        const v2Body = buildV2BookBody(v1StyleBody, target);
-        return await mystiflyRequest('/api/v2/Book/Flight', v2Body, sessionId, conversationId);
+        const v2Body = buildV2BookBody(v1StyleBody, target, searchIdentifier);
+        const res = await mystiflyRequest('/api/v2/Book/Flight', v2Body, sessionId, conversationId);
+        if (!shouldFallThrough(res)) {
+            console.log('[mystiflyClient] V2 Book/Flight succeeded');
+            return res;
+        }
+        console.warn(`[mystiflyClient] V2 Book/Flight failed: ${res.Message?.slice(0, 80)}`);
     } catch (err: any) {
-        if (err?.type !== 'PARSE' && !err?.message?.includes('searchIdentifier')) throw err;
-        console.warn('[mystiflyClient] V2 Book/Flight failed or returned empty — trying OnePoint');
+        const isFallthrough = err?.type === 'PARSE' || /version mismatch|searchidentifier|invalid faresource/i.test(err?.message ?? '');
+        if (!isFallthrough) throw err;
+        console.warn('[mystiflyClient] V2 Book/Flight failed, falling through to V1:', err.message);
     }
 
-    // Try V2 OnePoint/Book
-    try {
-        console.log(`[mystiflyClient] V2 Book (OnePoint). Target: ${target}`);
-        const v2Body = buildV2BookBody(v1StyleBody, target);
-        return await mystiflyRequest('/api/v2/OnePoint/Book', v2Body, sessionId, conversationId);
-    } catch (err: any) {
-        if (err?.type !== 'PARSE') throw err;
-        console.warn('[mystiflyClient] V2 OnePoint/Book also returned empty — falling back to V1 /api/v1/Book/Flight');
-    }
-
-    // Final fallback: V1 Book (FareSourceCodes work across versions)
+    // 4. Final fallback: V1 Book
     console.log(`[mystiflyClient] V1 Book fallback for V2 fare. Target: ${target}`);
+    // V1 endpoint does not accept SearchIdentifier — sending it causes "API version mismatch"
     return mystiflyRequest('/api/v1/Book/Flight', {
         ...v1StyleBody,
         Target: target,
@@ -427,11 +492,14 @@ export async function bookFlightV2(
  *   - DateOfBirth in .000Z format
  *   - No leftover flat V1 passport fields
  */
-function buildV2BookBody(v1Body: any, target: string): any {
-    if (!v1Body.TravelerInfo?.AirTravelers) return { ...v1Body, Target: target };
+function buildV2BookBody(v1Body: any, target: string, searchIdentifier?: string): any {
+    if (!v1Body.TravelerInfo?.AirTravelers) return { ...v1Body, Target: target, ...(searchIdentifier ? { SearchIdentifier: searchIdentifier } : {}) };
 
     const v2Body = JSON.parse(JSON.stringify(v1Body)); // deep clone
     v2Body.Target = target;
+    if (searchIdentifier) {
+        v2Body.SearchIdentifier = searchIdentifier;
+    }
 
     v2Body.TravelerInfo.AirTravelers = v2Body.TravelerInfo.AirTravelers.map((pax: any) => {
         const v2Pax = { ...pax };
@@ -463,6 +531,383 @@ function buildV2BookBody(v1Body: any, target: string): any {
     return v2Body;
 }
 
+// ─── VoidQuote ──────────────────────────────────────────────────────
+
+export interface VoidOriginDestination {
+    originLocationCode: string;
+    destinationLocationCode: string;
+    cabinPreference: string;
+    departureDateTime: string;
+    flightNumber: number;
+    airlineCode: string;
+}
+
+/**
+ * Get a void quote for a ticketed booking.
+ * Returns voiding window and per-passenger refund amounts.
+ * Endpoint: POST /api/Void with AcceptQuote: "None"
+ */
+export async function voidQuote(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    originDestinations: VoidOriginDestination[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/Void', {
+        ptrType: 'None',
+        mFRef: mfRef,
+        AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'None',
+        PtrId: 0,
+        originDestinations,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+// ─── Refund ─────────────────────────────────────────────────────────
+
+/**
+ * Step 1 — Request a refund quote.
+ * Endpoint: POST /api/Refund with AcceptQuote: "None"
+ * Returns PTRId + RefundDetails breakdown to show user before confirming.
+ */
+export async function refundQuote(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    originDestinations: VoidOriginDestination[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/Refund', {
+        ptrType: 'None',
+        mFRef: mfRef,
+        AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'None',
+        PtrId: 0,
+        originDestinations,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+/**
+ * Step 2 — Execute the refund after the user confirms the quote.
+ * Endpoint: POST /api/Refund with AcceptQuote: "Accept"
+ * Pass back the PtrId and RefundDetails returned by the quote step.
+ */
+export async function executeRefund(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    ptrId: number,
+    originDestinations: VoidOriginDestination[],
+    refundDetails: any[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/Refund', {
+        ptrType: 'None',
+        mFRef: mfRef,
+        AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'Accept',
+        PtrId: ptrId,
+        originDestinations,
+        RefundDetails: refundDetails,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+// ─── Void ───────────────────────────────────────────────────────────
+
+/**
+ * Execute a void for a ticketed booking.
+ * Uses ptrType: "VoidQuote" with AcceptQuote: "Accept" to confirm.
+ * Endpoint: POST /api/PostTicketingRequest
+ */
+export async function voidBooking(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    ptrId: number,
+    originDestinations: VoidOriginDestination[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    // Per Mystifly docs: both void-quote and void-execute use POST /api/Void.
+    // AcceptQuote controls the step: "None" = get quote, "Accept" = confirm void.
+    // ptrType must be "None" (not "VoidQuote") per the documented request schema.
+    return mystiflyRequest('/api/Void', {
+        ptrType: 'None',
+        mFRef: mfRef,
+        AllowChildPassenger: true,
+        reissueQuoteRequestType: 'None',
+        AcceptQuote: 'Accept',
+        PtrId: ptrId,
+        originDestinations,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+// ─── Cancel Booking ─────────────────────────────────────────────────
+
+/**
+ * Cancel a confirmed Mystifly booking by UniqueID (MF+8 digits).
+ * Endpoint: POST /api/v1/Booking/Cancel
+ */
+export async function cancelBooking(
+    uniqueId: string,
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/v1/Booking/Cancel', {
+        UniqueID: uniqueId,
+    }, sessionId, conversationId);
+}
+
+// ─── Reissue (Date/Flight Change) ───────────────────────────────────
+
+export interface ReissueOriginDestination {
+    originLocationCode: string;
+    destinationLocationCode: string;
+    cabinPreference: string;   // IATA cabin code: "Y"=Economy, "C"=Business, "F"=First
+    departureDateTime: string; // Date only: "YYYY-MM-DD"
+    flightNumber: number;      // 0 = any / auto-select
+    airlineCode: string;
+}
+
+/**
+ * Step 1 — Request a reissue quote.
+ * Endpoint: POST /api/PostTicketingRequest (ptrType: "ReissueQuote", AcceptQuote: "None")
+ * Returns PTRId + exchange quote (fare difference) to show user before confirming.
+ */
+export async function reissueQuote(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    originDestinations: ReissueOriginDestination[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/PostTicketingRequest', {
+        ptrType: 'ReissueQuote',
+        mFRef: mfRef,
+        AllowChildPassenger: false,
+        reissueQuoteRequestType: 'SEGMENT',
+        AcceptQuote: 'None',
+        PtrId: 0,
+        originDestinations,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+/**
+ * Step 2 — Accept and execute the reissue.
+ * Endpoint: POST /api/PostTicketingRequest (ptrType: "ReissueQuote", AcceptQuote: "Accept")
+ * Pass back the PtrId from step 1.
+ */
+export async function executeReissue(
+    mfRef: string,
+    passengers: Array<{
+        firstName: string;
+        lastName: string;
+        title: string;
+        eTicket: string;
+        passengerType: string;
+    }>,
+    ptrId: number,
+    originDestinations: ReissueOriginDestination[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/PostTicketingRequest', {
+        ptrType: 'ReissueQuote',
+        mFRef: mfRef,
+        AllowChildPassenger: false,
+        reissueQuoteRequestType: 'SEGMENT',
+        AcceptQuote: 'Accept',
+        PtrId: ptrId,
+        originDestinations,
+        passengers: passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            title: p.title,
+            eTicket: p.eTicket,
+            passengerType: p.passengerType,
+        })),
+    }, sessionId, conversationId);
+}
+
+
+
+/**
+ * Add one or more notes to an existing Mystifly booking.
+ * UniqueID must start with MF followed by 8 digits.
+ * Endpoint: POST /api/v1/BookingNotes
+ */
+export async function addBookingNote(
+    uniqueId: string,
+    notes: string[],
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/v1/BookingNotes', {
+        UniqueID: uniqueId,
+        Notes: notes,
+    }, sessionId, conversationId);
+}
+
+// ─── TripDetails ────────────────────────────────────────────────────
+
+/**
+ * GET request helper for Mystifly endpoints that use path params (e.g. TripDetails/{MfRef}).
+ */
+async function mystiflyGet<T = any>(
+    endpoint: string,
+    sessionId?: string,
+): Promise<T> {
+    let sid = sessionId ?? await createSession();
+    const url = `${BASE_URL()}${endpoint}`;
+
+    console.log(`[Mystifly] GET ${url}`);
+
+    const buildInit = (s: string): RequestInit => ({
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${s}` },
+    });
+
+    let res = await fetchWithRetry(url, buildInit(sid), false);
+
+    if (res.status === 401) {
+        console.warn('[Mystifly] 401 on GET — refreshing session');
+        clearSessionCache();
+        sid = await createSession();
+        res = await fetchWithRetry(url, buildInit(sid), false);
+    }
+
+    const text = await res.text();
+    if (!text.trim()) {
+        if (res.status === 404) {
+            console.warn(`[Mystifly] 404 non-JSON from GET ${endpoint} — booking not indexed yet`);
+        } else {
+            console.error(`[Mystifly] Empty response from GET ${endpoint} (HTTP ${res.status})`);
+        }
+        throw new MystiflyError(`GET ${endpoint} returned HTTP ${res.status} with empty body`, 'PARSE', res.status);
+    }
+
+    let json: any;
+    try {
+        json = JSON.parse(text);
+    } catch {
+        console.error(`[Mystifly] Non-JSON from GET ${endpoint} (HTTP ${res.status}):`, text.slice(0, 200));
+        throw new MystiflyError(`GET ${endpoint} returned non-JSON (HTTP ${res.status})`, 'PARSE', res.status);
+    }
+
+    if (!res.ok) {
+        const detail = json?.Message ?? json?.error ?? text.slice(0, 300);
+        throw new MystiflyError(`GET ${endpoint} → ${res.status}: ${detail}`, 'CLIENT', res.status);
+    }
+
+    return json as T;
+}
+
+/**
+ * Retrieve full trip details for a confirmed booking.
+ * Uses GET /api/v1/TripDetails/{MfRef} (MfRef in URL path).
+ */
+export async function getTripDetails(
+    uniqueId: string,
+    sessionId?: string,
+    _conversationId?: string,
+) {
+    // Primary: GET /api/TripDetails/{MfRef} (no version prefix — confirmed from Swagger)
+    try {
+        return await mystiflyGet(`/api/TripDetails/${encodeURIComponent(uniqueId)}`, sessionId);
+    } catch (err: any) {
+        if (err?.status === 404) {
+            // Fallback: GET /api/r1/TripDetails/{MfRef}
+            return await mystiflyGet(`/api/r1/TripDetails/${encodeURIComponent(uniqueId)}`, sessionId);
+        }
+        throw err;
+    }
+}
+
+// ─── FareRules ──────────────────────────────────────────────────────
+
+/**
+ * Retrieve fare rules for a given FareSourceCode.
+ * FSC expires after ~20 minutes for pre-booking requests.
+ * Endpoint: POST /api/v1/FlightFareRules
+ */
+export async function getFareRules(
+    fareSourceCode: string,
+    sessionId?: string,
+    conversationId?: string,
+) {
+    return mystiflyRequest('/api/v1/FlightFareRules', {
+        FareSourceCode: fareSourceCode,
+    }, sessionId, conversationId);
+}
+
 /**
  * Issue a ticket for a confirmed booking (UniqueID / PNR).
  */
@@ -479,6 +924,24 @@ export async function ticketFlight(
 }
 
 
+
+export async function getTicketDisplay(mfRef: string, ticketNumber: string) {
+    const sid = await createSession();
+    const url = `${BASE_URL()}/api/Ticket/Details/${encodeURIComponent(mfRef)}/${encodeURIComponent(ticketNumber)}`;
+    console.log(`[Mystifly] TicketDisplay GET: ${url}`);
+    const res = await fetchWithRetry(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${sid}`,
+            'Accept': 'application/json',
+        },
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw Object.assign(new Error(`TicketDisplay HTTP ${res.status}: ${text.slice(0, 200)}`), { status: res.status });
+    }
+    return res.json();
+}
 
 // ─── Fetch Helpers ──────────────────────────────────────────────────
 

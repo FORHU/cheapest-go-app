@@ -1,4 +1,10 @@
+import type { Metadata } from 'next';
 import { createClient } from '@/utils/supabase/server';
+
+export const metadata: Metadata = {
+  title: 'Account Settings | CheapestGo',
+  robots: { index: false, follow: false },
+};
 import { redirect } from 'next/navigation';
 import { AccountContent } from '@/components/account';
 

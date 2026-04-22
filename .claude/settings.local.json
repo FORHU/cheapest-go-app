@@ -40,7 +40,20 @@
       "Bash(where \"google-chrome\")",
       "Read(//c/Program Files/Google/Chrome/Application/**)",
       "Bash('/c/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --no-sandbox --print-to-pdf=C:/Users/USER/Documents/GitHub/cheapest-go-app/docs/pricing-strategy.pdf --print-to-pdf-no-header --no-pdf-header-footer C:/Users/USER/Documents/GitHub/cheapest-go-app/docs/pricing-strategy.html)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(npx supabase:*)",
+      "Bash(claude mcp:*)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "WebFetch(domain:duffel.com)",
+      "WebSearch",
+      "WebFetch(domain:changelog.duffel.com)",
+      "WebFetch(domain:travelgate.mcp.kapa.ai)",
+      "WebFetch(domain:docs.travelgate.com)",
+      "Bash(python3 -c ' *)",
+      "Bash(printf '%s' 'test')",
+      "Read(//tmp/**)",
+      "Bash(npm run *)"
     ]
   }
 }

@@ -33,6 +33,7 @@ export interface RevenueStats {
     dailyRevenue: number;
     monthlyRevenue: number;
     revenueByProvider: { provider: string; amount: number }[];
+    totalMarkup: number;
     totalProfit: number;
     refundRate: number;
     failedRate: number;
@@ -95,7 +96,7 @@ export interface DashboardData {
 export interface Booking {
     id: string;
     bookingRef: string;
-    type: "flight" | "hotel";
+    type: "flight" | "hotel" | "bundle" | "hotel_bundle";
     supplier: string;
     customerName: string;
     email: string;
@@ -112,6 +113,7 @@ export interface Booking {
     pnr: string;
     paymentIntentId: string;
     isRefundable: boolean;
+    markup_pct?: number;
     metadata?: Record<string, any>;
 }
 
@@ -211,10 +213,86 @@ export interface ResendProviderData {
     errorMessage?: string;
 }
 
+export interface DuffelOrder {
+    id: string;
+    bookingReference: string;
+    passengerName: string;
+    origin: string;
+    destination: string;
+    departureDate: string;
+    totalAmount: string;
+    currency: string;
+    status: 'confirmed' | 'cancelled' | 'awaiting_payment';
+    createdAt: string;
+}
+
+export interface LiteApiProviderData {
+    status: ProviderStatus;
+    searchCount: number | null;
+    bookingCount: number | null;
+    errorMessage?: string;
+}
+
+export interface DuffelAirlineMetric {
+    name: string;
+    iataCode: string;
+    count: number;
+    value: number;
+    currency: string;
+}
+
+export interface DuffelRouteMetric {
+    route: string;
+    origin: string;
+    destination: string;
+    count: number;
+    value: number;
+    currency: string;
+}
+
+export interface DuffelDayPoint {
+    date: string;   // YYYY-MM-DD
+    orders: number;
+    value: number;
+}
+
 export interface DuffelProviderData {
     status: ProviderStatus;
+
+    // ── Core counters (last 30 days) ──────────────────────
+    ordersCreated: number | null;
+    grossOrderValue: number | null;
+    orderCurrency: string | null;
+
+    // ── Change metrics ────────────────────────────────────
+    ordersCancelled: number | null;
+    ordersChanged: number | null;
+
+    // ── Ancillaries ───────────────────────────────────────
+    ancillariesSold: number | null;
+    grossAncillaryVolume: number | null;
+    ancillaryAttachmentRate: number | null;  // 0–100 %
+
+    // ── Timeseries (last 30 days) ─────────────────────────
+    dailyOrdersChart: DuffelDayPoint[];
+
+    // ── Top airlines ──────────────────────────────────────
+    topAirlinesByVolume: DuffelAirlineMetric[];
+    topAirlinesByValue: DuffelAirlineMetric[];
+
+    // ── Top routes ────────────────────────────────────────
+    topRoutesByVolume: DuffelRouteMetric[];
+    topRoutesByValue: DuffelRouteMetric[];
+
+    // ── Recent order rows for the table ───────────────────
+    recentOrders: DuffelOrder[];
+
+    // ── Legacy / compat fields ────────────────────────────
+    /** @deprecated use ordersCreated */
     recentOrderCount: number | null;
     lastOrderDate: string | null;
+    passengerCount: number | null;
+
     errorMessage?: string;
 }
 
@@ -230,6 +308,7 @@ export interface ProviderIntegrationsData {
     resend: ResendProviderData;
     duffel: DuffelProviderData;
     mystifly: MystiflyProviderData;
+    liteapi: LiteApiProviderData;
 }
 
 export interface ApiLogRow {

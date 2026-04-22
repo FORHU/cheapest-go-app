@@ -10,3 +10,4 @@ export * from './suppliers';
 export * from './users';
 export * from './providers';
 export * from './search';
+export * from './communication';

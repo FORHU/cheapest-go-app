@@ -16,7 +16,7 @@ import { getCorsHeaders } from '../_shared/cors.ts';
 
 declare const Deno: any;
 
-import type { NormalizedFlight, CabinClass, TripType } from '../_shared/types.ts';
+import type { CabinClass, TripType } from '../_shared/types.ts';
 import { searchBrandedFlights, createSession, MystiflyError, CABIN_MAP, TRIP_TYPE_MAP, getMystiflyTarget } from '../_shared/mystiflyClient.ts';
 import { normalizeMystiflyV2Response } from '../_shared/normalizeFlight.ts';
 
@@ -187,10 +187,16 @@ Deno.serve(async (req: Request) => {
             console.log('[mystifly-v2-search] Mystifly V2 returned 0 itineraries');
         }
 
-        // Inject our tunneled traceId (FareSourceCode|ConversationId|SessionId)
+        // Log all top-level response keys to locate SearchIdentifier
+        console.log('[mystifly-v2-search] Top-level response keys:', Object.keys(raw).join(', '));
+
+        const searchIdentifier = raw.SearchIdentifier ?? raw.Data?.SearchIdentifier ?? raw.Data?.TraceId ?? '';
+        console.log('[mystifly-v2-search] SearchIdentifier:', searchIdentifier ? searchIdentifier.slice(0, 36) + '...' : '(empty — V2 fares need this for booking)');
+
+        // Inject our tunneled traceId (FareSourceCode|ConversationId|SessionId|SearchIdentifier)
         flights.forEach(offer => {
             if (offer.traceId) {
-                offer.traceId = `${offer.traceId}|${conversationId}|${sessionId}`;
+                offer.traceId = `${offer.traceId}|${conversationId}|${sessionId}|${searchIdentifier}`;
             }
         });
 

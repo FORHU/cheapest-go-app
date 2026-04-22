@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { Map } from '@/components/ui/map';
 import type { StandardStyleConfig } from '@/components/ui/map';
-import { Marker, Popup, NavigationControl, GeolocateControl } from 'react-map-gl/mapbox';
+import { Marker, Popup, NavigationControl, GeolocateControl, Source, Layer } from 'react-map-gl/mapbox';
 import type { MapRef } from 'react-map-gl/mapbox';
 import {
     Star,
@@ -541,8 +541,8 @@ export default function TestMapPage() {
             show3dObjects: true,
             show3dBuildings: true,
             show3dTrees: true,
-            show3dLandmarks: true,
-            show3dFacades: true,
+            show3dLandmarks: false,
+            show3dFacades: false,
             showPointOfInterestLabels: showLabels,
             showRoadLabels: showLabels,
             showTransitLabels: showLabels,
@@ -576,6 +576,36 @@ export default function TestMapPage() {
             bearing: 0,
             duration: 2500,
         });
+    }, []);
+
+    const hotelsGeojson = useMemo(() => ({
+        type: 'FeatureCollection',
+        features: HOTELS.map(hotel => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [hotel.longitude, hotel.latitude] },
+            properties: { ...hotel }
+        }))
+    }), []);
+
+    const onMapClick = useCallback((e: any) => {
+        const features = e.target.queryRenderedFeatures(e.point, { layers: ['hotels-labels', 'hotels-dots'] });
+        if (features.length > 0) {
+            const hotel = features[0].properties;
+            flyToHotel(hotel);
+        } else {
+            setSelectedHotel(null);
+        }
+    }, [flyToHotel]);
+
+    const onMouseMove = useCallback((e: any) => {
+        const features = e.target.queryRenderedFeatures(e.point, { layers: ['hotels-labels', 'hotels-dots'] });
+        if (features.length > 0) {
+            e.target.getCanvas().style.cursor = 'pointer';
+            setHoveredHotel(features[0].properties.id);
+        } else {
+            e.target.getCanvas().style.cursor = '';
+            setHoveredHotel(null);
+        }
     }, []);
 
     return (
@@ -641,7 +671,6 @@ export default function TestMapPage() {
             {/* Map */}
             <div className="flex-1 relative">
                 <Map
-                    key={`${mapType}-${terrainEnabled}`}
                     ref={mapRef}
                     mapStyle={mapStyleUrl}
                     standardConfig={isStandardStyle ? standardConfig : undefined}
@@ -657,76 +686,52 @@ export default function TestMapPage() {
                     }}
                     maxPitch={85}
                     className="rounded-none"
+                    onClick={onMapClick}
+                    onMouseMove={onMouseMove}
+                    interactiveLayerIds={['hotels-labels', 'hotels-dots']}
                 >
                     <NavigationControl position="top-right" showCompass visualizePitch />
                     <GeolocateControl position="top-right" positionOptions={{ enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }} />
 
-                    {HOTELS.map((hotel) => (
-                        <Marker
-                            key={hotel.id}
-                            latitude={hotel.latitude}
-                            longitude={hotel.longitude}
-                            anchor="bottom"
-                            onClick={(e) => {
-                                e.originalEvent.stopPropagation();
-                                flyToHotel(hotel);
+                    <Source id="hotels-data" type="geojson" data={hotelsGeojson as any}>
+                        <Layer
+                            id="hotels-dots"
+                            type="circle"
+                            paint={{
+                                'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 15, 8],
+                                'circle-color': [
+                                    'match',
+                                    ['get', 'category'],
+                                    'Ultra Luxury', '#f59e0b',
+                                    'Luxury', '#a855f7',
+                                    'Premium', '#3b82f6',
+                                    'Business', '#10b981',
+                                    'Budget', '#6b7280',
+                                    '#6b7280'
+                                ],
+                                'circle-stroke-width': 2,
+                                'circle-stroke-color': '#ffffff'
                             }}
-                            style={{
-                                zIndex:
-                                    selectedHotel?.id === hotel.id
-                                        ? 10
-                                        : hoveredHotel === hotel.id
-                                          ? 5
-                                          : 1,
+                        />
+                        <Layer
+                            id="hotels-labels"
+                            type="symbol"
+                            layout={{
+                                'text-field': ['get', 'price'],
+                                'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Regular'],
+                                'text-size': 12,
+                                'text-offset': [0, -1.5],
+                                'text-anchor': 'bottom',
+                                'text-allow-overlap': true,
+                                'text-ignore-placement': true
                             }}
-                        >
-                            <div
-                                className={`cursor-pointer transition-all duration-200 ${
-                                    hoveredHotel === hotel.id ||
-                                    selectedHotel?.id === hotel.id
-                                        ? 'scale-125'
-                                        : 'scale-100 hover:scale-110'
-                                }`}
-                            >
-                                <div className="relative flex flex-col items-center drop-shadow-[0_1px_6px_rgba(0,0,0,0.35)]">
-                                    <div
-                                        className={`
-                                            text-sm font-bold px-3 py-1.5 rounded-full shadow-lg border whitespace-nowrap
-                                            ${
-                                                selectedHotel?.id === hotel.id
-                                                    ? 'border-blue-500 bg-blue-600 text-white shadow-blue-500/40'
-                                                    : isDarkMap
-                                                      ? 'border-gray-600 bg-gray-900/90 text-white shadow-black/50'
-                                                      : 'border-gray-200 bg-white text-gray-900 shadow-gray-400/30'
-                                            }
-                                        `}
-                                    >
-                                        {hotel.price}
-                                    </div>
-                                    <div
-                                        className={`w-0.5 h-3 ${
-                                            selectedHotel?.id === hotel.id
-                                                ? 'bg-blue-500'
-                                                : isDarkMap
-                                                  ? 'bg-gray-500'
-                                                  : 'bg-gray-400'
-                                        }`}
-                                    />
-                                    <div className="relative">
-                                        <div
-                                            className={`w-4 h-4 rounded-full border-2 border-white shadow-md ${getCategoryColor(hotel.category)}`}
-                                        />
-                                        {(selectedHotel?.id === hotel.id ||
-                                            hoveredHotel === hotel.id) && (
-                                            <div
-                                                className={`absolute inset-0 w-4 h-4 rounded-full animate-ping opacity-50 ${getCategoryColor(hotel.category)}`}
-                                            />
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </Marker>
-                    ))}
+                            paint={{
+                                'text-color': isDarkMap ? '#ffffff' : '#111827',
+                                'text-halo-color': isDarkMap ? '#111827' : '#ffffff',
+                                'text-halo-width': 2
+                            }}
+                        />
+                    </Source>
 
                     {selectedHotel && (
                         <Popup

@@ -25,6 +25,7 @@ export interface LiteApiRefundInfo {
         currency?: string;
         status?: string;
     };
+    stripeRefundId?: string;
 }
 
 // ============================================================================
@@ -38,7 +39,8 @@ export interface LiteApiRefundInfo {
 export async function createRefundRequest(
     supabase: SupabaseClient,
     bookingId: string,
-    calculation: CancellationResult
+    calculation: CancellationResult,
+    userId?: string
 ): Promise<RefundRequestResult> {
     if (!calculation.refundable || calculation.refundAmount <= 0) {
         return { success: false, error: 'Booking is not refundable or amount is zero' };
@@ -49,6 +51,7 @@ export async function createRefundRequest(
             .from('refund_logs')
             .insert({
                 booking_id: bookingId,
+                user_id: userId ?? null,
                 refund_type: calculation.refundType,
                 requested_amount: calculation.refundAmount,
                 penalty_amount: calculation.penaltyAmount,

@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 
 export interface Destination {
-    type: 'city' | 'airport' | 'history';
+    type: 'city' | 'airport' | 'history' | 'country';
     title: string;
     subtitle: string;
     code?: string;

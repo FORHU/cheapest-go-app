@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Plane, ArrowRight, Luggage, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer, FlightSegmentDetail } from '@/types/flights';
 import { formatPrice } from '@/utils/flight-utils';
-
+import SaveButton from '@/components/common/SaveButton';
 
 import { useUserCurrency } from '@/stores/searchStore';
 
@@ -22,6 +22,12 @@ function formatDuration(minutes: number): string {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function providerLabel(provider: string): string {
+    if (provider === 'mystifly_v2' || provider === 'mystifly') return 'Mystifly';
+    if (provider === 'duffel') return 'Duffel';
+    return provider;
 }
 
 function stopsLabel(stops: number): string {
@@ -244,7 +250,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             {(primary.cabinClass || 'economy').replace('_', ' ')}
                         </span>
                         <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
-                            {offer.provider}
+                            {providerLabel(offer.provider)}
                         </span>
                         {offer.alternatives && offer.alternatives.length > 0 && (
                             <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-600 text-white font-bold animate-pulse shadow-sm shadow-indigo-500/50">
@@ -291,13 +297,26 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => onSelect?.(offer)}
-                        className="px-4 lg:px-6 py-1 lg:py-2 rounded-full lg:rounded-lg lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs lg:text-base transition-colors flex items-center justify-center gap-1 shrink-0"
-                    >
-                        Select
-                        <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <SaveButton
+                            type="flight"
+                            title={`${primary.departure.airport} → ${last.arrival.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
+                            subtitle={`${primary.airline.name} · ${formatDuration(offer.totalDuration)} · ${stopsLabel(offer.totalStops)}`}
+                            price={offer.price.total}
+                            currency={offer.price.currency}
+                            imageUrl={`https://pics.avs.io/40/40/${(primary.airline.code || '').toUpperCase()}.png`}
+                            deepLink={`/flights/search?origin=${primary.departure.airport}&destination=${last.arrival.airport}&departure=${primary.departure.time?.slice(0, 10) ?? ''}`}
+                            snapshot={{ offerId: offer.offerId, provider: offer.provider }}
+                            size="sm"
+                        />
+                        <button
+                            onClick={() => onSelect?.(offer)}
+                            className="px-4 lg:px-6 py-1 lg:py-2 rounded-full lg:rounded-lg lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs lg:text-base transition-colors flex items-center justify-center gap-1 shrink-0"
+                        >
+                            Select
+                            <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -361,7 +380,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                             </span>
                                         </div>
                                         <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
-                                            {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')} · {alt.provider}
+                                            {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')} · {providerLabel(alt.provider)}
                                         </p>
                                         <button
                                             onClick={(e) => {

@@ -3,47 +3,87 @@ export async function invokeEdgeFunction<T = any>(
     body?: any,
     options?: { headers?: Record<string, string>; method?: 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH' }
 ) {
-    // Use direct HTTP fetch to bypass Supabase client auth issues on server side
-    // Edge functions can be called directly with the anon key in the Authorization header
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!;
 
     const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
     const method = options?.method || 'POST';
 
-    const response = await fetch(functionUrl, {
-        method,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-            'apikey': supabaseKey,
-            ...options?.headers
-        },
-        body: body ? JSON.stringify(body) : undefined
-    });
+    const maxRetries = 3;
+    let fallbackRetryDelay = 1500; // Increased base delay
 
-    if (!response.ok) {
+    for (let i = 0; i <= maxRetries; i++) {
+        const response = await fetch(functionUrl, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey,
+                ...options?.headers
+            },
+            body: body ? JSON.stringify(body) : undefined
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return data as T;
+        }
+
         let errorText = '';
         try {
             errorText = await response.text();
         } catch (e) {
             errorText = 'Could not read error response';
         }
+
+        const is429 = response.status === 429 || errorText.includes('429') || errorText.toLowerCase().includes('too many requests');
+        
+        if (is429 && i < maxRetries) {
+            // Get retry-after header if available, otherwise use exponential backoff
+            const retryAfter = response.headers.get('retry-after');
+            const delay = retryAfter ? parseInt(retryAfter) * 1000 : fallbackRetryDelay * Math.pow(2, i);
+            console.warn(`Rate limit hit on ${functionName} (429). Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+        }
+
         // Strip HTML (e.g. Cloudflare 502 pages) — only keep plain-text details
         const isHtml = errorText.trimStart().startsWith('<');
-        const details = isHtml ? '' : errorText.slice(0, 300);
+        const details = isHtml ? '' : errorText.slice(0, 500);
+
+        // Try to parse JSON error if available
+        let parsedError = null;
+        if (!isHtml) {
+            try {
+                parsedError = JSON.parse(errorText);
+            } catch (e) {
+                // Not JSON
+            }
+        }
+
         // Map status codes to user-friendly messages
-        const friendly =
-            response.status === 502 || response.status === 503 || response.status === 504
-                ? 'The service is temporarily unavailable. Please try again in a moment.'
-                : response.status === 429
-                ? 'Too many requests. Please wait a moment and try again.'
-                : details || response.statusText || 'Unexpected error';
-        throw new Error(`Error invoking ${functionName}: ${friendly}${details && !isHtml ? ` — ${details}` : ''}`);
+        let friendly = '';
+        if (response.status === 502 || response.status === 503 || response.status === 504) {
+            friendly = 'The service is temporarily unavailable. Please try again in a moment.';
+        } else if (is429) {
+            friendly = 'Too many requests. Please wait a moment and try again.';
+        } else if (parsedError?.details || parsedError?.error) {
+            // If it's a string, use it. If it's an object, stringify or use a property
+            const errVal = parsedError.details || parsedError.error;
+            friendly = typeof errVal === 'string' ? errVal : (errVal?.message || JSON.stringify(errVal));
+        } else {
+            friendly = details || response.statusText || 'Unexpected error';
+        }
+
+        // Avoid duplicating details if friendly message already contains them
+        const message = details && !isHtml && friendly.length < 200 && !friendly.includes(details.substring(0, 20)) 
+            ? `${friendly} — ${details}` 
+            : friendly;
+
+        throw new Error(`Error invoking ${functionName}: ${message}`);
     }
 
-    const data = await response.json();
-    return data as T;
+    throw new Error(`Error invoking ${functionName}: Max retries exceeded after rate limit`);
 }
 
 // Specific helper for liteapi-search

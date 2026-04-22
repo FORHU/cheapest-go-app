@@ -1,8 +1,9 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight } from 'lucide-react';
+import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage, Sparkles } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
@@ -11,6 +12,10 @@ import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 import { useUserCurrency } from '@/stores/searchStore';
 import type { FarePolicy } from '@/types/flights';
 import { getAirportInfo } from '@/utils/airport-info';
+import { FareRulesPanel } from './FareRulesPanel';
+import SeatMapPanel from '@/components/flights/SeatMapPanel';
+import BagSelectionPanel from '@/components/flights/BagSelectionPanel';
+import DuffelFareConditions from '@/components/flights/DuffelFareConditions';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
@@ -88,9 +93,66 @@ function FarePolicyPanel({ policy, policyChanged }: FarePolicyPanelProps) {
 // ─── Component ───────────────────────────────────────────────────────
 
 
+// ─── Offer expiry countdown ──────────────────────────────────────────
+
+function useCountdown(expiresAt: Date | null) {
+    const [secsLeft, setSecsLeft] = React.useState<number | null>(null);
+    useEffect(() => {
+        if (!expiresAt) return;
+        const tick = () => setSecsLeft(Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)));
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [expiresAt]);
+    return secsLeft;
+}
+
+function OfferExpiryBanner({ expiresAt }: { expiresAt: Date }) {
+    const secsLeft = useCountdown(expiresAt);
+    if (secsLeft === null || secsLeft > 10 * 60) return null; // Only show under 10 min
+    const mins = Math.floor(secsLeft / 60);
+    const secs = secsLeft % 60;
+    const isUrgent = secsLeft < 2 * 60;
+    return (
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium mb-3 border ${
+            isUrgent
+                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+                : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+        }`}>
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            {secsLeft === 0
+                ? 'This offer has expired — please search again.'
+                : `Offer expires in ${mins}:${String(secs).padStart(2, '0')} — complete your booking before time runs out.`}
+        </div>
+    );
+}
+
+function AncillaryExpiredNotice() {
+    return (
+        <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Not available for this offer</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+                This fare is no longer available for ancillary services. You can still proceed with your booking — seats and bags can be managed directly with the airline.
+            </p>
+        </div>
+    );
+}
+
+const FLIGHT_BOOKING_STEPS = [
+    'Verifying payment...',
+    'Securing your seat...',
+    'Confirming with the airline...',
+    'Finalizing booking details...',
+] as const;
+
 export default function FlightBookContent() {
+    const [bookingStepIdx, setBookingStepIdx] = React.useState(0);
+    const bookingStepTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
     const {
         offer,
+        offerExpiresAt,
         step,
         errorMsg,
         bookingResult,
@@ -101,12 +163,94 @@ export default function FlightBookContent() {
         removePassenger,
         setContact,
         handleSubmit,
+        confirmPriceChange,
+        priceChangedData,
+        duplicateBookingData,
+        dismissDuplicateWarning,
+        selectedSeats,
+        setSelectedSeats,
+        selectedBags,
+        setSelectedBags,
         router,
         clientSecret,
         setStep,
         pollForBooking,
+        setErrorMsg,
     } = useFlightBooking();
+
+    const [bagsOpen, setBagsOpen] = React.useState(false);
+    const [seatsOpen, setSeatsOpen] = React.useState(false);
+    const [refreshingOffer, setRefreshingOffer] = React.useState(false);
+    const [refreshFailed, setRefreshFailed] = React.useState(false);
+    const [currentOfferId, setCurrentOfferId] = React.useState<string | null>(null);
+    const refreshAttempted = React.useRef(false);
+
+    const effectiveOfferId = currentOfferId
+        ?? (offer as any)?.raw?.id
+        ?? (offer as any)?._rawOffer?.id
+        ?? offer?.offerId
+        ?? '';
+
+    const refreshOffer = React.useCallback(async () => {
+        // Only ever attempt once — prevents infinite loop on repeated 404s
+        if (refreshAttempted.current) return;
+        refreshAttempted.current = true;
+
+        const rawOffer = (offer as any)?._rawOffer ?? (offer as any)?.raw;
+        if (!rawOffer) { setRefreshFailed(true); return; }
+
+        setRefreshingOffer(true);
+        try {
+            const res = await fetch('/api/flights/offer-refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rawOffer }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success && data.newOfferId) {
+                setCurrentOfferId(data.newOfferId);
+                setSelectedBags([]);
+                setSelectedSeats([]);
+            } else {
+                setRefreshFailed(true);
+            }
+        } catch {
+            setRefreshFailed(true);
+        } finally {
+            setRefreshingOffer(false);
+        }
+    }, [offer, setSelectedBags, setSelectedSeats]);
+
+    useEffect(() => {
+        if (step === 'submitting') {
+            setBookingStepIdx(0);
+            bookingStepTimer.current = setInterval(() => {
+                setBookingStepIdx(i => Math.min(i + 1, FLIGHT_BOOKING_STEPS.length - 1));
+            }, 4000);
+        } else {
+            if (bookingStepTimer.current) {
+                clearInterval(bookingStepTimer.current);
+                bookingStepTimer.current = null;
+            }
+        }
+        return () => { if (bookingStepTimer.current) clearInterval(bookingStepTimer.current); };
+    }, [step]);
     const targetCurrency = useUserCurrency();
+    const searchParams = useSearchParams();
+    const isBundledWithHotel = searchParams.has('bundleHotelId');
+    const [hasAlreadyBookedHotel, setHasAlreadyBookedHotel] = React.useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setHasAlreadyBookedHotel(sessionStorage.getItem('hasAlreadyBookedHotel') === 'true');
+        }
+    }, []);
+
+    useEffect(() => {
+        if (step === 'success' && typeof window !== 'undefined') {
+            sessionStorage.setItem('hasAlreadyBookedFlight', 'true');
+        }
+    }, [step]);
 
     // ─── Loading ─────────────────────────────────────────────────────
 
@@ -123,16 +267,26 @@ export default function FlightBookContent() {
     // We stay in 'submitting' until the PNR arrives, then flip to 'success'.
     if (step === 'submitting' && clientSecret) {
         return (
-            <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50/60 via-white/40 to-indigo-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-emerald-950/60">
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 animate-pulse">
-                        <Plane className="w-8 h-8 text-white" />
-                    </div>
+            <main className="min-h-screen flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
+                    <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
                     <div>
-                        <p className="text-lg font-bold text-slate-900 dark:text-white">Confirming Your Booking</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Fetching your PNR reference…</p>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Confirming your booking</h2>
+                        <p className="text-sm text-blue-600 dark:text-blue-400 font-medium animate-pulse min-h-[20px]">
+                            {FLIGHT_BOOKING_STEPS[bookingStepIdx]}
+                        </p>
                     </div>
-                    <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+                    <div className="w-full space-y-2">
+                        {FLIGHT_BOOKING_STEPS.map((label, i) => (
+                            <div key={label} className={`flex items-center gap-2 text-xs ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
+                                <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${i < bookingStepIdx ? 'bg-green-500 text-white' : i === bookingStepIdx ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                                    {i < bookingStepIdx ? '✓' : i + 1}
+                                </span>
+                                {label}
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Please don&apos;t close this page</p>
                 </div>
             </main>
         );
@@ -171,15 +325,24 @@ export default function FlightBookContent() {
                             : <>Your card has <strong>not</strong> been charged. Please try a different flight or date.</>
                         }
                     </p>
+                    {/* Only show Try Again if the error happened before payment was taken */}
+                    {!errorMsg?.includes('automatically refunded') && !errorMsg?.includes('expired') && (
+                        <button
+                            onClick={() => setStep('form')}
+                            className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors"
+                        >
+                            Try Again
+                        </button>
+                    )}
                     <button
                         onClick={() => router.push('/flights/search')}
-                        className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors"
+                        className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
                         Search Again
                     </button>
                     <button
                         onClick={() => router.back()}
-                        className="w-full mt-2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="w-full mt-2 py-2.5 text-slate-400 dark:text-slate-500 font-medium text-xs hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                     >
                         Go Back
                     </button>
@@ -255,7 +418,9 @@ export default function FlightBookContent() {
                         transition={{ delay: 0.4 }}
                         className="text-xs lg:text-base text-slate-500 dark:text-slate-400 mb-4 lg:mb-6"
                     >
-                        Your flight has been booked successfully.
+                        {isBundledWithHotel 
+                            ? "Your flight has been successfully added to your bundle."
+                            : "Your flight has been booked successfully."}
                     </motion.p>
 
                     {/* Booking Details Card */}
@@ -283,7 +448,17 @@ export default function FlightBookContent() {
                         </div>
                         <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
                             <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">Total</span>
-                            <span className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</span>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white">
+                                    {formatPrice(offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}
+                                </span>
+                                {isBundledWithHotel && (
+                                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
+                                        <Sparkles className="w-2.5 h-2.5" />
+                                        Bundle discount applied
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         {bookingResult.tickets && bookingResult.tickets.length > 0 && (
                             <div className="flex justify-between items-start pt-1">
@@ -298,6 +473,42 @@ export default function FlightBookContent() {
                                 </div>
                             </div>
                         )}
+                    </motion.div>
+
+                    {/* ── What's Next ── */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.52 }}
+                        className="mb-4 text-left"
+                    >
+                        <p className="text-[10px] lg:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">What's next</p>
+                        <div className="space-y-2">
+                            <div className="flex items-start gap-2.5">
+                                <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                                    <Mail className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <p className="text-[11px] lg:text-xs text-slate-600 dark:text-slate-400">
+                                    Your e-ticket and booking confirmation will be emailed to you within a few minutes.
+                                </p>
+                            </div>
+                            <div className="flex items-start gap-2.5">
+                                <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                                    <Plane className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <p className="text-[11px] lg:text-xs text-slate-600 dark:text-slate-400">
+                                    Online check-in typically opens 24–48 hours before departure. Visit the airline's website and use your PNR <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{bookingResult.pnr}</span> to check in.
+                                </p>
+                            </div>
+                            <div className="flex items-start gap-2.5">
+                                <div className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                                    <Info className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                </div>
+                                <p className="text-[11px] lg:text-xs text-slate-600 dark:text-slate-400">
+                                    Your boarding pass will be issued at check-in. You can download it from the airline's app or website after checking in.
+                                </p>
+                            </div>
+                        </div>
                     </motion.div>
 
                     {/* ── Bundle Hotel Upsell ── */}
@@ -324,7 +535,7 @@ export default function FlightBookContent() {
                         const bundleParam = bookingResult.bookingId ? `&bundleFlightId=${bookingResult.bookingId}` : '';
                         const hotelUrl = `/search?destination=${encodeURIComponent(cityName)}&checkIn=${depDate}&checkOut=${checkOut}&adults=1${countryCode ? `&countryCode=${countryCode}` : ''}${bundleParam}`;
                         const dest = cityName;
-                        return depDate ? (
+                        return (depDate && !isBundledWithHotel) ? (
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -461,7 +672,7 @@ export default function FlightBookContent() {
                             <div className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">{last.arrival.airport}</div>
                         </div>
                         <div className="ml-auto text-right pl-2 lg:pl-4 border-l border-slate-200 dark:border-slate-700">
-                            <div className="text-base lg:text-xl font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</div>
+                            <div className="text-base lg:text-xl font-bold text-slate-900 dark:text-white">{formatPrice(offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}</div>
                             <div className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">total price</div>
                         </div>
                     </div>
@@ -485,11 +696,28 @@ export default function FlightBookContent() {
                     )}
                 </div>
 
+                {/* Offer expiry countdown — only for Duffel */}
+                {offerExpiresAt && offer.provider === 'duffel' && (
+                    <OfferExpiryBanner expiresAt={offerExpiresAt} />
+                )}
+
                 {/* Fare Policy Panel — shown from search-stage policy, updated after revalidation */}
                 {offer.farePolicy && (
                     <FarePolicyPanel
                         policy={offer.farePolicy}
                         policyChanged={(offer as any).policyChanged === true}
+                    />
+                )}
+
+                {/* Fare Conditions — Duffel only; read from offer.conditions (no extra API call) */}
+                {offer.provider === 'duffel' && (
+                    <DuffelFareConditions rawOffer={(offer as any)._raw} currency={offer.price.currency} />
+                )}
+
+                {/* Fare Rules — Mystifly only; fetched from airline via FareSourceCode */}
+                {offer.provider === 'mystifly_v2' && (
+                    <FareRulesPanel
+                        fareSourceCode={offer.offerId.split('|')[0]}
                     />
                 )}
 
@@ -706,6 +934,175 @@ export default function FlightBookContent() {
                             </div>
                         </div>
 
+                        {/* ── Duffel extras: bags + seats (optional, inline) ──── */}
+                        {offer.provider === 'duffel' && (
+                            <div className="space-y-2">
+                                {/* Bags */}
+                                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setBagsOpen(o => !o)}
+                                        className="w-full flex items-center gap-3 px-3 lg:px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center shrink-0">
+                                            <Luggage className="w-4 h-4 text-sky-500" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[12px] lg:text-sm font-semibold text-slate-800 dark:text-slate-200">Extra Bags</p>
+                                            <p className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">
+                                                {selectedBags.length > 0
+                                                    ? `${selectedBags.length} bag${selectedBags.length > 1 ? 's' : ''} added · +${new Intl.NumberFormat('en-US', { style: 'currency', currency: offer.price.currency }).format(selectedBags.reduce((s, b) => s + b.price, 0))}`
+                                                    : 'Optional — add checked or carry-on bags'}
+                                            </p>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
+                                            {bagsOpen ? '▲' : '▼'}
+                                        </span>
+                                    </button>
+                                    {bagsOpen && (
+                                        <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
+                                            {refreshingOffer ? (
+                                                <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Refreshing offer…
+                                                </div>
+                                            ) : refreshFailed ? (
+                                                <AncillaryExpiredNotice />
+                                            ) : (
+                                                <BagSelectionPanel
+                                                    key={effectiveOfferId}
+                                                    offerId={effectiveOfferId}
+                                                    duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? (offer as any).raw?.passengers ?? []).map((p: any) => p.id)}
+                                                    passengerCount={passengers.length}
+                                                    passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                    selectedBags={selectedBags}
+                                                    onBagsChange={setSelectedBags}
+                                                    currency={offer.price.currency}
+                                                    onOfferExpired={refreshOffer}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Seats */}
+                                <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setSeatsOpen(o => !o)}
+                                        className="w-full flex items-center gap-3 px-3 lg:px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                                            <Armchair className="w-4 h-4 text-indigo-500" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[12px] lg:text-sm font-semibold text-slate-800 dark:text-slate-200">Seat Selection</p>
+                                            <p className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">
+                                                {selectedSeats.length > 0
+                                                    ? `${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''} selected · +${new Intl.NumberFormat('en-US', { style: 'currency', currency: offer.price.currency }).format(selectedSeats.reduce((s, x) => s + x.price, 0))}`
+                                                    : 'Optional — pick your seat on the cabin map'}
+                                            </p>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
+                                            {seatsOpen ? '▲' : '▼'}
+                                        </span>
+                                    </button>
+                                    {seatsOpen && (
+                                        <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
+                                            {refreshingOffer ? (
+                                                <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Refreshing offer…
+                                                </div>
+                                            ) : refreshFailed ? (
+                                                <AncillaryExpiredNotice />
+                                            ) : (
+                                                <SeatMapPanel
+                                                    key={effectiveOfferId}
+                                                    offerId={effectiveOfferId}
+                                                    segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
+                                                    passengerCount={passengers.length}
+                                                    passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                    selectedSeats={selectedSeats}
+                                                    onSeatsChange={setSelectedSeats}
+                                                    currency={offer.price.currency}
+                                                    onDone={() => setSeatsOpen(false)}
+                                                    onOfferExpired={refreshOffer}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Price-change confirmation banner */}
+                        {priceChangedData && (
+                            <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-3 lg:p-4 space-y-2.5">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-[11px] lg:text-sm font-semibold text-amber-800 dark:text-amber-300">Fare price has changed</p>
+                                        <p className="text-[11px] lg:text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+                                            This flight is now{' '}
+                                            <span className="font-bold">
+                                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: priceChangedData.currency }).format(priceChangedData.newPrice)}
+                                            </span>
+                                            {' '}(was {new Intl.NumberFormat('en-US', { style: 'currency', currency: priceChangedData.currency }).format(priceChangedData.oldPrice)}).
+                                            Do you want to continue at the new price?
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={confirmPriceChange}
+                                        className="flex-1 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] lg:text-sm transition-colors"
+                                    >
+                                        Accept new price &amp; continue
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => router.back()}
+                                        className="flex-1 py-2 rounded-lg bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 font-medium text-[11px] lg:text-sm transition-colors hover:bg-amber-50 dark:hover:bg-amber-900/30"
+                                    >
+                                        Search again
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Duplicate booking warning */}
+                        {duplicateBookingData && (
+                            <div className="rounded-xl border-2 border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 lg:p-4 space-y-2.5">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-[11px] lg:text-sm font-bold text-red-800 dark:text-red-300">You already have a flight booked on this day</p>
+                                        <p className="text-[11px] lg:text-sm text-red-700 dark:text-red-400 mt-0.5">
+                                            An active booking was found departing <span className="font-semibold">{duplicateBookingData.route}</span> on <span className="font-semibold">{duplicateBookingData.departureDate}</span>. Cancel the existing booking first, or go back.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => router.push(`/trips?highlight=${duplicateBookingData.existingBookingId}`)}
+                                        className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-[11px] lg:text-sm transition-colors"
+                                    >
+                                        View existing booking
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => router.push('/')}
+                                        className="flex-1 py-2 rounded-lg bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 font-medium text-[11px] lg:text-sm transition-colors hover:bg-red-50 dark:hover:bg-red-900/30"
+                                    >
+                                        Keep existing booking
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Status/Error Message */}
                         {errorMsg && (() => {
                             const isPending = errorMsg?.toLowerCase().includes('pending');
@@ -713,13 +1110,25 @@ export default function FlightBookContent() {
                                 <div className={`flex items-center gap-1.5 lg:gap-2 p-2.5 lg:p-4 rounded-lg lg:rounded-xl border ${isPending
                                     ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
                                     : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
-                                    } text-[11px] lg:text-sm`}>
+                                    } text-[11px] lg:text-sm relative`}>
                                     {isPending ? (
                                         <Info className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
                                     ) : (
                                         <AlertTriangle className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
                                     )}
-                                    {errorMsg || 'Booking failed. Please try again.'}
+                                    <span className="pr-6">
+                                        {errorMsg || 'Booking failed. Please try again.'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setErrorMsg('');
+                                        }}
+                                        className="absolute right-2 lg:right-3 p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors"
+                                    >
+                                        <X className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                                    </button>
                                 </div>
                             );
                         })()}
@@ -737,7 +1146,13 @@ export default function FlightBookContent() {
                                 </>
                             ) : (
                                 <>
-                                    Confirm Booking · {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
+                                    Confirm Booking · {formatPrice(
+                                        offer.price.total
+                                            + selectedSeats.reduce((s, x) => s + x.price, 0)
+                                            + selectedBags.reduce((s, b) => s + b.price, 0),
+                                        offer.price.currency,
+                                        targetCurrency,
+                                    )}
                                 </>
                             )}
                         </button>

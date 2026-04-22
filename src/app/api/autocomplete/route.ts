@@ -7,8 +7,6 @@ const autocompleteSchema = z.object({
     query: z.string().max(100),
 });
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(req: Request) {
     const rl = rateLimit(req, { limit: 60, windowMs: 60_000, prefix: 'autocomplete' });
     if (!rl.success) {

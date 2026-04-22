@@ -65,15 +65,18 @@ export async function fetchTripsData(): Promise<TripsData> {
   const flightBookings = (flightsResponse.data || []) as FlightBookingRecord[];
   const now = new Date();
 
+  const CANCELLED_STATUSES: BookingRecord['status'][] = ['cancelled', 'cancelled_refunded', 'cancelled_refund_failed'];
+  const isCancelledHotel = (b: BookingRecord) => CANCELLED_STATUSES.includes(b.status);
+
   return {
     bookings,
     upcomingBookings: bookings.filter(
-      b => new Date(b.check_in) >= now && b.status !== 'cancelled'
+      b => new Date(b.check_in) >= now && !isCancelledHotel(b)
     ),
     pastBookings: bookings.filter(
-      b => new Date(b.check_out) < now || b.status === 'completed'
+      b => !isCancelledHotel(b) && (new Date(b.check_out) < now || b.status === 'completed')
     ),
-    cancelledBookings: bookings.filter(b => b.status === 'cancelled'),
+    cancelledBookings: bookings.filter(isCancelledHotel),
 
     flightBookings,
     upcomingFlightBookings: flightBookings.filter(b => {

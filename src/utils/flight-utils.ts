@@ -132,6 +132,26 @@ export function normalizedToFlightOffer(nf: any, tripType?: FlightOffer['tripTyp
         totalDuration: nf.durationMinutes ?? nf.duration ?? nf.raw?.durationMinutes ?? nf.raw?.duration ?? 0,
         totalStops: nf.stops ?? nf.raw?.stops ?? 0,
         refundable: nf.refundable ?? nf.raw?.refundable ?? false,
+        farePolicy: (() => {
+            if (nf.farePolicy) return nf.farePolicy;
+            // Reconstruct from Duffel raw conditions (covers cache path where farePolicy isn't stored separately)
+            const rawConds = nf.raw?.conditions;
+            if (rawConds && nf.provider === 'duffel') {
+                const rc = rawConds.refund_before_departure;
+                const cc = rawConds.change_before_departure;
+                return {
+                    isRefundable: rc?.allowed === true,
+                    isChangeable: cc?.allowed === true,
+                    refundPenaltyAmount: rc?.penalty_amount != null ? parseFloat(rc.penalty_amount) : null,
+                    refundPenaltyCurrency: rc?.penalty_currency ?? null,
+                    changePenaltyAmount: cc?.penalty_amount != null ? parseFloat(cc.penalty_amount) : null,
+                    changePenaltyCurrency: cc?.penalty_currency ?? null,
+                    policyVersion: 'search' as const,
+                    policySource: 'duffel' as const,
+                };
+            }
+            return undefined;
+        })(),
         baggage: nf.checkedBags != null ? {
             checkedBags: nf.checkedBags,
             weightPerBag: nf.weightPerBag,

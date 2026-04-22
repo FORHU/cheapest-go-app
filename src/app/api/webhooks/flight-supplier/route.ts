@@ -24,21 +24,37 @@ export async function POST(req: NextRequest) {
         // Duffel webhook verification
         if (payload.type && payload.type.startsWith('order.')) {
             const DUFFEL_WEBHOOK_SECRET = process.env.DUFFEL_WEBHOOK_SECRET;
+            const isProduction = process.env.NODE_ENV === 'production';
 
             if (!DUFFEL_WEBHOOK_SECRET) {
-                console.warn('[Flight Webhook] DUFFEL_WEBHOOK_SECRET not configured - skipping signature verification');
+                if (isProduction) {
+                    // In production, a missing secret is a misconfiguration — reject to prevent unauthenticated processing
+                    console.error('[Flight Webhook] DUFFEL_WEBHOOK_SECRET not set in production — rejecting event');
+                    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+                }
+                console.warn('[Flight Webhook] DUFFEL_WEBHOOK_SECRET not configured - skipping signature verification (dev only)');
             } else if (!duffelSignature) {
                 console.error('[Flight Webhook] Missing Duffel-Signature header');
                 return NextResponse.json({ error: 'Unauthorized - Missing signature' }, { status: 401 });
             } else {
-                // Verify HMAC-SHA256 signature
+                // Verify HMAC-SHA256 signature using timing-safe comparison to prevent timing attacks
                 const crypto = await import('crypto');
                 const expectedSignature = crypto
                     .createHmac('sha256', DUFFEL_WEBHOOK_SECRET)
                     .update(rawBody)
                     .digest('hex');
 
-                if (duffelSignature !== expectedSignature) {
+                const sigValid = (() => {
+                    try {
+                        const a = Buffer.from(duffelSignature, 'hex');
+                        const b = Buffer.from(expectedSignature, 'hex');
+                        return a.length === b.length && crypto.timingSafeEqual(a, b);
+                    } catch {
+                        return false;
+                    }
+                })();
+
+                if (!sigValid) {
                     console.error('[Flight Webhook] Invalid Duffel signature');
                     return NextResponse.json({ error: 'Unauthorized - Invalid signature' }, { status: 401 });
                 }
@@ -89,7 +105,7 @@ export async function POST(req: NextRequest) {
         }
         // Mystifly Webhook Strategy (Hypothetical PNR event payload)
         else if (payload.event_type && (payload.pnr || payload.order_id)) {
-            provider = 'mystifly';
+            provider = 'mystifly_v2';
             referenceId = payload.pnr || payload.order_id;
 
             if (payload.event_type === 'ticket_issued') {
