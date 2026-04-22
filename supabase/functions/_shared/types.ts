@@ -54,7 +54,7 @@ export interface NormalizedFarePolicy {
     changePenaltyCurrency?: string | null;
     /** 'search' = indicative only. 'revalidated' = locked before payment. */
     policyVersion: 'search' | 'revalidated';
-    policySource: 'duffel' | 'mystifly_v1' | 'mystifly_v2';
+    policySource: 'duffel' | 'mystifly_v2';
     rawSupplierPolicy?: unknown;
 }
 

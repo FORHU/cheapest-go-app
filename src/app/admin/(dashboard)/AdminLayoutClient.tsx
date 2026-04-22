@@ -60,10 +60,20 @@ export function AdminLayoutClient({
                 subtitle: 'Manage roles and access permissions',
                 image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1600'
             },
+            revenue: {
+                title: 'Revenue Control',
+                subtitle: 'Monitor markup performance and profitability',
+                image: 'https://images.unsplash.com/photo-1554224155-1696413575b3?auto=format&fit=crop&q=80&w=1600'
+            },
             settings: {
                 title: 'Settings',
                 subtitle: 'Configure platform-wide preferences and security',
                 image: 'https://images.unsplash.com/photo-1454165833767-027ff33027ef?auto=format&fit=crop&q=80&w=1600'
+            },
+            duffel: {
+                title: 'Duffel',
+                subtitle: 'Live flight orders & integration health',
+                image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&q=80&w=1600'
             }
         };
         return configs[path] || configs.overview;

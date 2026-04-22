@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { StatCard } from '@/components/admin/StatCard';
 import { formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 import type { DashboardData } from '@/types/admin';
 import { HeaderTitle } from '@/components/admin/HeaderTitle';
 import { StatsGrid } from '@/components/admin/StatsGrid';
@@ -17,6 +18,7 @@ import { RevenueChart } from '@/components/admin/dashboard/RevenueChart';
 import { ConversionFunnel } from '@/components/admin/dashboard/ConversionFunnel';
 import { TopRoutes } from '@/components/admin/dashboard/TopRoutes';
 import { ProviderIntegrations } from '@/components/admin/dashboard/ProviderIntegrations';
+import { DuffelDashboard } from '@/components/admin/dashboard/DuffelDashboard';
 
 interface AdminDashboardClientProps {
     data: DashboardData;
@@ -37,11 +39,14 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
         providerIntegrations,
         defaultCurrency
     } = data;
+    const userCurrency = useUserCurrency();
+    const activeCurrency = defaultCurrency || userCurrency || 'PHP';
     const [graphType, setGraphType] = useState<GraphType>('market');
     const [isPerformanceCollapsed, setIsPerformanceCollapsed] = useState(false);
     const [isInsightsCollapsed, setIsInsightsCollapsed] = useState(false);
     const [isActivityCollapsed, setIsActivityCollapsed] = useState(false);
     const [isProvidersCollapsed, setIsProvidersCollapsed] = useState(false);
+    const [isDuffelCollapsed, setIsDuffelCollapsed] = useState(false);
 
     const handleDownloadReport = () => {
         try {
@@ -60,9 +65,10 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
             // Financial Metrics Section
             const financialHeaders = ['Metric', 'Value', 'Currency'];
             const financialRows = [
-                ['Daily Revenue', convertCurrency(revenueStats.dailyRevenue, 'PHP', defaultCurrency), defaultCurrency],
-                ['Monthly Revenue', convertCurrency(revenueStats.monthlyRevenue, 'PHP', defaultCurrency), defaultCurrency],
-                ['Total Profit', convertCurrency(revenueStats.totalProfit, 'PHP', defaultCurrency), defaultCurrency],
+                ['Daily Revenue', convertCurrency(revenueStats.dailyRevenue, 'PHP', activeCurrency), activeCurrency],
+                ['Monthly Revenue', convertCurrency(revenueStats.monthlyRevenue, 'PHP', activeCurrency), activeCurrency],
+                ['Total Markup', convertCurrency(revenueStats.totalMarkup, 'PHP', activeCurrency), activeCurrency],
+                ['Total Profit', convertCurrency(revenueStats.totalProfit, 'PHP', activeCurrency), activeCurrency],
                 ['Refund Rate', `${revenueStats.refundRate}%`, ''],
                 ['Failed Rate', `${revenueStats.failedRate}%`, ''],
                 ['Pending Rate', `${revenueStats.pendingRate}%`, ''],
@@ -122,7 +128,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                 <div className="flex items-center justify-between">
                     <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Overview</h2>
                 </div>
-                <StatsGrid liveStats={liveStats} defaultCurrency={defaultCurrency} />
+                <StatsGrid liveStats={liveStats} defaultCurrency={activeCurrency} />
             </section>
 
             {/* Financial Metrics Section */}
@@ -132,12 +138,12 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                     {[
-                        { label: 'Daily Revenue', value: formatCurrency(convertCurrency(revenueStats.dailyRevenue, 'PHP', defaultCurrency), defaultCurrency), trend: 'Today', icon: DollarSign, variant: 'blue' as const },
-                        { label: 'Monthly Revenue', value: formatCurrency(convertCurrency(revenueStats.monthlyRevenue, 'PHP', defaultCurrency), defaultCurrency), trend: 'This Month', icon: TrendingUp },
-                        { label: 'Total Profit', value: formatCurrency(convertCurrency(revenueStats.totalProfit, 'PHP', defaultCurrency), defaultCurrency), trend: 'Total Net', icon: Coins, variant: 'emerald' as const },
+                        { label: 'Daily Revenue', value: formatCurrency(convertCurrency(revenueStats.dailyRevenue, 'PHP', activeCurrency), activeCurrency), trend: 'Today', icon: DollarSign, variant: 'blue' as const },
+                        { label: 'Monthly Revenue', value: formatCurrency(convertCurrency(revenueStats.monthlyRevenue, 'PHP', activeCurrency), activeCurrency), trend: 'This Month', icon: TrendingUp },
+                        { label: 'Total Markup', value: formatCurrency(convertCurrency(revenueStats.totalMarkup, 'PHP', activeCurrency), activeCurrency), trend: 'Gross Gain', icon: Banknote, variant: 'amber' as const },
+                        { label: 'Total Profit', value: formatCurrency(convertCurrency(revenueStats.totalProfit, 'PHP', activeCurrency), activeCurrency), trend: 'Total Net', icon: Coins, variant: 'emerald' as const },
                         { label: 'Refund Rate', value: `${revenueStats.refundRate}%`, trend: 'All Time', icon: RefreshCw },
                         { label: 'Failed Bookings', value: `${revenueStats.failedRate}%`, trend: 'All Time', icon: XCircle, variant: revenueStats.failedRate > 10 ? 'rose' as const : 'white' as const },
-                        { label: 'Pending Tickets', value: `${revenueStats.pendingRate}%`, trend: 'All Time', icon: Clock, variant: revenueStats.pendingRate > 10 ? 'amber' as const : 'white' as const },
                     ].map((stat, i) => (
                         <StatCard
                             key={i}
@@ -180,7 +186,37 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                 </AnimatePresence>
             </section>
 
-            {/* Performance Section */}
+            {/* Duffel Orders Section */}
+            <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Duffel Orders</h2>
+                    <button
+                        onClick={() => setIsDuffelCollapsed(!isDuffelCollapsed)}
+                        className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-400 flex items-center gap-2 group"
+                    >
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                            {isDuffelCollapsed ? 'Expand' : 'Collapse'}
+                        </span>
+                        {isDuffelCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                    </button>
+                </div>
+                <AnimatePresence>
+                    {!isDuffelCollapsed && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.5, ease: "circOut" }}
+                            className="overflow-hidden"
+                        >
+                            <div className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-xl p-8 shadow-md">
+                                <DuffelDashboard data={providerIntegrations.duffel} />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </section>
+
             <section className="space-y-6">
                 <div className="flex items-center justify-between">
                     <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Financial Performance</h2>
@@ -205,7 +241,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                         >
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-6">
                                 <div className="lg:col-span-2">
-                                    <RevenueChart data={revenueTrend} />
+                                    <RevenueChart data={revenueTrend} defaultCurrency={activeCurrency} />
                                 </div>
                                 <div className="lg:col-span-1">
                                     <ConversionFunnel data={conversionFunnel} />
@@ -416,7 +452,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(convertCurrency(provider.amount, 'PHP', defaultCurrency), defaultCurrency)}</p>
+                                                            <p className="text-xl font-black text-slate-900 dark:text-white">{formatCurrency(convertCurrency(provider.amount, 'PHP', activeCurrency), activeCurrency)}</p>
                                                         </div>
                                                     </div>
                                                     <div className="h-4 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden flex">

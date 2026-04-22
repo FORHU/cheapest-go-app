@@ -18,11 +18,22 @@ import LocationSection from '@/components/property/LocationSectionDynamic';
 
 export async function generateMetadata({
     params,
+    searchParams
 }: {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
     const { id } = await params;
-    const { property, fetchedDetails } = await fetchPropertyData(id, {});
+    const searchParamsResult = await searchParams;
+    const { property, fetchedDetails } = await fetchPropertyData(id, {
+        offerId: searchParamsResult.offerId as string,
+        checkIn: searchParamsResult.checkIn as string,
+        checkOut: searchParamsResult.checkOut as string,
+        adults: searchParamsResult.adults as string,
+        children: searchParamsResult.children as string,
+        rooms: searchParamsResult.rooms as string,
+        currency: searchParamsResult.currency as string,
+    });
     if (!property) return {};
 
     const city = fetchedDetails?.city || fetchedDetails?.details?.city || '';
@@ -178,7 +189,7 @@ export default async function PropertyPage({
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold leading-tight">Bundle Discount Active</p>
                                 <p className="text-[11px] text-violet-200 leading-tight mt-0.5 truncate">
-                                    Booking with flight <span className="font-mono text-white/80">{bundleFlightId.slice(0, 8)}…</span> — hotel charged at 12% instead of 15%
+                                    Bundle discount applied — you're saving 3% on this hotel
                                 </p>
                             </div>
                             <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-bold">
@@ -209,7 +220,7 @@ export default async function PropertyPage({
                         {/* Mobile map — shown below PropertyOverview strictly on small screens */}
                         <div className="lg:hidden" id="location-mobile">
                             <FadeInUp delay={0.28}>
-                                <div className="h-[280px] md:h-[350px]">
+                                <div className="w-full">
                                     <PropertyMapSidebar {...mapProps} />
                                 </div>
                             </FadeInUp>

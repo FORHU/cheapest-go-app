@@ -1,5 +1,11 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { CheckoutContent } from '@/components/checkout';
+
+export const metadata: Metadata = {
+  title: 'Checkout | CheapestGo',
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = 'force-dynamic';
 

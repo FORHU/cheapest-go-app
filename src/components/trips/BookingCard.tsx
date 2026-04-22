@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, XCircle, Pencil } from 'lucide-react';
+import { MapPin, XCircle, Pencil, Receipt, CheckCircle, RotateCcw, Ban, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BookingRecord } from '@/services/booking.service';
 import CancellationModal from './CancellationModal';
@@ -92,16 +92,11 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                 <MapPin className="w-6 h-6 text-white/50" />
                             </div>
                         )}
-                        {/* Badges */}
-                        <div className="absolute top-1 left-1 flex flex-col gap-1">
+                        {/* Status badge */}
+                        <div className="absolute top-1 left-1">
                             <span className={`text-[clamp(0.5rem,1.5vw,0.5625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${statusColors[normalizedStatus]}`}>
                                 {statusLabels[normalizedStatus]}
                             </span>
-                            {isUpcoming && normalizedStatus === 'confirmed' && (
-                                <span className={`text-[clamp(0.5rem,1.5vw,0.5625rem)] font-semibold text-white px-1.5 py-0.5 rounded shadow ${getPolicyBadgeColor(policyType)}`}>
-                                    {getPolicyTitle(policyType)}
-                                </span>
-                            )}
                         </div>
                     </div>
 
@@ -115,33 +110,58 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                             {fmtDate(checkInDate)} → {fmtDate(checkOutDate)} · {nights} {nights === 1 ? 'night' : 'nights'}
                         </div>
 
-                        <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1.5">
+                        <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1">
                             {booking.guests_adults} {booking.guests_adults === 1 ? 'adult' : 'adults'}
                             {booking.guests_children > 0 && `, ${booking.guests_children} ${booking.guests_children === 1 ? 'child' : 'children'}`}
                         </div>
 
-                        {/* Price + actions */}
+                        {/* Policy badge (mobile) */}
+                        {booking.cancellation_policy && (
+                            <div className="mb-1.5">
+                                {policyType === 'free_cancellation' ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                        <CheckCircle className="w-3 h-3 shrink-0" /> Free cancellation
+                                    </span>
+                                ) : policyType === 'non_refundable' ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                        <Ban className="w-3 h-3 shrink-0" /> Non-refundable
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                        <RotateCcw className="w-3 h-3 shrink-0" /> Partial refund
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Price + actions (mobile) */}
                         <div className="mt-auto flex items-center justify-between gap-2">
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(displayPrice, displayCurrency)}
                             </span>
                             {isUpcoming && normalizedStatus === 'confirmed' && (
-                                <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex items-center gap-1.5 shrink-0">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowModifyModal(true); }}
-                                        className="inline-flex items-center gap-1 text-[clamp(0.625rem,1.5vw,0.75rem)] text-blue-600 dark:text-blue-400 hover:underline transition-colors"
+                                        className="text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-0.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                                     >
-                                        <Pencil className="w-3 h-3" />
                                         Modify
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
-                                        className="inline-flex items-center gap-1 text-[clamp(0.625rem,1.5vw,0.75rem)] text-red-500 dark:text-red-400 hover:underline transition-colors"
+                                        className="text-[10px] font-medium text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800 rounded px-1.5 py-0.5 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                     >
-                                        <XCircle className="w-3 h-3" />
                                         Cancel
                                     </button>
                                 </div>
+                            )}
+                            {normalizedStatus === 'cancelled_refund_failed' && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
+                                    className="flex items-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-700 rounded px-1.5 py-0.5 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors shrink-0"
+                                >
+                                    <AlertTriangle className="w-3 h-3" /> Retry refund
+                                </button>
                             )}
                         </div>
                     </div>
@@ -162,16 +182,11 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                 <MapPin className="w-8 h-8 text-white/50" />
                             </div>
                         )}
-                        {/* Badges — stacked column so they never overlap */}
-                        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
+                        {/* Status badge */}
+                        <div className="absolute top-1.5 left-1.5">
                             <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${statusColors[normalizedStatus]}`}>
                                 {statusLabels[normalizedStatus]}
                             </span>
-                            {isUpcoming && normalizedStatus === 'confirmed' && (
-                                <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold text-white px-1.5 py-0.5 rounded shadow ${getPolicyBadgeColor(policyType)}`}>
-                                    {getPolicyTitle(policyType)}
-                                </span>
-                            )}
                         </div>
                     </div>
 
@@ -198,25 +213,25 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                             </span>
                         </div>
 
-                        {/* Action buttons */}
-                        {isUpcoming && normalizedStatus === 'confirmed' && (
-                            <div className="flex items-center gap-2 mt-auto">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setShowModifyModal(true); }}
-                                    className="inline-flex items-center gap-1 text-[clamp(0.625rem,1.5vw,0.75rem)] text-blue-600 dark:text-blue-400 hover:underline transition-colors"
-                                >
-                                    <Pencil className="w-3 h-3" />
-                                    Modify
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
-                                    className="inline-flex items-center gap-1 text-[clamp(0.625rem,1.5vw,0.75rem)] text-red-500 dark:text-red-400 hover:underline transition-colors"
-                                >
-                                    <XCircle className="w-3 h-3" />
-                                    Cancel
-                                </button>
+                        {/* Policy badge (desktop) */}
+                        {booking.cancellation_policy && (
+                            <div className="mb-1.5">
+                                {policyType === 'free_cancellation' ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                        <CheckCircle className="w-3 h-3 shrink-0" /> Free cancellation
+                                    </span>
+                                ) : policyType === 'non_refundable' ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                        <Ban className="w-3 h-3 shrink-0" /> Non-refundable
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                        <RotateCcw className="w-3 h-3 shrink-0" /> Partial refund
+                                    </span>
+                                )}
                             </div>
                         )}
+
                         {isPast && normalizedStatus === 'confirmed' && (
                             <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-400">Trip completed</span>
                         )}
@@ -225,11 +240,11 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         )}
                     </div>
 
-                    {/* Right panel — rating & price */}
-                    <div className="flex flex-col items-end justify-center w-[120px] lg:w-[140px] p-3 border-l border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                    {/* Right panel — rating, price & actions */}
+                    <div className="flex flex-col items-end justify-between w-[140px] lg:w-[160px] p-3 border-l border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 gap-2">
                         {/* Rating */}
                         {rating > 0 && (
-                            <div className="flex items-center gap-1.5 mb-2">
+                            <div className="flex items-center gap-1.5">
                                 <span className={cn('text-[clamp(0.5625rem,1.5vw,0.625rem)] font-bold text-white px-1.5 py-0.5 rounded', getRatingColor(rating))}>
                                     {rating.toFixed(1)}
                                 </span>
@@ -252,6 +267,44 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                 {formatCurrency(displayPrice, displayCurrency)}
                             </span>
                             <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400">total</div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex flex-col gap-1.5 w-full">
+                            {isUpcoming && normalizedStatus === 'confirmed' && (<>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowModifyModal(true); }}
+                                    className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
+                                >
+                                    <Pencil className="w-3 h-3" />
+                                    Modify
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
+                                    className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg px-2 py-1.5 transition-colors"
+                                >
+                                    <XCircle className="w-3 h-3" />
+                                    Cancel
+                                </button>
+                            </>)}
+                            {normalizedStatus === 'cancelled_refund_failed' && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
+                                    className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg px-2 py-1.5 transition-colors"
+                                >
+                                    <AlertTriangle className="w-3 h-3" />
+                                    Retry refund
+                                </button>
+                            )}
+                            <a
+                                href={`/trips/invoice/${booking.id}?type=hotel`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
+                            >
+                                <Receipt className="w-3 h-3" />
+                                Receipt
+                            </a>
                         </div>
                     </div>
                 </div>

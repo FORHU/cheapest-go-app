@@ -563,12 +563,13 @@ Deno.serve(async (req: Request) => {
 
   } catch (error: any) {
     console.error("Function error:", error);
+    const isRateLimit = error.message?.includes('429');
     return new Response(JSON.stringify({
       error: "Search Failed",
       details: error.message
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400
+      status: isRateLimit ? 429 : 400
     });
   }
 });

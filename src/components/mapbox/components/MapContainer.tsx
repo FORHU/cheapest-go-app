@@ -16,11 +16,13 @@ interface MapContainerProps {
     onLoad: (e: any) => void;
     onClick: (e: any) => void;
     onMouseMove: (e: any) => void;
+    onMoveEnd?: (e: any) => void;
     children?: React.ReactNode;
     hideLayersButton?: boolean;
     mapStyle?: string;
     standardConfig?: StandardStyleConfig;
     enable3DTerrain?: boolean;
+    onStyleReady?: (map: mapboxgl.Map) => void;
 }
 
 export const MapContainer = ({
@@ -29,11 +31,13 @@ export const MapContainer = ({
     onLoad,
     onClick,
     onMouseMove,
+    onMoveEnd,
     children,
     hideLayersButton = false,
     mapStyle: propMapStyle,
     standardConfig: propStandardConfig,
     enable3DTerrain: propEnable3DTerrain,
+    onStyleReady,
 }: MapContainerProps) => {
     const {
         mapType,
@@ -68,7 +72,9 @@ export const MapContainer = ({
             maxPitch={60}
             onClick={onClick}
             onMouseMove={onMouseMove}
+            onMoveEnd={onMoveEnd}
             onLoad={onLoad}
+            onStyleReady={onStyleReady}
             enable3DBuildings={false}
             className={`rounded-none min-h-0 w-full h-full ${children ? '' : ''}`}
         >

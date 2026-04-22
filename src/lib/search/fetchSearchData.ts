@@ -6,6 +6,7 @@
 import { unstable_cache } from 'next/cache';
 import { type Property } from '@/types';
 import { searchLiteApi } from '@/utils/supabase/functions';
+import { COUNTRY_DEFAULT_CITY, COUNTRY_NAME_TO_CODE } from '@/lib/constants/countries';
 
 // Types
 export interface SearchParams {
@@ -20,8 +21,10 @@ export interface SearchParams {
     rooms?: string | number;
     nationality?: string;
     countryCode?: string;
+    destinationType?: string;
     currency?: string;
     placeId?: string;
+    destinationCode?: string;
     hotelName?: string;
     starRating?: string;
     minRating?: string;
@@ -42,6 +45,7 @@ export interface SearchQueryParams {
     cityName: string;
     countryCode: string;
     placeId?: string;
+    destinationCode?: string;
     query: string;
     hotelName?: string;
     starRating?: number[];
@@ -164,7 +168,20 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
             || '';
     }
 
+    // When the user searched by country name (not a city), LiteAPI returns 0
+    // results. Detect this by checking if the destination string is a known
+    // country name, then swap in the country's top tourist city for the API call.
+    const isCountryName = !!COUNTRY_NAME_TO_CODE[destination.toLowerCase().trim()];
+    const resolvedCountryCode = isCountryName
+        ? (COUNTRY_NAME_TO_CODE[destination.toLowerCase().trim()] ?? countryCode)
+        : countryCode;
+    if (isCountryName && !countryCode) countryCode = resolvedCountryCode;
+    const resolvedCityName = isCountryName
+        ? (COUNTRY_DEFAULT_CITY[resolvedCountryCode] ?? destination)
+        : destination;
+
     const placeId = typeof params.placeId === 'string' ? params.placeId : undefined;
+    const destinationCode = typeof params.destinationCode === 'string' ? params.destinationCode : undefined;
 
     // Currency comes from the user's locale preference (URL param), NOT the destination
     const currency = typeof params.currency === 'string' && params.currency
@@ -175,15 +192,16 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
         checkout: formatSearchDate(rawCheckout) || "2026-06-05",
         adults: Number(params.adults) || 2,
         children: Number(params.children) || 0,
-        childrenAges, // Pass children ages for proper LiteAPI occupancy
+        childrenAges,
         rooms: Number(params.rooms) || 1,
         guest_nationality: typeof params.nationality === 'string' && params.nationality ? params.nationality : "KR",
         currency,
-        cityName: destination,
+        cityName: resolvedCityName,
         // Send countryCode even if placeId exists. LiteAPI sometimes needs it for smaller cities
         countryCode: countryCode,
         placeId,
-        query: destination,
+        destinationCode,
+        query: resolvedCityName,
     };
 
     // Add filter parameters if present
@@ -200,11 +218,17 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
 }
 
 
-// Extract price from hotel room types
+// Extract price from hotel — handles both TravelgateX (hotel.price) and LiteAPI (roomTypes) formats
 function extractPrice(hotel: any): { price: number; originalPrice?: number } {
     let price = 0;
     let originalPrice = undefined;
 
+    // TravelgateX: price is a top-level number
+    if (typeof hotel.price === 'number' && hotel.price > 0) {
+        return { price: hotel.price, originalPrice };
+    }
+
+    // LiteAPI: price is nested inside roomTypes[0].rates[0].retailRate.total
     if (hotel.roomTypes && hotel.roomTypes.length > 0) {
         const firstRoom = hotel.roomTypes[0];
         if (firstRoom.rates && firstRoom.rates.length > 0) {
@@ -288,6 +312,7 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
         refundableTag,
         distance: hotel.distance || hotel.details?.distance_from_center || hotel.details?.distance || undefined,
         boardTypes: hotel.boardTypes || [],
+        city: cityName,
     } as Property;
 }
 
@@ -297,19 +322,12 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
 // spellings (checkIn vs checkin) don't produce separate cache entries.
 const getCachedSearchProperties = unstable_cache(
     async (queryParams: SearchQueryParams): Promise<Property[]> => {
-        const data = await searchLiteApi(queryParams);
+        const data = await searchLiteApi(queryParams as unknown as Record<string, unknown>);
 
         if (data?.data && Array.isArray(data.data)) {
             const results = data.data
-                .map((hotel: any) =>
-                    transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency)
-                )
-                .filter(
-                    (prop: Property) =>
-                        prop.name &&
-                        !prop.name.match(/^Hotel\s+lp[a-z0-9]+$/i) &&
-                        !prop.name.match(/^lp[a-z0-9]+$/i)
-                );
+                .map((hotel: any) => transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency))
+                .filter((prop: Property) => prop.name && prop.price > 0);
 
             // Throw on empty so unstable_cache does not store the empty result —
             // next request retries live instead of serving a stale cache miss.
@@ -332,7 +350,8 @@ const getCachedSearchProperties = unstable_cache(
 export async function fetchSearchProperties(params: SearchParams): Promise<Property[]> {
     const queryParams = buildSearchQueryParams(params);
     try {
-        return await getCachedSearchProperties(queryParams);
+        const result = await getCachedSearchProperties(queryParams);
+        return result;
     } catch (e) {
         if (e instanceof Error && e.message !== 'NO_RESULTS') {
             console.error("Failed to fetch properties:", e);

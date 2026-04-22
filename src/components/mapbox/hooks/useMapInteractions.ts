@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import type { MapRef } from 'react-map-gl/mapbox';
 
 export interface PoiData {
@@ -60,8 +60,8 @@ export const useMapInteractions = ({
                 const name = f.properties?.name || f.properties?.name_en || f.properties?.text;
                 // Look for typical POI indicators in layer ID or source Layer
                 const layerId = f.layer?.id || '';
-                const isPoiLayer = layerId.includes('poi') || layerId.includes('place') || layerId.includes('transit') || layerId.includes('landmark');
-                const isPoiSource = f.sourceLayer === 'poi' || f.sourceLayer === 'transit';
+                const isPoiLayer = layerId.includes('poi') || layerId.includes('place') || layerId.includes('transit') || layerId.includes('landmark') || layerId === 'discovery-poi-layer';
+                const isPoiSource = f.sourceLayer === 'poi' || f.sourceLayer === 'transit' || f.source?.id === 'discovery-source';
                 return name && (isPoiLayer || isPoiSource);
             });
 
@@ -94,7 +94,12 @@ export const useMapInteractions = ({
     }, [onSelectId, onSelectPoi]);
 
     // Handle hover states manually to bypass interactiveLayerIds limitations in Standard style
+    const lastMoveTime = useRef<number>(0);
     const onMouseMove = useCallback((e: any) => {
+        const now = Date.now();
+        if (now - lastMoveTime.current < 80) return; // throttle to ~12fps
+        lastMoveTime.current = now;
+
         const map = e.target;
         if (!map || !e.point) return;
 
@@ -118,8 +123,8 @@ export const useMapInteractions = ({
             const poiFeature = allFeatures.find((f: any) => {
                 const name = f.properties?.name || f.properties?.name_en || f.properties?.text;
                 const layerId = f.layer?.id || '';
-                const isPoiLayer = layerId.includes('poi') || layerId.includes('place') || layerId.includes('transit') || layerId.includes('landmark');
-                const isPoiSource = f.sourceLayer === 'poi' || f.sourceLayer === 'transit';
+                const isPoiLayer = layerId.includes('poi') || layerId.includes('place') || layerId.includes('transit') || layerId.includes('landmark') || layerId === 'discovery-poi-layer';
+                const isPoiSource = f.sourceLayer === 'poi' || f.sourceLayer === 'transit' || f.source?.id === 'discovery-source';
                 return name && (isPoiLayer || isPoiSource);
             });
 

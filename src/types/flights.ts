@@ -38,6 +38,7 @@ export interface FlightResultCache extends FlightResult {
   id: string;
   search_id?: string;
   created_at?: string;
+  refundable?: boolean;
 }
 
 export interface FlightSearchParams {
@@ -83,7 +84,7 @@ export interface FarePolicy {
   changePenaltyAmount?: number | null;
   changePenaltyCurrency?: string | null;
   policyVersion: 'search' | 'revalidated';
-  policySource: 'duffel' | 'mystifly_v1' | 'mystifly_v2';
+  policySource: 'duffel' | 'mystifly_v2';
 }
 
 export interface FlightOffer {

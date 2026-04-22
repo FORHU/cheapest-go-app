@@ -7,10 +7,14 @@ interface FlightFiltersProps {
     onFilterChange: (filters: FilterState) => void;
 }
 
+export type FlightProvider = "mystifly_v2" | "duffel";
+
 export interface FilterState {
     sortBy: "price" | "duration" | "departure";
     selectedAirlines: string[];
     maxStops: number | null; // null means any
+    refundableOnly: boolean;
+    selectedProviders: FlightProvider[]; // empty = all
 }
 
 /**
@@ -21,6 +25,8 @@ export default function FlightFilters({ airlines, onFilterChange }: FlightFilter
         sortBy: "price",
         selectedAirlines: [],
         maxStops: null,
+        refundableOnly: false,
+        selectedProviders: [],
     });
 
     const toggleAirline = (airline: string) => {
@@ -89,6 +95,71 @@ export default function FlightFilters({ airlines, onFilterChange }: FlightFilter
                             {option.label}
                         </button>
                     ))}
+                </div>
+            </div>
+
+            {/* Fare Type */}
+            <div className="space-y-3">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Fare Type</p>
+                <label className="flex items-center justify-between cursor-pointer group">
+                    <div>
+                        <span className="text-sm font-bold text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                            Refundable fares
+                        </span>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Fares that allow cancellation with a refund (fees may apply)</p>
+                    </div>
+                    <button
+                        role="switch"
+                        aria-checked={state.refundableOnly}
+                        onClick={() => {
+                            const newState = { ...state, refundableOnly: !state.refundableOnly };
+                            setState(newState);
+                            onFilterChange(newState);
+                        }}
+                        className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 focus:outline-none ${
+                            state.refundableOnly ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
+                        }`}
+                    >
+                        <span
+                            className={`inline-block h-4 w-4 mt-0.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                                state.refundableOnly ? 'translate-x-4' : 'translate-x-0.5'
+                            }`}
+                        />
+                    </button>
+                </label>
+            </div>
+
+            {/* Provider */}
+            <div className="space-y-3">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Provider</p>
+                <div className="flex flex-col gap-2">
+                    {([
+                        { value: "mystifly_v2" as FlightProvider, label: "Mystifly", sub: "Branded fares" },
+                        { value: "duffel" as FlightProvider, label: "Duffel", sub: "NDC fares" },
+                    ]).map(({ value, label, sub }) => {
+                        const active = state.selectedProviders.includes(value);
+                        return (
+                            <button
+                                key={value}
+                                onClick={() => {
+                                    const next = active
+                                        ? state.selectedProviders.filter(p => p !== value)
+                                        : [...state.selectedProviders, value];
+                                    const newState = { ...state, selectedProviders: next };
+                                    setState(newState);
+                                    onFilterChange(newState);
+                                }}
+                                className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-bold transition-colors text-left ${
+                                    active
+                                        ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 ring-1 ring-indigo-300 dark:ring-indigo-700'
+                                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                }`}
+                            >
+                                <span>{label}</span>
+                                <span className={`text-[10px] font-medium ${active ? 'text-indigo-400' : 'text-slate-400'}`}>{sub}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 

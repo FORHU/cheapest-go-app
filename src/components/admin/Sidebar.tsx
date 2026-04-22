@@ -1,9 +1,9 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard,
     CalendarRange,
@@ -11,31 +11,61 @@ import {
     Building2,
     BarChart3,
     Settings,
-    LogOut,
     Plane,
     ChevronRight,
-    Smartphone,
     Mail,
-    Shield
+    Shield,
+    Banknote,
+    Plug,
+    ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+
+// ─── Nav item type ─────────────────────────────────────────
 
 interface NavItem {
     label: string;
     href: string;
-    icon: any;
+    icon: React.ElementType;
+    badge?: string;
 }
 
-const navItems = [
-    { label: 'Dashboard', href: '/admin/overview', icon: LayoutDashboard },
-    { label: 'Bookings', href: '/admin/bookings', icon: CalendarRange },
-    { label: 'Customers', href: '/admin/customers', icon: Users },
-    { label: 'Users', href: '/admin/users', icon: Shield },
-    { label: 'Suppliers', href: '/admin/suppliers', icon: Building2 },
-    { label: 'Communication', href: '/admin/communication', icon: Mail },
-    { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
-    { label: 'Settings', href: '/admin/settings', icon: Settings },
+interface NavGroup {
+    title: string;
+    items: NavItem[];
+}
+
+// ─── Route definitions ─────────────────────────────────────
+
+const navGroups: NavGroup[] = [
+    {
+        title: 'Menu',
+        items: [
+            { label: 'Dashboard',    href: '/admin/overview',      icon: LayoutDashboard },
+            { label: 'Bookings',     href: '/admin/bookings',       icon: CalendarRange },
+            { label: 'Customers',    href: '/admin/customers',      icon: Users },
+            { label: 'Users',        href: '/admin/users',          icon: Shield },
+            { label: 'Suppliers',    href: '/admin/suppliers',      icon: Building2 },
+            { label: 'Revenue',      href: '/admin/revenue',        icon: Banknote },
+        ],
+    },
+    {
+        title: 'General',
+        items: [
+            { label: 'Communication', href: '/admin/communication', icon: Mail },
+            { label: 'Analytics',     href: '/admin/analytics',     icon: BarChart3 },
+            { label: 'Settings',      href: '/admin/settings',      icon: Settings },
+        ],
+    },
+    {
+        title: 'Integrations',
+        items: [
+            { label: 'Duffel', href: '/admin/duffel', icon: Plane, badge: 'Live' },
+        ],
+    },
 ];
+
+// ─── Props ─────────────────────────────────────────────────
 
 interface SidebarProps {
     onClose?: () => void;
@@ -43,66 +73,139 @@ interface SidebarProps {
     onToggleCollapse?: () => void;
 }
 
+// ─── Single nav link ───────────────────────────────────────
+
+function NavLink({
+    item,
+    isActive,
+    isCollapsed,
+    onClick,
+}: {
+    item: NavItem;
+    isActive: boolean;
+    isCollapsed: boolean;
+    onClick?: () => void;
+}) {
+    return (
+        <Link href={item.href} onClick={onClick}>
+            <motion.div
+                title={isCollapsed ? item.label : undefined}
+                className={`relative group flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 cursor-pointer transition-all duration-300 ${
+                    isActive ? 'text-white' : 'text-slate-500 hover:text-blue-600'
+                }`}
+            >
+                {/* Active left marker */}
+                {isActive && (
+                    <motion.div
+                        layoutId="sidebar-marker"
+                        className="absolute left-0 w-1.5 h-6 bg-blue-500 rounded-r-md"
+                    />
+                )}
+
+                {/* Active background pill */}
+                {isActive && (
+                    <motion.div
+                        layoutId="sidebar-active"
+                        className="absolute inset-x-2 inset-y-1 bg-blue-600 rounded-xl -z-10 shadow-lg shadow-blue-600/20"
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    />
+                )}
+
+                <item.icon
+                    size={20}
+                    className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-500'} transition-colors shrink-0`}
+                />
+
+                {!isCollapsed && (
+                    <>
+                        <span className="text-sm font-bold tracking-tight flex-1">{item.label}</span>
+
+                        {/* Badge (e.g. "Live") */}
+                        {item.badge && !isActive && (
+                            <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                {item.badge}
+                            </span>
+                        )}
+
+                        {isActive && <ChevronRight size={14} className="ml-auto opacity-60" />}
+                    </>
+                )}
+            </motion.div>
+        </Link>
+    );
+}
+
+// ─── Collapsible nav group ─────────────────────────────────
+
+function NavGroupSection({
+    group,
+    pathname,
+    isCollapsed,
+    onClose,
+}: {
+    group: NavGroup;
+    pathname: string;
+    isCollapsed: boolean;
+    onClose?: () => void;
+}) {
+    const hasActive = group.items.some(item => pathname === item.href);
+    const [open, setOpen] = useState(true); // groups start expanded
+
+    return (
+        <div className="space-y-1">
+            {/* Group header — hidden when sidebar is collapsed */}
+            {!isCollapsed && (
+                <button
+                    onClick={() => setOpen(v => !v)}
+                    className="w-full flex items-center justify-between px-4 py-1 group/grp"
+                >
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400/80 group-hover/grp:text-slate-500 transition-colors">
+                        {group.title}
+                    </h4>
+                    <ChevronDown
+                        size={12}
+                        className={`text-slate-400 transition-transform duration-200 ${open ? 'rotate-0' : '-rotate-90'}`}
+                    />
+                </button>
+            )}
+
+            <AnimatePresence initial={false}>
+                {(open || isCollapsed) && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                        className="overflow-hidden"
+                    >
+                        <div className="space-y-0.5 pt-1">
+                            {group.items.map(item => (
+                                <NavLink
+                                    key={item.href}
+                                    item={item}
+                                    isActive={pathname === item.href}
+                                    isCollapsed={isCollapsed}
+                                    onClick={onClose}
+                                />
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+// ─── Sidebar ───────────────────────────────────────────────
+
 export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
     const pathname = usePathname();
 
-    const NavigationGroup = ({ title, items }: { title: string, items: any[] }) => (
-        <div className="space-y-4">
-            {!isCollapsed && (
-                <h4 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400/80">
-                    {title}
-                </h4>
-            )}
-            <div className="space-y-1">
-                {items.map((item) => {
-                    const isActive = pathname === item.href;
-                    return (
-                        <Link key={item.href} href={item.href} onClick={onClose}>
-                            <motion.div
-                                title={isCollapsed ? item.label : undefined}
-                                className={`relative group flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-4'} py-3 cursor-pointer transition-all duration-300 ${isActive
-                                    ? 'text-white'
-                                    : 'text-slate-500 hover:text-blue-600'
-                                    }`}
-                            >
-                                {/* Vertical Marker */}
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="sidebar-marker"
-                                        className="absolute left-0 w-1.5 h-6 bg-blue-500 rounded-r-md"
-                                    />
-                                )}
-
-                                {/* Active Background Pill */}
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="sidebar-active"
-                                        className={`absolute ${isCollapsed ? 'inset-x-2' : 'inset-x-2'} inset-y-1 bg-blue-600 rounded-xl -z-10 shadow-lg shadow-blue-600/20`}
-                                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                                    />
-                                )}
-
-                                <item.icon size={20} className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-500'} transition-colors`} />
-
-                                {!isCollapsed && (
-                                    <>
-                                        <span className="text-sm font-bold tracking-tight">{item.label}</span>
-                                        {isActive && (
-                                            <ChevronRight size={14} className="ml-auto opacity-60" />
-                                        )}
-                                    </>
-                                )}
-                            </motion.div>
-                        </Link>
-                    );
-                })}
-            </div>
-        </div>
-    );
-
     return (
-        <aside className={`${isCollapsed ? 'w-24' : 'w-72'} h-screen flex flex-col bg-white dark:bg-obsidian border-r border-slate-100 dark:border-white/5 relative z-50 transition-all duration-300`}>
-            {/* Logo Section */}
+        <aside
+            className={`${isCollapsed ? 'w-24' : 'w-72'} h-screen flex flex-col bg-white dark:bg-obsidian border-r border-slate-100 dark:border-white/5 relative z-50 transition-all duration-300`}
+        >
+            {/* Logo */}
             <div className={`p-8 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
                 <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
                     <Plane className="text-white" size={24} />
@@ -114,37 +217,40 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
                 )}
             </div>
 
-            {/* Navigation Sections */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-10 thin-scrollbar">
-                <NavigationGroup title="Menu" items={navItems.slice(0, 6)} />
-                <NavigationGroup title="General" items={navItems.slice(6)} />
-
-                {/* Sidebar Widget (Download App) - Hidden when collapsed */}
-                {!isCollapsed && (
-                    <div className="mt-10 px-4">
-                        <div className="bg-slate-900 rounded-3xl p-6 relative overflow-hidden group">
-                            {/* Decorative Patterns */}
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full -mr-16 -mt-16" />
-                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-500/10 blur-3xl rounded-full -ml-12 -mb-12" />
-
-                            <div className="relative z-10 space-y-4">
-                                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-emerald-400">
-                                    <Smartphone size={16} />
-                                </div>
-                                <h5 className="text-xs font-bold text-white uppercase tracking-widest">Mobile App</h5>
-                                <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
-                                    Experience Donezo on your mobile device.
-                                </p>
-                                <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-500 text-white border-0 text-[10px] font-black uppercase tracking-wider rounded-xl py-3 h-auto shadow-lg shadow-blue-600/20">
-                                    Download
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+            {/* Navigation */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-7 thin-scrollbar">
+                {navGroups.map(group => (
+                    <NavGroupSection
+                        key={group.title}
+                        group={group}
+                        pathname={pathname}
+                        isCollapsed={!!isCollapsed}
+                        onClose={onClose}
+                    />
+                ))}
             </div>
 
-            {/* Bottom Actions: Collapse Toggle */}
+            {/* Integrations pill — visible when collapsed, acts as a hint */}
+            {isCollapsed && (
+                <div className="px-3 pb-3">
+                    <div className="border-t border-slate-100 dark:border-white/5 pt-3 flex flex-col items-center gap-1">
+                        <Link href="/admin/duffel" onClick={onClose} title="Duffel">
+                            <motion.div
+                                whileHover={{ scale: 1.08 }}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                                    pathname === '/admin/duffel'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                                        : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-600/10'
+                                }`}
+                            >
+                                <Plane size={20} />
+                            </motion.div>
+                        </Link>
+                    </div>
+                </div>
+            )}
+
+            {/* Collapse toggle */}
             <div className="p-6 mt-auto border-t border-slate-100 dark:border-white/5 flex items-center justify-center">
                 <Button
                     variant="ghost"

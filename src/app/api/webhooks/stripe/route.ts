@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ received: true });
         }
 
-        if (provider !== 'mystifly' && provider !== 'mystifly_v2') {
+        if (provider !== 'mystifly_v2') {
             // Only Mystifly uses manual capture — ignore for other providers
             return NextResponse.json({ received: true });
         }
@@ -107,11 +107,12 @@ export async function POST(req: NextRequest) {
 
         try {
             // Mark session as payment_authorized before calling create-booking
+            // Accept both 'initiated' (legacy) and 'payment_initiated' (current /book sets this)
             await supabase
                 .from('booking_sessions')
                 .update({ status: 'payment_authorized' })
                 .eq('id', bookingSessionId)
-                .eq('status', 'initiated');
+                .in('status', ['initiated', 'payment_initiated']);
 
             const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
                 method: 'POST',
@@ -129,7 +130,7 @@ export async function POST(req: NextRequest) {
                     'booking'
                 );
                 // Send confirmation email — fire-and-forget (webhook fires exactly once)
-                fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, pi.metadata?.provider ?? 'mystifly')
+                fireBookingConfirmationEmail(supabase, bookingSessionId, bookingData, pi.metadata?.provider ?? 'mystifly_v2')
                     .catch(e => console.error('[Webhook] Mystifly email error:', e));
 
                 // Financial ledger: log payment event
@@ -138,7 +139,7 @@ export async function POST(req: NextRequest) {
                         bookingId: bookingData.bookingId,
                         amount: pi.amount / 100,
                         currency: (pi.currency || 'usd').toUpperCase(),
-                        provider: 'mystifly',
+                        provider: 'mystifly_v2',
                         transactionId: pi.id,
                         metadata: { sessionId: bookingSessionId, pnr: bookingData.pnr },
                     });
@@ -163,18 +164,31 @@ export async function POST(req: NextRequest) {
         }
 
         // skip Mystifly here — it's handled by amount_capturable_updated above
-        if (provider === 'mystifly' || provider === 'mystifly_v2') {
+        if (provider === 'mystifly_v2') {
             return NextResponse.json({ received: true });
         }
 
         console.log(`[Webhook] Duffel payment succeeded. Session: ${bookingSessionId}`);
 
         try {
-            // Idempotent: create-booking returns existing booking if /confirm already ran
+            // FIX 3: Optimistic session lock — prevents double-booking if Stripe delivers
+            // the webhook twice concurrently before the dedup table write completes.
+            // Matches the pattern used in the Mystifly path.
+            await supabase
+                .from('booking_sessions')
+                .update({ status: 'payment_authorized' })
+                .eq('id', bookingSessionId)
+                .in('status', ['initiated', 'payment_initiated']);
+
+            // Idempotent: create-booking returns existing booking if /confirm already ran.
+            // Pass piId directly — DO NOT rely solely on booking_sessions.payment_intent_id,
+            // which can be null if the Step 3a update in /api/flights/book failed silently
+            // (e.g. column doesn't exist yet). This ensures flight_bookings always gets the
+            // PI ID so cancel-booking can issue Stripe refunds correctly.
             const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ sessionId: bookingSessionId }),
+                body: JSON.stringify({ sessionId: bookingSessionId, paymentIntentId: pi.id }),
             });
 
             const bookingData = await bookingRes.json();
@@ -227,6 +241,104 @@ export async function POST(req: NextRequest) {
             console.error('[Webhook] Duffel booking error:', err);
             // DO NOT return 5xx — that causes Stripe to retry and may double-book.
             // Alert on-call team in production.
+        }
+    }
+
+    // ── Duffel: cancel orphaned pre-order when payment fails ────────────────
+    else if (
+        event.type === 'payment_intent.payment_failed' ||
+        event.type === 'payment_intent.canceled'
+    ) {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const { bookingSessionId, duffelOrderId, provider } = pi.metadata ?? {};
+
+        if (provider !== 'duffel' || !duffelOrderId) {
+            return NextResponse.json({ received: true });
+        }
+
+        console.log(`[Stripe Webhook] Duffel payment failed/cancelled — cancelling pre-order ${duffelOrderId}`);
+
+        try {
+            const duffelToken = process.env.DUFFEL_TOKEN;
+            if (!duffelToken) {
+                console.error('[Stripe Webhook] DUFFEL_TOKEN not set — cannot cancel orphaned order');
+                return NextResponse.json({ received: true });
+            }
+
+            // Step 1: Create a cancellation
+            const cancelRes = await fetch('https://api.duffel.com/air/order_cancellations', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${duffelToken}`,
+                    'Duffel-Version': 'v2',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data: { order_id: duffelOrderId } }),
+            });
+
+            if (!cancelRes.ok) {
+                const errData = await cancelRes.json().catch(() => ({}));
+                console.warn(`[Stripe Webhook] Duffel cancellation init failed (${cancelRes.status}):`, errData?.errors?.[0]?.message);
+            } else {
+                const cancelData = await cancelRes.json();
+                const cancellationId = cancelData?.data?.id;
+
+                // Step 2: Confirm the cancellation
+                if (cancellationId) {
+                    const confirmRes = await fetch(
+                        `https://api.duffel.com/air/order_cancellations/${cancellationId}/actions/confirm`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${duffelToken}`,
+                                'Duffel-Version': 'v2',
+                                'Content-Type': 'application/json',
+                            },
+                        }
+                    );
+                    console.log(confirmRes.ok
+                        ? `[Stripe Webhook] Orphaned Duffel order ${duffelOrderId} cancelled successfully`
+                        : `[Stripe Webhook] Duffel cancellation confirm failed (${confirmRes.status})`
+                    );
+                }
+            }
+
+            // Mark the booking session as payment_failed
+            if (bookingSessionId) {
+                await supabase
+                    .from('booking_sessions')
+                    .update({ status: 'payment_failed' })
+                    .eq('id', bookingSessionId)
+                    .in('status', ['payment_initiated', 'initiated']);
+            }
+        } catch (err) {
+            console.error('[Stripe Webhook] Error cancelling orphaned Duffel order:', err);
+        }
+    }
+
+    // ── Refund Resilience: update booking status when Stripe confirms refund ──
+    else if (event.type === 'charge.refunded') {
+        const charge = event.data.object as Stripe.Charge;
+        const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : (charge.payment_intent as any)?.id;
+        
+        if (piId) {
+            console.log(`[Stripe Webhook] Charge refunded for PI: ${piId}. Updating booking status.`);
+            const { data: updated, error: updateErr } = await supabase
+                .from('flight_bookings')
+                .update({ 
+                    status: 'refunded',
+                    // Note: we don't overwrite refund_amount here because it might be partial,
+                    // and the cancel-booking route already set the expected amount.
+                })
+                .eq('payment_intent_id', piId)
+                .in('status', ['refund_pending', 'cancel_requested', 'confirmed', 'ticketed', 'booked', 'pnr_created', 'awaiting_ticket', 'cancel_failed'])
+                .select('id');
+
+            if (updateErr) {
+                console.error('[Stripe Webhook] Failed to update booking to refunded:', updateErr.message);
+            } else if (updated && updated.length > 0) {
+                console.log(`[Stripe Webhook] Successfully marked ${updated.length} booking(s) as refunded.`);
+            }
         }
     }
 

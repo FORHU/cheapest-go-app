@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, Suspense, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Search, X, Plane } from 'lucide-react';
+import { Sparkles, Search, X, Plane, Hotel } from 'lucide-react';
 import { MagneticButton } from '@/components/ui';
 import SearchModeToggle from './SearchModeToggle';
 import AIPromptInput from './AIPromptInput';
@@ -62,6 +62,22 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
     // Global State
     const searchMode = useSearchMode();
     const { setSearchMode } = useSearchActions();
+
+    // Switch tab + detect bundle context from URL params on mount
+    const [isBundleMode, setIsBundleMode] = useState(false);
+    const [hasAlreadyBookedFlight, setHasAlreadyBookedFlight] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const mode = params.get('mode');
+        if (mode === 'flights' || mode === 'hotels' || mode === 'ai') {
+            setSearchMode(mode);
+        }
+        if (params.get('bundleHotelId')) setIsBundleMode(true);
+        setHasAlreadyBookedFlight(sessionStorage.getItem('hasAlreadyBookedFlight') === 'true');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // AI Local State
     const [aiQuery, setAiQuery] = useState('');
@@ -160,6 +176,25 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
             }}
         >
             <SearchModeToggle mode={searchMode} onModeChange={handleModeChange} />
+
+            {/* Bundle instruction banner */}
+            {isBundleMode && searchMode === 'flights' && !hasAlreadyBookedFlight && (
+                <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2.5 px-4 py-2.5 mb-3 rounded-xl bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-700/50"
+                >
+                    <div className="p-1.5 bg-violet-100 dark:bg-violet-900/40 rounded-lg shrink-0">
+                        <Hotel size={14} className="text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <p className="text-xs text-violet-700 dark:text-violet-300 flex-1">
+                        <span className="font-bold">Hotel booked!</span> Enter your <span className="font-semibold">FROM</span> and <span className="font-semibold">TO</span> airports, pick your dates, then hit Search to bundle and save up to 8%.
+                    </p>
+                    <button onClick={() => setIsBundleMode(false)} className="shrink-0 text-violet-400 hover:text-violet-600 dark:hover:text-violet-200 transition-colors">
+                        <X size={14} />
+                    </button>
+                </motion.div>
+            )}
 
             {/* Flight Trip Type Selector - Shown only in flights mode, hidden on mobile */}
             <AnimatePresence>

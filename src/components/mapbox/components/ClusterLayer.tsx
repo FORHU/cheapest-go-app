@@ -1,20 +1,13 @@
 import React from 'react';
 import { Source, Layer } from 'react-map-gl/mapbox';
-import { clusterLayer, clusterCountLayer, unclusteredPointLayer, unclusteredPointTextLayer } from '../utils/mapLayerConfig';
+import { clusterLayer, clusterCountLayer } from '../utils/mapLayerConfig';
 
 interface ClusterLayerProps {
     geoJsonData: any;
     shouldCluster: boolean;
-    selectedId: string | null;
-    hoveredId: string | null;
 }
 
-export const ClusterLayer = React.memo(({
-    geoJsonData,
-    shouldCluster,
-    selectedId,
-    hoveredId,
-}: ClusterLayerProps) => {
+export const ClusterLayer = React.memo(({ geoJsonData, shouldCluster }: ClusterLayerProps) => {
     return (
         <Source
             id="properties"

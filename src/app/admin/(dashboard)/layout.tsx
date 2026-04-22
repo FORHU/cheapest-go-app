@@ -1,6 +1,12 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import { createClient } from '@/utils/supabase/server';
+
+export const metadata: Metadata = {
+  title: 'Admin | CheapestGo',
+  robots: { index: false, follow: false },
+};
 import { redirect } from 'next/navigation';
 import { AdminLayoutClient } from './AdminLayoutClient';
 
@@ -10,7 +16,14 @@ export default async function AdminLayout({
     children: React.ReactNode;
 }) {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = null;
+
+    try {
+        const { data } = await supabase.auth.getUser();
+        user = data.user;
+    } catch (err) {
+        console.error('[AdminLayout] Auth error during getUser:', err);
+    }
 
     if (!user) {
         redirect('/login?redirect=/admin');

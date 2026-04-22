@@ -30,6 +30,10 @@ interface PropertyMapSidebarProps {
     propertyName?: string;
 }
 
-export default function PropertyMapSidebar(props: PropertyMapSidebarProps) {
+const PropertyMapSidebar = React.memo((props: PropertyMapSidebarProps) => {
     return <PropertyMapSidebarContent {...props} />;
-}
+});
+
+PropertyMapSidebar.displayName = 'PropertyMapSidebar';
+
+export default PropertyMapSidebar;

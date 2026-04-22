@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { MapRef } from 'react-map-gl/mapbox';
 import { getBoundsFromProperties } from '../utils/getBoundsFromProperties';
 import { MappableProperty } from '../utils/buildGeoJson';
@@ -16,7 +16,7 @@ export const useMapViewport = ({
     properties,
     selectedId,
 }: UseMapViewportProps) => {
-    const propertiesKey = properties.map(p => p.id).join(',');
+    const propertiesKey = useMemo(() => properties.map(p => p.id).join(','), [properties]);
     const hasFittedRef = useRef<string | null>(null);
 
     // 1. Fit bounds on load / properties change

@@ -180,10 +180,23 @@ Deno.serve(async (req: Request) => {
             console.log('[mystifly-search] Mystifly returned 0 itineraries');
         }
 
-        // Inject our tunneled traceId (FareSourceCode|ConversationId|SessionId)
+        // Capture SearchIdentifier — Mystifly now requires this for BookFlight
+        // Try multiple paths since the field location varies by API version/response shape
+        const searchIdentifier =
+            raw.Data?.SearchIdentifier ??
+            raw.Data?.AirSearchStatistics?.SearchIdentifier ??
+            raw.SearchIdentifier ??
+            (itinData[0] as any)?.SearchIdentifier ??
+            '';
+        // Log top-level Data keys and first itinerary keys to locate SearchIdentifier if missing
+        console.log('[mystifly-search] raw.Data keys:', Object.keys(raw.Data ?? {}).join(', '));
+        if (itinData[0]) console.log('[mystifly-search] itinData[0] keys:', Object.keys(itinData[0]).join(', '));
+        console.log('[mystifly-search] SearchIdentifier:', searchIdentifier ? searchIdentifier.slice(0, 30) + '...' : '(empty)');
+
+        // Inject our tunneled traceId (FareSourceCode|ConversationId|SessionId|SearchIdentifier)
         flights.forEach(offer => {
             if (offer.traceId) {
-                offer.traceId = `${offer.traceId}|${conversationId}|${sessionId}`;
+                offer.traceId = `${offer.traceId}|${conversationId}|${sessionId}|${searchIdentifier}`;
             }
         });
 

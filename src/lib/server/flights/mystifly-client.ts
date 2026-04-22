@@ -112,10 +112,6 @@ export async function mystiflyRequest<T = any>(
 
 // ─── Search Helpers ───────────────────────────────────────────────────
 
-export async function searchMystiflyDirect(body: any) {
-    return mystiflyRequest('/api/v1/Search/Flight', body);
-}
-
 export async function searchMystiflyV2Direct(body: any) {
     return mystiflyRequest('/api/v2/Search/Flight', body);
 }
@@ -230,127 +226,6 @@ function calculateDuration(dep: string, arr: string): number {
     } catch { return 0; }
 }
 
-// ─── V1 Result Normalization ──────────────────────────────────────────
-
-export function normalizeMystiflyV1Results(raw: any, maxOffers = 50): any[] {
-    const itinData: any[] = raw.Data?.PricedItineraries ?? raw.Data?.FareItineraries ?? [];
-    const results: any[] = [];
-
-    for (const fareItinerary of itinData.slice(0, maxOffers)) {
-        try {
-            const itinerary = fareItinerary?.FareItinerary ?? fareItinerary;
-            const fareInfo = itinerary?.AirItineraryFareInfo ?? itinerary?.AirItineraryPricingInfo;
-            if (!fareInfo) continue;
-
-            const fareSourceCode: string = fareInfo.FareSourceCode ?? '';
-            if (!fareSourceCode) continue;
-
-            const itinFare = fareInfo.ItinTotalFare;
-            const currency: string = itinFare?.TotalFare?.CurrencyCode ?? 'USD';
-            const price = Number(itinFare?.TotalFare?.Amount) || 0;
-            const baseFare = Number(itinFare?.BaseFare?.Amount) || 0;
-            const taxes = Number(itinFare?.TotalTax?.Amount) || 0;
-
-            let pricePerAdult = price;
-            const fareBreakdown: any[] = fareInfo.FareBreakdown ?? fareInfo.PTC_FareBreakdowns ?? [];
-            for (const fb of fareBreakdown) {
-                if (fb?.PassengerTypeQuantity?.Code === 'ADT') {
-                    pricePerAdult = Number(fb?.PassengerFare?.TotalFare?.Amount) || price;
-                    break;
-                }
-            }
-
-            const originDestOptions: any[] = itinerary.OriginDestinationOptions ?? [];
-            const segments: any[] = [];
-            let totalDurationMin = 0;
-            let totalStops = 0;
-
-            for (const odo of originDestOptions) {
-                const options: any[] = odo.OriginDestinationOption ?? odo.FlightSegments ?? [];
-                // Derive stops from segment count — TotalStops from Mystifly is often 0 even for connections
-                totalStops += Math.max(0, options.length - 1);
-                for (const opt of options) {
-                    const fs = opt.FlightSegment ?? opt;
-                    if (!fs) continue;
-                    const airlineCode = fs.OperatingAirline?.Code ?? fs.MarketingAirlineCode ?? '';
-                    const flightNum = fs.FlightNumber ?? fs.OperatingAirline?.FlightNumber ?? '';
-                    const depTime = fs.DepartureDateTime ?? '';
-                    const arrTime = fs.ArrivalDateTime ?? '';
-                    const duration = Number(fs.JourneyDuration) || calculateDuration(depTime, arrTime);
-                    totalDurationMin += duration;
-                    segments.push({
-                        airline: airlineCode,
-                        airlineName: getAirlineName(airlineCode),
-                        flightNumber: `${airlineCode}${flightNum}`,
-                        origin: fs.DepartureAirportLocationCode ?? '',
-                        destination: fs.ArrivalAirportLocationCode ?? '',
-                        departureTime: depTime,
-                        arrivalTime: arrTime,
-                        duration,
-                        cabinClass: mapCabinClass(fs.CabinClassCode ?? 'Y'),
-                        terminal: fs.DepartureTerminal,
-                        arrivalTerminal: fs.ArrivalTerminal,
-                        aircraft: fs.Equipment?.AirEquipType,
-                    });
-                }
-            }
-
-            if (!segments.length) continue;
-
-            const firstSeg = segments[0];
-            const lastSeg = segments[segments.length - 1];
-            const firstOpt = originDestOptions[0]?.OriginDestinationOption?.[0];
-            const seatsRemaining = firstOpt?.SeatsRemaining?.Number
-                ? Number(firstOpt.SeatsRemaining.Number) : null;
-
-            // Baggage
-            let checkedBags: number | undefined;
-            for (const fb of fareBreakdown) {
-                if (fb?.PassengerTypeQuantity?.Code !== 'ADT') continue;
-                const bags = fb.BaggageAllowance ?? fb.BaggageInfo ?? [];
-                if (bags.length > 0) {
-                    checkedBags = typeof bags[0] === 'string'
-                        ? parseInt(bags[0], 10) || 0
-                        : Number(bags[0].NumberOfPieces) || 0;
-                }
-                break;
-            }
-
-            // Refundability
-            const isRefundable = fareInfo.IsRefundable === true
-                || itinerary.IsRefundable === true
-                || fareInfo.FareType?.toLowerCase().includes('refund');
-
-            results.push({
-                provider: 'mystifly',
-                offer_id: fareSourceCode,
-                price,
-                currency,
-                baseFare,
-                taxes,
-                pricePerAdult,
-                airline: firstSeg.airline,
-                airlineName: firstSeg.airlineName,
-                departure_time: firstSeg.departureTime,
-                arrival_time: lastSeg.arrivalTime,
-                duration: totalDurationMin,
-                durationMinutes: totalDurationMin,
-                stops: totalStops,
-                remaining_seats: seatsRemaining,
-                checkedBags,
-                refundable: isRefundable,
-                traceId: fareSourceCode,
-                segments,
-                raw: fareItinerary,
-            });
-        } catch (err: any) {
-            console.error('[MystiflyClient] V1 normalization error:', err.message);
-        }
-    }
-
-    return results;
-}
-
 // ─── V2 Result Normalization ──────────────────────────────────────────
 
 export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
@@ -384,20 +259,34 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
             // Segments
             const segments: any[] = [];
             let totalDurationMin = 0;
-            let totalStops = 0;
             let brandName: string | undefined;
             let checkedBags = 0;
+
+            const seenItineraryRefs: string[] = [];
+            let outboundDurationMin = 0;
+            let outboundSegCount = 0;
 
             for (const odo of (itin.OriginDestinations ?? [])) {
                 const seg = data.FlightSegmentList?.find((s: any) => s.SegmentRef === odo.SegmentRef);
                 if (!seg) continue;
+
+                // Track unique ItineraryRef values to assign itineraryIndex (outbound=0, return=1, etc.)
+                const itinRef = odo.ItineraryRef ?? '';
+                if (!seenItineraryRefs.includes(itinRef)) seenItineraryRefs.push(itinRef);
+                const itineraryIndex = seenItineraryRefs.indexOf(itinRef);
+                const isOutbound = itineraryIndex === 0;
+
                 const airlineCode = seg.OperatingCarrierCode ?? seg.MarketingCarriercode ?? '';
                 const flightNum = seg.OperatingFlightNumber ?? seg.MarketingFlightNumber ?? '';
                 const depTime = seg.DepartureDateTime ?? '';
                 const arrTime = seg.ArrivalDateTime ?? '';
                 const duration = Number(seg.JourneyDuration) || calculateDuration(depTime, arrTime);
                 totalDurationMin += duration;
-                totalStops += Number(seg.stops) || 0;
+
+                if (isOutbound) {
+                    outboundDurationMin += duration;
+                    outboundSegCount++;
+                }
 
                 const iref = data.ItineraryReferenceList?.find((i: any) => i.ItineraryRef === odo.ItineraryRef);
                 if (iref?.FareFamily && !brandName) brandName = iref.FareFamily;
@@ -420,13 +309,20 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
                     terminal: seg.DepartureTerminal,
                     arrivalTerminal: seg.ArrivalTerminal,
                     aircraft: seg.Equipment,
+                    itineraryIndex,
                 });
             }
 
             if (!segments.length) continue;
 
+            // Stop count = outbound segments - 1 (seg.stops is unreliable in V2 API responses).
+            // Display duration uses outbound leg only (not the combined round-trip total).
+            const displayStops = outboundSegCount > 0 ? outboundSegCount - 1 : 0;
+            const displayDuration = outboundDurationMin || totalDurationMin;
+            // Destination and arrivalTime from the last OUTBOUND segment, not the inbound return.
+            const outboundSegs = segments.filter(s => (s.itineraryIndex ?? 0) === 0);
             const firstSeg = segments[0];
-            const lastSeg = segments[segments.length - 1];
+            const lastSeg = outboundSegs[outboundSegs.length - 1] ?? segments[segments.length - 1];
 
             const isRefundable = fare?.IsRefundable === true
                 || fare?.FareType?.toLowerCase().includes('refund');
@@ -443,9 +339,9 @@ export function normalizeMystiflyV2Results(raw: any, maxOffers = 50): any[] {
                 airlineName: firstSeg.airlineName,
                 departure_time: firstSeg.departureTime,
                 arrival_time: lastSeg.arrivalTime,
-                duration: totalDurationMin,
-                durationMinutes: totalDurationMin,
-                stops: totalStops,
+                duration: displayDuration,
+                durationMinutes: displayDuration,
+                stops: displayStops,
                 remaining_seats: null,
                 checkedBags: checkedBags || undefined,
                 refundable: isRefundable,

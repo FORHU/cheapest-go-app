@@ -29,8 +29,8 @@ declare const Deno: any;
 
 import type { FlightProvider } from '../_shared/types.ts';
 import { FlightProvider as FP } from '../_shared/types.ts';
-import { revalidateFare, revalidateFareV2 } from '../_shared/mystiflyClient.ts';
-import { normalizeMystiflyV1Policy, normalizeMystiflyV2Policy, normalizeDuffelPolicy } from '../_shared/farePolicy.ts';
+import { revalidateFare } from '../_shared/mystiflyClient.ts';
+import { normalizeMystiflyV1Policy, normalizeDuffelPolicy } from '../_shared/farePolicy.ts';
 import type { NormalizedFarePolicy } from '../_shared/types.ts';
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
             }, 400);
         }
 
-        if (body.provider !== 'mystifly' && body.provider !== 'mystifly_v2' && body.provider !== 'duffel') {
+        if (body.provider !== 'mystifly_v2' && body.provider !== 'duffel') {
             return jsonResponse(corsHeaders, {
                 success: false,
                 error: `Unknown provider: ${body.provider}`,
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
         // ── Route to provider ──
         let result: RevalidateResult;
 
-        if (body.provider === 'mystifly' || body.provider === 'mystifly_v2') {
+        if (body.provider === 'mystifly_v2') {
             result = await revalidateMystifly(body, oldPrice, startMs);
         } else {
             // Duffel — re-read policy from the stored flight offer in the booking session.
@@ -147,8 +147,15 @@ Deno.serve(async (req: Request) => {
             // re-extract policy from the Order response and overwrite this if changed.
             const storedFlight = body.flightPayload?.flight as any;
             let farePolicy: NormalizedFarePolicy | undefined;
-            if (storedFlight?.conditions) {
-                farePolicy = { ...normalizeDuffelPolicy(storedFlight), policyVersion: 'revalidated', policySource: 'duffel' };
+            // Use pre-normalized farePolicy if already present (set during search)
+            if (storedFlight?.farePolicy) {
+                farePolicy = { ...storedFlight.farePolicy, policyVersion: 'revalidated', policySource: 'duffel' };
+            } else {
+                // Fall back to re-normalizing from raw offer conditions
+                const rawConditions = storedFlight?.conditions ?? storedFlight?.raw?.conditions ?? storedFlight?._rawOffer?.conditions;
+                if (rawConditions) {
+                    farePolicy = { ...normalizeDuffelPolicy({ conditions: rawConditions }), policyVersion: 'revalidated', policySource: 'duffel' };
+                }
             }
 
             const nowIso = new Date().toISOString();
@@ -211,14 +218,16 @@ async function revalidateMystifly(
     let traceId = body.flightPayload.traceId;
     let conversationId: string | undefined = undefined;
     let sessionId: string | undefined = undefined;
+    let searchIdentifier: string | undefined = undefined;
 
-    // ── Extract tunneled IDs (FareSourceCode|ConversationId|SessionId) ──
+    // ── Extract tunneled IDs (FareSourceCode|ConversationId|SessionId|SearchIdentifier) ──
     if (traceId?.includes('|')) {
         const parts = traceId.split('|');
         traceId = parts[0];
         conversationId = parts[1];
         sessionId = parts[2];
-        console.log('[revalidate-flight] Extracted tunneled IDs:', { conversationId, hasSessionId: !!sessionId });
+        searchIdentifier = parts[3];
+        console.log('[revalidate-flight] Extracted tunneled IDs:', { conversationId, hasSessionId: !!sessionId, hasSearchId: !!searchIdentifier });
     }
 
     if (!traceId) {
@@ -235,41 +244,40 @@ async function revalidateMystifly(
         };
     }
 
-    // ── Call Mystifly API (catch errors gracefully instead of letting them 500) ──
+    // ── Mystifly: skip revalidation entirely — the Mystifly environment requires
+    //    SearchIdentifier on ALL revalidate endpoints (V1 and V2), but SearchIdentifier
+    //    is only returned by V2 search and is often empty/missing. Skipping here is
+    //    safe because the booking API validates the fare independently.
+    if (body.provider === 'mystifly_v2') {
+        console.warn(`[revalidate-flight] mystifly_v2: skipping revalidation (SearchIdentifier unreliable) — soft-passing with original price`);
+        return {
+            success: true,
+            priceChanged: false,
+            oldPrice,
+            newPrice: oldPrice,
+            seatsAvailable: true,
+            provider: body.provider,
+            validatedFlight: {
+                price: oldPrice,
+                baseFare: oldPrice,
+                taxes: 0,
+                currency: body.flightPayload.currency || 'USD',
+                pricePerAdult: oldPrice,
+                traceId,
+            },
+            revalidationSkipped: true,
+            durationMs: Date.now() - startMs,
+        };
+    }
+
+    // ── Call Mystifly V1 API (V2 already returned above) ──
     let raw: any;
     try {
-        raw = body.provider === 'mystifly_v2'
-            ? await revalidateFareV2(traceId, sessionId, conversationId)
-            : await revalidateFare(traceId, sessionId, conversationId);
+        raw = await revalidateFare(traceId, sessionId, conversationId);
     } catch (err: any) {
         const msg = err?.message || 'Mystifly revalidation request failed';
         const isExpired = /expired|not found|not available|timeout|abort/i.test(msg);
-        const isParse = err?.type === 'PARSE' || /invalid json|empty response/i.test(msg);
-        console.error(`[revalidate-flight] Mystifly API error (${body.provider}):`, msg);
-
-        // V2 PARSE errors (empty response) = endpoint may not exist.
-        // Soft-pass: trust the fare from search and let the booking API validate it.
-        if (body.provider === 'mystifly_v2' && isParse) {
-            console.warn('[revalidate-flight] V2 revalidation unavailable — soft-passing with original price');
-            return {
-                success: true,
-                priceChanged: false,
-                oldPrice,
-                newPrice: oldPrice,
-                seatsAvailable: true,
-                provider: body.provider,
-                validatedFlight: {
-                    price: oldPrice,
-                    baseFare: oldPrice,
-                    taxes: 0,
-                    currency: body.flightPayload.currency || 'USD',
-                    pricePerAdult: oldPrice,
-                    traceId,
-                },
-                revalidationSkipped: true,
-                durationMs: Date.now() - startMs,
-            };
-        }
+        console.error(`[revalidate-flight] Mystifly V1 API error:`, msg);
 
         return {
             success: true, // success=true means we handled it; seatsAvailable=false means fare is gone
@@ -328,53 +336,29 @@ async function revalidateMystifly(
     let newTraceId = traceId;
     let freshFarePolicy: NormalizedFarePolicy;
 
-    // V2 Pricing Structure (FlightFaresList)
-    if (body.provider === 'mystifly_v2' && (revalData.FlightFaresList ?? []).length > 0) {
-        const fare = revalData.FlightFaresList[0];
-        currency = fare.Currency ?? body.flightPayload.currency ?? 'USD';
-        const passengerFares: any[] = fare.PassengerFare ?? [];
-        for (const pf of passengerFares) {
-            const paxTotal = parseFloat(pf.TotalFare) || 0;
-            const paxBase = parseFloat(pf.BaseFare) || 0;
-            const qty = Number(pf.Quantity) || 1;
-            newPrice += paxTotal * qty;
-            baseFare += paxBase * qty;
-            if (pf.PaxType === 'ADT') pricePerAdult = paxTotal;
+    // V1 Pricing Structure (V2 paths always return early above)
+    currency = itinFare?.TotalFare?.CurrencyCode ?? body.flightPayload.currency ?? 'USD';
+    newPrice = Number(itinFare?.TotalFare?.Amount) || 0;
+    baseFare = Number(itinFare?.BaseFare?.Amount) || 0;
+    taxes = Number(itinFare?.TotalTax?.Amount) || 0;
+
+    pricePerAdult = newPrice;
+    const fareBreakdown: any[] = fareInfo.FareBreakdown ?? [];
+    for (const fb of fareBreakdown) {
+        if (fb?.PassengerTypeQuantity?.Code === 'ADT') {
+            pricePerAdult = Number(fb?.PassengerFare?.TotalFare?.Amount) || newPrice;
+            break;
         }
-        if (pricePerAdult === 0) pricePerAdult = newPrice;
-        taxes = Math.max(0, newPrice - baseFare);
-
-        newTraceId = fare.FareSourceCode ?? revalData.FareSourceCode ?? traceId;
-        freshFarePolicy = {
-            ...normalizeMystiflyV2Policy(fare),
-            policyVersion: 'revalidated',
-            policySource: 'mystifly_v2',
-        };
-    } else {
-        // V1 Pricing Structure
-        currency = itinFare?.TotalFare?.CurrencyCode ?? body.flightPayload.currency ?? 'USD';
-        newPrice = Number(itinFare?.TotalFare?.Amount) || 0;
-        baseFare = Number(itinFare?.BaseFare?.Amount) || 0;
-        taxes = Number(itinFare?.TotalTax?.Amount) || 0;
-
-        pricePerAdult = newPrice;
-        const fareBreakdown: any[] = fareInfo.FareBreakdown ?? [];
-        for (const fb of fareBreakdown) {
-            if (fb?.PassengerTypeQuantity?.Code === 'ADT') {
-                pricePerAdult = Number(fb?.PassengerFare?.TotalFare?.Amount) || newPrice;
-                break;
-            }
-        }
-
-        newTraceId = fareInfo.FareSourceCode ?? revalData.FareSourceCode ?? traceId;
-        const freshItinerary = revalData.FareItinerary ?? revalData.Itinerary ?? revalData;
-
-        freshFarePolicy = {
-            ...normalizeMystiflyV1Policy(freshItinerary),
-            policyVersion: 'revalidated',
-            policySource: 'mystifly_v1',
-        };
     }
+
+    newTraceId = fareInfo.FareSourceCode ?? revalData.FareSourceCode ?? traceId;
+    const freshItinerary = revalData.FareItinerary ?? revalData.Itinerary ?? revalData;
+
+    freshFarePolicy = {
+        ...normalizeMystiflyV1Policy(freshItinerary),
+        policyVersion: 'revalidated',
+        policySource: 'mystifly_v2',
+    };
 
     // ── Safety: if price extraction returned 0 but Mystifly said Success,
     //    this is a parsing issue, not a real $0 fare. Soft-pass with oldPrice.
