@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -47,6 +47,15 @@ function MapSearchLayout({ properties, title }: MapSearchLayoutProps) {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [showMap, setShowMap] = useState(true);
+    const [isDesktop, setIsDesktop] = useState(false);
+
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 768px)');
+        setIsDesktop(mq.matches);
+        const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
+    }, []);
 
     // Filter to only properties with valid coordinates
     const mappableProperties = useMemo<MappableProperty[]>(
@@ -111,18 +120,19 @@ function MapSearchLayout({ properties, title }: MapSearchLayoutProps) {
                 />
             </div>
 
-            {/* RIGHT: Map (Tablet/Desktop) */}
-            {/* Show side-by-side on md+ */}
-            <div className="hidden md:block flex-1 h-full sticky top-0">
-                <PropertyMapView
-                    properties={mappableProperties}
-                    selectedId={selectedId}
-                    hoveredId={hoveredId}
-                    onSelect={handleSelect}
-                    onHover={handleHover}
-                    onViewDetails={handleViewDetails}
-                />
-            </div>
+            {/* RIGHT: Map — only mounted on md+ to prevent Mapbox running on mobile */}
+            {isDesktop && (
+                <div className="flex-1 h-full sticky top-0">
+                    <PropertyMapView
+                        properties={mappableProperties}
+                        selectedId={selectedId}
+                        hoveredId={hoveredId}
+                        onSelect={handleSelect}
+                        onHover={handleHover}
+                        onViewDetails={handleViewDetails}
+                    />
+                </div>
+            )}
 
             {/* Mobile: Map Toggle FAB */}
             <button
