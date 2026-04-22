@@ -60,8 +60,8 @@ export const useMapInteractions = ({
                 const name = f.properties?.name || f.properties?.name_en || f.properties?.text;
                 // Look for typical POI indicators in layer ID or source Layer
                 const layerId = f.layer?.id || '';
-                const isPoiLayer = layerId.includes('poi') || layerId.includes('place') || layerId.includes('transit') || layerId.includes('landmark');
-                const isPoiSource = f.sourceLayer === 'poi' || f.sourceLayer === 'transit';
+                const isPoiLayer = layerId.includes('poi') || layerId.includes('place') || layerId.includes('transit') || layerId.includes('landmark') || layerId === 'discovery-poi-layer';
+                const isPoiSource = f.sourceLayer === 'poi' || f.sourceLayer === 'transit' || f.source?.id === 'discovery-source';
                 return name && (isPoiLayer || isPoiSource);
             });
 
@@ -123,8 +123,8 @@ export const useMapInteractions = ({
             const poiFeature = allFeatures.find((f: any) => {
                 const name = f.properties?.name || f.properties?.name_en || f.properties?.text;
                 const layerId = f.layer?.id || '';
-                const isPoiLayer = layerId.includes('poi') || layerId.includes('place') || layerId.includes('transit') || layerId.includes('landmark');
-                const isPoiSource = f.sourceLayer === 'poi' || f.sourceLayer === 'transit';
+                const isPoiLayer = layerId.includes('poi') || layerId.includes('place') || layerId.includes('transit') || layerId.includes('landmark') || layerId === 'discovery-poi-layer';
+                const isPoiSource = f.sourceLayer === 'poi' || f.sourceLayer === 'transit' || f.source?.id === 'discovery-source';
                 return name && (isPoiLayer || isPoiSource);
             });
 

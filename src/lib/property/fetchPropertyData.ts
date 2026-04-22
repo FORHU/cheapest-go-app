@@ -152,47 +152,58 @@ export const fetchPropertyData = cache(async (
     let fetchedDetails = null;
 
     // 1. Invoke pre-book if offerId is present
+    let isRateLimited = false;
     if (searchParams.offerId) {
         try {
             preBookResult = await preBook({ 
                 offerId: searchParams.offerId as string,
                 currency: searchParams.currency || 'KRW'
             });
-        } catch (error) {
-            console.error('Pre-book check failed:', error);
+        } catch (error: any) {
+            console.error('Pre-book check failed:', error.message || error);
+            if (error.message?.includes('429') || error.message?.toLowerCase().includes('too many requests')) {
+                isRateLimited = true;
+            }
         }
     }
 
-        // 2. Fetch hotel details (Strictly backend)
-    try {
-        const targetHotelId = preBookResult?.data?.hotelId || id;
-        const defaults = getDefaultDates();
-        let checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
-        let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+    // 2. Fetch hotel details (Strictly backend)
+    // SKIP if already rate limited by pre-book
+    if (!isRateLimited) {
+        try {
+            const targetHotelId = preBookResult?.data?.hotelId || id;
+            const defaults = getDefaultDates();
+            let checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
+            let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
 
-        // Strictly enforce "At least tomorrow" for check-in
-        if (checkIn <= formatDateForApi(new Date())) {
-            checkIn = defaults.checkIn;
-            // Also ensure checkOut is after the new checkIn
-            if (checkOut <= checkIn) {
-                checkOut = defaults.checkOut;
+            // Strictly enforce "At least tomorrow" for check-in
+            if (checkIn <= formatDateForApi(new Date())) {
+                checkIn = defaults.checkIn;
+                // Also ensure checkOut is after the new checkIn
+                if (checkOut <= checkIn) {
+                    checkOut = defaults.checkOut;
+                }
+            }
+
+            fetchedDetails = await getHotelDetails(targetHotelId, {
+                checkIn,
+                checkOut,
+                adults: Number(searchParams.adults || 2),
+                children: Number(searchParams.children || 0),
+                rooms: Number(searchParams.rooms || 1),
+                currency: searchParams.currency
+            });
+        } catch (error: any) {
+            console.error('Failed to fetch property details:', error.message);
+            if (error.message?.includes('429') || error.message?.toLowerCase().includes('too many requests')) {
+                isRateLimited = true;
             }
         }
-
-        fetchedDetails = await getHotelDetails(targetHotelId, {
-            checkIn,
-            checkOut,
-            adults: Number(searchParams.adults || 2),
-            children: Number(searchParams.children || 0),
-            rooms: Number(searchParams.rooms || 1),
-            currency: searchParams.currency
-        });
-    } catch (error) {
-        console.error('Failed to fetch property details:', error);
     }
 
     // Fallback: If no details found for requested currency, try USD for static content
-    if (!fetchedDetails && searchParams.currency && searchParams.currency !== 'USD') {
+    // DO NOT try fallback if we are already rate limited to avoid wasting requests
+    if (!fetchedDetails && !isRateLimited && searchParams.currency && searchParams.currency !== 'USD') {
         try {
             const targetHotelId = preBookResult?.data?.hotelId || id;
             const defaults = getDefaultDates();

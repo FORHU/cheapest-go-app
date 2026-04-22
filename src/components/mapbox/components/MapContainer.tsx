@@ -22,6 +22,7 @@ interface MapContainerProps {
     mapStyle?: string;
     standardConfig?: StandardStyleConfig;
     enable3DTerrain?: boolean;
+    onStyleReady?: (map: mapboxgl.Map) => void;
 }
 
 export const MapContainer = ({
@@ -36,6 +37,7 @@ export const MapContainer = ({
     mapStyle: propMapStyle,
     standardConfig: propStandardConfig,
     enable3DTerrain: propEnable3DTerrain,
+    onStyleReady,
 }: MapContainerProps) => {
     const {
         mapType,
@@ -72,6 +74,7 @@ export const MapContainer = ({
             onMouseMove={onMouseMove}
             onMoveEnd={onMoveEnd}
             onLoad={onLoad}
+            onStyleReady={onStyleReady}
             enable3DBuildings={false}
             className={`rounded-none min-h-0 w-full h-full ${children ? '' : ''}`}
         >

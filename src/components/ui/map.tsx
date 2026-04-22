@@ -42,6 +42,7 @@ interface MapProps extends Omit<MapboxMapProps, 'mapStyle' | 'terrain'> {
     buildingColor?: string;
     buildingOpacity?: number;
     antialias?: boolean;
+    onStyleReady?: (map: mapboxgl.Map) => void;
 }
 
 function Buildings3DLayer({
@@ -101,33 +102,7 @@ function Buildings3DLayer({
  * This ensures facades, landmarks, trees are loaded from the start.
  * Runtime changes (lightPreset) are applied via setConfigProperty.
  */
-const STANDARD_STYLE = {
-    version: 8 as const,
-    imports: [
-        {
-            id: 'basemap',
-            url: 'mapbox://styles/mapbox/standard',
-            config: {
-                lightPreset: 'day',
-                show3dObjects: true,
-                show3dBuildings: true,
-                show3dTrees: true,
-                show3dLandmarks: false,
-                show3dFacades: false,
-                showPlaceLabels: true,
-                showPointOfInterestLabels: true,
-                showRoadLabels: true,
-                showTransitLabels: true,
-                showTraffic: false,
-                showTransit: false,
-                showPedestrianRoads: true,
-                language: 'en',
-            },
-        },
-    ],
-    sources: {} as Record<string, never>,
-    layers: [] as never[],
-};
+const STANDARD_STYLE_URL = 'mapbox://styles/mapbox/standard';
 
 import { env } from '@/utils/env';
 
@@ -146,6 +121,7 @@ const Map = React.memo(
                 antialias = true,
                 children,
                 onLoad,
+                onStyleReady,
                 ...props
             },
             ref
@@ -195,7 +171,14 @@ const Map = React.memo(
                         if (isStandard && standardConfig) {
                             Object.entries(standardConfig).forEach(([key, value]) => {
                                 if (value !== undefined) {
-                                    map.setConfigProperty('basemap', key, value);
+                                    try {
+                                        const current = (map as any).getConfigProperty?.('basemap', key);
+                                        if (current !== value) {
+                                            map.setConfigProperty('basemap', key, value);
+                                        }
+                                    } catch (e) {
+                                        // Ignore errors during initial burst
+                                    }
                                 }
                             });
                         }
@@ -217,6 +200,7 @@ const Map = React.memo(
                         }
 
                         setIsStyleLoaded(true);
+                        onStyleReady?.(map);
                     } catch (err) {
                         console.warn('Map setup failed, retrying...', err);
                         setTimeout(setup, 300);
@@ -227,6 +211,28 @@ const Map = React.memo(
                     setup();
                 } else {
                     map.once('style.load', setup);
+
+                    // Polling fallback: with reuseMaps + Standard style, the
+                    // style.load event may have already fired before we
+                    // registered the listener, and isStyleLoaded() can briefly
+                    // return false. Poll a few times to catch this race.
+                    let attempts = 0;
+                    const poll = setInterval(() => {
+                        attempts++;
+                        if (map.isStyleLoaded()) {
+                            clearInterval(poll);
+                            map.off('style.load', setup);
+                            setup();
+                        } else if (attempts >= 20) {
+                            clearInterval(poll);
+                        }
+                    }, 250);
+
+                    // Clean up on unmount or effect re-run
+                    return () => {
+                        clearInterval(poll);
+                        map.off('style.load', setup);
+                    };
                 }
             }, [
                 mapStyle,
@@ -264,12 +270,18 @@ const Map = React.memo(
                 lastConfigRef.current = configStr;
 
                 try {
+                    const map = mapRef.current?.getMap();
+                    if (!map || !map.isStyleLoaded()) return;
+
                     Object.entries(standardConfig).forEach(([key, value]) => {
                         if (value !== undefined) {
-                            // Check CURRENT value to avoid redundant sets
-                            const current = (map as any).getConfigProperty?.('basemap', key);
-                            if (current !== value) {
-                                map.setConfigProperty('basemap', key, value);
+                            try {
+                                const current = (map as any).getConfigProperty?.('basemap', key);
+                                if (current !== value) {
+                                    map.setConfigProperty('basemap', key, value);
+                                }
+                            } catch (e) {
+                                // Ignore
                             }
                         }
                     });
@@ -278,7 +290,7 @@ const Map = React.memo(
                 }
             }, [isStandard, standardConfig, isStyleLoaded, mapRef]);
 
-            const resolvedStyle = isStandard ? STANDARD_STYLE : mapStyle;
+            const resolvedStyle = isStandard ? STANDARD_STYLE_URL : mapStyle;
 
             return (
                 <div
