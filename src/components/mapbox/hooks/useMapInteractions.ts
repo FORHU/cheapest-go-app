@@ -143,9 +143,12 @@ export const useMapInteractions = ({
                 return;
             }
 
-            const propertyFeatures = map.queryRenderedFeatures(e.point, {
-                layers: ['unclustered-point', 'unclustered-point-text', 'clusters'],
-            });
+            const allRendered = map.queryRenderedFeatures(e.point);
+            const propertyFeatures = allRendered.filter((f: any) => 
+                f.layer?.id === 'unclustered-point' || 
+                f.layer?.id === 'unclustered-point-text' || 
+                f.layer?.id === 'clusters'
+            );
 
             // Over a property marker?
             const isProperty = propertyFeatures.length > 0;
@@ -160,8 +163,7 @@ export const useMapInteractions = ({
             }
 
             // Over a POI?
-            const allFeatures = map.queryRenderedFeatures(e.point);
-            const poiFeature = findPoiFeature(allFeatures);
+            const poiFeature = findPoiFeature(allRendered);
 
             if (poiFeature) {
                 map.getCanvas().style.cursor = 'pointer';

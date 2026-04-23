@@ -123,7 +123,7 @@ async function tryGooglePlaces(name: string, lat: string, lng: string, placeId?:
 
         if (candidate?.place_id) {
             try {
-                const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${candidate.place_id}&fields=photos,reviews,formatted_phone_number,website,opening_hours&key=${key}`;
+                const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${candidate.place_id}&fields=photos,reviews,formatted_phone_number,website,opening_hours,types&key=${key}`;
                 const detailsRes = await fetch(detailsUrl, { next: { revalidate: 3600 } });
                 const detailsData = await detailsRes.json();
                 
@@ -132,6 +132,7 @@ async function tryGooglePlaces(name: string, lat: string, lng: string, placeId?:
                     phone: detailsData.result?.formatted_phone_number,
                     website: detailsData.result?.website,
                     openingHours: detailsData.result?.opening_hours,
+                    category: detailsData.result?.types?.[0]?.replace(/_/g, ' '),
                 };
                 
                 const photoRef = detailsData.result?.photos?.[0]?.photo_reference;
@@ -148,7 +149,7 @@ async function tryGooglePlaces(name: string, lat: string, lng: string, placeId?:
             photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${candidate.photos[0].photo_reference}&key=${key}`;
         }
         
-        return { photoUrl, reviews, details, name: candidate.name, vicinity: candidate.vicinity || candidate.formatted_address };
+        return { photoUrl, reviews, ...details, name: candidate.name, vicinity: candidate.vicinity || candidate.formatted_address };
     };
 
     try {
@@ -174,16 +175,12 @@ async function tryGooglePlaces(name: string, lat: string, lng: string, placeId?:
             );
 
             for (let i = 0; i < candidateResults.length; i++) {
-                const { photoUrl, reviews, details, name: gName, vicinity: gVicinity } = candidateResults[i];
-                if (photoUrl || reviews.length > 0) {
+                const res = candidateResults[i];
+                if (res.photoUrl || res.reviews.length > 0) {
                     return {
-                        photoUrl,
-                        name: gName,
                         rating: results[i].rating,
                         userRatingsTotal: results[i].user_ratings_total,
-                        vicinity: gVicinity,
-                        reviews,
-                        ...details
+                        ...res
                     };
                 }
             }
@@ -204,16 +201,12 @@ async function tryGooglePlaces(name: string, lat: string, lng: string, placeId?:
             );
 
             for (let i = 0; i < candidateResults.length; i++) {
-                const { photoUrl, reviews, details, name: gName, vicinity: gVicinity } = candidateResults[i];
-                if (photoUrl || reviews.length > 0) {
+                const res = candidateResults[i];
+                if (res.photoUrl || res.reviews.length > 0) {
                     return {
-                        photoUrl,
-                        name: gName,
                         rating: results[i].rating,
                         userRatingsTotal: results[i].user_ratings_total,
-                        vicinity: gVicinity,
-                        reviews,
-                        ...details
+                        ...res
                     };
                 }
             }
@@ -243,7 +236,7 @@ async function tryFoursquare(name: string, lat: string, lng: string, fsqId?: str
     if (!key || key === 'YOUR_FOURSQUARE_API_KEY') return null;
 
     const trySearch = async (query: string, radius: number = 2000) => {
-        const url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(query)}&ll=${lat},${lng}&radius=${radius}&limit=1&fields=fsq_id,name,photos,tips,rating,stats,location`;
+        const url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(query)}&ll=${lat},${lng}&radius=${radius}&limit=1&fields=fsq_id,name,photos,tips,rating,stats,location,hours`;
         const res = await fetch(url, {
             headers: { Authorization: key, Accept: 'application/json' },
             next: { revalidate: 3600 },
@@ -257,7 +250,7 @@ async function tryFoursquare(name: string, lat: string, lng: string, fsqId?: str
         
         // 0. Direct ID Match (Fastest)
         if (fsqId) {
-            const url = `https://api.foursquare.com/v3/places/${fsqId}?fields=fsq_id,name,photos,tips,rating,stats,location`;
+            const url = `https://api.foursquare.com/v3/places/${fsqId}?fields=fsq_id,name,photos,tips,rating,stats,location,hours`;
             const res = await fetch(url, {
                 headers: { Authorization: key, Accept: 'application/json' },
                 next: { revalidate: 3600 },
@@ -268,19 +261,17 @@ async function tryFoursquare(name: string, lat: string, lng: string, fsqId?: str
         // 1. Direct Name Search
         if (!place) place = await trySearch(name);
 
-        // 2. Normalized Name Fallback (remove hyphens, special chars)
+        // 2. Normalized Name Fallback
         if (!place) {
             const normalized = name.replace(/[^\w\s]/gi, ' ').replace(/\s+/g, ' ').trim();
             if (normalized !== name) {
-                console.log(`[poi-photo] Foursquare: Trying normalized name "${normalized}"...`);
                 place = await trySearch(normalized);
             }
         }
 
-        // 3. Proximity Fallback (Location-only match for landmarks)
+        // 3. Proximity Fallback
         if (!place) {
-            console.log(`[poi-photo] Foursquare: Primary searches failed, trying proximity fallback...`);
-            place = await trySearch('', 100); // Just find the closest thing
+            place = await trySearch('', 100);
         }
 
         if (!place) return null;
@@ -291,37 +282,34 @@ async function tryFoursquare(name: string, lat: string, lng: string, fsqId?: str
             photoUrl = `${place.photos[0].prefix}600x400${place.photos[0].suffix}`;
         }
 
-        // 5. Gather Tips from both Search (inline) and Dedicated Endpoint
+        // 5. Gather Tips
         let tips = (place.tips || []).map((tip: any) => ({
-            author_name: 'Foursquare Recommendation',
+            author_name: 'Foursquare User',
             text: tip.text,
-            relative_time_description: tip.created_at ? new Date(tip.created_at).toLocaleDateString() : 'Top Tip',
+            relative_time_description: tip.created_at ? new Date(tip.created_at).toLocaleDateString() : 'Recommendation',
             rating: 5,
         }));
 
-        // Dedicated Tips Endpoint Fetch for freshness
-        try {
-            const tipsUrl = `https://api.foursquare.com/v3/places/${place.fsq_id}/tips?limit=10&sort=POPULAR`;
-            const tipsRes = await fetch(tipsUrl, {
-                headers: { Authorization: key, Accept: 'application/json' },
-                next: { revalidate: 3600 },
-            });
-            if (tipsRes.ok) {
-                const tipsData = await tipsRes.json();
-                const freshTips = (tipsData || []).map((tip: any) => ({
-                    author_name: 'Foursquare High-Value Tip',
-                    text: tip.text,
-                    relative_time_description: tip.created_at ? new Date(tip.created_at).toLocaleDateString() : 'Recent Tip',
-                    rating: 5,
-                }));
-                
-                // Merge and deduplicate by text
-                tips = [...tips, ...freshTips].filter((t, i, self) => 
-                    i === self.findIndex((inner) => inner.text === t.text)
-                ).slice(0, 10);
+        if (place.fsq_id) {
+            try {
+                const tipsUrl = `https://api.foursquare.com/v3/places/${place.fsq_id}/tips?limit=10&sort=POPULAR`;
+                const tipsRes = await fetch(tipsUrl, {
+                    headers: { Authorization: key, Accept: 'application/json' },
+                    next: { revalidate: 3600 },
+                });
+                if (tipsRes.ok) {
+                    const tipsData = await tipsRes.json();
+                    const moreTips = (tipsData || []).map((tip: any) => ({
+                        author_name: 'Foursquare User',
+                        text: tip.text,
+                        relative_time_description: tip.created_at ? new Date(tip.created_at).toLocaleDateString() : 'Popular Tip',
+                        rating: 5,
+                    }));
+                    tips = [...tips, ...moreTips].slice(0, 10);
+                }
+            } catch (e) {
+                console.error('[poi-photo] Foursquare tips fetch failed:', e);
             }
-        } catch (e) {
-            console.warn('[poi-photo] Foursquare deep tips failed, using search tips.');
         }
 
         return { 
@@ -330,21 +318,31 @@ async function tryFoursquare(name: string, lat: string, lng: string, fsqId?: str
             fsqId: place.fsq_id,
             rating: place.rating ? place.rating / 2 : null,
             userRatingsTotal: place.stats?.total_ratings || 0,
+            category: place.categories?.[0]?.name || null,
+            openingHours: place.hours ? {
+                open_now: place.hours.is_open_now,
+                weekday_text: place.hours.display ? [place.hours.display] : []
+            } : null,
             vicinity: place.location?.formatted_address || place.location?.address || null
         };
     } catch (err) {
         console.error('[poi-photo] Foursquare aggregate error:', err);
+        return null;
     }
-    return null;
 }
 
-
-
 export async function GET(req: NextRequest) {
-    // 120 requests per minute per IP — allows for initial load of 20 gems (20 img + 20 meta requests = 40) plus panning
-    const rl = rateLimit(req, { limit: 120, windowMs: 60_000, prefix: 'poi-photo' });
+    // 600 requests per minute per IP -- allows for initial load of 20 gems
+    const rl = rateLimit(req, { limit: 600, windowMs: 60_000, prefix: 'poi-photo' });
     if (!rl.success) {
-        return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        // Return a transparent 1x1 pixel for images if rate limited, instead of a 429 JSON
+        if (req.url.includes('full=true')) {
+            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        }
+        return new NextResponse(
+            Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'),
+            { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-cache' } }
+        );
     }
 
     const { searchParams } = new URL(req.url);
@@ -364,7 +362,7 @@ export async function GET(req: NextRequest) {
     const roundedLat = parseFloat(lat).toFixed(4);
     const roundedLng = parseFloat(lng).toFixed(4);
     // Unified cache key: full=true and full=false now share the same cache entry to prevent double-fetching
-    const cacheKey = `${name}|${roundedLat}|${roundedLng}|v9`; 
+    const cacheKey = `${name}|${roundedLat}|${roundedLng}|v10`; 
 
     // Return cached result if available
     const cached = await getCached(cacheKey);
@@ -374,12 +372,29 @@ export async function GET(req: NextRequest) {
             if (full) {
                 return NextResponse.json(parsedMeta);
             } else {
-                // If it's a legacy string URL or missing photoUrl, fallback
-                const targetUrl = parsedMeta.photoUrl || parsedMeta.value || parsedMeta;
-                return NextResponse.redirect(targetUrl);
+                // Unified image streaming logic for cached results
+                const targetUrl = parsedMeta.photoUrl || (typeof parsedMeta === 'string' ? parsedMeta : null);
+                if (targetUrl && typeof targetUrl === 'string') {
+                    try {
+                        const imgRes = await fetch(targetUrl, { next: { revalidate: 3600 } });
+                        if (imgRes.ok) {
+                            const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+                            const buffer = await imgRes.arrayBuffer();
+                            return new NextResponse(buffer, {
+                                headers: {
+                                    'Content-Type': contentType,
+                                    'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+                                },
+                            });
+                        }
+                    } catch (e) {
+                        console.error('[poi-photo] Cached image stream failed:', e);
+                    }
+                    return NextResponse.redirect(targetUrl);
+                }
             }
         } catch(e) {
-            if (!full) return NextResponse.redirect(cached);
+            console.error('[poi-photo] Cache parse failed:', e);
         }
     }
 
@@ -396,6 +411,8 @@ export async function GET(req: NextRequest) {
 
     if (!resultMetadata) {
         const metadataPromise = (async () => {
+            const lowerName = name.toLowerCase();
+            const lowerCat = (category || '').toLowerCase();
             let meta: any = {
                 photoUrl: null,
                 googlePhotoUrl: null,
@@ -426,6 +443,9 @@ export async function GET(req: NextRequest) {
             }
 
             if (fsqResult) {
+                if (!meta.category && fsqResult.category) {
+                    meta.category = fsqResult.category;
+                }
                 const googleReviews = [...(meta.reviews || [])];
                 const fsqTips = [...fsqResult.tips];
                 const merged = [];
@@ -446,6 +466,10 @@ export async function GET(req: NextRequest) {
                     meta.vicinity = fsqResult.vicinity;
                 }
 
+                if (!meta.openingHours && fsqResult.openingHours) {
+                    meta.openingHours = fsqResult.openingHours;
+                }
+
                 if (!meta.photoUrl && fsqResult.photoUrl) {
                     meta.photoUrl = fsqResult.photoUrl;
                     meta.foursquarePhotoUrl = fsqResult.photoUrl;
@@ -453,6 +477,17 @@ export async function GET(req: NextRequest) {
                 } else if (meta.photoUrl && fsqResult.tips.length > 0) {
                     meta.foursquarePhotoUrl = fsqResult.photoUrl || null;
                     meta.source = 'fsq-google';
+                }
+            }
+
+            if (!meta.openingHours) {
+                const isTransit = lowerCat.includes('transit') || lowerCat.includes('station') || lowerName.includes('station');
+                const isPark = lowerCat.includes('park') || lowerCat.includes('nature');
+                if (isTransit || isPark) {
+                    meta.openingHours = {
+                        open_now: true,
+                        weekday_text: ['Open 24 hours']
+                    };
                 }
             }
 
@@ -471,7 +506,7 @@ export async function GET(req: NextRequest) {
                 meta.source = meta.source === 'none' ? 'placeholder' : meta.source;
             }
 
-            await setCache(cacheKey, JSON.stringify(meta)); // Cache unified metadata object
+            await setCache(cacheKey, JSON.stringify(meta));
             return meta;
         })();
 
