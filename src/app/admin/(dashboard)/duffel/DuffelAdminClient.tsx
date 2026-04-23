@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plane, ExternalLink,
@@ -28,10 +28,10 @@ function fmtShort(value: number, currency: string) {
 
 // ─── Stat Card ─────────────────────────────────────────────
 
-function StatCard({ icon: Icon, label, value, sub, iconCls, delay = 0 }: {
+const StatCard = memo(({ icon: Icon, label, value, sub, iconCls, delay = 0 }: {
     icon: React.ElementType; label: string; value: React.ReactNode;
     sub?: string; iconCls: string; delay?: number;
-}) {
+}) => {
     return (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay, duration: 0.35 }}
@@ -46,28 +46,29 @@ function StatCard({ icon: Icon, label, value, sub, iconCls, delay = 0 }: {
             </div>
         </motion.div>
     );
-}
+});
+
+StatCard.displayName = 'StatCard';
 
 
 // ─── Top Airline Table ─────────────────────────────────────
 
-function AirlineTable({ airlines, mode, currency }: {
+const AirlineTable = memo(({ airlines, mode, currency }: {
     airlines: DuffelAirlineMetric[]; mode: 'volume' | 'value'; currency: string;
-}) {
+}) => {
     if (!airlines.length) return (
         <div className="flex flex-col items-center py-10 text-slate-400 opacity-40">
             <Plane size={32} className="mb-2" />
             <p className="text-xs font-bold uppercase tracking-widest">No airline data</p>
         </div>
     );
-    const max = mode === 'volume'
+    const max = useMemo(() => mode === 'volume'
         ? Math.max(...airlines.map(a => a.count), 1)
-        : Math.max(...airlines.map(a => a.value), 1);
+        : Math.max(...airlines.map(a => a.value), 1), [airlines, mode]);
 
     return (
         <div className="space-y-4">
             {airlines.map((a, i) => {
-                const pct = mode === 'volume' ? (a.count / max) * 100 : (a.value / max) * 100;
                 // Duffel logo URL pattern
                 const logoUrl = a.iataCode ? `https://assets.duffel.com/img/airlines/for-light-background/full-color-logo/${a.iataCode}.png` : null;
 
@@ -102,27 +103,28 @@ function AirlineTable({ airlines, mode, currency }: {
             })}
         </div>
     );
-}
+});
+
+AirlineTable.displayName = 'AirlineTable';
 
 // ─── Top Route Table ───────────────────────────────────────
 
-function RouteTable({ routes, mode, currency }: {
+const RouteTable = memo(({ routes, mode, currency }: {
     routes: DuffelRouteMetric[]; mode: 'volume' | 'value'; currency: string;
-}) {
+}) => {
     if (!routes.length) return (
         <div className="flex flex-col items-center py-10 text-slate-400 opacity-40">
             <MapPin size={32} className="mb-2" />
             <p className="text-xs font-bold uppercase tracking-widest">No route data</p>
         </div>
     );
-    const max = mode === 'volume'
+    const max = useMemo(() => mode === 'volume'
         ? Math.max(...routes.map(r => r.count), 1)
-        : Math.max(...routes.map(r => r.value), 1);
+        : Math.max(...routes.map(r => r.value), 1), [routes, mode]);
 
     return (
         <div className="space-y-4">
             {routes.map((r, i) => {
-                const pct = mode === 'volume' ? (r.count / max) * 100 : (r.value / max) * 100;
                 return (
                     <div key={r.route} className="group">
                         <div className="flex items-center justify-between mb-2">
@@ -149,11 +151,13 @@ function RouteTable({ routes, mode, currency }: {
             })}
         </div>
     );
-}
+});
+
+RouteTable.displayName = 'RouteTable';
 
 // ─── Status Badge ──────────────────────────────────────────
 
-function StatusBadge({ status }: { status: DuffelOrder['status'] }) {
+const StatusBadge = memo(({ status }: { status: DuffelOrder['status'] }) => {
     const cfg = {
         confirmed:        { label: 'Confirmed',        cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', icon: CheckCircle2 },
         cancelled:        { label: 'Cancelled',        cls: 'bg-rose-500/10 text-rose-500 border-rose-500/20',                                icon: XCircle },
@@ -165,13 +169,15 @@ function StatusBadge({ status }: { status: DuffelOrder['status'] }) {
             <Icon size={9} />{label}
         </span>
     );
-}
+});
+
+StatusBadge.displayName = 'StatusBadge';
 
 // ─── Orders Table ──────────────────────────────────────────
 
 type SortKey = 'createdAt' | 'totalAmount' | 'departureDate';
 
-function OrdersTable({ orders }: { orders: DuffelOrder[] }) {
+const OrdersTable = memo(({ orders }: { orders: DuffelOrder[] }) => {
     const [sortKey, setSortKey] = useState<SortKey>('createdAt');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [filterStatus, setFilterStatus] = useState<DuffelOrder['status'] | 'all'>('all');
@@ -283,7 +289,9 @@ function OrdersTable({ orders }: { orders: DuffelOrder[] }) {
             <p className="text-[10px] text-slate-400 font-bold text-right">Showing {filtered.length} of {orders.length} orders (last 30 days)</p>
         </div>
     );
-}
+});
+
+OrdersTable.displayName = 'OrdersTable';
 
 // ─── Section wrapper ───────────────────────────────────────
 

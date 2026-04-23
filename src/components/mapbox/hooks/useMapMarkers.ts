@@ -1,8 +1,18 @@
 import { useMemo } from 'react';
 import { buildGeoJson, MappableProperty } from '../utils/buildGeoJson';
 
-export const useMapMarkers = (properties: MappableProperty[]) => {
-    // Filter out invalid coordinates (defensive coding)
+/**
+ * Prepares marker data for the map.
+ *
+ * @param properties     Raw property list (may include invalid coords).
+ * @param displayPrices  Optional map of property ID to a pre-formatted price
+ *                       string (e.g. currency-converted) for the GL symbol layer.
+ */
+export const useMapMarkers = (
+    properties: MappableProperty[],
+    displayPrices?: Record<string, string>,
+) => {
+    // Filter out invalid or zero coordinates
     const mappableProperties = useMemo(() => {
         return properties.filter(
             (p) =>
@@ -13,8 +23,8 @@ export const useMapMarkers = (properties: MappableProperty[]) => {
     }, [properties]);
 
     const geoJsonData = useMemo(() => {
-        return buildGeoJson(mappableProperties);
-    }, [mappableProperties]);
+        return buildGeoJson(mappableProperties, displayPrices);
+    }, [mappableProperties, displayPrices]);
 
     const shouldCluster = useMemo(() => mappableProperties.length > 20, [mappableProperties]);
 

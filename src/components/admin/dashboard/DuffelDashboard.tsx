@@ -1,6 +1,12 @@
+
+
+
+
+
+
 "use client";
 
-import React from 'react';
+import React, { useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
 import {
     Plane, TrendingUp, Users, MapPin, ExternalLink,
@@ -19,7 +25,7 @@ function fmtShort(n: number, currency: string) {
 
 // ─── Status badge ──────────────────────────────────────────
 
-function DuffelStatusBadge({ status }: { status: DuffelProviderData['status'] }) {
+const DuffelStatusBadge = memo(({ status }: { status: DuffelProviderData['status'] }) => {
     const cfg = {
         healthy:        { label: 'Connected',       cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-500 animate-pulse' },
         error:          { label: 'Error',           cls: 'bg-rose-500/10    text-rose-600    dark:text-rose-400    border-rose-500/20',    dot: 'bg-rose-500' },
@@ -31,13 +37,15 @@ function DuffelStatusBadge({ status }: { status: DuffelProviderData['status'] })
             <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />{label}
         </div>
     );
-}
+});
+
+DuffelStatusBadge.displayName = 'DuffelStatusBadge';
 
 // ─── Mini stat pill ────────────────────────────────────────
 
-function MiniStat({ icon: Icon, label, value, iconCls }: {
+const MiniStat = memo(({ icon: Icon, label, value, iconCls }: {
     icon: React.ElementType; label: string; value: React.ReactNode; iconCls: string;
-}) {
+}) => {
     return (
         <div className="flex items-center gap-3">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconCls}`}>
@@ -49,11 +57,13 @@ function MiniStat({ icon: Icon, label, value, iconCls }: {
             </div>
         </div>
     );
-}
+});
+
+MiniStat.displayName = 'MiniStat';
 
 // ─── Order status badge ────────────────────────────────────
 
-function OrderStatusBadge({ status }: { status: DuffelOrder['status'] }) {
+const OrderStatusBadge = memo(({ status }: { status: DuffelOrder['status'] }) => {
     const cfg = {
         confirmed:        { label: 'Confirmed',        cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
         cancelled:        { label: 'Cancelled',        cls: 'bg-rose-500/10 text-rose-500',                             icon: XCircle },
@@ -65,18 +75,19 @@ function OrderStatusBadge({ status }: { status: DuffelOrder['status'] }) {
             <Icon size={9} />{label}
         </span>
     );
-}
+});
+
+OrderStatusBadge.displayName = 'OrderStatusBadge';
 
 // ─── Top routes mini list ──────────────────────────────────
 
-function MiniRoutes({ routes }: { routes: DuffelProviderData['topRoutesByVolume'] }) {
+const MiniRoutes = memo(({ routes }: { routes: DuffelProviderData['topRoutesByVolume'] }) => {
     if (!routes.length) return (
         <div className="flex flex-col items-center py-6 text-slate-400 opacity-40">
             <MapPin size={22} className="mb-1" />
             <p className="text-[10px] font-bold uppercase tracking-widest">No routes yet</p>
         </div>
     );
-    const max = Math.max(...routes.map(r => r.count), 1);
     return (
         <div className="space-y-2.5">
             {routes.map((r, i) => (
@@ -90,11 +101,15 @@ function MiniRoutes({ routes }: { routes: DuffelProviderData['topRoutesByVolume'
             ))}
         </div>
     );
-}
+});
+
+MiniRoutes.displayName = 'MiniRoutes';
 
 // ─── Recent orders mini table ──────────────────────────────
 
-function MiniOrders({ orders }: { orders: DuffelOrder[] }) {
+const MiniOrders = memo(({ orders }: { orders: DuffelOrder[] }) => {
+    const displayOrders = useMemo(() => orders.slice(0, 8), [orders]);
+
     if (!orders.length) return (
         <div className="flex flex-col items-center py-8 text-slate-400 opacity-40">
             <Plane size={30} className="mb-2" />
@@ -112,7 +127,7 @@ function MiniOrders({ orders }: { orders: DuffelOrder[] }) {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-white/5">
-                    {orders.slice(0, 8).map((o, i) => {
+                    {displayOrders.map((o, i) => {
                         const amt = parseFloat(o.totalAmount).toLocaleString('en-US', { style: 'currency', currency: o.currency, maximumFractionDigits: 0 });
                         return (
                             <motion.tr key={o.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -132,7 +147,9 @@ function MiniOrders({ orders }: { orders: DuffelOrder[] }) {
             </table>
         </div>
     );
-}
+});
+
+MiniOrders.displayName = 'MiniOrders';
 
 // ─── Not configured / error states ────────────────────────
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { MappableProperty } from './utils/buildGeoJson';
 import { useMapboxInstance } from './hooks/useMapboxInstance';
 import { useMapMarkers } from './hooks/useMapMarkers';
@@ -9,7 +9,7 @@ import { useMapViewport } from './hooks/useMapViewport';
 import { MapContainer } from './components/MapContainer';
 import { ClusterLayer } from './components/ClusterLayer';
 import { SelectedPropertyPopup } from './components/SelectedPropertyPopup';
-import { Source, Layer, Marker } from 'react-map-gl/mapbox';
+import { Source, Layer } from 'react-map-gl/mapbox';
 
 import { PoiPopup } from './components/PoiPopup';
 import { MapMarker } from '../map/MapMarker';
@@ -35,10 +35,6 @@ const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; 
         Math.sin(dLng / 2) * Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return (R * c).toFixed(2);
-};
-
-const getMapboxPoiImage = (name: string, lat: number, lng: number) => {
-    return `/api/poi-photo?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}`;
 };
 
 interface SearchMapContainerProps {
@@ -101,6 +97,7 @@ export const SearchMapContainer = React.memo(({
         }
         return prices;
     }, [mappableProperties, targetCurrency]);
+
     const selectedProperty = useMemo(
         () => mappableProperties.find((p: MappableProperty) => p.id === selectedId) ?? null,
         [mappableProperties, selectedId]
@@ -109,15 +106,13 @@ export const SearchMapContainer = React.memo(({
         () => mappableProperties.find((p: MappableProperty) => p.id === hoveredId) ?? null,
         [mappableProperties, hoveredId]
     );
-    
+
     // Preview logic: prefer hover state for quick feedback, fallback to selected
     const previewProperty = useMemo(
         () => hoveredProperty || selectedProperty,
         [hoveredProperty, selectedProperty]
     );
     const activePoi = useMemo(() => hoveredPoi || selectedPoi, [hoveredPoi, selectedPoi]);
-
-
 
     const poiDistance = useMemo(
         () => previewProperty && activePoi
@@ -128,6 +123,7 @@ export const SearchMapContainer = React.memo(({
 
     // 6. Fetch Real Road GPS Route — debounced so rapid hover/select changes
     // don't fire multiple in-flight Mapbox Directions requests.
+    // Route state is reset immediately when either endpoint becomes unavailable.
     React.useEffect(() => {
         if (!previewProperty || !selectedPoi) {
             setRouteGeometry(null);
@@ -141,27 +137,23 @@ export const SearchMapContainer = React.memo(({
                 const base = `https://api.mapbox.com/directions/v5/mapbox`;
                 const coords = `${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}`;
                 const token = `access_token=${env.MAPBOX_TOKEN}`;
-                const drivingUrl = `${base}/driving/${coords}?geometries=geojson&overview=full&steps=true&alternatives=true&${token}`;
-                const walkingUrl = `${base}/walking/${coords}?overview=full&steps=true&alternatives=true&${token}`;
 
+                // Fetch driving and walking in parallel.
+                // No `alternatives=true` — the default single best route is sufficient.
                 const [drivingJson, walkingJson] = await Promise.all([
-                    fetch(drivingUrl).then(r => r.json()),
-                    fetch(walkingUrl).then(r => r.json()),
+                    fetch(`${base}/driving/${coords}?geometries=geojson&overview=full&${token}`).then(r => r.json()),
+                    fetch(`${base}/walking/${coords}?overview=full&${token}`).then(r => r.json()),
                 ]);
 
                 if (drivingJson.code === 'Ok' && drivingJson.routes?.length) {
-                    const shortest = drivingJson.routes.reduce((best: any, r: any) =>
-                        r.distance < best.distance ? r : best
-                    );
-                    setRouteGeometry(shortest.geometry);
-                    setCarDuration(`${Math.max(1, Math.round(shortest.duration / 60))} min`);
+                    const route = drivingJson.routes[0];
+                    setRouteGeometry(route.geometry);
+                    setCarDuration(`${Math.max(1, Math.round(route.duration / 60))} min`);
                 }
 
                 if (walkingJson.code === 'Ok' && walkingJson.routes?.length) {
-                    const shortest = walkingJson.routes.reduce((best: any, r: any) =>
-                        r.distance < best.distance ? r : best
-                    );
-                    setWalkDuration(`${Math.max(1, Math.round(shortest.duration / 60))} min`);
+                    const route = walkingJson.routes[0];
+                    setWalkDuration(`${Math.max(1, Math.round(route.duration / 60))} min`);
                 }
             } catch (err) {
                 console.error('Directions error:', err);
@@ -196,21 +188,27 @@ export const SearchMapContainer = React.memo(({
     const { results: recommendedPlaces, fetchRecommendations: fetchKakaoRecommendations } = useKakaoSearch();
     const lastDiscoveryFetch = React.useRef<{ lat: number, lng: number } | null>(null);
 
-    React.useEffect(() => {
+    /** Runs the Kakao discovery check for the current map centre. */
+    const runKakaoDiscovery = useCallback(() => {
         if (!isMapLoaded || !discoveryEnabled) return;
 
         const center = mapRef.current?.getCenter();
         if (!center) return;
 
-        const distance = lastDiscoveryFetch.current 
-            ? calculateDistance(lastDiscoveryFetch.current, { lat: center.lat, lng: center.lng }) 
+        const distance = lastDiscoveryFetch.current
+            ? calculateDistance(lastDiscoveryFetch.current, { lat: center.lat, lng: center.lng })
             : 1000;
 
         if (Number(distance) > 2 && isLocationInKorea(center.lat, center.lng)) {
             fetchKakaoRecommendations(center.lat, center.lng);
             lastDiscoveryFetch.current = { lat: center.lat, lng: center.lng };
         }
-    }, [isMapLoaded, discoveryEnabled, fetchKakaoRecommendations]);
+    }, [isMapLoaded, discoveryEnabled, fetchKakaoRecommendations, mapRef]);
+
+    // Trigger on load / toggle
+    React.useEffect(() => {
+        runKakaoDiscovery();
+    }, [runKakaoDiscovery]);
 
     // Construct GeoJSON for recommended places
     const recommendedGeoJson = useMemo(() => ({
@@ -218,9 +216,9 @@ export const SearchMapContainer = React.memo(({
         features: recommendedPlaces.map(p => ({
             type: 'Feature' as const,
             geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
-            properties: { 
-                name: p.name, 
-                category: p.category, 
+            properties: {
+                name: p.name,
+                category: p.category,
                 isKakao: true,
                 id: p.id
             }
@@ -250,6 +248,8 @@ export const SearchMapContainer = React.memo(({
                 onStyleReady={handleMapLoad}
                 onClick={handleMapClick}
                 onMouseMove={onMouseMove}
+                // Re-check Kakao discovery whenever the user finishes panning/zooming
+                onMoveEnd={runKakaoDiscovery}
                 hideLayersButton={true}
             >
 
@@ -368,8 +368,6 @@ export const SearchMapContainer = React.memo(({
                             </Source>
                         )}
                     </>
-
-
                 )}
 
                 <SelectedPropertyPopup
@@ -389,7 +387,7 @@ export const SearchMapContainer = React.memo(({
                 onSelect={(r) => {
                     // 1. Move the map visually
                     mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, pitch: 45, bearing: -10, duration: 1200 });
-                    
+
                     // 2. Trigger a global search refresh by updating URL
                     const params = new URLSearchParams(window.location.search);
                     params.set('destination', r.name);
@@ -430,5 +428,3 @@ export const SearchMapContainer = React.memo(({
         </div>
     );
 });
-
-
