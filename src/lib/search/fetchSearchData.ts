@@ -5,8 +5,10 @@
 
 import { unstable_cache } from 'next/cache';
 import { type Property } from '@/types';
+import { searchTravelgateX } from '@/lib/server/travelgatex';
 import { searchLiteApi } from '@/utils/supabase/functions';
 import { COUNTRY_DEFAULT_CITY, COUNTRY_NAME_TO_CODE } from '@/lib/constants/countries';
+import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
 
 // Types
 export interface SearchParams {
@@ -218,59 +220,29 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
 }
 
 
-// Extract price from hotel — handles both TravelgateX (hotel.price) and LiteAPI (roomTypes) formats
+// Extract price — TravelgateX: top-level number; LiteAPI: nested in roomTypes
 function extractPrice(hotel: any): { price: number; originalPrice?: number } {
-    let price = 0;
-    let originalPrice = undefined;
-
-    // TravelgateX: price is a top-level number
     if (typeof hotel.price === 'number' && hotel.price > 0) {
-        return { price: hotel.price, originalPrice };
+        return { price: hotel.price };
     }
-
-    // LiteAPI: price is nested inside roomTypes[0].rates[0].retailRate.total
-    if (hotel.roomTypes && hotel.roomTypes.length > 0) {
-        const firstRoom = hotel.roomTypes[0];
-        if (firstRoom.rates && firstRoom.rates.length > 0) {
-            const total = firstRoom.rates[0]?.retailRate?.total;
-
-            if (Array.isArray(total) && total.length > 0 && typeof total[0] === 'object' && 'amount' in total[0]) {
-                price = (total[0] as any).amount || 0;
-            } else if (typeof total === 'object' && total !== null && 'amount' in total) {
-                price = (total as any).amount || 0;
-            } else if (typeof total === 'number') {
-                price = total;
-            }
-        }
+    if (hotel.roomTypes?.length > 0) {
+        const total = hotel.roomTypes[0]?.rates?.[0]?.retailRate?.total;
+        if (Array.isArray(total) && total.length > 0) return { price: (total[0] as any).amount || 0 };
+        if (typeof total === 'object' && total !== null && 'amount' in total) return { price: (total as any).amount || 0 };
+        if (typeof total === 'number') return { price: total };
     }
-
-    return { price, originalPrice };
+    return { price: 0 };
 }
 
-// Extract refundable tag from hotel
+// Extract refundable tag — TravelgateX sets top-level; LiteAPI sets in roomTypes/rates
 function extractRefundableTag(hotel: any): string | undefined {
-    // First check hotel-level refundableTag (set by edge function)
-    let refundableTag = hotel.refundableTag;
-
-    // Fallback: check roomTypes if not found
-    if (!refundableTag && hotel.roomTypes && hotel.roomTypes.length > 0) {
-        for (const roomType of hotel.roomTypes) {
-            // Check roomType level
-            if (roomType.refundableTag) {
-                refundableTag = roomType.refundableTag;
-                break;
-            }
-            // Check rate level
-            if (roomType.rates && roomType.rates.length > 0) {
-                const rate = roomType.rates[0];
-                if (rate.refundableTag) {
-                    refundableTag = rate.refundableTag;
-                    break;
-                }
-            }
-        }
+    if (hotel.refundableTag) return hotel.refundableTag;
+    for (const room of hotel.roomTypes ?? []) {
+        if (room.refundableTag) return room.refundableTag;
+        const tag = room.rates?.[0]?.refundableTag;
+        if (tag) return tag;
     }
-    return refundableTag;
+    return undefined;
 }
 
 // Transform API hotel to Property
@@ -322,28 +294,71 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
 // spellings (checkIn vs checkin) don't produce separate cache entries.
 const getCachedSearchProperties = unstable_cache(
     async (queryParams: SearchQueryParams): Promise<Property[]> => {
-        const data = await searchLiteApi(queryParams as unknown as Record<string, unknown>);
+        // Run all three providers in parallel
+        const [tgxSettled, liteApiSettled, duffelSettled] = await Promise.allSettled([
+            searchTravelgateX(queryParams as unknown as Record<string, unknown>),
+            searchLiteApi(queryParams as unknown as Record<string, unknown>),
+            searchDuffelStays(queryParams),
+        ]);
 
-        if (data?.data && Array.isArray(data.data)) {
-            const results = data.data
-                .map((hotel: any) => transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency))
-                .filter((prop: Property) => prop.name && prop.price > 0);
-
-            // Throw on empty so unstable_cache does not store the empty result —
-            // next request retries live instead of serving a stale cache miss.
-            if (results.length === 0) throw new Error('NO_RESULTS');
-
-            return results;
+        const tgxResults: Property[] = [];
+        if (tgxSettled.status === 'fulfilled') {
+            const data = tgxSettled.value as any;
+            if (data?.data && Array.isArray(data.data)) {
+                tgxResults.push(
+                    ...data.data
+                        .map((hotel: any) => {
+                            const prop = transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency);
+                            if (hotel._tgx) {
+                                (prop as any).provider = 'travelgatex';
+                                (prop as any)._tgx = hotel._tgx;
+                            }
+                            return prop;
+                        })
+                        .filter((p: Property) => p.name && p.price > 0)
+                );
+            }
+        } else {
+            console.error('[Search] TravelgateX failed:', tgxSettled.reason?.message);
         }
 
-        throw new Error('NO_RESULTS');
+        const liteApiResults: Property[] = [];
+        if (liteApiSettled.status === 'fulfilled') {
+            const data = liteApiSettled.value as any;
+            if (data?.data && Array.isArray(data.data)) {
+                liteApiResults.push(
+                    ...data.data
+                        .map((hotel: any) => transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency))
+                        .filter((p: Property) => p.name && p.price > 0)
+                );
+            }
+        } else {
+            console.error('[Search] LiteAPI failed:', liteApiSettled.reason?.message);
+        }
+
+        const duffelResults: Property[] = duffelSettled.status === 'fulfilled'
+            ? duffelSettled.value
+            : [];
+
+        // Merge: TGX first, then LiteAPI (deduplicated), then Duffel (deduplicated)
+        const seenNames = new Set(tgxResults.map(p => p.name.toLowerCase().trim()));
+        const uniqueLiteApi = liteApiResults.filter(p => !seenNames.has(p.name.toLowerCase().trim()));
+        uniqueLiteApi.forEach(p => seenNames.add(p.name.toLowerCase().trim()));
+        const uniqueDuffel = duffelResults.filter(
+            p => !seenNames.has(p.name.toLowerCase().trim())
+        );
+
+        const combined = [...tgxResults, ...uniqueLiteApi, ...uniqueDuffel];
+
+        if (combined.length === 0) throw new Error('NO_RESULTS');
+        return combined;
     },
     ['search-properties'],
     { revalidate: 300 } // 5-minute TTL per unique search combination
 );
 
 /**
- * Main search function - fetches properties from LiteAPI.
+ * Main search function - fetches properties from TravelgateX + Duffel Stays in parallel.
  * Results are cached for 5 minutes per unique combination of search params.
  * Empty results and errors are never cached so the next search retries live.
  */

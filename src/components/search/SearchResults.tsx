@@ -36,15 +36,19 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
 
     const [visibleCount, setVisibleCount] = useState(12);
 
-    const handlePropertyClick = (propertyId: string) => {
-        const currentParams = new URLSearchParams(window.location.search);
-        router.push(`/property/${propertyId}?${currentParams.toString()}`);
+    const buildPropertyUrl = useCallback((property: Property) => {
+        const params = new URLSearchParams(window.location.search);
+        if (property.rateId) params.set('rateId', property.rateId);
+        return `/property/${property.id}?${params.toString()}`;
+    }, []);
+
+    const handlePropertyClick = (property: Property) => {
+        router.push(buildPropertyUrl(property));
     };
 
-    const handlePropertyPrefetch = useCallback((propertyId: string) => {
-        const currentParams = new URLSearchParams(window.location.search);
-        router.prefetch(`/property/${propertyId}?${currentParams.toString()}`);
-    }, [router]);
+    const handlePropertyPrefetch = useCallback((property: Property) => {
+        router.prefetch(buildPropertyUrl(property));
+    }, [router, buildPropertyUrl]);
 
     // Navigate to map view
     const handleViewOnMap = useCallback(() => {
@@ -139,12 +143,12 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                 visibleProperties.length > 0 ? (
                     <div className="space-y-4">
                         {visibleProperties.map((property, index) => (
-                            <div key={property.id} onMouseEnter={() => handlePropertyPrefetch(property.id)}>
+                            <div key={property.id} onMouseEnter={() => handlePropertyPrefetch(property)}>
                                 <PropertyCard
                                     variant="horizontal"
                                     property={property}
                                     index={index}
-                                    onClick={() => handlePropertyClick(property.id)}
+                                    onClick={() => handlePropertyClick(property)}
                                 />
                             </div>
                         ))}

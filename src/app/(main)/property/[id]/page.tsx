@@ -33,6 +33,7 @@ export async function generateMetadata({
         children: searchParamsResult.children as string,
         rooms: searchParamsResult.rooms as string,
         currency: searchParamsResult.currency as string,
+        rateId: searchParamsResult.rateId as string,
     });
     if (!property) return {};
 
@@ -84,6 +85,7 @@ export default async function PropertyPage({
             children: searchParamsResult.children as string,
             rooms: searchParamsResult.rooms as string,
             currency: searchParamsResult.currency as string,
+            rateId: searchParamsResult.rateId as string,
         }),
         fetchHotelReviews(id, { limit: 1000 }),
     ]);

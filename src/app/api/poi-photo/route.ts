@@ -268,8 +268,8 @@ async function tryFoursquare(name: string, lat: string, lng: string) {
 
 
 export async function GET(req: NextRequest) {
-    // 30 requests per minute per IP — prevents Foursquare/Google quota exhaustion
-    const rl = rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'poi-photo' });
+    // 120 requests per minute per IP — map views fire ~15–20 simultaneous requests
+    const rl = rateLimit(req, { limit: 120, windowMs: 60_000, prefix: 'poi-photo' });
     if (!rl.success) {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
