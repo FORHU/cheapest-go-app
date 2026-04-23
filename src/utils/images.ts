@@ -1,3 +1,5 @@
+import { env } from '@/utils/env';
+
 /**
  * Creates a Mapbox-native 'Real' visual URL for a location.
  * Uses Mapbox Static Images API to provide a geographical pinpoint of the spot.
