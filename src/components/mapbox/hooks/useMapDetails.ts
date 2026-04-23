@@ -9,21 +9,26 @@ export function useMapDetails() {
     const [showLabels, setShowLabels] = useState(true);
     const [mapDetails, setMapDetails] = useState<MapDetailToggle[]>([
         { id: 'discovery', label: 'Discovery', enabled: true },
-        { id: 'transit', label: 'Transit', enabled: false },
-        { id: 'traffic', label: 'Traffic', enabled: false },
-        { id: 'biking', label: 'Biking', enabled: false },
-        { id: 'terrain', label: 'Terrain', enabled: false },
+        { id: 'transit',   label: 'Transit',   enabled: false },
+        { id: 'traffic',   label: 'Traffic',   enabled: false },
+        { id: 'biking',    label: 'Biking',    enabled: false },
+        { id: 'terrain',   label: 'Terrain',   enabled: false },
     ]);
 
-    const discoveryEnabled = mapDetails.find((d) => d.id === 'discovery')?.enabled ?? false;
-    const terrainEnabled = mapDetails.find((d) => d.id === 'terrain')?.enabled ?? false;
-    const trafficEnabled = mapDetails.find((d) => d.id === 'traffic')?.enabled ?? false;
-    const transitEnabled = mapDetails.find((d) => d.id === 'transit')?.enabled ?? false;
-    const bikingEnabled = mapDetails.find((d) => d.id === 'biking')?.enabled ?? false;
+    // Derive feature flags from the toggle list once; avoids repeated .find() calls per render
+    const { discoveryEnabled, terrainEnabled, trafficEnabled, transitEnabled } = useMemo(() => {
+        const flag = (id: string) => mapDetails.find((d) => d.id === id)?.enabled ?? false;
+        return {
+            discoveryEnabled: flag('discovery'),
+            terrainEnabled:   flag('terrain'),
+            trafficEnabled:   flag('traffic'),
+            transitEnabled:   flag('transit'),
+        };
+    }, [mapDetails]);
 
     const mapStyleUrl = useMemo(() => {
         if (mapType === 'satellite') return 'mapbox://styles/mapbox/satellite-v9';
-        if (mapType === 'default') return 'mapbox://styles/mapbox/streets-v12';
+        if (mapType === 'default')   return 'mapbox://styles/mapbox/streets-v12';
         return 'standard';
     }, [mapType]);
 

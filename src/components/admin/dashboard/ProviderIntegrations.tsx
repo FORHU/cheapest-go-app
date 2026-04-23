@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink, CreditCard, Mail, Plane, Globe, Building2 } from 'lucide-react';
 import type { ProviderIntegrationsData, ProviderStatus } from '@/types/admin';
@@ -9,7 +9,7 @@ interface ProviderIntegrationsProps {
     data: ProviderIntegrationsData;
 }
 
-function StatusDot({ status }: { status: ProviderStatus }) {
+const StatusDot = memo(({ status }: { status: ProviderStatus }) => {
     const color: Record<ProviderStatus, string> = {
         healthy: 'bg-emerald-500',
         error: 'bg-rose-500',
@@ -26,23 +26,27 @@ function StatusDot({ status }: { status: ProviderStatus }) {
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label[status]}</span>
         </div>
     );
-}
+});
 
-function MetricRow({ label, value }: { label: string; value: string | number | null }) {
+StatusDot.displayName = 'StatusDot';
+
+const MetricRow = memo(({ label, value }: { label: string; value: string | number | null }) => {
     return (
         <div className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-white/5 last:border-0">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</span>
             <span className="text-sm font-black text-slate-900 dark:text-white">{value ?? '---'}</span>
         </div>
     );
-}
+});
+
+MetricRow.displayName = 'MetricRow';
 
 function formatCents(cents: number | null): string {
     if (cents === null) return '---';
     return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 }
 
-function ProviderCard({ children, icon: Icon, name, status, dashboardUrl, iconBg, delay = 0 }: {
+const ProviderCard = memo(({ children, icon: Icon, name, status, dashboardUrl, iconBg, delay = 0 }: {
     children: React.ReactNode;
     icon: React.ElementType;
     name: string;
@@ -50,7 +54,7 @@ function ProviderCard({ children, icon: Icon, name, status, dashboardUrl, iconBg
     dashboardUrl: string;
     iconBg: string;
     delay?: number;
-}) {
+}) => {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -85,7 +89,9 @@ function ProviderCard({ children, icon: Icon, name, status, dashboardUrl, iconBg
             <div className="absolute -bottom-10 -right-10 w-24 h-24 bg-blue-500/5 blur-2xl rounded-full pointer-events-none" />
         </motion.div>
     );
-}
+});
+
+ProviderCard.displayName = 'ProviderCard';
 
 export function ProviderIntegrations({ data }: ProviderIntegrationsProps) {
     return (

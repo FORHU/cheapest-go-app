@@ -25,6 +25,40 @@ const supabaseAdmin = createClient(
 // We define a 30-day cache TTL for generic metadata searches to avoid heavy Google API costs
 const CACHE_TTL_DAYS = 30;
 
+// In-memory lock to deduplicate simultaneous requests for the same POI
+const inFlightRequests = new Map<string, Promise<any>>();
+
+function getPlaceholderUrl(name: string, category?: string, lat?: string, lng?: string): string {
+    const lowerCat = (category || '').toLowerCase();
+    const lowerName = name.toLowerCase();
+    
+    // If we have coordinates, the best "placeholder" is a Mapbox static image with a category icon
+    if (lat && lng && env.MAPBOX_TOKEN) {
+        let icon = 'pin-s-star+ff0000';
+        if (lowerCat.includes('transit') || lowerName.includes('station') || lowerName.includes('bus') || lowerName.includes('terminal') || lowerName.includes('airport')) {
+            icon = 'pin-s-bus+1e293b';
+        } else if (lowerCat.includes('park') || lowerCat.includes('nature') || lowerName.includes('park') || lowerName.includes('garden')) {
+            icon = 'pin-s-park+059669';
+        } else if (lowerCat.includes('museum') || lowerCat.includes('landmark') || lowerCat.includes('attraction')) {
+            icon = 'pin-s-museum+7c3aed';
+        } else if (lowerCat.includes('dining') || lowerCat.includes('food') || lowerCat.includes('restaurant') || lowerCat.includes('cafe')) {
+            icon = 'pin-s-restaurant+ea580c';
+        } else if (lowerCat.includes('lodging') || lowerCat.includes('hotel')) {
+            icon = 'pin-s-lodging+2563eb';
+        }
+        return `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/${icon}(${lng},${lat})/${lng},${lat},15,0,0/600x400?access_token=${env.MAPBOX_TOKEN}`;
+    }
+
+    // Fallback to placehold.co with category-specific colors
+    let bgColor = '1e293b'; // Default dark slate
+    if (lowerCat.includes('transit')) bgColor = '475569';
+    else if (lowerCat.includes('park') || lowerCat.includes('nature')) bgColor = '065f46';
+    else if (lowerCat.includes('dining')) bgColor = '9a3412';
+    else if (lowerCat.includes('attraction')) bgColor = '5b21b6';
+
+    return `https://placehold.co/600x400/${bgColor}/ffffff?text=${encodeURIComponent(name)}`;
+}
+
 async function getCached(key: string): Promise<string | null> {
     try {
         const { data: cached, error } = await supabaseAdmin
@@ -65,9 +99,20 @@ async function setCache(key: string, dataStr: string) {
     }
 }
 
+async function isValidImageResponse(url: string): Promise<boolean> {
+    try {
+        const res = await fetch(url, { next: { revalidate: 3600 } });
+        if (!res.ok) return false;
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+        return contentType.startsWith('image/');
+    } catch {
+        return false;
+    }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────
 
-async function tryGooglePlaces(name: string, lat: string, lng: string) {
+async function tryGooglePlaces(name: string, lat: string, lng: string, placeId?: string) {
     const key = env.GOOGLE_PLACES_API_KEY;
     if (!key) return null;
 
@@ -107,6 +152,15 @@ async function tryGooglePlaces(name: string, lat: string, lng: string) {
     };
 
     try {
+        if (placeId) {
+            const result = await findPhotoInCandidate({ place_id: placeId, name });
+            if (result) return {
+                ...result,
+                rating: null, // Details API doesn't return rating in the fields list we use, but it's fine for now as it fallbacks
+                userRatingsTotal: null
+            };
+        }
+
         // Step 1: Nearby Search (Tighter radius = better match for coordinates)
         const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=500&keyword=${encodeURIComponent(name)}&key=${key}`;
         const nearbyRes = await fetch(nearbyUrl, { next: { revalidate: 3600 } });
@@ -184,12 +238,12 @@ async function tryGooglePlaces(name: string, lat: string, lng: string) {
 }
 
 /** Foursquare: Aggressive Match → Detailed Tips Fetch */
-async function tryFoursquare(name: string, lat: string, lng: string) {
+async function tryFoursquare(name: string, lat: string, lng: string, fsqId?: string) {
     const key = env.FOURSQUARE_API_KEY;
     if (!key || key === 'YOUR_FOURSQUARE_API_KEY') return null;
 
     const trySearch = async (query: string, radius: number = 2000) => {
-        const url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(query)}&ll=${lat},${lng}&radius=${radius}&limit=1&fields=fsq_id,name,photos,tips`;
+        const url = `https://api.foursquare.com/v3/places/search?query=${encodeURIComponent(query)}&ll=${lat},${lng}&radius=${radius}&limit=1&fields=fsq_id,name,photos,tips,rating,stats,location`;
         const res = await fetch(url, {
             headers: { Authorization: key, Accept: 'application/json' },
             next: { revalidate: 3600 },
@@ -199,8 +253,20 @@ async function tryFoursquare(name: string, lat: string, lng: string) {
     };
 
     try {
+        let place = null;
+        
+        // 0. Direct ID Match (Fastest)
+        if (fsqId) {
+            const url = `https://api.foursquare.com/v3/places/${fsqId}?fields=fsq_id,name,photos,tips,rating,stats,location`;
+            const res = await fetch(url, {
+                headers: { Authorization: key, Accept: 'application/json' },
+                next: { revalidate: 3600 },
+            });
+            if (res.ok) place = await res.json();
+        }
+
         // 1. Direct Name Search
-        let place = await trySearch(name);
+        if (!place) place = await trySearch(name);
 
         // 2. Normalized Name Fallback (remove hyphens, special chars)
         if (!place) {
@@ -258,7 +324,14 @@ async function tryFoursquare(name: string, lat: string, lng: string) {
             console.warn('[poi-photo] Foursquare deep tips failed, using search tips.');
         }
 
-        return { photoUrl, tips, fsqId: place.fsq_id };
+        return { 
+            photoUrl, 
+            tips, 
+            fsqId: place.fsq_id,
+            rating: place.rating ? place.rating / 2 : null,
+            userRatingsTotal: place.stats?.total_ratings || 0,
+            vicinity: place.location?.formatted_address || place.location?.address || null
+        };
     } catch (err) {
         console.error('[poi-photo] Foursquare aggregate error:', err);
     }
@@ -268,8 +341,8 @@ async function tryFoursquare(name: string, lat: string, lng: string) {
 
 
 export async function GET(req: NextRequest) {
-    // 30 requests per minute per IP — prevents Foursquare/Google quota exhaustion
-    const rl = rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'poi-photo' });
+    // 120 requests per minute per IP — allows for initial load of 20 gems (20 img + 20 meta requests = 40) plus panning
+    const rl = rateLimit(req, { limit: 120, windowMs: 60_000, prefix: 'poi-photo' });
     if (!rl.success) {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
@@ -278,6 +351,9 @@ export async function GET(req: NextRequest) {
     const name = searchParams.get('name') || '';
     const lat = searchParams.get('lat') || '0';
     const lng = searchParams.get('lng') || '0';
+    const placeId = searchParams.get('placeId') || '';
+    const fsqId = searchParams.get('fsqId') || '';
+    const category = searchParams.get('category') || '';
     const full = searchParams.get('full') === 'true'; // If true, return JSON metadata
 
     if (!name) {
@@ -287,148 +363,181 @@ export async function GET(req: NextRequest) {
     // Round coordinates to ~11m precision to improve cache hits for slight position shifts
     const roundedLat = parseFloat(lat).toFixed(4);
     const roundedLng = parseFloat(lng).toFixed(4);
-    const cacheKey = `${name}|${roundedLat}|${roundedLng}|${full}|v6`; // Added v6 for aggressive Foursquare matching
+    // Unified cache key: full=true and full=false now share the same cache entry to prevent double-fetching
+    const cacheKey = `${name}|${roundedLat}|${roundedLng}|v9`; 
 
     // Return cached result if available
     const cached = await getCached(cacheKey);
     if (cached) {
-        if (full) {
-             // Depending on how it was stored, it might be raw JSON or { value: string }
-             try {
-                const parsed = JSON.parse(cached);
-                return NextResponse.json(parsed.value ? parsed.value : parsed);
-             } catch(e) {
-                return NextResponse.json(cached); // It was already an object
-             }
-        }
-        // Proxy redirect hit
         try {
-            const parsed = JSON.parse(cached);
-            return NextResponse.redirect(parsed.value || parsed);
+            const parsedMeta = typeof cached === 'string' ? JSON.parse(cached) : cached;
+            if (full) {
+                return NextResponse.json(parsedMeta);
+            } else {
+                // If it's a legacy string URL or missing photoUrl, fallback
+                const targetUrl = parsedMeta.photoUrl || parsedMeta.value || parsedMeta;
+                return NextResponse.redirect(targetUrl);
+            }
         } catch(e) {
-             return NextResponse.redirect(cached);
+            if (!full) return NextResponse.redirect(cached);
+        }
+    }
+
+    // Deduplicate in-flight requests to prevent race conditions between Image streaming and full metadata fetches
+    let resultMetadata: any = null;
+    
+    if (inFlightRequests.has(cacheKey)) {
+        try {
+            resultMetadata = await inFlightRequests.get(cacheKey);
+        } catch (e) {
+            // If in-flight fails, proceed to try again
+        }
+    }
+
+    if (!resultMetadata) {
+        const metadataPromise = (async () => {
+            let meta: any = {
+                photoUrl: null,
+                googlePhotoUrl: null,
+                foursquarePhotoUrl: null,
+                rating: null,
+                userRatingsTotal: null,
+                vicinity: null,
+                name: name,
+                source: 'none'
+            };
+
+        // --- Data Retrieval Strategy ---
+        // Fetch from both sources in parallel to halve the latency
+        const [googleResult, fsqResult] = await Promise.all([
+            tryGooglePlaces(name, lat, lng, placeId),
+            tryFoursquare(name, lat, lng, fsqId)
+        ]);
+
+        // 1. Process Google metadata (ratings, address) and potential photos
+            if (googleResult) {
+                meta = { 
+                    ...meta, 
+                    ...googleResult, 
+                    googlePhotoUrl: googleResult.photoUrl || null,
+                    nameEn: googleResult.name,
+                    source: googleResult.photoUrl ? 'google' : 'none' 
+                };
+            }
+
+            if (fsqResult) {
+                const googleReviews = [...(meta.reviews || [])];
+                const fsqTips = [...fsqResult.tips];
+                const merged = [];
+                
+                while (merged.length < 10 && (googleReviews.length > 0 || fsqTips.length > 0)) {
+                    if (fsqTips.length > 0) merged.push(fsqTips.shift());
+                    if (googleReviews.length > 0 && merged.length < 10) merged.push(googleReviews.shift());
+                }
+                
+                meta.reviews = merged;
+                
+                if (!meta.rating && fsqResult.rating) {
+                    meta.rating = fsqResult.rating;
+                    meta.userRatingsTotal = fsqResult.userRatingsTotal;
+                }
+                
+                if (!meta.vicinity && fsqResult.vicinity) {
+                    meta.vicinity = fsqResult.vicinity;
+                }
+
+                if (!meta.photoUrl && fsqResult.photoUrl) {
+                    meta.photoUrl = fsqResult.photoUrl;
+                    meta.foursquarePhotoUrl = fsqResult.photoUrl;
+                    meta.source = 'foursquare';
+                } else if (meta.photoUrl && fsqResult.tips.length > 0) {
+                    meta.foursquarePhotoUrl = fsqResult.photoUrl || null;
+                    meta.source = 'fsq-google';
+                }
+            }
+
+            if (!meta.rating) {
+                meta = {
+                    ...meta,
+                    rating: 4.0 + (Math.random() * 0.9),
+                    userRatingsTotal: Math.floor(50 + Math.random() * 500),
+                    vicinity: meta.vicinity || "Recommended Local Spot",
+                    source: meta.source === 'none' ? 'mock-fallback' : meta.source
+                };
+            }
+
+            if (!meta.photoUrl) {
+                meta.photoUrl = getPlaceholderUrl(name, category, lat, lng);
+                meta.source = meta.source === 'none' ? 'placeholder' : meta.source;
+            }
+
+            await setCache(cacheKey, JSON.stringify(meta)); // Cache unified metadata object
+            return meta;
+        })();
+
+        inFlightRequests.set(cacheKey, metadataPromise);
+        try {
+            resultMetadata = await metadataPromise;
+        } catch (e) {
+            resultMetadata = null;
+        } finally {
+            inFlightRequests.delete(cacheKey);
         }
     }
 
     try {
-        let resultMetadata: any = {
-            photoUrl: null,
-            rating: null,
-            userRatingsTotal: null,
-            vicinity: null,
-            name: name,
-            source: 'none'
-        };
-
-        // --- Data Retrieval Strategy ---
-        // 1. Always try Google first for metadata (ratings, address) and potential photos
-        const googleResult = await tryGooglePlaces(name, lat, lng);
-        if (googleResult) {
-            resultMetadata = { 
-                ...resultMetadata, 
-                ...googleResult, 
-                // Prioritize Google's name as the translated version
-                nameEn: googleResult.name,
-                source: googleResult.photoUrl ? 'google' : 'none' 
-            };
-        }
-
-
-        if (!googleResult && !resultMetadata.rating) {
-            resultMetadata = {
-                ...resultMetadata,
-                rating: 4.0 + (Math.random() * 0.9), // 4.0 - 4.9
-                userRatingsTotal: Math.floor(50 + Math.random() * 500),
-                vicinity: "Recommended Local Spot",
-                source: 'mock-fallback'
-            };
-        }
-
-        // 2. Always try Foursquare for additional photos and unique text "Tips" (reviews)
-        const fsqResult = await tryFoursquare(name, lat, lng);
-        if (fsqResult) {
-            // Interleave reviews to ensure Foursquare tips are visible alongside Google reviews
-            const googleReviews = [...(resultMetadata.reviews || [])];
-            const fsqTips = [...fsqResult.tips];
-            const merged = [];
-            
-            // Interleave logic: Grab one from Foursquare (often more unique), then one from Google
-            while (merged.length < 10 && (googleReviews.length > 0 || fsqTips.length > 0)) {
-                if (fsqTips.length > 0) merged.push(fsqTips.shift());
-                if (googleReviews.length > 0 && merged.length < 10) merged.push(googleReviews.shift());
-            }
-            
-            resultMetadata.reviews = merged;
-            
-            // Fallback photo if Google didn't find one
-            if (!resultMetadata.photoUrl && fsqResult.photoUrl) {
-                resultMetadata.photoUrl = fsqResult.photoUrl;
-                resultMetadata.source = 'foursquare';
-            } else if (resultMetadata.photoUrl && fsqResult.tips.length > 0) {
-                resultMetadata.source = 'fsq-google';
-            }
-        }
-
-        if (!resultMetadata.photoUrl) {
-            // Final Priority: High-quality category-aware placeholders
-            const nameLower = name.toLowerCase();
-            const isDining = nameLower.includes('restaurant') || nameLower.includes('cafe') || nameLower.includes('eatery');
-            const isPark = nameLower.includes('park') || nameLower.includes('garden') || nameLower.includes('field');
-            
-            let placeholderUrl = `https://placehold.co/600x400/1e293b/94a3b8?text=${encodeURIComponent(name)}`;
-            
-            if (isDining) {
-                placeholderUrl = `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=600&h=400`;
-            } else if (isPark) {
-                placeholderUrl = `https://images.unsplash.com/photo-1501333441792-41a2f3e8cb08?auto=format&fit=crop&q=80&w=600&h=400`;
-            }
-            
-            resultMetadata.photoUrl = placeholderUrl;
-            resultMetadata.source = resultMetadata.source === 'none' ? 'placeholder' : resultMetadata.source;
-        }
-
+        if (!resultMetadata) throw new Error("Metadata generation failed");
+        
         if (full) {
-            await setCache(cacheKey, JSON.stringify(resultMetadata));
             return NextResponse.json(resultMetadata);
         } else {
-            // PROXY MODE: Fetch and stream the actual image bytes to bypass browser restrictions
             try {
-                const imgRes = await fetch(resultMetadata.photoUrl, {
-                    next: { revalidate: 3600 }
-                });
+                const tryFetchImage = async (url: string) => {
+                    const res = await fetch(url, { next: { revalidate: 3600 } });
+                    const contentType = res.headers.get('content-type') || '';
+                    const isImage = contentType.toLowerCase().startsWith('image/');
+                    return { res, contentType, isImage };
+                };
 
-                if (!imgRes.ok) {
-                    console.error(`[poi-photo] Remote fetch failed for "${name}": ${imgRes.status} ${imgRes.statusText}`);
-                    // If it's a 403 or 404, we'll try to redirect as a last-ditch effort, 
-                    // or just let it fall through to placeholder logic if we refactored it.
-                    // But in this block, we've already decided on resultMetadata.photoUrl.
-                    return NextResponse.redirect(resultMetadata.photoUrl);
+                let finalUrl = resultMetadata.photoUrl;
+                let chosenSource = resultMetadata.source;
+                let { res: imgRes, contentType, isImage } = await tryFetchImage(finalUrl);
+
+                if (!imgRes.ok || !isImage) {
+                    const converseUrl = resultMetadata.source === 'google' ? resultMetadata.foursquarePhotoUrl : resultMetadata.googlePhotoUrl;
+                    const candidates = [converseUrl, resultMetadata.googlePhotoUrl, resultMetadata.foursquarePhotoUrl, getPlaceholderUrl(name, category, lat, lng)].filter((u, i, arr): u is string => !!u && arr.indexOf(u) === i);
+
+                    for (const candidateUrl of candidates) {
+                        const candidateResult = await tryFetchImage(candidateUrl);
+                        if (candidateResult.res.ok && candidateResult.isImage) {
+                            finalUrl = candidateUrl;
+                            imgRes = candidateResult.res;
+                            contentType = candidateResult.contentType;
+                            isImage = true;
+                            if (candidateUrl === resultMetadata.googlePhotoUrl) chosenSource = 'google-fallback';
+                            else if (candidateUrl === resultMetadata.foursquarePhotoUrl) chosenSource = 'foursquare-fallback';
+                            else chosenSource = 'placeholder';
+                            break;
+                        }
+                    }
                 }
 
-                const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
-                // Use arrayBuffer for compatibility with all environments; performance is fine for small POI photos
+                if (!imgRes.ok || !isImage) return NextResponse.redirect(finalUrl);
+
                 const buffer = await imgRes.arrayBuffer();
-                
-                await setCache(cacheKey, JSON.stringify({ value: resultMetadata.photoUrl })); // Cache the SUCCESSFUL URL only
-                
                 return new NextResponse(buffer, {
                     headers: {
-                        'Content-Type': contentType,
+                        'Content-Type': contentType || 'image/jpeg',
                         'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=43200',
                     },
                 });
             } catch (proxyError) {
-                console.error('[poi-photo] Internal proxy streaming error:', proxyError);
                 return NextResponse.redirect(resultMetadata.photoUrl);
             }
         }
     } catch (err) {
-        console.error('[poi-photo] General Error:', err);
-        const fallbackUrl = `https://placehold.co/600x400/1e293b/94a3b8?text=${encodeURIComponent(name)}`;
-        
-        if (full) {
-            return NextResponse.json({ photoUrl: fallbackUrl, source: 'error-fallback' });
-        }
+        const fallbackUrl = getPlaceholderUrl(name, category, lat, lng);
+        if (full) return NextResponse.json({ photoUrl: fallbackUrl, source: 'error-fallback' });
         return NextResponse.redirect(fallbackUrl);
     }
 }

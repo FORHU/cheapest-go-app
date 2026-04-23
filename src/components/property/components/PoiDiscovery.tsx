@@ -139,7 +139,10 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                         const isActive = activePoiId === name;
                         const lng = poi.geometry?.coordinates[0] || poi.coordinates.lng;
                         const lat = poi.geometry?.coordinates[1] || poi.coordinates.lat;
-                        const imageUrl = poi.properties?.imageUrl || (poi.imageUrl || getMapboxPoiImage(name, lat, lng));
+                        const category = poi.properties?.category || poi.category;
+                        const imageUrl = poi.properties?.imageUrl || (poi.imageUrl || getMapboxPoiImage(name, lat, lng, category));
+                        const ratingValue = Number(poi.properties?.rating);
+                        const ratingDisplay = Number.isFinite(ratingValue) ? Math.round(ratingValue) : null;
 
                         return (
                             <button
@@ -170,10 +173,10 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                                     loading="lazy"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent" />
-                                {poi.properties?.rating && (
+                                {ratingDisplay !== null && (
                                     <div className="absolute top-2 left-2 bg-black/40 backdrop-blur-md rounded-full px-2 py-0.5 flex items-center gap-1 border border-white/20 shadow-sm">
                                         <Star size={10} className="text-yellow-400 fill-yellow-400" />
-                                        <span className="text-[10px] font-bold text-white tracking-tight">{poi.properties.rating}</span>
+                                        <span className="text-[10px] font-bold text-white tracking-tight">{ratingDisplay}</span>
                                     </div>
                                 )}
                                 <div className="absolute inset-0 p-3 flex flex-col justify-end items-start text-white text-left">

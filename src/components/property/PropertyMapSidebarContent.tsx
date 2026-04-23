@@ -374,8 +374,17 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
         // POI Icons are shown automatically by streets-v12. (No need to scale manually)
 
+        const lastMoveRef = useRef<number>(0);
+        const symbolLayersRef = useRef<string[] | null>(null);
+
         const onMouseMove = useCallback((event: any) => {
             if (!mapRef.current || showDirections) return;
+            
+            // Throttle the expensive queryRenderedFeatures to 10fps
+            const now = Date.now();
+            if (now - lastMoveRef.current < 100) return;
+            lastMoveRef.current = now;
+
             const map = mapRef.current.getMap();
             if (!map || !map.loaded()) return;
             
@@ -386,16 +395,30 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                 return;
             }
 
-            const allFeatures = map.queryRenderedFeatures(event.point);
-            const skipPatterns = ['road', 'building', 'land', 'water', 'boundary', 'admin', 'tunnel', 'bridge', 'path', 'street'];
-            const poiFeature = allFeatures.find((f: any) => {
-                const layerId = (f.layer?.id || '').toLowerCase();
-                const sourceName = (f.source || '').toLowerCase();
-                const hasName = f.properties?.name || f.properties?.name_en;
-                if (skipPatterns.some(p => layerId.includes(p) || sourceName.includes(p))) return false;
-                return !!hasName && isPoiAllowed(f);
-            });
-            map.getCanvas().style.cursor = poiFeature ? 'pointer' : '';
+            // Cache symbol layers to avoid querying 3D buildings, terrain, and heavy polygons
+            if (!symbolLayersRef.current) {
+                try {
+                    symbolLayersRef.current = map.getStyle().layers
+                        .filter((l: any) => l.type === 'symbol' && !l.id.toLowerCase().includes('road') && !l.id.toLowerCase().includes('street') && !l.id.toLowerCase().includes('state'))
+                        .map((l: any) => l.id);
+                } catch(e) {
+                    symbolLayersRef.current = [];
+                }
+            }
+
+            if (symbolLayersRef.current && symbolLayersRef.current.length > 0) {
+                const validLayers = symbolLayersRef.current.filter((id) => map.getLayer(id));
+                if (validLayers.length === 0) return;
+                
+                const allFeatures = map.queryRenderedFeatures(event.point, { layers: validLayers });
+                const poiFeature = allFeatures.find((f: any) => {
+                    const hasName = f.properties?.name || f.properties?.name_en;
+                    return !!hasName && isPoiAllowed(f);
+                });
+                map.getCanvas().style.cursor = poiFeature ? 'pointer' : '';
+            } else {
+                map.getCanvas().style.cursor = '';
+            }
         }, [showDirections, isPoiAllowed]);
 
         if (!mounted) {
@@ -428,6 +451,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                             onClick={onMapClick}
                                             onMouseMove={onMouseMove}
                                             maxPitch={60}
+                                            antialias={false}
                                             className="!min-h-0 !rounded-none h-full"
                                         >
                                             <NavigationControl position="top-right" showCompass={false} />
@@ -532,6 +556,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     onClick={onMapClick}
                                     onMouseMove={onMouseMove}
                                     maxPitch={60}
+                                    antialias={false}
                                     className="!min-h-0 !rounded-none h-full"
                                 >
                                     <NavigationControl position="top-right" showCompass={false} />
