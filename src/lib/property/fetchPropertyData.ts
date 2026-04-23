@@ -17,6 +17,8 @@ export interface SearchParamsInput {
     rooms?: string | number;
     offerId?: string;
     currency?: string;
+    /** Duffel Stays rate ID — passed as URL param when navigating from search results */
+    rateId?: string;
 }
 
 export interface FetchPropertyResult {
@@ -140,6 +142,73 @@ export function createFallbackProperty(id: string, preBookResult: any, currency:
 }
 
 /**
+ * Fetch a Duffel Stays property by creating a quote for the rate.
+ * The rate_id is passed as a URL search param when navigating from search results.
+ */
+async function fetchDuffelPropertyData(
+    id: string,
+    searchParams: SearchParamsInput
+): Promise<FetchPropertyResult> {
+    const rateId = searchParams.rateId;
+    if (!rateId) {
+        return { property: null, fetchedDetails: null, preBookResult: null };
+    }
+
+    try {
+        const token = process.env.DUFFEL_ACCESS_TOKEN;
+        if (!token) throw new Error('DUFFEL_ACCESS_TOKEN not set');
+
+        const res = await fetch('https://api.duffel.com/stays/quotes', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Duffel-Version': 'v2',
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify({ data: { rate_id: rateId } }),
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Duffel quote ${res.status}: ${text.slice(0, 200)}`);
+        }
+
+        const json = await res.json();
+        const quote = json.data;
+        const acc = quote?.accommodation ?? {};
+        const rate = quote?.rooms?.[0]?.rates?.[0] ?? {};
+
+        const property: PropertyData = {
+            id,
+            name: acc.name ?? 'Unknown Property',
+            location: acc.location?.address?.line_1 ?? acc.location?.address?.city_name ?? '',
+            description: acc.description ?? 'No description available',
+            rating: acc.review_score ?? (acc.rating ? acc.rating * 2 : 0),
+            reviews: acc.review_count ?? 0,
+            price: parseFloat(rate.total_amount ?? '0'),
+            currency: rate.total_currency ?? (searchParams.currency || 'USD'),
+            image: acc.photos?.[0]?.url ?? '',
+            images: (acc.photos ?? []).map((p: any) => p.url),
+            amenities: (acc.amenities ?? []).map((a: any) => a.description ?? a.type),
+            badges: [],
+            type: 'hotel',
+            coordinates: {
+                lat: acc.location?.geographic?.latitude ?? 0,
+                lng: acc.location?.geographic?.longitude ?? 0,
+            },
+            provider: 'duffel',
+            rateId,
+        };
+
+        return { property, fetchedDetails: quote, preBookResult: { quoteId: quote?.id } };
+    } catch (err) {
+        console.error('[fetchDuffelPropertyData]', err instanceof Error ? err.message : err);
+        return { property: null, fetchedDetails: null, preBookResult: null };
+    }
+}
+
+/**
  * Main data fetching function for property page.
  * Handles prebook, hotel details, and fallbacks.
  * Wrapped in React.cache to avoid redundant hits in generateMetadata + Page component.
@@ -148,6 +217,10 @@ export const fetchPropertyData = cache(async (
     id: string,
     searchParams: SearchParamsInput
 ): Promise<FetchPropertyResult> => {
+    // Duffel Stays hotels have accommodation IDs starting with "acc_"
+    if (id.startsWith('acc_')) {
+        return fetchDuffelPropertyData(id, searchParams);
+    }
     let preBookResult = null;
     let fetchedDetails = null;
 

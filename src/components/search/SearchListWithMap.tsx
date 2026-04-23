@@ -83,9 +83,11 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
         (id: string) => {
             const params = new URLSearchParams(searchParams?.toString() || '');
             params.delete('view');
+            const prop = mappableProperties.find(p => p.id === id);
+            if (prop?.rateId) params.set('rateId', prop.rateId);
             router.push(`/property/${id}?${params.toString()}`);
         },
-        [router, searchParams]
+        [router, searchParams, mappableProperties]
     );
 
     const handleMarkerClick = useCallback(

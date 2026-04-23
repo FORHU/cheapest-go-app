@@ -100,9 +100,11 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
         (id: string) => {
             const params = new URLSearchParams(searchParams?.toString() || '');
             params.delete('view');
+            const prop = properties.find(p => p.id === id);
+            if (prop?.rateId) params.set('rateId', prop.rateId);
             router.push(`/property/${id}?${params.toString()}`);
         },
-        [router, searchParams]
+        [router, searchParams, properties]
     );
 
     const scrollToCard = useCallback((id: string) => {

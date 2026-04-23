@@ -129,7 +129,8 @@ export default function FlightFilters({ airlines, onFilterChange }: FlightFilter
                 </label>
             </div>
 
-            {/* Provider */}
+            {/* Provider — dev only */}
+            {process.env.NODE_ENV !== 'production' && (
             <div className="space-y-3">
                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Provider</p>
                 <div className="flex flex-col gap-2">
@@ -162,6 +163,7 @@ export default function FlightFilters({ airlines, onFilterChange }: FlightFilter
                     })}
                 </div>
             </div>
+            )}
 
             {/* Airlines */}
             <div className="space-y-3">

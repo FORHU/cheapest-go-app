@@ -320,7 +320,8 @@ export const useNearbyGems = ({
                 );
 
                 await Promise.all(retrievePromises);
-            } catch (err) {
+            } catch (err: any) {
+                if (err?.name === 'AbortError') return; // normal React cleanup — not an error
                 console.error('Fetching gems failed:', err);
                 const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
                 if (isBaguio && selectedCategory === 'all') setNearbyGems(BAGUIO_DEFAULT_GEMS);

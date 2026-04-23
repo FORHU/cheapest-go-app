@@ -50,6 +50,19 @@ export interface Property {
     boardTypes?: string[];
     /** City name from the search query — used for flight bundle upsell destination */
     city?: string;
+    /** Source provider */
+    provider?: 'travelgatex' | 'duffel';
+    /** Duffel rate ID — required to create a quote/booking for Duffel-sourced hotels */
+    rateId?: string;
+    /** TravelgateX booking metadata — required for quote/book flow */
+    _tgx?: {
+        optionId: string;
+        token: string;
+        accessCode: string;
+        supplierCode?: string;
+        boardCode?: string;
+        rateRules?: string[];
+    };
 }
 
 export const uniqueTabs = ['Tents', 'Boats', 'Tree House', 'Resorts'];

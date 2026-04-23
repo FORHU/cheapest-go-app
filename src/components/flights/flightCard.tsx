@@ -249,9 +249,11 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 capitalize">
                             {(primary.cabinClass || 'economy').replace('_', ' ')}
                         </span>
+                        {process.env.NODE_ENV !== 'production' && (
                         <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
                             {providerLabel(offer.provider)}
                         </span>
+                        )}
                         {offer.alternatives && offer.alternatives.length > 0 && (
                             <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-600 text-white font-bold animate-pulse shadow-sm shadow-indigo-500/50">
                                 <BadgeDollarSign className="w-2 h-2 lg:w-3 lg:h-3" />
@@ -380,7 +382,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                             </span>
                                         </div>
                                         <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
-                                            {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')} · {providerLabel(alt.provider)}
+                                            {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')}{process.env.NODE_ENV !== 'production' ? ` · ${providerLabel(alt.provider)}` : ''}
                                         </p>
                                         <button
                                             onClick={(e) => {

@@ -93,9 +93,11 @@ function MapSearchLayout({ properties, title }: MapSearchLayoutProps) {
     const handleViewDetails = useCallback(
         (id: string) => {
             const params = new URLSearchParams(searchParams?.toString() || '');
+            const prop = properties.find(p => p.id === id);
+            if (prop?.rateId) params.set('rateId', prop.rateId);
             router.push(`/property/${id}?${params.toString()}`);
         },
-        [router, searchParams]
+        [router, searchParams, properties]
     );
 
     return (
