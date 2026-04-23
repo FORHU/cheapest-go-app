@@ -185,7 +185,7 @@ export const useNearbyGems = ({
                             sourceLabel: source === 'fsq-google' ? 'Google & Foursquare Reviews' :
                                          source === 'foursquare' ? 'Foursquare Recommendations' : 
                                          'Google Reviews',
-                            isStub: !isGoogleSource && !isFsqSource, // Foursquare and Google Discovery provide enough initial data
+                            isStub: !isFsqSource, // Foursquare Discovery provides tips/details, but Google Discovery only provides basic info
                             source: source || 'mapbox'
                         }
                     };
@@ -254,7 +254,8 @@ export const useNearbyGems = ({
                                     translatedName: proxyData.nameEn || proxyData.name || featureStub.properties.name,
                                     icon: enrichmentIcon,
                                     imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, fsqId, lowerCat),
-                                    category: proxyData.vicinity || featureStub.properties.category,
+                                    displayCategory: proxyData.category || featureStub.properties.category, // Use proxy's category for display if available
+                                    vicinity: proxyData.vicinity || featureStub.properties.vicinity,
                                     rating: proxyData.rating,
                                     userRatingsTotal: proxyData.userRatingsTotal,
                                     reviews: [
