@@ -12,6 +12,7 @@ import {
     BarChart3,
     Settings,
     Plane,
+    Globe,
     ChevronRight,
     Mail,
     Shield,

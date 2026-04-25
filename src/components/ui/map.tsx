@@ -118,7 +118,7 @@ const Map = React.memo(
                 enable3DBuildings = false,
                 buildingColor = '#aaa',
                 buildingOpacity = 0.8,
-                antialias = true,
+                antialias = false,
                 children,
                 onLoad,
                 onStyleReady,
@@ -197,6 +197,16 @@ const Map = React.memo(
                                 source: 'mapbox-dem',
                                 exaggeration: terrainExaggeration,
                             });
+                        } else {
+                            // [CRITICAL FIX] Explicitly disable terrain to revert to 2D render pipeline
+                            // This fixes the "Cutoff is currently disabled on terrain" zoom lag
+                            try {
+                                if (map.getTerrain()) {
+                                    map.setTerrain(null);
+                                }
+                            } catch (e) {
+                                // Ignore if style not ready
+                            }
                         }
 
                         setIsStyleLoaded(true);

@@ -250,6 +250,16 @@ export interface DuffelRouteMetric {
     currency: string;
 }
 
+export interface DuffelAirline {
+    id: string;
+    name: string;
+    iataCode: string;
+    logoUrl: string | null;
+    region: string;
+    active: boolean;
+    alliance: string | null;
+}
+
 export interface DuffelDayPoint {
     date: string;   // YYYY-MM-DD
     orders: number;

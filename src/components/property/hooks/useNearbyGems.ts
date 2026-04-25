@@ -172,6 +172,7 @@ export const useNearbyGems = ({
 
                     return {
                         ...f,
+                        id: name, // Unique ID for feature-state
                         properties: {
                             ...f.properties,
                             name,
@@ -249,6 +250,7 @@ export const useNearbyGems = ({
 
                             const enriched = {
                                 ...featureStub,
+                                id: name,
                                 properties: {
                                     ...featureStub.properties,
                                     translatedName: proxyData.nameEn || proxyData.name || featureStub.properties.name,

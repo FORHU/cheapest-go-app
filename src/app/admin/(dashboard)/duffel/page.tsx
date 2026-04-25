@@ -9,5 +9,5 @@ export const metadata = {
 
 export default async function AdminDuffelPage() {
     const integrations = await getProviderIntegrations();
-    return <DuffelAdminClient data={integrations.duffel} />;
+    return <DuffelAdminClient data={integrations.duffel} airlines={integrations.airlines} />;
 }
