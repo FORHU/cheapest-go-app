@@ -74,6 +74,11 @@ export function AdminLayoutClient({
                 title: 'Duffel',
                 subtitle: 'Live flight orders & integration health',
                 image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&q=80&w=1600'
+            },
+            airlines: {
+                title: 'Airlines Directory',
+                subtitle: 'Manage global carrier integrations and alliances',
+                image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&q=80&w=1600'
             }
         };
         return configs[path] || configs.overview;

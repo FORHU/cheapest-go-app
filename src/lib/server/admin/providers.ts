@@ -1,7 +1,7 @@
 import { getStripe } from '@/lib/stripe/server';
 import { env } from '@/utils/env';
 import { createAdminClient } from '@/utils/supabase/admin';
-import type { ProviderIntegrationsData } from '@/types/admin';
+import type { ProviderIntegrationsData, DuffelAirline } from '@/types/admin';
 
 // ── Stripe ──────────────────────────────────────────────
 
@@ -123,7 +123,7 @@ async function fetchDuffelOrderPage(
 
     const res = await fetch(`https://api.duffel.com/air/orders?${params}`, {
         headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${token.trim()}`,
             'Duffel-Version': 'v2',
             'Accept': 'application/json',
         },
@@ -133,7 +133,17 @@ async function fetchDuffelOrderPage(
 
     if (!res.ok) {
         const text = await res.text();
-        throw new Error(`Duffel API ${res.status}: ${text.slice(0, 200)}`);
+        let errorTitle = 'Unknown Error';
+        try {
+            const errBody = JSON.parse(text);
+            errorTitle = errBody.errors?.[0]?.title || errorTitle;
+            // If token is malformed, provide a helpful hint
+            if (errorTitle === 'Access token not found') {
+                errorTitle += ' (Check for missing underscore after "test" or "live")';
+            }
+        } catch (e) { /* ignore */ }
+        
+        throw new Error(`Duffel API ${res.status}: ${errorTitle}`);
     }
 
     const body = await res.json();
@@ -416,16 +426,49 @@ async function fetchLiteApiData(): Promise<ProviderIntegrationsData['liteapi']> 
     }
 }
 
+// ── Duffel Airlines List ─────────────────────────────
+
+async function fetchAirlinesData(): Promise<DuffelAirline[]> {
+    if (!env.DUFFEL_TOKEN) return [];
+
+    try {
+        const res = await fetch('https://api.duffel.com/air/airlines?limit=200', {
+            headers: {
+                'Authorization': `Bearer ${env.DUFFEL_TOKEN.trim()}`,
+                'Duffel-Version': 'v2',
+                'Accept': 'application/json',
+            },
+            next: { revalidate: 3600 } // cache for 1 hour
+        });
+
+        if (!res.ok) return [];
+        const body = await res.json();
+        return (body.data || []).map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            iataCode: a.iata_code,
+            logoUrl: a.logo_symbol_url || `https://www.gstatic.com/flights/airline_logos/70px/${a.iata_code?.toUpperCase()}.png`,
+            region: 'Global',
+            active: true,
+            alliance: a.iata_code === 'A3' ? 'Star Alliance' : null
+        }));
+    } catch (error) {
+        console.error('[providers] Airlines fetch error:', error);
+        return [];
+    }
+}
+
 // ── Main export ─────────────────────────────────────────
 
-export async function getProviderIntegrations(): Promise<ProviderIntegrationsData> {
-    const [stripe, resend, duffel, mystifly, liteapi] = await Promise.all([
+export async function getProviderIntegrations(): Promise<ProviderIntegrationsData & { airlines: DuffelAirline[] }> {
+    const [stripe, resend, duffel, mystifly, liteapi, airlines] = await Promise.all([
         fetchStripeData(),
         fetchResendData(),
         fetchDuffelData(),
         fetchMystiflyData(),
         fetchLiteApiData(),
+        fetchAirlinesData(),
     ]);
 
-    return { stripe, resend, duffel, mystifly, liteapi };
+    return { stripe, resend, duffel, mystifly, liteapi, airlines };
 }

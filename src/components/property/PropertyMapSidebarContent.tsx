@@ -95,10 +95,33 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             return () => { document.body.style.overflow = ''; };
         }, [isFullscreen]);
 
-        // POI State
         const [activePoiId, setActivePoiId] = useState<string | null>(null);
         const [selectedNativePoi, setSelectedNativePoi] = useState<any>(null);
         const [modalPoiId, setModalPoiId] = useState<string | null>(null);
+
+        // Mapbox Performance: Synchronize activePoiId with feature-state
+        const lastActivePoiId = useRef<string | null>(null);
+        React.useEffect(() => {
+            const map = mapRef.current?.getMap();
+            if (!map || !isLoaded) return;
+
+            // Clear previous state
+            if (lastActivePoiId.current && lastActivePoiId.current !== 'hotel') {
+                map.setFeatureState(
+                    { source: 'gems-source', id: lastActivePoiId.current },
+                    { active: false }
+                );
+            }
+
+            // Set new state
+            if (activePoiId && activePoiId !== 'hotel') {
+                map.setFeatureState(
+                    { source: 'gems-source', id: activePoiId },
+                    { active: true }
+                );
+            }
+            lastActivePoiId.current = activePoiId;
+        }, [activePoiId, isLoaded]);
 
         // Directions State
         const [showDirections, setShowDirections] = useState(false);
@@ -247,15 +270,9 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
             return {
                 type: 'FeatureCollection',
-                features: visibleGems.map(gem => ({
-                    ...gem,
-                    properties: {
-                        ...gem.properties,
-                        isActive: activePoiId === (gem.properties?.name || gem.name)
-                    }
-                }))
+                features: visibleGems
             };
-        }, [nearbyGems, showDirections, activeMapFilters, activePoiId]);
+        }, [nearbyGems, showDirections, activeMapFilters]);
 
         const routeGeojson = React.useMemo(() => {
             if (!activeRouteGeometry) return { type: 'FeatureCollection', features: [] };
@@ -296,8 +313,15 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             }
 
             const map = mapRef.current.getMap();
+
+            // Use a small bbox for more reliable click detection
+            const bbox: [mapboxgl.PointLike, mapboxgl.PointLike] = [
+                [event.point.x - 5, event.point.y - 5],
+                [event.point.x + 5, event.point.y + 5]
+            ];
+
             const hasGemsLayer = map.getLayer('gems-layer');
-            const features = hasGemsLayer ? map.queryRenderedFeatures(event.point, { layers: ['gems-layer'] }) : [];
+            const features = hasGemsLayer ? map.queryRenderedFeatures(bbox, { layers: ['gems-layer'] }) : [];
             
             if (features.length > 0) {
                 const gem = features[0];
@@ -312,14 +336,17 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                 return;
             }
 
-            // Fallback to checking for general POIs if no gem was clicked
-            const allFeatures = map.queryRenderedFeatures(event.point);
-            const skipPatterns = ['road', 'building', 'land', 'water', 'boundary', 'admin', 'tunnel', 'bridge', 'path', 'street'];
+            // Fallback: query only symbol layers (cached) instead of all layers for performance
+            const layersToQuery = symbolLayersRef.current?.filter((id) => map.getLayer(id));
+            const allFeatures = layersToQuery && layersToQuery.length > 0
+                ? map.queryRenderedFeatures(bbox, { layers: layersToQuery })
+                : map.queryRenderedFeatures(bbox);
 
             const poiFeature = allFeatures.find((f: any) => {
                 const layerId = (f.layer?.id || '').toLowerCase();
                 const sourceName = (f.source || '').toLowerCase();
                 const hasName = f.properties?.name || f.properties?.name_en;
+                const skipPatterns = ['road', 'building', 'land', 'water', 'boundary', 'admin', 'tunnel', 'bridge', 'path', 'street'];
                 if (skipPatterns.some(p => layerId.includes(p) || sourceName.includes(p))) return false;
 
                 // Interaction Filtering: Only allow allowed categories
@@ -377,22 +404,41 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         const lastMoveRef = useRef<number>(0);
         const symbolLayersRef = useRef<string[] | null>(null);
 
+        // Invalidate cached symbol layers when the map style URL changes
+        React.useEffect(() => {
+            symbolLayersRef.current = null;
+        }, [mapStyleUrl]);
+
         const onMouseMove = useCallback((event: any) => {
             if (!mapRef.current || showDirections) return;
             
-            // Throttle the expensive queryRenderedFeatures to 10fps
-            const now = Date.now();
-            if (now - lastMoveRef.current < 100) return;
-            lastMoveRef.current = now;
-
             const map = mapRef.current.getMap();
             if (!map || !map.loaded()) return;
+
+            // [OPTIMIZATION] Skip expensive POI detection during active map movement
+            if (map.isMoving() || map.isZooming() || map.isRotating()) {
+                map.getCanvas().style.cursor = '';
+                return;
+            }
+
+            // Throttle the expensive queryRenderedFeatures to ~7fps
+            const now = Date.now();
+            if (now - lastMoveRef.current < 150) return;
+            lastMoveRef.current = now;
+
+            // Use a small bounding box (5px) instead of exact point for cheaper GPU queries
+            const bbox: [mapboxgl.PointLike, mapboxgl.PointLike] = [
+                [event.point.x - 5, event.point.y - 5],
+                [event.point.x + 5, event.point.y + 5]
+            ];
             
             const hasGemsLayer = map.getLayer('gems-layer');
-            const features = hasGemsLayer ? map.queryRenderedFeatures(event.point, { layers: ['gems-layer'] }) : [];
-            if (features.length > 0) {
-                map.getCanvas().style.cursor = 'pointer';
-                return;
+            if (hasGemsLayer) {
+                const features = map.queryRenderedFeatures(bbox, { layers: ['gems-layer'] });
+                if (features.length > 0) {
+                    map.getCanvas().style.cursor = 'pointer';
+                    return;
+                }
             }
 
             // Cache symbol layers to avoid querying 3D buildings, terrain, and heavy polygons
@@ -408,12 +454,15 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
             if (symbolLayersRef.current && symbolLayersRef.current.length > 0) {
                 const validLayers = symbolLayersRef.current.filter((id) => map.getLayer(id));
-                if (validLayers.length === 0) return;
+                if (validLayers.length === 0) {
+                    map.getCanvas().style.cursor = '';
+                    return;
+                }
                 
-                const allFeatures = map.queryRenderedFeatures(event.point, { layers: validLayers });
+                const allFeatures = map.queryRenderedFeatures(bbox, { layers: validLayers });
                 const poiFeature = allFeatures.find((f: any) => {
                     const hasName = f.properties?.name || f.properties?.name_en;
-                    return !!hasName && isPoiAllowed(f);
+                    return !!hasName;
                 });
                 map.getCanvas().style.cursor = poiFeature ? 'pointer' : '';
             } else {
