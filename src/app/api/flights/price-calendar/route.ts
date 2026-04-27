@@ -24,7 +24,7 @@ const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
  *   cabin        economy | premium_economy | business | first
  */
 export async function GET(req: NextRequest) {
-    const rl = rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'price-cal' });
+    const rl = await rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'price-cal' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const { searchParams } = new URL(req.url);

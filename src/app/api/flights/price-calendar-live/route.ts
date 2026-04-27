@@ -16,7 +16,7 @@ export const maxDuration = 60;
  * Body: { origin, destination, adults, cabin, dates: string[] }
  */
 export async function POST(req: NextRequest) {
-    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'price-cal-live' });
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'price-cal-live' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     let body: unknown;

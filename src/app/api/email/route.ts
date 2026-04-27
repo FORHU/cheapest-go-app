@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     if (csrfError) return csrfError;
 
     // 3 emails per minute per IP
-    const rl = rateLimit(req, { limit: 3, windowMs: 60_000, prefix: 'email-send' });
+    const rl = await rateLimit(req, { limit: 3, windowMs: 60_000, prefix: 'email-send' });
     if (!rl.success) {
         return Response.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }

@@ -13,7 +13,7 @@ const VALID_CABINS = new Set(['economy', 'premium_economy', 'business', 'first']
 
 /** GET /api/price-alerts — list the signed-in user's alerts */
 export async function GET(req: NextRequest) {
-    const rl = rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'price-alerts-get' });
+    const rl = await rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'price-alerts-get' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const { user, supabase, error: authError } = await getAuthenticatedUser();
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    const rl = rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'price-alerts-post' });
+    const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'price-alerts-post' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const { user, supabase, error: authError } = await getAuthenticatedUser();

@@ -214,7 +214,7 @@ async function _confirmAndSaveBookingInner(
       holder: params.holder,
       guests: params.guests,
       payment: params.payment,
-    });
+    }, params.paymentIntentId ? `liteapi-book-${params.paymentIntentId}` : undefined);
   } catch (error) {
     console.error('[confirmAndSaveBooking] LiteAPI call failed:', error);
     return {

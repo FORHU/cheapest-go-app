@@ -333,7 +333,7 @@ async function tryFoursquare(name: string, lat: string, lng: string, fsqId?: str
 
 export async function GET(req: NextRequest) {
     // 600 requests per minute per IP -- allows for initial load of 20 gems
-    const rl = rateLimit(req, { limit: 600, windowMs: 60_000, prefix: 'poi-photo' });
+    const rl = await rateLimit(req, { limit: 600, windowMs: 60_000, prefix: 'poi-photo' });
     if (!rl.success) {
         // Return a transparent 1x1 pixel for images if rate limited, instead of a 429 JSON
         if (req.url.includes('full=true')) {

@@ -1,10 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/server/rate-limit';
 import { requireAdmin, isAuthError } from '@/lib/server/admin';
 import { createNotification } from '@/lib/server/admin/notify';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { logAdminAction } from '@/lib/server/admin/audit';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'admin-promote' });
+    if (!rl.success) return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
+
     try {
         const auth = await requireAdmin();
         if (isAuthError(auth)) return auth;

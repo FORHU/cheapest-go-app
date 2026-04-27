@@ -9,7 +9,7 @@ export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const rl = rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'saved-trips-del' });
+    const rl = await rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'saved-trips-del' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const { id } = await params;

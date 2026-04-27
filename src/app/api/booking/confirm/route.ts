@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     if (csrfError) return csrfError;
 
     // 5 booking confirmations per minute per IP
-    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-confirm' });
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-confirm' });
     if (!rl.success) {
         return Response.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }

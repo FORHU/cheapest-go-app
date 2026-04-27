@@ -62,7 +62,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function POST(req: NextRequest) {
     // 20 searches per minute per IP
-    const rl = rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'flights-search' });
+    const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'flights-search' });
     if (!rl.success) {
         return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
