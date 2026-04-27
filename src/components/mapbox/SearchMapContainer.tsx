@@ -23,6 +23,7 @@ import { env } from '@/utils/env';
 import { Layers } from 'lucide-react';
 import { useKakaoSearch } from './hooks/useKakaoSearch';
 import { isLocationInKorea } from '@/utils/geo';
+import { formatCurrency } from '@/lib/utils';
 
 // Haversine distance — defined outside component to avoid re-creation on every render
 const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
@@ -58,9 +59,17 @@ export const SearchMapContainer = React.memo(({
 }: SearchMapContainerProps) => {
     // 1. Map Instance
     const { mapRef, isMapLoaded, handleMapLoad, handleMapStyleChange } = useMapboxInstance();
+    const targetCurrency = useUserCurrency();
 
     // 2. Data Preparation
-    const { mappableProperties, geoJsonData, shouldCluster } = useMapMarkers(properties);
+    const { mappableProperties, geoJsonData, shouldCluster } = useMapMarkers(properties, useMemo(() => {
+        const prices: Record<string, string> = {};
+        for (const p of properties) {
+            const converted = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
+            prices[p.id] = formatCurrency(converted, targetCurrency);
+        }
+        return prices;
+    }, [properties, targetCurrency]));
     const router = useRouter();
 
     // POI Selection/Hover State
@@ -76,6 +85,7 @@ export const SearchMapContainer = React.memo(({
     const { handleMapClick, onMouseMove } = useMapInteractions({
         mapRef,
         onSelectId,
+        onHoverId,
         onSelectPoi: setSelectedPoi,
         onHoverPoi: setHoveredPoi,
     });
@@ -89,7 +99,6 @@ export const SearchMapContainer = React.memo(({
     });
 
     // 5. Derived State
-    const targetCurrency = useUserCurrency();
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
         for (const p of mappableProperties) {
@@ -184,6 +193,49 @@ export const SearchMapContainer = React.memo(({
         standardConfig,
     } = useMapDetails();
 
+    // ── Sync GL Feature State ──
+    // This allows the GPU-rendered circle layers to respond to hover/select state
+    // defined in React. Mapbox Standard obscured some of this, but promoteId: 'id'
+    // in Source (via buildGeoJson) allows us to target them directly.
+    const lastActiveRef = React.useRef<{ selected: string | null; hovered: string | null }>({ selected: null, hovered: null });
+    
+    React.useEffect(() => {
+        if (!isMapLoaded || !mapRef.current) return;
+        const map = mapRef.current.getMap();
+        
+        // Clear previous hover
+        if (lastActiveRef.current.hovered && lastActiveRef.current.hovered !== hoveredId) {
+            map.setFeatureState(
+                { source: 'properties', id: lastActiveRef.current.hovered },
+                { hover: false }
+            );
+        }
+        // Set new hover
+        if (hoveredId) {
+            map.setFeatureState(
+                { source: 'properties', id: hoveredId },
+                { hover: true }
+            );
+        }
+
+        // Clear previous select
+        if (lastActiveRef.current.selected && lastActiveRef.current.selected !== selectedId) {
+            map.setFeatureState(
+                { source: 'properties', id: lastActiveRef.current.selected },
+                { selected: false }
+            );
+        }
+        // Set new select
+        if (selectedId) {
+            map.setFeatureState(
+                { source: 'properties', id: selectedId },
+                { selected: true }
+            );
+        }
+
+        lastActiveRef.current = { selected: selectedId, hovered: hoveredId };
+    }, [isMapLoaded, selectedId, hoveredId, mapRef]);
+
     // 7. Kakao Discovery for Korea
     const { results: recommendedPlaces, fetchRecommendations: fetchKakaoRecommendations } = useKakaoSearch();
     const lastDiscoveryFetch = React.useRef<{ lat: number, lng: number } | null>(null);
@@ -260,18 +312,22 @@ export const SearchMapContainer = React.memo(({
                             shouldCluster={shouldCluster}
                         />
 
-                        {mappableProperties.map(property => (
-                            <MapMarker
-                                key={property.id}
-                                property={property}
-                                displayPrice={markerPrices[property.id] ?? 0}
-                                displayCurrency={targetCurrency}
-                                isSelected={property.id === selectedId}
-                                isHovered={property.id === hoveredId}
-                                onClick={onSelectId}
-                                onHover={onHoverId}
-                            />
-                        ))}
+                        {/* DOM Markers: ONLY for selected and hovered properties to maximize performance */}
+                        {mappableProperties
+                            .filter(p => p.id === selectedId || p.id === hoveredId)
+                            .map(property => (
+                                <MapMarker
+                                    key={property.id}
+                                    property={property}
+                                    displayPrice={markerPrices[property.id] ?? 0}
+                                    displayCurrency={targetCurrency}
+                                    isSelected={property.id === selectedId}
+                                    isHovered={property.id === hoveredId}
+                                    onClick={onSelectId}
+                                    onHover={onHoverId}
+                                />
+                            ))
+                        }
 
                         {poiRouteData && (
                             <Source id="poi-route-source" type="geojson" data={poiRouteData}>

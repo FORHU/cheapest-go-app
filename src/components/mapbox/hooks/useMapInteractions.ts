@@ -10,6 +10,7 @@ export interface PoiData {
 interface UseMapInteractionsOptions {
     mapRef: React.RefObject<MapRef | null>;
     onSelectId: (id: string | null) => void;
+    onHoverId: (id: string | null) => void;
     onSelectPoi: (poi: PoiData | null) => void;
     onHoverPoi: (poi: PoiData | null) => void;
 }
@@ -71,6 +72,7 @@ const buildPoiData = (
 export const useMapInteractions = ({
     mapRef,
     onSelectId,
+    onHoverId,
     onSelectPoi,
     onHoverPoi,
 }: UseMapInteractionsOptions) => {
@@ -126,7 +128,7 @@ export const useMapInteractions = ({
     const lastPoiName = useRef<string | null>(null);
     const onMouseMove = useCallback((e: any) => {
         const now = Date.now();
-        if (now - lastMoveTime.current < 100) return;
+        if (now - lastMoveTime.current < 200) return;
         lastMoveTime.current = now;
 
         const map = e.target;
@@ -155,12 +157,20 @@ export const useMapInteractions = ({
 
             if (isProperty) {
                 map.getCanvas().style.cursor = 'pointer';
+                const propFeature = propertyFeatures.find((f: any) => f.layer.id !== 'clusters');
+                if (propFeature) {
+                    onHoverId(propFeature.properties.id);
+                }
+                
                 if (lastPoiName.current !== null) {
                     lastPoiName.current = null;
                     onHoverPoi(null);
                 }
                 return;
             }
+
+            // Not over a property marker
+            onHoverId(null);
 
             // Over a POI?
             const poiFeature = findPoiFeature(allRendered);
