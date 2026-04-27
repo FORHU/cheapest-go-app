@@ -26,8 +26,8 @@ export async function prebookLiteApi(params: Record<string, unknown>) {
     return invokeEdgeFunction('liteapi-prebook-v2', params);
 }
 
-export async function bookLiteApi(params: Record<string, unknown>) {
-    return invokeEdgeFunction('liteapi-book-v2', params);
+export async function bookLiteApi(params: Record<string, unknown>, idempotencyKey?: string) {
+    return invokeEdgeFunction('liteapi-book-v2', params, idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined);
 }
 
 export async function cancelBookingLiteApi(params: { bookingId: string }) {

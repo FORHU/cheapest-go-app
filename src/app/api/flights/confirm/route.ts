@@ -32,7 +32,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
     // 10 confirm attempts per minute per IP
-    const rl = rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'flights-confirm' });
+    const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'flights-confirm' });
     if (!rl.success) {
         return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }

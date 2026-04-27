@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /** GET /api/saved-trips — list the signed-in user's saved trips */
 export async function GET(req: NextRequest) {
-    const rl = rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'saved-trips-get' });
+    const rl = await rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'saved-trips-get' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const { user, supabase, error: authError } = await getAuthenticatedUser();
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
 /** POST /api/saved-trips — save a flight or hotel */
 export async function POST(req: NextRequest) {
-    const rl = rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'saved-trips-post' });
+    const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'saved-trips-post' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const { user, supabase, error: authError } = await getAuthenticatedUser();

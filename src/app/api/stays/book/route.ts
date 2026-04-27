@@ -1,29 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { checkCsrf } from '@/lib/server/csrf';
+import { env } from '@/utils/env';
 
 const DUFFEL_API = 'https://api.duffel.com';
+const DUFFEL_TIMEOUT_MS = 30_000;
 
 async function duffelFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const token = process.env.DUFFEL_ACCESS_TOKEN;
+    const token = env.DUFFEL_TOKEN;
     if (!token) throw new Error('DUFFEL_ACCESS_TOKEN not set');
 
-    const res = await fetch(`${DUFFEL_API}${path}`, {
-        ...init,
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Duffel-Version': 'v2',
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            ...(init.headers ?? {}),
-        },
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), DUFFEL_TIMEOUT_MS);
 
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Duffel ${path} → ${res.status}: ${text.slice(0, 300)}`);
+    try {
+        const res = await fetch(`${DUFFEL_API}${path}`, {
+            ...init,
+            signal: controller.signal,
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Duffel-Version': 'v2',
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                ...(init.headers ?? {}),
+            },
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Duffel ${path} → ${res.status}: ${text.slice(0, 300)}`);
+        }
+        return res.json() as Promise<T>;
+    } finally {
+        clearTimeout(timer);
     }
-    return res.json() as Promise<T>;
 }
 
 /**
@@ -35,7 +46,10 @@ async function duffelFetch<T>(path: string, init: RequestInit = {}): Promise<T> 
  * }
  */
 export async function POST(req: NextRequest) {
-    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'stays-book' });
+    const csrfError = checkCsrf(req);
+    if (csrfError) return csrfError;
+
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'stays-book' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const { user, error: authError } = await getAuthenticatedUser();
@@ -62,6 +76,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
         const msg = err instanceof Error ? err.message : 'Booking failed';
         console.error('[stays/book]', msg);
-        return NextResponse.json({ error: msg }, { status: 502 });
+        const status = msg.includes('aborted') ? 504 : 502;
+        return NextResponse.json({ error: msg }, { status });
     }
 }

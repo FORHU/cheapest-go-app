@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/server/rate-limit';
 import {
     requireAdmin,
     isAuthError,
@@ -7,7 +8,10 @@ import {
     markAllNotificationsAsRead,
 } from '@/lib/server/admin';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+    const rl = await rateLimit(req, { limit: 60, windowMs: 60_000, prefix: 'admin-notif-get' });
+    if (!rl.success) return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
+
     try {
         const auth = await requireAdmin();
         if (isAuthError(auth)) return auth;
@@ -20,7 +24,10 @@ export async function GET() {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    const rl = await rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'admin-notif-post' });
+    if (!rl.success) return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
+
     try {
         const auth = await requireAdmin();
         if (isAuthError(auth)) return auth;
