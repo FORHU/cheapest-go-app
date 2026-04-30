@@ -83,6 +83,7 @@ export const MapContainer = ({
             onLoad={onLoad}
             onStyleReady={onStyleReady}
             enable3DBuildings={false}
+            attributionControl={false}
             className="rounded-none min-h-0 w-full h-full"
         >
             <NavigationControl position="bottom-right" showCompass visualizePitch />

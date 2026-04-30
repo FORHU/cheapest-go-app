@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useTransition, useEffect } from 'react';
-import { HeaderTitle } from '@/components/admin/HeaderTitle';
+
 import {
     Search, RefreshCw, Mail, AlertCircle, CheckCircle2, 
     Clock, Filter, ArrowUpRight, Loader2, ChevronLeft, ChevronRight
@@ -103,11 +103,11 @@ export function CommunicationClient({ data }: CommunicationClientProps) {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'sent':
-                return <Badge variant="success" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> Sent</Badge>;
+                return <Badge variant="success" className="w-32 justify-center text-center whitespace-nowrap bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-medium text-[10px] px-2 py-0.5 rounded"><CheckCircle2 className="w-3 h-3 mr-1 shrink-0" /> Sent</Badge>;
             case 'failed':
-                return <Badge variant="destructive" className="bg-rose-500/10 text-rose-500 border-rose-500/20"><AlertCircle className="w-3 h-3 mr-1" /> Failed</Badge>;
+                return <Badge variant="destructive" className="w-32 justify-center text-center whitespace-nowrap bg-rose-500/10 text-rose-500 border-rose-500/20 font-medium text-[10px] px-2 py-0.5 rounded"><AlertCircle className="w-3 h-3 mr-1 shrink-0" /> Failed</Badge>;
             case 'queued':
-                return <Badge variant="warning" className="bg-amber-500/10 text-amber-500 border-amber-500/20"><Clock className="w-3 h-3 mr-1" /> Queued</Badge>;
+                return <Badge variant="warning" className="w-32 justify-center text-center whitespace-nowrap bg-amber-500/10 text-amber-500 border-amber-500/20 font-medium text-[10px] px-2 py-0.5 rounded"><Clock className="w-3 h-3 mr-1 shrink-0" /> Queued</Badge>;
             default:
                 return <Badge variant="outline">{status}</Badge>;
         }
@@ -120,18 +120,16 @@ export function CommunicationClient({ data }: CommunicationClientProps) {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <HeaderTitle 
-                    actions={
-                        <Button 
-                            variant="outline" 
-                            onClick={() => router.refresh()}
-                            disabled={isPending}
-                        >
-                            <RefreshCw className={cn("w-4 h-4 mr-2", isPending && "animate-spin")} />
-                            Refresh
-                        </Button>
-                    }
-                />
+            <div className="flex items-center justify-end mb-4">
+                <Button 
+                    variant="outline" 
+                    onClick={() => router.refresh()}
+                    disabled={isPending}
+                >
+                    <RefreshCw className={cn("w-4 h-4 mr-2", isPending && "animate-spin")} />
+                    Refresh
+                </Button>
+            </div>
             </div>
 
             {/* Filters */}

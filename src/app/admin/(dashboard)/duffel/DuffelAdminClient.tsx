@@ -13,7 +13,7 @@ import type {
     DuffelAirlineMetric, DuffelRouteMetric,
     DuffelAirline
 } from '@/types/admin';
-import { HeaderTitle } from '@/components/admin/HeaderTitle';
+
 import { DuffelInsightsCharts } from '@/components/admin/dashboard/DuffelInsightsCharts';
 
 interface Props { 
@@ -76,7 +76,7 @@ const AirlineTable = memo(({ airlines, mode, currency }: { airlines: DuffelAirli
                     </div>
                     <div className="text-right">
                         <p className="text-sm font-black text-slate-900 dark:text-white">{mode === 'volume' ? a.count : a.value}</p>
-                        <span className="text-[8px] font-black text-emerald-500 uppercase bg-emerald-500/10 px-1.5 py-0.5 rounded">Active</span>
+                        <span className="w-32 justify-center text-center whitespace-nowrap inline-flex text-[10px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">Active</span>
                     </div>
                 </div>
             ))}
@@ -92,8 +92,8 @@ const StatusBadge = memo(({ status }: { status: DuffelOrder['status'] }) => {
     } as const;
     const { label, cls, icon: Icon } = cfg[status] || cfg.confirmed;
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-wider ${cls}`}>
-            <Icon size={9} />{label}
+        <span className={`w-32 justify-center text-center whitespace-nowrap inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-medium ${cls}`}>
+            <Icon size={9} className="shrink-0" />{label}
         </span>
     );
 });
@@ -192,7 +192,7 @@ const AirlinesGrid = memo(({ airlines }: { airlines: DuffelAirline[] }) => {
                                 <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-white/10 group-hover:scale-105 transition-transform duration-500">
                                     <AirlineLogo iataCode={a.iataCode} name={a.name} logoUrl={a.logoUrl} size="w-10 h-10" />
                                 </div>
-                                <div className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
+                                <div className={`w-32 justify-center text-center whitespace-nowrap flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
                                     a.active 
                                         ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' 
                                         : 'bg-slate-100 text-slate-400'
@@ -259,33 +259,27 @@ export function DuffelAdminClient({ data, airlines }: Props) {
     const cur = data.orderCurrency || 'USD';
 
     return (
-        <div className="pt-12 space-y-12 pb-20 max-w-[1600px] mx-auto">
-            <HeaderTitle
-                title="Duffel Operations"
-                subtitle="Live flight network & health"
-                actions={
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl mr-4 border border-slate-200/50 dark:border-white/5 shadow-sm">
-                            <button onClick={() => setView('insights')}
-                                className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                                    view === 'insights' ? 'bg-white dark:bg-obsidian text-blue-600 shadow-sm' : 'text-slate-500'
-                                }`}>
-                                Dashboard
-                            </button>
-                            <button onClick={() => setView('airlines')}
-                                className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                                    view === 'airlines' ? 'bg-white dark:bg-obsidian text-blue-600 shadow-sm' : 'text-slate-500'
-                                }`}>
-                                Carriers
-                            </button>
-                        </div>
-                        <a href="https://app.duffel.com" target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-blue-500/20 border-0">
-                            <ExternalLink size={14} /> Duffel Portal
-                        </a>
-                    </div>
-                }
-            />
+        <div className="pt-12 space-y-12 pb-20 w-full">
+            <div className="flex items-center justify-end gap-2 mb-8">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl mr-4 border border-slate-200/50 dark:border-white/5 shadow-sm">
+                    <button onClick={() => setView('insights')}
+                        className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                            view === 'insights' ? 'bg-white dark:bg-obsidian text-blue-600 shadow-sm' : 'text-slate-500'
+                        }`}>
+                        Dashboard
+                    </button>
+                    <button onClick={() => setView('airlines')}
+                        className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                            view === 'airlines' ? 'bg-white dark:bg-obsidian text-blue-600 shadow-sm' : 'text-slate-500'
+                        }`}>
+                        Carriers
+                    </button>
+                </div>
+                <a href="https://app.duffel.com" target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-blue-500/20 border-0">
+                    <ExternalLink size={14} /> Duffel Portal
+                </a>
+            </div>
 
             {data.status !== 'healthy' && (
                 <div className="flex items-start gap-4 p-6 rounded-3xl border bg-rose-500/5 border-rose-500/20">

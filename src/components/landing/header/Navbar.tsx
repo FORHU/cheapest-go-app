@@ -69,8 +69,8 @@ const Header = () => {
 
   return (
     <>
-      <header className="fixed top-0 z-50 w-full px-4 pt-3 bg-transparent landscape-compact-header font-nunito">
-        <div className="w-full sm:w-[95%] mx-auto p-2 px-4 sm:px-6 h-14 sm:h-20 flex items-center justify-between bg-slate/20 backdrop-blur rounded-full">
+      <header className="fixed top-0 z-50 w-full px-4 pt-1.5 bg-transparent landscape-compact-header font-nunito">
+        <div className="w-full sm:w-[95%] mx-auto p-1.5 px-4 sm:px-6 h-12 sm:h-20 flex items-center justify-between bg-slate/20 backdrop-blur rounded-full">
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
@@ -158,10 +158,10 @@ const Header = () => {
           {/* Mobile Hamburger Button */}
           <button
             onClick={() => setIsMenuOpen(true)}
-            className="lg:hidden flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            className="lg:hidden flex items-center justify-center min-h-[32px] min-w-[32px] p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
             aria-label="Open menu"
           >
-            <Menu className="w-6 h-6 text-slate-700 dark:text-white" />
+            <Menu className="w-4 h-4 text-slate-700 dark:text-white" />
           </button>
         </div>
       </header>
@@ -176,7 +176,7 @@ const Header = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-60 bg-black/50 lg:hidden"
+              className="fixed inset-0 z-[998] bg-black/50 lg:hidden"
               onClick={closeMenu}
               onTouchMove={(e) => e.preventDefault()}
             />
@@ -187,7 +187,7 @@ const Header = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 h-dvh w-[280px] z-61 bg-white dark:bg-slate-900 shadow-2xl flex flex-col overflow-hidden lg:hidden"
+              className="fixed right-0 inset-y-0 w-[280px] z-[999] bg-white dark:bg-slate-900 shadow-2xl flex flex-col overflow-hidden lg:hidden"
             >
               {/* Drawer Header */}
               <div className="flex items-center justify-between p-3.5 border-b border-slate-200 dark:border-white/10">

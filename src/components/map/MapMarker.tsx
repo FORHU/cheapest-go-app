@@ -49,7 +49,7 @@ const MapMarker = React.memo(function MapMarker({
             >
                 {/* Marker Container (Pill) */}
                 <div className={cn(
-                    'flex items-center gap-2 px-1.5 py-1 rounded-full bg-white shadow-[0_2px_10px_rgba(0,0,0,0.15)] ring-1 ring-black/5 transition-all duration-200',
+                    'flex items-center gap-2 px-1.5 py-1 rounded-full bg-white dark:bg-slate-900 shadow-[0_2px_10px_rgba(0,0,0,0.15)] ring-1 ring-black/5 dark:ring-white/10 transition-all duration-200',
                     isActive ? 'ring-blue-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.2)]' : 'group-hover:shadow-[0_4px_12px_rgba(0,0,0,0.18)]'
                 )}>
                     {/* Icon Circle */}
@@ -61,7 +61,7 @@ const MapMarker = React.memo(function MapMarker({
                     </div>
 
                     {/* Price Label */}
-                    <div className="pr-2 text-[11px] font-bold text-slate-800 whitespace-nowrap tracking-tight">
+                    <div className="pr-2 text-[11px] font-bold text-slate-800 dark:text-white whitespace-nowrap tracking-tight">
                         {formatCurrency(displayPrice ?? property.price, displayCurrency ?? property.currency)}
                     </div>
                 </div>
@@ -69,7 +69,7 @@ const MapMarker = React.memo(function MapMarker({
                 {/* Triangle Tail */}
                 <div className={cn(
                     'w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] -mt-[1px]',
-                    isSelected ? 'border-t-blue-700' : 'border-t-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)]'
+                    isSelected ? 'border-t-blue-700' : 'border-t-white dark:border-t-slate-900 drop-shadow-[0_1px_1px_rgba(0,0,0,0.1)]'
                 )} />
 
                 {/* Removed property name label per user request */}

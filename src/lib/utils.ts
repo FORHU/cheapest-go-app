@@ -126,3 +126,15 @@ export function safeJsonParse<T>(json: string, fallback: T): T {
         return fallback;
     }
 }
+
+/**
+ * Convert raw status strings (e.g., 'refund_pending') to human-readable format ('Refund Pending')
+ */
+export function formatStatus(status: string): string {
+    if (!status) return '';
+    return status
+        .replace(/_/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+}

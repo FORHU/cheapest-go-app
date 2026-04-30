@@ -76,40 +76,40 @@ export const useNearbyGems = ({
                     }
                 };
 
-                // Global Discovery Fallback (Google + Foursquare -> Mapbox)
+                // Global Discovery Fallback (Google -> Foursquare -> Mapbox)
                 let featuresToProcess: any[] = [];
                 try {
-                    // Fetch both Google and Foursquare in parallel
-                    const [googleRes, fsqRes] = await Promise.allSettled([
-                        fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=3000`, { signal }),
-                        fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=3000`, { signal })
-                    ]);
-                    
-                    let googleFeatures: any[] = [];
-                    let fsqFeatures: any[] = [];
-
-                    if (googleRes.status === 'fulfilled' && googleRes.value.ok) {
-                        const data = await googleRes.value.json().catch(() => ({ features: [] }));
-                        googleFeatures = data.features || [];
+                    // Try Google Places first
+                    let primaryFeatures: any[] = [];
+                    try {
+                        const googleRes = await fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=3000`, { signal });
+                        if (googleRes.ok) {
+                            const data = await googleRes.json();
+                            primaryFeatures = data.features || [];
+                        }
+                    } catch (e: any) {
+                        if (e.name !== 'AbortError') console.warn('Google discovery failed:', e);
                     }
 
-                    if (fsqRes.status === 'fulfilled' && fsqRes.value.ok) {
-                        const data = await fsqRes.value.json().catch(() => ({ features: [] }));
-                        fsqFeatures = data.features || [];
+                    if (primaryFeatures.length > 0) {
+                        featuresToProcess = primaryFeatures;
+                    } else {
+                        // Fallback to Foursquare if Google fails or returns no results
+                        try {
+                            const fsqRes = await fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=3000`, { signal });
+                            if (fsqRes.ok) {
+                                const data = await fsqRes.json();
+                                featuresToProcess = data.features || [];
+                            }
+                        } catch (e: any) {
+                            if (e.name !== 'AbortError') console.warn('Foursquare discovery failed:', e);
+                        }
                     }
-                    
-                    // Interleave results to satisfy "alternately" and ensure "both" sources are visible
-                    const interleaved = [];
-                    const maxLen = Math.max(googleFeatures.length, fsqFeatures.length);
-                    for (let i = 0; i < maxLen; i++) {
-                        if (googleFeatures[i]) interleaved.push(googleFeatures[i]);
-                        if (fsqFeatures[i]) interleaved.push(fsqFeatures[i]);
-                    }
-                    
-                    if (interleaved.length > 0) {
+
+                    if (featuresToProcess.length > 0) {
                         // Deduplicate by name (robust fallback)
                         const seen = new Set();
-                        featuresToProcess = interleaved.filter(f => {
+                        featuresToProcess = featuresToProcess.filter(f => {
                             const nameKey = (f.properties?.name || '').toLowerCase().trim();
                             if (!nameKey || seen.has(nameKey)) return false;
                             seen.add(nameKey);
@@ -278,8 +278,11 @@ export const useNearbyGems = ({
                             };
 
                             if (!signal.aborted) {
-                                const hasLowRating = enriched.properties.rating !== undefined && enriched.properties.rating !== null && enriched.properties.rating < 3;
-                                if (!hasLowRating) {
+                                const hasRealImage = proxyData.source !== 'placeholder' && proxyData.source !== 'none' && proxyData.source !== 'error-fallback' && proxyData.source !== 'mock-fallback';
+                                const hasReviews = (enriched.properties.userRatingsTotal || 0) > 0 || (enriched.properties.reviews && enriched.properties.reviews.length > 0);
+                                const hasLowRating = enriched.properties.rating !== undefined && enriched.properties.rating !== null && enriched.properties.rating < 3.5;
+
+                                if (hasRealImage && hasReviews && !hasLowRating) {
                                     gemBuffer = gemBuffer.map(g => g.properties.name === name ? enriched : g);
                                 } else {
                                     gemBuffer = gemBuffer.filter(g => g.properties.name !== name);
@@ -289,8 +292,8 @@ export const useNearbyGems = ({
                                     lastUpdate = Date.now();
                                 }
                             }
-                        } catch (e) {
-                            console.error(`Gem enrichment failed for ${name}:`, e);
+                        } catch (e: any) {
+                            if (e.name !== 'AbortError') console.error(`Gem enrichment failed for ${name}:`, e);
                         } finally {
                             resolvedCount++;
                             if (resolvedCount === initialGems.length && !signal.aborted) {

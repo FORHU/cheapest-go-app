@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useTransition, useMemo, useEffect } from 'react';
-import { HeaderTitle } from '@/components/admin/HeaderTitle';
+
 import {
     Search, SlidersHorizontal, ArrowUpDown, ChevronDown, CheckCircle2,
     XCircle, Filter, Download, Plus, LayoutDashboard, LayoutList, ArrowUpRight,
@@ -25,7 +25,7 @@ import {
     DropdownMenuSeparator,
 } from '@/components/ui';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatCurrency, formatDate, cn, formatStatus } from '@/lib/utils';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { PaginatedBookings } from '@/lib/server/admin';
 import { MonitoringData, Booking } from '@/types/admin';
@@ -333,53 +333,49 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
 
     return (
         <div className="space-y-10 pb-20">
-            <HeaderTitle
-                actions={
-                    <div className="flex items-center gap-3">
-                        <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10 shrink-0">
-                            <button
-                                onClick={() => setViewMode('list')}
-                                className={cn(
-                                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
-                                    viewMode === 'list'
-                                        ? "bg-white dark:bg-white/10 text-blue-600 shadow-sm"
-                                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                                )}
-                            >
-                                All Bookings
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setViewMode('monitoring');
-                                    if (!monitoringData) fetchMonitoringData();
-                                }}
-                                className={cn(
-                                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
-                                    viewMode === 'monitoring'
-                                        ? "bg-white dark:bg-white/10 text-blue-600 shadow-sm"
-                                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                                )}
-                            >
-                                <Activity size={12} />
-                                Monitoring
-                                {monitoringData?.stats.mismatchCount ? (
-                                    <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] flex items-center justify-center animate-pulse">
-                                        {monitoringData.stats.mismatchCount}
-                                    </span>
-                                ) : null}
-                            </button>
-                        </div>
-                        <Button
-                            variant="outline"
-                            className="rounded-xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-normal h-12 px-6 hover:bg-slate-50 transition-all gap-2"
-                            onClick={handleExport}
-                        >
-                            <Download size={18} />
-                            Export
-                        </Button>
-                    </div>
-                }
-            />
+            <div className="flex items-center justify-end gap-3">
+                <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10 shrink-0">
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={cn(
+                            "px-4 py-1.5 rounded-lg text-xs font-bold transition-all",
+                            viewMode === 'list'
+                                ? "bg-white dark:bg-white/10 text-blue-600 shadow-sm"
+                                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                        )}
+                    >
+                        All Bookings
+                    </button>
+                    <button
+                        onClick={() => {
+                            setViewMode('monitoring');
+                            if (!monitoringData) fetchMonitoringData();
+                        }}
+                        className={cn(
+                            "px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                            viewMode === 'monitoring'
+                                ? "bg-white dark:bg-white/10 text-blue-600 shadow-sm"
+                                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                        )}
+                    >
+                        <Activity size={12} />
+                        Monitoring
+                        {monitoringData?.stats.mismatchCount ? (
+                            <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] flex items-center justify-center animate-pulse">
+                                {monitoringData.stats.mismatchCount}
+                            </span>
+                        ) : null}
+                    </button>
+                </div>
+                <Button
+                    variant="outline"
+                    className="rounded-xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-normal h-12 px-6 hover:bg-slate-50 transition-all gap-2"
+                    onClick={handleExport}
+                >
+                    <Download size={18} />
+                    Export
+                </Button>
+            </div>
 
             <div className="space-y-6">
                 <AnimatePresence mode="wait">
@@ -586,13 +582,13 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
                                                             <TableCell>
                                                                 <Badge
                                                                     variant={getStatusVariant(booking.status) as any}
-                                                                    className={`font-medium capitalize text-[10px] px-2 py-0.5 rounded border-none ${booking.status.toLowerCase().includes('confirm') || booking.status.toLowerCase().includes('ticket') ? 'bg-blue-500/10 text-blue-600' :
+                                                                    className={`w-32 justify-center text-center whitespace-nowrap font-medium text-[10px] px-2 py-0.5 rounded border-none ${booking.status.toLowerCase().includes('confirm') || booking.status.toLowerCase().includes('ticket') ? 'bg-blue-500/10 text-blue-600' :
                                                                         booking.status.toLowerCase().includes('pend') ? 'bg-amber-500/10 text-amber-600' :
                                                                             booking.status.toLowerCase().includes('refund') ? 'bg-violet-500/10 text-violet-600' :
                                                                                 'bg-rose-500/10 text-rose-600'
                                                                         }`}
                                                                 >
-                                                                    {booking.status.toLowerCase()}
+                                                                    {formatStatus(booking.status)}
                                                                 </Badge>
                                                             </TableCell>
                                                         )}
@@ -600,14 +596,14 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
                                                             <TableCell>
                                                                 <Badge
                                                                     variant={getPaymentVariant(booking.paymentStatus) as any}
-                                                                    className={`font-medium capitalize text-[10px] px-2 py-0.5 rounded border-none ${booking.paymentStatus.toLowerCase() === 'paid' ? 'bg-emerald-500/10 text-emerald-600' :
+                                                                    className={`w-32 justify-center text-center whitespace-nowrap font-medium text-[10px] px-2 py-0.5 rounded border-none ${booking.paymentStatus.toLowerCase() === 'paid' ? 'bg-emerald-500/10 text-emerald-600' :
                                                                         booking.paymentStatus.toLowerCase() === 'refunded' ? 'bg-violet-500/10 text-violet-600' :
                                                                             booking.paymentStatus.toLowerCase() === 'cancelled' ? 'bg-slate-500/10 text-slate-600' :
                                                                                 booking.paymentStatus.toLowerCase().includes('unpaid') ? 'bg-rose-500/10 text-rose-600' :
                                                                                     'bg-slate-500/10 text-slate-600'
                                                                         }`}
                                                                 >
-                                                                    {booking.paymentStatus.toLowerCase().replace('_', ' ')}
+                                                                    {formatStatus(booking.paymentStatus)}
                                                                 </Badge>
                                                             </TableCell>
                                                         )}
@@ -874,10 +870,10 @@ export function BookingsClient({ data, searchParams }: BookingsClientProps) {
                                                         monitoringData?.failedBookings.map((b: any) => (
                                                             <TableRow key={b.id} className="hover:bg-slate-50 dark:hover:bg-white/5 border-none">
                                                                 <TableCell className="font-mono text-xs text-rose-600 font-bold">{b.id.slice(0, 8).toUpperCase()}</TableCell>
-                                                                <TableCell className="capitalize text-xs">{b.provider}</TableCell>
+                                                                <TableCell className="text-xs">{formatStatus(b.provider)}</TableCell>
                                                                 <TableCell className="text-sm font-bold">{formatCurrency(b.total_price || b.total_amount, b.currency || 'USD')}</TableCell>
                                                                 <TableCell className="text-xs text-slate-500">{formatDate(b.created_at)}</TableCell>
-                                                                <TableCell className="capitalize text-xs font-bold">{b.type}</TableCell>
+                                                                <TableCell className="text-xs font-bold">{formatStatus(b.type)}</TableCell>
                                                             </TableRow>
                                                         ))
                                                     )}

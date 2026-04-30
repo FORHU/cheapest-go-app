@@ -143,11 +143,13 @@ function NavGroupSection({
     pathname,
     isCollapsed,
     onClose,
+    onNavigate,
 }: {
     group: NavGroup;
     pathname: string;
     isCollapsed: boolean;
     onClose?: () => void;
+    onNavigate?: (href: string) => void;
 }) {
     const hasActive = group.items.some(item => pathname === item.href);
     const [open, setOpen] = useState(true); // groups start expanded
@@ -186,7 +188,10 @@ function NavGroupSection({
                                     item={item}
                                     isActive={pathname === item.href}
                                     isCollapsed={isCollapsed}
-                                    onClick={onClose}
+                                    onClick={() => {
+                                        if (onNavigate) onNavigate(item.href);
+                                        if (onClose) onClose();
+                                    }}
                                 />
                             ))}
                         </div>
@@ -201,13 +206,18 @@ function NavGroupSection({
 
 export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
     const pathname = usePathname();
+    const [optimisticPath, setOptimisticPath] = useState(pathname);
+
+    React.useEffect(() => {
+        setOptimisticPath(pathname);
+    }, [pathname]);
 
     return (
         <aside
             className={`${isCollapsed ? 'w-24' : 'w-72'} h-screen flex flex-col bg-white dark:bg-obsidian border-r border-slate-100 dark:border-white/5 relative z-50 transition-all duration-300`}
         >
             {/* Logo */}
-            <div className={`p-8 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+            <Link href="/" className={`p-8 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} hover:opacity-90 transition-opacity`}>
                 <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
                     <Plane className="text-white" size={24} />
                 </div>
@@ -216,7 +226,7 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
                         Cheapest Go<span className="text-blue-600">.</span>
                     </h1>
                 )}
-            </div>
+            </Link>
 
             {/* Navigation */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-7 thin-scrollbar">
@@ -224,32 +234,17 @@ export function Sidebar({ onClose, isCollapsed, onToggleCollapse }: SidebarProps
                     <NavGroupSection
                         key={group.title}
                         group={group}
-                        pathname={pathname}
+                        pathname={optimisticPath}
                         isCollapsed={!!isCollapsed}
-                        onClose={onClose}
+                        onClose={() => {
+                            if (onClose) onClose();
+                        }}
+                        onNavigate={setOptimisticPath}
                     />
                 ))}
             </div>
 
-            {/* Integrations pill — visible when collapsed, acts as a hint */}
-            {isCollapsed && (
-                <div className="px-3 pb-3">
-                    <div className="border-t border-slate-100 dark:border-white/5 pt-3 flex flex-col items-center gap-1">
-                        <Link href="/admin/duffel" onClick={onClose} title="Duffel">
-                            <motion.div
-                                whileHover={{ scale: 1.08 }}
-                                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                                    pathname === '/admin/duffel'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                                        : 'text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-600/10'
-                                }`}
-                            >
-                                <Plane size={20} />
-                            </motion.div>
-                        </Link>
-                    </div>
-                </div>
-            )}
+
 
             {/* Collapse toggle */}
             <div className="p-6 mt-auto border-t border-slate-100 dark:border-white/5 flex items-center justify-center">

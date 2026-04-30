@@ -13,6 +13,7 @@ interface MapPopupProps {
     onClose: () => void;
     onViewDetails: (id: string) => void;
     mapRef?: React.RefObject<any>;
+    isCentered?: boolean;
 }
 
 function getRatingLabel(rating: number): string {
@@ -39,7 +40,8 @@ const MapPopup = React.memo(function MapPopup({
     property,
     onClose,
     onViewDetails,
-    mapRef
+    mapRef,
+    isCentered = false
 }: MapPopupProps) {
     const isLandscape = useIsLandscapeMobile();
     const targetCurrency = useUserCurrency();
@@ -100,6 +102,81 @@ const MapPopup = React.memo(function MapPopup({
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mapRef])
+    const content = (
+        <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl w-full border border-slate-200 dark:border-slate-800">
+
+            {/* Image */}
+            <div className="relative">
+                <img
+                    src={property.image}
+                    alt={property.name}
+                    className={`w-full object-cover ${isLandscape ? 'h-16' : 'h-24'}`}
+                    loading="lazy"
+                />
+                <button
+                    onClick={onClose}
+                    className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer"
+                >
+                    <X className="w-3 h-3 text-white" />
+                </button>
+
+                {/* Badges */}
+                {property.refundableTag === 'RFN' && (
+                    <span className="absolute bottom-1.5 left-1.5 text-[9px] font-semibold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">
+                        {isLandscape ? 'Free cancel' : 'Free cancellation'}
+                    </span>
+                )}
+            </div>
+
+            {/* Content */}
+            <div className={isLandscape ? 'p-1.5' : 'p-2'}>
+                <h3 className={`font-bold text-slate-900 dark:text-white leading-tight truncate ${isLandscape ? 'text-[10px]' : 'text-[11px]'}`}>
+                    {property.name}
+                </h3>
+
+                <div className="flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        {property.location}
+                    </span>
+                </div>
+
+                {/* Rating */}
+                <div className="flex items-center gap-1 mt-1">
+                    <span className="text-[9px] font-bold text-white bg-blue-600 px-1 py-px rounded">
+                        {property.rating.toFixed(1)}
+                    </span>
+                    <span className="text-[9px] font-medium text-slate-700 dark:text-slate-300">
+                        {ratingLabel}
+                    </span>
+                </div>
+
+                {/* Price + CTA */}
+                <div className={`flex items-center justify-between border-t border-slate-100 dark:border-slate-800 ${isLandscape ? 'mt-1 pt-1' : 'mt-1.5 pt-1.5'}`}>
+                    <div className="leading-none">
+                        {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                            <span className="text-[8px] text-slate-400 line-through block mb-0.5">
+                                {formatCurrency(displayOriginalPrice, targetCurrency)}
+                            </span>
+                        )}
+                        <span className={`font-bold text-blue-600 dark:text-blue-400 ${isLandscape ? 'text-xs' : 'text-[13px]'}`}>
+                            {formatCurrency(displayPrice, targetCurrency)}
+                        </span>
+                        <span className="text-[8px] text-slate-400 ml-0.5">/night</span>
+                    </div>
+                    <button
+                        onClick={() => onViewDetails(property.id)}
+                        className={`bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${isLandscape ? 'text-[9px] px-2 py-1' : 'text-[9px] px-2 py-1'}`}
+                    >
+                        View Deal
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
+    if (isCentered) return content;
+
     return (
         <Popup
             latitude={property.coordinates.lat}
@@ -109,78 +186,9 @@ const MapPopup = React.memo(function MapPopup({
             closeOnClick={false}
             onClose={onClose}
             className="map-property-popup z-50"
-            maxWidth="min(240px, calc(100vw - 16px))"
+            maxWidth="min(200px, calc(100vw - 32px))"
         >
-            <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl w-full border border-slate-100 dark:border-slate-800">
-
-                {/* Image */}
-                <div className="relative">
-                    <img
-                        src={property.image}
-                        alt={property.name}
-                        className={`w-full object-cover ${isLandscape ? 'h-16' : 'h-28'}`}
-                        loading="lazy"
-                    />
-                    <button
-                        onClick={onClose}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer"
-                    >
-                        <X className="w-3 h-3 text-white" />
-                    </button>
-
-                    {/* Badges */}
-                    {property.refundableTag === 'RFN' && (
-                        <span className="absolute bottom-1.5 left-1.5 text-[9px] font-semibold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">
-                            {isLandscape ? 'Free cancel' : 'Free cancellation'}
-                        </span>
-                    )}
-                </div>
-
-                {/* Content */}
-                <div className={isLandscape ? 'p-1.5' : 'p-2.5'}>
-                    <h3 className={`font-bold text-slate-900 dark:text-white leading-tight truncate ${isLandscape ? 'text-[10px]' : 'text-xs'}`}>
-                        {property.name}
-                    </h3>
-
-                    <div className="flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                            {property.location}
-                        </span>
-                    </div>
-
-                    {/* Rating */}
-                    <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-[10px] font-bold text-white bg-blue-600 px-1.5 py-0.5 rounded">
-                            {property.rating.toFixed(1)}
-                        </span>
-                        <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300">
-                            {ratingLabel}
-                        </span>
-                    </div>
-
-                    {/* Price + CTA */}
-                    <div className={`flex items-center justify-between border-t border-slate-100 dark:border-slate-800 ${isLandscape ? 'mt-1 pt-1' : 'mt-2 pt-2'}`}>
-                        <div className="leading-none">
-                            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
-                                <span className="text-[9px] text-slate-400 line-through block mb-0.5">
-                                    {formatCurrency(displayOriginalPrice, targetCurrency)}
-                                </span>
-                            )}
-                            <span className={`font-bold text-blue-600 dark:text-blue-400 ${isLandscape ? 'text-xs' : 'text-sm'}`}>
-                                {formatCurrency(displayPrice, targetCurrency)}
-                            </span>
-                            <span className="text-[9px] text-slate-400 ml-0.5">/night</span>
-                        </div>
-                        <button
-                            onClick={() => onViewDetails(property.id)}
-                            className={`bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${isLandscape ? 'text-[9px] px-2 py-1' : 'text-[10px] px-2.5 py-1.5'}`}
-                        >
-                            View Deal
-                        </button>
-                    </div>
-                </div>
-            </div>
+            {content}
         </Popup>
     );
 });

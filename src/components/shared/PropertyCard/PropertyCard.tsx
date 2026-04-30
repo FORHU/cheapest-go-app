@@ -85,11 +85,11 @@ const getRatingLabel = (rating: number): string => {
  * Rating badge color based on score - distinct colors for each level
  */
 const getRatingColor = (rating: number): string => {
-    if (rating >= 9) return 'bg-indigo-600';    // Exceptional - Deep indigo/purple
-    if (rating >= 8) return 'bg-emerald-500';   // Excellent - Vibrant green
-    if (rating >= 7) return 'bg-teal-500';      // Very Good - Teal
-    if (rating >= 6) return 'bg-blue-500';      // Good - Blue
-    return 'bg-amber-500';                       // Average - Warm amber/orange
+    if (rating >= 9) return 'bg-indigo-600';    // Exceptional - Deep indigo
+    if (rating >= 8) return 'bg-blue-600';      // Excellent - Blue
+    if (rating >= 7) return 'bg-blue-500';      // Very Good - Light Blue
+    if (rating >= 6) return 'bg-slate-500';      // Good - Slate
+    return 'bg-amber-500';                       // Average - Warm amber
 };
 
 /**
@@ -206,7 +206,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                         </motion.div>
                     )}
                     
-                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10">
+                    <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10">
                         <SaveButton
                             type="hotel"
                             title={displayName}
@@ -221,35 +221,22 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                     </div>
                 </div>
 
-                <div className="p-1.5 sm:p-3 md:p-4 landscape-compact-content flex flex-col flex-1">
-                    <h3 className="font-semibold text-slate-900 dark:text-white text-[11px] sm:text-sm line-clamp-2 min-h-[2.4em] leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <div className="p-3 sm:p-4 flex flex-col flex-1">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base line-clamp-1 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {displayName}
                     </h3>
-                    <p className="text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 -mt-1 flex items-center gap-0.5 sm:gap-1 min-w-0">
-                        <MapPin className="w-2 h-2 sm:w-3 sm:h-3 text-blue-500 flex-shrink-0" />
+                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1 min-w-0">
+                        <MapPin className="w-3 h-3 text-blue-500 flex-shrink-0" />
                         <span className="truncate">{displayLocation}</span>
                     </p>
 
-                    {displayRating && (
-                        <div className="flex items-center gap-0.5 sm:gap-1.5 mt-0.5 sm:mt-1 flex-wrap">
-                            <span className="px-1 py-px sm:px-1.5 sm:py-0.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[9px] sm:text-xs font-bold rounded-md shadow-sm">
-                                {displayRating}
-                            </span>
-                            {displayReviews && (
-                                <span className="text-[8px] sm:text-xs text-slate-500 dark:text-slate-400">
-                                    ({displayReviews.toLocaleString(undefined, { maximumFractionDigits: 0 })} reviews)
-                                </span>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Includes/tags */}
+                    {/* Tags (optional) */}
                     {includes && includes.length > 0 && (
-                        <div className="flex flex-wrap gap-0.5 sm:gap-1 mt-1 sm:mt-1.5 content-start">
-                            {includes.map((inc) => (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                            {includes.slice(0, 2).map((inc) => (
                                 <span
                                     key={inc}
-                                    className="text-[8px] sm:text-xs bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 text-green-600 dark:text-green-400 px-1 py-px sm:px-2 sm:py-0.5 rounded-full border border-green-200 dark:border-green-800"
+                                    className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-md"
                                 >
                                     {inc}
                                 </span>
@@ -257,20 +244,34 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                         </div>
                     )}
 
-                    <div className="mt-auto pt-1 sm:pt-2 flex items-baseline gap-0.5 sm:gap-1.5 flex-wrap">
-                        {displayOriginalPrice && (
-                            <span className="text-[8px] sm:text-xs text-slate-400 line-through">
-                                {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            </span>
-                        )}
-                        <span className="text-xs sm:text-base lg:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                            {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            {priceLabel && (
-                                <span className="font-normal text-slate-500 text-[8px] sm:text-sm">
-                                    {priceLabel}
+                    {/* Bottom Row: Rating and Price */}
+                    <div className="mt-auto pt-3 flex items-center justify-between">
+                        {displayRating ? (
+                            <div className="flex items-center gap-2">
+                                <span className={`px-1.5 py-0.5 ${getRatingColor(displayRating)} text-white text-[10px] sm:text-xs font-bold rounded`}>
+                                    {displayRating.toFixed(1)}
                                 </span>
+                                <span className="text-[10px] sm:text-xs font-medium text-slate-700 dark:text-slate-300">
+                                    {getRatingLabel(displayRating)}
+                                </span>
+                            </div>
+                        ) : <div />}
+
+                        <div className="text-right">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400">
+                                    {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                    /night
+                                </span>
+                            </div>
+                            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                                <div className="text-[10px] text-slate-400 line-through leading-none mt-0.5">
+                                    {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </div>
                             )}
-                        </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -314,7 +315,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             onClick={onClick}
         >
             {/* Image Section */}
-            <div className="md:w-[240px] relative h-[140px] md:h-auto flex-shrink-0 p-2 md:p-3 md:pr-0">
+            <div className="md:w-[240px] relative h-[110px] md:h-auto flex-shrink-0 p-1.5 md:p-3 md:pr-0">
                 <div className="absolute inset-2 md:inset-3 md:right-0 rounded-xl overflow-hidden">
                     {property.image && (
                         <Image
@@ -354,13 +355,13 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                         </span>
                     )}
                     {/* Hotel Name */}
-                    <h3 className="text-[12px] landscape:text-[11px] lg:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
+                    <h3 className="text-[11px] landscape:text-[10px] lg:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
                         {property.name}
                     </h3>
 
                     {/* Location */}
-                    <div className="flex items-center text-[10px] landscape:text-[9px] lg:text-sm text-slate-500 dark:text-slate-400 mb-2 md:mb-4">
-                        <MapPin className="w-2.5 h-2.5 lg:w-4 lg:h-4 mr-0.5 md:mr-1 shrink-0" />
+                    <div className="flex items-center text-[9px] landscape:text-[8.5px] lg:text-sm text-slate-500 dark:text-slate-400 mb-1.5 md:mb-4">
+                        <MapPin className="w-2 h-2 lg:w-4 lg:h-4 mr-0.5 md:mr-1 shrink-0" />
                         <span className="line-clamp-1">{property.location}</span>
                     </div>
                 </div>
@@ -384,7 +385,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                             </div>
                         )}
                         <div className="flex items-baseline gap-1 md:gap-1.5">
-                            <span className="text-[13px] landscape:text-[12px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
+                            <span className="text-[12px] landscape:text-[11px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
                                 {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </span>
                             <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">

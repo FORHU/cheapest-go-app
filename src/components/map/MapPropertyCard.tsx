@@ -64,7 +64,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             className={cn(
                 'w-full text-left transition-all duration-200 cursor-pointer overflow-hidden',
                 // Mobile: card style with border and spacing
-                'p-3 border-b border-slate-100 dark:border-slate-800',
+                'p-1.5',
                 // md+: flush row style
                 'md:px-4 md:py-2.5 lg:px-6 lg:py-3',
                 'hover:bg-slate-50 dark:hover:bg-slate-800/60',
@@ -73,9 +73,9 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             )}
         >
             {/* ── MOBILE layout: compact horizontal card (image left, details right) ── */}
-            <div className="flex flex-row gap-2.5 md:hidden landscape:gap-1.5 landscape:p-1.5">
+            <div className="flex flex-row gap-1.5 md:hidden landscape:gap-1.5 landscape:p-1.5">
                 {/* Image */}
-                <div className="relative w-[100px] h-[80px] flex-shrink-0 rounded-lg overflow-hidden landscape:w-[80px] landscape:h-[60px]">
+                <div className="relative w-[70px] h-[56px] flex-shrink-0 rounded-lg overflow-hidden landscape:w-[65px] landscape:h-[52px]">
                     <Image
                         src={property.image}
                         alt={property.name}
@@ -93,12 +93,12 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                 {/* Details */}
                 <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight line-clamp-1 landscape:text-[11px]">
+                        <h3 className="text-[11px] font-bold text-slate-900 dark:text-white leading-tight line-clamp-1 landscape:text-[9.5px]">
                             {property.name}
                         </h3>
                         <div className="flex items-center gap-0.5 mt-0.5 landscape:mt-0">
-                            <MapPin className="w-2.5 h-2.5 text-blue-500 flex-shrink-0 landscape:w-2 landscape:h-2" />
-                            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate landscape:text-[8px]">
+                            <MapPin className="w-2 h-2 text-blue-500 flex-shrink-0 landscape:w-1.5 landscape:h-1.5" />
+                            <span className="text-[9px] text-slate-500 dark:text-slate-400 truncate landscape:text-[7.5px]">
                                 {property.location}
                             </span>
                         </div>
@@ -114,10 +114,10 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
 
                         <div className="flex-shrink-0 w-full min-w-0 overflow-hidden">
                             <div className="flex items-baseline gap-0.5 w-full overflow-hidden">
-                                <span className="text-[13px] font-bold text-blue-600 dark:text-blue-400 landscape:text-[11px] truncate block">
+                                <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 landscape:text-[9.5px] truncate block">
                                     {formatCurrency(displayPrice, targetCurrency)}
                                 </span>
-                                <span className="text-[9px] text-slate-400 landscape:text-[7px] flex-shrink-0">/night</span>
+                                <span className="text-[8px] text-slate-400 landscape:text-[7px] flex-shrink-0">/night</span>
                             </div>
                         </div>
                     </div>

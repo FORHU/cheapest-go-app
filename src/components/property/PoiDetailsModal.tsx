@@ -11,6 +11,53 @@ interface Review {
     time: number;
 }
 
+function groupOpeningHours(weekdayText: string[]) {
+    if (!weekdayText || !Array.isArray(weekdayText) || weekdayText.length === 0) return [];
+    
+    const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
+    const parsed = weekdayText.map(text => {
+        // Google uses ": " or " :"
+        const match = text.match(/^(.+?):\s*(.+)$/);
+        if (match) {
+            return { day: match[1].trim(), hours: match[2].trim(), original: text };
+        }
+        return { day: text, hours: '', original: text };
+    });
+
+    const grouped = [];
+    let currentGroup = { 
+        startDay: parsed[0].day, 
+        endDay: parsed[0].day, 
+        hours: parsed[0].hours,
+        daysIncluded: [parsed[0].day]
+    };
+
+    for (let i = 1; i < parsed.length; i++) {
+        if (parsed[i].hours === currentGroup.hours && parsed[i].hours !== '') {
+            currentGroup.endDay = parsed[i].day;
+            currentGroup.daysIncluded.push(parsed[i].day);
+        } else {
+            grouped.push(currentGroup);
+            currentGroup = { 
+                startDay: parsed[i].day, 
+                endDay: parsed[i].day, 
+                hours: parsed[i].hours,
+                daysIncluded: [parsed[i].day]
+            };
+        }
+    }
+    grouped.push(currentGroup);
+
+    return grouped.map(g => {
+        const includesToday = g.daysIncluded.some(d => d.toLowerCase() === todayName.toLowerCase());
+        const displayText = g.startDay === g.endDay 
+            ? `${g.startDay}: ${g.hours}` 
+            : `${g.startDay} - ${g.endDay}: ${g.hours}`;
+        return { text: displayText, includesToday };
+    });
+}
+
 interface PoiDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -49,9 +96,9 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
     const CategoryIcon = icon || MapPin;
 
     const modalContent = (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[11000] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 z-[10000] overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 z-[11001] overflow-hidden flex flex-col max-h-[85vh]">
                     <h2 className="sr-only">{name} Details</h2>
                     
                     {/* Header Image */}
@@ -84,9 +131,9 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                             <h2 className="text-2xl font-bold leading-tight mb-0.5">{name}</h2>
                             {typeof rating === 'number' && (
                                 <div className="flex items-center gap-2">
-                                    <div className="flex items-center text-amber-400">
+                                    <div className="flex items-center text-blue-500">
                                         {Array.from({ length: 5 }).map((_, i) => (
-                                            <Star key={i} size={14} className={i < Math.round(rating) ? 'fill-current' : 'text-white/30'} />
+                                            <Star key={i} size={14} className={i < Math.round(rating) ? 'fill-current' : 'text-blue-200 dark:text-blue-900/40'} />
                                         ))}
                                     </div>
                                     <span className="font-bold text-sm">{typeof rating === 'string' ? rating : rating.toFixed(1)}</span>
@@ -138,11 +185,10 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                 )}
                             </div>
                             <div className="space-y-1">
-                                {(openingHours.weekday_text || []).map((text: string, idx: number) => {
-                                    const isToday = text.toLowerCase().startsWith(new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase());
+                                {groupOpeningHours(openingHours.weekday_text).map((group, idx: number) => {
                                     return (
-                                        <p key={idx} className={`text-xs ${isToday ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-500 dark:text-slate-400'}`}>
-                                            {text}
+                                        <p key={idx} className={`text-xs ${group.includesToday ? 'text-slate-900 dark:text-white font-semibold' : 'text-slate-500 dark:text-slate-400'}`}>
+                                            {group.text}
                                         </p>
                                     );
                                 })}
@@ -176,9 +222,9 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                                     <p className="text-[10px] text-slate-500">{r.relative_time_description}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex text-amber-400">
+                                            <div className="flex text-blue-500">
                                                 {Array.from({ length: 5 }).map((_, i) => (
-                                                    <Star key={i} size={10} className={i < r.rating ? 'fill-current' : 'text-slate-300 dark:text-slate-600'} />
+                                                    <Star key={i} size={10} className={i < r.rating ? 'fill-current' : 'text-blue-200 dark:text-blue-900/40'} />
                                                 ))}
                                             </div>
                                         </div>

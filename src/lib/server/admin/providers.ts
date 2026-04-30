@@ -428,7 +428,7 @@ async function fetchLiteApiData(): Promise<ProviderIntegrationsData['liteapi']> 
 
 // ── Duffel Airlines List ─────────────────────────────
 
-async function fetchAirlinesData(): Promise<DuffelAirline[]> {
+export async function fetchAirlinesData(): Promise<DuffelAirline[]> {
     if (!env.DUFFEL_TOKEN) return [];
 
     try {

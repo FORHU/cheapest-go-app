@@ -137,7 +137,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                 transition={{ duration: 0.4 }}
                 className="pb-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
             >
-                <h3 className="font-display font-bold text-slate-900 dark:text-white">Filter by</h3>
+                <h3 className="text-sm font-display font-bold text-slate-900 dark:text-white">Filter by</h3>
                 {hasActiveFilters && (
                     <button
                         onClick={handleResetFilters}
@@ -151,15 +151,15 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
 
             {/* Search by Property Name */}
             <div className="py-4 border-b border-slate-200 dark:border-slate-800">
-                <h4 className="font-semibold text-sm text-slate-900 dark:text-white mb-3">Search by property name</h4>
+                <h4 className="font-bold text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Search by property name</h4>
                 <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
                     <input
                         type="text"
                         value={hotelName}
                         onChange={(e) => handleHotelNameChange(e.target.value)}
                         placeholder="e.g. Marriott"
-                        className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                        className="w-full pl-8 pr-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-[11px] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500/50"
                     />
                 </div>
             </div>
@@ -261,14 +261,14 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         </div>
 
                         {/* Header */}
-                        <div className="p-4 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
+                        <div className="p-3 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
                             <button
                                 onClick={() => setIsMobileFiltersOpen(false)}
-                                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors -ml-2"
+                                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors -ml-1.5"
                             >
-                                <X size={20} className="text-slate-700 dark:text-slate-300" />
+                                <X size={16} className="text-slate-700 dark:text-slate-300" />
                             </button>
-                            <h2 className="font-semibold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">Filters</h2>
+                            <h2 className="text-sm font-bold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">Filters</h2>
                             <div className="w-8 relative z-20">
                                 {/* Intentionally left blank to balance the flex layout */}
                             </div>
@@ -283,7 +283,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         <div className="p-4 border-t border-slate-200/50 dark:border-white/5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-center flex-shrink-0 relative z-10">
                             <button
                                 onClick={() => setIsMobileFiltersOpen(false)}
-                                className="w-full max-w-sm py-3.5 bg-alabaster-accent dark:bg-obsidian-accent text-white rounded-xl font-bold flex items-center justify-center transition-transform active:scale-[0.98] shadow-md hover:shadow-lg"
+                                className="w-full max-w-sm py-2 bg-alabaster-accent dark:bg-obsidian-accent text-white rounded-lg text-xs font-bold flex items-center justify-center transition-transform active:scale-[0.98] shadow-md hover:shadow-lg"
                             >
                                 Show places
                             </button>

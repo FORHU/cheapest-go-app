@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FlightResults } from '@/components/flights/flightResultsList';
 import FlightFilters, { type FilterState } from '@/components/flights/filters';
 import type { FlightOffer, CabinClass } from '@/types/flights';
+import { ListFilter, ChevronDown } from 'lucide-react';
 
 // ─── City name → IATA code lookup ─────────────────────────────────────────────
 const CITY_TO_IATA: Record<string, string> = {
@@ -147,6 +149,7 @@ export function SearchFetcher({
         refundableOnly: false,
         selectedProviders: [],
     });
+    const [filtersOpen, setFiltersOpen] = useState(false);
     // allOffers holds the unfiltered list (used to populate the filter panel)
     const [allOffers, setAllOffers] = useState<FlightOffer[]>([]);
     const abortRef = useRef<AbortController | null>(null);
@@ -358,43 +361,43 @@ export function SearchFetcher({
                 </div>
             )}
 
-            <div className="flex flex-col lg:flex-row gap-6">
-                {/* Filters sidebar */}
-                <div className="w-full lg:w-72 shrink-0">
-                    {isLoading && rawOffers.length === 0 ? (
-                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 animate-pulse">
-                            <div className="space-y-3">
-                                <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
-                                <div className="space-y-2">
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                </div>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="h-3 w-12 bg-slate-200 dark:bg-slate-700 rounded" />
-                                <div className="space-y-2">
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                </div>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
-                                <div className="space-y-2">
-                                    <div className="h-5 w-32 bg-slate-100 dark:bg-slate-800 rounded" />
-                                    <div className="h-5 w-28 bg-slate-100 dark:bg-slate-800 rounded" />
-                                    <div className="h-5 w-36 bg-slate-100 dark:bg-slate-800 rounded" />
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <FlightFilters
-                            airlines={airlines}
-                            onFilterChange={setFilters}
-                        />
-                    )}
+            <div className="flex flex-col gap-3">
+                {/* Filters Toggle Row */}
+                <div className="flex items-center justify-between gap-3">
+                    <button
+                        onClick={() => setFiltersOpen(prev => !prev)}
+                        className="flex items-center gap-2 px-3 py-1.5 lg:px-4 lg:py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs lg:text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all"
+                    >
+                        <ListFilter size={14} className="text-blue-500" />
+                        Filters
+                        {filters.selectedAirlines.length + (filters.maxStops !== null ? 1 : 0) + (filters.refundableOnly ? 1 : 0) > 0 && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        )}
+                        <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${filtersOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <div className="text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest">
+                        {filteredOffers.length} {filteredOffers.length === 1 ? 'Result' : 'Results'}
+                    </div>
                 </div>
+
+                {/* Collapsible Filters Panel */}
+                <AnimatePresence>
+                    {filtersOpen && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                        >
+                            <FlightFilters
+                                airlines={airlines}
+                                onFilterChange={setFilters}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Main results area */}
                 <div className="flex-1 min-w-0">

@@ -17,7 +17,7 @@ import { formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import type { DashboardData } from '@/types/admin';
-import { HeaderTitle } from '@/components/admin/HeaderTitle';
+
 import { RevenueChart } from '@/components/admin/dashboard/RevenueChart';
 import { ConversionFunnel } from '@/components/admin/dashboard/ConversionFunnel';
 import { TopRoutes } from '@/components/admin/dashboard/TopRoutes';
@@ -48,7 +48,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
 
     const topMetrics = useMemo(() => [
         { label: 'Total Bookings', value: liveStats.totalBookings.toString(), trend: 'Successful orders', icon: Briefcase, variant: 'blue' as const },
-        { label: 'Revenue', value: formatCurrency(liveStats.revenue, activeCurrency), trend: 'Gross volume', icon: DollarSign, variant: 'white' as const },
+        { label: 'Revenue', value: formatCurrency(convertCurrency(liveStats.revenue, 'PHP', activeCurrency), activeCurrency), trend: 'Gross volume', icon: DollarSign, variant: 'white' as const },
         { label: 'Pending Bookings', value: liveStats.pendingBookings.toString(), trend: 'Awaiting sync', icon: Clock, variant: 'white' as const },
         { label: 'Cancelled', value: liveStats.cancelledBookings.toString(), trend: 'Voided orders', icon: XCircle, variant: 'white' as const },
     ], [liveStats, activeCurrency]);
@@ -61,16 +61,12 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
     ], [revenueStats, activeCurrency]);
 
     return (
-        <div className="pt-8 space-y-12 pb-20 max-w-[1600px] mx-auto px-4 lg:px-8">
-            <HeaderTitle
-                title="Dashboard"
-                subtitle="Live performance metrics"
-                actions={
-                    <Button variant="outline" className="bg-blue-600 hover:bg-blue-500 rounded-xl font-black text-[10px] uppercase tracking-widest h-10 px-6 text-white border-0 shadow-lg shadow-blue-500/20">
-                        <FileDown size={14} className="mr-2" /> Export
-                    </Button>
-                }
-            />
+        <div className="pt-8 space-y-12 pb-20 w-full px-4 lg:px-8">
+            <div className="flex items-center justify-end">
+                <Button variant="outline" className="bg-blue-600 hover:bg-blue-500 rounded-xl font-black text-[10px] uppercase tracking-widest h-10 px-6 text-white border-0 shadow-lg shadow-blue-500/20">
+                    <FileDown size={14} className="mr-2" /> Export
+                </Button>
+            </div>
 
             {/* ── Overview Section ─────────────────────────────── */}
             <section className="space-y-6">

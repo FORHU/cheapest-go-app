@@ -174,7 +174,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                 >
 
                     {/* Tabs */}
-                    <div className={`flex border-b border-slate-100 dark:border-white/5 ${inline ? 'mb-0' : ''}`}>
+                    <div className={`flex ${inline ? 'mb-0' : ''}`}>
                         <button
                             onClick={() => setActiveTab('calendar')}
                             className={`flex-1 ${inline ? 'py-2 text-[10px]' : 'py-4 text-xs'} font-bold font-display transition-all ${activeTab === 'calendar'
@@ -321,7 +321,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
 
                     {/* Footer */}
                     {!inline && (
-                        <div className="flex justify-end p-4 border-t border-slate-100 dark:border-white/5">
+                        <div className="flex justify-end p-4">
                             <button
                                 onClick={onClose}
                                 className="px-8 py-2.5 bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian rounded-full font-bold text-sm hover:opacity-90 transition-all shadow-lg"

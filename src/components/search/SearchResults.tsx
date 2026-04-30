@@ -4,7 +4,15 @@ import React, { useState, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type Property } from '@/types';
 import { PropertyCard } from '@/components/shared';
-import { ChevronDown, MapPin } from 'lucide-react';
+import { ChevronDown, MapPin, List } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import CurrencySelector from '@/components/common/CurrencySelector';
 
 const SORT_OPTIONS = ['recommended', 'price-low', 'price-high', 'rating'] as const;
 type SortValue = typeof SORT_OPTIONS[number];
@@ -14,6 +22,13 @@ interface SearchResultsProps {
 }
 
 const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) => {
+    const SORT_LABELS: Record<SortValue, string> = {
+        'recommended': 'Recommended',
+        'price-low': 'Price: Low to High',
+        'price-high': 'Price: High to Low',
+        'rating': 'Highest Rated'
+    };
+
     const router = useRouter();
     const searchParams = useSearchParams();
     const destination = searchParams?.get('destination') || '';
@@ -96,25 +111,29 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
     return (
         <div className="flex-1 min-w-0">
             {/* Header / sorting */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6 relative z-20">
                 <div>
-                    <h1 className="text-base landscape:text-base lg:text-2xl font-display font-bold text-slate-900 dark:text-white">
+                    <h1 className="text-[14px] md:text-xl lg:text-2xl font-display font-bold text-slate-900 dark:text-white leading-tight">
                         {destination ? `Stays in ${destination}` : 'All properties'}
                     </h1>
-                    <p className="text-[13px] md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-[10px] md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                         {filteredProperties.length} properties found · Prices may change based on availability.
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex items-center gap-2 w-full sm:w-auto sm:justify-end">
+                    {/* Mobile Currency Selector */}
+                    <CurrencySelector variant="pill" align="left" className="md:hidden" />
+
                     {/* Show on map button */}
                     {mappableCount > 0 && (
                         <button
                             onClick={handleViewOnMap}
-                            className="flex items-center gap-1.5 px-3 py-1 md:py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs md:text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 h-[28px] md:h-10 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-[10px] md:text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
                         >
                             <MapPin size={12} className="md:w-3.5 md:h-3.5" />
-                            Show on map
+                            <span className="hidden sm:inline">Show on map</span>
+                            <span className="sm:hidden">Map</span>
                             <span className="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
                                 {mappableCount}
                             </span>
@@ -122,19 +141,28 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                     )}
 
                     {/* Sort dropdown */}
-                    <div className="relative flex-1 sm:flex-none flex justify-end">
-                        <select
-                            value={sortBy}
-                            onChange={(e) => handleSortChange(e.target.value as SortValue)}
-                            className="appearance-none pl-3 pr-6 py-1 md:pl-4 md:pr-8 md:py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-xs md:text-sm font-medium text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="recommended">Recommended</option>
-                            <option value="price-low">Price: Low to High</option>
-                            <option value="price-high">Price: High to Low</option>
-                            <option value="rating">Highest Rated</option>
-                        </select>
-                        <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none w-3 h-3 md:w-3.5 md:h-3.5" />
-                    </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="flex items-center justify-between gap-2 px-3 h-[28px] md:h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-[10px] md:text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[100px] md:min-w-[140px]">
+                                <span className="truncate">{SORT_LABELS[sortBy]}</span>
+                                <ChevronDown size={14} className="text-slate-400 shrink-0 w-3 h-3 md:w-3.5 md:h-3.5" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl">
+                            {SORT_OPTIONS.map((opt) => (
+                                <DropdownMenuItem
+                                    key={opt}
+                                    onClick={() => handleSortChange(opt)}
+                                    className={cn(
+                                        "text-[11px] font-semibold py-1.5",
+                                        opt === sortBy ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" : "text-slate-700 dark:text-slate-300"
+                                    )}
+                                >
+                                    {SORT_LABELS[opt]}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 
@@ -168,12 +196,12 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                         {hasMore ? (
                             <button
                                 onClick={handleLoadMore}
-                                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors shadow-lg shadow-blue-600/20"
+                                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 shadow-md shadow-blue-600/10"
                             >
                                 Load More Results
                             </button>
                         ) : (
-                            <button className="px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-500 font-medium rounded-full cursor-not-allowed opacity-50">
+                            <button className="px-4 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-500 text-[11px] font-medium rounded-full cursor-not-allowed opacity-50">
                                 End of results
                             </button>
                         )}
@@ -181,18 +209,7 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                 )
             }
 
-            {/* Floating Map Toggle for Mobile */}
-            {
-                mappableCount > 0 && (
-                    <button
-                        onClick={handleViewOnMap}
-                        className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-2.5 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.3)] active:scale-95 transition-transform flex items-center gap-2 text-sm font-semibold z-40 pointer-events-auto"
-                    >
-                        <MapPin size={18} />
-                        Map
-                    </button>
-                )
-            }
+            {/* Floating Map Toggle for Mobile - REMOVED */}
         </div >
     );
 };
