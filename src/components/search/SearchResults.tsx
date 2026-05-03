@@ -123,7 +123,7 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto sm:justify-end">
                     {/* Mobile Currency Selector */}
-                    <CurrencySelector variant="pill" align="left" className="md:hidden" />
+                    <CurrencySelector variant="pill" align="start" className="md:hidden" />
 
                     {/* Show on map button */}
                     {mappableCount > 0 && (

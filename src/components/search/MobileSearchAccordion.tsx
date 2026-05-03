@@ -9,7 +9,7 @@ import { DatePicker } from '@/components/landing/hero/search/DatePicker';
 import { TravelersPicker } from '@/components/landing/hero/search/TravelersPicker';
 import { useSearchModule } from '@/hooks';
 
-type AccordionSection = 'where' | 'when' | 'who';
+type AccordionSection = 'where' | 'when' | 'who' | null;
 
 interface MobileSearchAccordionProps {
     onClose?: () => void;
@@ -17,7 +17,7 @@ interface MobileSearchAccordionProps {
 }
 
 export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ onClose, onSearch }) => {
-    const [activeSection, setActiveSection] = useState<AccordionSection>('where');
+    const [activeSection, setActiveSection] = useState<AccordionSection>(null);
 
     // Search Store hooks
     const { setActiveDropdown, setDestination, setDestinationQuery, setDates, setTravelers } = useSearchStore();
@@ -42,8 +42,9 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
 
     useEffect(() => {
         if (activeSection === 'where') setActiveDropdown('destination');
-        if (activeSection === 'when') setActiveDropdown('dates');
-        if (activeSection === 'who') setActiveDropdown('travelers');
+        else if (activeSection === 'when') setActiveDropdown('dates');
+        else if (activeSection === 'who') setActiveDropdown('travelers');
+        else setActiveDropdown(null);
     }, [activeSection, setActiveDropdown]);
 
     // Formatting helpers
@@ -71,8 +72,10 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
         setTravelers({ adults: 2, children: 0, rooms: 1 });
     };
 
+    const hasValue = !!(destination || query || checkIn || checkOut || adults !== 2 || children !== 0);
+
     return (
-        <div className="flex flex-col h-full relative">
+        <div className="flex flex-col h-full relative bg-slate-50 dark:bg-slate-950">
             {/* ─── Loading overlay ─── */}
             {isSearching && (
                 <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl gap-4">
@@ -91,12 +94,13 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                 </div>
             )}
 
-            {/* ─── Close Button Row ─── */}
-            <div className="flex justify-end px-4 pt-2 pb-1 shrink-0">
+            {/* ─── Unified Header Row ─── */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-2 shrink-0">
+                <h2 className="text-lg font-medium text-slate-900 dark:text-white">Search Hotels</h2>
                 {onClose && (
                     <button
                         onClick={onClose}
-                        className="p-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-shadow"
+                        className="p-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-shadow"
                     >
                         <X size={16} className="text-slate-700 dark:text-slate-300" />
                     </button>
@@ -104,20 +108,35 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
             </div>
 
             {/* ─── Accordion Content ─── */}
-            <div className="flex-1 flex flex-col px-3 pb-2 gap-1.5 min-h-0 overflow-y-auto">
+            <div className="flex-1 flex flex-col px-3 pb-32 gap-2 min-h-0 overflow-y-auto">
+                <div className="flex justify-end px-1 pt-1 min-h-[32px]">
+                    <AnimatePresence>
+                        {hasValue && (
+                            <motion.button
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                onClick={handleClearAll}
+                                className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                Clear all
+                            </motion.button>
+                        )}
+                    </AnimatePresence>
+                </div>
 
                 {/* ──────── WHERE ──────── */}
-                <div
+                <motion.div
                     className={`bg-white dark:bg-slate-900 rounded-2xl transition-all duration-300 border ${activeSection === 'where'
                         ? 'shadow-md border-slate-200 dark:border-slate-700 shrink-0 flex flex-col'
                         : 'shadow-sm border-slate-100 dark:border-slate-800 cursor-pointer hover:shadow-md shrink-0'
                         }`}
-                    onClick={() => activeSection !== 'where' && setActiveSection('where')}
+                    onClick={() => setActiveSection(activeSection === 'where' ? null : 'where')}
                 >
                     {activeSection === 'where' ? (
                         <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
+                            initial={{ opacity: 0, height: 0, y: 20 }}
+                            animate={{ opacity: 1, height: 'auto', y: 0 }}
                             transition={{ duration: 0.3, ease: "easeOut" }}
                             className="flex flex-col h-full p-3 min-h-0"
                         >
@@ -133,27 +152,30 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             </div>
                         </motion.div>
                     ) : (
-                        <div className="flex items-center justify-between px-4 h-16">
-                            <span className="text-ui-label">Where</span>
-                            <span className="text-ui-value truncate max-w-[180px]">
+                        <div className="flex flex-col items-start px-4 py-3 min-h-[64px] justify-center">
+                            <span className="text-ui-label flex items-center gap-2">
+                                Where
+                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Search city or hotel</span>
+                            </span>
+                            <span className="text-ui-value truncate w-full mt-0.5">
                                 {destinationText}
                             </span>
                         </div>
                     )}
-                </div>
+                </motion.div>
 
                 {/* ──────── WHEN ──────── */}
-                <div
+                <motion.div
                     className={`bg-white dark:bg-slate-900 rounded-2xl transition-all duration-300 border ${activeSection === 'when'
                         ? 'shadow-md border-slate-200 dark:border-slate-700 shrink-0 flex flex-col'
                         : 'shadow-sm border-slate-100 dark:border-slate-800 cursor-pointer hover:shadow-md shrink-0'
                         }`}
-                    onClick={() => activeSection !== 'when' && setActiveSection('when')}
+                    onClick={() => setActiveSection(activeSection === 'when' ? null : 'when')}
                 >
                     {activeSection === 'when' ? (
                         <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
+                            initial={{ opacity: 0, height: 0, y: 20 }}
+                            animate={{ opacity: 1, height: 'auto', y: 0 }}
                             transition={{ duration: 0.3, ease: "easeOut" }}
                             className="flex flex-col h-full p-3 min-h-0"
                         >
@@ -165,27 +187,30 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             </div>
                         </motion.div>
                     ) : (
-                        <div className="flex items-center justify-between px-4 h-16">
-                            <span className="text-ui-label">When</span>
-                            <span className="text-ui-value">
+                        <div className="flex flex-col items-start px-4 py-3 min-h-[64px] justify-center">
+                            <span className="text-ui-label flex items-center gap-2">
+                                When
+                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Check-in / Check-out</span>
+                            </span>
+                            <span className="text-ui-value truncate w-full mt-0.5">
                                 {formatDateRange()}
                             </span>
                         </div>
                     )}
-                </div>
+                </motion.div>
 
                 {/* ──────── WHO ──────── */}
-                <div
+                <motion.div
                     className={`bg-white dark:bg-slate-900 rounded-2xl transition-all duration-300 border ${activeSection === 'who'
                         ? 'shadow-md border-slate-200 dark:border-slate-700 shrink-0 flex flex-col'
                         : 'shadow-sm border-slate-100 dark:border-slate-800 cursor-pointer hover:shadow-md shrink-0'
                         }`}
-                    onClick={() => activeSection !== 'who' && setActiveSection('who')}
+                    onClick={() => setActiveSection(activeSection === 'who' ? null : 'who')}
                 >
                     {activeSection === 'who' ? (
                         <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
+                            initial={{ opacity: 0, height: 0, y: 20 }}
+                            animate={{ opacity: 1, height: 'auto', y: 0 }}
                             transition={{ duration: 0.3, ease: "easeOut" }}
                             className="flex flex-col h-full p-3 min-h-0"
                         >
@@ -197,41 +222,41 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             </div>
                         </motion.div>
                     ) : (
-                        <div className="flex items-center justify-between px-4 h-16">
-                            <span className="text-ui-label">Who</span>
-                            <span className="text-ui-value">
+                        <div className="flex flex-col items-start px-4 py-3 min-h-[64px] justify-center">
+                            <span className="text-ui-label flex items-center gap-2">
+                                Who
+                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Number of guests</span>
+                            </span>
+                            <span className="text-ui-value truncate w-full mt-0.5">
                                 {formatTravelers()}
                             </span>
                         </div>
                     )}
-                </div>
+                </motion.div>
+
             </div>
 
-            {/* ─── Bottom Action Bar ─── */}
-            <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between">
-                <button
-                    onClick={handleClearAll}
-                    className="text-slate-900 dark:text-white font-semibold underline underline-offset-4 decoration-slate-300 dark:decoration-slate-600 hover:decoration-slate-900 dark:hover:decoration-white transition-all text-xs"
-                >
-                    Clear all
-                </button>
-                <button
-                    onClick={handleSearch}
-                    disabled={isSearching}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 h-11 rounded-2xl font-medium text-sm transition-all flex items-center gap-2 min-w-[120px] justify-center shadow-lg shadow-blue-500/25"
-                >
-                    {isSearching ? (
-                        <div className="relative w-5 h-5 shrink-0">
-                            <div className="absolute inset-0 border-2 border-white/20 rounded-full" />
-                            <div className="absolute inset-0 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        </div>
-                    ) : (
-                        <>
-                            <Search size={16} />
-                            Search
-                        </>
-                    )}
-                </button>
+            {/* ─── Sticky Search Button ─── */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 pointer-events-none z-50">
+                <div className="pointer-events-auto max-w-[320px] mx-auto">
+                    <button
+                        onClick={handleSearch}
+                        disabled={isSearching}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10 rounded-xl font-normal text-sm transition-all flex items-center gap-2 justify-center shadow-lg shadow-blue-500/25"
+                    >
+                        {isSearching ? (
+                            <div className="relative w-5 h-5 shrink-0">
+                                <div className="absolute inset-0 border-2 border-white/20 rounded-full" />
+                                <div className="absolute inset-0 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        ) : (
+                            <>
+                                <Search size={16} />
+                                Search
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

@@ -1,162 +1,114 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+    CalendarDays, ChevronLeft, ChevronRight, ChevronDown, 
+    Loader2, Sparkles, X, Info, Calendar
+} from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, ChevronRight, ChevronDown, CalendarDays, Loader2, Sparkles, X } from 'lucide-react';
 import { useUserCurrency } from '@/stores/searchStore';
-import { formatPrice } from '@/utils/flight-utils';
+import { formatPrice as fmt } from '@/utils/flight-utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 
-interface DayPrice {
+interface PriceEntry {
     price: number;
     currency: string;
-    live?: boolean;
 }
 
 interface PriceCalendarProps {
     origin: string;
     destination: string;
-    adults?: number;
-    cabin?: string;
-    initialDate?: string;
+    adults: number;
+    cabin: string;
+    initialDate: string; // YYYY-MM-DD
+    variant?: 'inline' | 'trigger';
 }
 
-const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
-
-function getMinMax(prices: Record<string, DayPrice>) {
-    const vals = Object.values(prices).map(p => p.price);
-    if (!vals.length) return { min: 0, max: 0 };
-    return { min: Math.min(...vals), max: Math.max(...vals) };
-}
-
-function priceColorClass(price: number, min: number, max: number) {
-    if (max === min) return 'text-emerald-500 dark:text-emerald-400';
-    const r = (price - min) / (max - min);
-    if (r < 0.33) return 'text-emerald-500 dark:text-emerald-400';
-    if (r < 0.66) return 'text-amber-500 dark:text-amber-400';
-    return 'text-red-500 dark:text-red-400';
-}
-
-function fmt(price: number, currency: string, targetCurrency?: string) {
-    return formatPrice(price, currency, targetCurrency);
-}
-
-function closestDates(dates: string[], anchor: string, n: number): string[] {
-    return [...dates]
-        .sort((a, b) =>
-            Math.abs(new Date(a).getTime() - new Date(anchor).getTime()) -
-            Math.abs(new Date(b).getTime() - new Date(anchor).getTime())
-        )
-        .slice(0, n);
-}
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function PriceCalendar({
-    origin, destination, adults = 1, cabin = 'economy', initialDate,
+    origin,
+    destination,
+    adults,
+    cabin,
+    initialDate,
+    variant = 'inline'
 }: PriceCalendarProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const targetCurrency = useUserCurrency();
 
+    const [open, setOpen] = useState(false);
+    const [month, setMonth] = useState(() => new Date(initialDate).getMonth() + 1);
+    const [year, setYear] = useState(() => new Date(initialDate).getFullYear());
+    const [prices, setPrices] = useState<Record<string, PriceEntry>>({});
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadingCache, setLoadingCache] = useState(false);
+    const [showTip, setShowTip] = useState(true);
+
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
-    const seed = initialDate ? new Date(initialDate + 'T00:00:00') : today;
 
-    const [open, setOpen] = useState(false);
-    const [year, setYear] = useState(seed.getFullYear());
-    const [month, setMonth] = useState(seed.getMonth() + 1);
-    const [prices, setPrices] = useState<Record<string, DayPrice>>({});
-    const [loadingCache, setLoadingCache] = useState(false);
-    const [loadingLive, setLoadingLive] = useState(false);
-    const [showTip, setShowTip] = useState(true);
-    // Track which month has already been fetched so we don't re-fetch on re-open
-    const fetchedRef = useRef<Set<string>>(new Set());
-
-    const daysInMonth = new Date(year, month, 0).getDate();
-
-    const fetchForMonth = useCallback(async (y: number, m: number) => {
-        const key = `${y}-${m}`;
-        if (fetchedRef.current.has(key)) return; // already fetched this month
-        fetchedRef.current.add(key);
-
-        // 1. Cache first
-        setLoadingCache(true);
-        let cached: Record<string, DayPrice> = {};
-        try {
-            const res = await fetch(
-                `/api/flights/price-calendar?origin=${origin}&destination=${destination}&year=${y}&month=${m}&adults=${adults}&cabin=${cabin}`
-            );
-            if (res.ok) { const j = await res.json(); cached = j.data ?? {}; }
-        } finally { setLoadingCache(false); }
-
-        setPrices(prev => ({ ...prev, ...cached }));
-
-        // 2. Find uncached future days in this month and fetch live
-        const monthDays = Array.from({ length: new Date(y, m, 0).getDate() }, (_, i) => {
-            const d = String(i + 1).padStart(2, '0');
-            return `${y}-${String(m).padStart(2, '0')}-${d}`;
-        }).filter(d => d >= todayStr);
-
-        const uncached = monthDays.filter(d => !cached[d]);
-        if (!uncached.length) return;
-
-        const anchor = initialDate && monthDays.includes(initialDate) ? initialDate : (monthDays[0] ?? todayStr);
-        const toFetch = closestDates(uncached, anchor, 7);
-
-        setLoadingLive(true);
-        try {
-            const res = await fetch('/api/flights/price-calendar-live', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ origin, destination, adults, cabin, dates: toFetch }),
-            });
-            if (res.ok) {
-                const j = await res.json();
-                const live: Record<string, DayPrice> = {};
-                for (const [k, v] of Object.entries(j.data ?? {})) {
-                    live[k] = { ...(v as DayPrice), live: true };
-                }
-                setPrices(prev => ({ ...prev, ...live }));
-            }
-        } finally { setLoadingLive(false); }
-    }, [origin, destination, adults, cabin, initialDate, todayStr]);
-
-    // Prefetch on mount — so data is ready before user opens the calendar
+    // Fetch prices for current month/year view
     useEffect(() => {
-        if (origin && destination) fetchForMonth(year, month);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        if (!open) return;
 
-    // Also fetch when month changes (navigation)
-    const changeMonth = (dir: 1 | -1) => {
-        const newMonth = month + dir;
+        const fetchPrices = async () => {
+            setIsLoading(true);
+            try {
+                const res = await fetch(`/api/flights/price-calendar?origin=${origin}&destination=${destination}&month=${month}&year=${year}&adults=${adults}&cabin=${cabin}`);
+                const json = await res.json();
+                if (json.success) {
+                    setPrices(prev => ({ ...prev, ...json.data }));
+                }
+            } catch (err) {
+                console.error('Failed to fetch prices:', err);
+            } finally {
+                setIsLoading(false);
+                setLoadingCache(false);
+            }
+        };
+
+        fetchPrices();
+    }, [open, month, year, origin, destination, adults, cabin]);
+
+    const changeMonth = (delta: number) => {
+        let newMonth = month + delta;
         let newYear = year;
-        let adjustedMonth = newMonth;
-        if (newMonth < 1) { newYear = year - 1; adjustedMonth = 12; }
-        if (newMonth > 12) { newYear = year + 1; adjustedMonth = 1; }
+        if (newMonth > 12) {
+            newMonth = 1;
+            newYear++;
+        } else if (newMonth < 1) {
+            newMonth = 12;
+            newYear--;
+        }
+        setMonth(newMonth);
         setYear(newYear);
-        setMonth(adjustedMonth);
-        fetchForMonth(newYear, adjustedMonth);
     };
 
     const firstDay = new Date(year, month - 1, 1).getDay();
-    const cells: (number | null)[] = [
-        ...Array(firstDay).fill(null),
-        ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-    ];
-    while (cells.length % 7 !== 0) cells.push(null);
+    const daysInMonth = new Date(year, month, 0).getDate();
 
-    const { min, max } = getMinMax(prices);
-    const priceCount = Object.keys(prices).length;
-    const isLoading = loadingCache || loadingLive;
+    const cells = useMemo(() => {
+        const arr = [];
+        for (let i = 0; i < firstDay; i++) arr.push(null);
+        for (let i = 1; i <= daysInMonth; i++) arr.push(i);
+        return arr;
+    }, [firstDay, daysInMonth]);
 
-    // Cheapest price in this month for the header badge
-    const monthPrices = Object.entries(prices)
-        .filter(([k]) => k.startsWith(`${year}-${String(month).padStart(2, '0')}`))
-        .map(([, v]) => v.price);
-    const monthMin = monthPrices.length ? Math.min(...monthPrices) : null;
-    const monthMinEntry = monthMin !== null
-        ? Object.entries(prices).find(([k, v]) => k.startsWith(`${year}-${String(month).padStart(2, '0')}`) && v.price === monthMin)
+    const monthMinEntry = useMemo(() => {
+        const entries = Object.entries(prices).filter(([date]) => {
+            const d = new Date(date);
+            return d.getMonth() + 1 === month && d.getFullYear() === year;
+        });
+        if (entries.length === 0) return null;
+        return entries.reduce((prev, curr) => (prev[1].price < curr[1].price ? prev : curr));
+    }, [prices, month, year]);
+
+    const bestPrice = monthMinEntry 
+        ? fmt(monthMinEntry[1].price, monthMinEntry[1].currency, targetCurrency)
         : null;
 
     const handleDay = (day: number) => {
@@ -165,139 +117,189 @@ export default function PriceCalendar({
         const p = new URLSearchParams(searchParams.toString());
         p.set('departure', d);
         router.push(`/flights/search?${p.toString()}`);
+        setOpen(false);
     };
 
+    const calendarContent = (
+        <div className="flex flex-col h-full lg:h-auto overflow-hidden">
+            {/* Header for Modal Mode */}
+            {variant === 'trigger' && (
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                    <div>
+                        <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Explore Prices</h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mt-0.5">{origin} → {destination}</p>
+                    </div>
+                    <button 
+                        onClick={() => setOpen(false)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500"
+                    >
+                        <X size={16} />
+                    </button>
+                </div>
+            )}
+
+            {/* Friendly tip banner */}
+            {showTip && (
+                <div className="mx-4 mt-4 flex items-start gap-3 bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/10 rounded-xl px-4 py-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Info size={14} className="text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Quick Pro Tip</p>
+                        <p className="text-[11px] text-blue-600 dark:text-blue-400 leading-relaxed mt-0.5">
+                            Click any date to instantly search. Fares are updated in real-time. 
+                            <span className="text-emerald-500 font-bold"> Green values</span> are the cheapest found!
+                        </p>
+                    </div>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setShowTip(false); }}
+                        className="text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
+            )}
+
+            {/* Month nav */}
+            <div className="flex items-center justify-between px-6 py-4">
+                <button onClick={() => changeMonth(-1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    <ChevronLeft size={16} />
+                </button>
+                <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">
+                    {MONTHS[month - 1]} {year}
+                </span>
+                <button onClick={() => changeMonth(1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    <ChevronRight size={16} />
+                </button>
+            </div>
+
+            {/* Day headers */}
+            <div className="grid grid-cols-7 px-4">
+                {DAYS.map(d => (
+                    <div key={d} className="py-2 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">{d}</div>
+                ))}
+            </div>
+
+            {/* Grid */}
+            <div className="grid grid-cols-7 px-4 pb-6 gap-1 overflow-y-auto">
+                {cells.map((day, i) => {
+                    if (!day) return <div key={`e${i}`} />;
+                    const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const p = prices[key];
+                    const past = key < todayStr;
+                    const selected = key === initialDate;
+
+                    // Calculate color based on relative price
+                    let colorClass = 'text-slate-500 dark:text-slate-400';
+                    if (p && monthMinEntry) {
+                        if (p.price <= monthMinEntry[1].price * 1.05) colorClass = 'text-emerald-500';
+                        else if (p.price >= monthMinEntry[1].price * 1.5) colorClass = 'text-red-500';
+                    }
+
+                    return (
+                        <button
+                            key={day}
+                            onClick={() => handleDay(day)}
+                            disabled={past}
+                            className={`flex flex-col items-center justify-center rounded-xl py-2 min-h-[52px] transition-all
+                                ${past ? 'opacity-20 cursor-not-allowed' : 'cursor-pointer hover:bg-white dark:hover:bg-slate-800 hover:shadow-lg hover:-translate-y-1 active:scale-95'}
+                                ${selected ? 'bg-blue-600 !text-white shadow-lg shadow-blue-500/40 ring-4 ring-blue-500/20' : 'bg-transparent'}
+                            `}
+                        >
+                            <span className={`text-[10px] font-black tracking-tighter ${selected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                                {day}
+                            </span>
+                            {p && (
+                                <span className={`text-[8px] font-black mt-0.5 tabular-nums ${selected ? 'text-blue-100' : colorClass}`}>
+                                    {fmt(p.price, p.currency, targetCurrency)}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+
+    if (variant === 'trigger') {
+        return (
+            <>
+                <button
+                    onClick={() => setOpen(true)}
+                    className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/20 group hover:scale-110 active:scale-95 transition-all"
+                >
+                    <Calendar size={18} className="text-blue-500" />
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full shadow-sm" />
+                </button>
+
+                {typeof window !== 'undefined' && open && createPortal(
+                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setOpen(false)}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto"
+                        />
+                        <motion.div 
+                            initial={{ y: '100%', opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: '100%', opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="relative w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden pointer-events-auto max-h-[90vh]"
+                        >
+                            {calendarContent}
+                        </motion.div>
+                    </div>,
+                    document.body
+                )}
+            </>
+        );
+    }
+
     return (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-2xl border border-slate-200/50 dark:border-slate-800/50 overflow-hidden shadow-sm">
             {/* Toggle header */}
             <button
                 onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-3 sm:px-6 sm:py-4 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all text-left group"
             >
-                <CalendarDays size={14} className="text-blue-500 shrink-0" />
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex-1">
-                    Explore prices by date
-                </span>
-
-                {/* Collapsed state: show cheapest badge or loading indicator */}
-                {!open && (
-                    isLoading ? (
-                        <span className="flex items-center gap-1 text-[10px] text-slate-400 mr-1">
-                            <Loader2 size={10} className="animate-spin" />
-                            Checking prices…
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-500/20 group-hover:scale-110 transition-transform">
+                    <CalendarDays size={16} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <span className="block text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-[0.2em]">
+                        Explore prices by date
+                    </span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">
+                            Flexible with your dates?
                         </span>
-                    ) : monthMinEntry ? (
-                        <span className="mr-1 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
-                            <Sparkles size={9} />
-                            From {fmt(monthMinEntry[1].price, monthMinEntry[1].currency, targetCurrency)}
-                        </span>
-                    ) : null
-                )}
+                        {bestPrice && !open && (
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 animate-pulse">
+                                <Sparkles size={10} className="text-emerald-500" />
+                                <span className="text-xs font-black">From {bestPrice}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
-                {open && isLoading && (
+                {isLoading && (
                     <span className="flex items-center gap-1 text-[10px] text-slate-400 mr-1">
                         <Loader2 size={10} className="animate-spin" />
-                        {loadingCache ? 'Loading…' : 'Fetching live prices…'}
+                        Fetching live prices…
                     </span>
                 )}
 
-                <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown 
+                    size={18} 
+                    className={`text-slate-400 transition-all duration-300 ${open ? 'rotate-180' : ''}`} 
+                />
             </button>
 
             {open && (
                 <div className="border-t border-slate-100 dark:border-slate-800">
-                    {/* Friendly tip banner */}
-                    {showTip && (
-                        <div className="mx-3 mt-3 flex items-start gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg px-3 py-2">
-                            <Sparkles size={13} className="text-blue-500 shrink-0 mt-0.5" />
-                            <p className="text-[11px] text-blue-700 dark:text-blue-300 flex-1 leading-relaxed">
-                                <strong>Tip:</strong> These are real fares for nearby dates.
-                                Green = cheapest, red = most expensive.
-                                Click any date to instantly search flights on that day.
-                            </p>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setShowTip(false); }}
-                                className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 transition-colors shrink-0"
-                            >
-                                <X size={12} />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Month nav */}
-                    <div className="flex items-center justify-between px-4 py-2">
-                        <button onClick={() => changeMonth(-1)} className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
-                            <ChevronLeft size={14} />
-                        </button>
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                            {MONTHS[month - 1]} {year}
-                        </span>
-                        <button onClick={() => changeMonth(1)} className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
-                            <ChevronRight size={14} />
-                        </button>
-                    </div>
-
-                    {/* Day headers */}
-                    <div className="grid grid-cols-7 px-2">
-                        {DAYS.map(d => (
-                            <div key={d} className="py-1 text-center text-[9px] font-bold text-slate-400 uppercase tracking-wider">{d}</div>
-                        ))}
-                    </div>
-
-                    {/* Grid */}
-                    <div className="grid grid-cols-7 px-2 pb-3 gap-y-0.5">
-                        {cells.map((day, i) => {
-                            if (!day) return <div key={`e${i}`} />;
-                            const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                            const p = prices[key];
-                            const past = key < todayStr;
-                            const isToday = key === todayStr;
-                            const selected = key === initialDate;
-
-                            return (
-                                <button
-                                    key={day}
-                                    onClick={() => handleDay(day)}
-                                    disabled={past}
-                                    title={p ? `${fmt(p.price, p.currency, targetCurrency)} — click to search` : 'Click to search this date'}
-                                    className={`flex flex-col items-center justify-center rounded-lg py-1 min-h-[44px] transition-all
-                                        ${past ? 'opacity-25 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 hover:scale-105 active:scale-95'}
-                                        ${selected ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-400 dark:ring-blue-600' : ''}
-                                        ${isToday && !selected ? 'ring-1 ring-slate-300 dark:ring-slate-600' : ''}
-                                    `}
-                                >
-                                    <span className={`text-[11px] font-semibold leading-none
-                                        ${isToday ? 'text-blue-600 dark:text-blue-400' : selected ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}
-                                    `}>
-                                        {day}
-                                    </span>
-                                    {p ? (
-                                        <span className={`text-[9px] font-bold mt-0.5 leading-none ${priceColorClass(p.price, min, max)}`}>
-                                            {fmt(p.price, p.currency, targetCurrency)}
-                                        </span>
-                                    ) : !past && loadingLive ? (
-                                        <span className="mt-0.5 w-7 h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 animate-pulse" />
-                                    ) : null}
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between px-4 py-2 border-t border-slate-100 dark:border-slate-800">
-                        <p className="text-[10px] text-slate-400">
-                            {priceCount > 0
-                                ? `${priceCount} dates with prices found`
-                                : 'Searching for the best prices…'}
-                        </p>
-                        {priceCount > 0 && (
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-[9px] text-emerald-500 font-semibold">Cheapest</span>
-                                <div className="w-10 h-1 rounded-full bg-linear-to-r from-emerald-400 via-amber-400 to-red-400" />
-                                <span className="text-[9px] text-red-500 font-semibold">Priciest</span>
-                            </div>
-                        )}
-                    </div>
+                    {calendarContent}
                 </div>
             )}
         </div>

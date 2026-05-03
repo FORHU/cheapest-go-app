@@ -83,7 +83,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
 
         const days = [];
         for (let i = 0; i < firstDay; i++) {
-            days.push(<div key={`pad-${i}`} className="size-6 mx-auto" />);
+            days.push(<div key={`pad-${i}`} className="size-9 sm:size-6 mx-auto" />);
         }
 
         for (let day = 1; day <= daysInMonth; day++) {
@@ -106,7 +106,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
-                    className={`size-6 mx-auto my-0.5 flex items-center justify-center text-[10px] font-medium rounded-full transition-all relative
+                    className={`size-9 sm:size-6 mx-auto my-0.5 flex items-center justify-center text-[11px] sm:text-[10px] font-medium rounded-full transition-all relative
                         ${isDisabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20' : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10'}
                         ${isSelected ? 'bg-blue-600 text-white shadow-lg z-10' : 'text-slate-700 dark:text-slate-300'}
                         ${isToday && !isSelected ? 'ring-1 ring-blue-600/50' : ''}
@@ -147,14 +147,14 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="relative sm:absolute top-0 sm:top-full left-0 sm:left-1/2 sm:-translate-x-1/2 sm:mt-4 w-full sm:w-[640px] bg-white dark:bg-slate-900 shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 z-[100]"
+                        className="relative sm:absolute top-0 sm:top-full left-0 sm:left-1/2 sm:-translate-x-1/2 sm:mt-4 w-full sm:w-[640px] bg-white dark:bg-slate-900 shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 z-[100] overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                     >
-                        <div className="px-12 py-7">
+                        <div className="px-4 sm:px-12 py-5 sm:py-7">
                             <div className="flex gap-0">
-                                <div className="flex-1 pr-12">
+                                <div className="flex-1 pr-0 sm:pr-12">
                                     <div className="flex justify-between items-center mb-4">
                                         <button
                                             type="button"
@@ -180,12 +180,12 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
 
                                         <div className="w-8 hidden sm:block" />
                                     </div>
-                                    <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
+                                    <div className="grid grid-cols-7 gap-1 text-center mb-1">
                                         {DAYS.map((d, i) => (
                                             <span key={i} className="text-[10px] font-mono text-slate-400 font-bold">{d}</span>
                                         ))}
                                     </div>
-                                    <div className="grid grid-cols-7 gap-0.5">
+                                    <div className="grid grid-cols-7 gap-1">
                                         {renderMonth(currentMonth)}
                                     </div>
                                 </div>
@@ -205,12 +205,12 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                                         </button>
 
                                     </div>
-                                    <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
+                                    <div className="grid grid-cols-7 gap-1 text-center mb-1">
                                         {DAYS.map((d, i) => (
                                             <span key={i} className="text-[10px] font-mono text-slate-400 font-bold">{d}</span>
                                         ))}
                                     </div>
-                                    <div className="grid grid-cols-7 gap-0.5">
+                                    <div className="grid grid-cols-7 gap-1">
                                         {renderMonth(getNextMonth(currentMonth))}
                                     </div>
                                 </div>
