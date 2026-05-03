@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useMemo } from 'react';
 import type { MapRef } from 'react-map-gl/mapbox';
 
 export interface PoiData {
@@ -66,6 +66,19 @@ const buildPoiData = (
     return { name, category, coordinates };
 };
 
+// Layers we care about for click/hover detection.
+// Restricting queryRenderedFeatures to these avoids hit-testing thousands of
+// Standard-style building/road/label layers on every pointer event.
+const INTERACTIVE_LAYERS = [
+    'unclustered-point',
+    'unclustered-point-text',
+    'clusters',
+    'discovery-poi-layer',
+];
+
+// Broader set for POI detection (symbol layers from Standard style)
+const POI_QUERY_RADIUS = 4; // px — small bbox around cursor for POI detection
+
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
 export const useMapInteractions = ({
@@ -80,10 +93,14 @@ export const useMapInteractions = ({
         if (!map || !e.point) return;
 
         try {
-            const allFeatures = map.queryRenderedFeatures(e.point);
+            // 1. Fast path: check only our interactive layers first
+            const interactiveHits = map.queryRenderedFeatures(e.point, {
+                layers: INTERACTIVE_LAYERS.filter(id => {
+                    try { return !!map.getLayer(id); } catch { return false; }
+                }),
+            });
 
-            // 1. Property / cluster clicks take priority
-            const propertyFeature = allFeatures.find((f: any) =>
+            const propertyFeature = interactiveHits.find((f: any) =>
                 f.layer?.id === 'unclustered-point' ||
                 f.layer?.id === 'unclustered-point-text' ||
                 f.layer?.id === 'clusters'
@@ -105,8 +122,20 @@ export const useMapInteractions = ({
                 return;
             }
 
-            // 2. POI clicks (Mapbox Standard obscures true layer IDs)
-            const poiFeature = findPoiFeature(allFeatures);
+            // 2. Discovery layer hit?
+            const discoveryHit = interactiveHits.find((f: any) => f.layer?.id === 'discovery-poi-layer');
+            if (discoveryHit) {
+                onSelectPoi(buildPoiData(discoveryHit, { lng: e.lngLat.lng, lat: e.lngLat.lat }));
+                return;
+            }
+
+            // 3. Slow path: small bbox query for Standard-style POI symbols
+            const bbox: [mapboxgl.PointLike, mapboxgl.PointLike] = [
+                [e.point.x - POI_QUERY_RADIUS, e.point.y - POI_QUERY_RADIUS],
+                [e.point.x + POI_QUERY_RADIUS, e.point.y + POI_QUERY_RADIUS],
+            ];
+            const poiHits = map.queryRenderedFeatures(bbox);
+            const poiFeature = findPoiFeature(poiHits);
 
             if (poiFeature) {
                 onSelectPoi(buildPoiData(poiFeature, { lng: e.lngLat.lng, lat: e.lngLat.lat }));
@@ -122,11 +151,13 @@ export const useMapInteractions = ({
     }, [onSelectId, onSelectPoi]);
 
     // Throttled hover handler — keep map interaction smooth under heavy marker density.
+    // Only queries our known interactive layers, not the full Standard style.
     const lastMoveTime = useRef<number>(0);
     const lastPoiName = useRef<string | null>(null);
     const onMouseMove = useCallback((e: any) => {
         const now = Date.now();
-        if (now - lastMoveTime.current < 100) return;
+        // Increased throttle to ~150ms (~7fps) — hover tooltips don't need 60fps
+        if (now - lastMoveTime.current < 150) return;
         lastMoveTime.current = now;
 
         const map = e.target;
@@ -134,7 +165,7 @@ export const useMapInteractions = ({
 
         try {
             // Skip expensive POI hit-testing while map is actively panning/zooming.
-            if (map.isMoving()) {
+            if (map.isMoving() || map.isZooming() || map.isRotating()) {
                 map.getCanvas().style.cursor = '';
                 if (lastPoiName.current !== null) {
                     lastPoiName.current = null;
@@ -143,15 +174,21 @@ export const useMapInteractions = ({
                 return;
             }
 
-            const allRendered = map.queryRenderedFeatures(e.point);
-            const propertyFeatures = allRendered.filter((f: any) => 
-                f.layer?.id === 'unclustered-point' || 
-                f.layer?.id === 'unclustered-point-text' || 
-                f.layer?.id === 'clusters'
-            );
+            // Fast path: only query our known interactive layers
+            const activeLayers = INTERACTIVE_LAYERS.filter(id => {
+                try { return !!map.getLayer(id); } catch { return false; }
+            });
+
+            const interactiveHits = activeLayers.length > 0
+                ? map.queryRenderedFeatures(e.point, { layers: activeLayers })
+                : [];
 
             // Over a property marker?
-            const isProperty = propertyFeatures.length > 0;
+            const isProperty = interactiveHits.some((f: any) =>
+                f.layer?.id === 'unclustered-point' ||
+                f.layer?.id === 'unclustered-point-text' ||
+                f.layer?.id === 'clusters'
+            );
 
             if (isProperty) {
                 map.getCanvas().style.cursor = 'pointer';
@@ -162,26 +199,23 @@ export const useMapInteractions = ({
                 return;
             }
 
-            // Over a POI?
-            const poiFeature = findPoiFeature(allRendered);
-
-            if (poiFeature) {
+            // Over a discovery POI?
+            const discoveryHit = interactiveHits.find((f: any) => f.layer?.id === 'discovery-poi-layer');
+            if (discoveryHit) {
                 map.getCanvas().style.cursor = 'pointer';
-                const nextName =
-                    poiFeature.properties?.name ||
-                    poiFeature.properties?.name_en ||
-                    poiFeature.properties?.text ||
-                    null;
+                const nextName = discoveryHit.properties?.name || null;
                 if (nextName !== lastPoiName.current) {
                     lastPoiName.current = nextName;
-                    onHoverPoi(buildPoiData(poiFeature, { lng: e.lngLat.lng, lat: e.lngLat.lat }));
+                    onHoverPoi(buildPoiData(discoveryHit, { lng: e.lngLat.lng, lat: e.lngLat.lat }));
                 }
-            } else {
-                map.getCanvas().style.cursor = '';
-                if (lastPoiName.current !== null) {
-                    lastPoiName.current = null;
-                    onHoverPoi(null);
-                }
+                return;
+            }
+
+            // Not over any interactive element — clear hover state
+            map.getCanvas().style.cursor = '';
+            if (lastPoiName.current !== null) {
+                lastPoiName.current = null;
+                onHoverPoi(null);
             }
         } catch {
             // Ignore transient rendering-query errors during style transitions

@@ -108,7 +108,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
 
                 {/* ──────── WHERE ──────── */}
                 <div
-                    className={`bg-white dark:bg-slate-900 rounded-xl transition-all duration-300 border ${activeSection === 'where'
+                    className={`bg-white dark:bg-slate-900 rounded-2xl transition-all duration-300 border ${activeSection === 'where'
                         ? 'shadow-md border-slate-200 dark:border-slate-700 shrink-0 flex flex-col'
                         : 'shadow-sm border-slate-100 dark:border-slate-800 cursor-pointer hover:shadow-md shrink-0'
                         }`}
@@ -121,7 +121,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             transition={{ duration: 0.3, ease: "easeOut" }}
                             className="flex flex-col h-full p-3 min-h-0"
                         >
-                            <h2 className="text-[12px] font-bold text-slate-900 dark:text-white mb-2 shrink-0">
+                            <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-2 shrink-0 text-left">
                                 Where?
                             </h2>
                             <div className="relative overflow-hidden">
@@ -133,9 +133,9 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             </div>
                         </motion.div>
                     ) : (
-                        <div className="flex items-center justify-between px-3 py-2.5">
-                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Where</span>
-                            <span className="text-[11px] font-semibold text-slate-900 dark:text-white truncate max-w-[180px]">
+                        <div className="flex items-center justify-between px-4 h-16">
+                            <span className="text-ui-label">Where</span>
+                            <span className="text-ui-value truncate max-w-[180px]">
                                 {destinationText}
                             </span>
                         </div>
@@ -144,7 +144,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
 
                 {/* ──────── WHEN ──────── */}
                 <div
-                    className={`bg-white dark:bg-slate-900 rounded-xl transition-all duration-300 border ${activeSection === 'when'
+                    className={`bg-white dark:bg-slate-900 rounded-2xl transition-all duration-300 border ${activeSection === 'when'
                         ? 'shadow-md border-slate-200 dark:border-slate-700 shrink-0 flex flex-col'
                         : 'shadow-sm border-slate-100 dark:border-slate-800 cursor-pointer hover:shadow-md shrink-0'
                         }`}
@@ -157,7 +157,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             transition={{ duration: 0.3, ease: "easeOut" }}
                             className="flex flex-col h-full p-3 min-h-0"
                         >
-                            <h2 className="text-[12px] font-bold text-slate-900 dark:text-white mb-2 shrink-0">
+                            <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-2 shrink-0 text-left">
                                 When&apos;s your trip?
                             </h2>
                             <div className="relative overflow-hidden">
@@ -165,9 +165,9 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             </div>
                         </motion.div>
                     ) : (
-                        <div className="flex items-center justify-between px-3 py-2.5">
-                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">When</span>
-                            <span className="text-[11px] font-semibold text-slate-900 dark:text-white">
+                        <div className="flex items-center justify-between px-4 h-16">
+                            <span className="text-ui-label">When</span>
+                            <span className="text-ui-value">
                                 {formatDateRange()}
                             </span>
                         </div>
@@ -176,7 +176,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
 
                 {/* ──────── WHO ──────── */}
                 <div
-                    className={`bg-white dark:bg-slate-900 rounded-xl transition-all duration-300 border ${activeSection === 'who'
+                    className={`bg-white dark:bg-slate-900 rounded-2xl transition-all duration-300 border ${activeSection === 'who'
                         ? 'shadow-md border-slate-200 dark:border-slate-700 shrink-0 flex flex-col'
                         : 'shadow-sm border-slate-100 dark:border-slate-800 cursor-pointer hover:shadow-md shrink-0'
                         }`}
@@ -189,7 +189,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             transition={{ duration: 0.3, ease: "easeOut" }}
                             className="flex flex-col h-full p-3 min-h-0"
                         >
-                            <h2 className="text-[12px] font-bold text-slate-900 dark:text-white mb-2 shrink-0">
+                            <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-2 shrink-0 text-left">
                                 Who&apos;s coming?
                             </h2>
                             <div className="relative overflow-hidden">
@@ -197,9 +197,9 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             </div>
                         </motion.div>
                     ) : (
-                        <div className="flex items-center justify-between px-3 py-2.5">
-                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Who</span>
-                            <span className="text-[11px] font-semibold text-slate-900 dark:text-white">
+                        <div className="flex items-center justify-between px-4 h-16">
+                            <span className="text-ui-label">Who</span>
+                            <span className="text-ui-value">
                                 {formatTravelers()}
                             </span>
                         </div>
@@ -218,7 +218,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                 <button
                     onClick={handleSearch}
                     disabled={isSearching}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-[11px] transition-all flex items-center gap-2 min-w-[100px] justify-center shadow-md"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 h-11 rounded-2xl font-medium text-sm transition-all flex items-center gap-2 min-w-[120px] justify-center shadow-lg shadow-blue-500/25"
                 >
                     {isSearching ? (
                         <div className="relative w-5 h-5 shrink-0">

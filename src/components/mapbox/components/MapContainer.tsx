@@ -44,25 +44,16 @@ export const MapContainer = ({
     onStyleReady,
 }: MapContainerProps) => {
     // Internal details state — only active when this component owns the Layers UI.
-    // When `hideLayersButton` is true the parent handles everything; we still call
-    // the hook (hooks can't be conditional) but skip rendering the panel entirely.
-    const {
-        mapType,
-        setMapType,
-        showDetailsPanel,
-        setShowDetailsPanel,
-        showLabels,
-        setShowLabels,
-        mapDetails,
-        handleDetailToggle,
-        terrainEnabled: internalTerrainEnabled,
-        mapStyleUrl: internalMapStyleUrl,
-        standardConfig: internalStandardConfig,
-    } = useMapDetails();
+    // When `hideLayersButton` is true the parent handles everything via props;
+    // the hook still runs (React rules) but its state is never rendered/used,
+    // so we fast-path the derived values to avoid redundant work.
+    const internal = useMapDetails();
 
-    const finalMapStyle      = propMapStyle       ?? internalMapStyleUrl;
-    const finalStandardConfig = propStandardConfig ?? (mapType === 'default-3d' ? internalStandardConfig : undefined);
-    const finalTerrainEnabled = propEnable3DTerrain ?? internalTerrainEnabled;
+    // When parent passes explicit props, use those directly instead of internal state.
+    // This avoids the perf overhead of a second useMapDetails state tree competing.
+    const finalMapStyle       = propMapStyle       ?? internal.mapStyleUrl;
+    const finalStandardConfig = propStandardConfig ?? (internal.mapType === 'default-3d' ? internal.standardConfig : undefined);
+    const finalTerrainEnabled = propEnable3DTerrain ?? internal.terrainEnabled;
 
     return (
         <Map
@@ -72,7 +63,7 @@ export const MapContainer = ({
             enable3DTerrain={finalTerrainEnabled}
             terrainExaggeration={1.5}
             initialViewState={{
-                pitch: 45,
+                pitch: 20,
                 bearing: -10,
                 ...initialViewState,
             }}
@@ -92,11 +83,11 @@ export const MapContainer = ({
             {/* ── Layers button & panel — only rendered when this component owns them ── */}
             {!hideLayersButton && (
                 <>
-                    {!showDetailsPanel && (
+                    {!internal.showDetailsPanel && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setShowDetailsPanel(true);
+                                internal.setShowDetailsPanel(true);
                             }}
                             className="absolute top-4 left-4 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 px-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 group h-[38px]"
                         >
@@ -109,14 +100,14 @@ export const MapContainer = ({
                     )}
 
                     <MapDetailsPanel
-                        isOpen={showDetailsPanel}
-                        onClose={() => setShowDetailsPanel(false)}
-                        mapType={mapType}
-                        onMapTypeChange={setMapType}
-                        details={mapDetails}
-                        onDetailToggle={handleDetailToggle}
-                        showLabels={showLabels}
-                        onLabelsToggle={() => setShowLabels((prev) => !prev)}
+                        isOpen={internal.showDetailsPanel}
+                        onClose={() => internal.setShowDetailsPanel(false)}
+                        mapType={internal.mapType}
+                        onMapTypeChange={internal.setMapType}
+                        details={internal.mapDetails}
+                        onDetailToggle={internal.handleDetailToggle}
+                        showLabels={internal.showLabels}
+                        onLabelsToggle={() => internal.setShowLabels((prev) => !prev)}
                     />
                 </>
             )}

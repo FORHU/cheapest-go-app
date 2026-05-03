@@ -118,7 +118,7 @@ export default async function SearchPage({
     return (
         <main className="min-h-screen pt-2 pb-12 px-4 md:pt-6 md:pb-20 overflow-x-hidden">
             <div className="max-w-7xl mx-auto space-y-3 lg:space-y-6">
-                <div>
+                <div className="hidden lg:block">
                     <BackButton href="/" bareIcon className="mb-1 lg:mb-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shadow-sm p-0!" />
                     <div className="flex items-start justify-between gap-2 lg:gap-4 flex-wrap">
                         <SectionHeader

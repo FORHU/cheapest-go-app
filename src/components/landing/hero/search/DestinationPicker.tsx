@@ -111,7 +111,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                     {/* Search Header */}
                     <div className={`${forceOpen ? 'p-3' : 'p-4 border-b border-slate-100 dark:border-white/5'}`}>
                         {!forceOpen && (
-                            <span className="text-[9px] text-slate-500 font-mono font-medium uppercase tracking-wider block mb-1">
+                            <span className="text-[9px] text-slate-500 font-mono font-medium uppercase tracking-wider block mb-1 text-left">
                                 Where to?
                             </span>
                         )}
@@ -122,6 +122,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                 type="text"
                                 value={query}
                                 onChange={(e) => setDestinationQuery(e.target.value)}
+                                onFocus={(e) => e.target.select()}
                                 placeholder="Search destinations..."
                                 className={`bg-transparent border-none p-0 font-bold focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder:font-normal placeholder-slate-400 font-sans ${forceOpen ? 'text-[10px]' : 'text-[13px]'}`}
                             />
@@ -154,7 +155,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                     exit={{ opacity: 0, y: -5 }}
                                     transition={{ duration: 0.15 }}
                                 >
-                                    <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[8px] font-mono font-medium uppercase text-slate-500 tracking-wider`}>
+                                    <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[8px] font-mono font-medium uppercase text-slate-500 tracking-wider text-left`}>
                                         Recent Searches
                                     </div>
                                     {recentSearches.map((item, i) => (
@@ -170,7 +171,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                                 <div className="mt-0.5 text-slate-400 group-hover:text-amber-500">
                                                     <History size={14} />
                                                 </div>
-                                                <div>
+                                                <div className="text-left">
                                                     <h5 className="text-[11px] font-bold group-hover:text-amber-500 text-slate-900 dark:text-white">
                                                         {item.title}
                                                     </h5>
@@ -221,7 +222,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                         <div className={`mt-0.5 text-slate-400 ${item.type === 'country' ? 'group-hover:text-emerald-500' : 'group-hover:text-blue-500'}`}>
                                             {getIcon(item.type)}
                                         </div>
-                                        <div className="flex-1">
+                                        <div className="flex-1 text-left">
                                             <h5 className={`text-[11px] font-bold text-slate-900 dark:text-white ${item.type === 'country' ? 'group-hover:text-emerald-500' : 'group-hover:text-blue-500'}`}>
                                                 {item.title}
                                             </h5>

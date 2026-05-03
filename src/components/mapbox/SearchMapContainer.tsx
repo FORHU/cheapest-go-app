@@ -124,9 +124,8 @@ export const SearchMapContainer = React.memo(({
         [previewProperty, activePoi]
     );
 
-    // 6. Fetch Real Road GPS Route — debounced so rapid hover/select changes
-    // don't fire multiple in-flight Mapbox Directions requests.
-    // Route state is reset immediately when either endpoint becomes unavailable.
+    // 6. Fetch Real Road GPS Route — only fires when user CLICKS a POI
+    // (not on hover) to avoid unnecessary Directions API calls and re-renders.
     React.useEffect(() => {
         if (!previewProperty || !selectedPoi) {
             setRouteGeometry(null);
@@ -135,17 +134,18 @@ export const SearchMapContainer = React.memo(({
             return;
         }
 
+        const controller = new AbortController();
+
         const timer = setTimeout(async () => {
             try {
                 const base = `https://api.mapbox.com/directions/v5/mapbox`;
                 const coords = `${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}`;
                 const token = `access_token=${env.MAPBOX_TOKEN}`;
+                const signal = controller.signal;
 
-                // Fetch driving and walking in parallel.
-                // No `alternatives=true` — the default single best route is sufficient.
                 const [drivingJson, walkingJson] = await Promise.all([
-                    fetch(`${base}/driving/${coords}?geometries=geojson&overview=full&${token}`).then(r => r.json()),
-                    fetch(`${base}/walking/${coords}?overview=full&${token}`).then(r => r.json()),
+                    fetch(`${base}/driving/${coords}?geometries=geojson&overview=full&${token}`, { signal }).then(r => r.json()),
+                    fetch(`${base}/walking/${coords}?overview=full&${token}`, { signal }).then(r => r.json()),
                 ]);
 
                 if (drivingJson.code === 'Ok' && drivingJson.routes?.length) {
@@ -158,12 +158,15 @@ export const SearchMapContainer = React.memo(({
                     const route = walkingJson.routes[0];
                     setWalkDuration(`${Math.max(1, Math.round(route.duration / 60))} min`);
                 }
-            } catch (err) {
-                console.error('Directions error:', err);
+            } catch (err: any) {
+                if (err.name !== 'AbortError') console.error('Directions error:', err);
             }
         }, 400);
 
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
     }, [previewProperty, selectedPoi]);
 
     const poiRouteData = useMemo(() => routeGeometry ? ({
@@ -244,7 +247,7 @@ export const SearchMapContainer = React.memo(({
                     longitude: 120.596,
                     latitude: 16.402, // Centered on Baguio City
                     zoom: 14.5,
-                    pitch: 45,
+                    pitch: 20,
                     bearing: -10,
                 }}
                 onLoad={handleMapLoad}
@@ -263,7 +266,7 @@ export const SearchMapContainer = React.memo(({
                             shouldCluster={shouldCluster}
                         />
 
-                        {mappableProperties.slice(0, 40).reverse().map(property => (
+                        {mappableProperties.slice(0, 20).reverse().map(property => (
                             <MapMarker
                                 key={property.id}
                                 property={property}
@@ -306,8 +309,9 @@ export const SearchMapContainer = React.memo(({
                                 <Layer
                                     id="discovery-poi-glow"
                                     type="circle"
+                                    minzoom={13}
                                     paint={{
-                                        'circle-radius': 12,
+                                        'circle-radius': 15,
                                         'circle-color': [
                                             'match',
                                             ['get', 'category'],
@@ -317,8 +321,14 @@ export const SearchMapContainer = React.memo(({
                                             'transit', '#3b82f6',
                                             '#8b5cf6'
                                         ],
-                                        'circle-blur': 0.8,
-                                        'circle-opacity': 0.4
+                                        'circle-opacity': [
+                                            'interpolate',
+                                            ['linear'],
+                                            ['zoom'],
+                                            13, 0,
+                                            14, 0.2
+                                        ],
+                                        'circle-pitch-alignment': 'map',
                                     }}
                                 />
                                 <Layer
@@ -329,8 +339,8 @@ export const SearchMapContainer = React.memo(({
                                             'interpolate',
                                             ['linear'],
                                             ['zoom'],
-                                            10, 6,
-                                            15, 10
+                                            10, 4,
+                                            15, 8
                                         ],
                                         'circle-color': [
                                             'match',
@@ -341,8 +351,9 @@ export const SearchMapContainer = React.memo(({
                                             'transit', '#3b82f6',
                                             '#8b5cf6'
                                         ],
-                                        'circle-stroke-width': 2,
-                                        'circle-stroke-color': '#fff'
+                                        'circle-stroke-width': 1.5,
+                                        'circle-stroke-color': '#fff',
+                                        'circle-pitch-alignment': 'map',
                                     }}
                                 />
                                 <Layer

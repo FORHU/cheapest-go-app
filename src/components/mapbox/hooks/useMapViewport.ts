@@ -71,10 +71,10 @@ export const useMapViewport = ({
         if (selectedProperty && selectedProperty.coordinates) {
             map.flyTo({
                 center: [selectedProperty.coordinates.lng, selectedProperty.coordinates.lat],
-                zoom: 17, // Zoom in for 3D view
-                pitch: 60, // Higher pitch for 3D effect
-                bearing: -20, // Slight rotation
-                duration: 1200, // Smooth animation
+                zoom: 16,
+                pitch: 45,
+                bearing: -20,
+                duration: 800,
                 essential: true
             });
         }

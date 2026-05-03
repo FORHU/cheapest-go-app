@@ -187,7 +187,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
                 center: [property.coordinates.lng, property.coordinates.lat],
                 zoom: 15,
                 pitch: 45,
-                duration: 1200,
+                duration: 800,
             });
         },
         [properties, onSelect]

@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, Suspense, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Search, X, Plane, Hotel } from 'lucide-react';
+import { Sparkles, Search, X, Plane, Hotel, ArrowRight } from 'lucide-react';
 import { MagneticButton } from '@/components/ui';
 import SearchModeToggle from './SearchModeToggle';
 import AIPromptInput from './AIPromptInput';
@@ -22,17 +22,27 @@ const TripTypeSelector = () => {
     const { tripType } = flightState;
 
     return (
-        <div className="flex p-0.5 sm:p-1 bg-slate-100 dark:bg-white/5 rounded-full border border-slate-200 dark:border-white/5 mb-3 sm:mb-4 w-fit mx-auto">
-            {(['round-trip', 'one-way', 'multi-city'] as const).map((type) => (
+        <div className="flex gap-2 sm:p-1 sm:bg-slate-100 sm:dark:bg-white/5 sm:rounded-full sm:border sm:border-slate-200 sm:dark:border-white/5 mb-3 sm:mb-4 w-fit mx-auto">
+            {(['round-trip', 'one-way'] as const).map((type) => (
                 <button
                     key={type}
                     onClick={() => setFlightType(type)}
-                    className={`px-3 py-1 sm:px-4 sm:py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all duration-300 ${tripType === type
-                        ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                    className={`relative px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 ${tripType === type
+                        ? 'text-blue-600 dark:text-white shadow-sm sm:shadow-none'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         }`}
                 >
-                    {type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    {tripType === type && (
+                        <motion.div
+                            layoutId="flightTripTypeBg"
+                            className="absolute inset-0 bg-white dark:bg-blue-600 rounded-full border border-slate-200 dark:border-blue-500/30 sm:border-0"
+                            initial={false}
+                            transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                        />
+                    )}
+                    <span className="relative z-10">
+                        {type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </span>
                 </button>
             ))}
         </div>
@@ -212,31 +222,25 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
 
             {/* Shared Animated Glow Border / Main Container */}
             <div className="relative">
-                {/* Mobile Pill (Hidden on sm and up) */}
-                <div className="sm:hidden">
+                {/* Mobile Trigger Pill - Opens the full-screen search overlay */}
+                <div className="sm:hidden mb-4 px-2">
                     <button
                         onClick={() => setIsMobileModalOpen(true)}
-                        className="w-full flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full py-2.5 px-4 shadow-sm hover:shadow-md transition-shadow gap-3 text-left min-h-[44px]"
+                        className="w-full flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 px-4 shadow-sm hover:shadow-md transition-all gap-3 text-left"
                     >
-                        {searchMode === 'ai' ? (
-                            <Sparkles size={16} className="text-blue-500 dark:text-blue-400 shrink-0" />
-                        ) : searchMode === 'flights' ? (
-                            <Plane size={16} className="text-slate-800 dark:text-slate-200 shrink-0" />
-                        ) : (
-                            <Search size={16} className="text-slate-800 dark:text-slate-200 shrink-0" />
-                        )}
+                        <Search size={18} className="text-blue-500 shrink-0" />
                         <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-semibold text-slate-900 dark:text-white truncate">
-                                {searchMode === 'ai' ? 'What are you looking for?' : searchMode === 'flights' ? 'Search flights' : (destinationStr === 'Anywhere' ? 'Where to?' : destinationStr)}
+                            <p className="text-[13px] font-bold text-slate-900 dark:text-white truncate">
+                                {searchMode === 'flights' ? 'Search flights' : (destinationStr === 'Anywhere' ? 'Where to?' : destinationStr)}
                             </p>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                                {searchMode === 'ai' ? 'Ask AI for recommendations' : searchMode === 'flights' ? 'Find the best deals' : `${dateStr} · ${guestsStr}`}
+                            <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                                {searchMode === 'flights' ? 'Find the best deals' : `${dateStr} · ${guestsStr}`}
                             </p>
                         </div>
                     </button>
                 </div>
 
-                {/* Desktop Search Container (Hidden on mobile) */}
+                {/* Main Search Container - Hidden on mobile, visible on desktop */}
                 <div className="hidden sm:block">
                     <motion.div
                         className={`absolute -inset-[1px] pointer-events-none z-0 ${searchMode !== 'ai' ? 'rounded-xl' : 'rounded-2xl'}`}
@@ -258,7 +262,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                             <div className={`flex flex-col ${searchMode === 'flights' && flightState.tripType === 'multi-city' ? '' : 'sm:flex-row'} bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-white/5 h-auto ${searchMode === 'flights' && flightState.tripType === 'multi-city' ? '' : 'sm:h-16'}`}>
 
                                 {/* Inputs Area - overflow-hidden + min-w-0 forces text truncation */}
-                                <div className={`flex-1 flex flex-col ${searchMode === 'flights' && flightState.tripType === 'multi-city' ? '' : 'sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5'} min-w-0`}>
+                                <div className={`flex-1 flex flex-col ${searchMode === 'flights' && flightState.tripType === 'multi-city' ? '' : 'sm:flex-row'} min-w-0`}>
                                     <AnimatePresence mode="wait">
                                         {searchMode === 'hotels' && (
                                             <motion.div
@@ -266,7 +270,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
-                                                className="contents"
+                                                className="flex-1 flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5 min-w-0"
                                             >
                                                 <DestinationSection />
                                                 <DateSection />
@@ -280,7 +284,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
-                                                className={flightState.tripType === 'multi-city' ? 'flex flex-col w-full' : 'contents'}
+                                                className={flightState.tripType === 'multi-city' ? 'flex flex-col w-full divide-y divide-slate-200 dark:divide-white/5' : 'flex-1 flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5 min-w-0'}
                                             >
                                                 <FlightSearchForm />
                                             </motion.div>
@@ -345,32 +349,40 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
 
             <MobileSearchModal isOpen={isMobileModalOpen} onClose={() => setIsMobileModalOpen(false)} onSearch={() => setIsMobileModalOpen(false)}>
                 {searchMode === 'flights' ? (
-                    <div className="flex flex-col h-full">
-                        {/* Close button */}
-                        <div className="flex justify-end px-4 pt-2 pb-1 shrink-0">
+                    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
+                        <div className="flex justify-between items-center px-6 pt-5 pb-4 shrink-0">
+                            <h2 className="text-lg font-medium text-slate-900 dark:text-white">Search Flights</h2>
                             <button
                                 onClick={() => setIsMobileModalOpen(false)}
-                                className="p-2 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm"
+                                className="p-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm"
                             >
                                 <X size={16} className="text-slate-700 dark:text-slate-300" />
                             </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col gap-4">
-                            <TripTypeSelector />
-                            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700">
+
+                        {/* Content Area */}
+                        <div className="flex-1 px-4 pb-32 overflow-y-auto pt-0 min-h-0">
+                            <div className="max-w-[420px] w-full mx-auto py-2">
+                                <div className="mb-4">
+                                    <TripTypeSelector />
+                                </div>
                                 <FlightSearchForm />
                             </div>
                         </div>
-                        <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 flex justify-end">
-                            <MagneticButton
-                                onClick={() => {
-                                    handleMainSearchClick();
-                                    setIsMobileModalOpen(false);
-                                }}
-                                isLoading={isSearching}
-                                className="w-full h-12 rounded-xl !bg-blue-600 hover:!bg-blue-700 text-white font-bold"
-                                label="Search Flights"
-                            />
+
+                        {/* Sticky Search Button */}
+                        <div className="fixed bottom-0 left-0 right-0 p-4 pointer-events-none">
+                            <div className="pointer-events-auto max-w-[320px] mx-auto">
+                                <MagneticButton
+                                    onClick={() => {
+                                        handleMainSearchClick();
+                                        setIsMobileModalOpen(false);
+                                    }}
+                                    isLoading={isSearching}
+                                    className="w-full h-11 rounded-2xl !bg-blue-600 hover:!bg-blue-700 text-white font-medium text-sm shadow-lg shadow-blue-500/25"
+                                    label="Search Flights"
+                                />
+                            </div>
                         </div>
                     </div>
                 ) : searchMode === 'ai' ? (
