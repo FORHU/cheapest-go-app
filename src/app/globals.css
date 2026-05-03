@@ -12,12 +12,14 @@
     monospace;
 
   /* Fluid Typography Scale (375px -> 1440px) */
-  --font-size-2xs: clamp(0.5rem, 0.4781rem + 0.0939vw, 0.5625rem);    /* 8px -> 9px */
-  --font-size-xs: clamp(0.6875rem, 0.6738rem + 0.0582vw, 0.75rem);    /* 11px -> 12px */
+  /* Optimized for extreme compactness on mobile */
+  --font-size-3xs: clamp(0.5625rem, 0.5407rem + 0.0939vw, 0.625rem);   /* 9px -> 10px */
+  --font-size-2xs: clamp(0.625rem, 0.5811rem + 0.1878vw, 0.75rem);    /* 10px -> 12px */
+  --font-size-xs: clamp(0.6875rem, 0.6436rem + 0.1878vw, 0.8125rem);  /* 11px -> 13px */
   --font-size-sm: clamp(0.75rem, 0.7061rem + 0.1878vw, 0.875rem);     /* 12px -> 14px */
-  --font-size-base: clamp(0.875rem, 0.8311rem + 0.1878vw, 1rem);     /* 14px -> 16px */
-  --font-size-lg: clamp(1rem, 0.9561rem + 0.1878vw, 1.125rem);       /* 16px -> 18px */
-  --font-size-xl: clamp(1.125rem, 1.0811rem + 0.1878vw, 1.25rem);    /* 18px -> 20px */
+  --font-size-base: clamp(0.8125rem, 0.7686rem + 0.1878vw, 0.9375rem); /* 13px -> 15px */
+  --font-size-lg: clamp(0.9375rem, 0.8936rem + 0.1878vw, 1.0625rem);  /* 15px -> 17px */
+  --font-size-xl: clamp(1.0625rem, 1.0186rem + 0.1878vw, 1.1875rem);  /* 17px -> 19px */
   --font-size-2xl: clamp(1.25rem, 1.1622rem + 0.3756vw, 1.5rem);     /* 20px -> 24px */
   --font-size-3xl: clamp(1.5rem, 1.3683rem + 0.5634vw, 1.875rem);    /* 24px -> 30px */
   --font-size-4xl: clamp(1.875rem, 1.7433rem + 0.5634vw, 2.25rem);   /* 30px -> 36px */
@@ -50,16 +52,33 @@
 
 /* ─── Fluid Micro Typography Utilities ──────────────────────────────────────── */
 /* For the common arbitrary pixel sizes (9px–11px) used across the codebase      */
-@utility text-fluid-micro {
-  font-size: clamp(0.5rem, 0.4781rem + 0.0939vw, 0.5625rem);    /* 8px -> 9px */
+@utility text-fluid-3xs {
+  font-size: var(--font-size-3xs);
 }
 
 @utility text-fluid-2xs {
-  font-size: clamp(0.5625rem, 0.5407rem + 0.0939vw, 0.625rem);  /* 9px -> 10px */
+  font-size: var(--font-size-2xs);
 }
 
-@utility text-fluid-xxs {
-  font-size: clamp(0.625rem, 0.6032rem + 0.0939vw, 0.6875rem);  /* 10px -> 11px */
+@utility text-fluid-xs {
+  font-size: var(--font-size-xs);
+}
+
+@utility text-fluid-sm {
+  font-size: var(--font-size-sm);
+}
+
+@utility text-fluid-base {
+  font-size: var(--font-size-base);
+}
+
+/* Consistency wrappers — matching Hotel Search hierarchy (Smaller Scale) */
+@utility text-ui-label {
+  @apply text-fluid-3xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400;
+}
+
+@utility text-ui-value {
+  @apply text-fluid-xs font-normal text-blue-600 dark:text-blue-400;
 }
 
 /* Custom Utilities for Grid Backgrounds (simulating standard utility behavior) */
@@ -257,6 +276,26 @@ body {
   background: transparent !important;
   padding: 0 !important;
   box-shadow: none !important;
+}
+
+/* ── Map Performance Optimizations ── */
+
+/* Promote each marker to its own GPU compositor layer.
+   `contain: layout style` tells the browser that internal changes to a marker
+   never affect siblings, so it can skip full-tree layout during pan/zoom. */
+.mapboxgl-marker {
+  contain: layout style;
+  will-change: transform;
+}
+
+/* Reduce compositing cost: disable backdrop-blur on overlays sitting on top
+   of the map canvas. backdrop-filter forces the GPU to re-read and blur the
+   underlying WebGL canvas every single frame during pan/zoom — this is the
+   main source of the "soft edge" / polygon rendering lag. */
+.mapboxgl-map .backdrop-blur-sm,
+.mapboxgl-map .backdrop-blur-md {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* Landscape mobile: larger images, smaller badges */

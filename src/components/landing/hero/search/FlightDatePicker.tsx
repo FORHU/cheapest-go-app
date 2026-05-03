@@ -66,7 +66,6 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
 
     const handleDateClick = (selectedDate: Date) => {
         onChange(selectedDate);
-        onToggle(false);
     };
 
     const formatDate = (date: Date | null) => {
@@ -84,7 +83,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
 
         const days = [];
         for (let i = 0; i < firstDay; i++) {
-            days.push(<div key={`pad-${i}`} className="size-8 mx-auto" />);
+            days.push(<div key={`pad-${i}`} className="size-6 mx-auto" />);
         }
 
         for (let day = 1; day <= daysInMonth; day++) {
@@ -105,7 +104,9 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                         e.stopPropagation();
                         handleDateClick(dateObj);
                     }}
-                    className={`size-8 mx-auto my-0.5 flex items-center justify-center text-sm font-medium rounded-full transition-all relative
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    className={`size-6 mx-auto my-0.5 flex items-center justify-center text-[10px] font-medium rounded-full transition-all relative
                         ${isDisabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20' : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10'}
                         ${isSelected ? 'bg-blue-600 text-white shadow-lg z-10' : 'text-slate-700 dark:text-slate-300'}
                         ${isToday && !isSelected ? 'ring-1 ring-blue-600/50' : ''}
@@ -123,16 +124,16 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     return (
         <div className={`flex-1 min-w-0 relative h-16 group ${isOpen ? 'z-50' : 'z-auto'}`}>
             <div
-                className="w-full h-full flex items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                className={`w-full h-full items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${isOpen ? 'hidden sm:flex' : 'flex'}`}
                 onClick={() => onToggle(!isOpen)}
                 data-datepicker-trigger
             >
                 <CalendarIcon className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                    <label className="text-[11px] uppercase font-mono text-slate-500 font-bold tracking-wider">
+                    <label className="text-ui-label">
                         {label}
                     </label>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                    <div className="text-ui-value truncate">
                         {formatDate(date)}
                     </div>
                 </div>
@@ -142,70 +143,74 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                 {isOpen && (
                     <motion.div
                         ref={ref}
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-full left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-0 mt-4 w-[calc(100vw-32px)] sm:w-[580px] sm:min-w-[580px] sm:max-w-[580px] bg-white dark:bg-slate-900 shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"
+                        className="relative sm:absolute top-0 sm:top-full left-0 sm:left-1/2 sm:-translate-x-1/2 sm:mt-4 w-full sm:w-[640px] bg-white dark:bg-slate-900 shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 z-[100]"
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                     >
-                        <div className="p-5">
-                            <div className="flex gap-2">
-                                <div className="flex-1">
-                                    <div className="flex justify-between items-center mb-6">
+                        <div className="px-12 py-7">
+                            <div className="flex gap-0">
+                                <div className="flex-1 pr-12">
+                                    <div className="flex justify-between items-center mb-4">
                                         <button
                                             type="button"
                                             onClick={handlePrevMonth}
-                                            className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                            onTouchStart={(e) => e.stopPropagation()}
+                                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
                                         >
-                                            <ChevronLeft size={20} className="text-slate-500 dark:text-slate-400" />
+                                            <ChevronLeft size={18} className="text-slate-500 dark:text-slate-400" />
                                         </button>
-                                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                        <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
                                             {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                                         </span>
                                         <button
                                             type="button"
                                             onClick={handleNextMonth}
-                                            className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full sm:hidden transition-colors"
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                            onTouchStart={(e) => e.stopPropagation()}
+                                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full sm:hidden transition-colors"
                                         >
-                                            <ChevronRight size={20} className="text-slate-500 dark:text-slate-400" />
+                                            <ChevronRight size={18} className="text-slate-500 dark:text-slate-400" />
                                         </button>
 
-                                        <div className="w-10 hidden sm:block" />
+                                        <div className="w-8 hidden sm:block" />
                                     </div>
-                                    <div className="grid grid-cols-7 gap-1 text-center mb-3">
+                                    <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
                                         {DAYS.map((d, i) => (
-                                            <span key={i} className="text-xs font-mono text-slate-400 font-bold">{d}</span>
+                                            <span key={i} className="text-[10px] font-mono text-slate-400 font-bold">{d}</span>
                                         ))}
                                     </div>
-                                    <div className="grid grid-cols-7 gap-1">
+                                    <div className="grid grid-cols-7 gap-0.5">
                                         {renderMonth(currentMonth)}
                                     </div>
                                 </div>
 
-                                <div className="flex-1 hidden sm:block pl-6 border-l border-slate-100 dark:border-white/5">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <div className="w-10" />
-                                        <span className="text-sm font-bold text-slate-900 dark:text-white">
+                                <div className="flex-1 hidden sm:block pl-12 border-l border-slate-100 dark:border-white/5">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="w-8" />
+                                        <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
                                             {MONTHS[getNextMonth(currentMonth).getMonth()]} {getNextMonth(currentMonth).getFullYear()}
                                         </span>
                                         <button
                                             type="button"
                                             onClick={handleNextMonth}
-                                            className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
+                                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
                                         >
-                                            <ChevronRight size={20} className="text-slate-500 dark:text-slate-400" />
+                                            <ChevronRight size={18} className="text-slate-500 dark:text-slate-400" />
                                         </button>
 
                                     </div>
-                                    <div className="grid grid-cols-7 gap-1 text-center mb-3">
+                                    <div className="grid grid-cols-7 gap-0.5 text-center mb-1">
                                         {DAYS.map((d, i) => (
-                                            <span key={i} className="text-xs font-mono text-slate-400 font-bold">{d}</span>
+                                            <span key={i} className="text-[10px] font-mono text-slate-400 font-bold">{d}</span>
                                         ))}
                                     </div>
-                                    <div className="grid grid-cols-7 gap-1">
+                                    <div className="grid grid-cols-7 gap-0.5">
                                         {renderMonth(getNextMonth(currentMonth))}
                                     </div>
                                 </div>
@@ -213,14 +218,14 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                         </div>
 
                         {/* Footer */}
-                        <div className="flex justify-end p-4 border-t border-slate-100 dark:border-white/5">
+                        <div className="flex justify-end p-3 px-8 border-t border-slate-100 dark:border-white/5">
                             <button
                                 type="button"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onToggle(false);
                                 }}
-                                className="px-8 py-2 bg-blue-600 text-white rounded-full font-bold text-sm hover:bg-blue-700 transition-all shadow-lg"
+                                className="px-6 py-1.5 bg-blue-600 text-white rounded-full font-bold text-sm hover:bg-blue-700 transition-all shadow-lg"
                             >
                                 Done
                             </button>

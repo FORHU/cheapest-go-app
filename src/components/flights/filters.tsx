@@ -5,6 +5,7 @@ import { useState } from "react";
 interface FlightFiltersProps {
     airlines: string[];
     onFilterChange: (filters: FilterState) => void;
+    className?: string;
 }
 
 export type FlightProvider = "mystifly_v2" | "duffel";
@@ -20,7 +21,7 @@ export interface FilterState {
 /**
  * FlightFilters - Client-side filtering and sorting for results.
  */
-export default function FlightFilters({ airlines, onFilterChange }: FlightFiltersProps) {
+export default function FlightFilters({ airlines, onFilterChange, className }: FlightFiltersProps) {
     const [state, setState] = useState<FilterState>({
         sortBy: "price",
         selectedAirlines: [],
@@ -52,7 +53,7 @@ export default function FlightFilters({ airlines, onFilterChange }: FlightFilter
     };
 
     return (
-        <div className="flex flex-col gap-3 lg:gap-6 bg-white dark:bg-slate-900 p-3 lg:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm self-start w-full lg:w-72">
+        <div className={`flex flex-col gap-6 ${className}`}>
             {/* Sorting */}
             <div className="space-y-2 lg:space-y-3">
                 <p className="text-[10px] lg:text-xs font-black text-slate-400 uppercase tracking-widest">Sort By</p>
