@@ -11,7 +11,7 @@ import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { usePWAInstall } from '@/contexts/PWAInstallContext';
 import { useAuthStore } from '@/stores/authStore';
 import SignInDropdown from '../../auth/SignInDropdown';
-import CurrencySelector from '@/components/common/CurrencySelector';
+import CurrencySelector, { CURRENCIES } from '@/components/common/CurrencySelector';
 
 
 const Header = () => {

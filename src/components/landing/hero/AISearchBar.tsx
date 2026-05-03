@@ -98,6 +98,8 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
     // Mobile Modal State & Helpers
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
 
+    // Flight state for mobile clear all
+
     const destination = useDestination();
     const query = useDestinationQuery();
     const destinationStr = destination?.title || query || 'Anywhere';
@@ -125,6 +127,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
     // Hooks for search actions
     const { handleSearch: handleHotelSearch, isSearching: isHotelSearching } = useSearchModule();
     const { handleFlightSearch, isSearching: isFlightSearching, flightState } = useFlightSearch();
+    const hasFlightValue = flightState.flights.some(f => f.origin || f.destination || f.date);
 
     const isSearching = searchMode === 'flights' ? isFlightSearching : (searchMode === 'hotels' ? isHotelSearching : isAIThinking);
 
@@ -360,6 +363,23 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                             </button>
                         </div>
 
+                        {/* Clear All Row */}
+                        <div className="flex justify-end px-6 pt-1 min-h-[32px]">
+                            <AnimatePresence>
+                                {hasFlightValue && (
+                                    <motion.button
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.9 }}
+                                        onClick={() => useSearchStore.getState().reset()}
+                                        className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                    >
+                                        Clear all
+                                    </motion.button>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
                         {/* Content Area */}
                         <div className="flex-1 px-4 pb-32 overflow-y-auto pt-0 min-h-0">
                             <div className="max-w-[420px] w-full mx-auto py-2">
@@ -379,8 +399,8 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                         setIsMobileModalOpen(false);
                                     }}
                                     isLoading={isSearching}
-                                    className="w-full h-11 rounded-2xl !bg-blue-600 hover:!bg-blue-700 text-white font-medium text-sm shadow-lg shadow-blue-500/25"
-                                    label="Search Flights"
+                                    className="w-full h-10 rounded-xl !bg-blue-600 hover:!bg-blue-700 !text-white font-medium text-sm shadow-lg shadow-blue-500/25"
+                                    label="Search"
                                 />
                             </div>
                         </div>

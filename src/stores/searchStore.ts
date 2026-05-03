@@ -284,6 +284,7 @@ export const useSearchStore = create<SearchState>()(
                 filters: initialFilters,
                 isMobileFiltersOpen: false,
                 suggestions: initialSuggestions,
+                flightState: initialFlightState,
             }),
 
             // Flight Actions Implementation
