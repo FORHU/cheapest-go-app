@@ -16,6 +16,8 @@ import { FareRulesPanel } from './FareRulesPanel';
 import SeatMapPanel from '@/components/flights/SeatMapPanel';
 import BagSelectionPanel from '@/components/flights/BagSelectionPanel';
 import DuffelFareConditions from '@/components/flights/DuffelFareConditions';
+import PriceCalendar from '@/components/flights/PriceCalendar';
+import { Suspense, useMemo } from 'react';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
@@ -177,6 +179,42 @@ export default function FlightBookContent() {
         pollForBooking,
         setErrorMsg,
     } = useFlightBooking();
+
+    // ─── Price Calendar Props ──────────────────────────────────────────
+    const calendarProps = useMemo(() => {
+        if (!offer || !offer.segments) return null;
+
+        const searchCounts = typeof window !== 'undefined' ? sessionStorage.getItem('flightSearchPassengers') : null;
+        let adultsCount = 1;
+        if (searchCounts) {
+            try {
+                const { adults = 1 } = JSON.parse(searchCounts);
+                adultsCount = adults;
+            } catch {}
+        }
+
+        const outboundSegments = offer.segments.filter((s: any) => (s.segmentIndex ?? 0) === 0);
+        const returnSegments = offer.segments.filter((s: any) => (s.segmentIndex ?? 0) === 1);
+        
+        if (!outboundSegments.length) return null;
+
+        const origin = outboundSegments[0].departure.airport;
+        const destination = outboundSegments[outboundSegments.length - 1].arrival.airport;
+        const departureDate = outboundSegments[0].departure.time?.slice(0, 10) || '';
+        const returnDate = returnSegments.length > 0 ? returnSegments[0].departure.time?.slice(0, 10) : undefined;
+
+        const primary = offer.segments[0];
+
+        return {
+            origin,
+            destination,
+            adults: adultsCount,
+            cabin: primary.cabinClass || 'economy',
+            initialDate: departureDate,
+            returnDate,
+            provider: offer.provider
+        };
+    }, [offer]);
 
     const [bagsOpen, setBagsOpen] = React.useState(false);
     const [seatsOpen, setSeatsOpen] = React.useState(false);
@@ -695,6 +733,16 @@ export default function FlightBookContent() {
                         </div>
                     )}
                 </div>
+                {/* Price Calendar — moved from search page to booking page */}
+                {calendarProps && (
+                    <div className="mb-6">
+                        <Suspense fallback={<div className="h-10 w-full animate-pulse bg-slate-100 dark:bg-slate-800 rounded-xl" />}>
+                            <PriceCalendar
+                                {...calendarProps}
+                            />
+                        </Suspense>
+                    </div>
+                )}
 
                 {/* Offer expiry countdown — only for Duffel */}
                 {offerExpiresAt && offer.provider === 'duffel' && (

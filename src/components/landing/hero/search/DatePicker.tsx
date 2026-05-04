@@ -95,7 +95,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
 
         // Padding
         for (let i = 0; i < firstDay; i++) {
-            days.push(<div key={`pad-${i}`} className={inline ? "w-full aspect-square" : "size-8"} />);
+            days.push(<div key={`pad-${i}`} className={inline ? "w-full aspect-square" : "size-[42px]"} />);
         }
 
         // Days
@@ -118,7 +118,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                         type="button"
                         disabled={isPast || isToday}
                         onClick={() => handleDateClick(date)}
-                        className={`${inline ? "w-full aspect-square" : "size-[30px] mx-auto my-0.5"} flex items-center justify-center ${inline ? "text-[9px]" : "text-[11px]"} font-medium rounded-full transition-all 
+                        className={`${inline ? "w-full aspect-square" : "size-[42px] mx-auto my-0.5"} flex items-center justify-center ${inline ? "text-[9px]" : "text-base"} font-medium rounded-full transition-all 
                             ${isPast || isToday ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer'}
                             ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg' : ''}
                             ${isInRange ? 'bg-alabaster-accent/10 dark:bg-obsidian-accent/10' : ''}
@@ -169,7 +169,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                     transition={{ duration: 0.2 }}
                     className={inline
                         ? "w-full z-10"
-                        : "absolute top-full left-0 mt-4 w-[540px] min-w-[540px] max-w-[540px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"}
+                        : "absolute top-full left-0 mt-4 w-[740px] min-w-[740px] max-w-[740px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"}
                         onClick={(e) => e.stopPropagation()}
                 >
 
@@ -230,14 +230,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                                                 <ChevronLeft size={14} className="text-slate-400" />
                                             </button>
 
-                                            <span className="text-[11px] font-bold text-slate-900 dark:text-white text-center">
+                                            <span className="text-lg font-bold text-slate-900 dark:text-white text-center">
                                                 {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                                             </span>
                                             <div className="w-6" />
                                         </div>
                                         <div className="grid grid-cols-7 text-center mb-1.5 gap-0">
                                             {DAYS.map((d, i) => (
-                                                <span key={i} className="text-[9px] font-mono text-slate-400 text-center">{d}</span>
+                                                <span key={i} className="text-xs font-mono text-slate-400 text-center">{d}</span>
                                             ))}
                                         </div>
                                         <div className="grid grid-cols-7 gap-0">
@@ -252,7 +252,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-center mb-3">
                                             <div className="w-6" />
-                                            <span className="text-[11px] font-bold text-slate-900 dark:text-white text-center">
+                                            <span className="text-lg font-bold text-slate-900 dark:text-white text-center">
                                                 {MONTHS[getNextMonth(currentMonth).getMonth()]} {getNextMonth(currentMonth).getFullYear()}
                                             </span>
                                             <button
@@ -266,7 +266,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                                         </div>
                                         <div className="grid grid-cols-7 text-center mb-1.5 gap-0">
                                             {DAYS.map((d, i) => (
-                                                <span key={i} className="text-[9px] font-mono text-slate-400 text-center">{d}</span>
+                                                <span key={i} className="text-xs font-mono text-slate-400 text-center">{d}</span>
                                             ))}
                                         </div>
                                         <div className="grid grid-cols-7 gap-0">

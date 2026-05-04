@@ -21,13 +21,13 @@ export const CURRENCIES = [
 interface CurrencySelectorProps {
     className?: string;
     variant?: 'header' | 'pill';
-    align?: 'start' | 'center' | 'end';
+    align?: 'left' | 'right';
 }
 
 const CurrencySelector: React.FC<CurrencySelectorProps> = ({ 
     className, 
     variant = 'header',
-    align = 'end'
+    align = 'right'
 }) => {
     const userCurrency = useUserCurrency();
     const userCountry = useUserCountry();

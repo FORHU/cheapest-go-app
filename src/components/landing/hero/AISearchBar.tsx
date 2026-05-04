@@ -16,38 +16,7 @@ import { useFlightSearch } from '@/hooks/search/useFlightSearch';
 // Import Search Forms
 import { DestinationSection, DateSection, TravelersSection } from './search/SearchSections';
 import { FlightSearchForm } from './search/FlightSearchForm';
-// Trip Type Selector Component
-const TripTypeSelector = () => {
-    const { flightState, setFlightType } = useFlightSearch();
-    const { tripType } = flightState;
-
-    return (
-        <div className="flex gap-2 sm:p-1 sm:bg-slate-100 sm:dark:bg-white/5 sm:rounded-full sm:border sm:border-slate-200 sm:dark:border-white/5 mb-3 sm:mb-4 w-fit mx-auto">
-            {(['round-trip', 'one-way'] as const).map((type) => (
-                <button
-                    key={type}
-                    onClick={() => setFlightType(type)}
-                    className={`relative px-4 py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all duration-300 ${tripType === type
-                        ? 'text-blue-600 dark:text-white shadow-sm sm:shadow-none'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                        }`}
-                >
-                    {tripType === type && (
-                        <motion.div
-                            layoutId="flightTripTypeBg"
-                            className="absolute inset-0 bg-white dark:bg-blue-600 rounded-full border border-slate-200 dark:border-blue-500/30 sm:border-0"
-                            initial={false}
-                            transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                        />
-                    )}
-                    <span className="relative z-10">
-                        {type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </span>
-                </button>
-            ))}
-        </div>
-    );
-};
+import { TripTypeSelector } from './search/TripTypeSelector';
 
 // Mock AI parse results — visual prototype only
 const DEFAULT_RESULT = {
@@ -352,7 +321,24 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
 
             <MobileSearchModal isOpen={isMobileModalOpen} onClose={() => setIsMobileModalOpen(false)} onSearch={() => setIsMobileModalOpen(false)}>
                 {searchMode === 'flights' ? (
-                    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
+                    <div className="flex flex-col h-full relative bg-slate-50 dark:bg-slate-950">
+                        {/* ─── Loading overlay ─── */}
+                        {isSearching && searchMode === 'flights' && (
+                            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-xl gap-4">
+                                <div className="relative w-14 h-14 shrink-0">
+                                    <div className="absolute inset-0 border-4 border-blue-100 dark:border-blue-900/30 rounded-full" />
+                                    <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-base font-bold text-slate-900 dark:text-white">Finding flights…</p>
+                                    {(flightState.flights[0]?.origin?.title && flightState.flights[0]?.destination?.title) && (
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                                            {flightState.flights[0].origin.title} to {flightState.flights[0].destination.title}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         <div className="flex justify-between items-center px-6 pt-5 pb-4 shrink-0">
                             <h2 className="text-lg font-medium text-slate-900 dark:text-white">Search Flights</h2>
                             <button

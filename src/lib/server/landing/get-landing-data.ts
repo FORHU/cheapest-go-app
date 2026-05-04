@@ -12,14 +12,18 @@ import {
 // Public read-only client — no cookies needed for landing page data.
 // Using the cookie-based server client here would call cookies() which
 // breaks static/ISR prerendering in Next.js 15.
+let publicClient: any = null;
 function getPublicClient() {
-    return createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+    if (!publicClient) {
+        publicClient = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+    }
+    return publicClient;
 }
 
 // ─── Shared helper ────────────────────────────────────────────────────────────
 // Cap at 8s — fast enough to stay within Next.js build limits and not stall
 // the landing page. On network errors (fetch failed) we do one retry.
-const QUERY_TIMEOUT_MS = 8000;
+const QUERY_TIMEOUT_MS = 15000;
 
 async function supabaseQuery(table: string, limit: number) {
     try {
@@ -29,7 +33,7 @@ async function supabaseQuery(table: string, limit: number) {
                 setTimeout(() => resolve({ data: null, error: new Error(`Query timeout: ${label}`) }), QUERY_TIMEOUT_MS)
             );
         const result = await Promise.race([
-            supabase.from(table).select("*").limit(limit),
+            supabase.from(table).select("*").order(table === 'flight_deals' ? 'updated_at' : 'created_at', { ascending: false }).limit(limit),
             makeTimeout(table),
         ]);
         // Only retry on network-level fetch failures, NOT on our own timeout

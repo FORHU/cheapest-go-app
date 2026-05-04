@@ -6,11 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FlightResults } from '@/components/flights/flightResultsList';
 import FlightFilters, { type FilterState } from '@/components/flights/filters';
 import type { FlightOffer, CabinClass } from '@/types/flights';
-import { ListFilter, ChevronDown, X, Globe } from 'lucide-react';
+import { ListFilter, ChevronDown, X } from 'lucide-react';
 import { ResponsiveFlightHeader } from './ResponsiveFlightHeader';
 import { useSearchActions, useSearchStore } from '@/stores/searchStore';
 import { createPortal } from 'react-dom';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
+import { MobileBottomNav } from '@/components/common/MobileBottomNav';
+import PriceCalendar from './PriceCalendar';
+import { Suspense } from 'react';
 
 // ─── City name → IATA code lookup ─────────────────────────────────────────────
 const CITY_TO_IATA: Record<string, string> = {
@@ -113,19 +116,19 @@ function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: b
     if (entries.length === 0) return null;
 
     return (
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs">
-            <span className="text-slate-400 font-medium">Sources:</span>
+        <div className="flex flex-wrap items-center gap-2 text-[10px] font-normal">
+            <span className="text-blue-600 dark:text-blue-400">Sources:</span>
             {entries.map(([provider, count]) => (
                 <span
                     key={provider}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                 >
-                    <span className="w-1 h-1 rounded-full bg-emerald-500" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     {provider}: {count}
                 </span>
             ))}
             <span className="text-slate-400">
-                ({offers.length})
+                ({offers.length} total)
             </span>
         </div>
     );
@@ -255,9 +258,6 @@ export function SearchFetcher({
 
     // ─── Derived data ─────────────────────────────────────────────────────────
     const rawOffers = state.status === 'success' ? state.offers : [];
-    const providerCounts = useMemo(() => getProviderCounts(rawOffers), [rawOffers]);
-    const entries = Object.entries(providerCounts);
-
     // Airlines list always from the full unfiltered set so all options stay visible
     const airlines = useMemo(() => getAirlines(allOffers.length > 0 ? allOffers : rawOffers), [allOffers, rawOffers]);
 
@@ -423,20 +423,18 @@ export function SearchFetcher({
     );
 
     return (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-3 lg:gap-6 relative pb-24 pt-0 lg:pt-0">
             <ResponsiveFlightHeader
                 origin={origin}
                 destination={destination}
                 dateStr={dateStr}
                 passengersStr={passengersStr}
                 activeFilterCount={activeFilterCount}
-                offers={rawOffers}
-                isLoading={isLoading}
+                statusElement={<ProviderStatus offers={rawOffers} loading={isLoading} />}
+                resultCount={filteredOffers.length}
             />
 
             {typeof window !== 'undefined' && createPortal(mobileFilterModal, document.body)}
-
-
 
             {/* Progressive slow-search banner */}
             {isSlowSearch && (
@@ -449,7 +447,7 @@ export function SearchFetcher({
                 </div>
             )}
 
-            <div className="flex flex-col lg:flex-row gap-6 items-stretch lg:items-start">
+            <div className="flex flex-col lg:flex-row gap-6 lg:items-start items-stretch">
                 {/* Desktop Sidebar Filters */}
                 <AnimatePresence>
                     {filtersOpen && (
@@ -460,7 +458,7 @@ export function SearchFetcher({
                             transition={{ duration: 0.3, ease: 'easeInOut' }}
                             className="hidden lg:block sticky top-24 self-start flex-shrink-0 overflow-hidden"
                         >
-                            <div className="w-72 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <div className="w-full bg-white dark:bg-slate-900 p-6 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm">
                                 <FlightFilters
                                     airlines={airlines}
                                     onFilterChange={setFilters}
@@ -470,41 +468,7 @@ export function SearchFetcher({
                     )}
                 </AnimatePresence>
 
-                <div className="flex-1 min-w-0 w-full space-y-2 lg:space-y-4">
-                    {/* Filters Toggle Row - Only show on desktop as mobile is in sticky header */}
-                    <div className="hidden lg:flex items-center justify-between gap-3">
-                        <button
-                            onClick={() => setFiltersOpen(prev => !prev)}
-                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all"
-                        >
-                            <ListFilter size={14} className="text-blue-500" />
-                            Filters
-                            {activeFilterCount > 0 && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-blue-500 text-[10px] text-white font-bold leading-none">
-                                    {activeFilterCount}
-                                </span>
-                            )}
-                            <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${filtersOpen ? 'rotate-90' : ''}`} />
-                        </button>
-
-                        <div className="flex items-center gap-3">
-                            {entries.length > 0 && (
-                                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                    <Globe size={10} className="text-blue-500" />
-                                    <div className="flex items-center gap-1.5">
-                                        {entries.map(([provider, count]) => (
-                                            <span key={provider} className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
-                                                {provider}: <span className="text-slate-900 dark:text-white">{count}</span>
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            <div className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                                {filteredOffers.length} {filteredOffers.length === 1 ? 'Result' : 'Results'}
-                            </div>
-                        </div>
-                    </div>
+                <div className="flex-1 min-w-0 space-y-4">
 
                     {/* Main results area */}
                     <div className="min-w-0">
@@ -523,6 +487,7 @@ export function SearchFetcher({
                     </div>
                 </div>
             </div>
+
         </div>
     );
 }

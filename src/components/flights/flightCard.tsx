@@ -2,14 +2,11 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Plane, ArrowRight, Luggage, ChevronDown, ChevronUp, 
-    Shield, XCircle, BadgeDollarSign, Users, Clock, 
-    MapPin, AlertCircle, Info, CreditCard
-} from 'lucide-react';
+import { Plane, ArrowRight, Luggage, ChevronDown, ChevronUp, Shield, XCircle, BadgeDollarSign, Users } from 'lucide-react';
 import type { FlightOffer, FlightSegmentDetail } from '@/types/flights';
 import { formatPrice } from '@/utils/flight-utils';
 import SaveButton from '@/components/common/SaveButton';
+
 import { useUserCurrency } from '@/stores/searchStore';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -41,25 +38,19 @@ function stopsLabel(stops: number): string {
 
 // ─── Airline Logo ────────────────────────────────────────────────────
 
-function AirlineLogo({ code, name, size = "md" }: { code: string | undefined; name?: string, size?: "sm" | "md" | "lg" }) {
+function AirlineLogo({ code, name }: { code: string | undefined; name?: string }) {
     const [failed, setFailed] = useState(false);
     const iata = (code || '').toUpperCase().slice(0, 3);
     const initials = iata.slice(0, 2) || (name || '??').slice(0, 2).toUpperCase();
 
-    const sizeClasses = {
-        sm: "w-6 h-6 rounded",
-        md: "w-7 h-7 sm:w-9 sm:h-9 lg:w-12 lg:h-12 rounded-md sm:rounded-lg lg:rounded-xl",
-        lg: "w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl"
-    };
-
     if (iata && !failed) {
         return (
-            <div className={`${sizeClasses[size]} bg-white border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden shadow-sm`}>
+            <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-md bg-white border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                     src={`https://pics.avs.io/40/40/${iata}.png`}
                     alt={name || iata}
-                    className="w-2/3 h-2/3 object-contain"
+                    className="w-4 h-4 lg:w-6 lg:h-6 object-contain"
                     onError={() => setFailed(true)}
                 />
             </div>
@@ -67,7 +58,7 @@ function AirlineLogo({ code, name, size = "md" }: { code: string | undefined; na
     }
 
     return (
-        <div className={`${sizeClasses[size]} bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 font-bold text-[10px] lg:text-sm shrink-0 border border-slate-200 dark:border-slate-700`}>
+        <div className="w-6 h-6 lg:w-8 lg:h-8 rounded-md bg-slate-600 flex items-center justify-center text-white font-bold text-[9px] lg:text-xs shrink-0">
             {initials}
         </div>
     );
@@ -77,35 +68,43 @@ function AirlineLogo({ code, name, size = "md" }: { code: string | undefined; na
 
 function SegmentRow({ segment }: { segment: FlightSegmentDetail }) {
     return (
-        <div className="flex items-center gap-3 py-3 px-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-            <AirlineLogo code={segment.airline.code} name={segment.airline.name} size="sm" />
+        <div className="flex items-center gap-2 lg:gap-4 py-1.5 lg:py-2.5 px-1">
+            <AirlineLogo code={segment.airline.code} name={segment.airline.name} />
 
             <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 text-[10px] text-slate-500 font-medium">
-                    <span className="truncate">{segment.airline.name}</span>
-                    <span className="w-1 h-1 rounded-full bg-slate-300" />
+                <div className="flex items-center gap-1 lg:gap-2 text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">
+                    <span className="font-medium truncate">{segment.airline.name}</span>
+                    <span className="text-slate-300 dark:text-slate-600">·</span>
                     <span>{segment.flightNumber}</span>
                     {segment.aircraft && (
                         <>
-                            <span className="w-1 h-1 rounded-full bg-slate-300" />
-                            <span className="truncate">{segment.aircraft}</span>
+                            <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">·</span>
+                            <span className="hidden sm:inline">{segment.aircraft}</span>
                         </>
                     )}
                 </div>
 
-                <div className="flex items-center gap-4 mt-1">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatTime(segment.departure.time)}</span>
-                        <span className="text-[10px] font-bold text-slate-400">{segment.departure.airport}</span>
+                <div className="flex items-center gap-1.5 lg:gap-3 mt-0.5 lg:mt-1.5">
+                    <div className="text-center min-w-[40px] lg:min-w-[56px]">
+                        <div className="text-xs lg:text-base font-semibold text-slate-900 dark:text-white">{formatTime(segment.departure.time)}</div>
+                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">{segment.departure.airport}</div>
                     </div>
-                    <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800 relative">
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 px-2 text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                            {formatDuration(segment.duration)}
+
+                    <div className="flex-1 flex flex-col items-center gap-0 lg:gap-0.5 min-w-[60px] lg:min-w-[90px]">
+                        <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">{formatDuration(segment.duration)}</span>
+                        <div className="w-full flex items-center gap-0.5">
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-600 to-transparent" />
+                            <Plane className="w-2 h-2 lg:w-3 lg:h-3 text-indigo-500 rotate-90 shrink-0" />
+                            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-600 to-transparent" />
                         </div>
+                        <span className="text-[10px] lg:text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                            {segment.stops === 0 ? 'Direct' : `${segment.stops} stop(s)`}
+                        </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-slate-400">{segment.arrival.airport}</span>
-                        <span className="text-sm font-bold text-slate-900 dark:text-white tabular-nums">{formatTime(segment.arrival.time)}</span>
+
+                    <div className="text-center min-w-[40px] lg:min-w-[56px]">
+                        <div className="text-xs lg:text-base font-semibold text-slate-900 dark:text-white">{formatTime(segment.arrival.time)}</div>
+                        <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">{segment.arrival.airport}</div>
                     </div>
                 </div>
             </div>
@@ -128,285 +127,298 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
     const [expanded, setExpanded] = useState(false);
     const targetCurrency = useUserCurrency();
 
+    // Group segments by their logical segment index (each search leg)
     const legGroups: { [key: number]: FlightSegmentDetail[] } = {};
     offer.segments.forEach((seg, i) => {
+        // Fallback to array split if segmentIndex is mysteriously missing from older APIs
         const groupIndex = seg.segmentIndex ?? (offer.segments.length > 1 && i >= Math.ceil(offer.segments.length / 2) ? 1 : 0);
         if (!legGroups[groupIndex]) legGroups[groupIndex] = [];
         legGroups[groupIndex].push(seg);
     });
 
     const routeIndices = Object.keys(legGroups).map(Number).sort((a, b) => a - b);
+
+    // Primary metrics for the collapsed card view
     const primary = offer.segments[0];
     const last = offer.segments[offer.segments.length - 1];
 
     return (
         <motion.div
-            layout
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            transition={{ delay: index * 0.03, duration: 0.25 }}
             className={`
-                group relative bg-white dark:bg-slate-900
-                rounded-3xl border transition-all duration-300 flex flex-col
+                group relative bg-white dark:bg-slate-900 w-full 
+                rounded-md overflow-hidden border transition-all duration-200
                 ${isSelected
-                    ? 'border-blue-500 ring-4 ring-blue-500/10 shadow-2xl'
-                    : 'border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-2xl shadow-sm'
+                    ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-lg'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-lg shadow-sm'
                 }
             `}
         >
-            {/* ─── Header: Airline + Price ─── */}
-            <div className="p-3 sm:p-4 lg:p-6 pb-0 sm:pb-0 lg:pb-0 flex items-start justify-between">
-                <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                    <AirlineLogo code={primary.airline.code} name={primary.airline.name} size="md" />
-                    <div className="min-w-0">
-                        <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base lg:text-lg tracking-tight truncate leading-tight">
-                            {primary.airline.name}
-                        </h3>
-                        <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1">
-                            <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">{primary.flightNumber}</span>
-                            {offer.segments.length > 1 && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] sm:text-xs font-bold text-slate-500">
-                                    {offer.segments.length - 1} stops
+            {/* ─── Save/Heart Button (top-right corner) ─── */}
+            <div className="absolute top-2 right-2 z-10">
+                <SaveButton
+                    type="flight"
+                    title={`${primary.departure.airport} → ${last.arrival.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
+                    subtitle={`${primary.airline.name} · ${formatDuration(offer.totalDuration)} · ${stopsLabel(offer.totalStops)}`}
+                    price={offer.price.total}
+                    currency={offer.price.currency}
+                    imageUrl={`https://pics.avs.io/40/40/${(primary.airline.code || '').toUpperCase()}.png`}
+                    deepLink={`/flights/search?origin=${primary.departure.airport}&destination=${last.arrival.airport}&departure=${primary.departure.time?.slice(0, 10) ?? ''}`}
+                    snapshot={{ offerId: offer.offerId, provider: offer.provider }}
+                    size="sm"
+                />
+            </div>
+
+            <div className="flex flex-col lg:flex-row">
+                {/* ─── Flight Info (left) ─── */}
+                <div className="flex-1 px-3 py-2 lg:p-4">
+                    {/* Airline header */}
+                    <div className="flex items-center gap-1.5 lg:gap-2 mb-1 lg:mb-2">
+                        <AirlineLogo code={primary.airline.code} name={primary.airline.name} />
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1 lg:gap-2">
+                                <span className="font-normal text-blue-600 dark:text-blue-400 text-[10px] lg:text-xs">
+                                    {primary.airline.name}
                                 </span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="text-right flex flex-col items-end shrink-0">
-                    <div className="text-base sm:text-lg lg:text-2xl font-black text-slate-900 dark:text-white tracking-tighter flex items-start gap-0.5 leading-none sm:leading-tight">
-                        <span className="text-xs sm:text-sm mt-0.5 sm:mt-1 opacity-50">$</span>
-                        {formatPrice(offer.price.total, offer.price.currency, targetCurrency).replace('$', '')}
-                    </div>
-                    <div className="text-[10px] sm:text-xs font-black text-blue-500 uppercase tracking-widest mt-0.5">
-                        {formatPrice(offer.price.pricePerAdult, offer.price.currency, targetCurrency)} / person
-                    </div>
-                </div>
-            </div>
-
-            {/* ─── Body: Timeline ─── */}
-            <div className="p-3 sm:p-4 lg:p-8 flex flex-col gap-2 sm:gap-12">
-                <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-2 sm:gap-4 lg:gap-16">
-                    {/* Compact Timeline Row (Mobile) / Full Column Group (Desktop) */}
-                    <div className="flex items-center justify-between w-full sm:w-auto sm:flex-1 gap-2 sm:gap-12">
-                        {/* Departure */}
-                        <div className="flex flex-col items-start gap-0.5 sm:gap-1">
-                            <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums leading-none">
-                                {formatTime(primary.departure.time)}
                             </div>
-                            <div className="flex items-center gap-1 sm:gap-1.5">
-                                <div className="w-3 h-3 sm:w-5 sm:h-5 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
-                                    <MapPin size={8} className="text-blue-500 sm:w-[10px] sm:h-[10px]" />
-                                </div>
-                                <span className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-widest">{primary.departure.airport}</span>
+                            <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
+                                {primary.flightNumber}
+                                {offer.segments.length > 1 && ` + ${offer.segments.length - 1} more`}
                             </div>
                         </div>
+                    </div>
 
-                        {/* Middle: Line & Duration */}
-                        <div className="flex-1 flex flex-col items-center gap-1 sm:gap-2 relative pt-0.5 sm:pt-2">
-                            <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-widest">
-                                <Clock size={8} className="text-blue-500 sm:w-[10px] sm:h-[10px]" />
-                                {formatDuration(offer.totalDuration)}
-                            </div>
-                            
-                            <div className="w-full flex items-center gap-1 sm:gap-2 px-1 sm:px-2">
-                                <div className="h-0.5 sm:h-1 flex-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
-                                    <motion.div 
-                                        className="absolute inset-0 bg-blue-500"
-                                        initial={{ scaleX: 0, originX: 0 }}
-                                        animate={{ scaleX: 1 }}
-                                        transition={{ duration: 1.5, ease: "circOut", delay: index * 0.1 }}
-                                    />
-                                </div>
-                                <Plane className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 rotate-90 shrink-0 filter drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                                <div className="h-0.5 sm:h-1 flex-1 bg-slate-100 dark:bg-slate-800 rounded-full" />
-                            </div>
+                    {/* Route timeline */}
+                    <div className="flex items-center gap-1.5 lg:gap-3 min-w-0 w-full mt-1">
+                        <div className="text-center">
+                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(primary.departure.time)}</div>
+                            <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">{primary.departure.airport}</div>
+                        </div>
 
-                            <div className={`flex items-center gap-1 text-[11px] sm:text-xs font-bold uppercase tracking-widest sm:tracking-[0.2em] ${offer.totalStops === 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                        <div className="flex-1 flex flex-col items-center gap-0">
+                            <span className="text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 font-normal">{formatDuration(offer.totalDuration)}</span>
+                            <div className="w-full flex items-center gap-0.5">
+                                <div className="h-[1.5px] lg:h-[2px] flex-1 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full" />
+                                <Plane className="w-2.5 h-2.5 lg:w-4 lg:h-4 text-indigo-500 rotate-90" />
+                            </div>
+                            <span className={`text-[10px] lg:text-xs font-normal ${offer.totalStops === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                 {stopsLabel(offer.totalStops)}
-                            </div>
+                            </span>
                         </div>
 
-                        {/* Arrival */}
-                        <div className="flex flex-col items-end gap-0.5 sm:gap-1">
-                            <div className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums leading-none">
-                                {formatTime(last.arrival.time)}
-                            </div>
-                            <div className="flex items-center gap-1 sm:gap-1.5 justify-end">
-                                <span className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-widest">{last.arrival.airport}</span>
-                                <div className="w-3 h-3 sm:w-5 sm:h-5 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
-                                    <MapPin size={8} className="text-blue-500 sm:w-[10px] sm:h-[10px]" />
-                                </div>
+                        <div className="text-center">
+                            <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(last.arrival.time)}</div>
+                            <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                {last.arrival.airport}
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* ─── Footer Section ─── */}
-            <div className="px-3 sm:px-4 lg:px-8 pb-3 sm:pb-4 lg:pb-8 mt-auto flex flex-col gap-2 sm:gap-6">
-                <div className="pt-2 sm:pt-6 border-t border-slate-100 dark:border-slate-800/50 flex flex-col gap-2.5 sm:gap-5">
-                    {/* Badge Group */}
-                    <div className="flex flex-row flex-wrap items-center gap-1.5 w-full justify-start sm:justify-start">
-                        <span className="px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-800 text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-widest">
-                            {(primary.cabinClass || 'economy').replace('_', ' ')}
-                        </span>
-
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-0.5 lg:gap-1 mt-1 lg:mt-2 min-w-0 overflow-hidden">
+                        {offer.baggage && (
+                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                                <Luggage className="w-2 h-2 lg:w-3 lg:h-3" />
+                                {Number(offer.baggage.checkedBags || 0) > 0 ? `${offer.baggage.checkedBags} bag(s)` : 'No bag'}
+                            </span>
+                        )}
+                        {/* ─── Tristate refundability badge (always visible) ─── */}
                         {(() => {
                             const fp = offer.farePolicy;
+                            // Use farePolicy if available, fall back to legacy refundable bool
                             const isRefundable = fp ? fp.isRefundable : offer.refundable;
                             const penalty = fp?.refundPenaltyAmount;
 
                             if (isRefundable && penalty === 0) {
+                                // 🟢 Free cancellation
                                 return (
-                                    <span className="flex items-center gap-1 sm:gap-2 px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-[10px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border border-emerald-100 dark:border-emerald-500/20">
-                                        <Shield size={10} className="sm:w-[12px] sm:h-[12px]" strokeWidth={3} />
-                                        Free Refund
+                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400">
+                                        <Shield className="w-2 h-2 lg:w-3 lg:h-3" />
+                                        Free cancellation
                                     </span>
                                 );
                             } else if (isRefundable) {
+                                // 🟡 Refundable with fee OR unknown penalty amount
+                                const feeLabel = penalty != null && penalty > 0
+                                    ? `Refundable (fee: ${fp?.refundPenaltyCurrency ?? ''}${penalty})`
+                                    : 'Refundable (fees may apply)';
                                 return (
-                                    <span className="flex items-center gap-1 sm:gap-2 px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl bg-amber-50 dark:bg-amber-500/10 text-[10px] sm:text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest border border-amber-100 dark:border-amber-500/20">
-                                        <BadgeDollarSign size={10} className="sm:w-[12px] sm:h-[12px]" strokeWidth={3} />
-                                        Refundable
+                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400">
+                                        <BadgeDollarSign className="w-2 h-2 lg:w-3 lg:h-3" />
+                                        {feeLabel}
+                                    </span>
+                                );
+                            } else {
+                                // 🔴 Non-refundable
+                                return (
+                                    <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400">
+                                        <XCircle className="w-2 h-2 lg:w-3 lg:h-3" />
+                                        Non-refundable
                                     </span>
                                 );
                             }
-                            return (
-                                <span className="flex items-center gap-1 sm:gap-2 px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl bg-slate-50 dark:bg-slate-800 text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest border border-slate-100 dark:border-slate-800">
-                                    <XCircle size={10} className="sm:w-[12px] sm:h-[12px]" strokeWidth={3} />
-                                    Non-refund
-                                </span>
-                            );
                         })()}
-
-                        {offer.baggage && Number(offer.baggage.checkedBags || 0) > 0 && (
-                            <span className="flex items-center gap-1 sm:gap-2 px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-500/10 text-[10px] sm:text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest border border-blue-100 dark:border-blue-500/20">
-                                <Luggage size={10} className="sm:w-[12px] sm:h-[12px]" strokeWidth={3} />
-                                {offer.baggage.checkedBags} Bag
+                        <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 capitalize">
+                            {(primary.cabinClass || 'economy').replace('_', ' ')}
+                        </span>
+                        <span className="inline-flex items-center px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400">
+                            {providerLabel(offer.provider)}
+                        </span>
+                        {offer.alternatives && offer.alternatives.length > 0 && (
+                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-indigo-600 text-white font-normal animate-pulse shadow-sm shadow-indigo-500/50">
+                                <BadgeDollarSign className="w-2 h-2 lg:w-3 lg:h-3" />
+                                {offer.alternatives.length + 1} brands available
+                            </span>
+                        )}
+                        {primary.aircraft && (
+                            <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+                                <Plane className="w-2 h-2 lg:w-3 lg:h-3" />
+                                {primary.aircraft}
+                            </span>
+                        )}
+                        {offer.seatsRemaining != null && offer.seatsRemaining > 0 && (
+                            <span className={`inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[9px] lg:text-xs font-normal border ${offer.seatsRemaining <= 3
+                                    ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+                                    : offer.seatsRemaining <= 6
+                                        ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+                                        : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                                }`}>
+                                <Users className="w-2 h-2 lg:w-3 lg:h-3" />
+                                {offer.seatsRemaining <= 3
+                                    ? `Only ${offer.seatsRemaining} left!`
+                                    : offer.seatsRemaining <= 6
+                                        ? `${offer.seatsRemaining} seats left`
+                                        : `${offer.seatsRemaining} seats available`}
                             </span>
                         )}
                     </div>
+                </div>
 
-                    {/* Action Group */}
-                    <div className="flex items-center gap-2 sm:gap-3 w-full">
-                        <div className="shrink-0 [&_button]:w-8 [&_button]:h-8 [&_button_svg]:w-4 [&_button_svg]:h-4 sm:[&_button]:w-10 sm:[&_button]:h-10 sm:[&_button_svg]:w-5 sm:[&_button_svg]:h-5">
-                            <SaveButton
-                                type="flight"
-                                title={`${primary.departure.airport} → ${last.arrival.airport}`}
-                                subtitle={`${primary.airline.name} · ${formatDuration(offer.totalDuration)}`}
-                                price={offer.price.total}
-                                currency={offer.price.currency}
-                                imageUrl={`https://pics.avs.io/40/40/${(primary.airline.code || '').toUpperCase()}.png`}
-                                size="md"
-                                deepLink="#"
-                            />
+                {/* ─── Price + CTA (right) ─── */}
+                <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-1 lg:gap-1.5 lg:w-[150px] px-3 py-1.5 lg:p-4 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                    <div className="lg:text-right">
+                        <div className="text-xs lg:text-lg font-normal text-slate-900 dark:text-white leading-tight">
+                            {formatPrice(offer.price.pricePerAdult, offer.price.currency, targetCurrency)}<span className="text-[8px] lg:text-xs text-slate-400 dark:text-slate-500">/person</span>
                         </div>
+                        <div className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500">
+                            includes taxes & fees
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={() => onSelect?.(offer)}
-                            className="flex-1 h-9 sm:h-10 lg:h-12 rounded-xl sm:rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm lg:text-base uppercase tracking-[0.1em] transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-2 sm:gap-3"
+                            className="px-4 lg:px-6 py-1 lg:py-2 rounded-full lg:rounded-lg lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-normal text-[10px] lg:text-sm transition-colors flex items-center justify-center gap-1 shrink-0"
                         >
-                            Select Flight <ArrowRight size={14} className="sm:w-[16px] sm:h-[16px]" strokeWidth={3} />
+                            Select
+                            <ArrowRight className="w-3 h-3 lg:w-4 lg:h-4" />
                         </button>
                     </div>
                 </div>
-
-                {/* Details Trigger */}
-                <div className="pt-1 sm:pt-2 w-full">
-                    <button
-                        onClick={() => setExpanded(!expanded)}
-                        className="w-full flex items-center justify-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-black text-slate-400 hover:text-blue-500 transition-all py-1.5 sm:py-2 bg-slate-50/50 dark:bg-slate-800/30 rounded-lg sm:rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 uppercase tracking-widest"
-                    >
-                        {expanded ? <ChevronUp size={12} className="sm:w-[14px] sm:h-[14px]" strokeWidth={3} /> : <ChevronDown size={12} className="sm:w-[14px] sm:h-[14px]" strokeWidth={3} />}
-                        {expanded ? 'Collapse Segments' : 'Details & Stops ↓'}
-                    </button>
-                </div>
             </div>
 
-            {/* ─── Expanded View ─── */}
+            {/* ─── Expand Toggle ─── */}
+            {offer.segments.length > 1 && (
+                <button
+                    onClick={() => setExpanded(!expanded)}
+                    className="flex items-center gap-0.5 px-2.5 lg:px-4 pb-1 lg:pb-2 text-[10px] lg:text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
+                >
+                    {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    {expanded ? 'Hide details' : (offer.alternatives && offer.alternatives.length > 0 ? `Compare ${offer.alternatives.length + 1} options` : 'Show all segments')}
+                </button>
+            )}
+
+            {/* ─── Expanded View (Details + Alternatives) ─── */}
             <AnimatePresence>
                 {expanded && (
                     <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden bg-slate-50/30 dark:bg-slate-900/50 rounded-b-3xl"
+                        transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                        className="border-t border-slate-100 dark:border-slate-800 overflow-hidden"
                     >
-                        <div className="p-6 lg:p-8 pt-0 space-y-6">
-                            {/* Branded Fares / Alternatives */}
-                            {offer.alternatives && offer.alternatives.length > 0 && (
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        <BadgeDollarSign size={12} className="text-blue-500" />
-                                        Fare Options
+                    {/* Alternatives / Brands Section */}
+                    {offer.alternatives && offer.alternatives.length > 0 && (
+                        <div className="bg-slate-50/50 dark:bg-slate-800/20 px-2.5 lg:px-5 py-3 border-b border-slate-100 dark:border-slate-800">
+                            <h4 className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <BadgeDollarSign className="w-3.5 h-3.5 text-indigo-500" />
+                                Available Fare Options
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {/* Current main offer as one of the options */}
+                                <div className="flex flex-col p-2.5 rounded-lg border-2 border-indigo-500 bg-white dark:bg-slate-900 shadow-sm">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="text-[11px] font-normal text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 rounded uppercase">
+                                            {offer.brandedFare?.brandName || offer.brandedFare?.fareType || 'Standard'}
+                                        </span>
+                                        <span className="text-xs font-normal text-slate-900 dark:text-white">
+                                            {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
+                                        </span>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                        <div className="p-4 rounded-2xl border-2 border-blue-500 bg-white dark:bg-slate-900 shadow-xl">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-[10px] font-black text-blue-500 uppercase bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg">Selected</span>
-                                                <span className="text-sm font-black text-slate-900 dark:text-white">
-                                                    {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
-                                                </span>
-                                            </div>
-                                            <div className="text-xs font-bold text-slate-500 italic">
-                                                {(primary.cabinClass || 'economy').replace('_', ' ')}
-                                            </div>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
+                                        {(offer.segments[0].cabinClass || 'economy').replace('_', ' ')} · Best value
+                                    </p>
+                                    <button
+                                        disabled
+                                        className="mt-auto py-1 px-3 rounded bg-indigo-600 text-white text-[10px] font-normal opacity-50 cursor-default"
+                                    >
+                                        Currently Selected
+                                    </button>
+                                </div>
+
+                                {/* Alternatives */}
+                                {offer.alternatives.map((alt) => (
+                                    <div key={alt.offerId} className="flex flex-col p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300 transition-colors">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="text-[11px] font-normal text-slate-600 dark:text-slate-300 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded uppercase">
+                                                {alt.brandedFare?.brandName || alt.brandedFare?.fareType || 'Option'}
+                                            </span>
+                                            <span className="text-xs font-normal text-slate-900 dark:text-white">
+                                                {formatPrice(alt.price.total, alt.price.currency, targetCurrency)}
+                                            </span>
                                         </div>
-
-                                        {offer.alternatives.map((alt) => (
-                                            <button 
-                                                key={alt.offerId}
-                                                onClick={() => onSelect?.(alt)}
-                                                className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 hover:border-blue-400 transition-all text-left group/alt"
-                                            >
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-[10px] font-black text-slate-400 uppercase group-hover/alt:text-blue-500 transition-colors">
-                                                        {alt.brandedFare?.brandName || 'Alternative'}
-                                                    </span>
-                                                    <span className="text-sm font-black text-slate-900 dark:text-white">
-                                                        {formatPrice(alt.price.total, alt.price.currency, targetCurrency)}
-                                                    </span>
-                                                </div>
-                                                <div className="text-xs font-bold text-slate-500 italic">
-                                                    {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')}
-                                                </div>
-                                            </button>
-                                        ))}
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
+                                            {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')}{process.env.NODE_ENV !== 'production' ? ` · ${providerLabel(alt.provider)}` : ''}
+                                        </p>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onSelect?.(alt);
+                                            }}
+                                            className="mt-auto py-1 px-3 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-700 dark:text-slate-300 text-[10px] font-normal transition-colors"
+                                        >
+                                            Select {alt.brandedFare?.brandName || alt.brandedFare?.fareType || 'this'}
+                                        </button>
                                     </div>
-                                </div>
-                            )}
-
-                            {/* Detailed Itinerary */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <Info size={12} className="text-blue-500" />
-                                    Flight Itinerary
-                                </div>
-                                <div className="space-y-2">
-                                    {routeIndices.map((idx, routeIndex) => {
-                                        const legSegments = legGroups[idx];
-                                        if (!legSegments || legSegments.length === 0) return null;
-                                        return (
-                                            <div key={idx} className="space-y-2">
-                                                {legSegments.map((seg, i) => (
-                                                    <React.Fragment key={`${idx}-${i}`}>
-                                                        <SegmentRow segment={seg} />
-                                                        {i < legSegments.length - 1 && (
-                                                            <div className="ml-7 pl-6 py-2 border-l-2 border-dashed border-slate-100 dark:border-slate-800 flex items-center gap-3">
-                                                                <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                                                                <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">
-                                                                    Layover at {seg.arrival.airport}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </React.Fragment>
-                                                ))}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                ))}
                             </div>
                         </div>
+                    )}
+
+                    {/* Flight Detail Segments */}
+                    <div className="px-2.5 lg:px-5 pb-2 lg:pb-4 space-y-0.5 lg:space-y-1">
+                        {routeIndices.map((idx, routeIndex) => {
+                            const legSegments = legGroups[idx];
+                            if (!legSegments || legSegments.length === 0) return null;
+
+                            let label = `Leg ${routeIndex + 1}`;
+                            if (routeIndices.length === 2) {
+                                label = routeIndex === 0 ? 'Outbound' : 'Return';
+                            }
+
+                            return (
+                                <div className="pt-3" key={idx}>
+                                    <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                                        {label}
+                                    </div>
+                                    {legSegments.map((seg, i) => <SegmentRow key={`${idx}-${i}`} segment={seg} />)}
+                                </div>
+                            );
+                        })}
+                    </div>
                     </motion.div>
                 )}
             </AnimatePresence>
