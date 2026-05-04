@@ -11,7 +11,9 @@ export default function MainLayout({
       <Suspense fallback={<div className="h-12 md:h-16 w-full bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl border-b border-slate-200 dark:border-white/5" />}>
         <Header />
       </Suspense>
-      {children}
+      <main className="pb-16 lg:pb-0">
+        {children}
+      </main>
       <Footer />
     </>
   );

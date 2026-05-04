@@ -181,7 +181,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
 
                     <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
                         {/* Currency Selector (Mobile) */}
-                        <CurrencySelector variant="pill" align="end" className="sm:hidden" />
+                        <CurrencySelector variant="pill" align="right" className="sm:hidden" />
 
                         {/* Sort */}
                         <DropdownMenu>

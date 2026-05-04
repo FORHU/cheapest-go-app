@@ -13,6 +13,7 @@ import { PWAInstallProvider } from '@/contexts/PWAInstallContext';
 import InstallPWAPrompt from '@/components/pwa/InstallPWAPrompt';
 import PWAServiceWorkerRegistrar from '@/components/pwa/PWAServiceWorkerRegistrar';
 import { env } from '@/utils/env';
+import { MobileBottomNav } from '@/components/common/MobileBottomNav';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' });
@@ -74,9 +75,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <Script src="https://cdn.jsdelivr.net/npm/react-scan/dist/auto.global.js" />
-      )}
+      )} */}
       <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} font-sans`}>
         <QueryProvider>
           <ThemeProvider>
@@ -88,6 +89,7 @@ export default function RootLayout({
                 <GlobalSparkle />
                 {children}
               </div>
+              <MobileBottomNav />
               <AuthModal />
               <InstallPWAPrompt />
             </PWAInstallProvider>
