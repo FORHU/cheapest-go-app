@@ -165,7 +165,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
 
                     <div className="flex items-center gap-1 landscape-compact:hidden">
                         <MapPin size={12} className="text-blue-500" />
-                        <span className="text-[10px] font-semibold text-slate-900 dark:text-white truncate max-w-[100px] sm:max-w-[200px]">
+                        <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-white truncate max-w-[100px] sm:max-w-[200px]">
                             {destination || 'Search'}
                         </span>
                     </div>
@@ -186,9 +186,9 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                         {/* Sort */}
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button className="flex items-center justify-between gap-2 px-3 h-[28px] md:h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-[10px] md:text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[100px] md:min-w-[140px]">
+                                <button className="flex items-center justify-between gap-1.5 px-2.5 h-[24px] md:h-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-[9px] md:text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[80px] md:min-w-[110px]">
                                     <span className="truncate">{SORT_LABELS[sortBy]}</span>
-                                    <ChevronDown size={14} className="text-slate-400 shrink-0 w-3 h-3 md:w-3.5 md:h-3.5" />
+                                    <ChevronDown size={12} className="text-slate-400 shrink-0 w-2.5 h-2.5 md:w-3 md:h-3" />
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="rounded-xl">
