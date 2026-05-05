@@ -54,7 +54,7 @@ function FlightCardSkeleton({ index = 0 }: { index?: number }) {
             </div>
 
             {/* Right: price skeleton */}
-            <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-1.5 lg:gap-2 lg:w-[180px] px-2.5 py-2 lg:p-5 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-1.5 lg:gap-2 lg:w-[180px] px-2.5 py-2 lg:p-5 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
                 <div>
                     <Skeleton width={70} height={20} className="mb-0.5 lg:!w-[100px] lg:!h-7" />
                     <Skeleton width={50} height={10} className="lg:!w-[72px] lg:!h-3.5" />
@@ -91,7 +91,7 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
     // Loading state — show skeleton cards
     if (loading) {
         return (
-            <div className="space-y-2 lg:space-y-3">
+            <div className="space-y-2">
                 {/* Animated header */}
                 <div className="flex items-center justify-center gap-2 lg:gap-3 py-3 lg:py-6">
                     <div className="relative">
@@ -171,7 +171,7 @@ function PaginatedResults({ offers, onSelect, resetKey }: { offers: FlightOffer[
     const hasMore = remaining > 0;
 
     return (
-        <div className="space-y-1 lg:space-y-2">
+        <div className="space-y-2">
             <AnimatePresence>
                 {visible.map((offer, idx) => (
                     <FlightCard

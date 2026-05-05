@@ -63,19 +63,19 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
                         <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                     </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align={align} className="rounded-xl min-w-[120px]">
+                <DropdownMenuContent align={align} className="rounded-xl min-w-[100px]">
                     {CURRENCIES.map((c) => (
                         <DropdownMenuItem
                             key={c.code}
                             onClick={() => handleCurrencySelect(c.code, c.country)}
                             className={cn(
-                                "flex items-center gap-3 px-4 py-2 text-[11px] font-bold transition-colors cursor-pointer",
+                                "flex items-center gap-2 px-3 py-1.5 text-[10px] md:text-[11px] font-bold transition-colors cursor-pointer",
                                 userCurrency === c.code
                                     ? "bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
                                     : "text-slate-700 dark:text-slate-300"
                             )}
                         >
-                            <span className="text-[9px] text-slate-400 font-bold w-5">{c.country}</span>
+                            <span className="text-[8px] md:text-[9px] text-slate-400 font-bold w-4">{c.country}</span>
                             <span>{c.code}</span>
                         </DropdownMenuItem>
                     ))}
@@ -89,26 +89,26 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <button
-                        className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group"
+                        className="flex items-center gap-1 px-1 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group"
                     >
-                        <span className="text-xs text-slate-400 font-bold uppercase">{userCountry}</span>
-                        <span className="text-sm font-bold">{userCurrency}</span>
-                        <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
+                        <span className="text-[9px] text-slate-400 font-bold uppercase">{userCountry}</span>
+                        <span className="text-[11px] font-semibold">{userCurrency}</span>
+                        <ChevronDown className="w-3 h-3 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                     </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align={align} className="rounded-xl min-w-[140px]">
+                <DropdownMenuContent align={align === 'right' ? 'end' : 'start'} className="rounded-xl min-w-[110px] z-[1001]">
                     {CURRENCIES.map((c) => (
                         <DropdownMenuItem
                             key={c.code}
                             onClick={() => handleCurrencySelect(c.code, c.country)}
                             className={cn(
-                                "flex items-center gap-3 px-4 py-2.5 text-sm font-bold transition-colors cursor-pointer",
+                                "flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold transition-colors cursor-pointer",
                                 userCurrency === c.code
                                     ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
                                     : 'text-slate-700 dark:text-slate-300'
                             )}
                         >
-                            <span className="text-xs text-slate-400 font-bold w-5">{c.country}</span>
+                            <span className="text-[9px] text-slate-400 font-bold w-4">{c.country}</span>
                             <span>{c.code}</span>
                         </DropdownMenuItem>
                     ))}

@@ -14,6 +14,7 @@ import InstallPWAPrompt from '@/components/pwa/InstallPWAPrompt';
 import PWAServiceWorkerRegistrar from '@/components/pwa/PWAServiceWorkerRegistrar';
 import { env } from '@/utils/env';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
+import { ScrollToTop } from '@/components/common/ScrollToTop';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' });
@@ -87,9 +88,12 @@ export default function RootLayout({
               <PWAServiceWorkerRegistrar />
               <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px]">
                 <GlobalSparkle />
-                {children}
+                <div className="relative flex flex-col flex-1 pb-24 lg:pb-0">
+                  {children}
+                </div>
+                <ScrollToTop />
+                <MobileBottomNav />
               </div>
-              <MobileBottomNav />
               <AuthModal />
               <InstallPWAPrompt />
             </PWAInstallProvider>

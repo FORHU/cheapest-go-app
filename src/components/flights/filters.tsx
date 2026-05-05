@@ -118,7 +118,7 @@ export default function FlightFilters({ airlines, onFilterChange, className }: F
                             onFilterChange(newState);
                         }}
                         className={`relative inline-flex h-4 w-8 shrink-0 rounded-full transition-colors duration-200 focus:outline-none ${
-                            state.refundableOnly ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
+                            state.refundableOnly ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'
                         }`}
                     >
                         <span

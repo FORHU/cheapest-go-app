@@ -297,7 +297,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                 </div>
 
                 {/* ─── Price + CTA (right) ─── */}
-                <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-1 lg:gap-1.5 lg:w-[150px] px-3 py-1.5 lg:p-4 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-1 lg:gap-1.5 lg:w-[180px] px-3 py-1.5 lg:p-4 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
                     <div className="lg:text-right">
                         <div className="text-xs lg:text-lg font-normal text-slate-900 dark:text-white leading-tight">
                             {formatPrice(offer.price.pricePerAdult, offer.price.currency, targetCurrency)}<span className="text-[8px] lg:text-xs text-slate-400 dark:text-slate-500">/person</span>
