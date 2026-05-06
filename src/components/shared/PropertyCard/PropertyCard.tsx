@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
 import { type Property } from '@/types';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
+import { buildPropertySlug } from '@/lib/utils';
 import { useUserCurrency } from '@/stores/searchStore';
 import SaveButton from '@/components/common/SaveButton';
 
@@ -214,7 +215,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             price={rawPrice}
                             currency={sourceCurrency}
                             imageUrl={imgSrc}
-                            deepLink={property?.id ? `/property/${property.id}` : '#'}
+                            deepLink={property?.id ? `/property/${buildPropertySlug(property.name, property.id)}` : '#'}
                             snapshot={property as any}
                             size="sm"
                         />
@@ -336,7 +337,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                         price={property.price}
                         currency={property.currency || 'KRW'}
                         imageUrl={property.image}
-                        deepLink={`/property/${property.id}`}
+                        deepLink={`/property/${buildPropertySlug(property.name, property.id)}`}
                         snapshot={property as any}
                         size="sm"
                     />

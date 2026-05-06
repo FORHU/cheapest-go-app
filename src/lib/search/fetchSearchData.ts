@@ -6,7 +6,6 @@
 import { unstable_cache } from 'next/cache';
 import { type Property } from '@/types';
 import { searchTravelgateX } from '@/lib/server/travelgatex';
-import { searchLiteApi } from '@/utils/supabase/functions';
 import { COUNTRY_DEFAULT_CITY, COUNTRY_NAME_TO_CODE } from '@/lib/constants/countries';
 import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
 
@@ -294,10 +293,9 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
 // spellings (checkIn vs checkin) don't produce separate cache entries.
 const getCachedSearchProperties = unstable_cache(
     async (queryParams: SearchQueryParams): Promise<Property[]> => {
-        // Run all three providers in parallel
-        const [tgxSettled, liteApiSettled, duffelSettled] = await Promise.allSettled([
+        // Run TGX and Duffel in parallel (LiteAPI dropped)
+        const [tgxSettled, duffelSettled] = await Promise.allSettled([
             searchTravelgateX(queryParams as unknown as Record<string, unknown>),
-            searchLiteApi(queryParams as unknown as Record<string, unknown>),
             searchDuffelStays(queryParams),
         ]);
 
@@ -322,33 +320,17 @@ const getCachedSearchProperties = unstable_cache(
             console.error('[Search] TravelgateX failed:', tgxSettled.reason?.message);
         }
 
-        const liteApiResults: Property[] = [];
-        if (liteApiSettled.status === 'fulfilled') {
-            const data = liteApiSettled.value as any;
-            if (data?.data && Array.isArray(data.data)) {
-                liteApiResults.push(
-                    ...data.data
-                        .map((hotel: any) => transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency))
-                        .filter((p: Property) => p.name && p.price > 0)
-                );
-            }
-        } else {
-            console.error('[Search] LiteAPI failed:', liteApiSettled.reason?.message);
-        }
-
         const duffelResults: Property[] = duffelSettled.status === 'fulfilled'
             ? duffelSettled.value
             : [];
 
-        // Merge: TGX first, then LiteAPI (deduplicated), then Duffel (deduplicated)
+        // Merge: TGX first, then Duffel (deduplicated by name)
         const seenNames = new Set(tgxResults.map(p => p.name.toLowerCase().trim()));
-        const uniqueLiteApi = liteApiResults.filter(p => !seenNames.has(p.name.toLowerCase().trim()));
-        uniqueLiteApi.forEach(p => seenNames.add(p.name.toLowerCase().trim()));
         const uniqueDuffel = duffelResults.filter(
             p => !seenNames.has(p.name.toLowerCase().trim())
         );
 
-        const combined = [...tgxResults, ...uniqueLiteApi, ...uniqueDuffel];
+        const combined = [...tgxResults, ...uniqueDuffel];
 
         if (combined.length === 0) throw new Error('NO_RESULTS');
         return combined;

@@ -10,7 +10,7 @@ import type { MappableProperty } from '@/components/map/types';
 import { type Property } from '@/types';
 import { ArrowLeft, MapPin, ChevronDown, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, cn, buildPropertySlug } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 
@@ -102,7 +102,8 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
             params.delete('view');
             const prop = properties.find(p => p.id === id);
             if (prop?.rateId) params.set('rateId', prop.rateId);
-            router.push(`/property/${id}?${params.toString()}`);
+            const slug = prop ? buildPropertySlug(prop.name, id) : id;
+            router.push(`/property/${slug}?${params.toString()}`);
         },
         [router, searchParams, properties]
     );

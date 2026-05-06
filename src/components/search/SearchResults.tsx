@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type Property } from '@/types';
 import { PropertyCard } from '@/components/shared';
 import { ChevronDown, MapPin } from 'lucide-react';
+import { buildPropertySlug } from '@/lib/utils';
 
 const SORT_OPTIONS = ['recommended', 'price-low', 'price-high', 'rating'] as const;
 type SortValue = typeof SORT_OPTIONS[number];
@@ -39,7 +40,7 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
     const buildPropertyUrl = useCallback((property: Property) => {
         const params = new URLSearchParams(window.location.search);
         if (property.rateId) params.set('rateId', property.rateId);
-        return `/property/${property.id}?${params.toString()}`;
+        return `/property/${buildPropertySlug(property.name, property.id)}?${params.toString()}`;
     }, []);
 
     const handlePropertyClick = (property: Property) => {

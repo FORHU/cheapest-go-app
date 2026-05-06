@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
-import { confirmAndSaveBooking } from '@/lib/server/bookings';
+import { confirmAndSaveBooking, confirmAndSaveTgxBooking } from '@/lib/server/bookings';
 import { stripe } from '@/lib/stripe/server';
 import { createNotification } from '@/lib/server/admin/notify';
 import { sendBookingConfirmationEmail } from '@/lib/server/email';
@@ -86,6 +86,53 @@ export async function POST(req: NextRequest) {
                     },
                 });
             }
+        }
+
+        // TravelgateX path: prebookId is encoded as "TGX:{quoteToken}"
+        const isTgx = body.provider === 'travelgatex' || (body.prebookId && String(body.prebookId).startsWith('TGX:'));
+        if (isTgx) {
+            const quoteToken = String(body.prebookId).startsWith('TGX:')
+                ? String(body.prebookId).slice(4)
+                : String(body.prebookId);
+
+            const result = await confirmAndSaveTgxBooking({
+                quoteToken,
+                holder: body.holder,
+                guests: body.guests || [],
+                propertyName: body.propertyName || '',
+                propertyImage: body.propertyImage,
+                roomName: body.roomName || body.holder?.firstName || 'Standard Room',
+                checkIn: body.checkIn || '',
+                checkOut: body.checkOut || '',
+                adults: body.adults || 2,
+                children: body.children || 0,
+                currency: body.currency || 'USD',
+                specialRequests: body.specialRequests,
+                paymentIntentId: body.paymentIntentId,
+                voucherCode: body.voucherCode,
+                discountAmount: body.discountAmount,
+            }, user);
+
+            if (result.success) {
+                revalidatePath('/trips');
+                createNotification(
+                    'Hotel Booking Confirmed',
+                    `TGX Booking ${result.data?.bookingId || ''} confirmed for ${user.email}.`,
+                    'booking'
+                );
+                sendBookingConfirmationEmail({
+                    bookingId: result.data?.bookingId || '',
+                    email: body.holder?.email || user.email || '',
+                    guestName: `${body.holder?.firstName || ''} ${body.holder?.lastName || ''}`.trim(),
+                    hotelName: body.propertyName || '',
+                    roomName: body.roomName || '',
+                    checkIn: body.checkIn || '',
+                    checkOut: body.checkOut || '',
+                    totalPrice: result.data?.totalPrice || 0,
+                    currency: result.data?.currency || body.currency || 'USD',
+                }).catch(e => console.error('[confirm/tgx] Email failed:', e));
+            }
+            return Response.json(result);
         }
 
         // Unified flow: LiteAPI confirm → normalize policy → atomic DB save
