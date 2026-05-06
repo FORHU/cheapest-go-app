@@ -256,7 +256,7 @@ export default function FlightBookContent() {
 
     if (!offer) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian flex items-center justify-center">
+            <div className="min-h-screen bg-linear-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian flex items-center justify-center">
                 <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
             </div>
         );
@@ -300,7 +300,7 @@ export default function FlightBookContent() {
     if (step === 'error') {
         const isPending = errorMsg?.toLowerCase().includes('pending');
         return (
-            <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50/60 via-white/40 to-orange-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-red-950/60 px-4">
+            <main className="min-h-screen flex items-center justify-center bg-linier-to-br from-red-50/60 via-white/40 to-orange-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-red-950/60 px-4">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -356,7 +356,7 @@ export default function FlightBookContent() {
     if (step === 'success' && bookingResult) {
 
         return (
-            <main className="min-h-screen pt-6 lg:pt-24 pb-20 px-3 lg:px-4 flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-emerald-50/60 via-white/40 to-indigo-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-emerald-950/60">
+            <main className="min-h-screen pt-6 lg:pt-24 pb-20 px-3 lg:px-4 flex items-center justify-center relative overflow-hidden bg-linear-to-br from-emerald-50/60 via-white/40 to-indigo-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-emerald-950/60">
                 {/* Celebration Effects */}
                 <Confetti count={80} />
                 <Balloons count={12} />
@@ -387,7 +387,7 @@ export default function FlightBookContent() {
                         className="relative mx-auto mb-4 lg:mb-6 w-16 lg:w-20 flex justify-center"
                     >
                         <motion.div
-                            className="w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30"
+                            className="w-16 h-16 lg:w-20 lg:h-20 bg-linier-to-br from-emerald-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30"
                             animate={{ boxShadow: ['0 10px 30px rgba(16, 185, 129, 0.3)', '0 10px 50px rgba(16, 185, 129, 0.5)', '0 10px 30px rgba(16, 185, 129, 0.3)'] }}
                             transition={{ duration: 2, repeat: Infinity }}
                         >
@@ -428,7 +428,7 @@ export default function FlightBookContent() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5 }}
-                        className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/10 p-3.5 lg:p-5 rounded-xl lg:rounded-2xl mb-4 lg:mb-6 text-left border border-slate-200/50 dark:border-white/5 space-y-3 lg:space-y-4"
+                        className="bg-linier-to-br from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/10 p-3.5 lg:p-5 rounded-xl lg:rounded-2xl mb-4 lg:mb-6 text-left border border-slate-200/50 dark:border-white/5 space-y-3 lg:space-y-4"
                     >
                         <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
                             <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">PNR</span>
@@ -607,7 +607,7 @@ export default function FlightBookContent() {
                     >
                         <button
                             onClick={() => router.push('/trips')}
-                            className="w-full py-3 lg:py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-xs lg:text-base rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all active:scale-[0.98]"
+                            className="w-full py-3 lg:py-4 bg-linear-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-xs lg:text-base rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all active:scale-[0.98]"
                         >
                             View My Trips
                         </button>
@@ -626,13 +626,13 @@ export default function FlightBookContent() {
     // ─── Booking Form ────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-6 pb-20 px-3 lg:px-4 lg:px-6">
+        <div className="min-h-screen bg-linear-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-6 pb-20 px-3 lg:px-6">
             <div className="max-w-3xl mx-auto">
                 {/* Header */}
                 <div className="mb-3 lg:mb-6">
                     <BackButton
                         bareIcon
-                        className="mb-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shadow-sm !p-0"
+                        className="mb-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shadow-sm p-0"
                     />
                     <h1 className="text-base lg:text-2xl font-bold text-slate-900 dark:text-white">
                         {(offer as any).tripType === 'round-trip'
