@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { autocompleteLiteApi } from './liteapi';
+import { searchTravelgateXDestinations } from './travelgatex';
 import { extractCountryCode, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
 
 export interface AutocompleteResult {
@@ -40,16 +41,36 @@ async function fetchAutocomplete(query: string): Promise<AutocompleteResult[]> {
         return countryResults;
     }
 
-    const res = await autocompleteLiteApi(query);
+    // Run LiteAPI and TGX destination search in parallel
+    const [liteApiSettled, tgxSettled] = await Promise.allSettled([
+        autocompleteLiteApi(query),
+        searchTravelgateXDestinations(query),
+    ]);
+
+    // Build a name→code map from TGX results so we can attach codes to LiteAPI cities
+    const tgxCodeMap = new Map<string, string>();
+    if (tgxSettled.status === 'fulfilled') {
+        for (const item of (tgxSettled.value as any)?.data ?? []) {
+            if (item.code && item.name) {
+                tgxCodeMap.set(item.name.toLowerCase().trim(), item.code);
+            }
+        }
+    }
+
+    const res = liteApiSettled.status === 'fulfilled' ? liteApiSettled.value : null;
     const cityResults: AutocompleteResult[] = (res?.data ?? []).map((item: Record<string, unknown>) => {
         const cityName = (item.displayName || item.name || '') as string;
         const address = (item.formattedAddress || item.address || '') as string;
+        const nameLower = cityName.toLowerCase().trim();
+        const tgxCode = tgxCodeMap.get(nameLower)
+            ?? [...tgxCodeMap.entries()].find(([k]) => nameLower.startsWith(k) || k.startsWith(nameLower))?.[1];
         return {
             type: 'city' as const,
             title: cityName,
             subtitle: address,
             countryCode: extractCountryCode(address, cityName),
             id: (item.placeId || item.id) as string | undefined,
+            code: tgxCode,
         };
     });
 

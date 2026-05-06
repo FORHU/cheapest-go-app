@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { MapPin, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { type Property } from '@/types';
+import { buildPropertySlug } from '@/lib/utils';
 import { PropertyMapList, scrollToProperty } from './PropertyMapList';
 // import { PropertyMapView } from './PropertyMapView';
 import { MapModal } from './MapModal';
@@ -95,7 +96,8 @@ function MapSearchLayout({ properties, title }: MapSearchLayoutProps) {
             const params = new URLSearchParams(searchParams?.toString() || '');
             const prop = properties.find(p => p.id === id);
             if (prop?.rateId) params.set('rateId', prop.rateId);
-            router.push(`/property/${id}?${params.toString()}`);
+            const slug = prop ? buildPropertySlug(prop.name, id) : id;
+            router.push(`/property/${slug}?${params.toString()}`);
         },
         [router, searchParams, properties]
     );

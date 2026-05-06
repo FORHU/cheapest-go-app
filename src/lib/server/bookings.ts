@@ -14,6 +14,7 @@ import {
   amendBookingLiteApi,
   getBookingDetailsLiteApi,
 } from './liteapi';
+import { bookTravelgateX, cancelTravelgateX } from './travelgatex';
 import { normalizeLiteApiPolicy } from './policy-normalizer';
 import { stripe } from '@/lib/stripe/server';
 import { sendHotelRefundEmail } from './email';
@@ -402,6 +403,194 @@ async function _confirmAndSaveBookingInner(
 
 
 // ============================================================================
+// TravelgateX: Confirm booking + save
+// ============================================================================
+
+export interface TgxConfirmInput {
+  quoteToken: string;
+  holder: { firstName: string; lastName: string; email: string };
+  guests: Array<{ firstName: string; lastName: string; age?: number }>;
+  propertyName: string;
+  propertyImage?: string;
+  roomName: string;
+  checkIn: string;
+  checkOut: string;
+  adults: number;
+  children: number;
+  currency: string;
+  specialRequests?: string;
+  paymentIntentId?: string;
+  voucherCode?: string;
+  discountAmount?: number;
+}
+
+export async function confirmAndSaveTgxBooking(
+  params: TgxConfirmInput,
+  user: User,
+): Promise<ConfirmAndSaveResult> {
+  const clientReference = `FORHU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+  // Build paxes: adults first, then children
+  const adultPaxes = Array(params.adults).fill(null).map(() => ({
+    name: params.holder.firstName,
+    surname: params.holder.lastName,
+    age: 30,
+  }));
+  const childPaxes = Array(params.children).fill(null).map((_, i) => ({
+    name: params.guests[params.adults + i]?.firstName || `Child${i + 1}`,
+    surname: params.holder.lastName,
+    age: params.guests[params.adults + i]?.age || 10,
+  }));
+
+  let tgxResult: any;
+  try {
+    tgxResult = await bookTravelgateX({
+      quoteToken: params.quoteToken,
+      clientReference,
+      holder: params.holder,
+      rooms: [{ occupancyRefId: 1, paxes: [...adultPaxes, ...childPaxes] }],
+    });
+  } catch (error) {
+    console.error('[confirmAndSaveTgxBooking] TGX book failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'TravelgateX booking failed',
+    };
+  }
+
+  const booking = tgxResult?.data;
+  if (!booking?.reference?.client) {
+    console.error('[confirmAndSaveTgxBooking] No reference in TGX response:', tgxResult);
+    return { success: false, error: 'Booking failed — no reference returned from TravelgateX' };
+  }
+
+  const bookingId = booking.reference.client; // our clientReference
+  const supplierRef = booking.reference.supplier;
+  const hotelRef = booking.reference.hotel;
+  const rawStatus = (booking.status || 'confirmed').toLowerCase();
+  const bookingStatus = (['confirmed', 'pending'].includes(rawStatus) ? rawStatus : 'confirmed') as 'confirmed' | 'pending';
+
+  console.log(JSON.stringify({
+    _event: 'tgx_confirmed',
+    bookingId,
+    clientReference,
+    supplierRef,
+    userId: user.id,
+    holderEmail: params.holder.email,
+    propertyName: params.propertyName,
+    checkIn: params.checkIn,
+    checkOut: params.checkOut,
+    timestamp: new Date().toISOString(),
+  }));
+
+  const price = booking.price?.gross || booking.price?.net || 0;
+  const currency = booking.price?.currency || params.currency || 'USD';
+
+  let totalPrice = price;
+  if (params.paymentIntentId) {
+    try {
+      const pi = await stripe.paymentIntents.retrieve(params.paymentIntentId);
+      totalPrice = pi.amount / 100;
+    } catch {
+      totalPrice = price;
+    }
+  }
+
+  const isRefundable = booking.cancelPolicy?.refundable === true;
+  const policyType = isRefundable ? 'free_cancellation' : 'non_refundable';
+
+  try {
+    const serviceClient = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+
+    const bookingPayload = {
+      booking_id: bookingId,
+      user_id: user.id,
+      property_name: params.propertyName,
+      property_image: params.propertyImage ?? null,
+      room_name: params.roomName,
+      check_in: params.checkIn,
+      check_out: params.checkOut,
+      guests_adults: params.adults,
+      guests_children: params.children ?? 0,
+      total_price: totalPrice,
+      currency,
+      holder_first_name: params.holder.firstName,
+      holder_last_name: params.holder.lastName,
+      holder_email: params.holder.email,
+      status: bookingStatus,
+      special_requests: params.specialRequests ?? null,
+      voucher_code: params.voucherCode ?? null,
+      discount_amount: params.discountAmount ?? 0,
+      policy_type: policyType,
+    };
+
+    const snapshotPayload = {
+      policy_type: policyType,
+      summary: isRefundable ? 'Refundable rate' : 'Non-refundable rate',
+      refundable_tag: isRefundable ? 'RFN' : 'NRFN',
+      hotel_remarks: [],
+      no_show_penalty: 0,
+      early_departure_fee: 0,
+      free_cancel_deadline: booking.cancelPolicy?.cancelPenalties?.[0]?.deadline ?? null,
+      raw_liteapi_response: booking,
+    };
+
+    const tiersPayload = (booking.cancelPolicy?.cancelPenalties || []).map((p: any) => ({
+      cancel_deadline: p.deadline,
+      penalty_amount: p.value,
+      penalty_type: p.penaltyType,
+      currency: p.currency || currency,
+    }));
+
+    const { error: rpcError } = await serviceClient.rpc('create_booking_with_policy', {
+      p_booking: bookingPayload,
+      p_snapshot: snapshotPayload,
+      p_tiers: tiersPayload,
+    });
+
+    if (rpcError) {
+      console.error('[confirmAndSaveTgxBooking] DB save failed after TGX confirmed:', rpcError);
+      console.error('CRITICAL: TGX booking', bookingId, 'confirmed but DB save failed. Manual reconciliation required.');
+      return {
+        success: false,
+        liteApiConfirmed: true,
+        data: { bookingId, status: bookingStatus, policyType, policySummary: snapshotPayload.summary, totalPrice, currency },
+        error: `Booking confirmed but failed to save (DB: ${rpcError.message || rpcError.code}). Contact support with booking ID: ${bookingId}`,
+      };
+    }
+
+    // Update provider columns (RPC INSERT uses defaults; patch here)
+    await serviceClient
+      .from('bookings')
+      .update({
+        provider: 'travelgatex',
+        provider_metadata: { supplierRef, hotelRef, clientReference },
+        payment_intent_id: params.paymentIntentId ?? null,
+      })
+      .eq('booking_id', bookingId);
+
+    if (params.paymentIntentId) {
+      stripe.paymentIntents.update(params.paymentIntentId, {
+        metadata: { bookingId },
+      }).catch(e => console.warn('[confirmAndSaveTgxBooking] PI metadata update failed (non-critical):', e.message));
+    }
+
+    return {
+      success: true,
+      data: { bookingId, status: bookingStatus, policyType, policySummary: snapshotPayload.summary, totalPrice, currency },
+    };
+  } catch (error) {
+    console.error('[confirmAndSaveTgxBooking] DB error:', error);
+    return {
+      success: false,
+      liteApiConfirmed: true,
+      data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency },
+      error: 'Booking confirmed but failed to save. Contact support with booking ID: ' + bookingId,
+    };
+  }
+}
+
+// ============================================================================
 // Cancel booking
 // ============================================================================
 
@@ -458,21 +647,34 @@ export async function cancelBooking(
       }
     }
 
-    // 4. Call LiteAPI to cancel (marks booking cancelled on their side)
-    // Skip LiteAPI call on refund retry — booking is already cancelled on their end
-    const { data: statusRow } = await supabase.from('bookings').select('status').eq('booking_id', bookingId).single();
-    const isRefundRetry = statusRow?.status === 'cancelled_refund_failed';
+    // 4. Cancel with the appropriate provider
+    const { data: bookingRow } = await supabase
+      .from('bookings')
+      .select('status, provider, provider_metadata')
+      .eq('booking_id', bookingId)
+      .single();
+    const isRefundRetry = bookingRow?.status === 'cancelled_refund_failed';
+    const isTgx = bookingRow?.provider === 'travelgatex';
 
     let liteApiInfo: LiteApiRefundInfo = { cancellationId: undefined, refund: undefined };
     if (!isRefundRetry) {
-      const result = await cancelBookingLiteApi({ bookingId });
-      liteApiInfo = {
-        cancellationId: result?.data?.cancellationId,
-        refund: result?.data?.refund,
-      };
-      console.log('[cancelBooking] LiteAPI cancellation result:', liteApiInfo);
+      if (isTgx) {
+        const meta = bookingRow?.provider_metadata as any;
+        const result = await cancelTravelgateX({
+          clientReference: bookingId,
+          supplierReference: meta?.supplierRef,
+        });
+        console.log('[cancelBooking] TGX cancellation result:', result?.data);
+      } else {
+        const result = await cancelBookingLiteApi({ bookingId });
+        liteApiInfo = {
+          cancellationId: result?.data?.cancellationId,
+          refund: result?.data?.refund,
+        };
+        console.log('[cancelBooking] LiteAPI cancellation result:', liteApiInfo);
+      }
     } else {
-      console.log('[cancelBooking] Skipping LiteAPI call — retrying Stripe refund for cancelled_refund_failed booking');
+      console.log('[cancelBooking] Skipping provider cancel call — retrying Stripe refund for cancelled_refund_failed booking');
     }
 
     // 5. Handle Refund Logic

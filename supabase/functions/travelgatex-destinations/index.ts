@@ -54,9 +54,8 @@ Deno.serve(async (req: Request) => {
   }
 
   const TRAVELGATEX_API_KEY = Deno.env.get('TRAVELGATEX_API_KEY');
-  // Use TTHOTTEST (5647) for destination search — it has the TGX-context catalog.
-  // FastX (37606) catalog is not synced, but TGX context codes are shared across accesses.
-  const TRAVELGATEX_CODE = '5647';
+  // Use the live OTV access for destination search so codes match the OTV catalog context.
+  const TRAVELGATEX_CODE = Deno.env.get('TRAVELGATEX_CODE') || '38327';
 
   try {
     const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown';

@@ -34,6 +34,50 @@ function setCache(key: string, data: any): void {
   cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
+// ── Destination resolver ─────────────────────────────────────────
+const DESTINATION_SEARCH_QUERY = `
+query DestinationSearcher($criteria: HotelXDestinationSearcherInput!) {
+  hotelX {
+    destinationSearcher(criteria: $criteria) {
+      ... on DestinationData {
+        code
+        type
+        texts { text language }
+      }
+    }
+  }
+}
+`;
+
+async function resolveDestinationCode(
+  endpoint: string,
+  apiKey: string,
+  accessCode: string,
+  text: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Apikey ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Connection': 'keep-alive',
+      },
+      body: JSON.stringify({
+        query: DESTINATION_SEARCH_QUERY,
+        variables: { criteria: { access: accessCode, text, maxSize: 5 } },
+      }),
+    });
+    if (!res.ok) return null;
+    const result = await res.json();
+    const items: any[] = result.data?.hotelX?.destinationSearcher || [];
+    const dest = items.find((i: any) => i.code && !i.hotelCode);
+    return dest?.code || null;
+  } catch {
+    return null;
+  }
+}
+
 // ── GraphQL Query ────────────────────────────────────────────────
 const SEARCH_QUERY = `
 query (
@@ -177,7 +221,10 @@ Deno.serve(async (req: Request) => {
   }
 
   const TRAVELGATEX_API_KEY = Deno.env.get('TRAVELGATEX_API_KEY');
-  const TRAVELGATEX_ACCESS_CODE = Deno.env.get('TRAVELGATEX_CODE') || '37606';
+  const TRAVELGATEX_ACCESS_CODE = Deno.env.get('TRAVELGATEX_CODE') || '38327';
+  const TRAVELGATEX_SUPPLIER = Deno.env.get('TRAVELGATEX_SUPPLIER') || 'OTV';
+  const TRAVELGATEX_CONTEXT = Deno.env.get('TRAVELGATEX_CONTEXT') || 'OTV';
+  const TRAVELGATEX_TEST_MODE = Deno.env.get('TRAVELGATEX_TEST_MODE') === 'true';
   const TRAVELGATEX_CLIENT = Deno.env.get('TRAVELGATEX_CLIENT') || 'forhuinc';
   const ENDPOINT = 'https://api.travelgate.com';
 
@@ -216,8 +263,31 @@ Deno.serve(async (req: Request) => {
       throw new Error('checkin and checkout are required');
     }
 
-    // Destination: use explicit destinationCode if provided, otherwise fall back to countryCode
-    const destCode = destinationCode || countryCode || '';
+    // Destination: use explicit destinationCode if provided, otherwise resolve via destinationSearcher.
+    // ISO country codes (e.g. 'PH') are NOT valid TravelgateX destination codes — must resolve first.
+    let destCode = destinationCode || '';
+    if (!destCode) {
+      const lookupText = cityName || '';
+      if (lookupText) {
+        const resolved = await resolveDestinationCode(ENDPOINT, TRAVELGATEX_API_KEY, TRAVELGATEX_ACCESS_CODE, lookupText);
+        if (resolved) {
+          destCode = resolved;
+          console.log(`[TravelgateX] Resolved destination "${lookupText}" → "${destCode}"`);
+        } else {
+          console.warn(`[TravelgateX] Could not resolve destination code for "${lookupText}"`);
+        }
+      }
+    }
+
+    if (!destCode) {
+      return new Response(JSON.stringify({
+        data: [],
+        _debug: { error: 'No valid destination code resolved', cityName, countryCode },
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
 
     // Build occupancies (TravelgateX uses paxes with ages)
     const normalizedAges: number[] = Array.isArray(childrenAges) ? childrenAges : [];
@@ -239,13 +309,25 @@ Deno.serve(async (req: Request) => {
       },
       settings: {
         client: TRAVELGATEX_CLIENT,
-        context: 'TGX',
-        testMode: false,
+        context: TRAVELGATEX_CONTEXT,
+        testMode: TRAVELGATEX_TEST_MODE,
         timeout: 25000,
         suppliers: [
           {
-            code: 'FASTX',
+            code: TRAVELGATEX_SUPPLIER,
             accesses: [{ accessId: TRAVELGATEX_ACCESS_CODE }],
+          },
+        ],
+        plugins: [
+          {
+            step: 'REQUEST',
+            pluginsType: {
+              type: 'PRE_STEP',
+              name: 'search_by_destination',
+              parameters: [
+                { key: 'accessID', value: TRAVELGATEX_ACCESS_CODE },
+              ],
+            },
           },
         ],
       },
