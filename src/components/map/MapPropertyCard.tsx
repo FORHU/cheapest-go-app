@@ -62,7 +62,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             onMouseEnter={() => onHover(property.id)}
             onMouseLeave={() => onHover(null)}
             className={cn(
-                'w-full text-left transition-all duration-200 cursor-pointer overflow-hidden',
+                'w-full text-left transition-all duration-200 cursor-pointer overflow-hidden rounded-md',
                 // Mobile: card style with border and spacing
                 'p-1.5',
                 // md+: flush row style

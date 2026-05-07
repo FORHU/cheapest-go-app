@@ -101,7 +101,7 @@ function MapSearchLayout({ properties, title }: MapSearchLayoutProps) {
     );
 
     return (
-        <div className="flex h-full w-full relative">
+        <div className="flex h-full w-full relative gap-4 p-4">
             {/* LEFT: Property List */}
             <div
                 id={LIST_CONTAINER_ID}
@@ -109,7 +109,6 @@ function MapSearchLayout({ properties, title }: MapSearchLayoutProps) {
                     flex-shrink-0 h-full overflow-hidden
                     transition-all duration-300 ease-in-out
                     ${showMap ? 'w-full lg:w-[420px] xl:w-[460px]' : 'w-full'}
-                    border-r border-slate-200 dark:border-slate-800
                 `}
             >
                 <PropertyMapList
@@ -124,7 +123,10 @@ function MapSearchLayout({ properties, title }: MapSearchLayoutProps) {
 
             {/* RIGHT: Map — only mounted on md+ to prevent Mapbox running on mobile */}
             {isDesktop && (
-                <div className="flex-1 h-full sticky top-0">
+                <div
+                    className="flex-1 h-full sticky top-0 rounded-md overflow-hidden border border-slate-200 dark:border-slate-800"
+                    style={{ marginRight: 'max(0px, calc((100vw - 1400px) / 2))' }}
+                >
                     <PropertyMapView
                         properties={mappableProperties}
                         selectedId={selectedId}
