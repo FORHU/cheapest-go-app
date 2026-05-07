@@ -155,7 +155,7 @@ export default function SeatMapPanel({
                     <AlertTriangle className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Seat map not available</p>
+                    <p className="text-sm font-normal text-slate-700 dark:text-slate-300">Seat map not available</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         {error
                             ? `Could not load seat map: ${error}`
@@ -180,7 +180,7 @@ export default function SeatMapPanel({
                             style={{ width: `${(totalSelected / totalRequired) * 100}%` }}
                         />
                     </div>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 shrink-0 tabular-nums">
+                    <span className="text-[9px] text-slate-500 dark:text-slate-400 shrink-0 tabular-nums">
                         {totalSelected}/{totalRequired} seats
                     </span>
                 </div>
@@ -200,7 +200,7 @@ export default function SeatMapPanel({
                                 type="button"
                                 onClick={() => { setActiveSegment(i); setActivePassenger(0); }}
                                 className={cn(
-                                    'flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg whitespace-nowrap border transition-colors shrink-0',
+                                    'flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-md whitespace-nowrap border transition-colors shrink-0',
                                     activeSegment === i
                                         ? 'bg-indigo-600 text-white border-indigo-600'
                                         : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-400'
@@ -226,7 +226,7 @@ export default function SeatMapPanel({
                                 type="button"
                                 onClick={() => setActivePassenger(i)}
                                 className={cn(
-                                    'flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg whitespace-nowrap border transition-colors shrink-0',
+                                    'flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-md whitespace-nowrap border transition-colors shrink-0',
                                     activePassenger === i
                                         ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
                                         : chosen
@@ -236,7 +236,7 @@ export default function SeatMapPanel({
                             >
                                 {label.split(' ').slice(0, 2).join(' ')}
                                 {chosen
-                                    ? <span className="ml-1 font-bold">{chosen.designator}</span>
+                                    ? <span className="ml-1 font-normal">{chosen.designator}</span>
                                     : <span className="ml-1 text-slate-300 dark:text-slate-600">—</span>
                                 }
                             </button>
@@ -247,15 +247,15 @@ export default function SeatMapPanel({
 
             {/* Current selection hint */}
             {passengerCount === 1 ? (
-                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                <p className="text-[9px] text-slate-500 dark:text-slate-400">
                     {getSelected(activeSegment, 0)
                         ? `Seat ${getSelected(activeSegment, 0)!.designator} selected`
                         : 'Tap a seat to select it'}
                 </p>
             ) : (
-                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                <p className="text-[9px] text-slate-500 dark:text-slate-400">
                     Selecting for{' '}
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    <span className="font-normal text-slate-700 dark:text-slate-300">
                         {passengerLabels[activePassenger]?.split(' ').slice(0, 2).join(' ')}
                     </span>
                     {getSelected(activeSegment, activePassenger)
@@ -274,7 +274,7 @@ export default function SeatMapPanel({
             />
 
             {/* Legend */}
-            <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-[10px] text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-[9px] text-slate-500 dark:text-slate-400">
                 <LegendItem color="bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700" label="Free" />
                 <LegendItem color="bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700" label="Paid" />
                 <LegendItem color="bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 opacity-60" label="Taken" />
@@ -286,9 +286,9 @@ export default function SeatMapPanel({
             {/* Seat cost summary + Done/Skip */}
             <div className="flex items-center gap-2">
                 {totalSeatCost > 0 && (
-                    <div className="flex-1 flex items-center justify-between text-xs bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg px-3 py-2">
-                        <span className="text-indigo-700 dark:text-indigo-300 font-medium">Seat upgrade</span>
-                        <span className="font-bold text-indigo-700 dark:text-indigo-300">
+                    <div className="flex-1 flex items-center justify-between text-[11px] bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-md px-3 py-2">
+                        <span className="text-indigo-700 dark:text-indigo-300 font-normal">Seat upgrade</span>
+                        <span className="font-normal text-indigo-700 dark:text-indigo-300">
                             +{new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(totalSeatCost)}
                         </span>
                     </div>
@@ -298,7 +298,7 @@ export default function SeatMapPanel({
                         <button
                             type="button"
                             onClick={() => onSeatsChange([])}
-                            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                            className="flex items-center gap-1 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                         >
                             <X className="w-3 h-3" />
                             Clear
@@ -309,7 +309,7 @@ export default function SeatMapPanel({
                             type="button"
                             onClick={onDone}
                             className={cn(
-                                'flex items-center gap-1.5 px-4 py-2 rounded-lg text-[11px] font-semibold transition-colors',
+                                'flex items-center gap-1.5 px-4 py-2 rounded-md text-[10px] font-normal transition-colors',
                                 allSeatsChosen
                                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700',
@@ -338,12 +338,12 @@ interface CabinGridProps {
 
 function CabinGrid({ map, passengerIndex, segmentIndex, selectedSeats, onSeatClick }: CabinGridProps) {
     return (
-        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 overflow-auto max-h-[380px]">
+        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-md border border-slate-200 dark:border-slate-700 overflow-auto max-h-[380px]">
             {/* Cabin class label + column headers */}
             <div className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 {map.cabinClass && (
                     <div className="px-3 pt-1.5 pb-0.5">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        <span className="text-[8px] font-normal uppercase tracking-widest text-slate-400 dark:text-slate-500">
                             {map.cabinClass.replace(/_/g, ' ')}
                         </span>
                     </div>
@@ -356,7 +356,7 @@ function CabinGrid({ map, passengerIndex, segmentIndex, selectedSeats, onSeatCli
                                 {si > 0 && <span className="w-4 shrink-0" />}
                                 <div className="flex gap-1">
                                     {section.map(col => (
-                                        <span key={col} className="w-7 text-center text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                        <span key={col} className="w-7 text-center text-[9px] font-normal text-slate-500 dark:text-slate-400">
                                             {col}
                                         </span>
                                     ))}
@@ -372,7 +372,7 @@ function CabinGrid({ map, passengerIndex, segmentIndex, selectedSeats, onSeatCli
                 {map.rows.map(row => (
                     <div key={row.rowNumber} className="flex items-center gap-3">
                         {/* Row number */}
-                        <span className="w-7 shrink-0 text-right text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                        <span className="w-7 shrink-0 text-right text-[9px] text-slate-400 dark:text-slate-500 font-mono">
                             {row.rowNumber}
                         </span>
 
@@ -442,7 +442,7 @@ function SeatButton({ seat, passengerIndex, segmentIndex, selectedSeats, onClick
             disabled={isOccupied || !isAvailable}
             onClick={onClick}
             className={cn(
-                'w-7 h-7 shrink-0 rounded text-[9px] font-bold border transition-all',
+                'w-7 h-7 shrink-0 rounded text-[9px] font-normal border transition-all',
                 isSelected
                     ? 'bg-indigo-500 border-indigo-500 text-white shadow-sm scale-110'
                     : isOccupied

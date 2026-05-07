@@ -69,17 +69,17 @@ export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
     if (!loading && !error && fareRules.length === 0) return null;
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 lg:mb-6 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 mb-3 lg:mb-6 shadow-sm overflow-hidden">
             {/* Header — always visible */}
             <button
                 onClick={() => setExpanded(v => !v)}
                 className="w-full flex items-center justify-between px-3 lg:px-5 py-3 lg:py-4 text-left"
             >
-                <span className="flex items-center gap-1.5 text-xs lg:text-sm font-semibold text-slate-900 dark:text-white">
+                <span className="flex items-center gap-1.5 text-[11px] lg:text-xs font-normal text-slate-900 dark:text-white">
                     <FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                     Fare Rules
                     {!loading && fareRules.length > 0 && (
-                        <span className="ml-1.5 text-[10px] lg:text-xs font-normal text-slate-400 dark:text-slate-500">
+                        <span className="ml-1.5 text-[9px] lg:text-[11px] font-normal text-slate-400 dark:text-slate-500">
                             ({fareRules.length} {fareRules.length === 1 ? 'rule' : 'rules'})
                         </span>
                     )}
@@ -109,12 +109,12 @@ export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
                         const isOpen = openCategories.has(i);
 
                         return (
-                            <div key={i} className="rounded-lg border border-slate-100 dark:border-slate-800 overflow-hidden">
+                            <div key={i} className="rounded-md border border-slate-100 dark:border-slate-800 overflow-hidden">
                                 <button
                                     onClick={() => toggleCategory(i)}
                                     className="w-full flex items-center justify-between px-3 py-2 text-left bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                                 >
-                                    <span className="text-[11px] lg:text-xs font-medium text-slate-700 dark:text-slate-300 truncate pr-2">
+                                    <span className="text-[10px] lg:text-[11px] font-normal text-slate-700 dark:text-slate-300 truncate pr-2">
                                         {groupTitle}
                                     </span>
                                     {isOpen
@@ -132,21 +132,21 @@ export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
                                             return (
                                                 <div key={j} className="px-3 py-2 space-y-1">
                                                     {d.Category && (
-                                                        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{d.Category}</p>
+                                                        <p className="text-[9px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wide">{d.Category}</p>
                                                     )}
                                                     {fcaUrl && (
                                                         <a href={fcaUrl} target="_blank" rel="noopener noreferrer"
-                                                            className="text-[10px] lg:text-xs text-indigo-600 dark:text-indigo-400 underline underline-offset-2 block">
+                                                            className="text-[9px] lg:text-[11px] text-indigo-600 dark:text-indigo-400 underline underline-offset-2 block">
                                                             View fare rules on airline website →
                                                         </a>
                                                     )}
                                                     {body && (
-                                                        <p className="text-[10px] lg:text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
+                                                        <p className="text-[9px] lg:text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
                                                             {body}
                                                         </p>
                                                     )}
                                                     {!body && !fcaUrl && (
-                                                        <p className="text-[10px] lg:text-xs text-slate-400 italic">No rule text provided by airline.</p>
+                                                        <p className="text-[9px] lg:text-[11px] text-slate-400 italic">No rule text provided by airline.</p>
                                                     )}
                                                 </div>
                                             );

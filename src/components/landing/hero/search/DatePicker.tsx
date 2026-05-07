@@ -118,13 +118,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                         type="button"
                         disabled={isPast || isToday}
                         onClick={() => handleDateClick(date)}
-                        className={`${inline ? "w-full aspect-square" : "size-[42px] mx-auto my-0.5"} flex items-center justify-center ${inline ? "text-[9px]" : "text-base"} font-medium rounded-full transition-all 
+                        className={`${inline ? "w-full aspect-square" : "size-[42px] mx-auto my-0.5"} flex items-center justify-center ${inline ? "text-[9px]" : "text-base"} font-bold rounded-xl transition-all 
                             ${isPast || isToday ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer'}
-                            ${isCheckIn || isCheckOut ? 'bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian shadow-lg' : ''}
-                            ${isInRange ? 'bg-alabaster-accent/10 dark:bg-obsidian-accent/10' : ''}
+                            ${isCheckIn || isCheckOut ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 z-10' : ''}
+                            ${isInRange ? 'bg-blue-50/50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' : ''}
                             ${!isPast && !isCheckIn && !isCheckOut && !isInRange ? 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300' : ''}
-                            ${isToday && !isCheckIn && !isCheckOut ? 'ring-1 ring-alabaster-accent dark:ring-obsidian-accent' : ''}
-                            ${isPast && !isCheckIn && !isCheckOut ? 'line-through decoration-slate-400/30' : ''}
+                            ${isToday && !isCheckIn && !isCheckOut ? 'ring-1 ring-blue-500/30' : ''}
                         `}
                     >
                         {day}
@@ -169,7 +168,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                     transition={{ duration: 0.2 }}
                     className={inline
                         ? "w-full z-10"
-                        : "absolute top-full left-0 mt-4 w-[740px] min-w-[740px] max-w-[740px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"}
+                        : "absolute top-full left-0 mt-4 w-[740px] min-w-[740px] max-w-[740px] bg-white dark:bg-obsidian shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"}
                         onClick={(e) => e.stopPropagation()}
                 >
 
@@ -324,7 +323,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
                         <div className="flex justify-end p-4">
                             <button
                                 onClick={onClose}
-                                className="px-8 py-2.5 bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian rounded-full font-bold text-sm hover:opacity-90 transition-all shadow-lg"
+                                className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg"
                             >
                                 Done
                             </button>

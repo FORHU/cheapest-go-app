@@ -45,10 +45,10 @@ function ConditionRow({ label, cond, currency }: { label: string; cond: DuffelCo
 
     return (
         <div className="flex items-center justify-between gap-3 py-1.5">
-            <span className="text-xs text-slate-600 dark:text-slate-400">{label}</span>
+            <span className="text-[11px] text-slate-600 dark:text-slate-400">{label}</span>
             <div className="flex items-center gap-1.5 shrink-0">
                 <Icon className={cn('w-3.5 h-3.5', color)} />
-                <span className={cn('text-xs font-medium', color)}>
+                <span className={cn('text-[11px] font-normal', color)}>
                     {penaltyLabel(cond, currency)}
                 </span>
             </div>
@@ -75,20 +75,20 @@ export default function DuffelFareConditions({ rawOffer, currency = 'USD' }: Duf
     const isNonRefundable = !refundBefore?.allowed;
 
     return (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
             <button
                 type="button"
                 onClick={() => setOpen(o => !o)}
                 className="w-full flex items-center justify-between px-3.5 py-3 text-left"
             >
                 <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-semibold text-slate-800 dark:text-slate-200">Fare Conditions</span>
+                    <span className="text-[11px] font-normal text-slate-800 dark:text-slate-200">Fare Conditions</span>
                     {isFullyRefundable ? (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-medium">Fully refundable</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-normal">Fully refundable</span>
                     ) : isNonRefundable ? (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-medium">Non-refundable</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-normal">Non-refundable</span>
                     ) : (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-medium">Partial refund</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-normal">Partial refund</span>
                     )}
                 </div>
                 {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
@@ -100,7 +100,7 @@ export default function DuffelFareConditions({ rawOffer, currency = 'USD' }: Duf
                     <ConditionRow label="Change after departure" cond={conds.change_after_departure} currency={offerCurrency} />
                     <ConditionRow label="Refund before departure" cond={conds.refund_before_departure} currency={offerCurrency} />
                     <ConditionRow label="Refund after departure" cond={conds.refund_after_departure} currency={offerCurrency} />
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-2">
+                    <p className="text-[9px] text-slate-400 dark:text-slate-500 pt-2">
                         Conditions are per passenger and subject to airline policy. Penalties apply per ticket.
                     </p>
                 </div>

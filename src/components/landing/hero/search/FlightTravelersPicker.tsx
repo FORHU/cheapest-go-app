@@ -131,7 +131,7 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="relative sm:absolute top-0 sm:top-full left-0 sm:left-auto sm:right-0 sm:mt-4 w-full sm:w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 z-[100]"
+                        className="relative sm:absolute top-0 sm:top-full left-0 sm:left-auto sm:right-0 sm:mt-4 w-full sm:w-[500px] bg-white dark:bg-obsidian shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 z-[100]"
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}

@@ -180,8 +180,14 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                     )}
 
                     <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-                        {/* Currency Selector (Mobile) */}
-                        <CurrencySelector variant="pill" align="right" className="sm:hidden" />
+                        {/* Show List Button (Desktop) */}
+                        <button
+                            onClick={handleBackToList}
+                            className="hidden lg:flex items-center gap-1.5 px-3 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold transition-all active:scale-95"
+                        >
+                            <List size={14} strokeWidth={2.5} />
+                            Show List
+                        </button>
 
                         {/* Sort */}
                         <DropdownMenu>
@@ -260,14 +266,6 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                         {mappableProperties.length} properties
                     </div>
 
-                    {/* Floating List View Toggle */}
-                    <button
-                        onClick={handleBackToList}
-                        className="absolute bottom-6 right-20 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-[14px] font-bold z-50 pointer-events-auto"
-                    >
-                        <List size={16} strokeWidth={2.5} />
-                        Show List
-                    </button>
                 </div>
             </div>
 
@@ -300,7 +298,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                                     setShowMobileMap(false);
                                 }
                             }}
-                            className="absolute bottom-2 left-0 right-0 w-full z-20"
+                            className="absolute bottom-24 left-0 right-0 w-full z-20"
                         >
                             <div className="w-full overflow-x-auto pb-2 pt-2 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                 {sortedProperties.map((property) => (
@@ -346,7 +344,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                 {/* Floating List Button (Repositioned to left, above cards) */}
                 <div className={cn(
                     "absolute left-4 z-50 transition-all duration-300",
-                    showMobileMap ? "bottom-[115px]" : "bottom-[40px]",
+                    showMobileMap ? "bottom-[160px]" : "bottom-[40px]",
                     "landscape:bottom-[100px] landscape:left-2"
                 )}>
                     <button
