@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useSearchStore, FlightState, FlightSegment } from '@/stores/searchStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -48,9 +48,60 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
     } = useSearchStore();
 
     // Sync URL params to store on mount
+    const hasSynced = useRef(false);
+
     useEffect(() => {
-        // Future: parse flight params from URL for shared search links
-    }, [searchParams]);
+        if (hasSynced.current) return;
+        if (!searchParams.get('mode') || searchParams.get('mode') !== 'flights') return;
+
+        hasSynced.current = true;
+
+        const tripType = searchParams.get('tripType') as any;
+        if (tripType) setFlightType(tripType);
+
+        const cabin = searchParams.get('cabin') as any;
+        if (cabin) setFlightCabin(cabin);
+
+        const adults = parseInt(searchParams.get('adults') || '1');
+        const children = parseInt(searchParams.get('children') || '0');
+        const infants = parseInt(searchParams.get('infants') || '0');
+        setFlightPassengers({ adults, children, infants });
+
+        // Parse segments
+        for (let i = 0; i < 4; i++) {
+            const originCode = searchParams.get(`origin${i}`);
+            const originName = searchParams.get(`originName${i}`);
+            const destCode = searchParams.get(`dest${i}`);
+            const destName = searchParams.get(`destName${i}`);
+            const dateStr = searchParams.get(`date${i}`);
+
+            if (originCode || destCode || dateStr) {
+                const segment: any = {};
+                if (originCode) {
+                    segment.origin = {
+                        type: 'airport',
+                        code: originCode,
+                        title: originName || originCode,
+                        subtitle: '',
+                        id: originCode
+                    };
+                }
+                if (destCode) {
+                    segment.destination = {
+                        type: 'airport',
+                        code: destCode,
+                        title: destName || destCode,
+                        subtitle: '',
+                        id: destCode
+                    };
+                }
+                if (dateStr) {
+                    try { segment.date = new Date(dateStr); } catch (e) {}
+                }
+                setFlightSegment(i, segment);
+            }
+        }
+    }, [searchParams, setFlightType, setFlightCabin, setFlightPassengers, setFlightSegment]);
 
     const handleFlightSearch = useCallback(() => {
         const state = useSearchStore.getState();
@@ -106,7 +157,16 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
             if (segment.origin?.title) params.set(`originName${index}`, segment.origin.title);
             if (segment.destination?.code) params.set(`dest${index}`, segment.destination.code);
             if (segment.destination?.title) params.set(`destName${index}`, segment.destination.title);
-            params.set(`date${index}`, segment.date ? segment.date.toISOString() : '');
+            
+            // Safe date serialization
+            let dateStr = '';
+            if (segment.date) {
+                const dateObj = segment.date instanceof Date ? segment.date : new Date(segment.date);
+                if (!isNaN(dateObj.getTime())) {
+                    dateStr = dateObj.toISOString();
+                }
+            }
+            params.set(`date${index}`, dateStr);
         });
 
         // ─── Navigate to results page ────────────────────────────

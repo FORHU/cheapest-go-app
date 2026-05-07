@@ -127,63 +127,14 @@ export function safeJsonParse<T>(json: string, fallback: T): T {
     }
 }
 
-// ============================================================================
-// Slug utilities
-// ============================================================================
-
-/** Convert any string to a URL-safe slug (lowercase, hyphens, no special chars). */
-export function slugify(text: string): string {
-    return text
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '') // strip accents
-        .replace(/[^a-z0-9\s-]/g, '')    // remove non-alphanumeric
-        .trim()
-        .replace(/\s+/g, '-')            // spaces → hyphens
-        .replace(/-+/g, '-');            // collapse multiple hyphens
-}
-
 /**
- * Build a property slug that embeds the hotel ID so no DB lookup is needed.
- * Format: `{name-slug}--{id}`
- * The `--` double-dash is the separator (hotel names never contain double dashes).
+ * Convert raw status strings (e.g., 'refund_pending') to human-readable format ('Refund Pending')
  */
-export function buildPropertySlug(name: string, id: string): string {
-    return `${slugify(name)}--${id}`;
-}
-
-/**
- * Parse a property slug back into its components.
- * Works on both new slugs (`grand-hyatt-bangkok--H123`) and bare IDs (`H123`).
- */
-export function parsePropertySlug(slug: string): { id: string; nameSlug: string | null } {
-    const sep = slug.lastIndexOf('--');
-    if (sep === -1) return { id: slug, nameSlug: null };
-    return { id: slug.slice(sep + 2), nameSlug: slug.slice(0, sep) };
-}
-
-/**
- * Build a flight route slug from two IATA codes.
- * Format: `mnl-to-sin`
- */
-export function buildFlightSlug(origin: string, destination: string): string {
-    return `${origin.toLowerCase()}-to-${destination.toLowerCase()}`;
-}
-
-/**
- * Parse a flight route slug back into IATA codes.
- * Returns null if the slug doesn't match the pattern.
- */
-export function parseFlightSlug(slug: string): { origin: string; destination: string } | null {
-    const match = slug.match(/^([a-z]{3})-to-([a-z]{3})$/);
-    if (!match) return null;
-    return { origin: match[1].toUpperCase(), destination: match[2].toUpperCase() };
-}
-
-/**
- * Build a destination slug from a city (and optional country).
- * Format: `bangkok` or `bangkok-thailand`
- */
-export function buildDestinationSlug(city: string, country?: string): string {
-    return country ? slugify(`${city} ${country}`) : slugify(city);
+export function formatStatus(status: string): string {
+    if (!status) return '';
+    return status
+        .replace(/_/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
 }

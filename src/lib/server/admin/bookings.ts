@@ -2,6 +2,7 @@ import { createAdminClient } from '@/utils/supabase/admin';
 import { Booking } from '@/types/admin';
 import { checkRefundability } from './recovery';
 import { enrichBookingFinances } from '@/lib/pricing';
+import { EXCHANGE_RATES } from '@/lib/currency';
 
 export interface BookingsListParams {
     page?: number;
@@ -19,6 +20,12 @@ export interface PaginatedBookings {
     page: number;
     pageSize: number;
     totalPages: number;
+    stats: {
+        totalRevenue: number;
+        totalProfit: number;
+        totalMarkup: number;
+        totalStripeFees: number;
+    };
 }
 
 export async function getBookingsList(params: BookingsListParams = {}): Promise<PaginatedBookings> {
@@ -225,9 +232,41 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
         allBookings = allBookings.filter(b => b.paymentStatus.toLowerCase() === paymentStatus.toLowerCase());
     }
 
-    // 8. Final Sort and Paginate
+    // 8. Final Sort, Aggregate Stats, and Paginate
     const total = allBookings.length;
     const sorted = allBookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // ── Revenue stats: use RPC for the total (avoids 1000-row limit) ─────────
+    // The JS-side loop below is only used as a fallback if the RPC fails.
+    const phpRate = 1 / EXCHANGE_RATES['PHP'];
+    const { data: rpcStats, error: rpcError } = await supabase.rpc('get_revenue_stats', { php_rate: phpRate });
+
+    let stats: { totalRevenue: number; totalProfit: number; totalMarkup: number; totalStripeFees: number };
+
+    if (rpcStats && !rpcError) {
+        // ✅ Use RPC — consistent with dashboard, no row-limit risk
+        stats = {
+            totalRevenue:    rpcStats.totalRevenue,
+            totalProfit:     rpcStats.totalProfit,
+            totalMarkup:     rpcStats.totalMarkup,
+            totalStripeFees: 0, // not tracked in RPC (Stripe fees calculated client-side)
+        };
+    } else {
+        // ⚠️ Fallback: JS-side sum from paginated set (may be incomplete)
+        console.warn('[getBookingsList] RPC failed, falling back to JS-side stats:', rpcError?.message);
+        stats = sorted.reduce((acc, b) => {
+            const isSuccessful = ['confirmed', 'ticketed', 'booked', 'awaiting_ticket'].includes(b.status);
+            if (isSuccessful) {
+                const rate = b.currency === 'USD' ? phpRate : 1;
+                acc.totalRevenue    += b.totalAmount  * rate;
+                acc.totalProfit     += b.profit        * rate;
+                acc.totalMarkup     += b.markupAmount  * rate;
+                acc.totalStripeFees += ((b as any).stripeFee || 0) * rate;
+            }
+            return acc;
+        }, { totalRevenue: 0, totalProfit: 0, totalMarkup: 0, totalStripeFees: 0 });
+    }
+
     const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
 
     return {
@@ -235,6 +274,8 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
         total,
         page,
         pageSize,
-        totalPages: Math.ceil(total / pageSize)
+        totalPages: Math.ceil(total / pageSize),
+        stats,
     };
+
 }

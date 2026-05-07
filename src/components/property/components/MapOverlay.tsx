@@ -30,6 +30,7 @@ interface MapOverlayProps {
     isFetchingOriginRoute: boolean;
     poiTravelTime: number | null;
     poiWalkingTime: number | null;
+    poiCyclingTime: number | null;
     weather: any;
     isWeatherLoading: boolean;
     refetchWeather: () => void;
@@ -40,7 +41,11 @@ interface MapOverlayProps {
     propertyName: string;
     hotelName: string;
     coordinates: { lat: number; lng: number } | undefined;
+    setIsFullscreen: (full: boolean | ((f: boolean) => boolean)) => void;
+    handleRecenter: () => void;
 }
+
+import { Maximize, Minimize } from 'lucide-react';
 
 export const MapOverlay: React.FC<MapOverlayProps> = ({
     isFullscreen,
@@ -68,6 +73,7 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
     isFetchingOriginRoute,
     poiTravelTime,
     poiWalkingTime,
+    poiCyclingTime,
     weather,
     isWeatherLoading,
     refetchWeather,
@@ -77,7 +83,9 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
     selectedNativePoi,
     propertyName,
     hotelName,
-    coordinates
+    coordinates,
+    setIsFullscreen,
+    handleRecenter
 }) => {
     return (
         <>
@@ -192,32 +200,52 @@ export const MapOverlay: React.FC<MapOverlayProps> = ({
                         <span className="text-[10px] font-semibold text-slate-700">Layers</span>
                     </button>
                 )}
-            </div>
 
-            {displayInfo && !showDirections && (
-                <div className="absolute top-20 left-4 sm:top-24 sm:left-6 z-10 w-[140px] sm:w-[180px] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700">
-                    <div className="p-2 sm:p-3 relative">
-                        <button onClick={() => { setActivePoiId(null); setSelectedNativePoi(null); }} className="absolute top-1 right-1 p-1 text-slate-400"><X size={14} /></button>
-                        <div className="mt-1 space-y-1">
-                            <h3 className="font-bold text-slate-900 dark:text-white text-[10px] sm:text-xs leading-tight">{displayInfo.name}</h3>
-                            <p className="text-[9px] sm:text-[10px] text-slate-500">{displayInfo.address}</p>
-                            {displayInfo.distance > 0 && <p className="text-[9px] text-slate-600 font-medium">{displayInfo.distance.toFixed(2)} km away</p>}
-                            
-                            {(poiTravelTime !== null || poiWalkingTime !== null) && (
-                                <div className="flex flex-wrap gap-1.5 pt-1">
-                                    {poiTravelTime !== null && <div className="flex items-center gap-1 text-blue-600 text-[9px] font-bold"><Car size={10} />{formatDuration(poiTravelTime)}</div>}
-                                    {poiWalkingTime !== null && <div className="flex items-center gap-1 text-emerald-600 text-[9px] font-bold"><Footprints size={10} />{formatDuration(poiWalkingTime)}</div>}
-                                </div>
-                            )}
-
-                            <div className="pt-2 flex flex-col gap-1">
-                                <a href={`${GOOGLE_MAPS_SEARCH_URL}&query=${encodeURIComponent(displayInfo.name)}`} target="_blank" className="text-[9px] font-bold text-blue-600 flex items-center gap-1">View on Maps <ChevronRight size={8} /></a>
-                                {displayInfo.name !== hotelName && (
-                                    <button onClick={() => setModalPoiId(displayInfo.name)} className="w-full py-1 bg-slate-100 rounded text-[9px] font-bold text-slate-700 flex items-center justify-center gap-1">Details <Star size={8} /></button>
+                {displayInfo && !showDirections && (
+                    <div className="z-10 w-[140px] sm:w-[180px] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="p-2 sm:p-3 relative">
+                            <button onClick={() => { setActivePoiId(null); setSelectedNativePoi(null); }} className="absolute top-1 right-1 p-1 text-slate-400 hover:text-slate-600 transition-colors"><X size={14} /></button>
+                            <div className="mt-1 space-y-1">
+                                <h3 className="font-bold text-slate-900 dark:text-white text-[10px] sm:text-xs leading-tight">{displayInfo.name}</h3>
+                                <p className="text-[9px] sm:text-[10px] text-slate-500">{displayInfo.address}</p>
+                                {displayInfo.distance > 0 && <p className="text-[9px] text-slate-600 font-medium">{displayInfo.distance.toFixed(2)} km away</p>}
+                                
+                                {(poiTravelTime !== null || poiWalkingTime !== null || poiCyclingTime !== null) && (
+                                    <div className="flex flex-wrap gap-1.5 pt-1">
+                                        {poiTravelTime !== null && <div className="flex items-center gap-1 text-blue-600 text-[9px] font-bold"><Car size={10} />{formatDuration(poiTravelTime)}</div>}
+                                        {poiCyclingTime !== null && <div className="flex items-center gap-1 text-purple-600 text-[9px] font-bold"><Bike size={10} />{formatDuration(poiCyclingTime)}</div>}
+                                        {poiWalkingTime !== null && <div className="flex items-center gap-1 text-emerald-600 text-[9px] font-bold"><Footprints size={10} />{formatDuration(poiWalkingTime)}</div>}
+                                    </div>
                                 )}
+
+                                <div className="pt-2 flex flex-col gap-1">
+                                    <a href={`${GOOGLE_MAPS_SEARCH_URL}&query=${encodeURIComponent(displayInfo.name)}`} target="_blank" className="text-[9px] font-bold text-blue-600 flex items-center gap-1 hover:underline">View on Maps <ChevronRight size={8} /></a>
+                                    {displayInfo.name !== hotelName && (
+                                        <button onClick={() => setModalPoiId(displayInfo.name)} className="w-full py-1 bg-slate-100 dark:bg-slate-800 rounded text-[9px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-1">Details <Star size={8} /></button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
+                )}
+            </div>
+
+            {!isFullscreen && (
+                <div className="absolute bottom-[10px] right-[33px] z-40 flex flex-row gap-1.5 transition-all duration-300">
+                    <button
+                        onClick={() => setIsFullscreen(f => !f)}
+                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-700 dark:text-slate-300 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center group"
+                        title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                    >
+                        {isFullscreen ? <Minimize size={14} className="group-hover:scale-110 transition-transform" /> : <Maximize size={14} className="group-hover:scale-110 transition-transform" />}
+                    </button>
+                    <button
+                        onClick={handleRecenter}
+                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-blue-600 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center group"
+                        title="Recenter Map"
+                    >
+                        <Navigation size={14} fill="currentColor" className="group-hover:scale-110 transition-transform" />
+                    </button>
                 </div>
             )}
         </>

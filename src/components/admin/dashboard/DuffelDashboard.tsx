@@ -1,9 +1,3 @@
-
-
-
-
-
-
 "use client";
 
 import React, { useMemo, memo } from 'react';
@@ -53,7 +47,7 @@ const MiniStat = memo(({ icon: Icon, label, value, iconCls }: {
             </div>
             <div className="min-w-0">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-                <p className="text-sm font-black text-slate-900 dark:text-white truncate">{value ?? '—'}</p>
+                <p suppressHydrationWarning className="text-sm font-black text-slate-900 dark:text-white truncate">{value ?? '—'}</p>
             </div>
         </div>
     );
@@ -138,7 +132,7 @@ const MiniOrders = memo(({ orders }: { orders: DuffelOrder[] }) => {
                                 </td>
                                 <td className="py-2.5 pr-3"><span className="font-bold text-slate-800 dark:text-slate-100 text-[11px] whitespace-nowrap">{o.passengerName}</span></td>
                                 <td className="py-2.5 pr-3"><span className="text-[11px] font-black text-slate-700 dark:text-slate-200 whitespace-nowrap">{o.origin} → {o.destination}</span></td>
-                                <td className="py-2.5 pr-3"><span className="font-black text-[11px] text-slate-900 dark:text-white whitespace-nowrap">{amt}</span></td>
+                                <td className="py-2.5 pr-3"><span suppressHydrationWarning className="font-black text-[11px] text-slate-900 dark:text-white whitespace-nowrap">{amt}</span></td>
                                 <td className="py-2.5"><OrderStatusBadge status={o.status} /></td>
                             </motion.tr>
                         );
@@ -218,23 +212,21 @@ export function DuffelDashboard({ data }: DuffelDashboardProps) {
 
                     {/* Two-column: top routes + recent orders */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-xl p-5 shadow-sm">
+                        <div className="flex flex-col">
                             <div className="flex items-center gap-2 mb-4">
                                 <MapPin size={13} className="text-blue-500" />
                                 <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Top Routes</h4>
                             </div>
                             <MiniRoutes routes={data.topRoutesByVolume} />
-                        </motion.div>
+                        </div>
 
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-                            className="lg:col-span-2 bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-xl p-5 shadow-sm">
+                        <div className="lg:col-span-2 flex flex-col">
                             <div className="flex items-center gap-2 mb-4">
                                 <Plane size={13} className="text-blue-500" />
                                 <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Recent Orders</h4>
                             </div>
                             <MiniOrders orders={data.recentOrders} />
-                        </motion.div>
+                        </div>
                     </div>
                 </>
             )}

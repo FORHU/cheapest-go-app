@@ -18,7 +18,7 @@ import {
     DialogTitle,
     Input,
 } from '@/components/ui';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatCurrency, formatDate, cn, formatStatus } from '@/lib/utils';
 import { TabList } from '@/components/ui/TabList';
 import { Booking, BookingRawData, RecoveryActionResult } from '@/types/admin';
 import { toast } from 'sonner';
@@ -316,14 +316,14 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                             <InfoItem label="Customer" value={booking.customerName} />
                             <InfoItem label="Email Address" value={booking.email || '—'} />
                             <InfoItem label="Total Amount" value={formatCurrency(booking.totalAmount, booking.currency)} className="text-blue-600 dark:text-blue-400 font-bold" />
-                            <InfoItem label="Payment Provider" value={booking.supplier.toLowerCase()} className="capitalize" />
-                            <InfoItem label="Booking Type" value={booking.type.toLowerCase()} className="capitalize" />
+                            <InfoItem label="Payment Provider" value={formatStatus(booking.supplier)} />
+                            <InfoItem label="Booking Type" value={formatStatus(booking.type)} />
                             <InfoItem label="Creation Date" value={formatDate(booking.createdAt)} />
 
                             <div className="space-y-1.5">
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400/80">Current Status</span>
                                 <div>
-                                    <Badge className={`font-bold capitalize text-[10px] px-3 py-1 rounded-lg border-none ${booking.status.toLowerCase().includes('confirm') || booking.status.toLowerCase().includes('ticket')
+                                    <Badge className={`w-32 justify-center text-center whitespace-nowrap font-bold text-[10px] px-3 py-1 rounded-lg border-none ${booking.status.toLowerCase().includes('confirm') || booking.status.toLowerCase().includes('ticket')
                                         ? 'bg-blue-500/10 text-blue-600'
                                         : booking.status.toLowerCase().includes('pend')
                                             ? 'bg-amber-500/10 text-amber-600'
@@ -331,7 +331,7 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                                                 ? 'bg-violet-500/10 text-violet-600'
                                                 : 'bg-rose-500/10 text-rose-600'
                                         }`}>
-                                        {booking.status.toLowerCase().replace(/_/g, ' ')}
+                                        {formatStatus(booking.status)}
                                     </Badge>
                                 </div>
                             </div>

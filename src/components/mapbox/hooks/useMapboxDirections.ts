@@ -47,25 +47,36 @@ export function useMapboxDirections({
             setError(null);
 
             try {
-                // Fetch ONLY the requested profile geometry and duration
-                const res = await fetch(
-                    `https://api.mapbox.com/directions/v5/mapbox/${profile}/${orgLng},${orgLat};${destLng},${destLat}?geometries=geojson&overview=full&steps=true&access_token=${env.MAPBOX_TOKEN}`
-                );
+                const drivingProfile = profile === 'driving-traffic' ? 'driving-traffic' : 'driving';
+                const profilesToFetch = Array.from(new Set([profile, drivingProfile, 'walking', 'cycling']));
 
-                if (!res.ok) throw new Error('Failed to fetch directions');
+                const fetchProfile = async (p: string) => {
+                    const withGeom = p === profile;
+                    const url = `https://api.mapbox.com/directions/v5/mapbox/${p}/${orgLng},${orgLat};${destLng},${destLat}?` +
+                        (withGeom ? `geometries=geojson&overview=full&steps=true` : `overview=false&steps=false`) +
+                        `&access_token=${env.MAPBOX_TOKEN}`;
+                    const res = await fetch(url);
+                    if (!res.ok) return null;
+                    const data = await res.json();
+                    if (data.code === 'Ok' && data.routes?.[0]) {
+                        return { profile: p, route: data.routes[0], withGeom };
+                    }
+                    return null;
+                };
 
-                const data = await res.json();
+                const results = await Promise.all(profilesToFetch.map(fetchProfile));
 
-                if (data.code === 'Ok' && data.routes?.[0]) {
-                    const route = data.routes[0];
-                    setRouteGeometry(route.geometry);
-                    
-                    // Map the duration to the appropriate state field
-                    const mins = Math.round(route.duration / 60);
-                    if (profile.includes('driving')) setTravelTime(mins);
-                    else if (profile === 'walking') setWalkingTime(mins);
-                    else if (profile === 'cycling') setCyclingTime(mins);
-                }
+                results.forEach(res => {
+                    if (!res) return;
+                    const mins = Math.round(res.route.duration / 60);
+                    if (res.profile.includes('driving')) setTravelTime(mins);
+                    else if (res.profile === 'walking') setWalkingTime(mins);
+                    else if (res.profile === 'cycling') setCyclingTime(mins);
+
+                    if (res.withGeom) {
+                        setRouteGeometry(res.route.geometry);
+                    }
+                });
             } catch (err) {
                 console.error('Mapbox Directions error:', err);
                 setError(err instanceof Error ? err : new Error(String(err)));

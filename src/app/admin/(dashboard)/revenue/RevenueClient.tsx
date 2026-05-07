@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useTransition, useMemo } from 'react';
-import { HeaderTitle } from '@/components/admin/HeaderTitle';
+
+import { StatCard } from '@/components/admin/StatCard';
 import {
     Search, SlidersHorizontal, ArrowUpDown, ChevronDown, CheckCircle2,
     XCircle, Filter, Download, LayoutDashboard, ArrowUpRight,
@@ -19,7 +20,7 @@ import {
     Input,
 } from '@/components/ui';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatCurrency, formatDate, cn, formatStatus } from '@/lib/utils';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { PaginatedBookings } from '@/lib/server/admin';
 import { Booking } from '@/types/admin';
@@ -45,6 +46,12 @@ interface RevenueClientProps {
         page: number;
         pageSize: number;
         totalPages: number;
+        stats: {
+            totalRevenue: number;
+            totalProfit: number;
+            totalMarkup: number;
+            totalStripeFees: number;
+        };
     };
     searchParams: {
         page: number;
@@ -56,27 +63,7 @@ interface RevenueClientProps {
     defaultCurrency?: string;
 }
 
-const StatCard = ({ title, value, icon: Icon, trend, color, subtitle }: any) => (
-    <div className="bg-white dark:bg-obsidian rounded-2xl p-6 border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
-        <div className={`absolute top-0 right-0 w-24 h-24 ${color} opacity-5 blur-3xl rounded-full -mr-12 -mt-12 group-hover:opacity-10 transition-opacity`} />
-        <div className="flex items-center justify-between mb-4">
-            <div className={`p-3 rounded-xl ${color} bg-opacity-10 text-opacity-100 shrink-0`}>
-                <Icon size={20} className={color.replace('bg-', 'text-')} />
-            </div>
-            {trend && (
-                <div className="flex items-center gap-1 text-emerald-500 font-bold text-xs">
-                    <TrendingUp size={12} />
-                    {trend}
-                </div>
-            )}
-        </div>
-        <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</p>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{value}</h3>
-            {subtitle && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">{subtitle}</p>}
-        </div>
-    </div>
-);
+
 
 export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueClientProps) {
     const router = useRouter();
@@ -98,6 +85,18 @@ export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueCl
 
     // Financial Analysis
     const stats = useMemo(() => {
+        // Use server-provided aggregate stats for the unpaginated filtered set
+        if (data.stats) {
+            return {
+                totalRevenue: data.stats.totalRevenue,
+                totalProfitAfterFees: data.stats.totalProfit,
+                totalStripeFees: data.stats.totalStripeFees,
+                avgMarkup: data.stats.totalRevenue > 0 ? (data.stats.totalMarkup / data.stats.totalRevenue) * 100 : 0,
+                bookingCount: data.total
+            };
+        }
+
+        // Fallback (should not be hit with new server changes)
         const bookings = initialBookings;
         const totalRevenue = bookings.reduce((sum, b) => sum + b.totalAmount, 0);
         const totalProfitAfterFees = bookings.reduce((sum, b) => sum + b.netProfit, 0);
@@ -112,7 +111,7 @@ export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueCl
             avgMarkup,
             bookingCount: bookings.length
         };
-    }, [initialBookings]);
+    }, [data.stats, data.total, initialBookings]);
 
     // Helper to update URL
     const updateSearchParam = (params: Record<string, string | number | undefined>) => {
@@ -187,18 +186,16 @@ export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueCl
 
     return (
         <div className="space-y-10 pb-20">
-            <HeaderTitle
-                actions={
-                    <Button
-                        variant="outline"
-                        className="rounded-xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-normal h-12 px-6 hover:bg-slate-50 transition-all gap-2"
-                        onClick={handleExport}
-                    >
-                        <Download size={18} />
-                        Export Report
-                    </Button>
-                }
-            />
+            <div className="flex items-center justify-end">
+                <Button
+                    variant="outline"
+                    className="rounded-xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-normal h-12 px-6 hover:bg-slate-50 transition-all gap-2"
+                    onClick={handleExport}
+                >
+                    <Download size={18} />
+                    Export Report
+                </Button>
+            </div>
 
             {/* Financial Summary */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -206,30 +203,29 @@ export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueCl
                     title="Total Revenue"
                     value={formatCurrency(convertCurrency(stats.totalRevenue, 'PHP', activeCurrency), activeCurrency)}
                     icon={DollarSign}
-                    color="bg-blue-500"
-                    subtitle="Gross Bookings Value"
+                    variant="white"
+                    trend="Gross Bookings Value"
                 />
                 <StatCard
                     title="Net Profit"
                     value={formatCurrency(convertCurrency(stats.totalProfitAfterFees, 'PHP', activeCurrency), activeCurrency)}
                     icon={TrendingUp}
-                    color={stats.totalProfitAfterFees >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}
+                    variant="white"
                     trend={`${((stats.totalProfitAfterFees / (stats.totalRevenue || 1)) * 100).toFixed(1)}% margin`}
-                    subtitle={stats.totalProfitAfterFees >= 0 ? "After Stripe Fees" : "Net Loss detected"}
                 />
                 <StatCard
                     title="Stripe Fees"
                     value={formatCurrency(convertCurrency(stats.totalStripeFees, 'PHP', activeCurrency), activeCurrency)}
                     icon={DollarSign}
-                    color="bg-rose-500"
-                    subtitle="Processing Costs"
+                    variant="white"
+                    trend="Processing Costs"
                 />
                 <StatCard
                     title="Avg. Markup %"
                     value={`${stats.avgMarkup.toFixed(2)}%`}
                     icon={Percent}
-                    color="bg-violet-500"
-                    subtitle="Gross Margin"
+                    variant="white"
+                    trend="Gross Margin"
                 />
             </div>
 
@@ -313,7 +309,7 @@ export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueCl
                                                         {booking.type === 'flight' ? <Plane size={10} className="text-slate-400" /> : 
                                                          (booking.type === 'bundle' || booking.type === 'hotel_bundle') ? <Layers size={10} className="text-violet-400" /> :
                                                          <Building2 size={10} className="text-slate-400" />}
-                                                        <span className="text-[10px] text-slate-400 font-bold uppercase">{booking.supplier}</span>
+                                                        <span className="text-[10px] text-slate-400 font-bold">{formatStatus(booking.supplier)}</span>
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -323,46 +319,53 @@ export function RevenueClient({ data, searchParams, defaultCurrency }: RevenueCl
                                                     <span className="text-[10px] text-slate-500 font-medium">{booking.email || 'no email'}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>
-                                                <div className="flex flex-col gap-1 py-1">
-                                                    <div className="flex items-center justify-between gap-4 max-w-[180px]">
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Selling</span>
-                                                        <span className="text-xs font-black text-slate-900 dark:text-white">{formatCurrency(booking.totalAmount, booking.currency)}</span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between gap-4 max-w-[180px]">
-                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Provider</span>
-                                                        <span className="text-xs font-bold text-slate-500">{formatCurrency(booking.supplierCost, booking.currency)}</span>
+                                            <TableCell className="align-top py-4">
+                                                <div className="flex flex-col gap-3 min-w-[220px]">
+                                                    {/* Primary Amounts */}
+                                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                                                        <span className="text-xs font-medium text-slate-500">Selling Price</span>
+                                                        <span className="text-xs font-black text-slate-900 dark:text-white text-right">{formatCurrency(booking.totalAmount, booking.currency)}</span>
+                                                        
+                                                        <span className="text-xs font-medium text-slate-500">Provider Cost</span>
+                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 text-right">{formatCurrency(booking.supplierCost, booking.currency)}</span>
                                                     </div>
                                                     
-                                                    {/* Decomposed Markup */}
-                                                    <div className="flex flex-col border-t border-slate-100 dark:border-white/5 mt-1 pt-1">
-                                                        <div className="flex items-center justify-between gap-4 max-w-[180px]">
-                                                            <span className="text-[9px] font-black text-violet-400 uppercase tracking-widest">Markup</span>
-                                                            <span className="text-xs font-bold text-violet-500">{formatCurrency(booking.markupAmount, booking.currency)}</span>
+                                                    {/* Decomposed Breakdown */}
+                                                    <div className="flex flex-col gap-2 pt-3 border-t border-slate-100 dark:border-white/5">
+                                                        {/* Markup Section */}
+                                                        <div className="flex flex-col gap-1.5">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Total Markup</span>
+                                                                <span className="text-xs font-black text-slate-900 dark:text-white">{formatCurrency(booking.markupAmount, booking.currency)}</span>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1 pl-3 border-l-[1.5px] border-slate-200 dark:border-white/10 ml-1">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-[11px] font-medium text-slate-500">Platform Allocation</span>
+                                                                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">{formatCurrency(booking.markupPlatform, booking.currency)}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-[11px] font-medium text-slate-500">Operational Margin</span>
+                                                                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">{formatCurrency(booking.markupMargin, booking.currency)}</span>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex items-center justify-between gap-4 max-w-[180px] px-1.5 opacity-60">
-                                                            <span className="text-[8px] font-bold text-violet-400 uppercase">Platform Allocation</span>
-                                                            <span className="text-[10px] font-medium text-violet-500">{formatCurrency(booking.markupPlatform, booking.currency)}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between gap-4 max-w-[180px] px-1.5 opacity-60">
-                                                            <span className="text-[8px] font-bold text-violet-400 uppercase">Operational Margin</span>
-                                                            <span className="text-[10px] font-medium text-violet-500">{formatCurrency(booking.markupMargin, booking.currency)}</span>
-                                                        </div>
-                                                    </div>
 
-                                                    {/* Decomposed Fees */}
-                                                    <div className="flex flex-col mt-0.5">
-                                                        <div className="flex items-center justify-between gap-4 max-w-[180px]">
-                                                            <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest">Fees</span>
-                                                            <span className="text-xs font-bold text-rose-500">{formatCurrency(booking.stripeFee, booking.currency)}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between gap-4 max-w-[180px] px-1.5 opacity-60">
-                                                            <span className="text-[8px] font-bold text-rose-400 uppercase">Stripe Processing</span>
-                                                            <span className="text-[10px] font-medium text-rose-500">{formatCurrency(booking.stripeFeeProcessing, booking.currency)}</span>
-                                                        </div>
-                                                        <div className="flex items-center justify-between gap-4 max-w-[180px] px-1.5 opacity-60">
-                                                            <span className="text-[8px] font-bold text-rose-400 uppercase">Transaction Fixed</span>
-                                                            <span className="text-[10px] font-medium text-rose-500">{formatCurrency(booking.stripeFeeFixed, booking.currency)}</span>
+                                                        {/* Fees Section */}
+                                                        <div className="flex flex-col gap-1.5 mt-1">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Total Fees</span>
+                                                                <span className="text-xs font-black text-slate-900 dark:text-white">{formatCurrency(booking.stripeFee, booking.currency)}</span>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1 pl-3 border-l-[1.5px] border-slate-200 dark:border-white/10 ml-1">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-[11px] font-medium text-slate-500">Stripe Processing</span>
+                                                                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">{formatCurrency(booking.stripeFeeProcessing, booking.currency)}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-[11px] font-medium text-slate-500">Transaction Fixed</span>
+                                                                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">{formatCurrency(booking.stripeFeeFixed, booking.currency)}</span>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>

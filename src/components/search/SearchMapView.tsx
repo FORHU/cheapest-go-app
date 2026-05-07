@@ -13,6 +13,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, cn, buildPropertySlug } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
+import CurrencySelector from '@/components/common/CurrencySelector';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const SearchMapContainer = dynamic(
     () => import('../mapbox/SearchMapContainer').then(m => ({ default: m.SearchMapContainer })),
@@ -145,25 +152,22 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
     return (
         <div className="flex flex-col h-full w-full">
             {/* ── Top bar ── */}
-            <div className="flex-shrink-0 h-12 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 z-10 landscape-compact-topbar">
-                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-full flex items-center gap-2 sm:gap-3">
+            <div className="flex-shrink-0 bg-white dark:bg-slate-950 z-30 relative landscape-compact-topbar p-[10px]">
+                <div className="max-w-[1400px] mx-auto px-3 flex items-center gap-2">
                     <button
                         onClick={handleBackToList}
-                        className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                        className="flex items-center gap-1 text-[10px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                     >
-                        <ArrowLeft size={14} className="sm:w-4 sm:h-4" />
+                        <ArrowLeft size={12} className="sm:w-4 sm:h-4" />
                         <span className="hidden sm:inline">Back</span>
                     </button>
 
-                    <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
+                    <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
 
-                    <div className="flex items-center gap-1.5 landscape-compact:hidden">
-                        <MapPin size={14} className="text-blue-500" />
-                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                    <div className="flex items-center gap-1 landscape-compact:hidden">
+                        <MapPin size={12} className="text-blue-500" />
+                        <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-white truncate max-w-[100px] sm:max-w-[200px]">
                             {destination || 'Search'}
-                        </span>
-                        <span className="text-xs text-slate-400 dark:text-slate-500">
-                            · {mappableProperties.length}
                         </span>
                     </div>
 
@@ -176,30 +180,41 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                         </>
                     )}
 
-                    <div className="ml-auto flex items-center gap-2">
+                    <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+                        {/* Currency Selector (Mobile) */}
+                        <CurrencySelector variant="pill" align="right" className="sm:hidden" />
+
                         {/* Sort */}
-                        <div className="relative">
-                            <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value as SortValue)}
-                                className="appearance-none pl-3 pr-7 py-1.5 bg-slate-100 dark:bg-slate-800 border-0 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                            >
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button className="flex items-center justify-between gap-1.5 px-2.5 h-[24px] md:h-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-[9px] md:text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[80px] md:min-w-[110px]">
+                                    <span className="truncate">{SORT_LABELS[sortBy]}</span>
+                                    <ChevronDown size={12} className="text-slate-400 shrink-0 w-2.5 h-2.5 md:w-3 md:h-3" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl">
                                 {SORT_OPTIONS.map((opt) => (
-                                    <option key={opt} value={opt}>
+                                    <DropdownMenuItem
+                                        key={opt}
+                                        onClick={() => setSortBy(opt)}
+                                        className={cn(
+                                            "text-[11px] font-semibold py-1.5",
+                                            opt === sortBy ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" : "text-slate-700 dark:text-slate-300"
+                                        )}
+                                    >
                                         {SORT_LABELS[opt]}
-                                    </option>
+                                    </DropdownMenuItem>
                                 ))}
-                            </select>
-                            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                        </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
             </div>
 
             {/* ── Desktop Split layout ── */}
-            <div className="hidden lg:flex flex-1 min-h-0 relative">
+            <div className="hidden lg:flex flex-1 min-h-0 relative gap-4 p-4">
                 {/* LEFT: Property list */}
-                <div className="w-[420px] xl:w-[calc(420px+max(0px,50vw-700px))] xl:pl-[max(0px,50vw-700px)] flex-shrink-0 h-full overflow-y-auto overscroll-contain bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
+                <div className="w-[420px] xl:w-[calc(420px+max(0px,50vw-700px))] xl:pl-[max(0px,50vw-700px)] flex-shrink-0 h-full overflow-y-auto overscroll-contain">
                     {sortedProperties.length > 0 ? (
                         <div className="flex flex-col">
                             {sortedProperties.map((property) => (
@@ -228,28 +243,28 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
 
                 {/* RIGHT: Map */}
                 <div
-                    className="flex-1 h-full relative"
-                    style={{ paddingRight: 'max(0px, calc((100vw - 1400px) / 2))' }}
+                    className="flex-1 h-full relative rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm"
+                    style={{ marginRight: 'max(0px, calc((100vw - 1400px) / 2))' }}
                 >
                     <SearchMapContainer
-                        properties={mappableProperties}
+                        properties={sortedProperties}
                         selectedId={selectedId}
                         onSelectId={setSelectedId}
                         hoveredId={hoveredId}
                         onHoverId={setHoveredId}
                         onViewDetails={handleViewDetails}
-                        searchOverlayClassName="absolute top-3 left-3 z-20 w-[72%]"
+                        searchOverlayClassName="absolute top-4 left-20 z-20 w-[300px] md:w-[360px]"
                     />
 
                     {/* Property count badge */}
-                    <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                    <div className="absolute bottom-10 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300 z-10">
                         {mappableProperties.length} properties
                     </div>
 
                     {/* Floating List View Toggle */}
                     <button
                         onClick={handleBackToList}
-                        className="absolute bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-[14px] font-bold z-50 pointer-events-auto"
+                        className="absolute bottom-6 right-20 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-[14px] font-bold z-50 pointer-events-auto"
                     >
                         <List size={16} strokeWidth={2.5} />
                         Show List
@@ -258,15 +273,15 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
             </div>
 
             {/* ── Mobile Map layout ── */}
-            <div className="flex lg:hidden flex-1 relative min-h-0 w-full">
+            <div className={cn("flex lg:hidden flex-1 relative min-h-0 w-full mobile-search-map", showMobileMap ? "map-cards-visible" : "map-cards-hidden")}>
                 <SearchMapContainer
-                    properties={mappableProperties}
+                    properties={sortedProperties}
                     selectedId={selectedId}
                     onSelectId={setSelectedId}
                     hoveredId={hoveredId}
                     onHoverId={setHoveredId}
                     onViewDetails={handleViewDetails}
-                    searchOverlayClassName="absolute top-3 left-3 z-20 w-[72%]"
+                    searchOverlayClassName="absolute top-4 left-4 right-4 z-20"
                 />
 
                 {/* Horizontal Swiper */}
@@ -277,39 +292,70 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 100, opacity: 0 }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="absolute bottom-16 left-0 right-0 w-full overflow-x-auto pb-2 pt-2 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] z-20 landscape:bottom-12"
+                            drag="y"
+                            dragConstraints={{ top: 0, bottom: 0 }}
+                            dragElastic={0.2}
+                            dragDirectionLock
+                            onDragEnd={(e, info) => {
+                                if (info.offset.y > 40) {
+                                    setShowMobileMap(false);
+                                }
+                            }}
+                            className="absolute bottom-2 left-0 right-0 w-full z-20"
                         >
-                            {sortedProperties.map((property) => (
-                                <div key={property.id} className="snap-center shrink-0 w-[75vw] sm:w-[300px] landscape:w-[280px] shadow-lg rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                                    <MapPropertyCard
-                                        property={property}
-                                        isSelected={selectedId === property.id}
-                                        isHovered={hoveredId === property.id}
-                                        onSelect={handleCardSelect}
-                                        onHover={handleHover}
-                                    />
-                                </div>
-                            ))}
+                            <div className="w-full overflow-x-auto pb-2 pt-2 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                {sortedProperties.map((property) => (
+                                    <div key={property.id} className="snap-center shrink-0 w-[70vw] sm:w-[260px] landscape:w-[240px] shadow-lg rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                                        <MapPropertyCard
+                                            property={property}
+                                            isSelected={selectedId === property.id}
+                                            isHovered={hoveredId === property.id}
+                                            onSelect={handleCardSelect}
+                                            onHover={handleHover}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {/* Bottom center pill group — List + Hide/Show */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 landscape:bottom-2">
+                {/* Swipe Up Handle when hidden */}
+                <AnimatePresence>
+                    {!showMobileMap && sortedProperties.length > 0 && (
+                        <motion.div
+                            initial={{ y: 50, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 50, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="absolute bottom-2 left-0 right-0 h-10 z-20 flex justify-center items-center cursor-grab active:cursor-grabbing"
+                            drag="y"
+                            dragConstraints={{ top: 0, bottom: 0 }}
+                            dragElastic={0.2}
+                            dragDirectionLock
+                            onDragEnd={(e, info) => {
+                                if (info.offset.y < -30) {
+                                    setShowMobileMap(true);
+                                }
+                            }}
+                        >
+                            <div className="w-12 h-1.5 bg-slate-400/60 dark:bg-slate-500/60 backdrop-blur-sm rounded-full shadow-sm" />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Floating List Button (Repositioned to left, above cards) */}
+                <div className={cn(
+                    "absolute left-4 z-50 transition-all duration-300",
+                    showMobileMap ? "bottom-[115px]" : "bottom-[40px]",
+                    "landscape:bottom-[100px] landscape:left-2"
+                )}>
                     <button
                         onClick={handleBackToList}
-                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-slate-800 dark:text-slate-200 px-4 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all flex items-center gap-1.5 font-semibold text-xs"
+                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-[11px]"
                     >
-                        <List size={13} />
+                        <List size={14} />
                         List
-                    </button>
-                    <button
-                        onClick={() => setShowMobileMap(!showMobileMap)}
-                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-800 active:scale-95 transition-all text-slate-700 dark:text-slate-200 flex items-center gap-1.5"
-                        aria-label={showMobileMap ? "Hide swiper" : "Show swiper"}
-                    >
-                        <span className="text-[10px] font-bold uppercase tracking-wider">{showMobileMap ? 'Hide' : 'Show'}</span>
-                        <ChevronDown size={14} className={cn("transition-transform duration-300", !showMobileMap && "rotate-180")} />
                     </button>
                 </div>
             </div>

@@ -21,6 +21,11 @@ interface PoiDiscoveryProps {
     mapRef: React.RefObject<any>;
     gemsScrollRef: React.RefObject<HTMLDivElement | null>;
     scrollGems: (direction: 'left' | 'right') => void;
+    itineraryGems?: any[];
+    toggleItineraryGem?: (poi: any) => void;
+    handleOptimizeRoute?: () => void;
+    isOptimizing?: boolean;
+    hasOptimizedRoute?: boolean;
 }
 
 export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
@@ -39,7 +44,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
     setModalPoiId,
     mapRef,
     gemsScrollRef,
-    scrollGems
+    scrollGems,
 }) => {
     return (
         <div className={`transition-all duration-500 ease-in-out group/nearby flex flex-col gap-1 sm:gap-1.5
@@ -48,7 +53,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                 : 'relative lg:absolute lg:bottom-2 lg:left-1/2 lg:-translate-x-1/2 lg:w-[96%] lg:z-30 w-full mt-3 lg:mt-0'
             }
         `}>
-            {/* Category Filter Dropdown & Controls */}
+            {/* Category Filter Dropdown */}
             <div className="flex items-center justify-between gap-2 w-full px-1 sm:px-2 pb-1 lg:px-0">
                 <div className="relative">
                     <button
@@ -99,31 +104,33 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                     )}
                 </div>
 
-                <div className={`flex items-center gap-1.5 shrink-0`}>
-                    <button
-                        onClick={() => setIsFullscreen(f => !f)}
-                        className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm text-slate-700 dark:text-slate-300 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center"
-                        title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-                    >
-                        {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-                    </button>
-                    <button
-                        onClick={handleRecenter}
-                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-blue-600 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center"
-                        title="Recenter Map"
-                    >
-                        <Navigation size={14} fill="currentColor" />
-                    </button>
-                </div>
+                {isFullscreen && (
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={() => setIsFullscreen(f => !f)}
+                            className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm text-slate-700 dark:text-slate-300 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center"
+                            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                        >
+                            {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+                        </button>
+                        <button
+                            onClick={handleRecenter}
+                            className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-blue-600 rounded-full shadow-sm border border-slate-200 dark:border-slate-700 p-1.5 hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center"
+                            title="Recenter Map"
+                        >
+                            <Navigation size={14} fill="currentColor" />
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="relative flex flex-row w-full group/imagebar">
                 {nearbyGems.length > 0 && (
                     <button
                         onClick={() => scrollGems('left')}
-                        className="hidden lg:flex absolute left-2 top-1/2 -translate-y-1/2 z-40 w-8 h-8 items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100"
+                        className="hidden lg:flex absolute left-2 top-1/2 -translate-y-1/2 z-40 w-6 h-6 items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100"
                     >
-                        <ChevronLeft size={16} />
+                        <ChevronLeft size={12} />
                     </button>
                 )}
 
@@ -156,7 +163,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                             : null;
 
                         return (
-                            <button
+                            <div
                                 key={`${name}-${idx}`}
                                 onClick={() => {
                                     if (isActive) {
@@ -165,17 +172,17 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                                     } else {
                                         setSelectedNativePoi(poi);
                                         setActivePoiId(name);
-                                        setModalPoiId(name);
                                         mapRef.current?.flyTo({ center: [lng, lat], zoom: 17, pitch: 45, duration: 800 });
                                     }
                                 }}
-                                className={`group relative flex-shrink-0 transition-all duration-500 ease-out transform hover:scale-[1.05] active:scale-95
+                                className={`group relative flex-shrink-0 transition-all duration-500 ease-out transform cursor-pointer
                                 w-36 h-24 sm:w-48 sm:h-32
                                 ${isActive 
-                                    ? 'ring-[3px] ring-blue-500 ring-offset-2 dark:ring-offset-slate-900 shadow-2xl z-10' 
-                                    : 'shadow-lg hover:shadow-xl'
+                                    ? 'ring-[3px] ring-blue-500 ring-offset-2 dark:ring-offset-slate-900 shadow-2xl z-10 scale-[1.02]' 
+                                    : 'shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95'
                                 }
                                 rounded-2xl overflow-hidden
+                                ${isFetchingGems ? 'animate-pulse opacity-80' : ''}
                             `}
                             >
                                 <Image
@@ -195,7 +202,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                                 
                                 {ratingDisplay !== null && (
                                     <div className="absolute top-2.5 left-2.5 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md rounded-full px-2 py-0.5 flex items-center gap-1 border border-slate-200/50 dark:border-white/10 shadow-sm transition-transform duration-300 group-hover:scale-110">
-                                        <Star size={10} className="text-yellow-500 fill-yellow-500" />
+                                        <Star size={10} className="text-blue-500 fill-blue-500" />
                                         <span className="text-[10px] font-extrabold text-slate-800 dark:text-white tracking-tight">{ratingDisplay}</span>
                                     </div>
                                 )}
@@ -212,14 +219,25 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                                     </h4>
                                 </div>
 
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedNativePoi(poi);
+                                        setModalPoiId(name);
+                                    }}
+                                    className="absolute bottom-2 right-2 px-2 py-1 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-lg text-[8px] font-bold uppercase tracking-wider text-white border border-white/20 transition-all opacity-0 group-hover:opacity-100 z-20"
+                                >
+                                    Details
+                                </button>
+
                                 {isActive && (
-                                    <div className="absolute top-2.5 right-2.5 flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-in zoom-in duration-300">
+                                    <div className={`absolute top-2.5 right-2.5 flex items-center justify-center w-6 h-6 rounded-full border-2 border-white shadow-lg animate-in zoom-in duration-300 bg-blue-500`}>
                                         <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
                                     </div>
                                 )}
 
                                 <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-2xl pointer-events-none" />
-                            </button>
+                            </div>
                         );
                     })}
                 </div>
@@ -227,9 +245,9 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                 {nearbyGems.length > 0 && (
                     <button
                         onClick={() => scrollGems('right')}
-                        className="hidden lg:flex absolute right-2 top-1/2 -translate-y-1/2 z-40 w-8 h-8 items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100"
+                        className="hidden lg:flex absolute right-2 top-1/2 -translate-y-1/2 z-40 w-6 h-6 items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/imagebar:opacity-100"
                     >
-                        <ChevronRight size={16} />
+                        <ChevronRight size={12} />
                     </button>
                 )}
             </div>

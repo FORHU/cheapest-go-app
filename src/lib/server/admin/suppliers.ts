@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/supabase/admin';
+import { fetchAirlinesData } from './providers';
 
 export interface SupplierRecord {
     id: string;
@@ -15,9 +16,10 @@ export interface SupplierRecord {
 export async function getSuppliersList(): Promise<SupplierRecord[]> {
     const supabase = createAdminClient();
 
-    const [unified, legacy] = await Promise.all([
+    const [unified, legacy, airlines] = await Promise.all([
         supabase.from('unified_bookings').select('type, provider, total_price, currency, status, metadata, created_at'),
-        supabase.from('bookings').select('property_name, total_price, currency, status, created_at')
+        supabase.from('bookings').select('property_name, total_price, currency, status, created_at'),
+        fetchAirlinesData()
     ]);
 
     const thirtyDaysAgo = new Date();
@@ -43,8 +45,8 @@ export async function getSuppliersList(): Promise<SupplierRecord[]> {
             name = meta?.hotelName || meta?.hotel_name || meta?.property_name || 'Unknown Hotel';
             location = meta?.city || meta?.destination || meta?.address || 'Unknown';
         } else {
-            // Flight — group by provider
-            name = (b.provider || 'unknown').charAt(0).toUpperCase() + (b.provider || 'unknown').slice(1);
+            // Flight — check if owner is an airline, otherwise use provider
+            name = meta?.owner?.name || (b.provider || 'unknown').charAt(0).toUpperCase() + (b.provider || 'unknown').slice(1);
             location = meta?.segments?.[0]?.arrival_airport || meta?.destination || 'Various';
         }
 
@@ -91,6 +93,22 @@ export async function getSuppliersList(): Promise<SupplierRecord[]> {
                 totalRevenue: isConfirmed ? Number(b.total_price) : 0,
                 currency: b.currency || 'USD',
                 lastBooking: bookingDate
+            });
+        }
+    });
+
+    // Process APIs airlines
+    airlines.forEach(a => {
+        const key = `flight:${a.name}`;
+        if (!supplierMap.has(key)) {
+            supplierMap.set(key, {
+                name: a.name,
+                location: 'Global',
+                type: 'flight',
+                bookingCount: 0,
+                totalRevenue: 0,
+                currency: 'USD',
+                lastBooking: new Date(0)
             });
         }
     });

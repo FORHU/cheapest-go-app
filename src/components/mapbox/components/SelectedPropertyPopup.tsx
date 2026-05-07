@@ -10,6 +10,7 @@ interface SelectedPropertyPopupProps {
     onClose: () => void;
     onViewDetails: (id: string) => void;
     onSelect: (id: string) => void;
+    isMobile?: boolean;
 }
 
 export const SelectedPropertyPopup = React.memo(({
@@ -17,6 +18,7 @@ export const SelectedPropertyPopup = React.memo(({
     onClose,
     onViewDetails,
     onSelect,
+    isMobile = false,
 }: SelectedPropertyPopupProps) => {
     const targetCurrency = useUserCurrency();
 
@@ -33,11 +35,13 @@ export const SelectedPropertyPopup = React.memo(({
                 onClick={() => onSelect(selectedProperty.id)}
                 onHover={() => { }}
             />
-            <MapPopup
-                property={selectedProperty}
-                onClose={onClose}
-                onViewDetails={onViewDetails}
-            />
+            {!isMobile && (
+                <MapPopup
+                    property={selectedProperty}
+                    onClose={onClose}
+                    onViewDetails={onViewDetails}
+                />
+            )}
         </>
     );
 });

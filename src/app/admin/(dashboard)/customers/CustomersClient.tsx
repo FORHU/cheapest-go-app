@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { HeaderTitle } from '@/components/admin/HeaderTitle';
+
 import { Users, Search, Filter, MoreHorizontal, Trash2, DollarSign, Calendar, TrendingUp, Award, Clock, X, Eye, ShieldBan, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { StatCard } from '@/components/admin/StatCard';
 import {
@@ -149,7 +149,7 @@ export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: C
 
     return (
         <div className="space-y-10 pb-20">
-            <HeaderTitle />
+
 
             {/* Summary Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -298,7 +298,7 @@ export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: C
                                         </div>
                                     </TableCell>
                                     <TableCell className="py-5">
-                                        <Badge variant={getTierVariant(customer.loyaltyTier) as any} className={`capitalize text-[9px] font-black px-2 py-0.5 rounded-lg border-none ${customer.loyaltyTier === 'platinum' ? 'bg-blue-900 text-white' :
+                                        <Badge variant={getTierVariant(customer.loyaltyTier) as any} className={`w-32 justify-center text-center whitespace-nowrap text-[10px] font-medium px-2 py-0.5 rounded border-none ${customer.loyaltyTier === 'platinum' ? 'bg-blue-900 text-white' :
                                             customer.loyaltyTier === 'gold' ? 'bg-amber-100 text-amber-700' :
                                                 customer.loyaltyTier === 'silver' ? 'bg-slate-100 text-slate-600' :
                                                     'bg-orange-50 text-orange-600'
@@ -324,7 +324,7 @@ export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: C
                                     <TableCell className="py-5">
                                         <Badge
                                             variant={getStatusVariant(customer.status) as any}
-                                            className={`font-black capitalize text-[9px] px-3 py-1 rounded-lg border-none ${customer.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' :
+                                            className={`w-32 justify-center text-center whitespace-nowrap font-medium text-[10px] px-2 py-0.5 rounded border-none ${customer.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' :
                                                 customer.status === 'inactive' ? 'bg-slate-500/10 text-slate-600' :
                                                     'bg-rose-500/10 text-rose-600'
                                                 }`}
@@ -465,7 +465,7 @@ export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: C
                                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Status</p>
                                     <Badge className={cn(
-                                        'font-black capitalize text-[9px] px-3 py-1 rounded-lg border-none',
+                                        'w-32 justify-center text-center whitespace-nowrap font-medium text-[10px] px-2 py-0.5 rounded border-none',
                                         selectedCustomer.status === 'active' ? 'bg-emerald-500/10 text-emerald-600' :
                                             selectedCustomer.status === 'banned' ? 'bg-rose-500/10 text-rose-600' :
                                                 'bg-slate-500/10 text-slate-600'
@@ -476,7 +476,7 @@ export function CustomersClient({ initialCustomers, defaultCurrency = 'USD' }: C
                                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Loyalty Tier</p>
                                     <Badge className={cn(
-                                        'capitalize text-[9px] font-black px-2 py-0.5 rounded-lg border-none',
+                                        'w-32 justify-center text-center whitespace-nowrap text-[10px] font-medium px-2 py-0.5 rounded border-none',
                                         selectedCustomer.loyaltyTier === 'platinum' ? 'bg-blue-900 text-white' :
                                             selectedCustomer.loyaltyTier === 'gold' ? 'bg-amber-100 text-amber-700' :
                                                 selectedCustomer.loyaltyTier === 'silver' ? 'bg-slate-100 text-slate-600' :

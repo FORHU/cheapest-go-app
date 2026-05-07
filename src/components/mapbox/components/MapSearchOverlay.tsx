@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Search, X, MapPin } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useMapboxSearch, type SearchResult } from '../hooks/useMapboxSearch';
 
 interface MapSearchOverlayProps {
@@ -44,10 +45,13 @@ export const MapSearchOverlay = ({ onSelect, className = 'absolute top-3 left-3 
 
     return (
         <div className={className}>
-            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg pointer-events-auto">
-                <div className="flex items-center gap-2 px-3 h-[38px]">
+            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg pointer-events-auto">
+                <div className="flex items-center gap-1.5 px-2.5 h-[30px]">
                     {isSearching ? (
-                        <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                        <div className="relative w-3.5 h-3.5 shrink-0">
+                            <div className="absolute inset-0 border-2 border-blue-100 dark:border-blue-900/30 rounded-full" />
+                            <div className="absolute inset-0 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
                     ) : (
                         <Search size={13} className="text-slate-400 shrink-0" />
                     )}
@@ -67,20 +71,31 @@ export const MapSearchOverlay = ({ onSelect, className = 'absolute top-3 left-3 
                     )}
                 </div>
 
-                {showOriginResults && originResults.length > 0 && (
-                    <div className="border-t border-slate-100 dark:border-slate-800 max-h-48 overflow-y-auto rounded-b-xl">
-                        {originResults.map((r) => (
-                            <button
-                                key={r.id}
-                                onMouseDown={() => handlePick(r)}
-                                className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 last:border-0"
-                            >
-                                <MapPin size={10} className="text-slate-400 shrink-0" />
-                                <span className="line-clamp-1">{r.name}</span>
-                            </button>
-                        ))}
-                    </div>
-                )}
+                <AnimatePresence>
+                    {showOriginResults && originResults.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="max-h-48 overflow-y-auto rounded-b-xl"
+                        >
+                            {originResults.map((r, i) => (
+                                <motion.button
+                                    key={r.id}
+                                    initial={{ opacity: 0, x: -4 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.03 }}
+                                    onMouseDown={() => handlePick(r)}
+                                    className="w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 last:border-0"
+                                >
+                                    <MapPin size={10} className="text-slate-400 shrink-0" />
+                                    <span className="line-clamp-1">{r.name}</span>
+                                </motion.button>
+                            ))}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

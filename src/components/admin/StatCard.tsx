@@ -116,7 +116,7 @@ export function StatCard({
                             <div className="flex items-center gap-2 font-black text-[10px] uppercase tracking-wider">
                                 <TrendingUp size={12} className={getTrendIconColor()} />
                                 <span className={`transition-colors ${getTrendTextColor()}`} suppressHydrationWarning>
-                                    {trendValue} <span className="opacity-60 ml-0.5">Scale</span>
+                                    {trendValue}
                                 </span>
                             </div>
                         )}

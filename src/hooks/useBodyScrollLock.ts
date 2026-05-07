@@ -20,14 +20,18 @@ export function useBodyScrollLock(isLocked: boolean): void {
         };
 
         document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
         document.body.style.overscrollBehavior = 'none';
+        document.documentElement.style.overscrollBehavior = 'none';
 
         window.addEventListener('wheel', preventScroll, { passive: false });
         window.addEventListener('touchmove', preventTouch, { passive: false });
 
         return () => {
             document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
             document.body.style.overscrollBehavior = '';
+            document.documentElement.style.overscrollBehavior = '';
             window.removeEventListener('wheel', preventScroll);
             window.removeEventListener('touchmove', preventTouch);
             window.scrollTo(0, scrollY);

@@ -61,7 +61,7 @@ export function RevenueChart({ data, defaultCurrency }: RevenueChartProps) {
     const topPadding = 30;
     const bottomPadding = 50;
     const width = 800;
-    const height = 320;
+    const height = 400;
     const chartWidth = width - leftPadding - rightPadding;
     const chartHeight = height - topPadding - bottomPadding;
 
@@ -91,11 +91,7 @@ export function RevenueChart({ data, defaultCurrency }: RevenueChartProps) {
     const labelInterval = timeframe === 'monthly' ? 5 : timeframe === 'weekly' ? 2 : 1;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 p-8 rounded-xl shadow-md flex flex-col group transition-all duration-500 min-h-[450px]"
-        >
+        <div className="flex flex-col group transition-all duration-500 min-h-[550px] relative">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 relative z-10">
                 <div className="flex-1">
                     <div className="flex items-center justify-between md:justify-start gap-4 mb-2">
@@ -130,12 +126,12 @@ export function RevenueChart({ data, defaultCurrency }: RevenueChartProps) {
                     <div className="md:col-span-1 space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] transition-colors">Total Revenue</p>
                         <div className="flex items-baseline gap-2">
-                            <h4 className="text-3xl font-black text-slate-900 dark:text-white transition-colors">{formatCurrency(totalRevenue, activeCurrency)}</h4>
+                            <h4 suppressHydrationWarning className="text-3xl font-black text-slate-900 dark:text-white transition-colors">{formatCurrency(totalRevenue, activeCurrency)}</h4>
                         </div>
                     </div>
                 </div>
 
-                <div className="relative h-[320px] w-full">
+                <div className="relative h-[400px] w-full">
                     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                         <defs>
                             <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
@@ -165,6 +161,7 @@ export function RevenueChart({ data, defaultCurrency }: RevenueChartProps) {
                                     x={leftPadding - 10}
                                     y={tick.y + 4}
                                     textAnchor="end"
+                                    suppressHydrationWarning
                                     className="fill-slate-400 dark:fill-slate-500 text-[11px] font-bold"
                                 >
                                     {formatShortCurrency(tick.value)}
@@ -181,6 +178,7 @@ export function RevenueChart({ data, defaultCurrency }: RevenueChartProps) {
                                     x={points[i]?.x ?? 0}
                                     y={height - 8}
                                     textAnchor="middle"
+                                    suppressHydrationWarning
                                     className="fill-slate-400 dark:fill-slate-500 text-[10px] font-bold"
                                 >
                                     {formatDateLabel(d.date, timeframe)}
@@ -296,6 +294,6 @@ export function RevenueChart({ data, defaultCurrency }: RevenueChartProps) {
             {/* Decoration */}
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/5 blur-[80px] rounded-full pointer-events-none transition-all duration-700" />
             <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-purple-500/5 blur-[80px] rounded-full pointer-events-none transition-all duration-700" />
-        </motion.div>
+        </div>
     );
 }

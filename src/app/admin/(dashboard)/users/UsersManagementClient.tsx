@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { HeaderTitle } from '@/components/admin/HeaderTitle';
+
 import { StatCard } from '@/components/admin/StatCard';
 import { Users, Shield, Search, UserCheck, Clock, X, ShieldAlert, ShieldOff } from 'lucide-react';
 import {
@@ -95,7 +95,7 @@ export function UsersManagementClient({ initialUsers }: UsersManagementClientPro
 
     return (
         <div className="space-y-10 pb-20">
-            <HeaderTitle />
+
 
             {/* Summary Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -203,7 +203,7 @@ export function UsersManagementClient({ initialUsers }: UsersManagementClientPro
                                         <Badge
                                             variant={user.role === 'admin' ? 'default' : 'outline'}
                                             className={cn(
-                                                'text-[10px] font-black uppercase tracking-wider',
+                                                'w-32 justify-center text-center whitespace-nowrap text-[10px] font-medium px-2 py-0.5 rounded border-none',
                                                 user.role === 'admin'
                                                     ? 'bg-blue-600 text-white border-blue-600'
                                                     : 'text-slate-500 dark:text-slate-400'

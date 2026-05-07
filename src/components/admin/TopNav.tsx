@@ -57,12 +57,14 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
         setIsLoading(true);
         try {
             const res = await fetch('/api/admin/notifications');
-            if (res.ok) {
+            if (!res.ok) {
+                console.warn(`[TopNav] Notifications API returned ${res.status}: ${res.statusText}`);
+            } else {
                 const data = await res.json();
                 setNotifications(data);
             }
         } catch (e) {
-            console.error('Failed to fetch notifications', e);
+            console.error('[TopNav] Failed to fetch notifications:', e);
         } finally {
             setIsLoading(false);
         }

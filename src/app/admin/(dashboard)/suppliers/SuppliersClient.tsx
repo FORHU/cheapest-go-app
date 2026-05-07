@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { HeaderTitle } from '@/components/admin/HeaderTitle';
+
 import { StatCard } from '@/components/admin/StatCard';
 import { Building2, Search, Plane, Hotel, Package, Activity, X } from 'lucide-react';
 import {
@@ -16,14 +16,16 @@ import {
     Input
 } from '@/components/ui';
 import { motion } from 'framer-motion';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, cn, formatStatus } from '@/lib/utils';
 import type { SupplierRecord } from '@/lib/server/admin/suppliers';
+import { convertCurrency } from '@/lib/currency';
 
 interface SuppliersClientProps {
     initialSuppliers: SupplierRecord[];
+    defaultCurrency: string;
 }
 
-export function SuppliersClient({ initialSuppliers }: SuppliersClientProps) {
+export function SuppliersClient({ initialSuppliers, defaultCurrency }: SuppliersClientProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState<'all' | 'hotel' | 'flight'>('all');
 
@@ -37,13 +39,16 @@ export function SuppliersClient({ initialSuppliers }: SuppliersClientProps) {
         });
     }, [searchTerm, typeFilter, initialSuppliers]);
 
-    const totalRevenue = useMemo(() => initialSuppliers.reduce((sum, s) => sum + s.totalRevenue, 0), [initialSuppliers]);
+    const totalRevenue = useMemo(() => initialSuppliers.reduce((sum, s) => {
+        const converted = convertCurrency(s.totalRevenue, s.currency, defaultCurrency);
+        return sum + converted;
+    }, 0), [initialSuppliers, defaultCurrency]);
     const totalBookings = useMemo(() => initialSuppliers.reduce((sum, s) => sum + s.bookingCount, 0), [initialSuppliers]);
     const activeCount = useMemo(() => initialSuppliers.filter(s => s.status === 'active').length, [initialSuppliers]);
 
     return (
         <div className="space-y-10 pb-20">
-            <HeaderTitle />
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
@@ -64,7 +69,7 @@ export function SuppliersClient({ initialSuppliers }: SuppliersClientProps) {
                 />
                 <StatCard
                     title="Total Revenue"
-                    value={formatCurrency(totalRevenue, 'USD')}
+                    value={formatCurrency(totalRevenue, defaultCurrency)}
                     icon={Building2}
                 />
             </div>
@@ -144,24 +149,24 @@ export function SuppliersClient({ initialSuppliers }: SuppliersClientProps) {
                                             {supplier.location}
                                         </TableCell>
                                         <TableCell className="py-5">
-                                            <Badge className="bg-blue-500/10 text-blue-600 border-none font-black capitalize text-[9px] px-3 py-1 rounded-lg">
-                                                {supplier.type}
+                                            <Badge className="w-32 justify-center text-center whitespace-nowrap bg-blue-500/10 text-blue-600 border-none font-medium text-[10px] px-2 py-0.5 rounded">
+                                                {formatStatus(supplier.type)}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="py-5 font-black text-slate-900 dark:text-white">
                                             {supplier.bookingCount}
                                         </TableCell>
                                         <TableCell className="py-5 font-black text-slate-900 dark:text-white">
-                                            {formatCurrency(supplier.totalRevenue, supplier.currency)}
+                                            {formatCurrency(convertCurrency(supplier.totalRevenue, supplier.currency, defaultCurrency), defaultCurrency)}
                                         </TableCell>
                                         <TableCell className="py-5 pr-6">
                                             <Badge className={cn(
-                                                'border-none font-black capitalize text-[9px] px-3 py-1 rounded-lg',
+                                                'w-32 justify-center text-center whitespace-nowrap border-none font-medium text-[10px] px-2 py-0.5 rounded',
                                                 supplier.status === 'active'
                                                     ? 'bg-emerald-500/10 text-emerald-600'
                                                     : 'bg-slate-500/10 text-slate-500'
                                             )}>
-                                                {supplier.status}
+                                                {formatStatus(supplier.status)}
                                             </Badge>
                                         </TableCell>
                                     </TableRow>

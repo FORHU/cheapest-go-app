@@ -27,8 +27,9 @@ export function useMapDetails() {
     }, [mapDetails]);
 
     const mapStyleUrl = useMemo(() => {
-        if (mapType === 'satellite') return 'mapbox://styles/mapbox/satellite-v9';
-        if (mapType === 'default')   return 'mapbox://styles/mapbox/streets-v12';
+        const suffix = '?optimize=true';
+        if (mapType === 'satellite') return `mapbox://styles/mapbox/satellite-v9${suffix}`;
+        if (mapType === 'default')   return `mapbox://styles/mapbox/streets-v12${suffix}`;
         return 'standard';
     }, [mapType]);
 
@@ -38,7 +39,7 @@ export function useMapDetails() {
         show3dBuildings: true,
         show3dFacades: false,
         show3dTrees: true,
-        show3dLandmarks: false,
+        show3dLandmarks: true,
         showPointOfInterestLabels: showLabels,
         showRoadLabels: showLabels,
         showTransitLabels: showLabels,

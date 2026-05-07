@@ -28,7 +28,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
-import { HeaderTitle } from '@/components/admin/HeaderTitle';
+
 import { StatCard } from '@/components/admin/StatCard';
 import { formatCurrency } from '@/lib/utils';
 import type { AdvancedAnalyticsData, ApiLogRow } from '@/types/admin';
@@ -93,14 +93,12 @@ export function AnalyticsClient({ data, apiLogs }: AnalyticsClientProps) {
 
     return (
         <div className="space-y-10 pb-20">
-            <HeaderTitle
-                actions={
-                    <Button variant="outline" className="rounded-xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-bold h-12 px-6 hover:bg-slate-50 transition-all gap-2">
-                        <BarChart3 size={18} />
-                        Generating Report
-                    </Button>
-                }
-            />
+            <div className="flex items-center justify-end">
+                <Button variant="outline" className="rounded-xl border-slate-200 dark:border-white/10 dark:bg-white/5 font-bold h-12 px-6 hover:bg-slate-50 transition-all gap-2">
+                    <BarChart3 size={18} />
+                    Generating Report
+                </Button>
+            </div>
 
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -266,7 +264,7 @@ export function AnalyticsClient({ data, apiLogs }: AnalyticsClientProps) {
                                     <td className="py-5 text-right pr-6">
                                         <Badge
                                             variant="destructive"
-                                            className="bg-rose-500/10 text-rose-500 border-none font-black capitalize text-[9px] px-3 py-1 rounded-lg"
+                                            className="w-32 justify-center text-center whitespace-nowrap bg-rose-500/10 text-rose-500 border-none font-medium text-[10px] px-2 py-0.5 rounded"
                                         >
                                             {log.status}
                                         </Badge>
