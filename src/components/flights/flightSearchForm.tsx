@@ -4,6 +4,7 @@ import { Input, Button } from "@/components/ui";
 import { CabinClass, FlightSearchParams } from "@/types/flights";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { FormDatePicker } from "@/components/common/FormDatePicker";
 
 interface FlightSearchFormProps {
     onSearch?: (params: FlightSearchParams) => void;
@@ -75,19 +76,21 @@ export default function FlightSearchForm({ onSearch, isLoading }: FlightSearchFo
                 </div>
                 <div className="space-y-1">
                     <label className="text-sm font-medium text-gray-700">Departure</label>
-                    <Input 
-                        type="date" 
+                    <FormDatePicker 
                         value={params.departureDate}
-                        onChange={(e) => setParams({ ...params, departureDate: e.target.value })}
+                        onChange={(val) => setParams({ ...params, departureDate: val })}
+                        minDate={new Date()}
                         required
+                        className="h-10 bg-white"
                     />
                 </div>
                 <div className="space-y-1">
                     <label className="text-sm font-medium text-gray-700">Return (Optional)</label>
-                    <Input 
-                        type="date" 
+                    <FormDatePicker 
                         value={params.returnDate}
-                        onChange={(e) => setParams({ ...params, returnDate: e.target.value })}
+                        onChange={(val) => setParams({ ...params, returnDate: val })}
+                        minDate={params.departureDate ? new Date(params.departureDate) : new Date()}
+                        className="h-10 bg-white"
                     />
                 </div>
             </div>

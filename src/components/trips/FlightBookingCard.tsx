@@ -8,6 +8,7 @@ import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
+import { FormDatePicker } from '@/components/common/FormDatePicker';
 
 interface FlightBookingCardProps {
     booking: FlightBookingRecord;
@@ -1742,11 +1743,11 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div className="col-span-2">
                                                     <label className="text-[10px] text-slate-400 block mb-0.5">New Departure Date</label>
-                                                    <input
-                                                        type="date"
+                                                    <FormDatePicker
                                                         value={seg.departureDate}
-                                                        onChange={e => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, departureDate: e.target.value } : s))}
-                                                        className="w-full text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                                        onChange={val => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, departureDate: val } : s))}
+                                                        className="h-8 bg-slate-50 dark:bg-slate-700"
+                                                        placeholder="Select new date"
                                                     />
                                                 </div>
                                                 <div>

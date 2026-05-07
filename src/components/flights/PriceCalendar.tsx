@@ -239,19 +239,25 @@ export default function PriceCalendar({
         const d = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         if (d < todayStr) return;
         const p = new URLSearchParams(searchParams.toString());
+        p.delete('offerId');
+        p.set('origin', origin);
+        p.set('destination', destination);
         p.set('departure', d);
+        if (adults) p.set('adults', String(adults));
+        if (cabin) p.set('cabin', cabin);
+        if (returnDate) p.set('return', returnDate);
         router.push(`/flights/search?${p.toString()}`);
     };
 
     return (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
             {/* Toggle header */}
             <button
                 onClick={() => setOpen(o => !o)}
                 className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors text-left"
             >
                 <CalendarDays size={14} className="text-blue-500 shrink-0" />
-                <span className="text-[10px] min-[360px]:text-[11px] min-[400px]:text-xs font-normal text-blue-600 dark:text-blue-400 flex-1 truncate">
+                <span className="text-[9px] min-[360px]:text-[10px] min-[400px]:text-[11px] font-normal text-blue-600 dark:text-blue-400 flex-1 truncate">
                     Explore prices by date {returnDate ? '(Round-trip)' : '(One-way)'}
                 </span>
 
@@ -284,9 +290,9 @@ export default function PriceCalendar({
                 <div className="border-t border-slate-100 dark:border-slate-800">
                     {/* Friendly tip banner */}
                     {showTip && (
-                        <div className="mx-3 mt-3 flex items-start gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg px-3 py-2">
+                        <div className="mx-3 mt-3 flex items-start gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md px-3 py-2">
                             <Sparkles size={13} className="text-blue-500 shrink-0 mt-0.5" />
-                            <p className="text-[11px] text-blue-700 dark:text-blue-300 flex-1 leading-relaxed">
+                            <p className="text-[10px] text-blue-700 dark:text-blue-300 flex-1 leading-relaxed">
                                 <strong>Tip:</strong> These are real fares for nearby dates from this provider.
                                 Click any date to instantly search flights on that day.
                             </p>
@@ -304,7 +310,7 @@ export default function PriceCalendar({
                         <button onClick={() => changeMonth(-1)} className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
                             <ChevronLeft size={14} />
                         </button>
-                        <span className="text-xs font-normal text-slate-700 dark:text-slate-200">
+                        <span className="text-[11px] font-normal text-slate-700 dark:text-slate-200">
                             {MONTHS[month - 1]} {year}
                         </span>
                         <button onClick={() => changeMonth(1)} className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
@@ -363,19 +369,19 @@ export default function PriceCalendar({
                                                 onClick={() => handleDay(day)}
                                                 disabled={past}
                                                 title={p ? `${fmt(p.price, p.currency, targetCurrency)} — click to search` : 'Click to search this date'}
-                                                className={`flex flex-col items-center justify-center rounded-lg py-1 min-h-[44px] transition-all
+                                                className={`flex flex-col items-center justify-center rounded-md py-1 min-h-[44px] transition-all
                                                     ${past ? 'opacity-25 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 hover:scale-105 active:scale-95'}
                                                     ${selected ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-400 dark:ring-blue-600' : ''}
                                                     ${isToday && !selected ? 'ring-1 ring-slate-300 dark:ring-slate-600' : ''}
                                                 `}
                                             >
-                                                <span className={`text-[11px] font-normal leading-none
+                                                <span className={`text-[10px] font-normal leading-none
                                                     ${isToday ? 'text-blue-600 dark:text-blue-400' : selected ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'}
                                                 `}>
                                                     {day}
                                                 </span>
                                                 {p ? (
-                                                    <span className={`text-[9px] font-semibold mt-1.5 leading-none text-blue-600 dark:text-blue-400`}>
+                                                    <span className={`text-[9px] font-normal mt-1.5 leading-none text-blue-600 dark:text-blue-400`}>
                                                         {fmt(p.price, p.currency, targetCurrency)}
                                                     </span>
                                                 ) : !past && loadingLive ? (
@@ -392,7 +398,7 @@ export default function PriceCalendar({
                     {/* Footer */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-2.5 gap-2 border-t border-slate-100 dark:border-slate-800">
                         <div className="flex flex-col gap-0.5">
-                            <p className="text-[10px] text-slate-400">
+                            <p className="text-[9px] text-slate-400">
                                 {priceCount > 0
                                     ? `${priceCount} dates with prices found`
                                     : 'Searching for the best prices…'}
@@ -401,7 +407,7 @@ export default function PriceCalendar({
                                 <button 
                                     onClick={fetchAllMonthPrices}
                                     disabled={loadingLive}
-                                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium text-left flex items-center gap-1 transition-colors"
+                                    className="text-[9px] text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-normal text-left flex items-center gap-1 transition-colors"
                                 >
                                     {loadingLive ? (
                                         <>

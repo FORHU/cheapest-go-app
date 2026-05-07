@@ -7,6 +7,7 @@ import type { FlightOffer } from '@/types/flights';
 import type { SelectedSeat } from '@/types/seatMap';
 import type { SelectedBag } from '@/types/bags';
 import { createClient } from '@/utils/supabase/client';
+import { invokeEdgeFunction } from '@/utils/supabase/functions';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
@@ -188,22 +189,19 @@ export function useFlightBooking() {
             const { data: { user } } = await createClient().auth.getUser();
 
             try {
-                const { data, error } = await createClient().functions.invoke('revalidate-flight', {
-                    body: {
-                        provider: parsedOffer.provider,
-                        userId: user?.id || 'anonymous',
-                        flightPayload: {
-                            oldPrice: parsedOffer?.price?.total,
-                            currency: parsedOffer?.price?.currency,
-                            traceId: parsedOffer?.provider?.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
-                            flight: parsedOffer?.provider === 'duffel'
-                                ? ((parsedOffer as any).raw || (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
-                                : undefined,
-                        }
+                const data = await invokeEdgeFunction('revalidate-flight', {
+                    provider: parsedOffer.provider,
+                    userId: user?.id || 'anonymous',
+                    flightPayload: {
+                        oldPrice: parsedOffer?.price?.total,
+                        currency: parsedOffer?.price?.currency,
+                        traceId: parsedOffer?.provider?.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
+                        flight: parsedOffer?.provider === 'duffel'
+                            ? ((parsedOffer as any).raw || (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
+                            : undefined,
                     }
                 });
 
-                if (error) throw error;
                 if (!data.success) throw new Error(data.error || 'Revalidation failed');
                 if (!data.seatsAvailable) {
                     // SearchIdentifier errors mean the revalidation API can't run — not that

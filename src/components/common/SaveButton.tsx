@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useSession } from '@/stores/authStore';
 
 interface SaveButtonProps {
     type: 'flight' | 'hotel';
@@ -27,6 +29,9 @@ export default function SaveButton({
     const [loading, setLoading] = useState(false);
     const [checked, setChecked] = useState(false); // has the initial check run?
 
+    const router = useRouter();
+    const session = useSession();
+
     // On mount, check if this item is already saved
     useEffect(() => {
         let cancelled = false;
@@ -50,6 +55,12 @@ export default function SaveButton({
     const toggle = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+
+        if (!session) {
+            router.push('/login');
+            return;
+        }
+
         if (loading) return;
         setLoading(true);
 
@@ -68,7 +79,7 @@ export default function SaveButton({
 
                 if (res.status === 401) {
                     console.warn('[SaveButton] Unauthorized: User must be logged in to save trips.');
-                    // Optionally: window.location.href = '/login'; or show modal
+                    router.push('/login');
                     return;
                 }
 

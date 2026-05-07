@@ -106,11 +106,11 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
-                    className={`size-9 sm:size-10 mx-auto my-0.5 flex items-center justify-center text-[11px] sm:text-sm font-medium rounded-full transition-all relative
-                        ${isDisabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20' : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10'}
-                        ${isSelected ? 'bg-blue-600 text-white shadow-lg z-10' : 'text-slate-700 dark:text-slate-300'}
-                        ${isToday && !isSelected ? 'ring-1 ring-blue-600/50' : ''}
-                        ${isPast && !isSelected ? 'line-through decoration-slate-400/30' : ''}
+                    className={`size-9 sm:size-10 mx-auto my-0.5 flex items-center justify-center text-[11px] sm:text-sm font-bold rounded-xl transition-all relative
+                        ${isDisabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20' : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5'}
+                        ${isSelected ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 z-10' : 'text-slate-700 dark:text-slate-300'}
+                        ${isToday && !isSelected ? 'ring-1 ring-blue-500/30' : ''}
+                        ${isPast && !isSelected ? 'opacity-30' : ''}
                     `}
                 >
                     {day}
@@ -147,7 +147,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="relative sm:absolute top-0 sm:top-full left-0 sm:left-1/2 sm:-translate-x-1/2 sm:mt-4 w-full sm:w-[840px] bg-white dark:bg-slate-900 shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 z-[100] overflow-hidden"
+                        className="relative sm:absolute top-0 sm:top-full left-0 sm:left-1/2 sm:-translate-x-1/2 sm:mt-4 w-full sm:w-[840px] bg-white dark:bg-obsidian shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 z-[100] overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
@@ -225,7 +225,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                                     e.stopPropagation();
                                     onToggle(false);
                                 }}
-                                className="px-6 py-1.5 bg-blue-600 text-white rounded-full font-bold text-sm hover:bg-blue-700 transition-all shadow-lg"
+                                className="px-6 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg"
                             >
                                 Done
                             </button>

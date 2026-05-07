@@ -107,7 +107,7 @@ export default function BagSelectionPanel({
                     <AlertTriangle className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Bag upgrades not available</p>
+                    <p className="text-sm font-normal text-slate-700 dark:text-slate-300">Bag upgrades not available</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         {error
                             ? `Could not load bag options: ${error}`
@@ -143,9 +143,9 @@ export default function BagSelectionPanel({
 
             {/* Cost summary */}
             {totalBagCost > 0 && (
-                <div className="flex items-center justify-between text-xs bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-lg px-3 py-2">
-                    <span className="text-sky-700 dark:text-sky-300 font-medium">Bag upgrade total</span>
-                    <span className="font-bold text-sky-700 dark:text-sky-300">
+                <div className="flex items-center justify-between text-xs bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-md px-3 py-2">
+                    <span className="text-sky-700 dark:text-sky-300 font-normal">Bag upgrade total</span>
+                    <span className="font-normal text-sky-700 dark:text-sky-300">
                         +{new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(totalBagCost)}
                     </span>
                 </div>
@@ -178,7 +178,7 @@ function PassengerBagRow({
     return (
         <div className="space-y-2">
             {showLabel && (
-                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide px-0.5">
+                <p className="text-[10px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wide px-0.5">
                     {label}
                 </p>
             )}
@@ -228,14 +228,14 @@ function BagOptionCard({ opt, selected, onToggle, currency }: BagOptionCardProps
             type="button"
             onClick={() => onToggle(opt)}
             className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all',
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-md border text-left transition-all',
                 selected
                     ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-400 dark:border-sky-600 ring-1 ring-sky-400/50'
                     : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500',
             )}
         >
             <div className={cn(
-                'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                'w-8 h-8 rounded-md flex items-center justify-center shrink-0',
                 selected
                     ? 'bg-sky-100 dark:bg-sky-900/50'
                     : 'bg-slate-100 dark:bg-slate-700',
@@ -248,19 +248,19 @@ function BagOptionCard({ opt, selected, onToggle, currency }: BagOptionCardProps
 
             <div className="flex-1 min-w-0">
                 <p className={cn(
-                    'text-[12px] font-semibold',
+                    'text-[11px] font-normal',
                     selected ? 'text-sky-700 dark:text-sky-300' : 'text-slate-800 dark:text-slate-200',
                 )}>
                     {label}
                 </p>
                 {weightLabel && (
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{weightLabel}</p>
+                    <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">{weightLabel}</p>
                 )}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
                 <span className={cn(
-                    'text-[12px] font-bold',
+                    'text-[11px] font-normal',
                     selected ? 'text-sky-700 dark:text-sky-300' : 'text-slate-700 dark:text-slate-300',
                 )}>
                     {priceLabel}

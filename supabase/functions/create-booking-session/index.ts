@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
         if (!body.userId) {
             return jsonResponse(corsHeaders, { success: false, error: 'userId is required' }, 400);
         }
-        if (!body.provider || !['mystifly_v2', 'duffel'].includes(body.provider)) {
+        if (!body.provider || !['mystifly_v2', 'mystifly', 'duffel'].includes(body.provider)) {
             return jsonResponse(corsHeaders, { success: false, error: 'invalid provider string passed' }, 400);
         }
         if (!body.flight || typeof body.flight !== 'object') {
