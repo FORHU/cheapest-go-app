@@ -151,8 +151,8 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
     return (
         <div className="flex flex-col h-full w-full">
             {/* ── Top bar ── */}
-            <div className="flex-shrink-0 h-10 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 z-30 relative landscape-compact-topbar">
-                <div className="max-w-[1400px] mx-auto px-3 h-full flex items-center gap-2">
+            <div className="flex-shrink-0 bg-white dark:bg-slate-950 z-30 relative landscape-compact-topbar p-[10px]">
+                <div className="max-w-[1400px] mx-auto px-3 flex items-center gap-2">
                     <button
                         onClick={handleBackToList}
                         className="flex items-center gap-1 text-[10px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
@@ -211,9 +211,9 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
             </div>
 
             {/* ── Desktop Split layout ── */}
-            <div className="hidden lg:flex flex-1 min-h-0 relative">
+            <div className="hidden lg:flex flex-1 min-h-0 relative gap-4 p-4">
                 {/* LEFT: Property list */}
-                <div className="w-[420px] xl:w-[calc(420px+max(0px,50vw-700px))] xl:pl-[max(0px,50vw-700px)] flex-shrink-0 h-full overflow-y-auto overscroll-contain bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
+                <div className="w-[420px] xl:w-[calc(420px+max(0px,50vw-700px))] xl:pl-[max(0px,50vw-700px)] flex-shrink-0 h-full overflow-y-auto overscroll-contain">
                     {sortedProperties.length > 0 ? (
                         <div className="flex flex-col">
                             {sortedProperties.map((property) => (
@@ -242,8 +242,8 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
 
                 {/* RIGHT: Map */}
                 <div
-                    className="flex-1 h-full relative"
-                    style={{ paddingRight: 'max(0px, calc((100vw - 1400px) / 2))' }}
+                    className="flex-1 h-full relative rounded-md overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm"
+                    style={{ marginRight: 'max(0px, calc((100vw - 1400px) / 2))' }}
                 >
                     <SearchMapContainer
                         properties={sortedProperties}
@@ -252,18 +252,18 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                         hoveredId={hoveredId}
                         onHoverId={setHoveredId}
                         onViewDetails={handleViewDetails}
-                        searchOverlayClassName="absolute top-3 left-3 right-3 z-20"
+                        searchOverlayClassName="absolute top-4 left-20 z-20 w-[300px] md:w-[360px]"
                     />
 
                     {/* Property count badge */}
-                    <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                    <div className="absolute bottom-10 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300 z-10">
                         {mappableProperties.length} properties
                     </div>
 
                     {/* Floating List View Toggle */}
                     <button
                         onClick={handleBackToList}
-                        className="absolute bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-[14px] font-bold z-50 pointer-events-auto"
+                        className="absolute bottom-6 right-20 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-[14px] font-bold z-50 pointer-events-auto"
                     >
                         <List size={16} strokeWidth={2.5} />
                         Show List

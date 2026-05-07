@@ -63,7 +63,7 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
                         <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                     </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align={align} className="rounded-xl min-w-[100px]">
+                <DropdownMenuContent align={align === 'right' ? 'end' : 'start'} className="rounded-xl min-w-[100px]">
                     {CURRENCIES.map((c) => (
                         <DropdownMenuItem
                             key={c.code}

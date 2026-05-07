@@ -326,7 +326,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
                 onLoad={handleMapLoad}
-                className="rounded-none"
+                className="rounded-md overflow-hidden border border-slate-200 dark:border-slate-800"
             >
                 <NavigationControl position="top-right" showCompass visualizePitch />
 
@@ -394,7 +394,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
             </Map>
 
             {/* Property count badge */}
-            <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-slate-900 dark:white px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-xs font-medium">
+            <div className="absolute bottom-10 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-slate-900 dark:white px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-xs font-medium z-10">
                 {properties.length} {properties.length === 1 ? 'property' : 'properties'} on map
             </div>
 

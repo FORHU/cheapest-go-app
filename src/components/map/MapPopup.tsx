@@ -103,7 +103,7 @@ const MapPopup = React.memo(function MapPopup({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mapRef])
     const content = (
-        <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl w-full border border-slate-200 dark:border-slate-800">
+        <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl w-[240px] border border-slate-200 dark:border-slate-800">
 
             {/* Image */}
             <div className="relative">
@@ -186,7 +186,7 @@ const MapPopup = React.memo(function MapPopup({
             closeOnClick={false}
             onClose={onClose}
             className="map-property-popup z-50"
-            maxWidth="min(200px, calc(100vw - 32px))"
+            maxWidth="min(240px, calc(100vw - 32px))"
         >
             {content}
         </Popup>
