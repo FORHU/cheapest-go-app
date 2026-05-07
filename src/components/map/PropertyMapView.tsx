@@ -74,8 +74,12 @@ function detectPOI(
     map: mapboxgl.Map,
     point: [number, number],
     lngLat: { lat: number; lng: number },
+    layers?: string[]
 ): POIState | null {
-    const features = map.queryRenderedFeatures(point);
+    // Only query relevant symbol and POI layers to reduce overhead
+    const features = map.queryRenderedFeatures(point, {
+        layers: layers && layers.length > 0 ? layers : undefined
+    });
 
     const poi = features.find((f) => {
         const p = f.properties;
@@ -118,6 +122,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
     const hoveredPOINameRef = useRef<string | null>(null);
     const lastMouseMoveRef = useRef<number>(0);
     const lastFittedKeyRef = useRef<string | null>(null);
+    const poiLayersRef = useRef<string[]>([]);
     const targetCurrency = useUserCurrency();
 
     // Pre-compute display prices once per properties/currency change instead of
@@ -182,7 +187,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
                 center: [property.coordinates.lng, property.coordinates.lat],
                 zoom: 15,
                 pitch: 45,
-                duration: 1200,
+                duration: 800,
             });
         },
         [properties, onSelect]
@@ -201,8 +206,9 @@ const PropertyMapView = React.memo(function PropertyMapView({
         (e: MapMouseEvent) => {
             const map = mapRef.current?.getMap();
             if (!map) { onSelect(null); setPoiPopup(null); return; }
-
-            const poi = detectPOI(map, [e.point.x, e.point.y], e.lngLat);
+            
+            // Use cached layers for much faster detection
+            const poi = detectPOI(map, [e.point.x, e.point.y], e.lngLat, poiLayersRef.current);
 
             if (poi) {
                 setPoiPopup(poi);
@@ -218,15 +224,25 @@ const PropertyMapView = React.memo(function PropertyMapView({
     const handleMouseMove = useCallback((e: MapMouseEvent) => {
         if (poiPopup) return;
 
-        // Throttle to ~50ms (~20fps) — queryRenderedFeatures is a GPU read
-        const now = Date.now();
-        if (now - lastMouseMoveRef.current < 50) return;
-        lastMouseMoveRef.current = now;
-
         const map = mapRef.current?.getMap();
         if (!map) return;
 
-        const poi = detectPOI(map, [e.point.x, e.point.y], e.lngLat);
+        // [OPTIMIZATION] Skip expensive POI detection during active map movement
+        if (map.isMoving() || map.isZooming() || map.isRotating()) {
+            if (hoveredPOINameRef.current !== null) {
+                hoveredPOINameRef.current = null;
+                setHoveredPOI(null);
+                map.getCanvas().style.cursor = '';
+            }
+            return;
+        }
+
+        // Throttle to ~150ms (~6fps) — mouse interaction doesn't need 60fps
+        const now = Date.now();
+        if (now - lastMouseMoveRef.current < 150) return;
+        lastMouseMoveRef.current = now;
+
+        const poi = detectPOI(map, [e.point.x, e.point.y], e.lngLat, poiLayersRef.current);
         const name = poi?.name ?? null;
 
         if (name === hoveredPOINameRef.current) return;
@@ -272,6 +288,15 @@ const PropertyMapView = React.memo(function PropertyMapView({
 
     const handleMapLoad = useCallback(() => {
         setIsMapLoaded(true);
+        
+        // Cache POI layers once to avoid calling getStyle() during mouse movement
+        const map = mapRef.current?.getMap();
+        if (map) {
+            poiLayersRef.current = map.getStyle().layers
+                .filter(l => l.type === 'symbol' || l.id.includes('poi'))
+                .map(l => l.id);
+        }
+        
         fitBounds();
     }, [fitBounds]);
 
@@ -301,7 +326,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
                 onLoad={handleMapLoad}
-                className="rounded-none"
+                className="rounded-md overflow-hidden border border-slate-200 dark:border-slate-800"
             >
                 <NavigationControl position="top-right" showCompass visualizePitch />
 
@@ -369,7 +394,7 @@ const PropertyMapView = React.memo(function PropertyMapView({
             </Map>
 
             {/* Property count badge */}
-            <div className="absolute bottom-4 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-slate-900 dark:white px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-xs font-medium">
+            <div className="absolute bottom-10 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm text-slate-900 dark:white px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-xs font-medium z-10">
                 {properties.length} {properties.length === 1 ? 'property' : 'properties'} on map
             </div>
 

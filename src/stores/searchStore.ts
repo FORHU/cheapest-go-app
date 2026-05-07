@@ -284,6 +284,7 @@ export const useSearchStore = create<SearchState>()(
                 filters: initialFilters,
                 isMobileFiltersOpen: false,
                 suggestions: initialSuggestions,
+                flightState: initialFlightState,
             }),
 
             // Flight Actions Implementation
@@ -298,6 +299,12 @@ export const useSearchStore = create<SearchState>()(
                 const newFlights = [...state.flightState.flights];
                 if (newFlights[index]) {
                     newFlights[index] = { ...newFlights[index], ...segment };
+
+                    // Round-trip location syncing: automatically update return flight
+                    if (state.flightState.tripType === 'round-trip' && index === 0 && newFlights[1]) {
+                        if (segment.origin) newFlights[1].destination = segment.origin;
+                        if (segment.destination) newFlights[1].origin = segment.destination;
+                    }
 
                     // Date order auto-validation: enforce chronological order
                     if (segment.date) {
@@ -371,6 +378,7 @@ export const useSearchStore = create<SearchState>()(
                 userCurrency: state.userCurrency,
                 userCountry: state.userCountry,
                 searchMode: state.searchMode,
+                flightState: state.flightState,
             }) as SearchState,
             // Bump version to migrate existing users from PHP to KRW default
             version: 1,

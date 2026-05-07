@@ -24,7 +24,7 @@ function destinationToAirport(dest: Destination | null): Airport | null {
     return {
         iata: dest.code || '',
         name: dest.subtitle || '',
-        city: dest.title || '',
+        city: (dest.title || '').replace(/\s\([A-Z]{3}\)$/, '').trim(),
         country: '',
         countryCode: dest.countryCode || '',
     };
@@ -50,11 +50,14 @@ export const FlightLocationPicker: React.FC<FlightLocationPickerProps> = ({
     onToggle,
     excludeId,
 }) => {
-    const airportValue = destinationToAirport(value);
+    const airportValue = React.useMemo(() => {
+        return destinationToAirport(value);
+    }, [value]);
 
     const handleAirportChange = (airport: Airport | null) => {
         if (airport) {
-            onChange(airportToDestination(airport));
+            const dest = airportToDestination(airport);
+            onChange(dest);
         } else {
             onChange(null);
         }

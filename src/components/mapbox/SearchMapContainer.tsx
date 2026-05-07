@@ -13,6 +13,7 @@ import { Source, Layer } from 'react-map-gl/mapbox';
 
 import { PoiPopup } from './components/PoiPopup';
 import { MapMarker } from '../map/MapMarker';
+import { MapPopup } from '../map/MapPopup';
 import { MapSearchOverlay } from './components/MapSearchOverlay';
 import { useRouter } from 'next/navigation';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -23,7 +24,7 @@ import { env } from '@/utils/env';
 import { Layers } from 'lucide-react';
 import { useKakaoSearch } from './hooks/useKakaoSearch';
 import { isLocationInKorea } from '@/utils/geo';
-import { formatCurrency } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 // Haversine distance — defined outside component to avoid re-creation on every render
 const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
@@ -59,17 +60,10 @@ export const SearchMapContainer = React.memo(({
 }: SearchMapContainerProps) => {
     // 1. Map Instance
     const { mapRef, isMapLoaded, handleMapLoad, handleMapStyleChange } = useMapboxInstance();
-    const targetCurrency = useUserCurrency();
 
     // 2. Data Preparation
-    const { mappableProperties, geoJsonData, shouldCluster } = useMapMarkers(properties, useMemo(() => {
-        const prices: Record<string, string> = {};
-        for (const p of properties) {
-            const converted = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
-            prices[p.id] = formatCurrency(converted, targetCurrency);
-        }
-        return prices;
-    }, [properties, targetCurrency]));
+    const { mappableProperties, geoJsonData, shouldCluster } = useMapMarkers(properties);
+    const isMobile = useIsMobile();
     const router = useRouter();
 
     // POI Selection/Hover State
@@ -85,7 +79,6 @@ export const SearchMapContainer = React.memo(({
     const { handleMapClick, onMouseMove } = useMapInteractions({
         mapRef,
         onSelectId,
-        onHoverId,
         onSelectPoi: setSelectedPoi,
         onHoverPoi: setHoveredPoi,
     });
@@ -99,6 +92,7 @@ export const SearchMapContainer = React.memo(({
     });
 
     // 5. Derived State
+    const targetCurrency = useUserCurrency();
     const markerPrices = useMemo(() => {
         const prices: Record<string, number> = {};
         for (const p of mappableProperties) {
@@ -130,9 +124,8 @@ export const SearchMapContainer = React.memo(({
         [previewProperty, activePoi]
     );
 
-    // 6. Fetch Real Road GPS Route — debounced so rapid hover/select changes
-    // don't fire multiple in-flight Mapbox Directions requests.
-    // Route state is reset immediately when either endpoint becomes unavailable.
+    // 6. Fetch Real Road GPS Route — only fires when user CLICKS a POI
+    // (not on hover) to avoid unnecessary Directions API calls and re-renders.
     React.useEffect(() => {
         if (!previewProperty || !selectedPoi) {
             setRouteGeometry(null);
@@ -141,17 +134,18 @@ export const SearchMapContainer = React.memo(({
             return;
         }
 
+        const controller = new AbortController();
+
         const timer = setTimeout(async () => {
             try {
                 const base = `https://api.mapbox.com/directions/v5/mapbox`;
                 const coords = `${previewProperty.coordinates.lng},${previewProperty.coordinates.lat};${selectedPoi.coordinates.lng},${selectedPoi.coordinates.lat}`;
                 const token = `access_token=${env.MAPBOX_TOKEN}`;
+                const signal = controller.signal;
 
-                // Fetch driving and walking in parallel.
-                // No `alternatives=true` — the default single best route is sufficient.
                 const [drivingJson, walkingJson] = await Promise.all([
-                    fetch(`${base}/driving/${coords}?geometries=geojson&overview=full&${token}`).then(r => r.json()),
-                    fetch(`${base}/walking/${coords}?overview=full&${token}`).then(r => r.json()),
+                    fetch(`${base}/driving/${coords}?geometries=geojson&overview=full&${token}`, { signal }).then(r => r.json()),
+                    fetch(`${base}/walking/${coords}?overview=full&${token}`, { signal }).then(r => r.json()),
                 ]);
 
                 if (drivingJson.code === 'Ok' && drivingJson.routes?.length) {
@@ -164,12 +158,15 @@ export const SearchMapContainer = React.memo(({
                     const route = walkingJson.routes[0];
                     setWalkDuration(`${Math.max(1, Math.round(route.duration / 60))} min`);
                 }
-            } catch (err) {
-                console.error('Directions error:', err);
+            } catch (err: any) {
+                if (err.name !== 'AbortError') console.error('Directions error:', err);
             }
         }, 400);
 
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
     }, [previewProperty, selectedPoi]);
 
     const poiRouteData = useMemo(() => routeGeometry ? ({
@@ -192,49 +189,6 @@ export const SearchMapContainer = React.memo(({
         mapStyleUrl,
         standardConfig,
     } = useMapDetails();
-
-    // ── Sync GL Feature State ──
-    // This allows the GPU-rendered circle layers to respond to hover/select state
-    // defined in React. Mapbox Standard obscured some of this, but promoteId: 'id'
-    // in Source (via buildGeoJson) allows us to target them directly.
-    const lastActiveRef = React.useRef<{ selected: string | null; hovered: string | null }>({ selected: null, hovered: null });
-    
-    React.useEffect(() => {
-        if (!isMapLoaded || !mapRef.current) return;
-        const map = mapRef.current.getMap();
-        
-        // Clear previous hover
-        if (lastActiveRef.current.hovered && lastActiveRef.current.hovered !== hoveredId) {
-            map.setFeatureState(
-                { source: 'properties', id: lastActiveRef.current.hovered },
-                { hover: false }
-            );
-        }
-        // Set new hover
-        if (hoveredId) {
-            map.setFeatureState(
-                { source: 'properties', id: hoveredId },
-                { hover: true }
-            );
-        }
-
-        // Clear previous select
-        if (lastActiveRef.current.selected && lastActiveRef.current.selected !== selectedId) {
-            map.setFeatureState(
-                { source: 'properties', id: lastActiveRef.current.selected },
-                { selected: false }
-            );
-        }
-        // Set new select
-        if (selectedId) {
-            map.setFeatureState(
-                { source: 'properties', id: selectedId },
-                { selected: true }
-            );
-        }
-
-        lastActiveRef.current = { selected: selectedId, hovered: hoveredId };
-    }, [isMapLoaded, selectedId, hoveredId, mapRef]);
 
     // 7. Kakao Discovery for Korea
     const { results: recommendedPlaces, fetchRecommendations: fetchKakaoRecommendations } = useKakaoSearch();
@@ -293,7 +247,7 @@ export const SearchMapContainer = React.memo(({
                     longitude: 120.596,
                     latitude: 16.402, // Centered on Baguio City
                     zoom: 14.5,
-                    pitch: 45,
+                    pitch: 20,
                     bearing: -10,
                 }}
                 onLoad={handleMapLoad}
@@ -312,22 +266,18 @@ export const SearchMapContainer = React.memo(({
                             shouldCluster={shouldCluster}
                         />
 
-                        {/* DOM Markers: ONLY for selected and hovered properties to maximize performance */}
-                        {mappableProperties
-                            .filter(p => p.id === selectedId || p.id === hoveredId)
-                            .map(property => (
-                                <MapMarker
-                                    key={property.id}
-                                    property={property}
-                                    displayPrice={markerPrices[property.id] ?? 0}
-                                    displayCurrency={targetCurrency}
-                                    isSelected={property.id === selectedId}
-                                    isHovered={property.id === hoveredId}
-                                    onClick={onSelectId}
-                                    onHover={onHoverId}
-                                />
-                            ))
-                        }
+                        {mappableProperties.slice(0, 20).reverse().map(property => (
+                            <MapMarker
+                                key={property.id}
+                                property={property}
+                                displayPrice={markerPrices[property.id] ?? 0}
+                                displayCurrency={targetCurrency}
+                                isSelected={property.id === selectedId}
+                                isHovered={property.id === hoveredId}
+                                onClick={onSelectId}
+                                onHover={onHoverId}
+                            />
+                        ))}
 
                         {poiRouteData && (
                             <Source id="poi-route-source" type="geojson" data={poiRouteData}>
@@ -359,8 +309,9 @@ export const SearchMapContainer = React.memo(({
                                 <Layer
                                     id="discovery-poi-glow"
                                     type="circle"
+                                    minzoom={13}
                                     paint={{
-                                        'circle-radius': 12,
+                                        'circle-radius': 15,
                                         'circle-color': [
                                             'match',
                                             ['get', 'category'],
@@ -370,8 +321,14 @@ export const SearchMapContainer = React.memo(({
                                             'transit', '#3b82f6',
                                             '#8b5cf6'
                                         ],
-                                        'circle-blur': 0.8,
-                                        'circle-opacity': 0.4
+                                        'circle-opacity': [
+                                            'interpolate',
+                                            ['linear'],
+                                            ['zoom'],
+                                            13, 0,
+                                            14, 0.2
+                                        ],
+                                        'circle-pitch-alignment': 'map',
                                     }}
                                 />
                                 <Layer
@@ -382,8 +339,8 @@ export const SearchMapContainer = React.memo(({
                                             'interpolate',
                                             ['linear'],
                                             ['zoom'],
-                                            10, 6,
-                                            15, 10
+                                            10, 4,
+                                            15, 8
                                         ],
                                         'circle-color': [
                                             'match',
@@ -394,8 +351,9 @@ export const SearchMapContainer = React.memo(({
                                             'transit', '#3b82f6',
                                             '#8b5cf6'
                                         ],
-                                        'circle-stroke-width': 2,
-                                        'circle-stroke-color': '#fff'
+                                        'circle-stroke-width': 1.5,
+                                        'circle-stroke-color': '#fff',
+                                        'circle-pitch-alignment': 'map',
                                     }}
                                 />
                                 <Layer
@@ -434,12 +392,30 @@ export const SearchMapContainer = React.memo(({
                     }}
                     onViewDetails={onViewDetails}
                     onSelect={(id) => onSelectId(id)}
+                    isMobile={isMobile}
                 />
             </MapContainer>
 
+            {/* ── Mobile Centered Property Preview ── */}
+            {isMobile && selectedProperty && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-[min(200px,calc(100vw-48px))] pointer-events-auto">
+                    <div className="relative">
+                        <MapPopup
+                            property={selectedProperty}
+                            onClose={() => {
+                                onSelectId(null);
+                                setSelectedPoi(null);
+                            }}
+                            onViewDetails={onViewDetails}
+                            isCentered={true}
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* ── Map Search Overlay (Centered) ── */}
             <MapSearchOverlay
-                className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[60%] sm:w-[320px] md:w-[400px]"
+                className={searchOverlayClassName || "absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[60%] sm:w-[320px] md:w-[400px]"}
                 onSelect={(r) => {
                     // 1. Move the map visually
                     mapRef.current?.flyTo({ center: [r.lng, r.lat], zoom: 15, pitch: 45, bearing: -10, duration: 1200 });
@@ -460,11 +436,11 @@ export const SearchMapContainer = React.memo(({
                         e.stopPropagation();
                         setShowDetailsPanel(true);
                     }}
-                    className="absolute top-4 left-4 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 px-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 group h-[38px] shrink-0"
+                    className="absolute top-4 left-4 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 px-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 group h-[30px] shrink-0"
                 >
-                    <Layers className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors" />
-                    <div className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
-                    <svg className="w-3 h-3 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <Layers className="w-4 h-4 text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors" />
+                    <div className="w-px h-3 bg-slate-200 dark:bg-slate-700" />
+                    <svg className="w-2.5 h-2.5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>

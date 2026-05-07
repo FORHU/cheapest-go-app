@@ -2,9 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FlightResults } from '@/components/flights/flightResultsList';
 import FlightFilters, { type FilterState } from '@/components/flights/filters';
 import type { FlightOffer, CabinClass } from '@/types/flights';
+import { ListFilter, ChevronDown, X } from 'lucide-react';
+import { ResponsiveFlightHeader } from './ResponsiveFlightHeader';
+import { useSearchActions, useSearchStore } from '@/stores/searchStore';
+import { createPortal } from 'react-dom';
+import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
+import { MobileBottomNav } from '@/components/common/MobileBottomNav';
+import PriceCalendar from './PriceCalendar';
+import { Suspense } from 'react';
 
 // ─── City name → IATA code lookup ─────────────────────────────────────────────
 const CITY_TO_IATA: Record<string, string> = {
@@ -107,12 +116,12 @@ function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: b
     if (entries.length === 0) return null;
 
     return (
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-slate-400 font-medium">Sources:</span>
+        <div className="flex flex-wrap items-center gap-2 text-[10px] font-normal">
+            <span className="text-blue-600 dark:text-blue-400">Sources:</span>
             {entries.map(([provider, count]) => (
                 <span
                     key={provider}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                 >
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     {provider}: {count}
@@ -147,6 +156,9 @@ export function SearchFetcher({
         refundableOnly: false,
         selectedProviders: [],
     });
+    const { isMobileFiltersOpen } = useSearchStore();
+    const { setIsMobileFiltersOpen } = useSearchActions();
+    const [filtersOpen, setFiltersOpen] = useState(true);
     // allOffers holds the unfiltered list (used to populate the filter panel)
     const [allOffers, setAllOffers] = useState<FlightOffer[]>([]);
     const abortRef = useRef<AbortController | null>(null);
@@ -281,6 +293,11 @@ export function SearchFetcher({
         return offers;
     }, [allOffers, rawOffers, filters]);
 
+    const activeFilterCount = filters.selectedAirlines.length +
+        (filters.maxStops !== null ? 1 : 0) +
+        (filters.refundableOnly ? 1 : 0) +
+        filters.selectedProviders.length;
+
     const isLoading = state.status === 'loading' || state.status === 'loading_slow';
     const isSlowSearch = state.status === 'loading_slow';
     const hasResults = state.status === 'success';
@@ -342,10 +359,82 @@ export function SearchFetcher({
 
     // ─── Loading + Results layout (with sidebar) ──────────────────────────────
 
+    const cabinLabel = cabinClass.replace('_', ' ');
+    const passengersStr = `${adults} Adult${adults > 1 ? 's' : ''}`;
+    const dateStr = returnDate ? `${departureDate} - ${returnDate}` : departureDate;
+
+    const mobileFilterModal = (
+        <AnimatePresence>
+            {isMobileFiltersOpen && (
+                <>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[90] bg-black/40 lg:hidden pointer-events-auto"
+                        onClick={() => setIsMobileFiltersOpen(false)}
+                    />
+                    <motion.div
+                        initial={{ opacity: 0, y: "100%", scale: 1 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                        className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-[100] bg-white dark:bg-slate-900 bg-grid-slate-100 dark:bg-grid-slate-800/50 bg-[length:40px_40px] flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Background Sparkles */}
+                        <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
+                            <GlobalSparkle />
+                        </div>
+
+                        {/* Header */}
+                        <div className="p-3 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
+                            <button
+                                onClick={() => setIsMobileFiltersOpen(false)}
+                                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors -ml-1.5"
+                            >
+                                <X size={16} className="text-slate-700 dark:text-slate-300" />
+                            </button>
+                            <h2 className="text-sm font-bold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">Flight Filters</h2>
+                            <div className="w-8" />
+                        </div>
+
+                        {/* Filter Content */}
+                        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar relative z-10">
+                            <FlightFilters
+                                airlines={airlines}
+                                onFilterChange={setFilters}
+                            />
+                        </div>
+
+                        {/* Fixed Footer */}
+                        <div className="p-4 border-t border-slate-200/50 dark:border-white/5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-center flex-shrink-0 relative z-10">
+                            <button
+                                onClick={() => setIsMobileFiltersOpen(false)}
+                                className="w-full max-w-sm py-2 bg-blue-600 text-white rounded-lg text-xs font-bold flex items-center justify-center transition-transform active:scale-[0.98] shadow-md hover:shadow-lg"
+                            >
+                                Show {filteredOffers.length} {filteredOffers.length === 1 ? 'flight' : 'flights'}
+                            </button>
+                        </div>
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>
+    );
+
     return (
-        <div className="space-y-4">
-            {/* Provider status bar */}
-            <ProviderStatus offers={rawOffers} loading={isLoading} />
+        <div className="flex flex-col gap-3 lg:gap-6 relative pb-24 pt-0 lg:pt-0">
+            <ResponsiveFlightHeader
+                origin={origin}
+                destination={destination}
+                dateStr={dateStr}
+                passengersStr={passengersStr}
+                activeFilterCount={activeFilterCount}
+                statusElement={<ProviderStatus offers={rawOffers} loading={isLoading} />}
+                resultCount={filteredOffers.length}
+            />
+
+            {typeof window !== 'undefined' && createPortal(mobileFilterModal, document.body)}
 
             {/* Progressive slow-search banner */}
             {isSlowSearch && (
@@ -358,60 +447,47 @@ export function SearchFetcher({
                 </div>
             )}
 
-            <div className="flex flex-col lg:flex-row gap-6">
-                {/* Filters sidebar */}
-                <div className="w-full lg:w-72 shrink-0">
-                    {isLoading && rawOffers.length === 0 ? (
-                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 animate-pulse">
-                            <div className="space-y-3">
-                                <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
-                                <div className="space-y-2">
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                </div>
+            <div className="flex flex-col lg:flex-row gap-6 lg:items-start items-stretch">
+                {/* Desktop Sidebar Filters */}
+                <AnimatePresence>
+                    {filtersOpen && (
+                        <motion.div
+                            initial={{ width: 0, opacity: 0, x: -20 }}
+                            animate={{ width: 288, opacity: 1, x: 0 }}
+                            exit={{ width: 0, opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            className="hidden lg:block sticky top-24 self-start flex-shrink-0 overflow-hidden"
+                        >
+                            <div className="w-full bg-white dark:bg-slate-900 p-6 rounded-md border border-slate-200 dark:border-slate-800 shadow-sm">
+                                <FlightFilters
+                                    airlines={airlines}
+                                    onFilterChange={setFilters}
+                                />
                             </div>
-                            <div className="space-y-3">
-                                <div className="h-3 w-12 bg-slate-200 dark:bg-slate-700 rounded" />
-                                <div className="space-y-2">
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                    <div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-lg" />
-                                </div>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
-                                <div className="space-y-2">
-                                    <div className="h-5 w-32 bg-slate-100 dark:bg-slate-800 rounded" />
-                                    <div className="h-5 w-28 bg-slate-100 dark:bg-slate-800 rounded" />
-                                    <div className="h-5 w-36 bg-slate-100 dark:bg-slate-800 rounded" />
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <FlightFilters
-                            airlines={airlines}
-                            onFilterChange={setFilters}
-                        />
+                        </motion.div>
                     )}
-                </div>
+                </AnimatePresence>
 
-                {/* Main results area */}
-                <div className="flex-1 min-w-0">
-                    {hasResults && filteredOffers.length === 0 && allOffers.length > 0 ? (
-                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center space-y-3">
-                            <p className="text-lg font-bold text-slate-700 dark:text-slate-300">No flights match your filters</p>
-                            <p className="text-sm text-slate-500">Try adjusting your filter criteria.</p>
-                        </div>
-                    ) : (
-                        <FlightResults
-                            offers={filteredOffers}
-                            loading={isLoading}
-                            onSelect={handleSelect}
-                        />
-                    )}
+                <div className="flex-1 min-w-0 space-y-4">
+
+                    {/* Main results area */}
+                    <div className="min-w-0">
+                        {hasResults && filteredOffers.length === 0 && allOffers.length > 0 ? (
+                            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center space-y-3">
+                                <p className="text-lg font-bold text-slate-700 dark:text-slate-300">No flights match your filters</p>
+                                <p className="text-sm text-slate-500">Try adjusting your filter criteria.</p>
+                            </div>
+                        ) : (
+                            <FlightResults
+                                offers={filteredOffers}
+                                loading={isLoading}
+                                onSelect={handleSelect}
+                            />
+                        )}
+                    </div>
                 </div>
             </div>
+
         </div>
     );
 }

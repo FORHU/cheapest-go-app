@@ -95,10 +95,33 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             return () => { document.body.style.overflow = ''; };
         }, [isFullscreen]);
 
-        // POI State
         const [activePoiId, setActivePoiId] = useState<string | null>(null);
         const [selectedNativePoi, setSelectedNativePoi] = useState<any>(null);
         const [modalPoiId, setModalPoiId] = useState<string | null>(null);
+
+        // Mapbox Performance: Synchronize activePoiId with feature-state
+        const lastActivePoiId = useRef<string | null>(null);
+        React.useEffect(() => {
+            const map = mapRef.current?.getMap();
+            if (!map || !isLoaded) return;
+
+            // Clear previous state
+            if (lastActivePoiId.current && lastActivePoiId.current !== 'hotel') {
+                map.setFeatureState(
+                    { source: 'gems-source', id: lastActivePoiId.current },
+                    { active: false }
+                );
+            }
+
+            // Set new state
+            if (activePoiId && activePoiId !== 'hotel') {
+                map.setFeatureState(
+                    { source: 'gems-source', id: activePoiId },
+                    { active: true }
+                );
+            }
+            lastActivePoiId.current = activePoiId;
+        }, [activePoiId, isLoaded]);
 
         // Directions State
         const [showDirections, setShowDirections] = useState(false);
@@ -114,6 +137,11 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         const [transportProfile, setTransportProfile] = useState<'driving-traffic' | 'driving' | 'walking' | 'cycling'>('driving-traffic');
         const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
         const [isLocating, setIsLocating] = useState(false);
+
+        // Itinerary & Optimization State
+        const [itineraryGems, setItineraryGems] = useState<any[]>([]);
+        const [optimizedRouteGeometry, setOptimizedRouteGeometry] = useState<any>(null);
+        const [isOptimizing, setIsOptimizing] = useState(false);
 
         const name = propertyName || hotelDetails?.name || 'Premium Stay';
         const addressLine = hotelDetails?.address || 'Address not available';
@@ -175,6 +203,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             routeGeometry: poiRouteGeometry,
             travelTime: poiTravelTime,
             walkingTime: poiWalkingTime,
+            cyclingTime: poiCyclingTime,
         } = useMapboxDirections({
             origin: hasCoordinates ? { lat: coordinates.lat, lng: coordinates.lng } : null,
             destination: selectedNativePoi ? { 
@@ -205,6 +234,64 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             onClearDirections: clearDirections
         });
 
+        const toggleItineraryGem = useCallback((poi: any) => {
+            setItineraryGems(prev => {
+                const name = poi.properties?.name || poi.name;
+                const exists = prev.find(g => (g.properties?.name || g.name) === name);
+                if (exists) {
+                    const newItinerary = prev.filter(g => (g.properties?.name || g.name) !== name);
+                    if (newItinerary.length === 0) setOptimizedRouteGeometry(null);
+                    return newItinerary;
+                }
+                if (prev.length >= 11) {
+                    alert('Maximum 11 places allowed for optimization.');
+                    return prev;
+                }
+                return [...prev, poi];
+            });
+        }, []);
+
+        const handleOptimizeRoute = useCallback(async () => {
+            if (!hasCoordinates || itineraryGems.length === 0) return;
+            setIsOptimizing(true);
+            
+            try {
+                // Coordinates string: hotel first, then gems.
+                const coordsArray = [
+                    `${coordinates.lng},${coordinates.lat}`,
+                    ...itineraryGems.map(gem => {
+                        const lng = gem.geometry?.coordinates[0] || gem.coordinates?.lng;
+                        const lat = gem.geometry?.coordinates[1] || gem.coordinates?.lat;
+                        return `${lng},${lat}`;
+                    })
+                ];
+                const coordsString = coordsArray.join(';');
+                
+                // Mapbox Optimization API (default driving profile)
+                const url = `https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coordsString}?source=first&destination=last&roundtrip=true&geometries=geojson&access_token=${env.MAPBOX_TOKEN}`;
+                
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.code === 'Ok' && data.trips?.[0]) {
+                    setOptimizedRouteGeometry(data.trips[0].geometry);
+                    // Fit bounds to include all itinerary points
+                    if (mapRef.current) {
+                        const allLats = [coordinates.lat, ...itineraryGems.map(g => g.geometry?.coordinates[1] || g.coordinates?.lat)];
+                        const allLngs = [coordinates.lng, ...itineraryGems.map(g => g.geometry?.coordinates[0] || g.coordinates?.lng)];
+                        mapRef.current.fitBounds(
+                            [[Math.min(...allLngs), Math.min(...allLats)], [Math.max(...allLngs), Math.max(...allLats)]],
+                            { padding: 80, duration: 1000 }
+                        );
+                    }
+                }
+            } catch (err) {
+                console.error('Optimization failed:', err);
+            } finally {
+                setIsOptimizing(false);
+            }
+        }, [hasCoordinates, coordinates, itineraryGems]);
+
         const modalPoi = useMemo(() => {
             if (!modalPoiId) return null;
             const gem = nearbyGems.find(g => (g.properties?.name || g.name) === modalPoiId);
@@ -215,6 +302,43 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
         const handleStyleReady = useCallback(() => {
             setIsLoaded(true);
+            
+            const map = mapRef.current?.getMap();
+            if (!map) return;
+
+            // [AGGRESSIVE OVERRIDE] Apply Blue Theme to all native markers
+            try {
+                const style = map.getStyle();
+                if (style && style.layers) {
+                    style.layers.forEach((layer: any) => {
+                        const id = layer.id.toLowerCase();
+                        const isSymbol = layer.type === 'symbol';
+                        
+                        // Skip roads, water labels, and administrative boundaries
+                        const isNav = id.includes('road') || id.includes('street') || id.includes('bridge') || id.includes('tunnel');
+                        const isAdmin = id.includes('admin') || id.includes('boundary') || id.includes('country') || id.includes('state');
+                        const isNatural = id.includes('water') || id.includes('land') || id.includes('terrain');
+                        
+                        if (isSymbol && !isNav && !isAdmin && !isNatural) {
+                            if (map.getLayer(layer.id)) {
+                                // Force icon tint to Blue
+                                try { map.setPaintProperty(layer.id, 'icon-color', '#3b82f6'); } catch(e){}
+                                // Force text to Deep Blue
+                                try { map.setPaintProperty(layer.id, 'text-color', '#1e3a8a'); } catch(e){}
+                                // Boost halo for contrast
+                                try { map.setPaintProperty(layer.id, 'text-halo-color', 'rgba(255, 255, 255, 0.95)'); } catch(e){}
+                                try { map.setPaintProperty(layer.id, 'text-halo-width', 2); } catch(e){}
+                                
+                                // Some Mapbox Standard layers use icon-halo-color for the circular background
+                                try { map.setPaintProperty(layer.id, 'icon-halo-color', 'rgba(59, 130, 246, 0.2)'); } catch(e){}
+                                try { map.setPaintProperty(layer.id, 'icon-halo-width', 1); } catch(e){}
+                            }
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('Aggressive POI theme application deferred:', e);
+            }
         }, []);
 
         // Reset loading state on style change to prevent "Style not done loading" errors
@@ -247,20 +371,17 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
             return {
                 type: 'FeatureCollection',
-                features: visibleGems.map(gem => ({
-                    ...gem,
-                    properties: {
-                        ...gem.properties,
-                        isActive: activePoiId === (gem.properties?.name || gem.name)
-                    }
-                }))
+                features: visibleGems
             };
-        }, [nearbyGems, showDirections, activeMapFilters, activePoiId]);
+        }, [nearbyGems, showDirections, activeMapFilters]);
 
         const routeGeojson = React.useMemo(() => {
+            if (optimizedRouteGeometry && itineraryGems.length > 0) {
+                return { type: 'Feature', properties: { isOptimized: true }, geometry: optimizedRouteGeometry };
+            }
             if (!activeRouteGeometry) return { type: 'FeatureCollection', features: [] };
             return { type: 'Feature', properties: {}, geometry: activeRouteGeometry };
-        }, [activeRouteGeometry]);
+        }, [activeRouteGeometry, optimizedRouteGeometry, itineraryGems]);
 
         const displayInfo = activePoiId === 'hotel' ? {
             name,
@@ -296,8 +417,15 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             }
 
             const map = mapRef.current.getMap();
+
+            // Use a small bbox for more reliable click detection
+            const bbox: [mapboxgl.PointLike, mapboxgl.PointLike] = [
+                [event.point.x - 5, event.point.y - 5],
+                [event.point.x + 5, event.point.y + 5]
+            ];
+
             const hasGemsLayer = map.getLayer('gems-layer');
-            const features = hasGemsLayer ? map.queryRenderedFeatures(event.point, { layers: ['gems-layer'] }) : [];
+            const features = hasGemsLayer ? map.queryRenderedFeatures(bbox, { layers: ['gems-layer'] }) : [];
             
             if (features.length > 0) {
                 const gem = features[0];
@@ -312,18 +440,26 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                 return;
             }
 
-            // Fallback to checking for general POIs if no gem was clicked
-            const allFeatures = map.queryRenderedFeatures(event.point);
-            const skipPatterns = ['road', 'building', 'land', 'water', 'boundary', 'admin', 'tunnel', 'bridge', 'path', 'street'];
+            // [RESTORATION] Robust detection: query symbol layers first, fallback to ALL layers
+            const layersToQuery = symbolLayersRef.current?.filter((id) => map.getLayer(id));
+            let allFeatures = layersToQuery && layersToQuery.length > 0
+                ? map.queryRenderedFeatures(bbox, { layers: layersToQuery })
+                : [];
+            
+            // If no features found in symbols, try everything in the bbox
+            if (allFeatures.length === 0) {
+                allFeatures = map.queryRenderedFeatures(bbox);
+            }
 
             const poiFeature = allFeatures.find((f: any) => {
                 const layerId = (f.layer?.id || '').toLowerCase();
                 const sourceName = (f.source || '').toLowerCase();
                 const hasName = f.properties?.name || f.properties?.name_en;
+                const skipPatterns = ['road', 'building', 'land', 'water', 'boundary', 'admin', 'tunnel', 'bridge', 'path', 'street'];
                 if (skipPatterns.some(p => layerId.includes(p) || sourceName.includes(p))) return false;
 
-                // Interaction Filtering: Only allow allowed categories
-                return !!hasName && isPoiAllowed(f);
+                // Allow clicking any named POI that Mapbox renders
+                return !!hasName;
             });
 
             if (poiFeature) {
@@ -377,22 +513,41 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         const lastMoveRef = useRef<number>(0);
         const symbolLayersRef = useRef<string[] | null>(null);
 
+        // Invalidate cached symbol layers when the map style URL changes
+        React.useEffect(() => {
+            symbolLayersRef.current = null;
+        }, [mapStyleUrl]);
+
         const onMouseMove = useCallback((event: any) => {
             if (!mapRef.current || showDirections) return;
             
-            // Throttle the expensive queryRenderedFeatures to 10fps
-            const now = Date.now();
-            if (now - lastMoveRef.current < 100) return;
-            lastMoveRef.current = now;
-
             const map = mapRef.current.getMap();
             if (!map || !map.loaded()) return;
+
+            // [OPTIMIZATION] Skip expensive POI detection during active map movement
+            if (map.isMoving() || map.isZooming() || map.isRotating()) {
+                map.getCanvas().style.cursor = '';
+                return;
+            }
+
+            // Throttle the expensive queryRenderedFeatures to ~7fps
+            const now = Date.now();
+            if (now - lastMoveRef.current < 150) return;
+            lastMoveRef.current = now;
+
+            // Use a small bounding box (5px) instead of exact point for cheaper GPU queries
+            const bbox: [mapboxgl.PointLike, mapboxgl.PointLike] = [
+                [event.point.x - 5, event.point.y - 5],
+                [event.point.x + 5, event.point.y + 5]
+            ];
             
             const hasGemsLayer = map.getLayer('gems-layer');
-            const features = hasGemsLayer ? map.queryRenderedFeatures(event.point, { layers: ['gems-layer'] }) : [];
-            if (features.length > 0) {
-                map.getCanvas().style.cursor = 'pointer';
-                return;
+            if (hasGemsLayer) {
+                const features = map.queryRenderedFeatures(bbox, { layers: ['gems-layer'] });
+                if (features.length > 0) {
+                    map.getCanvas().style.cursor = 'pointer';
+                    return;
+                }
             }
 
             // Cache symbol layers to avoid querying 3D buildings, terrain, and heavy polygons
@@ -406,19 +561,27 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                 }
             }
 
-            if (symbolLayersRef.current && symbolLayersRef.current.length > 0) {
-                const validLayers = symbolLayersRef.current.filter((id) => map.getLayer(id));
-                if (validLayers.length === 0) return;
-                
-                const allFeatures = map.queryRenderedFeatures(event.point, { layers: validLayers });
-                const poiFeature = allFeatures.find((f: any) => {
-                    const hasName = f.properties?.name || f.properties?.name_en;
-                    return !!hasName && isPoiAllowed(f);
-                });
-                map.getCanvas().style.cursor = poiFeature ? 'pointer' : '';
-            } else {
-                map.getCanvas().style.cursor = '';
+            // [RESTORATION] Robust detection: query symbol layers first, fallback to ALL layers
+            const layersToQuery = symbolLayersRef.current?.filter((id) => map.getLayer(id));
+            let allFeatures = layersToQuery && layersToQuery.length > 0
+                ? map.queryRenderedFeatures(bbox, { layers: layersToQuery })
+                : [];
+
+            if (allFeatures.length === 0) {
+                allFeatures = map.queryRenderedFeatures(bbox);
             }
+
+            const poiFeature = allFeatures.find((f: any) => {
+                const layerId = (f.layer?.id || '').toLowerCase();
+                const sourceName = (f.source || '').toLowerCase();
+                const hasName = f.properties?.name || f.properties?.name_en;
+                const skipPatterns = ['road', 'building', 'land', 'water', 'boundary', 'admin', 'tunnel', 'bridge', 'path', 'street'];
+                if (skipPatterns.some(p => layerId.includes(p) || sourceName.includes(p))) return false;
+
+                return !!hasName;
+            });
+
+            map.getCanvas().style.cursor = poiFeature ? 'pointer' : '';
         }, [showDirections, isPoiAllowed]);
 
         if (!mounted) {
@@ -432,11 +595,11 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         }
 
         return (
-            <div className="flex flex-col relative bg-white dark:bg-slate-900 lg:h-full">
+            <div className="flex flex-col relative dark:bg-slate-950 lg:h-full">
                 {/* Map Container */}
                 <div className="relative w-full h-[320px] sm:h-[450px] lg:h-full mb-2 lg:mb-0">
                     {isFullscreen && mounted ? createPortal(
-                        <div className="fixed inset-0 z-[10000] bg-white dark:bg-slate-900 flex flex-col">
+                        <div className="fixed inset-0 z-[10000] bg-slate-950/20 dark:bg-slate-950 flex flex-col">
                             <div className="relative flex-1">
                                 <div className="absolute inset-0">
                                     {hasCoordinates ? (
@@ -491,7 +654,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
                                             <Marker latitude={coordinates.lat} longitude={coordinates.lng} anchor="center">
                                                 <div className={`flex flex-col items-center transition-all ${activePoiId === 'hotel' ? 'scale-125 z-20' : ''}`} onClick={() => setActivePoiId('hotel')}>
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-xl ${activePoiId === 'hotel' ? 'bg-pink-600 border-white' : 'bg-white border-pink-100 text-pink-600'}`}>
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-xl ${activePoiId === 'hotel' ? 'bg-blue-600 border-white text-white' : 'bg-white border-blue-200 text-blue-600'}`}>
                                                         <Home size={16} />
                                                     </div>
                                                 </div>
@@ -523,6 +686,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                                 isFetchingOriginRoute={isFetchingOriginRoute}
                                                 poiTravelTime={poiTravelTime}
                                                 poiWalkingTime={poiWalkingTime}
+                                                poiCyclingTime={poiCyclingTime}
                                                 weather={weather}
                                                 isWeatherLoading={isWeatherLoading}
                                                 refetchWeather={refetchWeather}
@@ -533,6 +697,8 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                                 propertyName={name}
                                                 hotelName={name}
                                                 coordinates={coordinates}
+                                                setIsFullscreen={setIsFullscreen}
+                                                handleRecenter={handleRecenter}
                                             />
                                         </UIMap>
                                     ) : (
@@ -582,7 +748,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
                                     <Marker latitude={coordinates.lat} longitude={coordinates.lng} anchor="center">
                                         <div className={`flex flex-col items-center transition-all ${activePoiId === 'hotel' ? 'scale-125 z-20' : ''}`} onClick={() => setActivePoiId('hotel')}>
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-xl ${activePoiId === 'hotel' ? 'bg-pink-600 border-white' : 'bg-white border-pink-100 text-pink-600'}`}>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center border shadow-xl ${activePoiId === 'hotel' ? 'bg-blue-600 border-white text-white' : 'bg-white border-blue-200 text-blue-600'}`}>
                                                 <Home size={16} />
                                             </div>
                                         </div>
@@ -614,6 +780,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                         isFetchingOriginRoute={isFetchingOriginRoute}
                                         poiTravelTime={poiTravelTime}
                                         poiWalkingTime={poiWalkingTime}
+                                        poiCyclingTime={poiCyclingTime}
                                         weather={weather}
                                         isWeatherLoading={isWeatherLoading}
                                         refetchWeather={refetchWeather}
@@ -624,6 +791,8 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                         propertyName={name}
                                         hotelName={name}
                                         coordinates={coordinates}
+                                        setIsFullscreen={setIsFullscreen}
+                                        handleRecenter={handleRecenter}
                                     />
                                 </UIMap>
                             ) : (
@@ -651,6 +820,11 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                         mapRef={mapRef}
                         gemsScrollRef={gemsScrollRef}
                         scrollGems={scrollGems}
+                        itineraryGems={itineraryGems}
+                        toggleItineraryGem={toggleItineraryGem}
+                        handleOptimizeRoute={handleOptimizeRoute}
+                        isOptimizing={isOptimizing}
+                        hasOptimizedRoute={!!optimizedRouteGeometry}
                     />,
                     document.body
                 ) : (
@@ -671,6 +845,11 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                         mapRef={mapRef}
                         gemsScrollRef={gemsScrollRef}
                         scrollGems={scrollGems}
+                        itineraryGems={itineraryGems}
+                        toggleItineraryGem={toggleItineraryGem}
+                        handleOptimizeRoute={handleOptimizeRoute}
+                        isOptimizing={isOptimizing}
+                        hasOptimizedRoute={!!optimizedRouteGeometry}
                     />
                 )}
                 <PoiDetailsModal isOpen={!!modalPoi} onClose={() => setModalPoiId(null)} poi={modalPoi} />

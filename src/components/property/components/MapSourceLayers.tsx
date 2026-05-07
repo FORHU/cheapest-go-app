@@ -14,38 +14,41 @@ export const MapSourceLayers: React.FC<MapSourceLayersProps> = ({
     activeRouteGeometry,
     showDirections
 }) => {
+    const hasRoute = routeGeojson?.geometry || (routeGeojson?.features && routeGeojson.features.length > 0);
+
     return (
         <>
-            <Source id="route-source" type="geojson" data={routeGeojson}>
-                <Layer
-                    id="route-layer-casing"
-                    type="line"
-                    layout={{ 
-                        'line-cap': 'round', 
-                        'line-join': 'round', 
-                        'visibility': activeRouteGeometry ? 'visible' : 'none' 
-                    }}
-                    paint={{ 
-                        'line-color': showDirections ? '#ffffff' : 'transparent', 
-                        'line-width': 8, 
-                        'line-opacity': 0.6 
-                    }}
-                />
-                <Layer
-                    id="route-layer"
-                    type="line"
-                    layout={{ 
-                        'line-cap': 'round', 
-                        'line-join': 'round', 
-                        'visibility': activeRouteGeometry ? 'visible' : 'none' 
-                    }}
-                    paint={{ 
-                        'line-color': '#3b82f6', 
-                        'line-width': showDirections ? 5 : 6, 
-                        'line-opacity': showDirections ? 0.9 : 0.8 
-                    }}
-                />
-            </Source>
+            {hasRoute && (
+                <Source id="route-source" type="geojson" data={routeGeojson}>
+                    <Layer
+                        id="route-layer-casing"
+                        type="line"
+                        layout={{ 
+                            'line-cap': 'round', 
+                            'line-join': 'round', 
+                        }}
+                        paint={{ 
+                            'line-color': showDirections ? '#ffffff' : 'transparent', 
+                            'line-width': 8, 
+                            'line-opacity': 0.6 
+                        }}
+                    />
+                    <Layer
+                        id="route-layer"
+                        type="line"
+                        layout={{ 
+                            'line-cap': 'round', 
+                            'line-join': 'round', 
+                        }}
+                        paint={{ 
+                            'line-color': ['case', ['boolean', ['get', 'isOptimized'], false], '#10b981', '#3b82f6'], 
+                            'line-width': showDirections ? 5 : 6, 
+                            'line-opacity': showDirections ? 0.9 : 0.8,
+                            'line-dasharray': ['case', ['boolean', ['get', 'isOptimized'], false], ['literal', [2, 2]], ['literal', [1]]]
+                        }}
+                    />
+                </Source>
+            )}
 
             <Source id="gems-source" type="geojson" data={gemsGeojson}>
                 <Layer
@@ -74,11 +77,16 @@ export const MapSourceLayers: React.FC<MapSourceLayersProps> = ({
                         'text-anchor': 'top',
                         'text-optional': true
                     }}
+                    minzoom={8}
                     paint={{
                         'text-color': '#1e293b',
                         'text-halo-color': '#ffffff',
                         'text-halo-width': 1.5,
-                        'icon-opacity': ['case', ['boolean', ['get', 'isActive'], false], 1, 0.8]
+                        'icon-opacity': [
+                            'case',
+                            ['boolean', ['feature-state', 'active'], false], 1.0,
+                            0.8
+                        ]
                     }}
                 />
             </Source>

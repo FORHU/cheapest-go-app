@@ -20,10 +20,10 @@ export const DestinationSection: React.FC = () => {
             >
                 <MapPin className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
+                    <label className="text-ui-label">
                         Where to?
                     </label>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[150px]">
+                    <div className="text-ui-value truncate max-w-[150px]">
                         {destination?.title || query || 'Search destination'}
                     </div>
                 </div>
@@ -54,10 +54,10 @@ export const DateSection: React.FC = () => {
             >
                 <Calendar className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
+                    <label className="text-ui-label">
                         Dates
                     </label>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                    <div className="text-ui-value truncate">
                         {formatDateRange()}
                     </div>
                 </div>
@@ -91,10 +91,10 @@ export const TravelersSection: React.FC = () => {
             >
                 <User className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
+                    <label className="text-ui-label">
                         Travelers
                     </label>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate pr-6">
+                    <div className="text-ui-value truncate pr-6">
                         {formatTravelers()}
                     </div>
                 </div>

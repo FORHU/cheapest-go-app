@@ -59,25 +59,25 @@ export const ResponsiveSearchHeader = () => {
             </div>
 
             {/* Mobile View - Floating Pill */}
-            <div className="lg:hidden sticky top-0 z-40 pt-4 pb-4 px-4 pointer-events-none [&>*]:pointer-events-auto">
-                <div className="flex items-center gap-2 max-w-[500px] mx-auto">
+            <div className="lg:hidden sticky top-0 z-40 pt-1.5 pb-1.5 px-2 pointer-events-none [&>*]:pointer-events-auto">
+                <div className="flex items-center gap-1 w-full mx-auto">
                     <button
                         onClick={() => router.push('/')}
-                        className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-full shadow-sm"
+                        className="p-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-full shadow-sm"
                     >
-                        <ArrowLeft size={18} className="text-slate-700 dark:text-slate-300" />
+                        <ArrowLeft size={14} className="text-slate-700 dark:text-slate-300" />
                     </button>
 
                     <button
                         onClick={() => setIsSearchModalOpen(true)}
-                        className="flex-1 flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full py-2 px-4 shadow-sm hover:shadow-md transition-shadow gap-3 text-left"
+                        className="flex-1 flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full py-0.5 px-3 shadow-sm hover:shadow-md transition-shadow gap-1 text-left"
                     >
-                        <Search size={18} className="text-slate-800 font-bold dark:text-slate-200" />
+                        <Search size={13} className="text-slate-800 font-bold dark:text-slate-200" />
                         <div className="flex flex-col items-start flex-1 min-w-0">
-                            <span className="text-sm font-bold text-slate-900 dark:text-white truncate w-full">
+                            <span className="text-[10px] font-bold text-slate-900 dark:text-white truncate w-full">
                                 {destination === 'Anywhere' ? 'Where to?' : destination}
                             </span>
-                            <span className="text-xs text-slate-500 dark:text-slate-400 truncate w-full">
+                            <span className="text-[8px] text-slate-500 dark:text-slate-400 truncate w-full">
                                 {dateStr} • {guestsStr}
                             </span>
                         </div>
@@ -85,11 +85,11 @@ export const ResponsiveSearchHeader = () => {
 
                     <button
                         onClick={() => searchActions.setIsMobileFiltersOpen(true)}
-                        className="p-2.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-full shadow-sm ml-1 relative"
+                        className="p-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-full shadow-sm ml-0.5 relative"
                     >
-                        <SlidersHorizontal size={18} className="text-slate-700 dark:text-slate-300" />
+                        <SlidersHorizontal size={14} className="text-slate-700 dark:text-slate-300" />
                         {activeFilterCount > 0 && (
-                            <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white border border-white dark:border-slate-900">
+                            <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-3 w-3 items-center justify-center rounded-full bg-blue-600 text-[8px] font-bold text-white border border-white dark:border-slate-900">
                                 {activeFilterCount}
                             </span>
                         )}
