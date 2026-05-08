@@ -2,7 +2,7 @@
 
 import React, { Suspense } from 'react';
 import { MagneticButton } from '@/components/ui';
-import { DestinationSection, DateSection, TravelersSection } from './search/SearchSections';
+import { DestinationSection, CheckInSection, CheckOutSection, TravelersSection } from './search/SearchSections';
 import { useSearchModule } from '@/hooks';
 
 const SearchModuleContent: React.FC = () => {
@@ -14,7 +14,8 @@ const SearchModuleContent: React.FC = () => {
             {/* Main Inputs Container */}
             <div className="flex-[4] flex flex-col sm:flex-row bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-white/5 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5">
                 <DestinationSection />
-                <DateSection />
+                <CheckInSection />
+                <CheckOutSection />
                 <TravelersSection />
             </div>
 

@@ -298,11 +298,11 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                                     setShowMobileMap(false);
                                 }
                             }}
-                            className="absolute bottom-24 left-0 right-0 w-full z-20"
+                            className="absolute bottom-[58px] left-0 right-0 w-full z-20"
                         >
                             <div className="w-full overflow-x-auto pb-2 pt-2 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                 {sortedProperties.map((property) => (
-                                    <div key={property.id} className="snap-center shrink-0 w-[70vw] sm:w-[260px] landscape:w-[240px] shadow-lg rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                                    <div key={property.id} className="snap-center shrink-0 w-[70vw] sm:w-[260px] landscape:w-[240px] shadow-lg rounded-md bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
                                         <MapPropertyCard
                                             property={property}
                                             isSelected={selectedId === property.id}
@@ -325,7 +325,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 50, opacity: 0 }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="absolute bottom-2 left-0 right-0 h-10 z-20 flex justify-center items-center cursor-grab active:cursor-grabbing"
+                            className="absolute bottom-[80px] left-0 right-0 h-10 z-20 flex justify-center items-center cursor-grab active:cursor-grabbing"
                             drag="y"
                             dragConstraints={{ top: 0, bottom: 0 }}
                             dragElastic={0.2}
@@ -344,12 +344,12 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                 {/* Floating List Button (Repositioned to left, above cards) */}
                 <div className={cn(
                     "absolute left-4 z-50 transition-all duration-300",
-                    showMobileMap ? "bottom-[160px]" : "bottom-[40px]",
+                    showMobileMap ? "bottom-[168px]" : "bottom-[80px]",
                     "landscape:bottom-[100px] landscape:left-2"
                 )}>
                     <button
                         onClick={handleBackToList}
-                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-[11px]"
+                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-[11px]"
                     >
                         <List size={14} />
                         List

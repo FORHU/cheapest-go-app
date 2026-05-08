@@ -74,7 +74,7 @@
 
 /* Consistency wrappers — matching Hotel Search hierarchy (Smaller Scale) */
 @utility text-ui-label {
-  @apply text-fluid-3xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400;
+  @apply text-fluid-3xs font-normal uppercase tracking-widest text-slate-500 dark:text-slate-400;
 }
 
 @utility text-ui-value {
@@ -206,12 +206,12 @@ body {
 
 /* Position Mapbox zoom buttons above property cards on mobile with 5px gap */
 .mobile-search-map.map-cards-visible .mapboxgl-ctrl-bottom-right {
-  bottom: 115px !important;
+  bottom: 168px !important;
   transition: bottom 0.3s ease;
 }
 
 .mobile-search-map.map-cards-hidden .mapboxgl-ctrl-bottom-right {
-  bottom: 45px !important;
+  bottom: 80px !important;
   transition: bottom 0.3s ease;
 }
 

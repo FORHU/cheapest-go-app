@@ -61,14 +61,19 @@ export default function SaveButton({
             return;
         }
 
-        if (loading) return;
+        if (loading || !checked) return;
+
+        // Optimistic update
+        const previousSaved = saved;
+        const previousSavedId = savedId;
+        
+        setSaved(!previousSaved);
         setLoading(true);
 
         try {
-            if (saved && savedId) {
-                const res = await fetch(`/api/saved-trips/${savedId}`, { method: 'DELETE' });
+            if (previousSaved && previousSavedId) {
+                const res = await fetch(`/api/saved-trips/${previousSavedId}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
-                setSaved(false);
                 setSavedId(null);
             } else {
                 const res = await fetch('/api/saved-trips', {
@@ -78,7 +83,6 @@ export default function SaveButton({
                 });
 
                 if (res.status === 401) {
-                    console.warn('[SaveButton] Unauthorized: User must be logged in to save trips.');
                     router.push('/login');
                     return;
                 }
@@ -90,13 +94,17 @@ export default function SaveButton({
 
                 const json = await res.json();
                 if (json.success) {
-                    setSaved(true);
                     setSavedId(json.data?.id ?? null);
                 }
             }
         } catch (error) {
             console.error('[SaveButton] Error:', error);
-        } finally { setLoading(false); }
+            // Revert on error
+            setSaved(previousSaved);
+            setSavedId(previousSavedId);
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     const iconSize = size === 'sm' ? 14 : 16;

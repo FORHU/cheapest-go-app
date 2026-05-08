@@ -8,6 +8,7 @@ import type { SelectedSeat } from '@/types/seatMap';
 import type { SelectedBag } from '@/types/bags';
 import { createClient } from '@/utils/supabase/client';
 import { invokeEdgeFunction } from '@/utils/supabase/functions';
+import { useUser } from '@/stores/authStore';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
@@ -107,6 +108,38 @@ export function useFlightBooking() {
             addressLine: '', city: '', postalCode: '', country: 'KR',
         };
     });
+
+    const user = useUser();
+
+    // Autofill from profile when user logs in
+    useEffect(() => {
+        if (!user) return;
+
+        // Autofill Passenger 1 if blank
+        setPassengers(prev => {
+            if (prev.length > 0 && !prev[0].firstName && !prev[0].lastName) {
+                const next = [...prev];
+                next[0] = {
+                    ...next[0],
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                };
+                return next;
+            }
+            return prev;
+        });
+
+        // Autofill Contact if blank
+        setContact(prev => {
+            if (!prev.email) {
+                return {
+                    ...prev,
+                    email: user.email || '',
+                };
+            }
+            return prev;
+        });
+    }, [user]);
 
     // Effect to persist passengers and contact to sessionStorage
     useEffect(() => {

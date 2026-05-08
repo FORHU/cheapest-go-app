@@ -34,38 +34,66 @@ export const DestinationSection: React.FC = () => {
 
 };
 
-export const DateSection: React.FC = () => {
+export const CheckInSection: React.FC = () => {
     const { setActiveDropdown } = useSearchStore();
-    const { checkIn, checkOut } = useDates();
+    const { checkIn } = useDates();
 
-    const formatDateRange = () => {
-        if (!checkIn && !checkOut) return 'Select dates';
-        const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-        const checkInStr = checkIn ? new Date(checkIn).toLocaleDateString('en-US', options) : 'Start';
-        const checkOutStr = checkOut ? new Date(checkOut).toLocaleDateString('en-US', options) : 'End';
-        return `${checkInStr} — ${checkOutStr}`;
+    const formatDate = (date: Date | null) => {
+        if (!date) return 'Select date';
+        return new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
     return (
         <div className="flex-1 min-w-0 relative h-16 group">
             <div
                 className="w-full h-full flex items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-                onClick={() => setActiveDropdown('dates')}
+                onClick={() => setActiveDropdown('dates-in')}
+                data-datepicker-trigger
             >
-                <Calendar className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
+                <Calendar className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
                     <label className="text-ui-label">
-                        Dates
+                        Check-in
                     </label>
                     <div className="text-ui-value truncate">
-                        {formatDateRange()}
+                        {formatDate(checkIn)}
                     </div>
                 </div>
             </div>
             <DatePicker />
         </div>
     );
+};
 
+export const CheckOutSection: React.FC = () => {
+    const { setActiveDropdown } = useSearchStore();
+    const { checkOut } = useDates();
+
+    const formatDate = (date: Date | null) => {
+        if (!date) return 'Select date';
+        return new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    };
+
+    return (
+        <div className="flex-1 min-w-0 relative h-16 group">
+            <div
+                className="w-full h-full flex items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                onClick={() => setActiveDropdown('dates-out')}
+                data-datepicker-trigger
+            >
+                <Calendar className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" size={20} />
+                <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
+                    <label className="text-ui-label">
+                        Check-out
+                    </label>
+                    <div className="text-ui-value truncate">
+                        {formatDate(checkOut)}
+                    </div>
+                </div>
+            </div>
+            <DatePicker initialCheckOutMode />
+        </div>
+    );
 };
 
 export const TravelersSection: React.FC = () => {

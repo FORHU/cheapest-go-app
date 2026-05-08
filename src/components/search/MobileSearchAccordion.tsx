@@ -9,7 +9,7 @@ import { DatePicker } from '@/components/landing/hero/search/DatePicker';
 import { TravelersPicker } from '@/components/landing/hero/search/TravelersPicker';
 import { useSearchModule } from '@/hooks';
 
-type AccordionSection = 'where' | 'when' | 'who' | null;
+type AccordionSection = 'where' | 'check-in' | 'check-out' | 'who' | null;
 
 interface MobileSearchAccordionProps {
     onClose?: () => void;
@@ -42,7 +42,8 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
 
     useEffect(() => {
         if (activeSection === 'where') setActiveDropdown('destination');
-        else if (activeSection === 'when') setActiveDropdown('dates');
+        else if (activeSection === 'check-in') setActiveDropdown('dates-in');
+        else if (activeSection === 'check-out') setActiveDropdown('dates-out');
         else if (activeSection === 'who') setActiveDropdown('travelers');
         else setActiveDropdown(null);
     }, [activeSection, setActiveDropdown]);
@@ -50,12 +51,9 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
     // Formatting helpers
     const destinationText = destination?.title || query || 'I\'m flexible';
 
-    const formatDateRange = () => {
-        if (!checkIn && !checkOut) return 'Add dates';
-        const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-        const checkInStr = checkIn ? new Date(checkIn).toLocaleDateString('en-US', options) : 'Start';
-        const checkOutStr = checkOut ? new Date(checkOut).toLocaleDateString('en-US', options) : 'End';
-        return `${checkInStr} - ${checkOutStr}`;
+    const formatDate = (date: Date | null) => {
+        if (!date) return 'Add date';
+        return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     };
 
     const formatTravelers = () => {
@@ -164,15 +162,15 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                     )}
                 </motion.div>
 
-                {/* ──────── WHEN ──────── */}
+                {/* ──────── CHECK-IN ──────── */}
                 <motion.div
-                    className={`bg-white dark:bg-slate-900 rounded-2xl transition-all duration-300 border ${activeSection === 'when'
+                    className={`bg-white dark:bg-slate-900 rounded-2xl transition-all duration-300 border ${activeSection === 'check-in'
                         ? 'shadow-md border-slate-200 dark:border-slate-700 shrink-0 flex flex-col'
                         : 'shadow-sm border-slate-100 dark:border-slate-800 cursor-pointer hover:shadow-md shrink-0'
                         }`}
-                    onClick={() => setActiveSection(activeSection === 'when' ? null : 'when')}
+                    onClick={() => setActiveSection(activeSection === 'check-in' ? null : 'check-in')}
                 >
-                    {activeSection === 'when' ? (
+                    {activeSection === 'check-in' ? (
                         <motion.div
                             initial={{ opacity: 0, height: 0, y: 20 }}
                             animate={{ opacity: 1, height: 'auto', y: 0 }}
@@ -180,20 +178,55 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             className="flex flex-col h-full p-3 min-h-0"
                         >
                             <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-2 shrink-0 text-left">
-                                When&apos;s your trip?
+                                When&apos;s your check-in?
                             </h2>
                             <div className="relative overflow-hidden">
-                                <DatePicker inline forceOpen />
+                                <DatePicker inline forceOpen onDone={() => setActiveSection(null)} />
                             </div>
                         </motion.div>
                     ) : (
                         <div className="flex flex-col items-start px-4 py-3 min-h-[64px] justify-center">
                             <span className="text-ui-label flex items-center gap-2">
-                                When
-                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Check-in / Check-out</span>
+                                Check-in
+                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Add dates</span>
                             </span>
                             <span className="text-ui-value truncate w-full mt-0.5">
-                                {formatDateRange()}
+                                {formatDate(checkIn)}
+                            </span>
+                        </div>
+                    )}
+                </motion.div>
+
+                {/* ──────── CHECK-OUT ──────── */}
+                <motion.div
+                    className={`bg-white dark:bg-slate-900 rounded-2xl transition-all duration-300 border ${activeSection === 'check-out'
+                        ? 'shadow-md border-slate-200 dark:border-slate-700 shrink-0 flex flex-col'
+                        : 'shadow-sm border-slate-100 dark:border-slate-800 cursor-pointer hover:shadow-md shrink-0'
+                        }`}
+                    onClick={() => setActiveSection(activeSection === 'check-out' ? null : 'check-out')}
+                >
+                    {activeSection === 'check-out' ? (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0, y: 20 }}
+                            animate={{ opacity: 1, height: 'auto', y: 0 }}
+                            transition={{ duration: 0.3, ease: "easeOut" }}
+                            className="flex flex-col h-full p-3 min-h-0"
+                        >
+                            <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-2 shrink-0 text-left">
+                                When&apos;s your check-out?
+                            </h2>
+                            <div className="relative overflow-hidden">
+                                <DatePicker inline forceOpen initialCheckOutMode onDone={() => setActiveSection(null)} />
+                            </div>
+                        </motion.div>
+                    ) : (
+                        <div className="flex flex-col items-start px-4 py-3 min-h-[64px] justify-center">
+                            <span className="text-ui-label flex items-center gap-2">
+                                Check-out
+                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Add dates</span>
+                            </span>
+                            <span className="text-ui-value truncate w-full mt-0.5">
+                                {formatDate(checkOut)}
                             </span>
                         </div>
                     )}

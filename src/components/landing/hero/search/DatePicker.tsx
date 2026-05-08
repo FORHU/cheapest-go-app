@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Calendar, ArrowRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, ChevronDown } from 'lucide-react';
 import { useSearchStore, useDates, useActiveDropdown } from '@/stores/searchStore';
+import { cn } from '@/lib/utils';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -11,33 +12,61 @@ const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 interface DatePickerProps {
     inline?: boolean;
     forceOpen?: boolean;
+    onDone?: () => void;
+    initialCheckOutMode?: boolean;
 }
 
-export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => {
+export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDone, initialCheckOutMode }) => {
     const ref = useRef<HTMLDivElement>(null);
+    const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
     const [activeTab, setActiveTab] = useState<'calendar' | 'flexible'>('calendar');
-    const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [selectingCheckOut, setSelectingCheckOut] = useState(false);
-    const [hoveredDate, setHoveredDate] = useState<string | null>(null);
-
+    
     // Store
     const activeDropdown = useActiveDropdown();
-    const { checkIn, checkOut, flexibility } = useDates();
+    const { checkIn: rawCheckIn, checkOut: rawCheckOut, flexibility } = useDates();
     const { setDates, setActiveDropdown } = useSearchStore();
 
-    const isOpen = forceOpen || activeDropdown === 'dates';
+    // Convert potential strings from persistence to Date objects
+    const checkIn = rawCheckIn ? new Date(rawCheckIn) : null;
+    const checkOut = rawCheckOut ? new Date(rawCheckOut) : null;
+
+    const [currentMonth, setCurrentMonth] = useState(() => {
+        if (checkIn && !isNaN(checkIn.getTime())) return new Date(checkIn.getFullYear(), checkIn.getMonth(), 1);
+        return new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    });
+    const [yearInput, setYearInput] = useState(currentMonth.getFullYear().toString());
+    const [selectingCheckOut, setSelectingCheckOut] = useState(false);
+
+    const isOpen = forceOpen || (activeDropdown === 'dates-in' || activeDropdown === 'dates-out');
+    
+    // Reset selecting mode when picker opens based on which card triggered it
+    useEffect(() => {
+        if (isOpen) {
+            if (initialCheckOutMode) setSelectingCheckOut(true);
+            else if (!checkIn) setSelectingCheckOut(false);
+            else if (checkIn && !checkOut) setSelectingCheckOut(true);
+            else setSelectingCheckOut(false);
+        }
+    }, [isOpen, initialCheckOutMode]);
     const onClose = () => {
-        if (!forceOpen) setActiveDropdown(null);
+        if (onDone) onDone();
+        else if (!forceOpen) setActiveDropdown(null);
     };
 
-    // Close logic
     useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
+        setYearInput(currentMonth.getFullYear().toString());
+    }, [currentMonth]);
+
+    useEffect(() => {
+        if (!isOpen) setView('calendar');
+    }, [isOpen]);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent | TouchEvent) => {
             const target = e.target as Node;
-            const isOutside = ref.current && !ref.current.contains(target);
-            // If the click is outside and the target is still in the document, close it.
-            // This avoids closing when the target (like an arrow button) is unmounted 
-            // during a state change (re-render) before this logic runs.
+            const trigger = ref.current?.parentElement?.querySelector('[data-datepicker-trigger]');
+            const isInsideTrigger = trigger?.contains(target);
+            const isOutside = ref.current && !ref.current.contains(target) && !isInsideTrigger;
             if (isOutside && document.contains(target)) {
                 onClose();
             }
@@ -45,11 +74,22 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
 
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
         }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
     }, [isOpen]);
 
-    const getNextMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 1);
+    const years = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        const result = [];
+        for (let i = currentYear; i <= currentYear + 20; i++) {
+            result.push(i);
+        }
+        return result;
+    }, []);
 
     const handlePrevMonth = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -67,88 +107,55 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
         } else {
             setDates({ checkOut: date });
             setSelectingCheckOut(false);
-            // Optional: Close on checkout selection? Usually user might want to review. 
-            // We'll keep it open until "Done" is clicked or outside click.
         }
     };
 
     const flexOptions = ['Exact dates', '± 1 day', '± 2 days', '± 3 days', '± 7 days'];
 
-    const onFlexibilityChange = (flex: string) => {
-        // We need updates to store flexibility type
-        type FlexType = 'exact' | '1day' | '2days' | '3days' | '7days';
-        // Validate if it's one of the allowed types, usually we assume it is but strict typing is good
-        if (['exact', '1day', '2days', '3days', '7days'].includes(flex)) {
-            setDates({ flexibility: flex as FlexType });
-        }
-    };
-
-    const renderMonth = (monthDate: Date) => {
-        const year = monthDate.getFullYear();
-        const month = monthDate.getMonth();
+    const renderCalendar = () => {
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         const days = [];
-
-        // Padding
         for (let i = 0; i < firstDay; i++) {
-            days.push(<div key={`pad-${i}`} className={inline ? "w-full aspect-square" : "size-[42px]"} />);
+            days.push(<div key={`pad-${i}`} className="size-9 sm:size-10 mx-auto" />);
         }
 
-        // Days
         for (let day = 1; day <= daysInMonth; day++) {
-            const date = new Date(year, month, day);
-            const isToday = date.toDateString() === today.toDateString();
-            const isPast = date < today;
-            const isCheckIn = checkIn && date.toDateString() === checkIn.toDateString();
-            const isCheckOut = checkOut && date.toDateString() === checkOut.toDateString();
-            const isInRange = checkIn && checkOut && date > checkIn && date < checkOut;
+            const dateObj = new Date(year, month, day);
+            const isToday = dateObj.toDateString() === today.toDateString();
+            const isPast = dateObj < today;
+            const isCheckIn = checkIn && dateObj.toDateString() === checkIn.toDateString();
+            const isCheckOut = checkOut && dateObj.toDateString() === checkOut.toDateString();
+            const isInRange = checkIn && checkOut && dateObj > checkIn && dateObj < checkOut;
 
             days.push(
-                <div 
-                    key={day} 
-                    className="relative"
-                    onMouseEnter={() => isToday && setHoveredDate('today')}
-                    onMouseLeave={() => isToday && setHoveredDate(null)}
+                <button
+                    key={day}
+                    type="button"
+                    disabled={isPast || isToday}
+                    onClick={() => handleDateClick(dateObj)}
+                    className={cn(
+                        "size-9 sm:size-10 mx-auto my-0.5 flex items-center justify-center text-[11px] sm:text-sm font-normal rounded-xl transition-all relative",
+                        (isPast || isToday)
+                            ? "text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-20"
+                            : "cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5",
+                        (isCheckIn || isCheckOut)
+                            ? "bg-blue-600 text-white z-10 shadow-lg shadow-blue-600/30"
+                            : isInRange
+                                ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                : "text-slate-700 dark:text-slate-300",
+                        isToday && !isCheckIn && !isCheckOut && "ring-1 ring-blue-500/30"
+                    )}
                 >
-                    <button
-                        type="button"
-                        disabled={isPast || isToday}
-                        onClick={() => handleDateClick(date)}
-                        className={`${inline ? "w-full aspect-square" : "size-[42px] mx-auto my-0.5"} flex items-center justify-center ${inline ? "text-[9px]" : "text-base"} font-bold rounded-xl transition-all 
-                            ${isPast || isToday ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'cursor-pointer'}
-                            ${isCheckIn || isCheckOut ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 z-10' : ''}
-                            ${isInRange ? 'bg-blue-50/50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' : ''}
-                            ${!isPast && !isCheckIn && !isCheckOut && !isInRange ? 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300' : ''}
-                            ${isToday && !isCheckIn && !isCheckOut ? 'ring-1 ring-blue-500/30' : ''}
-                        `}
-                    >
-                        {day}
-                    </button>
-                    
-                    {/* Tooltip for today's date */}
-                    <AnimatePresence>
-                        {isToday && hoveredDate === 'today' && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 5, x: '-50%' }}
-                                animate={{ opacity: 1, y: -10, x: '-50%' }}
-                                exit={{ opacity: 0, y: 5, x: '-50%' }}
-                                className="absolute bottom-full left-1/2 mb-2 px-3 py-1.5 bg-slate-900/95 dark:bg-slate-800/95 backdrop-blur-md text-white text-[10px] leading-tight font-bold rounded-lg shadow-2xl border border-white/10 whitespace-nowrap z-[101] pointer-events-none"
-                            >
-                                <div className="relative">
-                                    Same-day booking not allowed
-                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-4 border-x-transparent border-t-4 border-t-slate-900/95 dark:border-t-slate-800/95" />
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                    {day}
+                </button>
             );
         }
-
         return days;
     };
 
@@ -162,173 +169,194 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen }) => 
             {isOpen && (
                 <motion.div
                     ref={ref}
-                    initial={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.2 }}
                     className={inline
                         ? "w-full z-10"
-                        : "absolute top-full left-0 mt-4 w-[740px] min-w-[740px] max-w-[740px] bg-white dark:bg-obsidian shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"}
-                        onClick={(e) => e.stopPropagation()}
+                        : "relative sm:absolute top-0 sm:top-full left-0 sm:left-1/2 sm:-translate-x-1/2 sm:mt-4 w-full sm:w-[420px] bg-white dark:bg-obsidian shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 z-[100] overflow-hidden"}
+                    onClick={(e) => e.stopPropagation()}
                 >
-
                     {/* Tabs */}
-                    <div className={`flex ${inline ? 'mb-0' : ''}`}>
+                    <div className="flex border-b border-slate-100 dark:border-white/5">
                         <button
                             onClick={() => setActiveTab('calendar')}
-                            className={`flex-1 ${inline ? 'py-2 text-[10px]' : 'py-4 text-xs'} font-bold font-display transition-all ${activeTab === 'calendar'
-                                ? 'text-alabaster-accent dark:text-obsidian-accent border-b-2 border-alabaster-accent dark:border-obsidian-accent'
-                                : 'text-slate-400 hover:text-slate-600'
-                                }`}
+                            className={cn(
+                                "flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-all",
+                                activeTab === 'calendar'
+                                    ? "text-blue-600 border-b-2 border-blue-600"
+                                    : "text-slate-400 hover:text-slate-600"
+                            )}
                         >
                             Calendar
                         </button>
                         <button
                             onClick={() => setActiveTab('flexible')}
-                            className={`flex-1 ${inline ? 'py-2 text-[10px]' : 'py-4 text-xs'} font-bold font-display transition-all ${activeTab === 'flexible'
-                                ? 'text-alabaster-accent dark:text-obsidian-accent border-b-2 border-alabaster-accent dark:border-obsidian-accent'
-                                : 'text-slate-400 hover:text-slate-600'
-                                }`}
+                            className={cn(
+                                "flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-all",
+                                activeTab === 'flexible'
+                                    ? "text-blue-600 border-b-2 border-blue-600"
+                                    : "text-slate-400 hover:text-slate-600"
+                            )}
                         >
                             Flexible dates
                         </button>
                     </div>
 
-                    <div className={inline ? "p-2" : "p-5"}>
+                    <div className="p-4 flex flex-col relative">
                         {activeTab === 'calendar' ? (
                             <>
-                                {/* Selected Dates Display */}
-                                <div className={`flex items-center ${inline ? 'gap-3 mb-3' : 'gap-6 mb-8'}`}>
-                                    <div className="flex-1 min-w-0">
-                                        <span className={`${inline ? 'text-[7px]' : 'text-[10px]'} font-mono text-slate-400 uppercase mb-0.5 block`}>Check-in</span>
-                                        <span className={`${inline ? 'text-[10px]' : 'text-sm sm:text-lg'} font-bold ${checkIn ? 'text-slate-900 dark:text-white' : 'text-slate-400'} truncate block`}>
-                                            {formatDate(checkIn)}
-                                        </span>
-                                        <div className={`h-0.5 ${inline ? 'mt-1' : 'mt-2'} w-full ${checkIn ? 'bg-alabaster-accent dark:bg-obsidian-accent' : 'bg-slate-100 dark:bg-white/5'}`} />
-                                    </div>
-                                    <ArrowRight className="text-slate-300 shrink-0" size={inline ? 14 : 20} />
-                                    <div className="flex-1 min-w-0">
-                                        <span className={`${inline ? 'text-[7px]' : 'text-[10px]'} font-mono text-slate-400 uppercase mb-0.5 block`}>Check-out</span>
-                                        <span className={`${inline ? 'text-[10px]' : 'text-sm sm:text-lg'} font-bold ${checkOut ? 'text-slate-900 dark:text-white' : 'text-slate-400'} truncate block`}>
-                                            {formatDate(checkOut)}
-                                        </span>
-                                        <div className={`h-0.5 ${inline ? 'mt-1' : 'mt-2'} w-full ${checkOut ? 'bg-alabaster-accent dark:bg-obsidian-accent' : 'bg-slate-100 dark:bg-white/5'}`} />
-                                    </div>
-                                </div>
-
-                                {/* Calendars */}
-                                <div className={`flex gap-2 ${inline ? 'mb-3' : 'gap-2 mb-6'}`}>
-                                    {/* Month 1 */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-center mb-3">
-                                            <button
-                                                type="button"
-                                                onClick={handlePrevMonth}
-                                                className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded transition-colors"
-                                            >
-                                                <ChevronLeft size={14} className="text-slate-400" />
-                                            </button>
-
-                                            <span className="text-lg font-bold text-slate-900 dark:text-white text-center">
-                                                {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-                                            </span>
-                                            <div className="w-6" />
-                                        </div>
-                                        <div className="grid grid-cols-7 text-center mb-1.5 gap-0">
-                                            {DAYS.map((d, i) => (
-                                                <span key={i} className="text-xs font-mono text-slate-400 text-center">{d}</span>
-                                            ))}
-                                        </div>
-                                        <div className="grid grid-cols-7 gap-0">
-                                            {renderMonth(currentMonth)}
-                                        </div>
-                                    </div>
-
-                                    {/* Divider */}
-                                    <div className="w-px bg-slate-100 dark:bg-white/5 self-stretch" />
-
-                                    {/* Month 2 */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-center mb-3">
-                                            <div className="w-6" />
-                                            <span className="text-lg font-bold text-slate-900 dark:text-white text-center">
-                                                {MONTHS[getNextMonth(currentMonth).getMonth()]} {getNextMonth(currentMonth).getFullYear()}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={handleNextMonth}
-                                                className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded transition-colors"
-                                            >
-                                                <ChevronRight size={14} className="text-slate-400" />
-                                            </button>
-
-                                        </div>
-                                        <div className="grid grid-cols-7 text-center mb-1.5 gap-0">
-                                            {DAYS.map((d, i) => (
-                                                <span key={i} className="text-xs font-mono text-slate-400 text-center">{d}</span>
-                                            ))}
-                                        </div>
-                                        <div className="grid grid-cols-7 gap-0">
-                                            {renderMonth(getNextMonth(currentMonth))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Flexibility Pills */}
-                                <div className="flex flex-wrap gap-2">
-                                    {flexOptions.map(opt => (
+                                {/* Month/Year Header */}
+                                <div className="flex justify-between items-center mb-4">
+                                    <div className="flex items-center gap-3">
                                         <button
-                                            key={opt}
-                                            onClick={() => onFlexibilityChange(opt)}
-                                            className={`px-3 py-1 rounded-full border text-[10px] font-medium transition-all ${flexibility === opt
-                                                ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-obsidian'
-                                                : 'border-slate-200 dark:border-white/10 hover:border-slate-400 text-slate-600 dark:text-slate-400'
-                                                }`}
+                                            type="button"
+                                            onClick={() => setView(view === 'month' ? 'calendar' : 'month')}
+                                            className="flex items-center gap-1 group"
                                         >
-                                            {opt}
+                                            <span className="text-[11px] font-normal text-blue-600 dark:text-blue-400 uppercase tracking-widest group-hover:opacity-70 transition-opacity">
+                                                {MONTHS[currentMonth.getMonth()]}
+                                            </span>
+                                            <div className={cn("transition-transform duration-200", view === 'month' ? "rotate-180" : "")}>
+                                                <ChevronDown size={14} className="text-blue-600 dark:text-blue-400" />
+                                            </div>
                                         </button>
-                                    ))}
+                                        <div className="flex items-center gap-1 group relative">
+                                            <input
+                                                type="number"
+                                                value={yearInput}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setYearInput(val);
+                                                    const y = parseInt(val);
+                                                    if (!isNaN(y) && y > 1900 && y < 2100) {
+                                                        setCurrentMonth(new Date(y, currentMonth.getMonth(), 1));
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    setYearInput(currentMonth.getFullYear().toString());
+                                                }}
+                                                className="w-12 bg-transparent text-[11px] font-normal text-slate-600 dark:text-slate-400 uppercase tracking-widest outline-none focus:text-blue-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setView(view === 'year' ? 'calendar' : 'year')}
+                                                className={cn("transition-transform duration-200", view === 'year' ? "rotate-180" : "")}
+                                            >
+                                                <ChevronDown size={14} className="text-slate-400" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={handlePrevMonth}
+                                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full transition-colors"
+                                        >
+                                            <ChevronLeft size={16} className="text-slate-400" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleNextMonth}
+                                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-full transition-colors"
+                                        >
+                                            <ChevronRight size={16} className="text-slate-400" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Views */}
+                                <div className="relative min-h-[220px]">
+                                    {view === 'month' && (
+                                        <div className="absolute inset-0 bg-white dark:bg-obsidian z-20 overflow-y-auto custom-scrollbar pr-1 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">Month</div>
+                                            <div className="grid grid-cols-1 gap-1">
+                                                {MONTHS.map((m, i) => (
+                                                    <button
+                                                        key={m}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCurrentMonth(new Date(currentMonth.getFullYear(), i, 1));
+                                                            setView('calendar');
+                                                        }}
+                                                        className={cn(
+                                                            "w-full text-left px-3 py-2 rounded-md text-[12px] font-normal transition-all",
+                                                            currentMonth.getMonth() === i
+                                                                ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                                                : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5"
+                                                        )}
+                                                    >
+                                                        {m}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {view === 'year' && (
+                                        <div className="absolute inset-0 bg-white dark:bg-obsidian z-20 overflow-y-auto custom-scrollbar pr-1 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">Year</div>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {years.map((y) => (
+                                                    <button
+                                                        key={y}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCurrentMonth(new Date(y, currentMonth.getMonth(), 1));
+                                                            setView('calendar');
+                                                        }}
+                                                        className={cn(
+                                                            "px-2 py-3 rounded-md text-[12px] font-normal transition-all text-center",
+                                                            currentMonth.getFullYear() === y
+                                                                ? "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                                                : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5"
+                                                        )}
+                                                    >
+                                                        {y}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="animate-in fade-in duration-300">
+                                        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                                            {DAYS.map((d, i) => (
+                                                <span key={i} className="text-[10px] font-normal text-slate-400 uppercase tracking-widest">{d}</span>
+                                            ))}
+                                        </div>
+                                        <div className="grid grid-cols-7 gap-1">
+                                            {renderCalendar()}
+                                        </div>
+                                    </div>
                                 </div>
                             </>
                         ) : (
-                            <div className="space-y-8">
-                                <div className="text-center">
-                                    <h4 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">How long do you want to stay?</h4>
-                                    <div className="flex flex-wrap justify-center gap-2">
-                                        {['1 night', '2-3 nights', '4-5 nights', '6-7 nights'].map(p => (
-                                            <button key={p} className="px-4 sm:px-6 py-2.5 rounded-full border text-xs font-bold border-slate-200 dark:border-white/10 hover:border-alabaster-accent dark:hover:border-obsidian-accent transition-colors text-slate-700 dark:text-slate-300">
-                                                {p}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 className="text-lg font-bold mb-4 text-center text-slate-900 dark:text-white">When do you want to travel?</h4>
-                                    <div className={`grid gap-3 ${inline ? 'grid-cols-3' : 'grid-cols-6'}`}>
-                                        {MONTHS.slice(0, 6).map(m => (
-                                            <div key={m} className="p-4 rounded-xl border border-slate-200 dark:border-white/10 flex flex-col items-center gap-2 hover:border-alabaster-accent dark:hover:border-obsidian-accent cursor-pointer group transition-all">
-                                                <Calendar size={20} className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent" />
-                                                <div className="text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300">{m}</div>
-                                                <div className="text-[8px] font-mono text-slate-400">2026</div>
-                                            </div>
-                                        ))}
-                                    </div>
+                            <div className="py-4 space-y-6">
+                                <h4 className="text-sm font-bold text-slate-900 dark:text-white text-center">When do you want to travel?</h4>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {MONTHS.slice(0, 6).map(m => (
+                                        <div key={m} className="p-3 rounded-xl border border-slate-200 dark:border-white/10 flex flex-col items-center gap-1 hover:border-blue-500 cursor-pointer group transition-all">
+                                            <Calendar size={16} className="text-slate-400 group-hover:text-blue-500" />
+                                            <div className="text-[10px] font-bold uppercase text-slate-700 dark:text-slate-300">{m}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
-                    </div>
 
-                    {/* Footer */}
-                    {!inline && (
-                        <div className="flex justify-end p-4">
+                        {/* Footer */}
+                        <div className="flex justify-end mt-4 pt-3 border-t border-slate-100 dark:border-white/5">
                             <button
                                 onClick={onClose}
-                                className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg"
+                                className="px-6 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
                             >
                                 Done
                             </button>
                         </div>
-                    )}
+                    </div>
                 </motion.div>
             )}
         </AnimatePresence>
