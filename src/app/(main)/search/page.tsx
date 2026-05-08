@@ -80,15 +80,18 @@ function MapSearchingState({ destination }: { destination: string }) {
 
 // ── Async server component — deferred so the page shell renders immediately ───
 async function HotelResults({ params }: { params: Record<string, string | string[] | undefined> }) {
-    const properties = await fetchSearchProperties(params as any);
-    return <SearchResults initialProperties={properties} />;
+    const { properties, totalCount } = await fetchSearchProperties(params as any);
+    return <SearchResults initialProperties={properties} totalCount={totalCount} rawSearchParams={params as any} />;
 }
 
 async function MapResults({ params }: { params: Record<string, string | string[] | undefined> }) {
-    const properties = await fetchSearchProperties(params as any);
+    const { properties, totalCount, allMappable } = await fetchSearchProperties(params as any);
     return (
         <LazySearchMapView
             properties={properties}
+            totalCount={totalCount}
+            allMappable={allMappable}
+            rawSearchParams={params as any}
             destination={(params.destination as string) || ''}
         />
     );
