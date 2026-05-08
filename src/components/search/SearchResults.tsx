@@ -37,9 +37,11 @@ function matchesBoardType(hotelBoardTypes: string[], selected: string[]): boolea
 
 interface SearchResultsProps {
     initialProperties?: Property[];
+    totalCount?: number;
+    rawSearchParams?: Record<string, any>;
 }
 
-const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) => {
+const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotalCount = 0, rawSearchParams = {} }: SearchResultsProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const destination = searchParams?.get('destination') || '';
@@ -60,7 +62,9 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
         window.history.replaceState(null, '', `?${params.toString()}`);
     }, []);
 
-    const [visibleCount, setVisibleCount] = useState(15);
+    const [allProperties, setAllProperties] = React.useState<Property[]>(initialProperties);
+    const [totalCount, setTotalCount] = React.useState(initialTotalCount || initialProperties.length);
+    const [isLoadingMore, setIsLoadingMore] = React.useState(false);
 
     const buildPropertyUrl = useCallback((property: Property) => {
         const params = new URLSearchParams(window.location.search);
@@ -83,9 +87,23 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
         router.push(`/search?${params.toString()}`);
     }, [router]);
 
-    // Filter and sort properties (client-side)
+    // Reset when search changes
+    React.useEffect(() => {
+        setAllProperties(initialProperties);
+        setTotalCount(initialTotalCount || initialProperties.length);
+    }, [destination, searchParams]);
+
+    // Count mappable properties (from allProperties for the map button badge)
+    const mappableCount = useMemo(
+        () => allProperties.filter(
+            (p) => p.coordinates && p.coordinates.lat !== 0 && p.coordinates.lng !== 0
+        ).length,
+        [allProperties]
+    );
+
+    // Filter and sort all loaded properties (client-side)
     const filteredProperties = useMemo(() => {
-        let props = initialProperties && initialProperties.length > 0 ? [...initialProperties] : [];
+        let props = allProperties && allProperties.length > 0 ? [...allProperties] : [];
 
         // Property type
         if (propertyTypes.length > 0) {
@@ -97,7 +115,7 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
             props = props.filter(p =>
                 p.boardTypes && p.boardTypes.length > 0
                     ? matchesBoardType(p.boardTypes, boardTypes)
-                    : boardTypes.includes('RO') // no board info → treat as Room Only
+                    : boardTypes.includes('RO')
             );
         }
 
@@ -113,27 +131,31 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
         else if (sortBy === 'most-reviewed') props.sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0));
 
         return props;
-    }, [initialProperties, sortBy, propertyTypes, boardTypes, refundable]);
+    }, [allProperties, sortBy, propertyTypes, boardTypes, refundable]);
 
-    // Count mappable properties
-    const mappableCount = useMemo(
-        () => filteredProperties.filter(
-            (p) => p.coordinates && p.coordinates.lat !== 0 && p.coordinates.lng !== 0
-        ).length,
-        [filteredProperties]
-    );
+    const hasMore = allProperties.length < totalCount;
 
-    // Reset visible count when filters/destination change
-    React.useEffect(() => {
-        setVisibleCount(15);
-    }, [destination, searchParams]);
-
-    // Show only visible properties
-    const visibleProperties = filteredProperties.slice(0, visibleCount);
-    const hasMore = visibleCount < filteredProperties.length;
-
-    const handleLoadMore = () => {
-        setVisibleCount(prev => prev + 10);
+    const handleLoadMore = async () => {
+        if (isLoadingMore || !hasMore) return;
+        setIsLoadingMore(true);
+        try {
+            const res = await fetch('/api/search/more', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...rawSearchParams, offset: allProperties.length, limit: 10 }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data?.data && Array.isArray(data.data)) {
+                    setAllProperties(prev => [...prev, ...data.data]);
+                    if (data.totalCount) setTotalCount(data.totalCount);
+                }
+            }
+        } catch (e) {
+            console.error('[LoadMore] error:', e);
+        } finally {
+            setIsLoadingMore(false);
+        }
     };
 
     return (
@@ -183,9 +205,9 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
 
             {/* Property List */}
             {
-                visibleProperties.length > 0 ? (
+                filteredProperties.length > 0 ? (
                     <div className="space-y-4">
-                        {visibleProperties.map((property, index) => (
+                        {filteredProperties.map((property, index) => (
                             <div key={property.id} onMouseEnter={() => handlePropertyPrefetch(property)}>
                                 <PropertyCard
                                     variant="horizontal"
@@ -208,22 +230,39 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                 )
             }
 
-            {/* Pagination / Load More */}
+            {/* Load More skeleton + button */}
             {
                 filteredProperties.length > 0 && (
-                    <div className="mt-4 md:mt-8 flex justify-center">
-                        {hasMore ? (
-                            <button
-                                onClick={handleLoadMore}
-                                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 shadow-md shadow-blue-600/10"
-                            >
-                                Load More Results
-                            </button>
-                        ) : (
-                            <button className="px-4 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-500 text-[11px] font-medium rounded-full cursor-not-allowed opacity-50">
-                                End of results
-                            </button>
+                    <div className="mt-4 md:mt-8">
+                        {isLoadingMore && (
+                            <div className="space-y-4 mb-4">
+                                {Array.from({ length: 3 }).map((_, i) => (
+                                    <div key={i} className="flex gap-4 h-44 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-pulse">
+                                        <div className="w-44 shrink-0 bg-slate-200 dark:bg-slate-700" />
+                                        <div className="flex-1 py-4 pr-4 space-y-3">
+                                            <div className="h-5 w-3/4 bg-slate-200 dark:bg-slate-700 rounded" />
+                                            <div className="h-4 w-1/3 bg-slate-200 dark:bg-slate-700 rounded" />
+                                            <div className="h-4 w-1/2 bg-slate-200 dark:bg-slate-700 rounded" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
+                        <div className="flex justify-center">
+                            {hasMore ? (
+                                <button
+                                    onClick={handleLoadMore}
+                                    disabled={isLoadingMore}
+                                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 shadow-md shadow-blue-600/10"
+                                >
+                                    {isLoadingMore ? 'Loading...' : 'Load More Results'}
+                                </button>
+                            ) : (
+                                <button className="px-4 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-500 text-[11px] font-medium rounded-full cursor-not-allowed opacity-50">
+                                    End of results
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )
             }
@@ -233,7 +272,7 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
     );
 };
 
-const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
+const SearchResults = ({ initialProperties = [], totalCount = 0, rawSearchParams = {} }: SearchResultsProps) => {
     return (
         <Suspense fallback={
             <div className="flex-1 min-w-0">
@@ -248,7 +287,7 @@ const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
                 </div>
             </div>
         }>
-            <SearchResultsContent initialProperties={initialProperties} />
+            <SearchResultsContent initialProperties={initialProperties} totalCount={totalCount} rawSearchParams={rawSearchParams} />
         </Suspense>
     );
 };

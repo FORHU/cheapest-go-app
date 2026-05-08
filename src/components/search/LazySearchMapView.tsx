@@ -19,6 +19,9 @@ const SearchMapView = dynamic(
 interface LazySearchMapViewProps {
     properties: Property[];
     destination?: string;
+    totalCount?: number;
+    allMappable?: any[];
+    rawSearchParams?: Record<string, any>;
 }
 
 export default function LazySearchMapView(props: LazySearchMapViewProps) {

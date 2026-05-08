@@ -204,8 +204,7 @@ function transformDuffelStay(result: DuffelStayResult, params: SearchQueryParams
         reviews: accommodation.review_count ?? 0,
         price: cheapestPrice,
         currency: cheapestRate.total_currency,
-        image: accommodation.photos?.[0]?.url ??
-            'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
+        image: accommodation.photos?.[0]?.url ?? '',
         images: (accommodation.photos ?? []).map(p => p.url),
         amenities: (accommodation.amenities ?? []).map(a => a.description ?? a.type),
         badges: cheapestRate.supported_loyalty_programmes?.length

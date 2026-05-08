@@ -71,7 +71,9 @@ Deno.serve(async (req: Request) => {
       criteria: { token },
       settings: {
         client: TRAVELGATEX_CLIENT,
-        context: 'OTV',
+        // Must match the context used during search (TGX = FastX aggregated context).
+        // Using 'OTV' here caused quote failures for FastX-issued tokens.
+        context: 'TGX',
         testMode: false,
         timeout: 15000,
       },

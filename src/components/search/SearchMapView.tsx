@@ -125,6 +125,9 @@ function getDestinationCoords(destination: string): { lng: number; lat: number }
 interface SearchMapViewProps {
     properties: Property[];
     destination?: string;
+    totalCount?: number;
+    allMappable?: any[];
+    rawSearchParams?: Record<string, any>;
 }
 
 /**
@@ -133,17 +136,25 @@ interface SearchMapViewProps {
  * LEFT  — scrollable property card list with sort + filter controls
  * RIGHT — sticky Mapbox map, full viewport height
  */
-function SearchMapView({ properties, destination }: SearchMapViewProps) {
+function SearchMapView({
+    properties,
+    destination,
+    totalCount: initialTotalCount = 0,
+    allMappable = [],
+    rawSearchParams = {}
+}: SearchMapViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
     // State
+    const [allProperties, setAllProperties] = React.useState<Property[]>(properties);
+    const [totalCount, setTotalCount] = React.useState(initialTotalCount || properties.length);
+    const [isLoadingMore, setIsLoadingMore] = React.useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortValue>('recommended');
     const [showMobileMap, setShowMobileMap] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
-    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE_INITIAL);
     const targetCurrency = useUserCurrency();
 
     // Shared filter state from sidebar store
@@ -153,21 +164,55 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
 
     const activeFilterCount = propertyTypes.length + boardTypes.length + (refundable !== null ? 1 : 0);
 
-    // Filter only properties with real coordinates (not 0,0)
-    const mappableProperties = useMemo<MappableProperty[]>(
-        () =>
-            properties.filter(
-                (p): p is MappableProperty =>
-                    p.coordinates != null &&
-                    typeof p.coordinates.lat === 'number' &&
-                    typeof p.coordinates.lng === 'number' &&
-                    p.coordinates.lat !== 0 &&
-                    p.coordinates.lng !== 0
-            ),
-        [properties]
-    );
+    // ── Map Pins ─────────────────────────────────────────────
+    // Use allMappable (the 151 basic objects) if provided, otherwise allProperties
+    const mappableProperties = useMemo<MappableProperty[]>(() => {
+        const source = allMappable.length > 0 ? allMappable : allProperties;
+        return source.filter(
+            (p: any): p is MappableProperty =>
+                p.coordinates != null &&
+                typeof p.coordinates.lat === 'number' &&
+                typeof p.coordinates.lng === 'number' &&
+                p.coordinates.lat !== 0 &&
+                p.coordinates.lng !== 0
+        ).map((p: any) => ({
+            ...p,
+            id: p.id || p.hotelId, // handle both Property and Mappable formats
+            location: p.location || '',
+            image: p.image || '',
+            rating: p.rating || 0,
+            reviews: p.reviews || 0,
+            price: p.price || 0,
+            currency: p.currency || 'USD'
+        }));
+    }, [allMappable, allProperties]);
 
-    // Apply client-side filters + sort
+    const hasMore = allProperties.length < totalCount;
+
+    const handleLoadMore = async () => {
+        if (isLoadingMore || !hasMore) return;
+        setIsLoadingMore(true);
+        try {
+            const res = await fetch('/api/search/more', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...rawSearchParams, offset: allProperties.length, limit: 10 }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data?.data && Array.isArray(data.data)) {
+                    setAllProperties(prev => [...prev, ...data.data]);
+                    if (data.totalCount) setTotalCount(data.totalCount);
+                }
+            }
+        } catch (e) {
+            console.error('[MapLoadMore] error:', e);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    };
+
+    // Apply client-side filters + sort to ALL loaded properties
     const sortedProperties = useMemo(() => {
         let list = [...mappableProperties];
 
@@ -261,9 +306,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
 
 
     // ── Render ──────────────────────────────────────────────
-    const visibleProperties = sortedProperties.slice(0, visibleCount);
-    const hasMore = visibleCount < sortedProperties.length;
-
+    // Show all sorted properties in sidebar — Load More appends via API
     // Filter panel (shared between desktop list and mobile)
     const filterPanel = (
         <AnimatePresence>
@@ -440,7 +483,7 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                     {sortedProperties.length > 0 ? (
                         <>
                             <div className="flex flex-col">
-                                {visibleProperties.map((property) => (
+                                {sortedProperties.map((property) => (
                                     <MapPropertyCard
                                         key={property.id}
                                         property={property}
@@ -451,14 +494,33 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                                     />
                                 ))}
                             </div>
-                            {hasMore && (
-                                <button
-                                    onClick={() => setVisibleCount(c => c + PAGE_SIZE_MORE)}
-                                    className="mx-auto my-4 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 shadow-md shadow-blue-600/10 cursor-pointer"
-                                >
-                                    Load More ({sortedProperties.length - visibleCount} remaining)
-                                </button>
-                            )}
+                            {/* Load More — real API call */}
+                            <div className="py-3 px-2">
+                                {isLoadingMore && (
+                                    <div className="space-y-2 mb-3">
+                                        {Array.from({ length: 3 }).map((_, i) => (
+                                            <div key={i} className="flex gap-3 h-24 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-pulse">
+                                                <div className="w-24 shrink-0 bg-slate-200 dark:bg-slate-700" />
+                                                <div className="flex-1 py-3 pr-3 space-y-2">
+                                                    <div className="h-3 w-3/4 bg-slate-200 dark:bg-slate-700 rounded" />
+                                                    <div className="h-3 w-1/2 bg-slate-200 dark:bg-slate-700 rounded" />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {hasMore ? (
+                                    <button
+                                        onClick={handleLoadMore}
+                                        disabled={isLoadingMore}
+                                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-[11px] font-bold rounded-full transition-all active:scale-95"
+                                    >
+                                        {isLoadingMore ? 'Loading...' : `Load More (${totalCount - allProperties.length} remaining)`}
+                                    </button>
+                                ) : sortedProperties.length > 0 ? (
+                                    <p className="text-center text-[10px] text-slate-400 font-medium">All results loaded</p>
+                                ) : null}
+                            </div>
                         </>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
@@ -489,9 +551,12 @@ function SearchMapView({ properties, destination }: SearchMapViewProps) {
                         defaultCenter={fallbackCoords ?? undefined}
                     />
 
-                    {/* Property count badge */}
+                    {/* Property count badge — shows server-side total, not just loaded count */}
                     <div className="absolute bottom-10 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300 z-10">
-                        {sortedProperties.length} properties{activeFilterCount > 0 ? ' (filtered)' : ''}
+                        {activeFilterCount > 0
+                            ? `${sortedProperties.length} of ${totalCount} (filtered)`
+                            : `${totalCount} properties`
+                        }
                     </div>
 
                     {/* Floating List View Toggle */}

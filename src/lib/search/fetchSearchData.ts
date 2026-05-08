@@ -298,7 +298,7 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
         price,
         currency,
         originalPrice,
-        image: hotel.thumbnailUrl || hotel.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
+        image: hotel.thumbnailUrl || hotel.image || '',
         images: (hotel.images?.length > 0 ? hotel.images : null)
             || (hotel.details?.hotel_images_photos ? hotel.details.hotel_images_photos.map((p: any) => p.url) : []),
         amenities: hotel.hotelFacilities || hotel.details?.hotelFacilities || hotel.details?.facilities || [],
@@ -317,16 +317,20 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
 // Using the normalized queryParams (not raw URL strings) ensures that alternate param
 // spellings (checkIn vs checkin) don't produce separate cache entries.
 const getCachedSearchProperties = unstable_cache(
-    async (queryParams: SearchQueryParams): Promise<Property[]> => {
+    async (queryParams: SearchQueryParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> => {
         // Run TGX and Duffel in parallel (LiteAPI dropped)
         const [tgxSettled, duffelSettled] = await Promise.allSettled([
-            searchTravelgateX(queryParams as unknown as Record<string, unknown>),
+            searchTravelgateX({ ...(queryParams as unknown as Record<string, unknown>), limit: 15, offset: 0 }),
             searchDuffelStays(queryParams),
         ]);
 
         const tgxResults: Property[] = [];
+        let tgxTotalCount = 0;
+        let tgxAllMappable: any[] = [];
         if (tgxSettled.status === 'fulfilled') {
             const data = tgxSettled.value as any;
+            tgxTotalCount = data?.totalCount ?? 0;
+            tgxAllMappable = data?.allMappable || [];
             if (data?.data && Array.isArray(data.data)) {
                 tgxResults.push(
                     ...data.data
@@ -356,14 +360,10 @@ const getCachedSearchProperties = unstable_cache(
         );
 
         const combined = [...tgxResults, ...uniqueDuffel];
-
         if (combined.length === 0) throw new Error('NO_RESULTS');
 
-        // Overlay ETG ratings from hotel_reviews table (nightly sync from RateHawk dump)
-        // Only applies to TGX hotels — their hotelId is the numeric ETG HID.
         const tgxIds = tgxResults.map(p => p.id).filter(Boolean);
         const ratingsMap = await fetchHotelRatings(tgxIds);
-
         if (ratingsMap.size > 0) {
             for (const prop of combined) {
                 const etg = ratingsMap.get(prop.id);
@@ -374,10 +374,14 @@ const getCachedSearchProperties = unstable_cache(
             }
         }
 
-        return combined;
+        return {
+            properties: combined,
+            totalCount: tgxTotalCount || combined.length,
+            allMappable: tgxAllMappable.length > 0 ? tgxAllMappable : combined
+        };
     },
     ['search-properties'],
-    { revalidate: 300 } // 5-minute TTL per unique search combination
+    { revalidate: 30 } // 30-second TTL — content cache is in Supabase hotel_content (90 days)
 );
 
 /**
@@ -385,7 +389,7 @@ const getCachedSearchProperties = unstable_cache(
  * Results are cached for 5 minutes per unique combination of search params.
  * Empty results and errors are never cached so the next search retries live.
  */
-export async function fetchSearchProperties(params: SearchParams): Promise<Property[]> {
+export async function fetchSearchProperties(params: SearchParams): Promise<{ properties: Property[]; totalCount: number }> {
     const queryParams = buildSearchQueryParams(params);
     try {
         const result = await getCachedSearchProperties(queryParams);
@@ -394,6 +398,6 @@ export async function fetchSearchProperties(params: SearchParams): Promise<Prope
         if (e instanceof Error && e.message !== 'NO_RESULTS') {
             console.error("Failed to fetch properties:", e);
         }
-        return [];
+        return { properties: [], totalCount: 0 };
     }
 }
