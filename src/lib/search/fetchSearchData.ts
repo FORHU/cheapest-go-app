@@ -4,10 +4,34 @@
  */
 
 import { unstable_cache } from 'next/cache';
+import { createClient } from '@supabase/supabase-js';
 import { type Property } from '@/types';
 import { searchTravelgateX } from '@/lib/server/travelgatex';
 import { COUNTRY_DEFAULT_CITY, COUNTRY_NAME_TO_CODE } from '@/lib/constants/countries';
 import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const adminSupabase = supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : null;
+
+async function fetchHotelRatings(hotelIds: string[]): Promise<Map<string, { rating: number; reviews_count: number }>> {
+    const map = new Map<string, { rating: number; reviews_count: number }>();
+    if (!adminSupabase || hotelIds.length === 0) return map;
+    try {
+        const { data } = await adminSupabase
+            .from('hotel_reviews')
+            .select('hotel_id, rating, reviews_count')
+            .in('hotel_id', hotelIds);
+        for (const row of (data || [])) {
+            map.set(row.hotel_id, { rating: row.rating ?? 0, reviews_count: row.reviews_count ?? 0 });
+        }
+    } catch (e) {
+        console.error('[fetchHotelRatings] error:', e);
+    }
+    return map;
+}
 
 // Types
 export interface SearchParams {
@@ -260,6 +284,9 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
 
     const reviewCount = hotel.reviewCount || hotel.details?.review_count || 0;
 
+    const lat = hotel.coordinates?.lat || hotel.latitude || hotel.details?.latitude || hotel.details?.location?.latitude || 0;
+    const lng = hotel.coordinates?.lng || hotel.longitude || hotel.details?.longitude || hotel.details?.location?.longitude || 0;
+
     return {
         id: hotel.hotelId,
         name: hotel.name || `Hotel ${hotel.hotelId}`,
@@ -271,15 +298,13 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
         price,
         currency,
         originalPrice,
-        image: hotel.thumbnailUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
-        images: hotel.details?.hotel_images_photos ? hotel.details.hotel_images_photos.map((p: any) => p.url) : [],
+        image: hotel.thumbnailUrl || hotel.image || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
+        images: (hotel.images?.length > 0 ? hotel.images : null)
+            || (hotel.details?.hotel_images_photos ? hotel.details.hotel_images_photos.map((p: any) => p.url) : []),
         amenities: hotel.hotelFacilities || hotel.details?.hotelFacilities || hotel.details?.facilities || [],
         badges: [],
         type: 'hotel',
-        coordinates: {
-            lat: hotel.latitude || hotel.details?.latitude || hotel.details?.location?.latitude || 0,
-            lng: hotel.longitude || hotel.details?.longitude || hotel.details?.location?.longitude || 0,
-        },
+        coordinates: { lat, lng },
         refundableTag,
         distance: hotel.distance || hotel.details?.distance_from_center || hotel.details?.distance || undefined,
         boardTypes: hotel.boardTypes || [],
@@ -333,6 +358,22 @@ const getCachedSearchProperties = unstable_cache(
         const combined = [...tgxResults, ...uniqueDuffel];
 
         if (combined.length === 0) throw new Error('NO_RESULTS');
+
+        // Overlay ETG ratings from hotel_reviews table (nightly sync from RateHawk dump)
+        // Only applies to TGX hotels — their hotelId is the numeric ETG HID.
+        const tgxIds = tgxResults.map(p => p.id).filter(Boolean);
+        const ratingsMap = await fetchHotelRatings(tgxIds);
+
+        if (ratingsMap.size > 0) {
+            for (const prop of combined) {
+                const etg = ratingsMap.get(prop.id);
+                if (etg && etg.rating > 0) {
+                    prop.rating = etg.rating;
+                    prop.reviews = etg.reviews_count;
+                }
+            }
+        }
+
         return combined;
     },
     ['search-properties'],

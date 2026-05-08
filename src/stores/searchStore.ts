@@ -39,6 +39,9 @@ export interface SearchFilters {
     minReviewsCount: number;
     facilities: number[];
     strictFacilityFiltering: boolean;
+    propertyTypes: string[];   // 'hotel' | 'apartment' | 'resort' | 'villa'
+    boardTypes: string[];      // board/meal plan codes: 'RO' | 'BB' | 'HB' | 'FB' | 'AI'
+    refundable: boolean | null; // true = refundable only, null = show all
 }
 
 /** Destination suggestions state */
@@ -100,6 +103,9 @@ interface SearchState {
     setFilters: (filters: Partial<SearchFilters>) => void;
     toggleStarRating: (star: number) => void;
     toggleFacility: (facilityId: number) => void;
+    togglePropertyType: (type: string) => void;
+    toggleBoardType: (code: string) => void;
+    setRefundable: (value: boolean | null) => void;
     resetFilters: () => void;
 
     // Destination suggestions (moved from DestinationPicker useState)
@@ -150,6 +156,9 @@ const initialFilters: SearchFilters = {
     minReviewsCount: 0,
     facilities: [],
     strictFacilityFiltering: false,
+    propertyTypes: [],
+    boardTypes: [],
+    refundable: null,
 };
 
 const initialSuggestions: SuggestionsState = {
@@ -261,6 +270,22 @@ export const useSearchStore = create<SearchState>()(
                     : [...state.filters.facilities, facilityId];
                 return { filters: { ...state.filters, facilities: newFacilities } };
             }),
+
+            togglePropertyType: (type) => set((state) => {
+                const cur = state.filters.propertyTypes;
+                const next = cur.includes(type) ? cur.filter(t => t !== type) : [...cur, type];
+                return { filters: { ...state.filters, propertyTypes: next } };
+            }),
+
+            toggleBoardType: (code) => set((state) => {
+                const cur = state.filters.boardTypes;
+                const next = cur.includes(code) ? cur.filter(c => c !== code) : [...cur, code];
+                return { filters: { ...state.filters, boardTypes: next } };
+            }),
+
+            setRefundable: (value) => set((state) => ({
+                filters: { ...state.filters, refundable: value }
+            })),
 
             resetFilters: () => set({ filters: initialFilters }),
 

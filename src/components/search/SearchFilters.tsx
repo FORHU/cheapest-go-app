@@ -42,9 +42,28 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         return unique;
     }, [initialFacilities]);
     const filters = useSearchFilters();
-    const { setFilters, toggleStarRating, toggleFacility, resetFilters, isMobileFiltersOpen, setIsMobileFiltersOpen } = useSearchStore();
+    const {
+        setFilters, toggleStarRating, toggleFacility,
+        togglePropertyType, toggleBoardType, setRefundable,
+        resetFilters, isMobileFiltersOpen, setIsMobileFiltersOpen,
+    } = useSearchStore();
     useBodyScrollLock(isMobileFiltersOpen);
-    const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering } = filters;
+    const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering, propertyTypes, boardTypes, refundable } = filters;
+
+    const PROPERTY_TYPE_OPTIONS = [
+        { value: 'hotel', label: 'Hotel' },
+        { value: 'apartment', label: 'Apartment' },
+        { value: 'resort', label: 'Resort' },
+        { value: 'villa', label: 'Villa' },
+    ];
+
+    const BOARD_TYPE_OPTIONS = [
+        { code: 'RO', label: 'Room Only' },
+        { code: 'BB', label: 'Breakfast Included' },
+        { code: 'HB', label: 'Half Board' },
+        { code: 'FB', label: 'Full Board' },
+        { code: 'AI', label: 'All Inclusive' },
+    ];
 
     // Initialize filters from URL params on mount (only once)
     useEffect(() => {
@@ -125,8 +144,21 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         router.push(`/search?${current.toString()}`);
     }, [resetFilters, router]);
 
+    const handlePropertyTypeToggle = useCallback((type: string) => {
+        togglePropertyType(type);
+    }, [togglePropertyType]);
+
+    const handleBoardTypeToggle = useCallback((code: string) => {
+        toggleBoardType(code);
+    }, [toggleBoardType]);
+
+    const handleRefundableChange = useCallback((value: boolean | null) => {
+        setRefundable(value);
+    }, [setRefundable]);
+
     const hasActiveFilters = hotelName || starRating.length > 0 || minRating > 0 ||
-        minReviewsCount > 0 || facilities.length > 0;
+        minReviewsCount > 0 || facilities.length > 0 ||
+        propertyTypes.length > 0 || boardTypes.length > 0 || refundable !== null;
 
     const content = (
         <div className="w-full flex-shrink-0 space-y-4 pb-20 lg:pb-0">            {/* Header with Reset */}
@@ -204,8 +236,54 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                 ))}
             </FilterSection>
 
+            {/* Property Type */}
+            <FilterSection title="Property Type" index={4}>
+                <div className="flex flex-col gap-1">
+                    {PROPERTY_TYPE_OPTIONS.map(opt => (
+                        <CheckboxItem
+                            key={opt.value}
+                            label={opt.label}
+                            checked={propertyTypes.includes(opt.value)}
+                            onChange={() => handlePropertyTypeToggle(opt.value)}
+                        />
+                    ))}
+                </div>
+            </FilterSection>
+
+            {/* Room Features */}
+            <FilterSection title="Room Features" index={5}>
+                <div className="flex flex-col gap-1 mb-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Meal Plan</p>
+                    {BOARD_TYPE_OPTIONS.map(opt => (
+                        <CheckboxItem
+                            key={opt.code}
+                            label={opt.label}
+                            checked={boardTypes.includes(opt.code)}
+                            onChange={() => handleBoardTypeToggle(opt.code)}
+                        />
+                    ))}
+                </div>
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Cancellation</p>
+                    <div className="flex flex-col gap-1">
+                        <RadioItem
+                            name="refundable"
+                            label="Any"
+                            checked={refundable === null}
+                            onChange={() => handleRefundableChange(null)}
+                        />
+                        <RadioItem
+                            name="refundable"
+                            label="Free cancellation only"
+                            checked={refundable === true}
+                            onChange={() => handleRefundableChange(true)}
+                        />
+                    </div>
+                </div>
+            </FilterSection>
+
             {/* Amenities */}
-            <FilterSection title="Amenities" index={4}>
+            <FilterSection title="Amenities" index={6}>
                 <div className="grid grid-cols-2 gap-2">
                     {facilityOptions.map((facility) => (
                         <CheckboxItem
