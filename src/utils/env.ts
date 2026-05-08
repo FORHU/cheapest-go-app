@@ -50,6 +50,10 @@ export const env = {
     TRAVELGATE_ENDPOINT_URL: process.env.TRAVELGATE_ENDPOINT_URL,
     // Foursquare
     FOURSQUARE_API_KEY: process.env.FOURSQUARE_SERVICE_API_KEY,
+
+    // ETG / RateHawk B2B (hotel reviews nightly sync)
+    ETG_KEY_ID: process.env.ETG_KEY_ID,
+    ETG_API_KEY: process.env.ETG_API_KEY,
 };
 
 /**

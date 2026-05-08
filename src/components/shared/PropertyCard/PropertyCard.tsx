@@ -178,11 +178,11 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
             className={`relative group cursor-pointer ${className}`}
         >
             {/* Glow effect on hover */}
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-2xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
+            <div className="absolute -inset-0.5 bg-linear-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-2xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
 
             {/* Card content — Airbnb-style size/layout: 4:3 image, rounded corners */}
             <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
-                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-2xl landscape-compact-img landscape-img flex-shrink-0">
+                <div className="relative aspect-2/1 sm:aspect-4/3 overflow-hidden rounded-t-2xl landscape-compact-img landscape-img shrink-0">
                     {imgSrc && (
                         <Image
                             src={imgSrc}
@@ -370,12 +370,18 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                 <div className="flex items-end justify-between mt-1 md:mt-4">
                     {/* Rating Section */}
                     <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="px-1.5 py-0.5 lg:px-2 lg:py-1 bg-blue-600 text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg">
-                            {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                        </div>
-                        <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
-                            {getRatingLabel(property.rating)}
-                        </span>
+                        {property.rating > 0 ? (
+                            <>
+                                <div className={`px-1.5 py-0.5 lg:px-2 lg:py-1 ${getRatingColor(property.rating)} text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg`}>
+                                    {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                                </div>
+                                <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    {getRatingLabel(property.rating)}
+                                </span>
+                            </>
+                        ) : (
+                            <span className="text-[9px] landscape:text-[8px] lg:text-sm text-slate-400 dark:text-slate-500">No rating yet</span>
+                        )}
                     </div>
 
                     {/* Price Section */}
