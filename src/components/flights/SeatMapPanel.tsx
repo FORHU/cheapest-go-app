@@ -141,8 +141,8 @@ export default function SeatMapPanel({
     // ── Loading / Error ──────────────────────────────────────────────
     if (loading) {
         return (
-            <div className="flex items-center justify-center gap-2 py-8 text-slate-500 dark:text-slate-400 text-sm">
-                <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="flex items-center justify-center gap-2 py-8 text-slate-500 dark:text-slate-400 text-[10px] lg:text-xs">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 Loading seat map…
             </div>
         );
@@ -155,8 +155,8 @@ export default function SeatMapPanel({
                     <AlertTriangle className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
-                    <p className="text-sm font-normal text-slate-700 dark:text-slate-300">Seat map not available</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-[11px] font-normal text-slate-700 dark:text-slate-300">Seat map not available</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                         {error
                             ? `Could not load seat map: ${error}`
                             : 'This airline doesn\'t support seat selection for this flight through our booking system.'}
@@ -274,21 +274,21 @@ export default function SeatMapPanel({
             />
 
             {/* Legend */}
-            <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-[9px] text-slate-500 dark:text-slate-400">
+            <div className="flex justify-center items-center gap-x-4 gap-y-2 flex-wrap text-[9px] text-slate-500 dark:text-slate-400">
                 <LegendItem color="bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700" label="Free" />
                 <LegendItem color="bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700" label="Paid" />
                 <LegendItem color="bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 opacity-60" label="Taken" />
-                <LegendItem color="bg-indigo-500 border-indigo-500" label="Selected" textColor="text-indigo-600 dark:text-indigo-400" />
-                <LegendItem color="bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 ring-1 ring-offset-1 ring-blue-400" label="Extra legroom" />
-                <LegendItem color="bg-amber-100 dark:bg-amber-900/40 border-amber-400 dark:border-amber-600 ring-1 ring-offset-1 ring-orange-400" label="Exit row" />
+                <LegendItem color="bg-indigo-500 border-indigo-500" label="Selected" textColor="text-blue-600 dark:text-blue-400" />
+                <LegendItem color="bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 ring-1 ring-offset-1 ring-emerald-500" label="Extra legroom" />
+                <LegendItem color="bg-rose-100 dark:bg-rose-900/40 border-rose-300 dark:border-rose-700 ring-1 ring-offset-1 ring-rose-500" label="Exit row" />
             </div>
 
             {/* Seat cost summary + Done/Skip */}
             <div className="flex items-center gap-2">
                 {totalSeatCost > 0 && (
-                    <div className="flex-1 flex items-center justify-between text-[11px] bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-md px-3 py-2">
-                        <span className="text-indigo-700 dark:text-indigo-300 font-normal">Seat upgrade</span>
-                        <span className="font-normal text-indigo-700 dark:text-indigo-300">
+                    <div className="flex-1 flex items-center gap-1.5 text-[11px] text-blue-600 dark:text-blue-400 font-normal py-2">
+                        <span>Seat upgrade:</span>
+                        <span className="font-normal">
                             +{new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(totalSeatCost)}
                         </span>
                     </div>
@@ -311,7 +311,7 @@ export default function SeatMapPanel({
                             className={cn(
                                 'flex items-center gap-1.5 px-4 py-2 rounded-md text-[10px] font-normal transition-colors',
                                 allSeatsChosen
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
                                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700',
                                 totalSeatCost === 0 && 'flex-1 justify-center'
                             )}
@@ -339,8 +339,9 @@ interface CabinGridProps {
 function CabinGrid({ map, passengerIndex, segmentIndex, selectedSeats, onSeatClick }: CabinGridProps) {
     return (
         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-md border border-slate-200 dark:border-slate-700 overflow-auto max-h-[380px]">
-            {/* Cabin class label + column headers */}
-            <div className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+            <div className="min-w-max">
+                {/* Cabin class label + column headers */}
+                <div className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 {map.cabinClass && (
                     <div className="px-3 pt-1.5 pb-0.5">
                         <span className="text-[8px] font-normal uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -396,6 +397,7 @@ function CabinGrid({ map, passengerIndex, segmentIndex, selectedSeats, onSeatCli
                     </div>
                 ))}
             </div>
+            </div>
         </div>
     );
 }
@@ -450,8 +452,8 @@ function SeatButton({ seat, passengerIndex, segmentIndex, selectedSeats, onClick
                         : isFree
                             ? 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 cursor-pointer active:scale-95'
                             : 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-200 cursor-pointer active:scale-95',
-                seat.extraLegroom && !isSelected && 'ring-1 ring-offset-1 ring-blue-400',
-                seat.isExit && !isSelected && !seat.extraLegroom && 'ring-1 ring-offset-1 ring-orange-400',
+                seat.extraLegroom && !isSelected && 'ring-1 ring-offset-1 ring-emerald-500',
+                seat.isExit && !isSelected && !seat.extraLegroom && 'ring-1 ring-offset-1 ring-rose-500',
             )}
         >
             {seat.designator.replace(/^\d+/, '')}

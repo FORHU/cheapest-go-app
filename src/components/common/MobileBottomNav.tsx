@@ -28,9 +28,9 @@ export const MobileBottomNav = () => {
 
     return (
         <>
-            <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-[360px]">
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] px-3 pb-[calc(env(safe-area-inset-bottom,0px)+6px)]">
                 {/* Main Nav Container */}
-                <div className="relative bg-white dark:bg-slate-900 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-white/20 dark:border-white/10 h-13 flex items-center">
+                <div className="relative bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-xl shadow-[0_-8px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_-15px_40px_rgba(0,0,0,0.25)] border border-white/20 dark:border-white/10 h-11 flex items-center">
                     
                     {/* Animated Curve Indicator */}
                     <motion.div
@@ -47,11 +47,11 @@ export const MobileBottomNav = () => {
                             
                             {/* The Floating Circle */}
                             <motion.div 
-                                className="relative size-11 bg-white dark:bg-slate-900 rounded-full shadow-md flex items-center justify-center border-[3px] border-alabaster dark:border-obsidian"
+                                className="relative size-9 bg-white dark:bg-slate-900 rounded-full shadow-sm flex items-center justify-center border-[2px] border-alabaster dark:border-obsidian"
                                 layoutId="active-circle"
                             >
                                 <div className="text-blue-600 dark:text-blue-400">
-                                    {React.createElement(navItems[activeIndex].icon, { size: 20, strokeWidth: 2.5 })}
+                                    {React.createElement(navItems[activeIndex].icon, { size: 16, strokeWidth: 2.5 })}
                                 </div>
                             </motion.div>
                         </div>
@@ -67,10 +67,10 @@ export const MobileBottomNav = () => {
                                     {/* Icon - hide when active because it's in the circle */}
                                     <div className={cn(
                                         "transition-all duration-300",
-                                        isActive ? "opacity-0 -translate-y-3" : "opacity-100 translate-y-0"
+                                        isActive ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"
                                     )}>
                                         <item.icon 
-                                            size={20} 
+                                            size={16} 
                                             strokeWidth={2} 
                                             className="text-slate-400 dark:text-slate-500" 
                                         />
@@ -78,9 +78,9 @@ export const MobileBottomNav = () => {
 
                                     {/* Label */}
                                     <span className={cn(
-                                        "text-[9px] font-bold transition-all duration-300",
+                                        "text-[8px] font-bold transition-all duration-300",
                                         isActive 
-                                            ? "text-blue-600 dark:text-blue-400 translate-y-1" 
+                                            ? "text-blue-600 dark:text-blue-400 translate-y-0.5" 
                                             : "text-slate-400 dark:text-slate-500"
                                     )}>
                                         {item.label}

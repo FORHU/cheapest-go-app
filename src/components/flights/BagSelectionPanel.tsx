@@ -92,8 +92,8 @@ export default function BagSelectionPanel({
     // ── Loading ──
     if (loading) {
         return (
-            <div className="flex items-center justify-center gap-2 py-8 text-slate-500 dark:text-slate-400 text-sm">
-                <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="flex items-center justify-center gap-2 py-8 text-slate-500 dark:text-slate-400 text-[10px] lg:text-xs">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 Loading bag options…
             </div>
         );
@@ -107,8 +107,8 @@ export default function BagSelectionPanel({
                     <AlertTriangle className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
-                    <p className="text-sm font-normal text-slate-700 dark:text-slate-300">Bag upgrades not available</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-[11px] font-normal text-slate-700 dark:text-slate-300">Bag upgrades not available</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                         {error
                             ? `Could not load bag options: ${error}`
                             : 'Extra bag selection isn\'t supported for this flight.'}

@@ -14,7 +14,7 @@ import { useSearchModule } from '@/hooks';
 import { useFlightSearch } from '@/hooks/search/useFlightSearch';
 
 // Import Search Forms
-import { DestinationSection, DateSection, TravelersSection } from './search/SearchSections';
+import { DestinationSection, CheckInSection, CheckOutSection, TravelersSection } from './search/SearchSections';
 import { FlightSearchForm } from './search/FlightSearchForm';
 import { TripTypeSelector } from './search/TripTypeSelector';
 
@@ -245,7 +245,8 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                                 className="flex-1 flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-white/5 min-w-0"
                                             >
                                                 <DestinationSection />
-                                                <DateSection />
+                                                <CheckInSection />
+                                                <CheckOutSection />
                                                 <TravelersSection />
                                             </motion.div>
                                         )}

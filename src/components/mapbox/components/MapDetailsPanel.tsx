@@ -122,8 +122,8 @@ export function MapDetailsPanel({
     if (!isOpen) return null;
 
     return (
-        <div className={`absolute top-2 left-2 z-[60] bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300
-            w-[210px] md:w-[300px]
+        <div className={`absolute z-[60] bg-white dark:bg-slate-900 rounded-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300
+            w-[210px] md:w-[300px] left-4 top-[80px] lg:top-[38px]
         `}>
             {/* Header */}
             <div className={`flex items-center justify-between px-2.5 pt-2.5 pb-1.5 md:px-4 md:pt-4 md:pb-2`}>
@@ -148,7 +148,7 @@ export function MapDetailsPanel({
                             onClick={() => onDetailToggle(detail.id)}
                             disabled={isDisabled}
                             className={`
-                                flex flex-col items-center gap-1 rounded-xl border-2 transition-all cursor-pointer
+                                flex flex-col items-center gap-1 rounded-md border-2 transition-all cursor-pointer
                                 p-1.5 md:p-2
                                 ${
                                     isDisabled
@@ -190,7 +190,7 @@ export function MapDetailsPanel({
                             key={tile.id}
                             onClick={() => onMapTypeChange(tile.id)}
                             className={`
-                                flex flex-col items-center gap-1 rounded-xl border-2 overflow-hidden transition-all cursor-pointer
+                                flex flex-col items-center gap-1 rounded-md border-2 overflow-hidden transition-all cursor-pointer
                                 ${
                                     mapType === tile.id
                                         ? 'border-blue-500'

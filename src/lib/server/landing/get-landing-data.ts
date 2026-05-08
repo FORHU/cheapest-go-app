@@ -23,7 +23,7 @@ function getPublicClient() {
 // ─── Shared helper ────────────────────────────────────────────────────────────
 // Cap at 8s — fast enough to stay within Next.js build limits and not stall
 // the landing page. On network errors (fetch failed) we do one retry.
-const QUERY_TIMEOUT_MS = 15000;
+const QUERY_TIMEOUT_MS = 30000;
 
 async function supabaseQuery(table: string, limit: number) {
     try {
@@ -32,8 +32,16 @@ async function supabaseQuery(table: string, limit: number) {
             new Promise<{ data: null; error: Error }>(resolve =>
                 setTimeout(() => resolve({ data: null, error: new Error(`Query timeout: ${label}`) }), QUERY_TIMEOUT_MS)
             );
+
+        // Only order flight_deals by updated_at. Other tables don't strictly need sorting 
+        // and removing it prevents timeouts on unindexed columns.
+        let query = supabase.from(table).select("*");
+        if (table === 'flight_deals') {
+            query = query.order('updated_at', { ascending: false });
+        }
+
         const result = await Promise.race([
-            supabase.from(table).select("*").order(table === 'flight_deals' ? 'updated_at' : 'created_at', { ascending: false }).limit(limit),
+            query.limit(limit),
             makeTimeout(table),
         ]);
         // Only retry on network-level fetch failures, NOT on our own timeout

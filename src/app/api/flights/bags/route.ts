@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         const clientMsg = res.status === 404
             ? 'This offer has expired. Please go back and search again for updated prices.'
             : msg;
-        return NextResponse.json({ success: false, error: clientMsg }, { status: res.status });
+        return NextResponse.json({ success: false, error: clientMsg }, { status: 200 });
     }
 
     const json = await res.json();

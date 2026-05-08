@@ -12,6 +12,7 @@ import { useFlightBooking } from '@/hooks/flights/useFlightBooking';
 import { useUserCurrency } from '@/stores/searchStore';
 import type { FarePolicy } from '@/types/flights';
 import { getAirportInfo } from '@/utils/airport-info';
+import { getAirportByCode } from '@/lib/airports';
 import { FareRulesPanel } from './FareRulesPanel';
 import SeatMapPanel from '@/components/flights/SeatMapPanel';
 import BagSelectionPanel from '@/components/flights/BagSelectionPanel';
@@ -124,7 +125,7 @@ function OfferExpiryBanner({ expiresAt }: { expiresAt: Date }) {
     const secs = secsLeft % 60;
     const isUrgent = secsLeft < 2 * 60;
     return (
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-normal mb-3 border ${
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-normal mb-3 lg:mb-6 border ${
             isUrgent
                 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
                 : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
@@ -731,17 +732,25 @@ export default function FlightBookContent() {
                         className="mb-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-6 h-6 lg:w-7 lg:h-7 rounded-full flex items-center justify-center shadow-sm !p-0"
                     />
                     <h1 className="text-sm lg:text-xl font-normal text-slate-900 dark:text-white">
-                        {(offer as any).tripType === 'round-trip'
-                            ? `Round trip to ${primary.arrival.airport}`
-                            : 'Complete Your Booking'}
+                        {(() => {
+                            const airport = getAirportByCode(primary.arrival.airport);
+                            const airportName = airport ? airport.name : primary.arrival.airport;
+                            return (offer as any).tripType === 'round-trip'
+                                ? `Round trip to ${airportName} (${primary.arrival.airport})`
+                                : `Booking to ${airportName} (${primary.arrival.airport})`;
+                        })()}
                     </h1>
                 </div>
 
                 {/* Flight Summary */}
                 <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5 mb-3 lg:mb-6 shadow-sm">
                     <div className="flex items-center gap-2 lg:gap-3 mb-2 lg:mb-3">
-                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-md lg:rounded-md bg-indigo-600 flex items-center justify-center text-white font-normal text-[10px] lg:text-sm">
-                            {primary.airline.code}
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-md lg:rounded-md bg-white border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center shadow-sm">
+                            <img 
+                                src={`https://www.gstatic.com/flights/airline_logos/70px/${primary.airline.code}.png`} 
+                                alt={primary.airline.name}
+                                className="w-full h-full object-contain p-1.5"
+                            />
                         </div>
                         <div>
                             <div className="font-normal text-slate-900 dark:text-white text-[10px] lg:text-[13px]">{primary.airline.name}</div>
@@ -793,7 +802,7 @@ export default function FlightBookContent() {
                 </div>
                 {/* Price Calendar — moved from search page to booking page */}
                 {calendarProps && (
-                    <div className="mb-6">
+                    <div className="mb-3 lg:mb-6">
                         <Suspense fallback={<div className="h-10 w-full animate-pulse bg-slate-100 dark:bg-slate-800 rounded-md" />}>
                             <PriceCalendar
                                 {...calendarProps}
@@ -856,7 +865,7 @@ export default function FlightBookContent() {
                                             <DropdownMenuTrigger asChild>
                                                 <button
                                                     type="button"
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] lg:text-xs font-normal bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] lg:text-xs font-normal bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group"
                                                 >
                                                     <span>{PASSENGER_TYPES.find(t => t.code === pax.type)?.label || 'Adult'}</span>
                                                     <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
@@ -896,19 +905,19 @@ export default function FlightBookContent() {
                                         type="text" placeholder="First Name *" required
                                         value={pax.firstName}
                                         onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)}
-                                        className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                                        className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                                     />
                                     <input
                                         type="text" placeholder="Last Name *" required
                                         value={pax.lastName}
                                         onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)}
-                                        className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                                        className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                                     />
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <button
                                                 type="button"
-                                                className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
+                                                className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
                                             >
                                                 <span className={cn(!pax.gender && "text-slate-400")}>
                                                     {GENDERS.find(g => g.value === pax.gender)?.label || 'Gender *'}
@@ -944,7 +953,7 @@ export default function FlightBookContent() {
                                         <DropdownMenuTrigger asChild>
                                             <button
                                                 type="button"
-                                                className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
+                                                className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
                                             >
                                                 <span>
                                                     {NATIONALITIES.find(n => n.code === pax.nationality)?.name || 'Nationality *'}
@@ -974,7 +983,7 @@ export default function FlightBookContent() {
                                         type="text" placeholder="Passport Number *" required
                                         value={pax.passport}
                                         onChange={(e) => updatePassenger(idx, 'passport', e.target.value)}
-                                        className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                                        className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                                     />
                                     <FormDatePicker
                                         value={pax.passportExpiry}
@@ -1008,14 +1017,14 @@ export default function FlightBookContent() {
                                     type="email" placeholder="Email Address *" required
                                     value={contact.email}
                                     onChange={(e) => setContact(prev => ({ ...prev, email: e.target.value }))}
-                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                                 />
                                 <div className="flex gap-1.5 lg:gap-2">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <button
                                                 type="button"
-                                                className="w-[90px] lg:w-[105px] flex items-center justify-between px-1.5 lg:px-2 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
+                                                className="w-[90px] lg:w-[105px] flex items-center justify-between px-1.5 lg:px-2 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
                                             >
                                                 <span>+{contact.countryCode}</span>
                                                 <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
@@ -1042,7 +1051,7 @@ export default function FlightBookContent() {
                                         type="tel" placeholder="Phone Number *" required
                                         value={contact.phone}
                                         onChange={(e) => setContact(prev => ({ ...prev, phone: e.target.value }))}
-                                        className="flex-1 px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                                        className="flex-1 px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                                     />
                                 </div>
                             </div>
@@ -1059,25 +1068,25 @@ export default function FlightBookContent() {
                                     type="text" placeholder="Address Line *" required
                                     value={contact.addressLine}
                                     onChange={(e) => setContact(prev => ({ ...prev, addressLine: e.target.value }))}
-                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 lg:col-span-2"
+                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 lg:col-span-2"
                                 />
                                 <input
                                     type="text" placeholder="City *" required
                                     value={contact.city}
                                     onChange={(e) => setContact(prev => ({ ...prev, city: e.target.value }))}
-                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                                 />
                                 <input
                                     type="text" placeholder="Postal Code *" required
                                     value={contact.postalCode}
                                     onChange={(e) => setContact(prev => ({ ...prev, postalCode: e.target.value }))}
-                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                                    className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                                 />
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <button
                                             type="button"
-                                            className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 lg:col-span-2 group"
+                                            className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 lg:col-span-2 group"
                                         >
                                             <span>
                                                 {NATIONALITIES.find(n => n.code === contact.country)?.name || 'Country *'}
@@ -1309,7 +1318,7 @@ export default function FlightBookContent() {
                         <button
                             type="submit"
                             disabled={step === 'submitting'}
-                            className="w-full py-2.5 lg:py-3 rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white font-normal text-[10px] lg:text-[13px] transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-2.5 lg:py-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-normal text-[10px] lg:text-[13px] transition-colors flex items-center justify-center gap-2"
                         >
                             {step === 'submitting' ? (
                                 <>

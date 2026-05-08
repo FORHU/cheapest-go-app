@@ -204,6 +204,7 @@ export function SearchFetcher({
         }, SEARCH_TIMEOUT_MS);
 
         const run = async () => {
+            const startTime = Date.now();
             try {
                 const body = {
                     origin: resolvedOrigin,
@@ -227,6 +228,13 @@ export function SearchFetcher({
                 clearTimeout(slowId);
 
                 const json = await res.json();
+                const endTime = Date.now();
+                const elapsed = endTime - startTime;
+                const minWait = 1500; // Ensure skeleton visibility for at least 1.5s
+
+                if (elapsed < minWait) {
+                    await new Promise(r => setTimeout(r, minWait - elapsed));
+                }
 
                 if (!json.success) {
                     setState({ status: 'error', message: json.error || 'Search failed' });
@@ -482,6 +490,7 @@ export function SearchFetcher({
                                 offers={filteredOffers}
                                 loading={isLoading}
                                 onSelect={handleSelect}
+                                skeletonCount={8}
                             />
                         )}
                     </div>

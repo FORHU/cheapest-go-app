@@ -75,7 +75,7 @@ export default function DuffelFareConditions({ rawOffer, currency = 'USD' }: Duf
     const isNonRefundable = !refundBefore?.allowed;
 
     return (
-        <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden mb-3 lg:mb-6">
             <button
                 type="button"
                 onClick={() => setOpen(o => !o)}

@@ -18,6 +18,7 @@ interface FormDatePickerProps {
     className?: string;
     minDate?: Date;
     maxDate?: Date;
+    customTrigger?: React.ReactNode;
 }
 
 export const FormDatePicker: React.FC<FormDatePickerProps> = ({
@@ -27,7 +28,8 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
     required,
     className,
     minDate,
-    maxDate
+    maxDate,
+    customTrigger
 }) => {
     const [currentMonth, setCurrentMonth] = useState(() => {
         if (value) {
@@ -52,13 +54,21 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
 
     const years = useMemo(() => {
         const currentYear = new Date().getFullYear();
-        const startYear = minDate ? minDate.getFullYear() : currentYear - 20;
+        const startYear = minDate ? minDate.getFullYear() : currentYear - 100;
         const endYear = maxDate ? maxDate.getFullYear() : currentYear + 20;
         const result = [];
         for (let i = startYear; i <= endYear; i++) {
             result.push(i);
         }
-        return result;
+        
+        // If the range starts from today or later (e.g. passport expiry), show ascending
+        // so the list starts at the current year and goes into the future.
+        if (startYear >= currentYear - 1) {
+            return result;
+        }
+        // Otherwise (e.g. date of birth), show descending so it starts at current year
+        // and goes into the past.
+        return result.reverse();
     }, [minDate, maxDate]);
 
     const handlePrevMonth = (e: React.MouseEvent) => {
@@ -133,17 +143,21 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
     return (
         <DropdownMenu onOpenChange={(open) => { if (!open) setView('calendar'); }}>
             <DropdownMenuTrigger asChild>
-                <button
-                    type="button"
-                    className={cn(
-                        "w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[12px] lg:text-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500/50 group text-left transition-all hover:border-blue-300 dark:hover:border-blue-500/50 shadow-sm",
-                        !value && "text-slate-400",
-                        className
-                    )}
-                >
-                    <span>{displayValue || placeholder}</span>
-                    <CalendarIcon size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
-                </button>
+                {customTrigger ? (
+                    <div className="cursor-pointer w-full h-full">{customTrigger}</div>
+                ) : (
+                    <button
+                        type="button"
+                        className={cn(
+                            "w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/50 group text-left transition-all hover:border-blue-300 dark:hover:border-blue-500/50 shadow-sm",
+                            !value && "text-slate-400",
+                            className
+                        )}
+                    >
+                        <span>{displayValue || placeholder}</span>
+                        <CalendarIcon size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                    </button>
+                )}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="p-0 overflow-hidden bg-white dark:bg-obsidian border-slate-200 dark:border-white/10 rounded-md shadow-2xl z-[1002] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[280px]">
                 <div className="p-4 flex flex-col relative">

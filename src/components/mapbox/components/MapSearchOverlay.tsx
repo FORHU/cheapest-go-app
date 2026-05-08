@@ -45,7 +45,7 @@ export const MapSearchOverlay = ({ onSelect, className = 'absolute top-3 left-3 
 
     return (
         <div className={className}>
-            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg pointer-events-auto">
+            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-md shadow-lg pointer-events-auto">
                 <div className="flex items-center gap-1.5 px-2.5 h-[30px]">
                     {isSearching ? (
                         <div className="relative w-3.5 h-3.5 shrink-0">
@@ -62,7 +62,7 @@ export const MapSearchOverlay = ({ onSelect, className = 'absolute top-3 left-3 
                         onBlur={() => setTimeout(() => setShowOriginResults(false), 150)}
                         onFocus={() => originResults.length > 0 && setShowOriginResults(true)}
                         placeholder="Search location on map..."
-                        className="flex-1 text-xs text-slate-800 dark:text-slate-200 bg-transparent placeholder-slate-400 focus:outline-none"
+                        className="flex-1 text-[11px] text-slate-800 dark:text-slate-200 bg-transparent placeholder:text-[10.5px] placeholder-slate-400 focus:outline-none"
                     />
                     {originQuery && (
                         <button onClick={clearSearch} className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
