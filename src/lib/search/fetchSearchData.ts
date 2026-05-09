@@ -389,7 +389,7 @@ const getCachedSearchProperties = unstable_cache(
  * Results are cached for 5 minutes per unique combination of search params.
  * Empty results and errors are never cached so the next search retries live.
  */
-export async function fetchSearchProperties(params: SearchParams): Promise<{ properties: Property[]; totalCount: number }> {
+export async function fetchSearchProperties(params: SearchParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
     const queryParams = buildSearchQueryParams(params);
     try {
         const result = await getCachedSearchProperties(queryParams);
@@ -398,6 +398,6 @@ export async function fetchSearchProperties(params: SearchParams): Promise<{ pro
         if (e instanceof Error && e.message !== 'NO_RESULTS') {
             console.error("Failed to fetch properties:", e);
         }
-        return { properties: [], totalCount: 0 };
+        return { properties: [], totalCount: 0, allMappable: [] };
     }
 }
