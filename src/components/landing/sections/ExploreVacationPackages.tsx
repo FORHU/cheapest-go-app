@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Plane } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { TabList, HorizontalScroll } from '@/components/ui';
 import { type VacationPackage, packageTabs } from '@/types';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
+import { buildDestinationSlug } from '@/lib/utils';
 
 export const ExploreVacationPackages: React.FC<{
   destinations?: VacationPackage[],
@@ -19,6 +20,7 @@ export const ExploreVacationPackages: React.FC<{
   React.useEffect(() => setMounted(true), []);
   const currency = useUserCurrency();
   const symbol = mounted ? getCurrencySymbol(currency) : getCurrencySymbol('KRW');
+  const router = useRouter();
 
   return (
     <section className="w-full py-4 md:py-8 lg:py-10 landscape:py-3 landscape-compact-py">
@@ -63,7 +65,7 @@ export const ExploreVacationPackages: React.FC<{
                 whileHover={{ y: -8 }}
                 className="shrink-0 w-[220px] sm:w-[260px] md:w-[320px] snap-start relative group cursor-pointer flex flex-col"
               >
-                <div onClick={() => toast.info(pkg.name, { description: 'Live hotel search will be available at launch.' })} className="relative flex flex-col h-full flex-1">
+                <div onClick={() => router.push(`/destinations/${buildDestinationSlug(pkg.name, pkg.location)}`)} className="relative flex flex-col h-full flex-1">
                   <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
                     <div className="relative aspect-[2/1] sm:aspect-[4/3] md:aspect-[3/2] overflow-hidden flex-shrink-0 landscape-compact-img landscape-img">
                       {pkg.image && (

@@ -4,7 +4,7 @@
  */
 
 import { cache } from 'react';
-import { preBook, getHotelDetails } from '@/utils/supabase/functions';
+import { preBook, getHotelDetails, invokeEdgeFunction } from '@/utils/supabase/functions';
 import { type Property } from '@/types';
 export type PropertyData = Property;
 
@@ -17,6 +17,7 @@ export interface SearchParamsInput {
     rooms?: string | number;
     offerId?: string;
     currency?: string;
+    nationality?: string;
     /** Duffel Stays rate ID — passed as URL param when navigating from search results */
     rateId?: string;
 }
@@ -208,6 +209,67 @@ async function fetchDuffelPropertyData(
     }
 }
 
+/** True for TGX hotel codes (e.g. "KR2094") and ETG numeric IDs ("12345678"). */
+function isTGXOrETGId(id: string): boolean {
+    return /^\d+$/.test(id) || /^[A-Z]{2}\d+$/.test(id);
+}
+
+/**
+ * Fetch a TGX/ETG hotel using the travelgatex-search edge function's
+ * single-hotel detail mode (hotelCode param → returns plain JSON, not NDJSON).
+ */
+async function fetchTGXPropertyData(
+    id: string,
+    searchParams: SearchParamsInput
+): Promise<FetchPropertyResult> {
+    try {
+        const defaults = getDefaultDates();
+        let checkIn  = sanitizeDate(searchParams.checkIn  as string) || defaults.checkIn;
+        let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+        if (checkIn <= formatDateForApi(new Date())) { checkIn = defaults.checkIn; if (checkOut <= checkIn) checkOut = defaults.checkOut; }
+
+        const result = await invokeEdgeFunction('travelgatex-search', {
+            hotelCode: id,
+            checkin:   checkIn,
+            checkout:  checkOut,
+            adults:    Number(searchParams.adults  || 2),
+            children:  Number(searchParams.children || 0),
+            rooms:     Number(searchParams.rooms   || 1),
+            currency:  searchParams.currency || 'KRW',
+            guest_nationality: searchParams.nationality || 'KR',
+        });
+
+        const hotel = result?.data;
+        if (!hotel?.name) return { property: null, fetchedDetails: null, preBookResult: null };
+
+        const images: string[] = hotel.images || (hotel.thumbnailUrl ? [hotel.thumbnailUrl] : []);
+        const property: PropertyData = {
+            id,
+            name:        hotel.name,
+            location:    [hotel.address, hotel.city, hotel.country].filter(Boolean).join(', ') || hotel.location || '',
+            description: hotel.description || '',
+            // Prefer ETG reviewRating (0-10); fall back to starRating*2 so 3★ shows ~6.0 rather than 0.
+            rating:  hotel.reviewRating != null ? hotel.reviewRating
+                   : (hotel.starRating  ?? 0) > 0 ? (hotel.starRating ?? 0) * 2
+                   : 0,
+            reviews: hotel.reviewCount ?? 0,
+            price:       hotel.price     || hotel.roomTypes?.[0]?.rates?.[0]?.retailRate?.total?.[0]?.amount || 0,
+            currency:    hotel.currency  || searchParams.currency || 'KRW',
+            image:       images[0] || '',
+            images,
+            amenities:   hotel.hotelFacilities || hotel.amenities || [],
+            badges:      [],
+            type:        'hotel',
+            coordinates: hotel.coordinates || { lat: hotel.latitude || 0, lng: hotel.longitude || 0 },
+        };
+
+        return { property, fetchedDetails: hotel, preBookResult: null };
+    } catch (err) {
+        console.error('[fetchTGXPropertyData]', err instanceof Error ? err.message : err);
+        return { property: null, fetchedDetails: null, preBookResult: null };
+    }
+}
+
 /**
  * Main data fetching function for property page.
  * Handles prebook, hotel details, and fallbacks.
@@ -304,7 +366,13 @@ export const fetchPropertyData = cache(async (
         }
     }
 
-    // 3. Build property data
+    // 3. TGX/ETG fallback — LiteAPI doesn't know TGX codes ("KR2094") or ETG numeric IDs
+    if (!fetchedDetails && !isRateLimited && isTGXOrETGId(id)) {
+        const tgxResult = await fetchTGXPropertyData(id, searchParams);
+        if (tgxResult.property) return tgxResult;
+    }
+
+    // 4. Build property data
     let property: PropertyData | null = null;
 
     if (fetchedDetails) {

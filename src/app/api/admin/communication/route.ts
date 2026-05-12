@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/server/rate-limit';
 import { requireAdmin, isAuthError } from '@/lib/server/admin';
 import { getEmailLogs, retryEmailLog } from '@/lib/server/admin/communication';
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+    const rl = await rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'admin-comm-get' });
+    if (!rl.success) return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
+
     try {
         const auth = await requireAdmin();
         if (isAuthError(auth)) return auth;
@@ -22,7 +26,10 @@ export async function GET(req: Request) {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'admin-comm-post' });
+    if (!rl.success) return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
+
     try {
         const auth = await requireAdmin();
         if (isAuthError(auth)) return auth;

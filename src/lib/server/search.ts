@@ -40,7 +40,9 @@ async function fetchAutocomplete(query: string): Promise<AutocompleteResult[]> {
         return countryResults;
     }
 
-    const res = await autocompleteLiteApi(query);
+    // LiteAPI only — TGX destinationSearcher is too slow (10-30s) for autocomplete UX.
+    // Destination codes are resolved inside the edge function via resolveDestinationCode.
+    const res = await autocompleteLiteApi(query).catch(() => null);
     const cityResults: AutocompleteResult[] = (res?.data ?? []).map((item: Record<string, unknown>) => {
         const cityName = (item.displayName || item.name || '') as string;
         const address = (item.formattedAddress || item.address || '') as string;

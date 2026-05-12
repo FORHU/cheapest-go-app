@@ -4,9 +4,10 @@ import { z } from 'zod';
 // Prebook
 // ============================================================================
 
+// offerId may carry a TGX search token encoded as "TGX:{token}" — backend detects the prefix.
 export const prebookSchema = z.object({
   offerId: z.string().min(1, 'Offer ID is required'),
-  currency: z.string().length(3, 'Currency must be 3 characters (e.g., PHP)'),
+  currency: z.string().length(3, 'Currency must be 3 characters (e.g., PHP)').optional(),
   voucherCode: z.string().optional(),
 });
 
@@ -31,6 +32,7 @@ export const holderSchema = z.object({
 });
 
 export const bookingConfirmSchema = z.object({
+  provider: z.enum(['liteapi', 'travelgatex']).default('liteapi'),
   prebookId: z.string().min(1, 'Prebook ID is required'),
   holder: holderSchema,
   guests: z.array(guestSchema).min(1, 'At least one guest is required'),

@@ -3,12 +3,35 @@
  * These are pure functions that can be used in server components.
  */
 
-import { unstable_cache } from 'next/cache';
+// unstable_cache removed — edge function has its own 10-min in-memory cache
+import { createClient } from '@supabase/supabase-js';
 import { type Property } from '@/types';
 import { searchTravelgateX } from '@/lib/server/travelgatex';
-import { searchLiteApi } from '@/utils/supabase/functions';
 import { COUNTRY_DEFAULT_CITY, COUNTRY_NAME_TO_CODE } from '@/lib/constants/countries';
 import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const adminSupabase = supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : null;
+
+async function fetchHotelRatings(hotelIds: string[]): Promise<Map<string, { rating: number; reviews_count: number }>> {
+    const map = new Map<string, { rating: number; reviews_count: number }>();
+    if (!adminSupabase || hotelIds.length === 0) return map;
+    try {
+        const { data } = await adminSupabase
+            .from('hotel_reviews')
+            .select('hotel_id, rating, reviews_count')
+            .in('hotel_id', hotelIds);
+        for (const row of (data || [])) {
+            map.set(row.hotel_id, { rating: row.rating ?? 0, reviews_count: row.reviews_count ?? 0 });
+        }
+    } catch (e) {
+        console.error('[fetchHotelRatings] error:', e);
+    }
+    return map;
+}
 
 // Types
 export interface SearchParams {
@@ -133,6 +156,9 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
             'fukuoka': 'JP', 'nara': 'JP', 'hiroshima': 'JP', 'okinawa': 'JP',
             // South Korea
             'seoul': 'KR', 'busan': 'KR', 'jeju': 'KR', 'incheon': 'KR',
+            'daejeon': 'KR', 'daegu': 'KR', 'gwangju': 'KR', 'ulsan': 'KR',
+            'suwon': 'KR', 'jeonju': 'KR', 'gyeongju': 'KR', 'changwon': 'KR',
+            'pohang': 'KR', 'chuncheon': 'KR', 'gangneung': 'KR', 'sokcho': 'KR',
             // Thailand
             'bangkok': 'TH', 'phuket': 'TH', 'pattaya': 'TH', 'chiang mai': 'TH',
             'koh samui': 'TH', 'krabi': 'TH',
@@ -261,6 +287,9 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
 
     const reviewCount = hotel.reviewCount || hotel.details?.review_count || 0;
 
+    const lat = hotel.coordinates?.lat || hotel.latitude || hotel.details?.latitude || hotel.details?.location?.latitude || 0;
+    const lng = hotel.coordinates?.lng || hotel.longitude || hotel.details?.longitude || hotel.details?.location?.longitude || 0;
+
     return {
         id: hotel.hotelId,
         name: hotel.name || `Hotel ${hotel.hotelId}`,
@@ -272,15 +301,13 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
         price,
         currency,
         originalPrice,
-        image: hotel.thumbnailUrl || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
-        images: hotel.details?.hotel_images_photos ? hotel.details.hotel_images_photos.map((p: any) => p.url) : [],
+        image: hotel.thumbnailUrl || hotel.image || '',
+        images: (hotel.images?.length > 0 ? hotel.images : null)
+            || (hotel.details?.hotel_images_photos ? hotel.details.hotel_images_photos.map((p: any) => p.url) : []),
         amenities: hotel.hotelFacilities || hotel.details?.hotelFacilities || hotel.details?.facilities || [],
         badges: [],
         type: 'hotel',
-        coordinates: {
-            lat: hotel.latitude || hotel.details?.latitude || hotel.details?.location?.latitude || 0,
-            lng: hotel.longitude || hotel.details?.longitude || hotel.details?.location?.longitude || 0,
-        },
+        coordinates: { lat, lng },
         refundableTag,
         distance: hotel.distance || hotel.details?.distance_from_center || hotel.details?.distance || undefined,
         boardTypes: hotel.boardTypes || [],
@@ -288,89 +315,87 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
     } as Property;
 }
 
-// Cache is defined at module level so a single stable instance is reused across requests.
-// Next.js keys it as: ['search-properties'] + JSON.stringify(queryParams).
-// Using the normalized queryParams (not raw URL strings) ensures that alternate param
-// spellings (checkIn vs checkin) don't produce separate cache entries.
-const getCachedSearchProperties = unstable_cache(
-    async (queryParams: SearchQueryParams): Promise<Property[]> => {
-        // Run all three providers in parallel
-        const [tgxSettled, liteApiSettled, duffelSettled] = await Promise.allSettled([
-            searchTravelgateX(queryParams as unknown as Record<string, unknown>),
-            searchLiteApi(queryParams as unknown as Record<string, unknown>),
-            searchDuffelStays(queryParams),
-        ]);
+async function fetchSearchPropertiesInner(queryParams: SearchQueryParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
+    // Run TGX and Duffel in parallel (LiteAPI dropped)
+    const [tgxSettled, duffelSettled] = await Promise.allSettled([
+        searchTravelgateX({ ...(queryParams as unknown as Record<string, unknown>), limit: 100, offset: 0 }),
+        searchDuffelStays(queryParams),
+    ]);
 
-        const tgxResults: Property[] = [];
-        if (tgxSettled.status === 'fulfilled') {
-            const data = tgxSettled.value as any;
-            if (data?.data && Array.isArray(data.data)) {
-                tgxResults.push(
-                    ...data.data
-                        .map((hotel: any) => {
-                            const prop = transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency);
-                            if (hotel._tgx) {
-                                (prop as any).provider = 'travelgatex';
-                                (prop as any)._tgx = hotel._tgx;
-                            }
-                            return prop;
-                        })
-                        .filter((p: Property) => p.name && p.price > 0)
-                );
-            }
-        } else {
-            console.error('[Search] TravelgateX failed:', tgxSettled.reason?.message);
+    const tgxResults: Property[] = [];
+    let tgxTotalCount = 0;
+    let tgxAllMappable: any[] = [];
+    if (tgxSettled.status === 'fulfilled') {
+        const data = tgxSettled.value as any;
+        tgxTotalCount = data?.totalCount ?? 0;
+        tgxAllMappable = data?.allMappable || [];
+        if (data?.data && Array.isArray(data.data)) {
+            tgxResults.push(
+                ...data.data
+                    .map((hotel: any) => {
+                        const prop = transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency);
+                        if (hotel._tgx) {
+                            (prop as any).provider = 'travelgatex';
+                            (prop as any)._tgx = hotel._tgx;
+                        } else if (hotel._etg) {
+                            (prop as any).provider = 'etg';
+                            (prop as any)._etg = hotel._etg;
+                        }
+                        return prop;
+                    })
+                    .filter((p: Property) => p.name && p.price > 0)
+            );
         }
+    } else {
+        console.error('[Search] TravelgateX failed:', tgxSettled.reason?.message);
+    }
 
-        const liteApiResults: Property[] = [];
-        if (liteApiSettled.status === 'fulfilled') {
-            const data = liteApiSettled.value as any;
-            if (data?.data && Array.isArray(data.data)) {
-                liteApiResults.push(
-                    ...data.data
-                        .map((hotel: any) => transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency))
-                        .filter((p: Property) => p.name && p.price > 0)
-                );
+    const duffelResults: Property[] = duffelSettled.status === 'fulfilled'
+        ? duffelSettled.value
+        : [];
+
+    // Merge: TGX first, then Duffel (deduplicated by name)
+    const seenNames = new Set(tgxResults.map(p => p.name.toLowerCase().trim()));
+    const uniqueDuffel = duffelResults.filter(
+        p => !seenNames.has(p.name.toLowerCase().trim())
+    );
+
+    const combined = [...tgxResults, ...uniqueDuffel];
+    if (combined.length === 0) throw new Error('NO_RESULTS');
+
+    const tgxIds = tgxResults.map(p => p.id).filter(Boolean);
+    const ratingsMap = await fetchHotelRatings(tgxIds);
+    if (ratingsMap.size > 0) {
+        for (const prop of combined) {
+            const etg = ratingsMap.get(prop.id);
+            if (etg && etg.rating > 0) {
+                prop.rating = etg.rating;
+                prop.reviews = etg.reviews_count;
             }
-        } else {
-            console.error('[Search] LiteAPI failed:', liteApiSettled.reason?.message);
         }
+    }
 
-        const duffelResults: Property[] = duffelSettled.status === 'fulfilled'
-            ? duffelSettled.value
-            : [];
-
-        // Merge: TGX first, then LiteAPI (deduplicated), then Duffel (deduplicated)
-        const seenNames = new Set(tgxResults.map(p => p.name.toLowerCase().trim()));
-        const uniqueLiteApi = liteApiResults.filter(p => !seenNames.has(p.name.toLowerCase().trim()));
-        uniqueLiteApi.forEach(p => seenNames.add(p.name.toLowerCase().trim()));
-        const uniqueDuffel = duffelResults.filter(
-            p => !seenNames.has(p.name.toLowerCase().trim())
-        );
-
-        const combined = [...tgxResults, ...uniqueLiteApi, ...uniqueDuffel];
-
-        if (combined.length === 0) throw new Error('NO_RESULTS');
-        return combined;
-    },
-    ['search-properties'],
-    { revalidate: 300 } // 5-minute TTL per unique search combination
-);
+    return {
+        properties: combined,
+        totalCount: tgxTotalCount || combined.length,
+        allMappable: tgxAllMappable.length > 0 ? tgxAllMappable : combined
+    };
+}
 
 /**
  * Main search function - fetches properties from TravelgateX + Duffel Stays in parallel.
  * Results are cached for 5 minutes per unique combination of search params.
  * Empty results and errors are never cached so the next search retries live.
  */
-export async function fetchSearchProperties(params: SearchParams): Promise<Property[]> {
+export async function fetchSearchProperties(params: SearchParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
     const queryParams = buildSearchQueryParams(params);
     try {
-        const result = await getCachedSearchProperties(queryParams);
+        const result = await fetchSearchPropertiesInner(queryParams);
         return result;
     } catch (e) {
         if (e instanceof Error && e.message !== 'NO_RESULTS') {
             console.error("Failed to fetch properties:", e);
         }
-        return [];
+        return { properties: [], totalCount: 0, allMappable: [] };
     }
 }

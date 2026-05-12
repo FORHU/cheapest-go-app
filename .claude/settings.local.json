@@ -53,7 +53,8 @@
       "Bash(python3 -c ' *)",
       "Bash(printf '%s' 'test')",
       "Read(//tmp/**)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(supabase db *)"
     ]
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { checkCsrf } from '@/lib/server/csrf';
 import { applyMarkup, toStripeAmount, HOTEL_MARKUP, BUNDLE_MARKUP } from '@/lib/pricing';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { env } from '@/utils/env';
@@ -9,8 +10,11 @@ import { env } from '@/utils/env';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+    const csrfError = checkCsrf(req);
+    if (csrfError) return csrfError;
+
     // 5 payment initiations per minute per IP
-    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-payment' });
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-payment' });
     if (!rl.success) {
         return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
@@ -96,6 +100,8 @@ export async function POST(req: NextRequest) {
         console.log(`[create-payment] Hotel pricing: original=${pricing.originalPrice} ${currency}, charged=${pricing.chargedPrice}, markup=${(markupRate * 100).toFixed(0)}%${bundleFlightId ? ' (bundle)' : ' (standalone)'}`);
 
         // Create Stripe PaymentIntent (automatic capture — refund on LiteAPI failure)
+        // Idempotency key prevents duplicate charges if client retries the request.
+        const idempotencyKey = `hotel-pi-${user.id}-${prebookId}`;
         const paymentIntent = await stripe.paymentIntents.create({
             amount: stripeAmount,
             currency: currency.toLowerCase(),
@@ -111,7 +117,7 @@ export async function POST(req: NextRequest) {
                 markupAmount: String(pricing.markupAmount),
             },
             description: `Hotel Booking: ${propertyName || 'Hotel'} - ${roomName || 'Room'}`,
-        });
+        }, { idempotencyKey });
 
         return NextResponse.json({
             success: true,

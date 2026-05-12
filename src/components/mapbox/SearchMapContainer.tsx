@@ -48,6 +48,8 @@ interface SearchMapContainerProps {
     onHoverId: (id: string | null) => void;
     onViewDetails: (id: string, offerId?: string) => void;
     searchOverlayClassName?: string;
+    /** Override the initial map center when properties list is empty */
+    defaultCenter?: { lng: number; lat: number };
 }
 
 export const SearchMapContainer = React.memo(({
@@ -58,6 +60,7 @@ export const SearchMapContainer = React.memo(({
     onHoverId,
     onViewDetails,
     searchOverlayClassName,
+    defaultCenter,
 }: SearchMapContainerProps) => {
     // 1. Map Instance
     const { mapRef, isMapLoaded, handleMapLoad, handleMapStyleChange } = useMapboxInstance();
@@ -245,9 +248,9 @@ export const SearchMapContainer = React.memo(({
                 standardConfig={mapType === 'default-3d' ? standardConfig : undefined}
                 enable3DTerrain={terrainEnabled}
                 initialViewState={{
-                    longitude: 120.596,
-                    latitude: 16.402, // Centered on Baguio City
-                    zoom: 14.5,
+                    longitude: defaultCenter?.lng ?? 139.6917, // Tokyo as world-wide fallback
+                    latitude: defaultCenter?.lat ?? 35.6895,
+                    zoom: 12,
                     pitch: 20,
                     bearing: -10,
                 }}

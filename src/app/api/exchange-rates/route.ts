@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +21,10 @@ const SUPPORTED = [
  * Uses the free Frankfurter API (European Central Bank data, no API key needed).
  * Falls back to static rates if the API is unreachable.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+    const rl = await rateLimit(req, { limit: 60, windowMs: 60_000, prefix: 'exchange-rates' });
+    if (!rl.success) return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
+
     const now = Date.now();
 
     // Return cached rates if still fresh

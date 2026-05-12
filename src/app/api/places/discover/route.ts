@@ -23,7 +23,7 @@ const GOOGLE_TYPE_MAP: Record<string, string[]> = {
 };
 
 export async function GET(req: NextRequest) {
-    const rl = rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'places-discover' });
+    const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'places-discover' });
     if (!rl.success) {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }

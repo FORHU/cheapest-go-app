@@ -32,7 +32,7 @@ const Header = () => {
   return (
     <>
       <header suppressHydrationWarning className={cn(
-        "sticky top-0 z-[60] w-full border-b border-slate-200 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl transition-colors duration-800 landscape-compact-header",
+        "sticky top-0 z-60 w-full border-b border-slate-200 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl transition-colors duration-800 landscape-compact-header",
         // Header is always visible now as per request
         ""
       )}>
