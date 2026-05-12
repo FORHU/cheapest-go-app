@@ -141,19 +141,45 @@ Deno.serve(async (req: Request) => {
       const hotelBase = transformOptionToHotel(best, '', currency, content);
 
       // Build room-type-compatible array from all distinct TGX options
-      const roomTypes = options.map((opt: any) => ({
-        offerId:   opt.id,
-        roomName:  opt.rooms?.[0]?.description || 'Standard Room',
-        roomPhotos: (content?.images || []).slice(0, 3),
-        rates: [{
-          name:          opt.rooms?.[0]?.description || 'Standard Room',
-          boardType:     opt.boardCode || '',
-          refundableTag: opt.cancelPolicy?.refundable ? 'RFN' : 'NRFN',
-          retailRate:    { total: [{ amount: opt.price?.gross || opt.price?.net || 0, currency: opt.price?.currency || currency }] },
-          cancelPolicy:  opt.cancelPolicy,
-          _tgx:          { optionId: opt.id, accessCode: opt.accessCode, supplierCode: opt.supplierCode, boardCode: opt.boardCode },
-        }],
-      }));
+      // Try to match ETG room_groups by name for per-room images; fall back to rotating hotel images
+      const roomTypes = options.map((opt: any, roomIdx: number) => {
+        const tgxName    = (opt.rooms?.[0]?.description || '').toLowerCase();
+        const roomGroups = content?.roomGroups || [];
+        const matched    = roomGroups.find(g => {
+          const gn = g.name.toLowerCase();
+          return tgxName && gn && (tgxName.includes(gn.split(' ')[0]) || gn.includes(tgxName.split(' ')[0]));
+        });
+        const hotelImgs  = content?.images || [];
+        const roomPhotos = matched?.images?.length
+          ? matched.images.slice(0, 3)
+          : hotelImgs.slice((roomIdx % Math.max(1, Math.floor(hotelImgs.length / 3))) * 3,
+                            (roomIdx % Math.max(1, Math.floor(hotelImgs.length / 3))) * 3 + 3);
+        return {
+          offerId:    `TGX:${opt.id}`,
+          roomName:   opt.rooms?.[0]?.description || 'Standard Room',
+          roomPhotos: roomPhotos.length ? roomPhotos : hotelImgs.slice(0, 3),
+          rates: [{
+            name:          opt.rooms?.[0]?.description || 'Standard Room',
+            boardType:     opt.boardCode || '',
+            refundableTag: opt.cancelPolicy?.refundable ? 'RFN' : 'NRFN',
+            retailRate:    { total: [{ amount: opt.price?.gross || opt.price?.net || 0, currency: opt.price?.currency || currency }] },
+            cancelPolicy:  opt.cancelPolicy,
+            _tgx:          { optionId: opt.id, accessCode: opt.accessCode, supplierCode: opt.supplierCode, boardCode: opt.boardCode },
+          }],
+        };
+      });
+
+      // Build cancellation policy from the first available TGX option
+      const firstOption  = options[0];
+      const cancelPolicy = firstOption?.cancelPolicy;
+      const cancellationPolicies = cancelPolicy ? {
+        refundableTag: cancelPolicy.refundable ? 'RFN' : 'NRFN',
+        cancelPolicyInfos: (cancelPolicy.cancelPenalties || []).map((p: any) => ({
+          type:     p.type     || 'PENALTY',
+          amount:   p.value    || 0,
+          currency: p.currency || currency,
+        })),
+      } : undefined;
 
       const hotelDetail = {
         ...hotelBase,
@@ -175,6 +201,7 @@ Deno.serve(async (req: Request) => {
         amenityGroups:              content?.amenityGroups || [],
         hotelFacilities:            (content?.amenityGroups || []).flatMap((g: any) => g.amenities || []),
         hotelImportantInformation:  content?.importantInformation,
+        cancellationPolicies,
       };
 
       return new Response(JSON.stringify({ data: hotelDetail }), {

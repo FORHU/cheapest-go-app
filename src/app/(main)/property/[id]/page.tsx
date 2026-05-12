@@ -275,21 +275,23 @@ export default async function PropertyPage({
                             />
                         </FadeInUp>
 
-                        <FadeInUp delay={0.45}>
-                            <hr className="border-slate-200 dark:border-white/10" />
-                        </FadeInUp>
-
-                        <FadeInUp delay={0.5}>
-                            <ReviewsSection
-                                reviews={reviewsData.reviews}
-                                averageRating={reviewsData.averageRating}
-                                totalCount={reviewsData.totalCount}
-                            />
-                        </FadeInUp>
-
-                        <FadeInUp delay={0.55}>
-                            <hr className="border-slate-200 dark:border-white/10" />
-                        </FadeInUp>
+                        {(reviewsData.totalCount > 0 || property.reviews > 0) && (
+                            <>
+                                <FadeInUp delay={0.45}>
+                                    <hr className="border-slate-200 dark:border-white/10" />
+                                </FadeInUp>
+                                <FadeInUp delay={0.5}>
+                                    <ReviewsSection
+                                        reviews={reviewsData.reviews}
+                                        averageRating={reviewsData.averageRating || property.rating || 0}
+                                        totalCount={reviewsData.totalCount || property.reviews || 0}
+                                    />
+                                </FadeInUp>
+                                <FadeInUp delay={0.55}>
+                                    <hr className="border-slate-200 dark:border-white/10" />
+                                </FadeInUp>
+                            </>
+                        )}
 
                         <FadeInUp delay={0.57}>
                             <LocationSection

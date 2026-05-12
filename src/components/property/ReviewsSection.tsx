@@ -218,17 +218,7 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
     }, [isSortOpen]);
 
     if (totalCount === 0) {
-        return (
-            <section id="reviews-section" className="py-8">
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Guest reviews</h2>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-8 text-center">
-                    <UserCircle className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                    <p className="text-slate-500 dark:text-slate-400">
-                        No reviews available yet for this property.
-                    </p>
-                </div>
-            </section>
-        );
+        return null;
     }
 
     const sortOptions = [
