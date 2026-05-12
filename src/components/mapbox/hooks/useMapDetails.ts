@@ -8,21 +8,22 @@ export function useMapDetails() {
     const [showDetailsPanel, setShowDetailsPanel] = useState(false);
     const [showLabels, setShowLabels] = useState(true);
     const [mapDetails, setMapDetails] = useState<MapDetailToggle[]>([
-        { id: 'discovery', label: 'Discovery', enabled: true },
-        { id: 'transit',   label: 'Transit',   enabled: false },
-        { id: 'traffic',   label: 'Traffic',   enabled: false },
-        { id: 'biking',    label: 'Biking',    enabled: false },
-        { id: 'terrain',   label: 'Terrain',   enabled: false },
+        { id: 'explore',  label: 'Explore',   enabled: true },
+        { id: 'transit',  label: 'Transit',   enabled: false },
+        { id: 'traffic',  label: 'Traffic',   enabled: false },
+        { id: 'biking',   label: 'Biking',    enabled: false },
+        { id: 'terrain',  label: 'Terrain',   enabled: false },
     ]);
 
     // Derive feature flags from the toggle list once; avoids repeated .find() calls per render
-    const { discoveryEnabled, terrainEnabled, trafficEnabled, transitEnabled } = useMemo(() => {
+    const { exploreEnabled, terrainEnabled, trafficEnabled, transitEnabled, bikingEnabled } = useMemo(() => {
         const flag = (id: string) => mapDetails.find((d) => d.id === id)?.enabled ?? false;
         return {
-            discoveryEnabled: flag('discovery'),
-            terrainEnabled:   flag('terrain'),
-            trafficEnabled:   flag('traffic'),
-            transitEnabled:   flag('transit'),
+            exploreEnabled: flag('explore'),
+            terrainEnabled:  flag('terrain'),
+            trafficEnabled:  flag('traffic'),
+            transitEnabled:  flag('transit'),
+            bikingEnabled:   flag('biking'),
         };
     }, [mapDetails]);
 
@@ -46,8 +47,9 @@ export function useMapDetails() {
         showPlaceLabels: showLabels,
         showTraffic: trafficEnabled,
         showTransit: transitEnabled,
+        showCycling: bikingEnabled,
         language: 'en',
-    }), [showLabels, trafficEnabled, transitEnabled]);
+    }), [showLabels, trafficEnabled, transitEnabled, bikingEnabled]);
 
     const handleMapTypeChange = useCallback((type: MapTypeId) => {
         setMapType(type);
@@ -75,7 +77,7 @@ export function useMapDetails() {
         mapDetails,
         handleDetailToggle,
         terrainEnabled,
-        discoveryEnabled,
+        exploreEnabled,
         mapStyleUrl,
         standardConfig,
     };

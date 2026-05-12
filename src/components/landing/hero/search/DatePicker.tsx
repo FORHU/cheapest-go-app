@@ -14,9 +14,11 @@ interface DatePickerProps {
     forceOpen?: boolean;
     onDone?: () => void;
     initialCheckOutMode?: boolean;
+    /** Which activeDropdown value this instance responds to. Defaults to both 'dates-in' and 'dates-out'. */
+    triggerDropdown?: 'dates-in' | 'dates-out';
 }
 
-export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDone, initialCheckOutMode }) => {
+export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDone, initialCheckOutMode, triggerDropdown }) => {
     const ref = useRef<HTMLDivElement>(null);
     const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
     const [activeTab, setActiveTab] = useState<'calendar' | 'flexible'>('calendar');
@@ -37,7 +39,11 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
     const [yearInput, setYearInput] = useState(currentMonth.getFullYear().toString());
     const [selectingCheckOut, setSelectingCheckOut] = useState(false);
 
-    const isOpen = forceOpen || (activeDropdown === 'dates-in' || activeDropdown === 'dates-out');
+    const isOpen = forceOpen || (
+        triggerDropdown
+            ? activeDropdown === triggerDropdown
+            : (activeDropdown === 'dates-in' || activeDropdown === 'dates-out')
+    );
     
     // Reset selecting mode when picker opens based on which card triggered it
     useEffect(() => {

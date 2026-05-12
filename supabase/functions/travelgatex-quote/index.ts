@@ -33,7 +33,6 @@ query QuoteHotel(
         }
         boardCode
         paymentType
-        token
         rooms {
           occupancyRefId
           code

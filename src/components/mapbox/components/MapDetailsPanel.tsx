@@ -17,13 +17,11 @@ interface MapTypeTile {
     thumbnail: string;
 }
 
-function DiscoveryIcon({ size = 'w-8 h-8' }: { size?: string }) {
+function ExploreIcon({ size = 'w-8 h-8' }: { size?: string }) {
     return (
-        <svg viewBox="0 0 24 24" className={size} fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <svg viewBox="0 0 24 24" className={size} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 2v2M12 20v2M2 12h2M20 12h2M12 5l-1 1M12 5l1 1" />
-            <path d="M12 19l-1-1M12 19l1-1M5 12l1 1M5 12l1-1M19 12l-1 1M19 12l-1-1" />
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
         </svg>
     );
 }
@@ -90,7 +88,7 @@ function TerrainIcon({ size = 'w-8 h-8' }: { size?: string }) {
 }
 
 const getDetailIcons = (sizeClass: string): Record<string, React.ReactNode> => ({
-    discovery: <DiscoveryIcon size={sizeClass} />,
+    explore: <ExploreIcon size={sizeClass} />,
     transit: <TransitIcon size={sizeClass} />,
     traffic: <TrafficIcon size={sizeClass} />,
     biking: <BikingIcon size={sizeClass} />,
