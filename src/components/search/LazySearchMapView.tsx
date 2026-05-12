@@ -22,6 +22,7 @@ interface LazySearchMapViewProps {
     totalCount?: number;
     allMappable?: any[];
     rawSearchParams?: Record<string, any>;
+    isStreaming?: boolean;
 }
 
 export default function LazySearchMapView(props: LazySearchMapViewProps) {

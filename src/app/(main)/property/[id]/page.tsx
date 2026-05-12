@@ -28,14 +28,15 @@ export async function generateMetadata({
     const { id } = await params;
     const searchParamsResult = await searchParams;
     const { property, fetchedDetails } = await fetchPropertyData(id, {
-        offerId: searchParamsResult.offerId as string,
-        checkIn: searchParamsResult.checkIn as string,
-        checkOut: searchParamsResult.checkOut as string,
-        adults: searchParamsResult.adults as string,
-        children: searchParamsResult.children as string,
-        rooms: searchParamsResult.rooms as string,
-        currency: searchParamsResult.currency as string,
-        rateId: searchParamsResult.rateId as string,
+        offerId:     searchParamsResult.offerId     as string,
+        checkIn:     searchParamsResult.checkIn     as string,
+        checkOut:    searchParamsResult.checkOut    as string,
+        adults:      searchParamsResult.adults      as string,
+        children:    searchParamsResult.children    as string,
+        rooms:       searchParamsResult.rooms       as string,
+        currency:    searchParamsResult.currency    as string,
+        nationality: searchParamsResult.nationality as string,
+        rateId:      searchParamsResult.rateId      as string,
     });
     if (!property) return {};
 
@@ -84,14 +85,15 @@ export default async function PropertyPage({
     // Parallel fetch: property data + reviews
     const [{ property, fetchedDetails }, reviewsData] = await Promise.all([
         fetchPropertyData(id, {
-            offerId: searchParamsResult.offerId as string,
-            checkIn: searchParamsResult.checkIn as string,
-            checkOut: searchParamsResult.checkOut as string,
-            adults: searchParamsResult.adults as string,
-            children: searchParamsResult.children as string,
-            rooms: searchParamsResult.rooms as string,
-            currency: searchParamsResult.currency as string,
-            rateId: searchParamsResult.rateId as string,
+            offerId:     searchParamsResult.offerId     as string,
+            checkIn:     searchParamsResult.checkIn     as string,
+            checkOut:    searchParamsResult.checkOut    as string,
+            adults:      searchParamsResult.adults      as string,
+            children:    searchParamsResult.children    as string,
+            rooms:       searchParamsResult.rooms       as string,
+            currency:    searchParamsResult.currency    as string,
+            nationality: searchParamsResult.nationality as string,
+            rateId:      searchParamsResult.rateId      as string,
         }),
         fetchHotelReviews(id, { limit: 1000 }),
     ]);

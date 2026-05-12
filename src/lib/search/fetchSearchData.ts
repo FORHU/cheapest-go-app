@@ -3,7 +3,7 @@
  * These are pure functions that can be used in server components.
  */
 
-import { unstable_cache } from 'next/cache';
+// unstable_cache removed — edge function has its own 10-min in-memory cache
 import { createClient } from '@supabase/supabase-js';
 import { type Property } from '@/types';
 import { searchTravelgateX } from '@/lib/server/travelgatex';
@@ -156,6 +156,9 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
             'fukuoka': 'JP', 'nara': 'JP', 'hiroshima': 'JP', 'okinawa': 'JP',
             // South Korea
             'seoul': 'KR', 'busan': 'KR', 'jeju': 'KR', 'incheon': 'KR',
+            'daejeon': 'KR', 'daegu': 'KR', 'gwangju': 'KR', 'ulsan': 'KR',
+            'suwon': 'KR', 'jeonju': 'KR', 'gyeongju': 'KR', 'changwon': 'KR',
+            'pohang': 'KR', 'chuncheon': 'KR', 'gangneung': 'KR', 'sokcho': 'KR',
             // Thailand
             'bangkok': 'TH', 'phuket': 'TH', 'pattaya': 'TH', 'chiang mai': 'TH',
             'koh samui': 'TH', 'krabi': 'TH',
@@ -312,77 +315,72 @@ function transformHotelToProperty(hotel: any, cityName: string, currency: string
     } as Property;
 }
 
-// Cache is defined at module level so a single stable instance is reused across requests.
-// Next.js keys it as: ['search-properties'] + JSON.stringify(queryParams).
-// Using the normalized queryParams (not raw URL strings) ensures that alternate param
-// spellings (checkIn vs checkin) don't produce separate cache entries.
-const getCachedSearchProperties = unstable_cache(
-    async (queryParams: SearchQueryParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> => {
-        // Run TGX and Duffel in parallel (LiteAPI dropped)
-        const [tgxSettled, duffelSettled] = await Promise.allSettled([
-            searchTravelgateX({ ...(queryParams as unknown as Record<string, unknown>), limit: 15, offset: 0 }),
-            searchDuffelStays(queryParams),
-        ]);
+async function fetchSearchPropertiesInner(queryParams: SearchQueryParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
+    // Run TGX and Duffel in parallel (LiteAPI dropped)
+    const [tgxSettled, duffelSettled] = await Promise.allSettled([
+        searchTravelgateX({ ...(queryParams as unknown as Record<string, unknown>), limit: 100, offset: 0 }),
+        searchDuffelStays(queryParams),
+    ]);
 
-        const tgxResults: Property[] = [];
-        let tgxTotalCount = 0;
-        let tgxAllMappable: any[] = [];
-        if (tgxSettled.status === 'fulfilled') {
-            const data = tgxSettled.value as any;
-            tgxTotalCount = data?.totalCount ?? 0;
-            tgxAllMappable = data?.allMappable || [];
-            if (data?.data && Array.isArray(data.data)) {
-                tgxResults.push(
-                    ...data.data
-                        .map((hotel: any) => {
-                            const prop = transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency);
-                            if (hotel._tgx) {
-                                (prop as any).provider = 'travelgatex';
-                                (prop as any)._tgx = hotel._tgx;
-                            }
-                            return prop;
-                        })
-                        .filter((p: Property) => p.name && p.price > 0)
-                );
-            }
-        } else {
-            console.error('[Search] TravelgateX failed:', tgxSettled.reason?.message);
+    const tgxResults: Property[] = [];
+    let tgxTotalCount = 0;
+    let tgxAllMappable: any[] = [];
+    if (tgxSettled.status === 'fulfilled') {
+        const data = tgxSettled.value as any;
+        tgxTotalCount = data?.totalCount ?? 0;
+        tgxAllMappable = data?.allMappable || [];
+        if (data?.data && Array.isArray(data.data)) {
+            tgxResults.push(
+                ...data.data
+                    .map((hotel: any) => {
+                        const prop = transformHotelToProperty(hotel, queryParams.cityName, queryParams.currency);
+                        if (hotel._tgx) {
+                            (prop as any).provider = 'travelgatex';
+                            (prop as any)._tgx = hotel._tgx;
+                        } else if (hotel._etg) {
+                            (prop as any).provider = 'etg';
+                            (prop as any)._etg = hotel._etg;
+                        }
+                        return prop;
+                    })
+                    .filter((p: Property) => p.name && p.price > 0)
+            );
         }
+    } else {
+        console.error('[Search] TravelgateX failed:', tgxSettled.reason?.message);
+    }
 
-        const duffelResults: Property[] = duffelSettled.status === 'fulfilled'
-            ? duffelSettled.value
-            : [];
+    const duffelResults: Property[] = duffelSettled.status === 'fulfilled'
+        ? duffelSettled.value
+        : [];
 
-        // Merge: TGX first, then Duffel (deduplicated by name)
-        const seenNames = new Set(tgxResults.map(p => p.name.toLowerCase().trim()));
-        const uniqueDuffel = duffelResults.filter(
-            p => !seenNames.has(p.name.toLowerCase().trim())
-        );
+    // Merge: TGX first, then Duffel (deduplicated by name)
+    const seenNames = new Set(tgxResults.map(p => p.name.toLowerCase().trim()));
+    const uniqueDuffel = duffelResults.filter(
+        p => !seenNames.has(p.name.toLowerCase().trim())
+    );
 
-        const combined = [...tgxResults, ...uniqueDuffel];
-        if (combined.length === 0) throw new Error('NO_RESULTS');
+    const combined = [...tgxResults, ...uniqueDuffel];
+    if (combined.length === 0) throw new Error('NO_RESULTS');
 
-        const tgxIds = tgxResults.map(p => p.id).filter(Boolean);
-        const ratingsMap = await fetchHotelRatings(tgxIds);
-        if (ratingsMap.size > 0) {
-            for (const prop of combined) {
-                const etg = ratingsMap.get(prop.id);
-                if (etg && etg.rating > 0) {
-                    prop.rating = etg.rating;
-                    prop.reviews = etg.reviews_count;
-                }
+    const tgxIds = tgxResults.map(p => p.id).filter(Boolean);
+    const ratingsMap = await fetchHotelRatings(tgxIds);
+    if (ratingsMap.size > 0) {
+        for (const prop of combined) {
+            const etg = ratingsMap.get(prop.id);
+            if (etg && etg.rating > 0) {
+                prop.rating = etg.rating;
+                prop.reviews = etg.reviews_count;
             }
         }
+    }
 
-        return {
-            properties: combined,
-            totalCount: tgxTotalCount || combined.length,
-            allMappable: tgxAllMappable.length > 0 ? tgxAllMappable : combined
-        };
-    },
-    ['search-properties'],
-    { revalidate: 30 } // 30-second TTL — content cache is in Supabase hotel_content (90 days)
-);
+    return {
+        properties: combined,
+        totalCount: tgxTotalCount || combined.length,
+        allMappable: tgxAllMappable.length > 0 ? tgxAllMappable : combined
+    };
+}
 
 /**
  * Main search function - fetches properties from TravelgateX + Duffel Stays in parallel.
@@ -392,7 +390,7 @@ const getCachedSearchProperties = unstable_cache(
 export async function fetchSearchProperties(params: SearchParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
     const queryParams = buildSearchQueryParams(params);
     try {
-        const result = await getCachedSearchProperties(queryParams);
+        const result = await fetchSearchPropertiesInner(queryParams);
         return result;
     } catch (e) {
         if (e instanceof Error && e.message !== 'NO_RESULTS') {

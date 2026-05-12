@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type Property } from '@/types';
 import { PropertyCard } from '@/components/shared';
 import { MapPin } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, buildPropertySlug } from '@/lib/utils';
 import CurrencySelector from '@/components/common/CurrencySelector';
 import { useSearchStore } from '@/stores/searchStore';
 
@@ -69,7 +69,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
     const buildPropertyUrl = useCallback((property: Property) => {
         const params = new URLSearchParams(window.location.search);
         if (property.rateId) params.set('rateId', property.rateId);
-        return `/property/${property.id}?${params.toString()}`;
+        return `/property/${buildPropertySlug(property.name, property.id)}?${params.toString()}`;
     }, []);
 
     const handlePropertyClick = (property: Property) => {
