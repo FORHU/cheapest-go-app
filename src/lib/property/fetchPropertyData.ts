@@ -248,13 +248,16 @@ async function fetchTGXPropertyData(
             name:        hotel.name,
             location:    [hotel.address, hotel.city, hotel.country].filter(Boolean).join(', ') || hotel.location || '',
             description: hotel.description || '',
-            rating:      hotel.rating    || 0,
-            reviews:     hotel.reviews   || 0,
+            // Prefer ETG reviewRating (0-10); fall back to starRating*2 so 3★ shows ~6.0 rather than 0.
+            rating:  hotel.reviewRating != null ? hotel.reviewRating
+                   : (hotel.starRating  ?? 0) > 0 ? (hotel.starRating ?? 0) * 2
+                   : 0,
+            reviews: hotel.reviewCount ?? 0,
             price:       hotel.price     || hotel.roomTypes?.[0]?.rates?.[0]?.retailRate?.total?.[0]?.amount || 0,
             currency:    hotel.currency  || searchParams.currency || 'KRW',
             image:       images[0] || '',
             images,
-            amenities:   hotel.amenities || [],
+            amenities:   hotel.hotelFacilities || hotel.amenities || [],
             badges:      [],
             type:        'hotel',
             coordinates: hotel.coordinates || { lat: hotel.latitude || 0, lng: hotel.longitude || 0 },
