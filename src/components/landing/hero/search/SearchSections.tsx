@@ -60,7 +60,7 @@ export const CheckInSection: React.FC = () => {
                     </div>
                 </div>
             </div>
-            <DatePicker />
+            <DatePicker triggerDropdown="dates-in" />
         </div>
     );
 };
@@ -91,7 +91,7 @@ export const CheckOutSection: React.FC = () => {
                     </div>
                 </div>
             </div>
-            <DatePicker initialCheckOutMode />
+            <DatePicker initialCheckOutMode triggerDropdown="dates-out" />
         </div>
     );
 };

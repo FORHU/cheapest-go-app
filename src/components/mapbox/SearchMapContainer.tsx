@@ -3,7 +3,6 @@
 import React, { useMemo, useCallback } from 'react';
 import { MappableProperty } from './utils/buildGeoJson';
 import { useMapboxInstance } from './hooks/useMapboxInstance';
-import { useMapMarkers } from './hooks/useMapMarkers';
 import { useMapInteractions, PoiData } from './hooks/useMapInteractions';
 import { useMapViewport } from './hooks/useMapViewport';
 import { MapContainer } from './components/MapContainer';
@@ -13,11 +12,14 @@ import { Source, Layer } from 'react-map-gl/mapbox';
 
 import { PoiPopup } from './components/PoiPopup';
 import { MapMarker } from '../map/MapMarker';
+import { ClusterMarker } from '../map/ClusterMarker';
 import { MapPopup } from '../map/MapPopup';
+import useSupercluster from 'use-supercluster';
+import { BBox } from 'supercluster';
 import { MapSearchOverlay } from './components/MapSearchOverlay';
 import { useRouter } from 'next/navigation';
 import { useUserCurrency } from '@/stores/searchStore';
-import { convertCurrency } from '@/lib/currency';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
@@ -25,7 +27,7 @@ import { Layers } from 'lucide-react';
 import { useKakaoSearch } from './hooks/useKakaoSearch';
 import { isLocationInKorea } from '@/utils/geo';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 // Haversine distance — defined outside component to avoid re-creation on every render
 const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
@@ -64,11 +66,82 @@ export const SearchMapContainer = React.memo(({
 }: SearchMapContainerProps) => {
     // 1. Map Instance
     const { mapRef, isMapLoaded, handleMapLoad, handleMapStyleChange } = useMapboxInstance();
+    const [bounds, setBounds] = React.useState<BBox | null>(null);
+    const [zoom, setZoom] = React.useState(12);
 
-    // 2. Data Preparation
-    const { mappableProperties, geoJsonData, shouldCluster } = useMapMarkers(properties);
+    // Update bounds and zoom when map moves
+    const updateMapState = useCallback(() => {
+        const map = mapRef.current;
+        if (!map) return;
+        
+        const b = map.getBounds();
+        setBounds([
+            b.getWest(),
+            b.getSouth(),
+            b.getEast(),
+            b.getNorth()
+        ]);
+        setZoom(map.getZoom());
+    }, [mapRef]);
+
+    // Initial state and event listeners
+    React.useEffect(() => {
+        if (isMapLoaded) {
+            updateMapState();
+        }
+    }, [isMapLoaded, updateMapState]);
+
     const isMobile = useIsMobile();
     const router = useRouter();
+    const targetCurrency = useUserCurrency();
+
+    // 3. Derived State & Currency Conversion
+    const mappableProperties = useMemo(() => {
+        return properties.filter(
+            (p) =>
+                p.coordinates &&
+                p.coordinates.lat !== 0 &&
+                p.coordinates.lng !== 0
+        );
+    }, [properties]);
+
+    const markerPrices = useMemo(() => {
+        const prices: Record<string, number> = {};
+        for (const p of mappableProperties) {
+            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
+        }
+        return prices;
+    }, [mappableProperties, targetCurrency]);
+
+    const displayPrices = useMemo(() => {
+        const formatted: Record<string, string> = {};
+        for (const p of mappableProperties) {
+            formatted[p.id] = formatCurrency(markerPrices[p.id] || 0, targetCurrency);
+        }
+        return formatted;
+    }, [mappableProperties, markerPrices, targetCurrency]);
+
+    // 4. Map Data & Preparation
+    const points = useMemo(() => mappableProperties.map(p => ({
+        type: 'Feature' as const,
+        properties: {
+            cluster: false,
+            propertyId: p.id,
+            price: markerPrices[p.id],
+            property: p
+        },
+        geometry: {
+            type: 'Point' as const,
+            coordinates: [p.coordinates.lng, p.coordinates.lat]
+        }
+    })), [mappableProperties, markerPrices]);
+
+    const { clusters, supercluster } = useSupercluster({
+        points: points as any,
+        bounds: bounds!,
+        zoom,
+        options: { radius: 75, maxZoom: 16 }
+    });
 
     // POI Selection/Hover State
     const [selectedPoi, setSelectedPoi] = React.useState<PoiData | null>(null);
@@ -79,7 +152,7 @@ export const SearchMapContainer = React.memo(({
     const [carDuration, setCarDuration] = React.useState<string | null>(null);
     const [walkDuration, setWalkDuration] = React.useState<string | null>(null);
 
-    // 3. Interactions
+    // 5. Interactions
     const { handleMapClick, onMouseMove } = useMapInteractions({
         mapRef,
         onSelectId,
@@ -87,7 +160,7 @@ export const SearchMapContainer = React.memo(({
         onHoverPoi: setHoveredPoi,
     });
 
-    // 4. Viewport Management
+    // 6. Viewport Management
     useMapViewport({
         mapRef,
         isMapLoaded,
@@ -95,15 +168,7 @@ export const SearchMapContainer = React.memo(({
         selectedId,
     });
 
-    // 5. Derived State
-    const targetCurrency = useUserCurrency();
-    const markerPrices = useMemo(() => {
-        const prices: Record<string, number> = {};
-        for (const p of mappableProperties) {
-            prices[p.id] = convertCurrency(p.price, p.currency || 'USD', targetCurrency);
-        }
-        return prices;
-    }, [mappableProperties, targetCurrency]);
+    // 7. Derived UI State
 
     const selectedProperty = useMemo(
         () => mappableProperties.find((p: MappableProperty) => p.id === selectedId) ?? null,
@@ -189,7 +254,7 @@ export const SearchMapContainer = React.memo(({
         mapDetails,
         handleDetailToggle,
         terrainEnabled,
-        discoveryEnabled,
+        exploreEnabled,
         mapStyleUrl,
         standardConfig,
     } = useMapDetails();
@@ -200,7 +265,7 @@ export const SearchMapContainer = React.memo(({
 
     /** Runs the Kakao discovery check for the current map centre. */
     const runKakaoDiscovery = useCallback(() => {
-        if (!isMapLoaded || !discoveryEnabled) return;
+        if (!isMapLoaded || !exploreEnabled) return;
 
         const center = mapRef.current?.getCenter();
         if (!center) return;
@@ -213,7 +278,7 @@ export const SearchMapContainer = React.memo(({
             fetchKakaoRecommendations(center.lat, center.lng);
             lastDiscoveryFetch.current = { lat: center.lat, lng: center.lng };
         }
-    }, [isMapLoaded, discoveryEnabled, fetchKakaoRecommendations, mapRef]);
+    }, [isMapLoaded, exploreEnabled, fetchKakaoRecommendations, mapRef]);
 
     // Trigger on load / toggle
     React.useEffect(() => {
@@ -221,19 +286,22 @@ export const SearchMapContainer = React.memo(({
     }, [runKakaoDiscovery]);
 
     // Construct GeoJSON for recommended places
-    const recommendedGeoJson = useMemo(() => ({
-        type: 'FeatureCollection' as const,
-        features: recommendedPlaces.map(p => ({
-            type: 'Feature' as const,
-            geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
-            properties: {
-                name: p.name,
-                category: p.category,
-                isKakao: true,
-                id: p.id
-            }
-        }))
-    }), [recommendedPlaces]);
+    const recommendedGeoJson = useMemo(() => {
+        if (!exploreEnabled || !recommendedPlaces.length) return null;
+        return {
+            type: 'FeatureCollection' as const,
+            features: recommendedPlaces.map(p => ({
+                type: 'Feature' as const,
+                geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
+                properties: {
+                    name: p.name,
+                    category: p.category,
+                    isKakao: true,
+                    id: p.id
+                }
+            }))
+        };
+    }, [exploreEnabled, recommendedPlaces]);
 
     // Reset loading state on style change to prevent "Style not done loading" errors
     React.useEffect(() => {
@@ -258,30 +326,95 @@ export const SearchMapContainer = React.memo(({
                 onStyleReady={handleMapLoad}
                 onClick={handleMapClick}
                 onMouseMove={onMouseMove}
-                // Re-check Kakao discovery whenever the user finishes panning/zooming
-                onMoveEnd={runKakaoDiscovery}
+                // Update bounds/zoom on every move
+                onMove={updateMapState}
+                onMoveEnd={() => {
+                    updateMapState();
+                    runKakaoDiscovery();
+                }}
                 hideLayersButton={true}
             >
 
                 {isMapLoaded && (
                     <>
-                        <ClusterLayer
-                            geoJsonData={geoJsonData}
-                            shouldCluster={shouldCluster}
-                        />
+                        {/* Clusters and Markers */}
+                        {clusters.map(cluster => {
+                            const [longitude, latitude] = cluster.geometry.coordinates;
+                            const {
+                                cluster: isCluster,
+                                point_count: pointCount,
+                                propertyId,
+                                property
+                            } = cluster.properties;
 
-                        {mappableProperties.slice(0, 20).reverse().map(property => (
-                            <MapMarker
-                                key={property.id}
-                                property={property}
-                                displayPrice={markerPrices[property.id] ?? 0}
-                                displayCurrency={targetCurrency}
-                                isSelected={property.id === selectedId}
-                                isHovered={property.id === hoveredId}
-                                onClick={onSelectId}
-                                onHover={onHoverId}
-                            />
-                        ))}
+                            if (isCluster) {
+                                // Find min price in this cluster
+                                const leaves = supercluster?.getLeaves(cluster.id as number);
+                                const minPrice = leaves?.reduce((min, leaf) => 
+                                    Math.min(min, leaf.properties.price), Infinity) || 0;
+
+                                return (
+                                    <ClusterMarker
+                                        key={`cluster-${cluster.id}`}
+                                        latitude={latitude}
+                                        longitude={longitude}
+                                        count={pointCount}
+                                        minPrice={minPrice}
+                                        currency={targetCurrency}
+                                        onClick={() => {
+                                            const leaves = supercluster?.getLeaves(cluster.id as number, Infinity);
+                                            if (leaves && leaves.length > 0) {
+                                                const lons = leaves.map(l => l.geometry.coordinates[0]);
+                                                const lats = leaves.map(l => l.geometry.coordinates[1]);
+                                                const bounds: [[number, number], [number, number]] = [
+                                                    [Math.min(...lons), Math.min(...lats)],
+                                                    [Math.max(...lons), Math.max(...lats)]
+                                                ];
+                                                
+                                                // If all points are at the same location, zoom in specifically
+                                                if (bounds[0][0] === bounds[1][0] && bounds[0][1] === bounds[1][1]) {
+                                                    mapRef.current?.flyTo({
+                                                        center: [longitude, latitude],
+                                                        zoom: Math.min((zoom || 12) + 2, 18),
+                                                        duration: 1000
+                                                    });
+                                                } else {
+                                                    mapRef.current?.fitBounds(bounds, {
+                                                        padding: 80,
+                                                        duration: 1000
+                                                    });
+                                                }
+                                            } else {
+                                                const expansionZoom = Math.min(
+                                                    supercluster?.getClusterExpansionZoom(cluster.id as number) || 18,
+                                                    18
+                                                );
+                                                mapRef.current?.flyTo({
+                                                    center: [longitude, latitude],
+                                                    zoom: expansionZoom,
+                                                    duration: 1000
+                                                });
+                                            }
+                                        }}
+                                    />
+                                );
+                            }
+
+                            // Single point
+                            const p = property as any;
+                            return (
+                                <MapMarker
+                                    key={`marker-${p.id}`}
+                                    property={p}
+                                    displayPrice={markerPrices[p.id] ?? 0}
+                                    displayCurrency={targetCurrency}
+                                    isSelected={p.id === selectedId}
+                                    isHovered={p.id === hoveredId}
+                                    onClick={onSelectId}
+                                    onHover={onHoverId}
+                                />
+                            );
+                        })}
 
                         {poiRouteData && (
                             <Source id="poi-route-source" type="geojson" data={poiRouteData}>
@@ -307,11 +440,11 @@ export const SearchMapContainer = React.memo(({
                             />
                         )}
 
-                        {discoveryEnabled && recommendedPlaces.length > 0 && (
-                            <Source id="discovery-source" type="geojson" data={recommendedGeoJson}>
+                        {exploreEnabled && recommendedPlaces.length > 0 && (
+                            <Source id="explore-source" type="geojson" data={recommendedGeoJson}>
                                 {/* Outer glow layer */}
                                 <Layer
-                                    id="discovery-poi-glow"
+                                    id="explore-poi-glow"
                                     type="circle"
                                     minzoom={13}
                                     paint={{
@@ -336,7 +469,7 @@ export const SearchMapContainer = React.memo(({
                                     }}
                                 />
                                 <Layer
-                                    id="discovery-poi-layer"
+                                    id="explore-poi-dots"
                                     type="circle"
                                     paint={{
                                         'circle-radius': [
@@ -442,7 +575,7 @@ export const SearchMapContainer = React.memo(({
                     }}
                     className={cn(
                         "absolute left-4 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-md shadow-lg border border-slate-200 dark:border-slate-700 px-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 group h-[30px] shrink-0",
-                        "top-[44px] lg:top-4"
+                        "top-[58px] lg:top-4"
                     )}
                 >
                     <Layers className="w-4 h-4 text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors" strokeWidth={2} />

@@ -247,17 +247,30 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
 
 
 // Extract price — TravelgateX: top-level number; LiteAPI: nested in roomTypes
-function extractPrice(hotel: any): { price: number; originalPrice?: number } {
+function extractPrice(hotel: any): { price: number; originalPrice?: number; currency?: string } {
+    let result: { price: number; originalPrice?: number; currency?: string } = { price: 0 };
+
     if (typeof hotel.price === 'number' && hotel.price > 0) {
-        return { price: hotel.price };
-    }
-    if (hotel.roomTypes?.length > 0) {
+        result.price = hotel.price;
+        result.currency = hotel.currency || hotel.priceCurrency || hotel.currencyCode;
+    } else if (hotel.roomTypes?.length > 0) {
         const total = hotel.roomTypes[0]?.rates?.[0]?.retailRate?.total;
-        if (Array.isArray(total) && total.length > 0) return { price: (total[0] as any).amount || 0 };
-        if (typeof total === 'object' && total !== null && 'amount' in total) return { price: (total as any).amount || 0 };
-        if (typeof total === 'number') return { price: total };
+        if (Array.isArray(total) && total.length > 0) {
+            const amountObj = total[0] as any;
+            result.price = amountObj.amount || 0;
+            result.currency = amountObj.currency;
+        } else if (typeof total === 'object' && total !== null && 'amount' in total) {
+            result.price = (total as any).amount || 0;
+            result.currency = (total as any).currency;
+        } else if (typeof total === 'number') {
+            result.price = total;
+            result.currency = hotel.roomTypes[0]?.rates?.[0]?.retailRate?.currency;
+        }
     }
-    return { price: 0 };
+
+    if (hotel.originalPrice) result.originalPrice = hotel.originalPrice;
+
+    return result;
 }
 
 // Extract refundable tag — TravelgateX sets top-level; LiteAPI sets in roomTypes/rates
@@ -272,8 +285,9 @@ function extractRefundableTag(hotel: any): string | undefined {
 }
 
 // Transform API hotel to Property
-function transformHotelToProperty(hotel: any, cityName: string, currency: string): Property {
-    const { price, originalPrice } = extractPrice(hotel);
+function transformHotelToProperty(hotel: any, cityName: string, requestedCurrency: string): Property {
+    const { price, originalPrice, currency: extractedCurrency } = extractPrice(hotel);
+    const currency = extractedCurrency || requestedCurrency;
     const refundableTag = extractRefundableTag(hotel);
 
     // Get review data - reviewRating is typically 0-10 scale

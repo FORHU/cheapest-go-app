@@ -5,9 +5,26 @@ import { clusterLayer, clusterCountLayer, unclusteredBgLayer, unclusteredPriceLa
 interface ClusterLayerProps {
     geoJsonData: any;
     shouldCluster: boolean;
+    targetCurrency: string;
+    symbol: string;
 }
 
-export const ClusterLayer = React.memo(({ geoJsonData, shouldCluster }: ClusterLayerProps) => {
+export const ClusterLayer = React.memo(({ geoJsonData, shouldCluster, targetCurrency, symbol }: ClusterLayerProps) => {
+    // Format for abbreviated prices (e.g., 1200 -> 1.2k)
+    const priceTextField = [
+        'concat',
+        symbol,
+        [
+            'case',
+            ['>=', ['get', 'minPrice'], 1000000],
+            ['concat', ['round', ['/', ['get', 'minPrice'], 1000000]], 'M'],
+            ['>=', ['get', 'minPrice'], 1000],
+            ['concat', ['round', ['/', ['get', 'minPrice'], 1000]], 'k'],
+            ['to-string', ['round', ['get', 'minPrice']]]
+        ],
+        '+'
+    ];
+
     return (
         <Source
             id="properties"
@@ -16,16 +33,23 @@ export const ClusterLayer = React.memo(({ geoJsonData, shouldCluster }: ClusterL
             cluster={shouldCluster}
             clusterMaxZoom={16}
             clusterRadius={60}
+            clusterProperties={{
+                minPrice: ['min', ['get', 'convertedPrice']]
+            }}
             promoteId="id"
         >
             {/* Cluster Layers */}
             <Layer {...clusterGlowLayer as any} />
             <Layer {...clusterLayer as any} />
-            <Layer {...clusterCountLayer as any} />
+            <Layer
+                {...clusterCountLayer as any}
+                layout={{
+                    ...clusterCountLayer.layout as any,
+                    'text-field': priceTextField as any
+                }}
+            />
 
-            {/* Unclustered Property Layers (WebGL) */}
-            <Layer {...unclusteredBgLayer as any} />
-            <Layer {...unclusteredPriceLayer as any} />
+            {/* Unclustered Property Layers (WebGL) - Removed in favor of React MapMarkers */}
         </Source>
     );
 });
