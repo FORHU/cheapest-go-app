@@ -4,31 +4,44 @@ import React, { useState, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type Property } from '@/types';
 import { PropertyCard } from '@/components/shared';
-import { ChevronDown, MapPin, List } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { MapPin } from 'lucide-react';
+import { cn, buildPropertySlug } from '@/lib/utils';
 import CurrencySelector from '@/components/common/CurrencySelector';
+import { useSearchStore } from '@/stores/searchStore';
 
-const SORT_OPTIONS = ['recommended', 'price-low', 'price-high', 'rating'] as const;
+const SORT_OPTIONS = ['recommended', 'price-low', 'price-high', 'rating', 'most-reviewed'] as const;
 type SortValue = typeof SORT_OPTIONS[number];
+
+const SORT_PILLS: { value: SortValue; label: string }[] = [
+    { value: 'recommended', label: 'Recommended' },
+    { value: 'price-low', label: 'Cheapest' },
+    { value: 'rating', label: 'Top Rated' },
+    { value: 'most-reviewed', label: 'Most Reviewed' },
+    { value: 'price-high', label: 'Price: High to Low' },
+];
+
+// Match TGX board codes loosely so we handle whatever OTV returns
+function matchesBoardType(hotelBoardTypes: string[], selected: string[]): boolean {
+    return hotelBoardTypes.some(bt => {
+        const lower = bt.toLowerCase();
+        return selected.some(code => {
+            if (code === 'RO') return lower === 'ro' || (lower.includes('room') && lower.includes('only'));
+            if (code === 'BB') return lower === 'bb' || lower.includes('breakfast');
+            if (code === 'HB') return lower === 'hb' || lower.includes('half');
+            if (code === 'FB') return lower === 'fb' || lower.includes('full board');
+            if (code === 'AI') return lower === 'ai' || lower.includes('all inclusive') || lower.includes('all-inclusive');
+            return lower === code.toLowerCase();
+        });
+    });
+}
 
 interface SearchResultsProps {
     initialProperties?: Property[];
+    totalCount?: number;
+    rawSearchParams?: Record<string, any>;
 }
 
-const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) => {
-    const SORT_LABELS: Record<SortValue, string> = {
-        'recommended': 'Recommended',
-        'price-low': 'Price: Low to High',
-        'price-high': 'Price: High to Low',
-        'rating': 'Highest Rated'
-    };
-
+const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotalCount = 0, rawSearchParams = {} }: SearchResultsProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const destination = searchParams?.get('destination') || '';
@@ -37,24 +50,26 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
     const initialSort: SortValue = SORT_OPTIONS.includes(rawSort as SortValue) ? (rawSort as SortValue) : 'recommended';
     const [sortBy, setSortBy] = useState<SortValue>(initialSort);
 
+    // Client-side filters from the sidebar store
+    const { filters } = useSearchStore();
+    const { propertyTypes, boardTypes, refundable } = filters;
+
     const handleSortChange = useCallback((value: SortValue) => {
         setSortBy(value);
-        // Update URL without triggering a server navigation
         const params = new URLSearchParams(window.location.search);
-        if (value === 'recommended') {
-            params.delete('sort');
-        } else {
-            params.set('sort', value);
-        }
+        if (value === 'recommended') params.delete('sort');
+        else params.set('sort', value);
         window.history.replaceState(null, '', `?${params.toString()}`);
     }, []);
 
-    const [visibleCount, setVisibleCount] = useState(12);
+    const [allProperties, setAllProperties] = React.useState<Property[]>(initialProperties);
+    const [totalCount, setTotalCount] = React.useState(initialTotalCount || initialProperties.length);
+    const [isLoadingMore, setIsLoadingMore] = React.useState(false);
 
     const buildPropertyUrl = useCallback((property: Property) => {
         const params = new URLSearchParams(window.location.search);
         if (property.rateId) params.set('rateId', property.rateId);
-        return `/property/${property.id}?${params.toString()}`;
+        return `/property/${buildPropertySlug(property.name, property.id)}?${params.toString()}`;
     }, []);
 
     const handlePropertyClick = (property: Property) => {
@@ -72,46 +87,81 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
         router.push(`/search?${params.toString()}`);
     }, [router]);
 
-    // Filter and sort properties
-    const filteredProperties = useMemo(() => {
-        const props = initialProperties && initialProperties.length > 0 ? [...initialProperties] : [];
-
-        if (sortBy === 'price-low') {
-            props.sort((a, b) => a.price - b.price);
-        } else if (sortBy === 'price-high') {
-            props.sort((a, b) => b.price - a.price);
-        } else if (sortBy === 'rating') {
-            props.sort((a, b) => b.rating - a.rating);
-        }
-
-        return props;
-    }, [initialProperties, sortBy]);
-
-    // Count mappable properties
-    const mappableCount = useMemo(
-        () => filteredProperties.filter(
-            (p) => p.coordinates && p.coordinates.lat !== 0 && p.coordinates.lng !== 0
-        ).length,
-        [filteredProperties]
-    );
-
-    // Reset visible count when filters/destination change
+    // Reset when search changes
     React.useEffect(() => {
-        setVisibleCount(12);
+        setAllProperties(initialProperties);
+        setTotalCount(initialTotalCount || initialProperties.length);
     }, [destination, searchParams]);
 
-    // Show only visible properties
-    const visibleProperties = filteredProperties.slice(0, visibleCount);
-    const hasMore = visibleCount < filteredProperties.length;
+    // Count mappable properties (from allProperties for the map button badge)
+    const mappableCount = useMemo(
+        () => allProperties.filter(
+            (p) => p.coordinates && p.coordinates.lat !== 0 && p.coordinates.lng !== 0
+        ).length,
+        [allProperties]
+    );
 
-    const handleLoadMore = () => {
-        setVisibleCount(prev => prev + 12);
+    // Filter and sort all loaded properties (client-side)
+    const filteredProperties = useMemo(() => {
+        let props = allProperties && allProperties.length > 0 ? [...allProperties] : [];
+
+        // Property type
+        if (propertyTypes.length > 0) {
+            props = props.filter(p => propertyTypes.includes(p.type));
+        }
+
+        // Board / meal plan
+        if (boardTypes.length > 0) {
+            props = props.filter(p =>
+                p.boardTypes && p.boardTypes.length > 0
+                    ? matchesBoardType(p.boardTypes, boardTypes)
+                    : boardTypes.includes('RO')
+            );
+        }
+
+        // Refundable
+        if (refundable === true) {
+            props = props.filter(p => p.refundableTag === 'RFN');
+        }
+
+        // Sort
+        if (sortBy === 'price-low') props.sort((a, b) => a.price - b.price);
+        else if (sortBy === 'price-high') props.sort((a, b) => b.price - a.price);
+        else if (sortBy === 'rating') props.sort((a, b) => b.rating - a.rating);
+        else if (sortBy === 'most-reviewed') props.sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0));
+
+        return props;
+    }, [allProperties, sortBy, propertyTypes, boardTypes, refundable]);
+
+    const hasMore = allProperties.length < totalCount;
+
+    const handleLoadMore = async () => {
+        if (isLoadingMore || !hasMore) return;
+        setIsLoadingMore(true);
+        try {
+            const res = await fetch('/api/search/more', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...rawSearchParams, offset: allProperties.length, limit: 10 }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data?.data && Array.isArray(data.data)) {
+                    setAllProperties(prev => [...prev, ...data.data]);
+                    if (data.totalCount) setTotalCount(data.totalCount);
+                }
+            }
+        } catch (e) {
+            console.error('[LoadMore] error:', e);
+        } finally {
+            setIsLoadingMore(false);
+        }
     };
 
     return (
         <div className="flex-1 min-w-0">
-            {/* Header / sorting */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6 relative z-20">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3 md:mb-4">
                 <div>
                     <h1 className="text-[14px] md:text-xl lg:text-2xl font-display font-bold text-slate-900 dark:text-white leading-tight">
                         {destination ? `Stays in ${destination}` : 'All properties'}
@@ -120,57 +170,44 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                         {filteredProperties.length} properties found · Prices may change based on availability.
                     </p>
                 </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto sm:justify-end">
-                    {/* Mobile Currency Selector */}
+                <div className="flex items-center gap-2 shrink-0">
                     <CurrencySelector variant="pill" align="left" className="md:hidden" />
-
-                    {/* Show on map button */}
                     {mappableCount > 0 && (
                         <button
                             onClick={handleViewOnMap}
-                            className="flex items-center gap-1 px-2.5 h-[28px] md:h-10 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-[10px] md:text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 h-[28px] md:h-9 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-[10px] md:text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
                         >
-                            <MapPin size={12} className="md:w-3.5 md:h-3.5" />
-                            <span className="hidden sm:inline">Show on map</span>
-                            <span className="sm:hidden">Map</span>
-                            <span className="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                                {mappableCount}
-                            </span>
+                            <MapPin size={12} />
+                            <span className="hidden sm:inline">Map</span>
+                            <span className="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">{mappableCount}</span>
                         </button>
                     )}
-
-                    {/* Sort dropdown */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button className="flex items-center justify-between gap-2 px-3 h-[28px] md:h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full text-[10px] md:text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[100px] md:min-w-[140px]">
-                                <span className="truncate">{SORT_LABELS[sortBy]}</span>
-                                <ChevronDown size={14} className="text-slate-400 shrink-0 w-3 h-3 md:w-3.5 md:h-3.5" />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl">
-                            {SORT_OPTIONS.map((opt) => (
-                                <DropdownMenuItem
-                                    key={opt}
-                                    onClick={() => handleSortChange(opt)}
-                                    className={cn(
-                                        "text-[11px] font-semibold py-1.5",
-                                        opt === sortBy ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" : "text-slate-700 dark:text-slate-300"
-                                    )}
-                                >
-                                    {SORT_LABELS[opt]}
-                                </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 </div>
+            </div>
+
+            {/* Sort pills */}
+            <div className="flex gap-1.5 flex-wrap mb-4 md:mb-5">
+                {SORT_PILLS.map(pill => (
+                    <button
+                        key={pill.value}
+                        onClick={() => handleSortChange(pill.value)}
+                        className={cn(
+                            "px-3 py-1 rounded-full text-[11px] font-semibold border transition-colors cursor-pointer",
+                            sortBy === pill.value
+                                ? "bg-blue-600 text-white border-blue-600"
+                                : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500"
+                        )}
+                    >
+                        {pill.label}
+                    </button>
+                ))}
             </div>
 
             {/* Property List */}
             {
-                visibleProperties.length > 0 ? (
+                filteredProperties.length > 0 ? (
                     <div className="space-y-4">
-                        {visibleProperties.map((property, index) => (
+                        {filteredProperties.map((property, index) => (
                             <div key={property.id} onMouseEnter={() => handlePropertyPrefetch(property)}>
                                 <PropertyCard
                                     variant="horizontal"
@@ -183,28 +220,49 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
                     </div>
                 ) : (
                     <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4">
-                        <h3 className="text-lg font-medium text-slate-900 dark:text-white">No properties found</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1">Try adjusting your filters or searching for a different destination.</p>
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-white">
+                            {destination ? `No hotels found in ${destination}` : 'No properties found'}
+                        </h3>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
+                            Our supplier may not cover this destination yet. Try different dates, adjust your filters, or search a nearby city.
+                        </p>
                     </div>
                 )
             }
 
-            {/* Pagination / Load More */}
+            {/* Load More skeleton + button */}
             {
                 filteredProperties.length > 0 && (
-                    <div className="mt-4 md:mt-8 flex justify-center">
-                        {hasMore ? (
-                            <button
-                                onClick={handleLoadMore}
-                                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 shadow-md shadow-blue-600/10"
-                            >
-                                Load More Results
-                            </button>
-                        ) : (
-                            <button className="px-4 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-500 text-[11px] font-medium rounded-full cursor-not-allowed opacity-50">
-                                End of results
-                            </button>
+                    <div className="mt-4 md:mt-8">
+                        {isLoadingMore && (
+                            <div className="space-y-4 mb-4">
+                                {Array.from({ length: 3 }).map((_, i) => (
+                                    <div key={i} className="flex gap-4 h-44 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-pulse">
+                                        <div className="w-44 shrink-0 bg-slate-200 dark:bg-slate-700" />
+                                        <div className="flex-1 py-4 pr-4 space-y-3">
+                                            <div className="h-5 w-3/4 bg-slate-200 dark:bg-slate-700 rounded" />
+                                            <div className="h-4 w-1/3 bg-slate-200 dark:bg-slate-700 rounded" />
+                                            <div className="h-4 w-1/2 bg-slate-200 dark:bg-slate-700 rounded" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
+                        <div className="flex justify-center">
+                            {hasMore ? (
+                                <button
+                                    onClick={handleLoadMore}
+                                    disabled={isLoadingMore}
+                                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 shadow-md shadow-blue-600/10"
+                                >
+                                    {isLoadingMore ? 'Loading...' : 'Load More Results'}
+                                </button>
+                            ) : (
+                                <button className="px-4 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-500 text-[11px] font-medium rounded-full cursor-not-allowed opacity-50">
+                                    End of results
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )
             }
@@ -214,7 +272,7 @@ const SearchResultsContent = ({ initialProperties = [] }: SearchResultsProps) =>
     );
 };
 
-const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
+const SearchResults = ({ initialProperties = [], totalCount = 0, rawSearchParams = {} }: SearchResultsProps) => {
     return (
         <Suspense fallback={
             <div className="flex-1 min-w-0">
@@ -229,7 +287,7 @@ const SearchResults = ({ initialProperties = [] }: SearchResultsProps) => {
                 </div>
             </div>
         }>
-            <SearchResultsContent initialProperties={initialProperties} />
+            <SearchResultsContent initialProperties={initialProperties} totalCount={totalCount} rawSearchParams={rawSearchParams} />
         </Suspense>
     );
 };

@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
 import { type Property } from '@/types';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
+import { buildPropertySlug } from '@/lib/utils';
 import { useUserCurrency } from '@/stores/searchStore';
 import SaveButton from '@/components/common/SaveButton';
 
@@ -177,11 +178,11 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
             className={`relative group cursor-pointer ${className}`}
         >
             {/* Glow effect on hover */}
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-2xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
+            <div className="absolute -inset-0.5 bg-linear-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-2xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
 
             {/* Card content — Airbnb-style size/layout: 4:3 image, rounded corners */}
             <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
-                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-2xl landscape-compact-img landscape-img flex-shrink-0">
+                <div className="relative aspect-2/1 sm:aspect-4/3 overflow-hidden rounded-t-2xl landscape-compact-img landscape-img shrink-0">
                     {imgSrc && (
                         <Image
                             src={imgSrc}
@@ -193,7 +194,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             loading={priority ? undefined : 'lazy'}
                         />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
                     {displayBadges.length > 0 && (
                         <motion.div
                             initial={{ x: -20, opacity: 0 }}
@@ -201,7 +202,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             transition={{ delay: index * 0.1 + 0.3 }}
                             className={`absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 py-px sm:px-3 sm:py-1 ${badgeClasses[badgeColor]} text-white text-[9px] sm:text-xs font-medium rounded-full flex items-center gap-0.5 sm:gap-1 shadow-lg landscape-badge`}
                         >
-                            {badgeColor === 'blue' && <Star size={10} fill="currentColor" className="flex-shrink-0" />}
+                            {badgeColor === 'blue' && <Star size={10} fill="currentColor" className="shrink-0" />}
                             {displayBadges[0]}
                         </motion.div>
                     )}
@@ -214,7 +215,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             price={rawPrice}
                             currency={sourceCurrency}
                             imageUrl={imgSrc}
-                            deepLink={property?.id ? `/property/${property.id}` : '#'}
+                            deepLink={property?.id ? `/property/${buildPropertySlug(property.name, property.id)}` : '#'}
                             snapshot={property as any}
                             size="sm"
                         />
@@ -226,7 +227,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                         {displayName}
                     </h3>
                     <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1 min-w-0">
-                        <MapPin className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                        <MapPin className="w-3 h-3 text-blue-500 shrink-0" />
                         <span className="truncate">{displayLocation}</span>
                     </p>
 
@@ -315,9 +316,9 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             onClick={onClick}
         >
             {/* Image Section */}
-            <div className="md:w-[240px] relative h-[110px] md:h-auto flex-shrink-0 p-1.5 md:p-3 md:pr-0">
+            <div className="md:w-[240px] relative h-[110px] md:h-auto shrink-0 p-1.5 md:p-3 md:pr-0">
                 <div className="absolute inset-2 md:inset-3 md:right-0 rounded-xl overflow-hidden">
-                    {property.image && (
+                    {property.image ? (
                         <Image
                             src={property.image}
                             alt={property.name}
@@ -326,6 +327,20 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                             className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
                             loading="lazy"
                         />
+                    ) : (
+                        <div className="w-full h-full bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
+                            <svg viewBox="0 0 64 64" className="w-12 h-12 text-slate-300 dark:text-slate-600" fill="currentColor">
+                                <rect x="8" y="20" width="48" height="36" rx="2"/>
+                                <rect x="14" y="28" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="28" y="28" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="42" y="28" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="14" y="42" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="28" y="42" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="42" y="42" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="24" y="8" width="16" height="16" rx="1"/>
+                                <rect x="30" y="50" width="4" height="6" fill="white" opacity="0.6"/>
+                            </svg>
+                        </div>
                     )}
                 </div>
                 {/* Heart icon */}
@@ -337,7 +352,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                         price={property.price}
                         currency={property.currency || 'KRW'}
                         imageUrl={property.image}
-                        deepLink={`/property/${property.id}`}
+                        deepLink={`/property/${buildPropertySlug(property.name, property.id)}`}
                         snapshot={property as any}
                         size="sm"
                     />
@@ -369,12 +384,18 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                 <div className="flex items-end justify-between mt-1 md:mt-4">
                     {/* Rating Section */}
                     <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="px-1.5 py-0.5 lg:px-2 lg:py-1 bg-blue-600 text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg">
-                            {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                        </div>
-                        <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
-                            {getRatingLabel(property.rating)}
-                        </span>
+                        {property.rating > 0 ? (
+                            <>
+                                <div className={`px-1.5 py-0.5 lg:px-2 lg:py-1 ${getRatingColor(property.rating)} text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg`}>
+                                    {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                                </div>
+                                <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    {getRatingLabel(property.rating)}
+                                </span>
+                            </>
+                        ) : (
+                            <span className="text-[9px] landscape:text-[8px] lg:text-sm text-slate-400 dark:text-slate-500">No rating yet</span>
+                        )}
                     </div>
 
                     {/* Price Section */}

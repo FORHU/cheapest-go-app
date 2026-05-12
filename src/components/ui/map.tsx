@@ -183,34 +183,39 @@ const Map = React.memo(
                             });
                         }
 
-                        // Add terrain programmatically after style loads
-                        if (enable3DTerrain) {
-                            if (!map.getSource('mapbox-dem')) {
-                                map.addSource('mapbox-dem', {
-                                    type: 'raster-dem',
-                                    url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
-                                    tileSize: 512,
-                                    maxzoom: 14,
-                                });
-                            }
-                            map.setTerrain({
-                                source: 'mapbox-dem',
-                                exaggeration: terrainExaggeration,
-                            });
-                        } else {
-                            // [CRITICAL FIX] Explicitly disable terrain to revert to 2D render pipeline
-                            // This fixes the "Cutoff is currently disabled on terrain" zoom lag
-                            try {
-                                if (map.getTerrain()) {
-                                    map.setTerrain(null);
+                        // Add terrain programmatically after style loads.
+                        // NOTE: Standard style manages its own terrain meshes internally —
+                        // never call setTerrain() on it or you get "meshes is not iterable".
+                        if (!isStandard) {
+                            if (enable3DTerrain) {
+                                if (!map.getSource('mapbox-dem')) {
+                                    map.addSource('mapbox-dem', {
+                                        type: 'raster-dem',
+                                        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                                        tileSize: 512,
+                                        maxzoom: 14,
+                                    });
                                 }
-                            } catch (e) {
-                                // Ignore if style not ready
+                                map.setTerrain({
+                                    source: 'mapbox-dem',
+                                    exaggeration: terrainExaggeration,
+                                });
+                            } else {
+                                try {
+                                    if (map.getTerrain()) map.setTerrain(null);
+                                } catch {
+                                    // Ignore if style not ready
+                                }
                             }
                         }
 
-                        setIsStyleLoaded(true);
-                        onStyleReady?.(map);
+                        // Wait for a micro-task to ensure internal Mapbox state (like meshes) is initialized
+                        setTimeout(() => {
+                            if (map.getStyle()) {
+                                setIsStyleLoaded(true);
+                                onStyleReady?.(map);
+                            }
+                        }, 0);
                     } catch (err) {
                         console.warn('Map setup failed, retrying...', err);
                         setTimeout(setup, 300);
@@ -286,6 +291,9 @@ const Map = React.memo(
                     Object.entries(standardConfig).forEach(([key, value]) => {
                         if (value !== undefined) {
                             try {
+                                // Double check style status before each property set
+                                if (!map.isStyleLoaded()) return;
+
                                 const current = (map as any).getConfigProperty?.('basemap', key);
                                 if (current !== value) {
                                     map.setConfigProperty('basemap', key, value);
@@ -314,7 +322,6 @@ const Map = React.memo(
                         mapboxAccessToken={env.MAPBOX_TOKEN}
                         mapStyle={resolvedStyle as MapboxMapProps['mapStyle']}
                         onLoad={handleLoad}
-                        reuseMaps
                         antialias={antialias}
                         {...props}
                     >

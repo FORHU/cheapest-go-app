@@ -193,8 +193,13 @@ export const useNearbyGems = ({
                 });
                 setNearbyGems(initialGems);
 
+                // --- END STAGE 1 ---
+                // Render initial results immediately and remove blocking loading state.
+                // Background enrichment (Stage 2) will progressively update details.
+                setIsFetchingGems(false);
+
                 // --- STAGE 2: ENRICHMENT ---
-                const limiter = pLimit(12); 
+                const limiter = pLimit(3); 
                 let resolvedCount = 0;
                 let gemBuffer = [...initialGems];
                 let lastUpdate = Date.now();

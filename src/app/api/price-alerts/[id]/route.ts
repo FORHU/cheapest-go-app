@@ -9,7 +9,7 @@ export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const rl = rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'price-alerts-del' });
+    const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'price-alerts-del' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const { id } = await params;
@@ -33,7 +33,7 @@ export async function PATCH(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const rl = rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'price-alerts-patch' });
+    const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'price-alerts-patch' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const { id } = await params;

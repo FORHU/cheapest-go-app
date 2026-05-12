@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     if (csrfError) return csrfError;
 
     // 5 booking attempts per minute per IP
-    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book' });
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book' });
     if (!rl.success) {
         return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
@@ -802,6 +802,8 @@ export async function POST(req: NextRequest) {
 
         console.log(`[/book] Pricing: original=${pricing.originalPrice} ${flightCurrency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%, markupAmount=${pricing.markupAmount}`);
 
+        // Idempotency key prevents duplicate charges if the client retries on network error.
+        const piIdempotencyKey = `flight-pi-${userId}-${sessionId}`;
         const paymentIntent = await stripe.paymentIntents.create({
             amount: flightStripeAmount,
             currency: flightCurrency,
@@ -826,7 +828,7 @@ export async function POST(req: NextRequest) {
                 ...(bundleHotelId ? { bundleHotelId, type: 'flight_bundle' } : { type: 'flight' }),
             },
             description: `Flight Booking: ${flight.segments[0]?.origin} to ${flight.segments[flight.segments.length - 1]?.destination}`,
-        });
+        }, { idempotencyKey: piIdempotencyKey });
         logApiCall({
             provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,
             requestParams: { amount: flightStripeAmount, currency: flightCurrency, captureMethod: isMystifly ? 'manual' : 'automatic', markupRate: pricing.markupRate },

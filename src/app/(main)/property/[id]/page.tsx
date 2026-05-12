@@ -1,5 +1,7 @@
 import React from 'react';
+import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
+import { parsePropertySlug, buildPropertySlug } from '@/lib/utils';
 import PropertyGallery from '@/components/property/PropertyGallery';
 import PropertyOverview from '@/components/property/PropertyOverview';
 import PropertyNav from '@/components/property/PropertyNav';
@@ -26,14 +28,15 @@ export async function generateMetadata({
     const { id } = await params;
     const searchParamsResult = await searchParams;
     const { property, fetchedDetails } = await fetchPropertyData(id, {
-        offerId: searchParamsResult.offerId as string,
-        checkIn: searchParamsResult.checkIn as string,
-        checkOut: searchParamsResult.checkOut as string,
-        adults: searchParamsResult.adults as string,
-        children: searchParamsResult.children as string,
-        rooms: searchParamsResult.rooms as string,
-        currency: searchParamsResult.currency as string,
-        rateId: searchParamsResult.rateId as string,
+        offerId:     searchParamsResult.offerId     as string,
+        checkIn:     searchParamsResult.checkIn     as string,
+        checkOut:    searchParamsResult.checkOut    as string,
+        adults:      searchParamsResult.adults      as string,
+        children:    searchParamsResult.children    as string,
+        rooms:       searchParamsResult.rooms       as string,
+        currency:    searchParamsResult.currency    as string,
+        nationality: searchParamsResult.nationality as string,
+        rateId:      searchParamsResult.rateId      as string,
     });
     if (!property) return {};
 
@@ -72,20 +75,25 @@ export default async function PropertyPage({
     params: Promise<{ id: string }>;
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const { id } = await params;
+    const { id: rawSlug } = await params;
     const searchParamsResult = await searchParams;
+
+    // Parse slug: "grand-hyatt-bangkok--H7002461" → id = "H7002461"
+    // Bare IDs ("H7002461") pass through unchanged for backward compat.
+    const { id, nameSlug } = parsePropertySlug(rawSlug);
 
     // Parallel fetch: property data + reviews
     const [{ property, fetchedDetails }, reviewsData] = await Promise.all([
         fetchPropertyData(id, {
-            offerId: searchParamsResult.offerId as string,
-            checkIn: searchParamsResult.checkIn as string,
-            checkOut: searchParamsResult.checkOut as string,
-            adults: searchParamsResult.adults as string,
-            children: searchParamsResult.children as string,
-            rooms: searchParamsResult.rooms as string,
-            currency: searchParamsResult.currency as string,
-            rateId: searchParamsResult.rateId as string,
+            offerId:     searchParamsResult.offerId     as string,
+            checkIn:     searchParamsResult.checkIn     as string,
+            checkOut:    searchParamsResult.checkOut    as string,
+            adults:      searchParamsResult.adults      as string,
+            children:    searchParamsResult.children    as string,
+            rooms:       searchParamsResult.rooms       as string,
+            currency:    searchParamsResult.currency    as string,
+            nationality: searchParamsResult.nationality as string,
+            rateId:      searchParamsResult.rateId      as string,
         }),
         fetchHotelReviews(id, { limit: 1000 }),
     ]);
@@ -96,6 +104,17 @@ export default async function PropertyPage({
                 <p>Property not found. (ID: {id})</p>
             </div>
         );
+    }
+
+    // Redirect bare IDs to canonical slug URL (preserves search params)
+    if (!nameSlug) {
+        const slug = buildPropertySlug(property.name, id);
+        const qs = new URLSearchParams(
+            Object.fromEntries(
+                Object.entries(searchParamsResult).filter(([, v]) => v !== undefined) as [string, string][]
+            )
+        ).toString();
+        redirect(`/property/${slug}${qs ? `?${qs}` : ''}`);
     }
 
     const mapProps = {
@@ -171,7 +190,7 @@ export default async function PropertyPage({
                     <div className="lg:hidden absolute top-3 left-3 z-20">
                         <BackButton
                             label=""
-                            className="bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-10 h-10 rounded-full flex items-center justify-center shadow-sm !p-0"
+                            className="bg-white/90 dark:bg-slate-900/90 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 w-10 h-10 rounded-full flex items-center justify-center shadow-sm p-0"
                             bareIcon={true}
                         />
                     </div>
@@ -256,21 +275,23 @@ export default async function PropertyPage({
                             />
                         </FadeInUp>
 
-                        <FadeInUp delay={0.45}>
-                            <hr className="border-slate-200 dark:border-white/10" />
-                        </FadeInUp>
-
-                        <FadeInUp delay={0.5}>
-                            <ReviewsSection
-                                reviews={reviewsData.reviews}
-                                averageRating={reviewsData.averageRating}
-                                totalCount={reviewsData.totalCount}
-                            />
-                        </FadeInUp>
-
-                        <FadeInUp delay={0.55}>
-                            <hr className="border-slate-200 dark:border-white/10" />
-                        </FadeInUp>
+                        {(reviewsData.totalCount > 0 || property.reviews > 0) && (
+                            <>
+                                <FadeInUp delay={0.45}>
+                                    <hr className="border-slate-200 dark:border-white/10" />
+                                </FadeInUp>
+                                <FadeInUp delay={0.5}>
+                                    <ReviewsSection
+                                        reviews={reviewsData.reviews}
+                                        averageRating={reviewsData.averageRating || property.rating || 0}
+                                        totalCount={reviewsData.totalCount || property.reviews || 0}
+                                    />
+                                </FadeInUp>
+                                <FadeInUp delay={0.55}>
+                                    <hr className="border-slate-200 dark:border-white/10" />
+                                </FadeInUp>
+                            </>
+                        )}
 
                         <FadeInUp delay={0.57}>
                             <LocationSection
@@ -297,7 +318,7 @@ export default async function PropertyPage({
                     </div>
 
                     {/* RIGHT — Map (sticky, ~45% width on desktop) */}
-                    <div className="hidden lg:block lg:w-[45%] xl:w-[40%] flex-shrink-0 sticky top-[80px]" id="location">
+                    <div className="hidden lg:block lg:w-[45%] xl:w-[40%] shrink-0 sticky top-[80px]" id="location">
                         <div className="h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-white/10">
                             <PropertyMapSidebar {...mapProps} />
                         </div>

@@ -2,6 +2,19 @@ import { LayerProps } from 'react-map-gl/mapbox';
 
 // ─── Cluster layers ──────────────────────────────────────────────────────────
 
+export const clusterGlowLayer: LayerProps = {
+    id: 'clusters-glow',
+    type: 'circle',
+    source: 'properties',
+    filter: ['has', 'point_count'],
+    paint: {
+        'circle-color': ['step', ['get', 'point_count'], '#3b82f6', 10, '#2563eb', 30, '#1d4ed8'],
+        'circle-radius': ['step', ['get', 'point_count'], 20, 10, 25, 30, 30],
+        'circle-blur': 0.8,
+        'circle-opacity': 0.4,
+    },
+};
+
 export const clusterLayer: LayerProps = {
     id: 'clusters',
     type: 'circle',
@@ -9,9 +22,10 @@ export const clusterLayer: LayerProps = {
     filter: ['has', 'point_count'],
     paint: {
         'circle-color': ['step', ['get', 'point_count'], '#3b82f6', 10, '#2563eb', 30, '#1d4ed8'],
-        'circle-radius': ['step', ['get', 'point_count'], 15, 10, 20, 30, 25],
-        'circle-stroke-width': 2,
+        'circle-radius': ['step', ['get', 'point_count'], 18, 10, 23, 30, 28],
+        'circle-stroke-width': 3,
         'circle-stroke-color': '#ffffff',
+        'circle-stroke-opacity': 0.9,
     },
 };
 
@@ -23,7 +37,7 @@ export const clusterCountLayer: LayerProps = {
     layout: {
         'text-field': '{point_count_abbreviated}',
         'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-        'text-size': 12,
+        'text-size': 14,
     },
     paint: {
         'text-color': '#ffffff',

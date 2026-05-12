@@ -9,8 +9,8 @@ export async function invokeEdgeFunction<T = any>(
     const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
     const method = options?.method || 'POST';
 
-    const maxRetries = 3;
-    let fallbackRetryDelay = 1500; // Increased base delay
+    const maxRetries = 1; // one retry max — exponential backoff on 3 retries × 12s TGX timeout = 60s
+    let fallbackRetryDelay = 2000;
 
     for (let i = 0; i <= maxRetries; i++) {
         const response = await fetch(functionUrl, {
@@ -25,6 +25,28 @@ export async function invokeEdgeFunction<T = any>(
         });
 
         if (response.ok) {
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('ndjson')) {
+                // Streaming NDJSON — collect all `hotels` chunks into a single { data, totalCount, allMappable } object
+                const text = await response.text();
+                const allData: any[] = [];
+                const allMappable: any[] = [];
+                let totalCount = 0;
+                for (const line of text.split('\n')) {
+                    if (!line.trim()) continue;
+                    try {
+                        const chunk = JSON.parse(line);
+                        if (chunk.type === 'hotels' && Array.isArray(chunk.data)) {
+                            allData.push(...chunk.data);
+                            if (Array.isArray(chunk.allMappable)) allMappable.push(...chunk.allMappable);
+                            if (chunk.totalCount) totalCount = chunk.totalCount;
+                        } else if (chunk.type === 'done' && chunk.totalCount) {
+                            totalCount = chunk.totalCount;
+                        }
+                    } catch { /* skip malformed lines */ }
+                }
+                return { data: allData, totalCount: totalCount || allData.length, allMappable } as T;
+            }
             const data = await response.json();
             return data as T;
         }
@@ -41,7 +63,9 @@ export async function invokeEdgeFunction<T = any>(
         if (is429 && i < maxRetries) {
             // Get retry-after header if available, otherwise use exponential backoff
             const retryAfter = response.headers.get('retry-after');
-            const delay = retryAfter ? parseInt(retryAfter) * 1000 : fallbackRetryDelay * Math.pow(2, i);
+            const delay = retryAfter
+                ? Math.min(parseInt(retryAfter) * 1000, 5000)
+                : Math.min(fallbackRetryDelay * Math.pow(2, i), 5000);
             console.warn(`Rate limit hit on ${functionName} (429). Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, delay));
             continue;

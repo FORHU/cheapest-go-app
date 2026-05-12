@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/server/rate-limit';
 
 /**
  * Weather API route using Google Maps Platform Weather API.
@@ -52,6 +53,9 @@ const MOCK_WEATHER = {
 };
 
 export async function GET(request: NextRequest) {
+    const rl = await rateLimit(request, { limit: 30, windowMs: 60_000, prefix: 'weather' });
+    if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+
     const { searchParams } = new URL(request.url);
     const lat = searchParams.get('lat');
     const lng = searchParams.get('lng');

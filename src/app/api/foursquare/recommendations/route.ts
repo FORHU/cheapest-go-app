@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/server/rate-limit';
 import { env } from '@/utils/env';
 
 /**
@@ -15,6 +16,9 @@ const FOURSQUARE_CATEGORY_MAP: Record<string, string> = {
 };
 
 export async function GET(req: NextRequest) {
+    const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'foursquare-rec' });
+    if (!rl.success) return NextResponse.json({ features: [], error: 'Too many requests' }, { status: 429 });
+
     const key = env.FOURSQUARE_API_KEY;
     if (!key) {
         return NextResponse.json({ features: [], error: 'No Foursquare API key' }, { status: 200 });

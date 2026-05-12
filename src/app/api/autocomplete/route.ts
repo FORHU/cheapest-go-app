@@ -8,7 +8,7 @@ const autocompleteSchema = z.object({
 });
 
 export async function POST(req: Request) {
-    const rl = rateLimit(req, { limit: 60, windowMs: 60_000, prefix: 'autocomplete' });
+    const rl = await rateLimit(req, { limit: 60, windowMs: 60_000, prefix: 'autocomplete' });
     if (!rl.success) {
         return Response.json({ success: false, error: 'Too many requests' }, { status: 429 });
     }

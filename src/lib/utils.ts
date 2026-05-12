@@ -138,3 +138,32 @@ export function formatStatus(status: string): string {
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ');
 }
+
+function slugify(str: string): string {
+    return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/** Build a URL slug for a destination: "manila-philippines" */
+export function buildDestinationSlug(name: string, location?: string): string {
+    const parts = [name, location].filter(Boolean).map(s => slugify(s!));
+    return parts.join('-');
+}
+
+/** Build a URL slug for a property: "grand-hyatt-bangkok--H7002461" */
+export function buildPropertySlug(name: string, id: string): string {
+    return `${slugify(name)}--${id}`;
+}
+
+/** Parse a property slug back to { id, nameSlug }. Bare IDs pass through unchanged. */
+export function parsePropertySlug(slug: string): { id: string; nameSlug: string } {
+    const idx = slug.lastIndexOf('--');
+    if (idx === -1) return { id: slug, nameSlug: '' };
+    return { id: slug.slice(idx + 2), nameSlug: slug.slice(0, idx) };
+}
+
+/** Parse a flight slug like "MNL-to-ICN" → { origin: "MNL", destination: "ICN" } */
+export function parseFlightSlug(slug: string): { origin: string; destination: string } | null {
+    const match = slug.match(/^([a-zA-Z0-9]+)-to-([a-zA-Z0-9]+)$/i);
+    if (!match) return null;
+    return { origin: match[1].toUpperCase(), destination: match[2].toUpperCase() };
+}

@@ -65,7 +65,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
     // Full Page Room Details Overlay
     if (viewingRoom) {
         return (
-            <div className="fixed inset-0 z-[100] bg-alabaster dark:bg-slate-950 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px] overflow-y-auto animate-in fade-in duration-200">
+            <div className="fixed inset-0 z-100 bg-alabaster dark:bg-slate-950 bg-grid-alabaster dark:bg-grid-obsidian bg-size:40px_40px overflow-y-auto animate-in fade-in duration-200">
                 <RoomDetailsView
                     property={property}
                     room={viewingRoom}
@@ -120,6 +120,41 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                             />
                         );
                     })
+                ) : property._tgx?.token ? (
+                    // TravelgateX property — show a single booking card using the search token
+                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="font-semibold text-slate-900 dark:text-white text-sm">
+                                    {property._tgx.boardCode
+                                        ? `${property._tgx.boardCode} — Standard Room`
+                                        : 'Standard Room'}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    {property.refundableTag === 'RFN'
+                                        ? '✓ Free cancellation'
+                                        : 'Non-refundable'}
+                                </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                                <p className="text-lg font-bold text-slate-900 dark:text-white">
+                                    {property.currency || 'USD'} {property.price?.toLocaleString()}
+                                </p>
+                                <p className="text-xs text-slate-400">total</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => handleReserve(
+                                property._tgx?.boardCode ? `${property._tgx.boardCode} Standard Room` : 'Standard Room',
+                                property.price,
+                                property.currency,
+                                `TGX:${property._tgx?.token}`
+                            )}
+                            className="w-full bg-primary text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
+                        >
+                            Reserve
+                        </button>
+                    </div>
                 ) : (
                     <div className="py-8 text-center text-slate-400 text-sm">
                         No rooms available for the selected dates.

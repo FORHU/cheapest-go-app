@@ -75,14 +75,20 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             {/* ── MOBILE layout: compact horizontal card (image left, details right) ── */}
             <div className="flex flex-row gap-1.5 md:hidden landscape:gap-1.5 landscape:p-1.5">
                 {/* Image */}
-                <div className="relative w-[70px] h-[56px] flex-shrink-0 rounded-lg overflow-hidden landscape:w-[65px] landscape:h-[52px]">
-                    <Image
-                        src={property.image}
-                        alt={property.name}
-                        fill
-                        className="object-cover"
-                        sizes="100px"
-                    />
+                <div className="relative w-[70px] h-[56px] flex-shrink-0 rounded-lg overflow-hidden landscape:w-[65px] landscape:h-[52px] bg-slate-100 dark:bg-slate-800">
+                    {property.image ? (
+                        <Image
+                            src={property.image}
+                            alt={property.name}
+                            fill
+                            className="object-cover"
+                            sizes="100px"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+                            <MapPin className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+                        </div>
+                    )}
                     {property.refundableTag === 'RFN' && (
                         <span className="absolute top-1 left-1 text-[8px] font-semibold bg-emerald-500 text-white px-1.5 py-px rounded-full shadow landscape:text-[7px] landscape:px-1 landscape:py-0 z-10">
                             {typeof window !== 'undefined' && window.innerHeight < 500 ? 'Free' : 'Free cancel'}
@@ -127,14 +133,20 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             {/* ── DESKTOP layout: horizontal row (unchanged) ── */}
             <div className="hidden md:flex gap-3">
                 {/* Thumbnail */}
-                <div className="relative w-20 h-16 lg:w-24 lg:h-20 flex-shrink-0 rounded-xl overflow-hidden">
-                    <Image
-                        src={property.image}
-                        alt={property.name}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 1024px) 80px, 96px"
-                    />
+                <div className="relative w-20 h-16 lg:w-24 lg:h-20 flex-shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                    {property.image ? (
+                        <Image
+                            src={property.image}
+                            alt={property.name}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 1024px) 80px, 96px"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+                            <MapPin className="w-6 h-6 text-slate-300 dark:text-slate-600" />
+                        </div>
+                    )}
                     {property.refundableTag === 'RFN' && (
                         <span className="absolute top-1 left-1 text-[9px] font-semibold bg-emerald-500 text-white px-1.5 py-0.5 rounded z-10">
                             Free cancellation

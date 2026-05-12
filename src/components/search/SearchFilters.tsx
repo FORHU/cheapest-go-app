@@ -42,9 +42,28 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         return unique;
     }, [initialFacilities]);
     const filters = useSearchFilters();
-    const { setFilters, toggleStarRating, toggleFacility, resetFilters, isMobileFiltersOpen, setIsMobileFiltersOpen } = useSearchStore();
+    const {
+        setFilters, toggleStarRating, toggleFacility,
+        togglePropertyType, toggleBoardType, setRefundable,
+        resetFilters, isMobileFiltersOpen, setIsMobileFiltersOpen,
+    } = useSearchStore();
     useBodyScrollLock(isMobileFiltersOpen);
-    const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering } = filters;
+    const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering, propertyTypes, boardTypes, refundable } = filters;
+
+    const PROPERTY_TYPE_OPTIONS = [
+        { value: 'hotel', label: 'Hotel' },
+        { value: 'apartment', label: 'Apartment' },
+        { value: 'resort', label: 'Resort' },
+        { value: 'villa', label: 'Villa' },
+    ];
+
+    const BOARD_TYPE_OPTIONS = [
+        { code: 'RO', label: 'Room Only' },
+        { code: 'BB', label: 'Breakfast Included' },
+        { code: 'HB', label: 'Half Board' },
+        { code: 'FB', label: 'Full Board' },
+        { code: 'AI', label: 'All Inclusive' },
+    ];
 
     // Initialize filters from URL params on mount (only once)
     useEffect(() => {
@@ -125,11 +144,24 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         router.push(`/search?${current.toString()}`);
     }, [resetFilters, router]);
 
+    const handlePropertyTypeToggle = useCallback((type: string) => {
+        togglePropertyType(type);
+    }, [togglePropertyType]);
+
+    const handleBoardTypeToggle = useCallback((code: string) => {
+        toggleBoardType(code);
+    }, [toggleBoardType]);
+
+    const handleRefundableChange = useCallback((value: boolean | null) => {
+        setRefundable(value);
+    }, [setRefundable]);
+
     const hasActiveFilters = hotelName || starRating.length > 0 || minRating > 0 ||
-        minReviewsCount > 0 || facilities.length > 0;
+        minReviewsCount > 0 || facilities.length > 0 ||
+        propertyTypes.length > 0 || boardTypes.length > 0 || refundable !== null;
 
     const content = (
-        <div className="w-full flex-shrink-0 space-y-4 pb-20 lg:pb-0">            {/* Header with Reset */}
+        <div className="w-full shrink-0 space-y-4 pb-20 lg:pb-0">            {/* Header with Reset */}
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -204,8 +236,54 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                 ))}
             </FilterSection>
 
+            {/* Property Type */}
+            <FilterSection title="Property Type" index={4}>
+                <div className="flex flex-col gap-1">
+                    {PROPERTY_TYPE_OPTIONS.map(opt => (
+                        <CheckboxItem
+                            key={opt.value}
+                            label={opt.label}
+                            checked={propertyTypes.includes(opt.value)}
+                            onChange={() => handlePropertyTypeToggle(opt.value)}
+                        />
+                    ))}
+                </div>
+            </FilterSection>
+
+            {/* Room Features */}
+            <FilterSection title="Room Features" index={5}>
+                <div className="flex flex-col gap-1 mb-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Meal Plan</p>
+                    {BOARD_TYPE_OPTIONS.map(opt => (
+                        <CheckboxItem
+                            key={opt.code}
+                            label={opt.label}
+                            checked={boardTypes.includes(opt.code)}
+                            onChange={() => handleBoardTypeToggle(opt.code)}
+                        />
+                    ))}
+                </div>
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Cancellation</p>
+                    <div className="flex flex-col gap-1">
+                        <RadioItem
+                            name="refundable"
+                            label="Any"
+                            checked={refundable === null}
+                            onChange={() => handleRefundableChange(null)}
+                        />
+                        <RadioItem
+                            name="refundable"
+                            label="Free cancellation only"
+                            checked={refundable === true}
+                            onChange={() => handleRefundableChange(true)}
+                        />
+                    </div>
+                </div>
+            </FilterSection>
+
             {/* Amenities */}
-            <FilterSection title="Amenities" index={4}>
+            <FilterSection title="Amenities" index={6}>
                 <div className="grid grid-cols-2 gap-2">
                     {facilityOptions.map((facility) => (
                         <CheckboxItem
@@ -244,7 +322,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[90] bg-black/40 lg:hidden pointer-events-auto"
+                        className="fixed inset-0 z-90 bg-black/40 lg:hidden pointer-events-auto"
                         onClick={() => setIsMobileFiltersOpen(false)}
                     />
                     <motion.div
@@ -252,7 +330,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: "100%" }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-[100] bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px] flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
+                        className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-100 bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-size[40px_40px] flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Background Sparkles */}
@@ -261,7 +339,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         </div>
 
                         {/* Header */}
-                        <div className="p-3 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
+                        <div className="p-3 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
                             <button
                                 onClick={() => setIsMobileFiltersOpen(false)}
                                 className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors -ml-1.5"
@@ -280,7 +358,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         </div>
 
                         {/* Fixed Footer */}
-                        <div className="p-4 border-t border-slate-200/50 dark:border-white/5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-center flex-shrink-0 relative z-10">
+                        <div className="p-4 border-t border-slate-200/50 dark:border-white/5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-center shrink-0 relative z-10">
                             <button
                                 onClick={() => setIsMobileFiltersOpen(false)}
                                 className="w-full max-w-sm py-2 bg-alabaster-accent dark:bg-obsidian-accent text-white rounded-lg text-xs font-bold flex items-center justify-center transition-transform active:scale-[0.98] shadow-md hover:shadow-lg"
@@ -297,7 +375,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
     return (
         <>
             {/* Desktop persistent sidebar */}
-            <div className="hidden lg:block w-[280px] flex-shrink-0">
+            <div className="hidden lg:block w-[280px] shrink-0">
                 {content}
             </div>
 

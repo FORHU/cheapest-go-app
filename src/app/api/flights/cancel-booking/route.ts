@@ -9,6 +9,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { stripe } from '@/lib/stripe/server';
 import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
+import { checkCsrf } from '@/lib/server/csrf';
 
 /**
  * POST /api/flights/cancel-booking
@@ -27,6 +28,9 @@ import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '
  * Body: { bookingId: string }
  */
 export async function POST(req: NextRequest) {
+    const csrfError = checkCsrf(req);
+    if (csrfError) return csrfError;
+
     const startMs = Date.now();
 
     try {

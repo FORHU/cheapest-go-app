@@ -1,11 +1,9 @@
-import { Suspense } from 'react';
 import SearchFilters from '@/components/search/SearchFilters';
-import SearchResults from '@/components/search/SearchResults';
 import { ResponsiveSearchHeader } from '@/components/search/ResponsiveSearchHeader';
-import LazySearchMapView from '@/components/search/LazySearchMapView';
-
+import { HotelResultsClient } from '@/components/search/HotelResultsClient';
+import { MapResultsClient } from '@/components/search/MapResultsClient';
 import BackButton from '@/components/common/BackButton';
-import { fetchSearchProperties, fetchFacilities } from '@/lib/search';
+import { fetchFacilities } from '@/lib/search';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,55 +20,44 @@ export default async function SearchPage(props: {
     const searchParams = await props.searchParams;
     const viewMode = searchParams.view === 'list' ? 'list' : 'map';
 
-    // Parallel fetch: properties and facilities
-    const [initialProperties, initialFacilities] = await Promise.all([
-        fetchSearchProperties(searchParams as any),
-        fetchFacilities(),
-    ]);
+    // Flatten to Record<string, string> for client component props (arrays → first value)
+    const flatParams = Object.fromEntries(
+        Object.entries(searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] ?? '' : v ?? ''])
+    ) as Record<string, string>;
 
-    // ─── MAP VIEW: split layout ────────────────────
+    const dest = flatParams.destination || '';
+
+    // ─── MAP VIEW ───────────────────────────────────────────────────
     if (viewMode === 'map') {
         return (
             <main className="h-[calc(100dvh-64px)] w-full overflow-hidden">
-                <Suspense
-                    fallback={
-                        <div className="flex h-full w-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                    }
-                >
-                    <LazySearchMapView
-                        properties={initialProperties}
-                        destination={searchParams.destination as string || ''}
-                    />
-                </Suspense>
+                <MapResultsClient searchParams={flatParams} destination={dest} />
             </main>
         );
     }
 
-    // ─── LIST VIEW: Normal search page layout ───────────────────────
+    // Facilities are fast (Supabase lookup) — await here so filters render immediately
+    const initialFacilities = await fetchFacilities();
+
+    // ─── LIST VIEW ──────────────────────────────────────────────────
     return (
         <main className="min-h-screen pt-3 md:pt-6 pb-8 md:pb-16 px-3 md:px-6">
             <div className="max-w-[1400px] mx-auto">
-                {/* Back to Home */}
                 <div className="hidden lg:block mb-4">
                     <BackButton label="Back to Home" href="/" />
                 </div>
-
-                {/* Responsive Compact Header */}
                 <ResponsiveSearchHeader />
             </div>
 
             <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
+                {/* Filters sidebar renders immediately — no hotel data dependency */}
                 <SearchFilters
                     initialFacilities={initialFacilities}
-                    previewCoordinates={
-                        initialProperties && initialProperties.length > 0 &&
-                            initialProperties[0].coordinates &&
-                            initialProperties[0].coordinates.lat !== 0
-                            ? initialProperties[0].coordinates
-                            : null
-                    }
+                    previewCoordinates={null}
                 />
-                <SearchResults initialProperties={initialProperties} />
+
+                {/* Hotel list fetches client-side — page shell appears in <1s */}
+                <HotelResultsClient searchParams={flatParams} />
             </div>
         </main>
     );
