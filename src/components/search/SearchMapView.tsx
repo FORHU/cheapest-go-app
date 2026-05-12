@@ -1,14 +1,12 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { MapPropertyCard } from '@/components/map/MapPropertyCard';
-import { MapModal } from '@/components/map/MapModal';
-import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
 import { type Property } from '@/types';
-import { ArrowLeft, MapPin, List, SlidersHorizontal, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, MapPin, List, SlidersHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, cn, buildPropertySlug } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
@@ -63,9 +61,6 @@ const BOARD_TYPE_OPTIONS = [
     { code: 'FB', label: 'Full Board' },
     { code: 'AI', label: 'All Inclusive' },
 ];
-
-const PAGE_SIZE_INITIAL = 15;
-const PAGE_SIZE_MORE = 10;
 
 // Fallback coordinates when a search returns 0 mappable results.
 // Keyed by lowercase city/country name (partial prefix match).
@@ -128,6 +123,7 @@ interface SearchMapViewProps {
     totalCount?: number;
     allMappable?: any[];
     rawSearchParams?: Record<string, any>;
+    isStreaming?: boolean;
 }
 
 /**
@@ -141,15 +137,60 @@ function SearchMapView({
     destination,
     totalCount: initialTotalCount = 0,
     allMappable = [],
-    rawSearchParams = {}
+    rawSearchParams = {},
+    isStreaming = false,
 }: SearchMapViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // State
-    const [allProperties, setAllProperties] = React.useState<Property[]>(properties);
+    // State — seed from properties, padded with any allMappable hotels not already present
+    // (allMappable may contain more hotels than properties when the server cache is stale)
+    const [allProperties, setAllProperties] = React.useState<Property[]>(() => {
+        const ids = new Set(properties.map(p => p.id));
+        const extra = allMappable
+            .filter((m: any) => m.name && m.price > 0 && !ids.has(m.id ?? m.hotelId))
+            .map((m: any): Property => ({
+                id: m.id ?? m.hotelId,
+                name: m.name,
+                price: m.price,
+                currency: m.currency || 'USD',
+                image: m.image || '',
+                images: m.image ? [m.image] : [],
+                coordinates: m.coordinates || { lat: 0, lng: 0 },
+                rating: m.rating || 0,
+                reviews: 0,
+                location: '',
+                description: '',
+                amenities: [],
+                badges: [],
+                type: 'hotel',
+                boardTypes: [],
+                city: '',
+            }));
+        return [...properties, ...extra];
+    });
     const [totalCount, setTotalCount] = React.useState(initialTotalCount || properties.length);
-    const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+
+    // Sync streaming hotel updates: parent appends new properties — merge into local state
+    React.useEffect(() => {
+        if (properties.length === 0) return;
+        setAllProperties(prev => {
+            const existingIds = new Set(prev.map((p: any) => p.id ?? p.hotelId));
+            const newOnes = properties.filter(p => !existingIds.has(p.id));
+            return newOnes.length > 0 ? [...prev, ...newOnes] : prev;
+        });
+    }, [properties.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Keep totalCount in sync with parent (grows as streaming completes)
+    React.useEffect(() => {
+        if (initialTotalCount > 0) setTotalCount(prev => Math.max(prev, initialTotalCount));
+    }, [initialTotalCount]);
+
+    // ── Client-side display pagination ───────────────────────────
+    const LIST_PAGE_SIZE = 15;
+    const [displayCount, setDisplayCount] = useState(LIST_PAGE_SIZE);
+    const searchKey = JSON.stringify(rawSearchParams);
+    React.useEffect(() => { setDisplayCount(LIST_PAGE_SIZE); }, [searchKey]); // eslint-disable-line react-hooks/exhaustive-deps
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<SortValue>('recommended');
@@ -168,89 +209,84 @@ function SearchMapView({
     // Use allMappable (the 151 basic objects) if provided, otherwise allProperties
     const mappableProperties = useMemo<MappableProperty[]>(() => {
         const source = allMappable.length > 0 ? allMappable : allProperties;
-        return source.filter(
-            (p: any): p is MappableProperty =>
-                p.coordinates != null &&
-                typeof p.coordinates.lat === 'number' &&
-                typeof p.coordinates.lng === 'number' &&
-                p.coordinates.lat !== 0 &&
-                p.coordinates.lng !== 0
-        ).map((p: any) => ({
-            ...p,
-            id: p.id || p.hotelId, // handle both Property and Mappable formats
-            location: p.location || '',
-            image: p.image || '',
-            rating: p.rating || 0,
-            reviews: p.reviews || 0,
-            price: p.price || 0,
-            currency: p.currency || 'USD'
-        }));
+        const filtered = source
+            .filter(
+                (p: any): p is MappableProperty =>
+                    p.coordinates != null &&
+                    typeof p.coordinates.lat === 'number' &&
+                    typeof p.coordinates.lng === 'number' &&
+                    p.coordinates.lat !== 0 &&
+                    p.coordinates.lng !== 0
+            )
+            .map((p: any) => ({
+                ...p,
+                id: p.id || p.hotelId,
+                location: p.location || '',
+                image: p.image || '',
+                rating: p.rating || 0,
+                reviews: p.reviews || 0,
+                price: p.price || 0,
+                currency: p.currency || 'USD',
+            }));
+
+        // Deduplicate by proximity — TGX and ETG can both return the same hotel.
+        // If two pins are within ~100m (0.001°), keep the lower-price entry.
+        const PROX_DEG = 0.001;
+        const unique: MappableProperty[] = [];
+        for (const pin of filtered) {
+            const dupeIdx = unique.findIndex(
+                u =>
+                    Math.abs(u.coordinates.lat - pin.coordinates.lat) < PROX_DEG &&
+                    Math.abs(u.coordinates.lng - pin.coordinates.lng) < PROX_DEG
+            );
+            if (dupeIdx !== -1) {
+                if (pin.price < unique[dupeIdx].price) unique[dupeIdx] = pin;
+            } else {
+                unique.push(pin);
+            }
+        }
+        return unique;
     }, [allMappable, allProperties]);
 
-    const hasMore = allProperties.length < totalCount;
-
-    const handleLoadMore = async () => {
-        if (isLoadingMore || !hasMore) return;
-        setIsLoadingMore(true);
-        try {
-            const res = await fetch('/api/search/more', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...rawSearchParams, offset: allProperties.length, limit: 10 }),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data?.data && Array.isArray(data.data)) {
-                    setAllProperties(prev => [...prev, ...data.data]);
-                    if (data.totalCount) setTotalCount(data.totalCount);
-                }
-            }
-        } catch (e) {
-            console.error('[MapLoadMore] error:', e);
-        } finally {
-            setIsLoadingMore(false);
-        }
-    };
-
-    // Apply client-side filters + sort to ALL loaded properties
+    // Apply client-side filters + sort to ALL loaded properties (includes Load More results)
     const sortedProperties = useMemo(() => {
-        let list = [...mappableProperties];
+        let list = allProperties.filter((p: any) => p.name && p.price > 0);
 
         if (propertyTypes.length > 0) {
-            list = list.filter(p => propertyTypes.includes(p.type));
+            list = list.filter((p: any) => propertyTypes.includes(p.type));
         }
         if (boardTypes.length > 0) {
-            list = list.filter(p =>
+            list = list.filter((p: any) =>
                 p.boardTypes && p.boardTypes.length > 0
                     ? matchesBoardType(p.boardTypes, boardTypes)
                     : boardTypes.includes('RO')
             );
         }
         if (refundable === true) {
-            list = list.filter(p => p.refundableTag === 'RFN');
+            list = list.filter((p: any) => p.refundableTag === 'RFN');
         }
 
-        if (sortBy === 'price-low') list.sort((a, b) => a.price - b.price);
-        else if (sortBy === 'price-high') list.sort((a, b) => b.price - a.price);
-        else if (sortBy === 'rating') list.sort((a, b) => b.rating - a.rating);
-        else if (sortBy === 'most-reviewed') list.sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0));
+        if (sortBy === 'price-low') list.sort((a: any, b: any) => a.price - b.price);
+        else if (sortBy === 'price-high') list.sort((a: any, b: any) => b.price - a.price);
+        else if (sortBy === 'rating') list.sort((a: any, b: any) => b.rating - a.rating);
+        else if (sortBy === 'most-reviewed') list.sort((a: any, b: any) => (b.reviews ?? 0) - (a.reviews ?? 0));
 
         return list;
-    }, [mappableProperties, sortBy, propertyTypes, boardTypes, refundable]);
+    }, [allProperties, sortBy, propertyTypes, boardTypes, refundable]);
 
-    // Derived
-    const bounds = useMemo(() => computeBounds(mappableProperties), [mappableProperties]);
+    // Client-side display pagination — all hotels are already in sortedProperties from streaming
+    const canLoadMore = displayCount < sortedProperties.length;
+    const handleShowMore = useCallback(() => setDisplayCount(prev => prev + LIST_PAGE_SIZE), []);
+    const visibleProperties = useMemo(
+        () => sortedProperties.slice(0, displayCount),
+        [sortedProperties, displayCount]
+    );
 
     // When no results, fall back to the searched destination's known coordinates
     const fallbackCoords = useMemo(() => {
         if (mappableProperties.length > 0) return null;
         return destination ? getDestinationCoords(destination) : null;
     }, [mappableProperties.length, destination]);
-
-    const selectedProperty = useMemo(
-        () => (selectedId ? mappableProperties.find((p) => p.id === selectedId) ?? null : null),
-        [selectedId, mappableProperties]
-    );
 
     // ── Handlers ────────────────────────────────────────────
 
@@ -272,18 +308,8 @@ function SearchMapView({
         [router, searchParams, properties]
     );
 
-    const scrollToCard = useCallback((id: string) => {
-        const card = document.querySelector(`[data-property-id="${id}"]`);
-        if (card) {
-            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }, []);
-
     const handleCardSelect = useCallback(
         (id: string) => {
-            const property = mappableProperties.find((p) => p.id === id);
-            if (!property) return;
-
             setSelectedId((prev) => (prev === id ? null : id));
         },
         [mappableProperties]
@@ -478,12 +504,13 @@ function SearchMapView({
 
             {/* ── Desktop Split layout ── */}
             <div className="hidden lg:flex flex-1 min-h-0 relative gap-4 p-4">
-                {/* LEFT: Property list */}
-                <div className="w-[420px] xl:w-[calc(420px+max(0px,50vw-700px))] xl:pl-[max(0px,50vw-700px)] shrink-0 h-full overflow-y-auto overscroll-contain flex flex-col">
+                {/* LEFT: Property list — outer wrapper does NOT scroll; inner list does */}
+                <div className="w-[420px] xl:w-[calc(420px+max(0px,50vw-700px))] xl:pl-[max(0px,50vw-700px)] shrink-0 h-full flex flex-col">
                     {sortedProperties.length > 0 ? (
                         <>
-                            <div className="flex flex-col">
-                                {sortedProperties.map((property) => (
+                            {/* Scrollable hotel cards — scrollbar hidden so it doesn't steal width from cards */}
+                            <div className="flex-1 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                {visibleProperties.map((property) => (
                                     <MapPropertyCard
                                         key={property.id}
                                         property={property}
@@ -494,32 +521,23 @@ function SearchMapView({
                                     />
                                 ))}
                             </div>
-                            {/* Load More — real API call */}
-                            <div className="py-3 px-2">
-                                {isLoadingMore && (
-                                    <div className="space-y-2 mb-3">
-                                        {Array.from({ length: 3 }).map((_, i) => (
-                                            <div key={i} className="flex gap-3 h-24 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-pulse">
-                                                <div className="w-24 shrink-0 bg-slate-200 dark:bg-slate-700" />
-                                                <div className="flex-1 py-3 pr-3 space-y-2">
-                                                    <div className="h-3 w-3/4 bg-slate-200 dark:bg-slate-700 rounded" />
-                                                    <div className="h-3 w-1/2 bg-slate-200 dark:bg-slate-700 rounded" />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {hasMore ? (
+                            {/* Sticky pagination footer — always visible, never scrolls */}
+                            <div className="shrink-0 py-3 px-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950">
+                                {canLoadMore ? (
                                     <button
-                                        onClick={handleLoadMore}
-                                        disabled={isLoadingMore}
-                                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-[11px] font-bold rounded-full transition-all active:scale-95"
+                                        onClick={handleShowMore}
+                                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 cursor-pointer"
                                     >
-                                        {isLoadingMore ? 'Loading...' : `Load More (${totalCount - allProperties.length} remaining)`}
+                                        Load More · showing {displayCount} of {sortedProperties.length}
                                     </button>
-                                ) : sortedProperties.length > 0 ? (
-                                    <p className="text-center text-[10px] text-slate-400 font-medium">All results loaded</p>
-                                ) : null}
+                                ) : isStreaming ? (
+                                    <div className="flex items-center justify-center gap-2 py-1 text-[10px] text-slate-500 dark:text-slate-400">
+                                        <span className="w-3 h-3 rounded-full border-[1.5px] border-blue-500 border-t-transparent animate-spin shrink-0" />
+                                        Loading more hotels…
+                                    </div>
+                                ) : (
+                                    <p className="text-center text-[10px] text-slate-400 font-medium">All {sortedProperties.length} results loaded</p>
+                                )}
                             </div>
                         </>
                     ) : (
@@ -595,7 +613,7 @@ function SearchMapView({
                             dragConstraints={{ top: 0, bottom: 0 }}
                             dragElastic={0.2}
                             dragDirectionLock
-                            onDragEnd={(e, info) => {
+                            onDragEnd={(_, info) => {
                                 if (info.offset.y > 40) {
                                     setShowMobileMap(false);
                                 }
@@ -632,7 +650,7 @@ function SearchMapView({
                             dragConstraints={{ top: 0, bottom: 0 }}
                             dragElastic={0.2}
                             dragDirectionLock
-                            onDragEnd={(e, info) => {
+                            onDragEnd={(_, info) => {
                                 if (info.offset.y < -30) {
                                     setShowMobileMap(true);
                                 }

@@ -161,7 +161,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         propertyTypes.length > 0 || boardTypes.length > 0 || refundable !== null;
 
     const content = (
-        <div className="w-full flex-shrink-0 space-y-4 pb-20 lg:pb-0">            {/* Header with Reset */}
+        <div className="w-full shrink-0 space-y-4 pb-20 lg:pb-0">            {/* Header with Reset */}
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -322,7 +322,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[90] bg-black/40 lg:hidden pointer-events-auto"
+                        className="fixed inset-0 z-90 bg-black/40 lg:hidden pointer-events-auto"
                         onClick={() => setIsMobileFiltersOpen(false)}
                     />
                     <motion.div
@@ -330,7 +330,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: "100%" }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-[100] bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px] flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
+                        className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-100 bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-size[40px_40px] flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Background Sparkles */}
@@ -339,7 +339,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         </div>
 
                         {/* Header */}
-                        <div className="p-3 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 flex-shrink-0">
+                        <div className="p-3 border-b border-slate-200/50 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 shrink-0">
                             <button
                                 onClick={() => setIsMobileFiltersOpen(false)}
                                 className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors -ml-1.5"
@@ -358,7 +358,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         </div>
 
                         {/* Fixed Footer */}
-                        <div className="p-4 border-t border-slate-200/50 dark:border-white/5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-center flex-shrink-0 relative z-10">
+                        <div className="p-4 border-t border-slate-200/50 dark:border-white/5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex justify-center shrink-0 relative z-10">
                             <button
                                 onClick={() => setIsMobileFiltersOpen(false)}
                                 className="w-full max-w-sm py-2 bg-alabaster-accent dark:bg-obsidian-accent text-white rounded-lg text-xs font-bold flex items-center justify-center transition-transform active:scale-[0.98] shadow-md hover:shadow-lg"
@@ -375,7 +375,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
     return (
         <>
             {/* Desktop persistent sidebar */}
-            <div className="hidden lg:block w-[280px] flex-shrink-0">
+            <div className="hidden lg:block w-[280px] shrink-0">
                 {content}
             </div>
 

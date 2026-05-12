@@ -30,7 +30,7 @@ export const buildGeoJson = (
                 displayPrice: displayPrices?.[p.id] ?? formatCurrency(p.price, p.currency),
                 name: p.name,
                 rating: p.rating,
-                image: p.images[0],
+                image: p.images?.[0] ?? p.image ?? '',
             },
             geometry: {
                 type: 'Point' as const,
