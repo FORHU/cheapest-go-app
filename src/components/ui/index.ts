@@ -1,4 +1,5 @@
 export { SectionHeader } from "./SectionHeader";
+export { OptimizedImage } from "./OptimizedImage";
 export { ImageCard } from "./ImageCard";
 export { TabList } from "./TabList";
 export { ScrollableRow } from "./ScrollableRow";

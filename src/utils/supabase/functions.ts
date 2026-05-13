@@ -1,6 +1,7 @@
 export async function invokeEdgeFunction<T = any>(
     functionName: string,
     body?: any,
+    onChunk?: (chunk: any) => void,
     options?: { headers?: Record<string, string>; method?: 'POST' | 'GET' | 'PUT' | 'DELETE' | 'PATCH' }
 ) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -9,7 +10,7 @@ export async function invokeEdgeFunction<T = any>(
     const functionUrl = `${supabaseUrl}/functions/v1/${functionName}`;
     const method = options?.method || 'POST';
 
-    const maxRetries = 1; // one retry max — exponential backoff on 3 retries × 12s TGX timeout = 60s
+    const maxRetries = 1;
     let fallbackRetryDelay = 2000;
 
     for (let i = 0; i <= maxRetries; i++) {
@@ -26,24 +27,39 @@ export async function invokeEdgeFunction<T = any>(
 
         if (response.ok) {
             const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('ndjson')) {
-                // Streaming NDJSON — collect all `hotels` chunks into a single { data, totalCount, allMappable } object
-                const text = await response.text();
+            if (contentType.includes('ndjson') && response.body) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
                 const allData: any[] = [];
                 const allMappable: any[] = [];
                 let totalCount = 0;
-                for (const line of text.split('\n')) {
-                    if (!line.trim()) continue;
-                    try {
-                        const chunk = JSON.parse(line);
-                        if (chunk.type === 'hotels' && Array.isArray(chunk.data)) {
-                            allData.push(...chunk.data);
-                            if (Array.isArray(chunk.allMappable)) allMappable.push(...chunk.allMappable);
-                            if (chunk.totalCount) totalCount = chunk.totalCount;
-                        } else if (chunk.type === 'done' && chunk.totalCount) {
-                            totalCount = chunk.totalCount;
-                        }
-                    } catch { /* skip malformed lines */ }
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        try {
+                            const chunk = JSON.parse(line);
+                            if (onChunk) onChunk(chunk);
+
+                            if (chunk.type === 'hotels' && Array.isArray(chunk.data)) {
+                                allData.push(...chunk.data);
+                                if (Array.isArray(chunk.allMappable)) allMappable.push(...chunk.allMappable);
+                                if (chunk.totalCount) totalCount = chunk.totalCount;
+                            } else if (chunk.type === 'done' && chunk.totalCount) {
+                                totalCount = chunk.totalCount;
+                            } else if (chunk.type === 'debug') {
+                                console.log(`[Edge Function Debug] ${chunk.source}:`, chunk.data);
+                            }
+                        } catch { /* skip malformed */ }
+                    }
                 }
                 return { data: allData, totalCount: totalCount || allData.length, allMappable } as T;
             }

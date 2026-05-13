@@ -9,8 +9,8 @@ import { invokeEdgeFunction } from '@/utils/supabase/functions';
 // Search
 // ============================================================================
 
-export async function searchTravelgateX(params: object) {
-    return invokeEdgeFunction('travelgatex-search', params);
+export async function searchTravelgateX(params: object, onChunk?: (chunk: any) => void) {
+    return invokeEdgeFunction('travelgatex-search', params, onChunk);
 }
 
 // ============================================================================

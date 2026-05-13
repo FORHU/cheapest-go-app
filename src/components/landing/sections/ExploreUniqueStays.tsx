@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Sparkles, Star } from 'lucide-react';
-import { TabList, SparkleEffect, HorizontalScroll } from '@/components/ui';
+import { TabList, SparkleEffect, HorizontalScroll, OptimizedImage } from '@/components/ui';
 import { type SimpleProperty, uniqueTabs } from '@/types';
 import { useUserCurrency } from '@/stores/searchStore';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
@@ -70,7 +70,7 @@ export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ sta
               <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
                 <div className="relative aspect-[2/1] sm:aspect-[4/3] md:aspect-[3/2] overflow-hidden flex-shrink-0 landscape-compact-img landscape-img">
                   {stay.image && (
-                    <Image
+                    <OptimizedImage
                       src={stay.image}
                       alt={stay.name}
                       fill

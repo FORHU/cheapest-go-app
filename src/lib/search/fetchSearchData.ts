@@ -329,10 +329,31 @@ function transformHotelToProperty(hotel: any, cityName: string, requestedCurrenc
     } as Property;
 }
 
-async function fetchSearchPropertiesInner(queryParams: SearchQueryParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
+async function fetchSearchPropertiesInner(queryParams: SearchQueryParams, onChunk?: (chunk: any) => void): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
     // Run TGX and Duffel in parallel (LiteAPI dropped)
     const [tgxSettled, duffelSettled] = await Promise.allSettled([
-        searchTravelgateX({ ...(queryParams as unknown as Record<string, unknown>), limit: 100, offset: 0 }),
+        searchTravelgateX({ ...(queryParams as unknown as Record<string, unknown>), limit: 100, offset: 0 }, (chunk) => {
+            if (chunk.type === 'hotels' && onChunk) {
+                const hotels = Array.isArray(chunk.data) ? chunk.data : [];
+                const transformed = hotels.map((h: any) => {
+                    const prop = transformHotelToProperty(h, queryParams.cityName, queryParams.currency);
+                    if (h._tgx) {
+                        (prop as any).provider = 'travelgatex';
+                        (prop as any)._tgx = h._tgx;
+                    } else if (h._etg) {
+                        (prop as any).provider = 'etg';
+                        (prop as any)._etg = h._etg;
+                    }
+                    return prop;
+                }).filter((p: Property) => p.name && p.price > 0);
+                
+                if (transformed.length > 0) {
+                    onChunk({ type: 'hotels', source: chunk.source, data: transformed });
+                }
+            } else if (onChunk) {
+                onChunk(chunk); // pass through other chunks (done, debug, etc.)
+            }
+        }),
         searchDuffelStays(queryParams),
     ]);
 
@@ -367,6 +388,15 @@ async function fetchSearchPropertiesInner(queryParams: SearchQueryParams): Promi
     const duffelResults: Property[] = duffelSettled.status === 'fulfilled'
         ? duffelSettled.value
         : [];
+    
+    if (duffelSettled.status === 'rejected') {
+        const msg = duffelSettled.reason?.message || '';
+        if (msg.includes('Stays API not enabled')) {
+            console.log('[Search] Duffel Stays not enabled — skipping');
+        } else {
+            console.error('[Search] Duffel Stays failed:', msg);
+        }
+    }
 
     // Merge: TGX first, then Duffel (deduplicated by name)
     const seenNames = new Set(tgxResults.map(p => p.name.toLowerCase().trim()));
@@ -401,10 +431,10 @@ async function fetchSearchPropertiesInner(queryParams: SearchQueryParams): Promi
  * Results are cached for 5 minutes per unique combination of search params.
  * Empty results and errors are never cached so the next search retries live.
  */
-export async function fetchSearchProperties(params: SearchParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
+export async function fetchSearchProperties(params: SearchParams, onChunk?: (chunk: any) => void): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
     const queryParams = buildSearchQueryParams(params);
     try {
-        const result = await fetchSearchPropertiesInner(queryParams);
+        const result = await fetchSearchPropertiesInner(queryParams, onChunk);
         return result;
     } catch (e) {
         if (e instanceof Error && e.message !== 'NO_RESULTS') {

@@ -59,3 +59,40 @@ export const SearchLoadingSkeleton = () => {
         </main>
     );
 };
+export const ResultsSkeleton = () => {
+    return (
+        <div className="flex-1 min-w-0">
+            {/* Results Header Skeleton */}
+            <div className="flex justify-between items-center mb-6">
+                <div className="space-y-2">
+                    <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                    <div className="h-4 w-64 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                </div>
+                <div className="h-10 w-32 bg-slate-200 dark:bg-slate-800 rounded-full animate-pulse" />
+            </div>
+
+            {/* Property Card Skeletons */}
+            <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 h-[200px]">
+                        {/* Image Skeleton */}
+                        <div className="md:w-[320px] h-[200px] bg-slate-200 dark:bg-slate-800 animate-pulse" />
+
+                        {/* Content Skeleton */}
+                        <div className="flex-1 p-5 flex flex-col justify-between">
+                            <div className="space-y-3">
+                                <div className="h-6 w-3/4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                                <div className="h-4 w-1/2 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                                <div className="h-12 w-full bg-slate-200 dark:bg-slate-800 rounded animate-pulse mt-2" />
+                            </div>
+                            <div className="flex justify-between items-end">
+                                <div className="h-8 w-24 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                                <div className="h-10 w-32 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};

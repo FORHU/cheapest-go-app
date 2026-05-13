@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
+import { OptimizedImage } from '@/components/ui';
 import { type Property } from '@/types';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
 import { buildPropertySlug } from '@/lib/utils';
@@ -184,7 +184,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
             <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
                 <div className="relative aspect-2/1 sm:aspect-4/3 overflow-hidden rounded-t-2xl landscape-compact-img landscape-img shrink-0">
                     {imgSrc && (
-                        <Image
+                        <OptimizedImage
                             src={imgSrc}
                             alt={displayName}
                             fill
@@ -319,7 +319,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             <div className="md:w-[240px] relative h-[110px] md:h-auto shrink-0 p-1.5 md:p-3 md:pr-0">
                 <div className="absolute inset-2 md:inset-3 md:right-0 rounded-xl overflow-hidden">
                     {property.image ? (
-                        <Image
+                        <OptimizedImage
                             src={property.image}
                             alt={property.name}
                             fill

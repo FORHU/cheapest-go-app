@@ -66,7 +66,7 @@ VALUES
 ('MNL', 'BKK', 720, 1100, 'Cebu Pacific', 'https://plus.unsplash.com/premium_photo-1664908495753-db8a434a043c?w=800&h=600&fit=crop&q=80', '2026-05-05', '2026-05-10', '35% OFF', '2d 10h'),
 ('MNL', 'SIN', 850, 1300, 'Singapore Airlines', 'https://plus.unsplash.com/premium_photo-1697729432930-3f11644e9184?w=800&h=600&fit=crop&q=80', '2026-05-15', '2026-05-19', '35% OFF', '1d 22h'),
 ('MNL', 'HAN', 640, 950, 'VietJet Air', 'https://plus.unsplash.com/premium_photo-1690960644830-487c569ca6fa?w=800&h=600&fit=crop&q=80', '2026-06-10', '2026-06-15', '33% OFF', '5d 4h'),
-('MNL', 'KIX', 1250, 1850, 'Philippine Airlines', 'https://images.unsplash.com/photo-1723983555971-8dafb9ae7265?w=800&h=600&fit=crop&q=80', '2026-04-22', '2026-04-28', '32% OFF', '3d 8h'),
+('MNL', 'KIX', 1250, 1850, 'Philippine Airlines', 'https://images.unsplash.com/photo-1590559899731-a382839e5549?w=800&h=600&fit=crop&q=80', '2026-04-22', '2026-04-28', '32% OFF', '3d 8h'),
 ('MNL', 'HKG', 580, 900, 'Cathay Pacific', 'https://plus.unsplash.com/premium_photo-1694475261469-a77647bd1aaa?w=800&h=600&fit=crop&q=80', '2026-05-28', '2026-06-01', '36% OFF', '1d 14h');
 
 -- ── Weekend / Hotel Deals (5 more → total ~8) ─────────────────────────────

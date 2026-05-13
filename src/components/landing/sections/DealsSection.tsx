@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Clock, Sparkles } from 'lucide-react';
-import { SectionHeader, HorizontalScroll, TiltCard } from '@/components/ui';
+import { SectionHeader, HorizontalScroll, TiltCard, OptimizedImage } from '@/components/ui';
 import { type Deal } from '@/types';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -54,17 +54,15 @@ export const DealCard: React.FC<DealCardProps> = ({ deal, index }) => {
         <div className="relative h-full bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg group">
           {/* Image — responsive height */}
           <div className="relative aspect-2/1 sm:aspect-4/3 md:aspect-3/2 overflow-hidden shrink-0 landscape-compact-img landscape-img">
-            {deal.image && (
-              <Image
-                src={deal.image}
-                alt={deal.title}
-                fill
-                sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 300px"
-                className="object-cover transition-transform duration-700 group-hover:scale-110"
-                priority={index === 0}
-                loading={index === 0 ? undefined : 'lazy'}
-              />
-            )}
+            <OptimizedImage
+              src={deal.image}
+              alt={deal.title}
+              fill
+              sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 300px"
+              className="object-cover transition-transform duration-700 group-hover:scale-110"
+              priority={index === 0}
+              loading={index === 0 ? undefined : 'lazy'}
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
             {/* Discount badge */}

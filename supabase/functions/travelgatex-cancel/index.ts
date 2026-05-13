@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
       input: { reference },
       settings: {
         client: TRAVELGATEX_CLIENT,
-        context: 'TGX',
+        context: Deno.env.get('TRAVELGATEX_CONTEXT') || 'OTV',
         testMode: false,
         timeout: 60000,
       },

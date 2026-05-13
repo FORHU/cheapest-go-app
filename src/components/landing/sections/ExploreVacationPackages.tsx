@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Plane } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { TabList, HorizontalScroll } from '@/components/ui';
+import { TabList, HorizontalScroll, OptimizedImage } from '@/components/ui';
 import { type VacationPackage, packageTabs } from '@/types';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -68,17 +68,15 @@ export const ExploreVacationPackages: React.FC<{
                 <div onClick={() => router.push(`/destinations/${buildDestinationSlug(pkg.name, pkg.location)}`)} className="relative flex flex-col h-full flex-1">
                   <div className="relative bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-lg flex flex-col h-full flex-1">
                     <div className="relative aspect-[2/1] sm:aspect-[4/3] md:aspect-[3/2] overflow-hidden flex-shrink-0 landscape-compact-img landscape-img">
-                      {pkg.image && (
-                        <Image
-                          src={pkg.image}
-                          alt={pkg.name}
-                          fill
-                          sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
-                          className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          priority={i === 0}
-                          loading={i === 0 ? undefined : 'lazy'}
-                        />
-                      )}
+                      <OptimizedImage
+                        src={pkg.image}
+                        alt={pkg.name}
+                        fill
+                        sizes="(max-width: 640px) 220px, (max-width: 768px) 260px, 320px"
+                        className="object-cover transition-transform duration-500 group-hover:scale-110"
+                        priority={i === 0}
+                        loading={i === 0 ? undefined : 'lazy'}
+                      />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
                       {/* Discount badge */}

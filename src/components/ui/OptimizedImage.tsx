@@ -39,33 +39,53 @@
  * - Automatic responsive images
  */
 
+"use client";
+
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import type { ImageProps } from 'next/image';
 
 interface OptimizedImageProps extends Omit<ImageProps, 'src'> {
   src: string | null | undefined;
+  fallbackSrc?: string;
   fallback?: React.ReactNode;
 }
+
+const DEFAULT_FALLBACK = 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=600&fit=crop&q=80';
 
 export function OptimizedImage({
   src,
   alt,
+  fallbackSrc = DEFAULT_FALLBACK,
   fallback,
   ...props
 }: OptimizedImageProps) {
+  const [imgSrc, setImgSrc] = useState<string | null | undefined>(src);
+  const [hasError, setHasError] = useState(false);
+
+  // Reset error state if src changes
+  useEffect(() => {
+    setImgSrc(src);
+    setHasError(false);
+  }, [src]);
+
   // Handle null/undefined src
-  if (!src) {
+  if (!imgSrc) {
     return <>{fallback || <div className={props.className} />}</>;
   }
 
-  // All HTTPS hosts are covered by the wildcard remotePatterns in next.config.mjs,
-  // so next/image optimization (WebP/AVIF, srcset) is active for every external URL.
   return (
     <Image
-      src={src}
+      src={imgSrc}
       alt={alt}
       placeholder="blur"
       blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2YzZjRmNiIvPjwvc3ZnPg=="
+      onError={() => {
+        if (!hasError) {
+          setImgSrc(fallbackSrc);
+          setHasError(true);
+        }
+      }}
       {...props}
     />
   );

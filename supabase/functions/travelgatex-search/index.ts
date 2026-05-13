@@ -16,7 +16,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ENDPOINT      = 'https://api.travelgate.com';
+const ENDPOINT      = Deno.env.get('TRAVELGATEX_ENDPOINT_URL') || 'https://api.travelgate.com';
+const TGX_URL       = ENDPOINT;
 const GEO_RADIUS_KM = 30;
 
 Deno.serve(async (req: Request) => {
@@ -24,10 +25,31 @@ Deno.serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Internal function to stream debug messages
+  const { readable, writable } = new TransformStream();
+  const writer  = writable.getWriter();
+  const encoder = new TextEncoder();
+  const send = async (obj: object) => {
+    try { await writer.write(encoder.encode(JSON.stringify(obj) + '\n')); } catch {}
+  };
+
   const TRAVELGATEX_API_KEY     = Deno.env.get('TRAVELGATEX_API_KEY');
-  const TRAVELGATEX_ACCESS_CODE = Deno.env.get('TRAVELGATEX_CODE') || '37606';
-  const TRAVELGATEX_SUPPLIER    = Deno.env.get('TRAVELGATEX_SUPPLIER') || 'FASTX';
-  const TRAVELGATEX_CONTEXT     = Deno.env.get('TRAVELGATEX_CONTEXT') || 'TGX';
+  // Fix 1: Default to OTV access code 38327 (was 37606 for FASTX)
+  const TRAVELGATEX_ACCESS_CODE = Deno.env.get('TRAVELGATEX_CODE') || '38327';
+  const TRAVELGATEX_SUPPLIER    = Deno.env.get('TRAVELGATEX_SUPPLIER') || 'OTV';
+  
+  await send({ 
+    type: 'debug', 
+    source: 'env_check', 
+    data: { 
+      hasTgxKey: !!TRAVELGATEX_API_KEY, 
+      hasEtgKey: !!(Deno.env.get('RATEHAWK_API_KEY') || Deno.env.get('ETG_API_KEY')),
+      supplier: TRAVELGATEX_SUPPLIER,
+      access: TRAVELGATEX_ACCESS_CODE
+    } 
+  });
+  // Fix: Handle the typo RAVELGATEX_CONTEXT in .env as fallback
+  const TRAVELGATEX_CONTEXT     = Deno.env.get('TRAVELGATEX_CONTEXT') || Deno.env.get('RAVELGATEX_CONTEXT') || 'OTV';
   const TRAVELGATEX_TEST_MODE   = Deno.env.get('TRAVELGATEX_TEST_MODE') === 'true';
   const TRAVELGATEX_CLIENT      = Deno.env.get('TRAVELGATEX_CLIENT') || 'forhuinc';
   const ETG_KEY_ID  = Deno.env.get('ETG_KEY_ID')  || Deno.env.get('RATEHAWK_KEY_ID')  || '';
@@ -98,14 +120,17 @@ Deno.serve(async (req: Request) => {
       if (normalizedAgesD.length === 0 && children > 0) for (let i = 0; i < children; i++) normalizedAgesD.push(10);
       const occupanciesD = buildOccupancies(adults, children, normalizedAgesD, rooms);
 
-      const tgxResD = await fetch(ENDPOINT, {
+      // Build supplier entry for detail mode
+      const detailSupplierEntry: any = { code: TRAVELGATEX_SUPPLIER, accesses: [{ accessId: TRAVELGATEX_ACCESS_CODE }] };
+
+      const tgxResD = await fetch(TGX_URL, {
         method: 'POST',
         headers: { 'Authorization': `Apikey ${TRAVELGATEX_API_KEY}`, 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip' },
         body: JSON.stringify({
           query: SEARCH_QUERY,
           variables: {
             criteriaSearch: { checkIn: checkin, checkOut: checkout, occupancies: occupanciesD, currency, nationality, markets: [nationality], language: 'en', hotels: [directHotelCode] },
-            settings: { client: TRAVELGATEX_CLIENT, context: TRAVELGATEX_CONTEXT, testMode: TRAVELGATEX_TEST_MODE, timeout: 12000, suppliers: [{ code: TRAVELGATEX_SUPPLIER, accesses: [{ accessId: TRAVELGATEX_ACCESS_CODE }] }] },
+            settings: { client: TRAVELGATEX_CLIENT, context: TRAVELGATEX_CONTEXT, testMode: TRAVELGATEX_TEST_MODE, timeout: 12000, suppliers: [detailSupplierEntry] },
           },
         }),
       }).catch(() => null);
@@ -115,7 +140,7 @@ Deno.serve(async (req: Request) => {
 
       const contentMap = await fetchHotelContent(
         supabase, ENDPOINT, TRAVELGATEX_API_KEY, TRAVELGATEX_ACCESS_CODE,
-        [directHotelCode], new Map(), ETG_KEY_ID, ETG_API_KEY, 1
+        [directHotelCode], new Map(), ETG_KEY_ID, ETG_API_KEY, 0
       );
       const content = contentMap.get(directHotelCode);
 
@@ -220,15 +245,20 @@ Deno.serve(async (req: Request) => {
       destCodes = [destinationCode];
     } else if (cityName) {
       const { destCodes: resolved, resolvedFrom, fallbackHotelCodes: hotelFallback } =
-        await resolveDestinationWithFallbacks(ENDPOINT, TRAVELGATEX_API_KEY, TRAVELGATEX_ACCESS_CODE, cityName, countryCode, supabase);
+        await resolveDestinationWithFallbacks(TGX_URL, TRAVELGATEX_API_KEY, TRAVELGATEX_ACCESS_CODE, cityName, countryCode, supabase);
       if (resolved.length > 0) {
         destCodes = resolved;
-        console.log(`[TravelgateX] Resolved "${cityName}" via "${resolvedFrom}" → ${destCodes.length} codes`);
+        console.log(`[TravelgateX] Resolved "${cityName}" via "${resolvedFrom}" → ${destCodes.length} codes: ${destCodes.slice(0,5).join(',')}`);
+        await send({ type: 'debug', source: 'destination_resolution', data: { codes: destCodes, from: resolvedFrom } });
       } else {
         fallbackHotelCodes = hotelFallback;
         console.warn(`[TravelgateX] No dest codes for "${cityName}" — fallback hotel codes: ${fallbackHotelCodes.length}`);
+        await send({ type: 'debug', source: 'destination_resolution_fallback', data: { hotelCodes: fallbackHotelCodes } });
       }
     }
+
+    console.log(`[TGX Config] access=${TRAVELGATEX_ACCESS_CODE} supplier=${TRAVELGATEX_SUPPLIER || '(auto)'} context=${TRAVELGATEX_CONTEXT} client=${TRAVELGATEX_CLIENT} testMode=${TRAVELGATEX_TEST_MODE}`);
+    console.log(`[TGX Resolve] destCodes=${destCodes.length} fallbackHotels=${fallbackHotelCodes.length} cityName=${cityName}`);
 
     // ── Build TGX search payload ──────────────────────────────────
     const normalizedAges: number[] = Array.isArray(childrenAges) ? childrenAges : [];
@@ -244,17 +274,24 @@ Deno.serve(async (req: Request) => {
     if (destCodes.length > 0) criteriaSearch.destinations = destCodes;
     else if (fallbackHotelCodes.length > 0) criteriaSearch.hotels = fallbackHotelCodes;
 
+    // Build supplier entry
+    const supplierEntry: any = { code: TRAVELGATEX_SUPPLIER, accesses: [{ accessId: TRAVELGATEX_ACCESS_CODE }] };
+
     const settings: any = {
       client: TRAVELGATEX_CLIENT, context: TRAVELGATEX_CONTEXT,
-      testMode: TRAVELGATEX_TEST_MODE, timeout: 12000,
-      suppliers: [{ code: TRAVELGATEX_SUPPLIER, accesses: [{ accessId: TRAVELGATEX_ACCESS_CODE }] }],
+      testMode: TRAVELGATEX_TEST_MODE, timeout: 25000,
+      suppliers: [supplierEntry],
+      // ── MAPPING FIX: Always use the mapping plugin for OTV to translate TGX IDs ──
       ...(destCodes.length > 0 ? {
         plugins: [{
           step: 'REQUEST',
-          pluginsType: { type: 'PRE_STEP', name: 'search_by_destination', parameters: [{ key: 'accessID', value: TRAVELGATEX_ACCESS_CODE }] },
+          pluginsType: { type: 'PRE_STEP', name: 'search_by_destination', parameters: [{ key: 'access', value: TRAVELGATEX_ACCESS_CODE }] },
         }],
       } : {}),
     };
+
+    console.log(`[TGX Settings]`, JSON.stringify(settings).substring(0, 500));
+    console.log(`[TGX Criteria]`, JSON.stringify(criteriaSearch).substring(0, 500));
 
     const etgParams: ETGSearchParams = {
       checkin, checkout, adults, children, childrenAges: normalizedAges,
@@ -264,15 +301,6 @@ Deno.serve(async (req: Request) => {
     // Pre-compute city center so geo-based ETG search can run even with 0 TGX hotels
     const cityKey          = cityName.toLowerCase().trim();
     const staticCityCenter = CITY_CENTERS_STATIC[cityKey] ?? null;
-
-    // ── Set up streaming response ─────────────────────────────────
-    const { readable, writable } = new TransformStream();
-    const writer  = writable.getWriter();
-    const encoder = new TextEncoder();
-
-    const send = async (obj: object) => {
-      try { await writer.write(encoder.encode(JSON.stringify(obj) + '\n')); } catch {}
-    };
 
     const streamResponse = new Response(readable, {
       headers: { ...corsHeaders, 'Content-Type': 'application/x-ndjson', 'X-Cache': 'MISS' },
@@ -292,7 +320,7 @@ Deno.serve(async (req: Request) => {
 
         // ETG streaming task — yields batches as hotel/info content arrives.
         // 20s gives ETG enough time to surface hotels in outer districts (Shinagawa, Shinjuku, etc.)
-        const ETG_TASK_DEADLINE_MS = 20000;
+        const ETG_TASK_DEADLINE_MS = 12000;
         const etgTask = async () => {
           if (!etgGeoGen) return;
           const etgDeadlineAt = Date.now() + ETG_TASK_DEADLINE_MS;
@@ -331,7 +359,10 @@ Deno.serve(async (req: Request) => {
         // TGX task — fetches all options then sends one chunk.
         // criteriaSearch and settings are computed above from the blocking dest resolution.
         const tgxTask = async () => {
-          if (destCodes.length === 0 && fallbackHotelCodes.length === 0) return;
+          if (destCodes.length === 0 && fallbackHotelCodes.length === 0) {
+            console.warn('[TGX Task] No destCodes and no fallback hotel codes — attempting search without destination filter');
+            // Still proceed: some suppliers (like OTV/ETG) can handle searches without destination codes
+          }
 
           const t1 = Date.now();
           let tgxResult: any;
@@ -339,7 +370,7 @@ Deno.serve(async (req: Request) => {
           // Promise.race timeout — AbortController may not interrupt in all runtimes.
           // Pre-warmed TGX (after blocking dest resolution) returns in < 1s.
           // Non-pre-warmed (second request with cached dest codes) takes ~11s.
-          const tgxFetchPromise = fetch(ENDPOINT, {
+          const tgxFetchPromise = fetch(TGX_URL, {
             method: 'POST',
             headers: {
               'Authorization': `Apikey ${TRAVELGATEX_API_KEY}`,
@@ -347,12 +378,12 @@ Deno.serve(async (req: Request) => {
               'Accept-Encoding': 'gzip',
               'Connection': 'keep-alive',
             },
-            body: JSON.stringify({ query: SEARCH_QUERY, variables: { criteriaSearch, settings: { ...settings, timeout: 7000 } } }),
+            body: JSON.stringify({ query: SEARCH_QUERY, variables: { criteriaSearch, settings: { ...settings, timeout: 15000 } } }),
           }).then(res => res.ok ? res.json() : (console.error(`[TGX] HTTP ${res.status}`), null))
             .catch((e: any) => { console.error('[TGX] fetch error:', e.message); return null; });
 
           const tgxTimeoutPromise = new Promise<null>(resolve =>
-            setTimeout(() => { console.error('[TGX] 20s search timeout'); resolve(null); }, 20000)
+            setTimeout(() => { console.error('[TGX] 12s search timeout'); resolve(null); }, 12000)
           );
 
           tgxResult = await Promise.race([tgxFetchPromise, tgxTimeoutPromise]);
@@ -360,11 +391,22 @@ Deno.serve(async (req: Request) => {
 
           if (!tgxResult) return; // timeout or error
 
-          if (tgxResult.errors) console.error('[TGX] GraphQL error:', JSON.stringify(tgxResult.errors));
+          if (tgxResult.errors) {
+            console.error('[TGX] GraphQL error:', JSON.stringify(tgxResult.errors));
+            await send({ type: 'debug', source: 'tgx_error', data: tgxResult.errors });
+          }
           const searchData = tgxResult.data?.hotelX?.search;
           console.log('[TravelgateX] Full searchData:', JSON.stringify(searchData).substring(0, 2000));
-          if (searchData?.errors?.length)   console.warn('[TGX] Errors:', JSON.stringify(searchData.errors));
-          if (searchData?.warnings?.length) console.warn('[TGX] Warnings:', JSON.stringify(searchData.warnings));
+          await send({ type: 'debug', source: 'tgx_raw_search_data', data: searchData });
+          
+          if (searchData?.errors?.length) {
+            console.warn('[TGX] Search Errors:', JSON.stringify(searchData.errors));
+            await send({ type: 'debug', source: 'tgx_search_error', data: searchData.errors });
+          }
+          if (searchData?.warnings?.length) {
+            console.warn('[TGX] Search Warnings:', JSON.stringify(searchData.warnings));
+            await send({ type: 'debug', source: 'tgx_search_warning', data: searchData.warnings });
+          }
 
           const options: any[] = searchData?.options || [];
           console.log(`[TravelgateX] options: ${options.length}`);
@@ -382,29 +424,47 @@ Deno.serve(async (req: Request) => {
 
           const uniqueCodes = sortedTgxOptions.map((o: any) => o.hotelCode);
 
-          // Phase 1: DB-cached content only — fast (~100ms) when DB is warm.
-          // Race against a 3s deadline so a cold/paused DB doesn't block the stream.
+          // ── Fix 2: Hybrid content strategy ───────────────────────────────────
+          // Step A: Try DB cache first (fast, ~100ms when warm)
           const t1db = Date.now();
-          const contentMap = await Promise.race([
+          const cacheOnlyMap = await Promise.race([
             fetchHotelContent(
-              supabase, ENDPOINT, TRAVELGATEX_API_KEY, TRAVELGATEX_ACCESS_CODE,
+              supabase, TGX_URL, TRAVELGATEX_API_KEY, TRAVELGATEX_ACCESS_CODE,
               uniqueCodes, hotelCodeToEtgHid, ETG_KEY_ID, ETG_API_KEY, 0, true // cacheOnly
             ),
             new Promise<Map<string, any>>(resolve => setTimeout(() => {
-              console.log('[TGX Content] DB cold/slow — proceeding with empty content after 3s');
+              console.log('[TGX Content] DB cold/slow — proceeding after 3s');
               resolve(new Map());
             }, 3000)),
           ]);
-          console.log(`[TGX Content] DB query: ${Date.now() - t1db}ms, hits=${contentMap.size}`);
+          console.log(`[TGX Content] DB cache: ${Date.now() - t1db}ms, hits=${cacheOnlyMap.size}/${uniqueCodes.length}`);
+
+          // Step B: If many hotels missed cache (fresh OTV supplier), fetch top 10 synchronously
+          // so this search already has images. Rest are fetched in background for next search.
+          let contentMap = cacheOnlyMap;
+          const cacheHitCodes  = new Set(Array.from(cacheOnlyMap.keys()).filter(k => (cacheOnlyMap.get(k)?.images?.length ?? 0) > 0));
+          const cacheMissCodes = uniqueCodes.filter((c: string) => !cacheHitCodes.has(c));
+
+          if (cacheMissCodes.length > 0) {
+            const liveNow = cacheMissCodes.slice(0, 10); // sync fetch for top 10 missed
+            console.log(`[TGX Content] Cache missed ${cacheMissCodes.length} hotels — live-fetching ${liveNow.length} now`);
+            const liveMap = await Promise.race([
+              fetchHotelContent(
+                supabase, TGX_URL, TRAVELGATEX_API_KEY, TRAVELGATEX_ACCESS_CODE,
+                liveNow, hotelCodeToEtgHid, ETG_KEY_ID, ETG_API_KEY, 0 // 0 = no limit, fetch all in liveNow
+              ),
+              new Promise<Map<string, any>>(resolve => setTimeout(() => {
+                console.log('[TGX Content] Live fetch timeout after 8s');
+                resolve(new Map());
+              }, 8000)),
+            ]);
+            contentMap = new Map([...cacheOnlyMap, ...liveMap]);
+            console.log(`[TGX Content] After live fetch: ${contentMap.size} hotels have content`);
+          }
 
           const tgxHotels = sortedTgxOptions
-            .map((o: any) => transformOptionToHotel(o, cityName, currency, contentMap.get(o.hotelCode)))
-            .filter(h => {
-              // Drop hotels where name is just the raw code fallback AND there's no image
-              // Pattern: "Hotel JP1112" — two uppercase letters + digits, no spaces in code part
-              const isRawCodeName = /^Hotel [A-Z]{2,3}\d+$/.test(h.name);
-              return !isRawCodeName || !!h.image;
-            });
+            .map((o: any) => transformOptionToHotel(o, cityName, currency, contentMap.get(o.hotelCode)));
+            // Removed filtering that dropped hotels without images
           const tgxGeoFiltered = staticCityCenter
             ? tgxHotels.filter(h => {
                 const { lat, lng } = h.coordinates || {};
@@ -415,14 +475,15 @@ Deno.serve(async (req: Request) => {
           console.log(`[TGX GeoFilter] ${tgxHotels.length} → ${tgxGeoFiltered.length} within ${GEO_RADIUS_KM}km of ${cityName}`);
           allTgxHotels.push(...tgxGeoFiltered);
 
-          // Phase 2: Background — fetch live content for hotels missing from DB cache.
-          // Populates hotel_content so the NEXT search gets images immediately.
-          const missingContent = uniqueCodes.filter((id: string) => !contentMap.get(id)?.images?.length);
-          if (missingContent.length > 0) {
+          // Step C: Background fetch for all remaining cache misses (populates DB for next search)
+          const stillMissing = cacheMissCodes.filter((id: string) => !(contentMap.get(id)?.images?.length));
+          if (stillMissing.length > 0) {
+            const bgLimit = 40;
+            console.log(`[TGX Content] Background-fetching top ${Math.min(stillMissing.length, bgLimit)} hotels`);
             EdgeRuntime.waitUntil(
               fetchHotelContent(
-                supabase, ENDPOINT, TRAVELGATEX_API_KEY, TRAVELGATEX_ACCESS_CODE,
-                missingContent, hotelCodeToEtgHid, ETG_KEY_ID, ETG_API_KEY, limit
+                supabase, TGX_URL, TRAVELGATEX_API_KEY, TRAVELGATEX_ACCESS_CODE,
+                stillMissing, hotelCodeToEtgHid, ETG_KEY_ID, ETG_API_KEY, bgLimit
               )
             );
           }
@@ -530,13 +591,19 @@ Deno.serve(async (req: Request) => {
         }
         if (nameFilled > 0) console.log(`[NameFill] Filled images for ${nameFilled} TGX hotels via ETG name match`);
 
-        // Only keep hotels that have an image — unmatched TGX-only hotels without content are excluded.
-        const withImages = deduped.filter(h => !!h.image);
-        console.log(`[ImageFilter] ${deduped.length} → ${withImages.length} hotels with images`);
+        // ── Fix 3: Don't drop hotels without images ───────────────────────────
+        // OTV is a new supplier — hotel_content is cold on first search.
+        // Content has been live-fetched and saved above for top 10, rest arrive via
+        // background fetch. Include all hotels so users see results immediately.
+        // Hotels without images will show a placeholder on the frontend.
+        const withImages = deduped; // was: deduped.filter(h => !!h.image)
+        const withImagesCount   = deduped.filter(h => !!h.image).length;
+        const withoutImageCount = deduped.length - withImagesCount;
+        console.log(`[ImageFilter] ${deduped.length} total — ${withImagesCount} with images, ${withoutImageCount} without (kept all for OTV)`);
 
         setRawCache(rawCacheKey, { allHotels: withImages });
 
-        // Store response cache using image-filtered result
+        // Store response cache using full result
         const responseData = {
           data: withImages.slice(0, limit),
           totalCount: withImages.length,
@@ -558,8 +625,6 @@ Deno.serve(async (req: Request) => {
           testMode: false, timestamp: new Date().toISOString(),
         }));
 
-        // 'done' sends the image-filtered list so the client replaces the streaming
-        // accumulation (which may include no-image hotels) with the clean final result.
         await send({
           type: 'done',
           totalCount: withImages.length,
