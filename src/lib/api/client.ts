@@ -11,7 +11,12 @@ export async function apiFetch<T = any>(
     try {
         const res = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                // Explicitly send Origin so the server-side CSRF check can validate
+                // same-origin requests in production (browsers omit Origin on same-origin fetch).
+                'Origin': typeof window !== 'undefined' ? window.location.origin : '',
+            },
             body: JSON.stringify(body || {}),
         });
 
