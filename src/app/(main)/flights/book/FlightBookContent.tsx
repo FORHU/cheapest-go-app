@@ -203,7 +203,7 @@ export default function FlightBookContent() {
         try {
             const res = await fetch('/api/flights/offer-refresh', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
                 body: JSON.stringify({ rawOffer }),
             });
             const data = await res.json();
