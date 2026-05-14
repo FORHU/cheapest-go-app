@@ -135,7 +135,7 @@ interface SearchMapViewProps {
 function SearchMapView({
     properties,
     destination,
-    totalCount: initialTotalCount = 0,
+    totalCount: _totalCount = 0,
     allMappable = [],
     rawSearchParams = {},
     isStreaming = false,
@@ -169,22 +169,40 @@ function SearchMapView({
             }));
         return [...properties, ...extra];
     });
-    const [totalCount, setTotalCount] = React.useState(initialTotalCount || properties.length);
-
-    // Sync streaming hotel updates: parent appends new properties — merge into local state
+    // Sync streaming hotel updates: merge incoming into local state.
+    // Also patches existing entries whose location/image was empty when first received
+    // (the `done` event may arrive with the same count as `hotels` but with enriched data).
     React.useEffect(() => {
         if (properties.length === 0) return;
         setAllProperties(prev => {
+            const incomingMap = new Map(properties.map(p => [p.id, p]));
+            let changed = false;
+
+            // Update existing entries that have empty location or image
+            const updated = prev.map((p: any) => {
+                const id = p.id ?? p.hotelId;
+                const incoming = incomingMap.get(id);
+                if (!incoming) return p;
+                const wantsLocation = !p.location && incoming.location;
+                const wantsImage    = !p.image    && incoming.image;
+                if (!wantsLocation && !wantsImage) return p;
+                changed = true;
+                return {
+                    ...p,
+                    location: incoming.location || p.location,
+                    image:    incoming.image    || p.image,
+                    images:   incoming.images?.length ? incoming.images : p.images,
+                };
+            });
+
+            // Append brand-new hotels not previously in the list
             const existingIds = new Set(prev.map((p: any) => p.id ?? p.hotelId));
             const newOnes = properties.filter(p => !existingIds.has(p.id));
-            return newOnes.length > 0 ? [...prev, ...newOnes] : prev;
-        });
-    }, [properties.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Keep totalCount in sync with parent (grows as streaming completes)
-    React.useEffect(() => {
-        if (initialTotalCount > 0) setTotalCount(prev => Math.max(prev, initialTotalCount));
-    }, [initialTotalCount]);
+            if (!changed && newOnes.length === 0) return prev;
+            return [...(changed ? updated : prev), ...newOnes];
+        });
+    }, [properties]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Client-side display pagination ───────────────────────────
     const LIST_PAGE_SIZE = 15;
@@ -569,11 +587,11 @@ function SearchMapView({
                         defaultCenter={fallbackCoords ?? undefined}
                     />
 
-                    {/* Property count badge — shows server-side total, not just loaded count */}
+                    {/* Property count badge — shows loaded + filtered count */}
                     <div className="absolute bottom-10 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300 z-10">
                         {activeFilterCount > 0
-                            ? `${sortedProperties.length} of ${totalCount} (filtered)`
-                            : `${totalCount} properties`
+                            ? `${sortedProperties.length} of ${allProperties.filter((p: any) => p.name && p.price > 0).length} (filtered)`
+                            : `${sortedProperties.length} properties`
                         }
                     </div>
 
