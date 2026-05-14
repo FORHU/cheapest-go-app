@@ -75,22 +75,26 @@ const AmenityIcon: React.FC<{ amenity: string }> = ({ amenity }) => {
  * Rating label based on score
  */
 const getRatingLabel = (rating: number): string => {
+    if (rating === 0) return '';
     if (rating >= 9) return 'Exceptional';
     if (rating >= 8) return 'Excellent';
     if (rating >= 7) return 'Very Good';
     if (rating >= 6) return 'Good';
-    return 'Average';
+    if (rating >= 5) return 'Average';
+    return 'Poor';
 };
 
 /**
  * Rating badge color based on score - distinct colors for each level
  */
 const getRatingColor = (rating: number): string => {
-    if (rating >= 9) return 'bg-indigo-600';    // Exceptional - Deep indigo
-    if (rating >= 8) return 'bg-blue-600';      // Excellent - Blue
-    if (rating >= 7) return 'bg-blue-500';      // Very Good - Light Blue
-    if (rating >= 6) return 'bg-slate-500';      // Good - Slate
-    return 'bg-amber-500';                       // Average - Warm amber
+    if (rating === 0) return 'bg-slate-400';
+    if (rating >= 9)  return 'bg-emerald-600';
+    if (rating >= 8)  return 'bg-blue-600';
+    if (rating >= 7)  return 'bg-blue-500';
+    if (rating >= 6)  return 'bg-amber-500';
+    if (rating >= 5)  return 'bg-orange-500';
+    return 'bg-red-500';
 };
 
 /**
