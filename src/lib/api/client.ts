@@ -13,9 +13,11 @@ export async function apiFetch<T = any>(
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // Explicitly send Origin so the server-side CSRF check can validate
-                // same-origin requests in production (browsers omit Origin on same-origin fetch).
-                'Origin': typeof window !== 'undefined' ? window.location.origin : '',
+                // Custom header used as CSRF proof. Browsers cannot set custom headers
+                // on cross-origin requests without a CORS preflight (which would fail),
+                // so this is a valid same-origin proof. The `Origin` header is a
+                // forbidden header name — JS cannot set it, so we use this instead.
+                'X-Requested-By': 'cheapestgo-client',
             },
             body: JSON.stringify(body || {}),
         });
