@@ -421,25 +421,29 @@ function parseTgxToken(token: string): { hotelCode: string | null; checkIn: stri
 
 async function getFreshTgxToken(expiredToken: string, adults: number, children: number, currency: string): Promise<string | null> {
   const { hotelCode, checkIn, checkOut } = parseTgxToken(expiredToken);
-  if (!hotelCode || !checkIn || !checkOut) return null;
+  console.log('[getFreshTgxToken] Parsed token → hotel:', hotelCode, 'in:', checkIn, 'out:', checkOut);
+  if (!hotelCode || !checkIn || !checkOut) {
+    console.error('[getFreshTgxToken] Could not parse hotel/dates from token:', expiredToken.substring(0, 80));
+    return null;
+  }
   try {
     const result = await invokeEdgeFunction('travelgatex-search', {
       hotelCode, checkin: checkIn, checkout: checkOut, adults, children, currency, guest_nationality: 'KR',
     });
     const rooms: any[] = result?.data?.roomTypes || [];
+    console.log('[getFreshTgxToken] Fresh search → rooms found:', rooms.length);
     const freshRoom = rooms[0];
     const freshOfferId: string = freshRoom?.offerId || '';
-    if (!freshOfferId.startsWith('TGX:')) return null;
-    const freshOptionId = freshOfferId.slice(4); // opt.id for fallback
-    // Prefer opt.token (OTV's native token) for Quote/Book; fall back to opt.id
+    if (!freshOfferId.startsWith('TGX:')) {
+      console.error('[getFreshTgxToken] No valid TGX offerId in fresh search. offerId:', freshOfferId.substring(0, 60));
+      return null;
+    }
+    const freshOptionId = freshOfferId.slice(4);
     const freshNativeToken: string = freshRoom?.rates?.[0]?._tgx?.token || freshOptionId;
+    console.log('[getFreshTgxToken] opt.id:', freshOptionId.substring(0, 60), '| opt.token:', freshNativeToken.substring(0, 60));
 
-    // Brief pause before Quote — TGX needs a moment to propagate the fresh search option
-    // into its valuation cache, otherwise Quote returns 301 "option not found".
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Try Quote with opt.token first, then opt.id
-    // Quote is required before Book — if both fail, return null so confirm can refund.
     const tokensToTry = freshNativeToken !== freshOptionId
       ? [freshNativeToken, freshOptionId]
       : [freshOptionId];
@@ -447,18 +451,17 @@ async function getFreshTgxToken(expiredToken: string, adults: number, children: 
     for (const tok of tokensToTry) {
       try {
         const quoteResult = await invokeEdgeFunction('travelgatex-quote', { token: tok });
-        // TGX docs: Book's optionRefId must be the identifier returned by Quote, not Search.
         const bookToken: string = quoteResult?.data?.optionRefId || tok;
         console.log('[getFreshTgxToken] Quote succeeded | quoted:', tok.substring(0, 60), '| bookToken:', bookToken.substring(0, 60));
         return bookToken;
       } catch (qErr: any) {
-        console.warn('[getFreshTgxToken] Quote failed for token', tok.substring(0, 40), ':', qErr.message?.substring(0, 100));
+        console.warn('[getFreshTgxToken] Quote failed for token', tok.substring(0, 40), ':', qErr.message?.substring(0, 150));
       }
     }
-    // All Quote attempts failed — cannot Book without a quoted token
     console.error('[getFreshTgxToken] All Quote attempts failed — cannot proceed with Book');
     return null;
-  } catch {
+  } catch (err: any) {
+    console.error('[getFreshTgxToken] Unexpected error:', err.message?.substring(0, 200));
     return null;
   }
 }
@@ -852,7 +855,7 @@ export async function cancelBooking(
       }
 
       // C. Record result in refund_logs
-      const processResult = await processRefund(supabase, refundLogId, { ...liteApiInfo, stripeRefundId });
+      await processRefund(supabase, refundLogId, { ...liteApiInfo, stripeRefundId });
       // Source of truth: Stripe gave us a refund ID = customer was refunded. DB recording success is secondary.
       const refundSucceeded = !!stripeRefundId;
       const status = refundSucceeded ? 'cancelled_refunded' : 'cancelled_refund_failed';

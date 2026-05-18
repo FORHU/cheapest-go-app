@@ -499,7 +499,7 @@ export function CheckoutContent() {
                     )}
 
                     {/* Prebook Error — unavailability is handled inline near the button; show banner only for other errors */}
-                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && !/no longer available|not available|unavailable|sold out/i.test(prebookError) && (
+                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && !/no longer available|not available|unavailable|sold out|try a different hotel|currently unavailable for booking/i.test(prebookError) && (
                         <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg">
                             <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">Booking error</p>
                             <p className="text-sm text-red-600 dark:text-red-400 mb-3">{prebookError}</p>

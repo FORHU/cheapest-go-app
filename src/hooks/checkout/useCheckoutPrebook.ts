@@ -51,7 +51,7 @@ export function useCheckoutPrebook({
     // Auto-retry prebook after auth — only for auth errors, never for unavailable rooms
     useEffect(() => {
         const prebookKey = `${selectedRoom?.offerId}-${selectedCurrency}`;
-        const isUnavailable = /no longer available|not available|unavailable|sold out|no availability/i.test(prebookError || '');
+        const isUnavailable = /no longer available|not available|unavailable|sold out|no availability|try a different hotel|currently unavailable for booking/i.test(prebookError || '');
         if (user && prebookError && !isUnavailable && selectedRoom?.offerId && !isAuthModalOpen) {
             prebookInitiatedRef.current = null;
             prebookFailedRef.current.delete(prebookKey);

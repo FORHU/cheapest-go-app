@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { User, Lock, Bell, Loader2, Check, Eye, EyeOff, HelpCircle, MessageCircle, Mail } from 'lucide-react';
+import { User, Lock, Bell, Loader2, Check, Eye, EyeOff, HelpCircle, MessageCircle, Mail, Key } from 'lucide-react';
+import { ApiKeysSection } from '@/components/account/ApiKeysSection';
 import type { User as UserType } from '@/types/auth';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
@@ -278,6 +279,17 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                             Save Preferences
                         </button>
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    // API Keys Section
+    if (activeSection === 'api-keys') {
+        return (
+            <div className="flex-1 min-w-0">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-6 lg:p-8">
+                    <ApiKeysSection />
                 </div>
             </div>
         );

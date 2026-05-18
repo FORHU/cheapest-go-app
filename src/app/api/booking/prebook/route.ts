@@ -83,56 +83,58 @@ export async function POST(req: Request) {
             const freshQuoteToken: string = rawOptToken || freshOptionRefId;
             console.log('[prebook/tgx] opt.id:', freshOptionRefId.substring(0, 60), '| opt.token:', (rawOptToken || 'NONE').substring(0, 60), '| same:', freshQuoteToken === freshOptionRefId);
 
-            // Brief pause before Quote — TGX may need a moment to propagate the freshly-searched
-            // option into its valuation cache, otherwise Quote returns 301 "option not found".
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // OTV needs a moment to propagate the freshly-searched option into its
+            // valuation cache. 3 s is more conservative than 1.5 s; avoids rate_not_found
+            // on options that were genuinely just fetched.
+            await new Promise(resolve => setTimeout(resolve, 3000));
 
-            // Try to quote — prefer opt.token (OTV native token), fall back to opt.id.
-            // Track which token was actually quoted so Book uses the correct one.
+            // Try to quote each available room until one succeeds.
+            // OTV sometimes marks a specific rate as "not found" in valuation even though
+            // it appeared in Search; trying subsequent rooms often yields a quotable option.
             let optionQuote: any = null;
-            let quotedToken = freshOptionRefId; // tracks which token succeeded
-            const tokensToQuote = freshQuoteToken !== freshOptionRefId
-                ? [freshQuoteToken, freshOptionRefId]
-                : [freshOptionRefId];
+            let quotedToken = freshOptionRefId;
+            let successfulRoom = freshRoom;
 
-            for (const tok of tokensToQuote) {
-                console.log('[prebook/tgx] Quoting with token:', tok.substring(0, 80));
-                try {
-                    const quoteResult = await quoteTravelgateX({ token: tok });
-                    optionQuote = quoteResult?.data;
-                    quotedToken = tok;
-                    break;
-                } catch (qErr: any) {
-                    console.warn('[prebook/tgx] Quote failed for token', tok.substring(0, 40), ':', qErr.message?.substring(0, 150));
+            for (const room of freshRooms.slice(0, 5)) {
+                const rOfferId: string = room?.offerId || '';
+                if (!rOfferId.startsWith('TGX:')) continue;
+                const rOptionId = rOfferId.slice(4);
+                const rNativeToken: string = room?.rates?.[0]?._tgx?.token || rOptionId;
+                const tokensToTry = rNativeToken !== rOptionId
+                    ? [rNativeToken, rOptionId]
+                    : [rOptionId];
+
+                for (const tok of tokensToTry) {
+                    console.log('[prebook/tgx] Quoting with token:', tok.substring(0, 80));
+                    try {
+                        const quoteResult = await quoteTravelgateX({ token: tok });
+                        optionQuote = quoteResult?.data;
+                        quotedToken = tok;
+                        successfulRoom = room;
+                        break;
+                    } catch (qErr: any) {
+                        console.warn('[prebook/tgx] Quote failed for token', tok.substring(0, 40), ':', qErr.message?.substring(0, 100));
+                    }
                 }
+                if (optionQuote) break;
             }
 
             if (!optionQuote) {
-                // All Quote attempts failed — return search price as fallback.
-                // The confirm route will retry with a fresh search+quote+book cycle.
-                console.warn('[prebook/tgx] All Quote attempts failed, returning search price');
-                const freshRate = freshRoom?.rates?.[0];
-                const rawPrice    = freshRate?.retailRate?.total?.[0]?.amount || 0;
-                const rawCurrency = freshRate?.retailRate?.total?.[0]?.currency || currency;
-                return Response.json({
-                    success: true,
-                    data: {
-                        prebookId: `TGX:${freshOptionRefId}`,
-                        provider: 'travelgatex',
-                        price: { subtotal: rawPrice, taxes: 0, total: rawPrice },
-                        currency: rawCurrency,
-                        cancellationPolicies: freshRate?.cancelPolicy,
-                        boardCode: freshRate?.boardType || '',
-                        rooms: [{ occupancyRefId: '1', code: '', description: freshRoom?.roomName || 'Room' }],
-                    },
-                });
+                // All rooms and tokens failed Quote — OTV Valuation is not returning any
+                // available option for this hotel right now. Block checkout so the user is
+                // not charged for a booking that will fail at the Book step.
+                console.warn('[prebook/tgx] All Quote attempts failed for all rooms — blocking checkout');
+                return Response.json(
+                    { success: false, error: 'This room is currently unavailable for booking. Please try a different hotel or check back later.' },
+                    { status: 409 }
+                );
             }
 
             // Quote succeeded — use confirmed price.
             // TGX docs: Book's optionRefId should be the identifier from the Quote step (optionQuote.optionRefId),
             // NOT the search token. Fall back to the quoted token if the field is absent.
             const bookToken = optionQuote.optionRefId || quotedToken;
-            console.log('[prebook/tgx] Quote succeeded | quoted with:', quotedToken.substring(0, 40), '| book token:', bookToken.substring(0, 60), '| price:', optionQuote.price?.gross || optionQuote.price?.net, optionQuote.price?.currency);
+            console.log('[prebook/tgx] Quote succeeded | quoted with:', quotedToken.substring(0, 40), '| book token:', bookToken.substring(0, 60), '| room:', successfulRoom?.roomName, '| price:', optionQuote.price?.gross || optionQuote.price?.net, optionQuote.price?.currency);
 
             return Response.json({
                 success: true,
