@@ -139,9 +139,22 @@ const FAQSection: React.FC<FAQSectionProps> = ({
         });
     }
 
-    // If no FAQs can be generated, hide the section
+    // Generic fallback FAQs — always useful regardless of data availability
     if (faqs.length === 0) {
-        return null;
+        faqs.push(
+            {
+                question: `What is the cancellation policy at ${propertyName}?`,
+                answer: 'Cancellation policies vary by rate. Please check the room options above for specific cancellation terms before booking.'
+            },
+            {
+                question: `Does ${propertyName} accept credit cards?`,
+                answer: 'Most major credit and debit cards are accepted. Contact the property directly to confirm accepted payment methods.'
+            },
+            {
+                question: 'How do I modify or cancel my reservation?',
+                answer: 'You can manage your booking through the confirmation email you receive after booking. For urgent changes, contact the property directly.'
+            }
+        );
     }
 
     return (

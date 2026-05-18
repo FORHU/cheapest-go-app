@@ -6,6 +6,7 @@ import { checkCsrf } from '@/lib/server/csrf';
 import { applyMarkup, toStripeAmount, HOTEL_MARKUP, BUNDLE_MARKUP } from '@/lib/pricing';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { env } from '@/utils/env';
+import { createHash } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,14 +101,19 @@ export async function POST(req: NextRequest) {
         console.log(`[create-payment] Hotel pricing: original=${pricing.originalPrice} ${currency}, charged=${pricing.chargedPrice}, markup=${(markupRate * 100).toFixed(0)}%${bundleFlightId ? ' (bundle)' : ' (standalone)'}`);
 
         // Create Stripe PaymentIntent (automatic capture — refund on LiteAPI failure)
-        // Idempotency key prevents duplicate charges if client retries the request.
-        const idempotencyKey = `hotel-pi-${user.id}-${prebookId}`;
+        // Include amount+currency in the hash so a price change (prebook refresh) produces a new key
+        // rather than a "same key, different params" Stripe rejection.
+        const prebookHash = createHash('sha256')
+            .update(`${prebookId}:${stripeAmount}:${currency.toLowerCase()}`)
+            .digest('hex')
+            .slice(0, 40);
+        const idempotencyKey = `hotel-pi-${user.id}-${prebookHash}`;
         const paymentIntent = await stripe.paymentIntents.create({
             amount: stripeAmount,
             currency: currency.toLowerCase(),
             capture_method: 'automatic',
             metadata: {
-                prebookId,
+                prebookId: prebookId.slice(0, 490),
                 userId: user.id,
                 holderEmail: holderEmail || '',
                 type: bundleFlightId ? 'hotel_bundle' : 'hotel',
@@ -116,7 +122,7 @@ export async function POST(req: NextRequest) {
                 markupRate: String(markupRate),
                 markupAmount: String(pricing.markupAmount),
             },
-            description: `Hotel Booking: ${propertyName || 'Hotel'} - ${roomName || 'Room'}`,
+            description: `CG: ${propertyName || 'Hotel'} — ${roomName || 'Room'}`,
         }, { idempotencyKey });
 
         return NextResponse.json({

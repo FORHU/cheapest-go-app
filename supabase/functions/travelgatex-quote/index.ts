@@ -15,6 +15,7 @@ query QuoteHotel(
   hotelX {
     quote(criteria: $criteria, settings: $settings) {
       optionQuote {
+        optionRefId
         status
         price {
           currency
@@ -33,7 +34,6 @@ query QuoteHotel(
         }
         boardCode
         paymentType
-        token
         rooms {
           occupancyRefId
           code
@@ -68,14 +68,13 @@ Deno.serve(async (req: Request) => {
     console.log('[TGX Quote] Quoting token:', token.substring(0, 80));
 
     const variables = {
-      criteria: { token },
+      criteria: { optionRefId: token, language: 'en' },
       settings: {
         client: TRAVELGATEX_CLIENT,
-        // Must match the context used during search (TGX = FastX aggregated context).
-        // Using 'OTV' here caused quote failures for FastX-issued tokens.
-        context: 'TGX',
+        context: 'OTV',
         testMode: false,
         timeout: 15000,
+        suppliers: [{ code: 'OTV', accesses: [{ accessId: '38327' }] }],
       },
     };
 

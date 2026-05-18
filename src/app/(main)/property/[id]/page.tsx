@@ -275,7 +275,7 @@ export default async function PropertyPage({
                             />
                         </FadeInUp>
 
-                        {(reviewsData.totalCount > 0 || property.reviews > 0) && (
+                        {(property.rating > 0 || reviewsData.totalCount > 0) && (
                             <>
                                 <FadeInUp delay={0.45}>
                                     <hr className="border-slate-200 dark:border-white/10" />

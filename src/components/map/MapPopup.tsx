@@ -108,7 +108,7 @@ const MapPopup = React.memo(function MapPopup({
             {/* Image */}
             <div className="relative">
                 <img
-                    src={property.image}
+                    src={property.image || undefined}
                     alt={property.name}
                     className={`w-full object-cover ${isLandscape ? 'h-16' : 'h-24'}`}
                     loading="lazy"

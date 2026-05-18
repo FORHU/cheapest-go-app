@@ -476,7 +476,7 @@ async function handleSingleHotel(
         refundableTag: opt.cancelPolicy?.refundable ? 'RFN' : 'NRFN',
         retailRate:    { total: [{ amount: opt.price?.gross || opt.price?.net || 0, currency: opt.price?.currency || currency }] },
         cancelPolicy:  opt.cancelPolicy,
-        _tgx:          { optionId: opt.id, accessCode: opt.accessCode, supplierCode: opt.supplierCode, boardCode: opt.boardCode },
+        _tgx:          { optionId: opt.id, token: opt.token, accessCode: opt.accessCode, supplierCode: opt.supplierCode, boardCode: opt.boardCode },
       }],
     };
   });
@@ -486,7 +486,10 @@ async function handleSingleHotel(
   const cancellationPolicies = cancelPolicy ? {
     refundableTag: cancelPolicy.refundable ? 'RFN' : 'NRFN',
     cancelPolicyInfos: (cancelPolicy.cancelPenalties || []).map((p: any) => ({
-      type: p.type || 'PENALTY', amount: p.value || 0, currency: p.currency || currency,
+      type: p.penaltyType || 'PENALTY',
+      cancelTime: p.deadline || undefined,
+      amount: p.value || 0,
+      currency: p.currency || currency,
     })),
   } : undefined;
 

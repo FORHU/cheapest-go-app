@@ -131,6 +131,25 @@ export async function POST(req: NextRequest) {
                     totalPrice: result.data?.totalPrice || 0,
                     currency: result.data?.currency || body.currency || 'USD',
                 }).catch(e => console.error('[confirm/tgx] Email failed:', e));
+                return Response.json(result);
+            }
+
+            // TGX booking failed — refund Stripe payment if captured
+            if (!result.liteApiConfirmed && body.paymentIntentId) {
+                try {
+                    const refund = await stripe.refunds.create({ payment_intent: body.paymentIntentId });
+                    console.log(`[confirm/tgx] Auto-refunded ${refund.id} for failed booking`);
+                    return Response.json({
+                        success: false,
+                        error: (result.error || 'Booking failed') + '. Your payment has been automatically refunded.',
+                    });
+                } catch (refundErr: any) {
+                    console.error('[confirm/tgx] Refund failed:', refundErr.message);
+                    return Response.json({
+                        success: false,
+                        error: (result.error || 'Booking failed') + '. Please contact support for a refund.',
+                    });
+                }
             }
             return Response.json(result);
         }

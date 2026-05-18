@@ -27,14 +27,16 @@ function RatingSummary({ rating, totalCount }: { rating: number; totalCount: num
     return (
         <div className="flex items-center gap-2 lg:gap-3 lg:mb-6">
             <div className={`${getRatingColor(rating)} text-white w-9 h-9 lg:w-12 lg:h-12 rounded-lg flex items-center justify-center font-bold text-sm lg:text-xl`}>
-                {rating > 0 ? rating.toFixed(0) : '-'}
+                {rating > 0 ? rating.toFixed(1) : '-'}
             </div>
             <div>
                 <p className="font-semibold text-slate-900 dark:text-white text-xs lg:text-lg leading-tight">
                     {getRatingLabel(rating)}
                 </p>
                 <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">
-                    Based on {totalCount} review{totalCount !== 1 ? 's' : ''}
+                    {totalCount > 0
+                        ? `Based on ${totalCount.toLocaleString()} review${totalCount !== 1 ? 's' : ''}`
+                        : 'Aggregated guest score'}
                 </p>
             </div>
         </div>
@@ -217,7 +219,7 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isSortOpen]);
 
-    if (totalCount === 0) {
+    if (totalCount === 0 && averageRating === 0) {
         return null;
     }
 
@@ -244,8 +246,8 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
 
                 {/* Right Column - Reviews List */}
                 <div className="flex-1 w-full min-w-0">
-                    {/* Sort dropdown */}
-                    <div className="flex sm:justify-end mb-4 relative z-20" id="sort-dropdown">
+                    {/* Sort dropdown — only when there are reviews to sort */}
+                    <div className={`flex sm:justify-end mb-4 relative z-20 ${reviewsToDisplay.length === 0 ? 'hidden' : ''}`} id="sort-dropdown">
                         <div className="relative w-full sm:w-auto">
                             <button
                                 onClick={() => setIsSortOpen(!isSortOpen)}
@@ -283,14 +285,21 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
                         className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 max-h-[400px] md:max-h-[500px] overflow-y-auto shadow-sm relative z-10"
                     >
                         <div className="px-3 md:px-5">
-                            {displayedReviews.map((review, index) => (
-                                <ReviewItem key={`${review.name}-${index}`} review={review} index={index} />
-                            ))}
+                            {displayedReviews.length > 0 ? (
+                                displayedReviews.map((review, index) => (
+                                    <ReviewItem key={`${review.name}-${index}`} review={review} index={index} />
+                                ))
+                            ) : (
+                                <div className="py-8 text-center text-slate-400 dark:text-slate-500">
+                                    <p className="text-sm">No individual reviews available.</p>
+                                    <p className="text-xs mt-1">Guest score is based on aggregated ratings.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Load more button & count */}
-                    <div className="mt-4 md:mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
+                    <div className={`mt-4 md:mt-5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 ${reviewsToDisplay.length === 0 ? 'hidden' : ''}`}>
                         {hasMore && (
                             <button
                                 onClick={handleLoadMore}
