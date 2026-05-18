@@ -44,15 +44,8 @@ mutation BookHotel(
             occupancyRefId
             code
             description
-            paxes {
-              name
-              surname
-              age
-            }
           }
         }
-        paymentType
-        remark
       }
       errors { code type description }
       warnings { code type description }
@@ -97,9 +90,10 @@ Deno.serve(async (req: Request) => {
       },
       settings: {
         client: TRAVELGATEX_CLIENT,
-        context: 'TGX',
+        context: 'OTV',
         testMode: false,
         timeout: 60000,
+        suppliers: [{ code: 'OTV', accesses: [{ accessId: '38327' }] }],
       },
     };
 

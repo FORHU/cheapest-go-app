@@ -827,7 +827,7 @@ export async function POST(req: NextRequest) {
                 // Bundle link — hotel booking ID this flight is paired with
                 ...(bundleHotelId ? { bundleHotelId, type: 'flight_bundle' } : { type: 'flight' }),
             },
-            description: `Flight Booking: ${flight.segments[0]?.origin} to ${flight.segments[flight.segments.length - 1]?.destination}`,
+            description: `CG: ${flight.segments[0]?.origin} → ${flight.segments[flight.segments.length - 1]?.destination}`,
         }, { idempotencyKey: piIdempotencyKey });
         logApiCall({
             provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,

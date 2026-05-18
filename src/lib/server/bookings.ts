@@ -15,6 +15,7 @@ import {
   getBookingDetailsLiteApi,
 } from './liteapi';
 import { bookTravelgateX, cancelTravelgateX } from './travelgatex';
+import { invokeEdgeFunction } from '@/utils/supabase/functions';
 import { normalizeLiteApiPolicy } from './policy-normalizer';
 import { stripe } from '@/lib/stripe/server';
 import { sendHotelRefundEmail } from './email';
@@ -406,6 +407,62 @@ async function _confirmAndSaveBookingInner(
 // TravelgateX: Confirm booking + save
 // ============================================================================
 
+function parseTgxToken(token: string): { hotelCode: string | null; checkIn: string | null; checkOut: string | null } {
+  const segs: Record<string, string> = {};
+  for (const seg of token.split('!~|')) {
+    if (seg.length > 1) segs[seg[0]] = seg.slice(1);
+  }
+  const parseYYMMDD = (v: string | undefined): string | null => {
+    if (!v || v.length !== 6) return null;
+    return `20${v.slice(0, 2)}-${v.slice(2, 4)}-${v.slice(4, 6)}`;
+  };
+  return { hotelCode: segs['d'] || null, checkIn: parseYYMMDD(segs['b']), checkOut: parseYYMMDD(segs['c']) };
+}
+
+async function getFreshTgxToken(expiredToken: string, adults: number, children: number, currency: string): Promise<string | null> {
+  const { hotelCode, checkIn, checkOut } = parseTgxToken(expiredToken);
+  if (!hotelCode || !checkIn || !checkOut) return null;
+  try {
+    const result = await invokeEdgeFunction('travelgatex-search', {
+      hotelCode, checkin: checkIn, checkout: checkOut, adults, children, currency, guest_nationality: 'KR',
+    });
+    const rooms: any[] = result?.data?.roomTypes || [];
+    const freshRoom = rooms[0];
+    const freshOfferId: string = freshRoom?.offerId || '';
+    if (!freshOfferId.startsWith('TGX:')) return null;
+    const freshOptionId = freshOfferId.slice(4); // opt.id for fallback
+    // Prefer opt.token (OTV's native token) for Quote/Book; fall back to opt.id
+    const freshNativeToken: string = freshRoom?.rates?.[0]?._tgx?.token || freshOptionId;
+
+    // Brief pause before Quote — TGX needs a moment to propagate the fresh search option
+    // into its valuation cache, otherwise Quote returns 301 "option not found".
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Try Quote with opt.token first, then opt.id
+    // Quote is required before Book — if both fail, return null so confirm can refund.
+    const tokensToTry = freshNativeToken !== freshOptionId
+      ? [freshNativeToken, freshOptionId]
+      : [freshOptionId];
+
+    for (const tok of tokensToTry) {
+      try {
+        const quoteResult = await invokeEdgeFunction('travelgatex-quote', { token: tok });
+        // TGX docs: Book's optionRefId must be the identifier returned by Quote, not Search.
+        const bookToken: string = quoteResult?.data?.optionRefId || tok;
+        console.log('[getFreshTgxToken] Quote succeeded | quoted:', tok.substring(0, 60), '| bookToken:', bookToken.substring(0, 60));
+        return bookToken;
+      } catch (qErr: any) {
+        console.warn('[getFreshTgxToken] Quote failed for token', tok.substring(0, 40), ':', qErr.message?.substring(0, 100));
+      }
+    }
+    // All Quote attempts failed — cannot Book without a quoted token
+    console.error('[getFreshTgxToken] All Quote attempts failed — cannot proceed with Book');
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export interface TgxConfirmInput {
   quoteToken: string;
   holder: { firstName: string; lastName: string; email: string };
@@ -443,19 +500,40 @@ export async function confirmAndSaveTgxBooking(
   }));
 
   let tgxResult: any;
+  let activeToken = params.quoteToken;
   try {
     tgxResult = await bookTravelgateX({
-      quoteToken: params.quoteToken,
+      quoteToken: activeToken,
       clientReference,
       holder: params.holder,
       rooms: [{ occupancyRefId: 1, paxes: [...adultPaxes, ...childPaxes] }],
     });
-  } catch (error) {
-    console.error('[confirmAndSaveTgxBooking] TGX book failed:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'TravelgateX booking failed',
-    };
+  } catch (firstError: any) {
+    const msg = firstError?.message || '';
+    const isExpired = /option not found|not found in|expired|unavailable|301|wrong_field|quote.*option|search.*found/i.test(msg);
+    if (isExpired) {
+      console.log('[confirmAndSaveTgxBooking] Token expired, retrying with fresh search...');
+      const freshToken = await getFreshTgxToken(activeToken, params.adults, params.children, params.currency);
+      if (freshToken) {
+        activeToken = freshToken;
+        try {
+          tgxResult = await bookTravelgateX({
+            quoteToken: freshToken,
+            clientReference,
+            holder: params.holder,
+            rooms: [{ occupancyRefId: 1, paxes: [...adultPaxes, ...childPaxes] }],
+          });
+        } catch (retryError: any) {
+          console.error('[confirmAndSaveTgxBooking] Retry also failed:', retryError.message);
+          return { success: false, error: retryError instanceof Error ? retryError.message : 'TravelgateX booking failed after retry' };
+        }
+      } else {
+        return { success: false, error: 'Room is no longer available for these dates' };
+      }
+    } else {
+      console.error('[confirmAndSaveTgxBooking] TGX book failed:', firstError);
+      return { success: false, error: firstError instanceof Error ? firstError.message : 'TravelgateX booking failed' };
+    }
   }
 
   const booking = tgxResult?.data;
