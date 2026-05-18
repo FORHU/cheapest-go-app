@@ -36,12 +36,26 @@ export function SubmitBookingButton({
         return 'bg-yellow-400 hover:bg-yellow-500 text-slate-900 shadow-yellow-400/20 cursor-pointer';
     };
 
-    const isUnavailable = !!prebookError && /no longer available|not available|unavailable|sold out/i.test(prebookError);
+    // Supplier-side hard failure — the hotel itself can't be booked right now.
+    // Telling the user to "reselect the room" won't help; they need a different hotel.
+    const isHotelUnavailable = !!prebookError && /try a different hotel|currently unavailable for booking/i.test(prebookError);
+    // Session expiry — the token staled between search and checkout; retrying the same room works.
+    const isSessionExpired = !!prebookError && !isHotelUnavailable && /no longer available|not available|sold out/i.test(prebookError);
+    const isUnavailable = isHotelUnavailable || isSessionExpired;
 
     return (
         <>
             {/* Inline unavailability notice — visible right above the button on mobile */}
-            {isUnavailable && (
+            {isHotelUnavailable && (
+                <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-xs font-semibold text-red-700 dark:text-red-300">Hotel temporarily unavailable</p>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">This hotel cannot be booked right now. Please go back and choose a different hotel.</p>
+                    </div>
+                </div>
+            )}
+            {isSessionExpired && (
                 <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                     <div>
@@ -69,7 +83,9 @@ export function SubmitBookingButton({
                         <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
                         <span>Verifying Room...</span>
                     </>
-                ) : isUnavailable ? (
+                ) : isHotelUnavailable ? (
+                    <span>Go back &amp; choose a different hotel</span>
+                ) : isSessionExpired ? (
                     <span>Go back &amp; reselect room</span>
                 ) : prebookError ? (
                     <span>Verification failed — see error above</span>

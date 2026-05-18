@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { Header, Footer } from '@/components/landing';
+import { VoiceAssistant } from '@/components/voice/VoiceAssistant';
 
 export default function MainLayout({
   children,
@@ -15,6 +16,7 @@ export default function MainLayout({
         {children}
       </main>
       <Footer />
+      <VoiceAssistant />
     </>
   );
 }

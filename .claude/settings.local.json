@@ -54,7 +54,8 @@
       "Bash(printf '%s' 'test')",
       "Read(//tmp/**)",
       "Bash(npm run *)",
-      "Bash(supabase db *)"
+      "Bash(supabase db *)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
