@@ -8,13 +8,12 @@ import {
     Bell,
     Shield,
     HelpCircle,
-    Key,
     ArrowLeft
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AccountSidebar, AccountMainContent as AccountMain } from '@/components/landing';
 
-const VALID_SECTIONS = ['profile', 'communications', 'security', 'api-keys', 'help'] as const;
+const VALID_SECTIONS = ['profile', 'communications', 'security', 'help'] as const;
 
 interface AccountContentProps {
     initialUser: {
@@ -56,7 +55,6 @@ export function AccountContent({ initialUser }: AccountContentProps) {
         { id: 'profile', icon: <User size={20} />, title: 'Profile', description: 'View and edit your personal details' },
         { id: 'communications', icon: <Bell size={20} />, title: 'Communications', description: 'Control which notifications you get' },
         { id: 'security', icon: <Shield size={20} />, title: 'Security', description: 'Update your password' },
-        { id: 'api-keys', icon: <Key size={20} />, title: 'API Keys', description: 'Connect external tools like OpenClaw' },
         { id: 'help', icon: <HelpCircle size={20} />, title: 'Help and feedback', description: 'Get customer support' },
     ], []);
 
