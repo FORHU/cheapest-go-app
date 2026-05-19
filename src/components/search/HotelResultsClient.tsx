@@ -14,7 +14,7 @@ function HotelListSkeleton({ destination, elapsed }: { destination: string; elap
             <div className="flex items-center justify-between mb-4 md:mb-6">
                 <div className="space-y-2">
                     <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded-lg" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400 !animate-none">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 animate-none!">
                         {destination ? `Searching hotels in ${destination}` : 'Searching…'}
                         {elapsed > 0 && (
                             <span className="ml-1 tabular-nums"> · {elapsed}s</span>
