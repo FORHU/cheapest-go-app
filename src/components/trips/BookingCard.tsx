@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
-import { MapPin, XCircle, Pencil, Receipt, CheckCircle, RotateCcw, Ban, AlertTriangle } from 'lucide-react';
+import { MapPin, XCircle, Pencil, Receipt, CheckCircle, RotateCcw, Ban, AlertTriangle, Map } from 'lucide-react';
+
+const TripMapView = dynamic(() => import('./TripMapView'), { ssr: false });
 import { cn } from '@/lib/utils';
 import type { BookingRecord } from '@/services/booking.service';
 import CancellationModal from './CancellationModal';
@@ -38,6 +41,7 @@ function getRatingColor(rating: number): string {
 export default function BookingCard({ booking, onBookingUpdated, index = 0 }: BookingCardProps) {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showModifyModal, setShowModifyModal] = useState(false);
+    const [showMapView, setShowMapView]         = useState(false);
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const userCurrency = useUserCurrency();
@@ -139,6 +143,13 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(displayPrice, displayCurrency)}
                             </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowMapView(true); }}
+                                    className="text-[10px] font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
+                                >
+                                    <Map className="w-3 h-3" /> Map
+                                </button>
                             {isUpcoming && normalizedStatus === 'confirmed' && (
                                 <div className="flex items-center gap-1.5 shrink-0">
                                     <button
@@ -163,6 +174,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                     <AlertTriangle className="w-3 h-3" /> Retry refund
                                 </button>
                             )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -296,6 +308,13 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                     Retry refund
                                 </button>
                             )}
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setShowMapView(true); }}
+                                className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
+                            >
+                                <Map className="w-3 h-3" />
+                                Map
+                            </button>
                             <a
                                 href={`/trips/invoice/${booking.id}?type=hotel`}
                                 target="_blank"
@@ -309,6 +328,11 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                     </div>
                 </div>
             </motion.div>
+
+        {/* Trip map full-screen view */}
+        {showMapView && (
+            <TripMapView booking={booking} onClose={() => setShowMapView(false)} />
+        )}
 
         {/* Modals */}
         <ModificationModal
