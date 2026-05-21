@@ -518,17 +518,34 @@ export async function fetchHotelContent(
     console.log(`[HotelContent] ${combined.size} hotels: ${withImages} with images, ${noImageIds.length - syncEtgIds.length} queued for background ETG.`);
   }
 
-  if (hotelIds.length > 0 && !cacheOnly) {
+  if (hotelIds.length > 0) {
+    const etgHids = hotelIds.map(id => hotelCodeToEtgHid.get(id) || id);
+    const uniqueEtgHids = [...new Set(etgHids)];
+
     const { data: reviews } = await supabase
       .from('hotel_reviews')
       .select('hotel_id, rating, reviews_count')
-      .in('hotel_id', hotelIds);
+      .in('hotel_id', uniqueEtgHids);
 
-    for (const row of (reviews || []) as any[]) {
-      const existing = map.get(row.hotel_id);
-      if (existing) {
-        existing.rating  = row.rating ? Number(row.rating) : undefined;
-        existing.reviews = row.reviews_count || 0;
+    if (reviews && reviews.length > 0) {
+      // Map ETG HIDs back to all corresponding TGX hotelCodes
+      const etgHidToHotelCodes = new Map<string, string[]>();
+      for (const id of hotelIds) {
+        const etgHid = hotelCodeToEtgHid.get(id) || id;
+        const list = etgHidToHotelCodes.get(etgHid) || [];
+        list.push(id);
+        etgHidToHotelCodes.set(etgHid, list);
+      }
+
+      for (const row of reviews as any[]) {
+        const matchingCodes = etgHidToHotelCodes.get(row.hotel_id) || [];
+        for (const code of matchingCodes) {
+          const existing = map.get(code);
+          if (existing) {
+            existing.rating  = row.rating ? Number(row.rating) : undefined;
+            existing.reviews = row.reviews_count || 0;
+          }
+        }
       }
     }
   }

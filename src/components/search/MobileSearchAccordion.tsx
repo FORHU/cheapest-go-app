@@ -145,7 +145,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                                 <DestinationPicker
                                     hideIcon
                                     forceOpen
-                                    onSelect={() => setActiveSection('when')}
+                                    onSelect={() => setActiveSection('check-in')}
                                 />
                             </div>
                         </motion.div>

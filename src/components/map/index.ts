@@ -3,6 +3,7 @@ export { PropertyMapView } from './PropertyMapView';
 export { PropertyMapList } from './PropertyMapList';
 export { MapPropertyCard } from './MapPropertyCard';
 export { MapMarker } from './MapMarker';
+export { ClusterMarker } from './ClusterMarker';
 export { MapPopup } from './MapPopup';
 export { computeBounds } from './types';
 export type {

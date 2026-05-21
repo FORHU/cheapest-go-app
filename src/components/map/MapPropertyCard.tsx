@@ -119,9 +119,11 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                     {/* Rating + Price row (Stacked on mobile to prevent overlap) */}
                     <div className="flex flex-col items-start mt-1 landscape:mt-0 w-full min-w-0 pr-1 gap-0.5">
                         <div className="flex items-center flex-shrink-0">
-                            <span className={cn('text-[10px] font-bold text-white px-1 py-px rounded landscape:text-[9px] landscape:px-1 landscape:py-0', ratingColor)}>
-                                {rating.toFixed(1)}
-                            </span>
+                            {rating > 0 && (
+                                <span className={cn('text-[10px] font-bold text-white px-1 py-px rounded landscape:text-[9px] landscape:px-1 landscape:py-0', ratingColor)}>
+                                    {rating.toFixed(1)}
+                                </span>
+                            )}
                         </div>
 
                         <div className="flex-shrink-0 w-full min-w-0 overflow-hidden">
@@ -177,19 +179,25 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                     <div className="flex items-end justify-between mt-1.5">
                         {/* Rating */}
                         <div className="flex items-center gap-1.5">
-                            <span className={cn('text-[11px] font-bold text-white px-1.5 py-0.5 rounded', ratingColor)}>
-                                {rating.toFixed(1)}
-                            </span>
-                            <div className="flex flex-col min-w-0 landscape-compact:hidden">
-                                <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300 leading-none truncate">
-                                    {ratingLabel}
-                                </span>
-                                {property.reviews > 0 && (
-                                    <span className="text-[10px] text-slate-400 leading-tight">
-                                        {property.reviews.toLocaleString()} reviews
+                            {rating > 0 ? (
+                                <>
+                                    <span className={cn('text-[11px] font-bold text-white px-1.5 py-0.5 rounded', ratingColor)}>
+                                        {rating.toFixed(1)}
                                     </span>
-                                )}
-                            </div>
+                                    <div className="flex flex-col min-w-0 landscape-compact:hidden">
+                                        <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300 leading-none truncate">
+                                            {ratingLabel}
+                                        </span>
+                                        {property.reviews > 0 && (
+                                            <span className="text-[10px] text-slate-400 leading-tight">
+                                                {property.reviews.toLocaleString()} reviews
+                                            </span>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500">No rating yet</span>
+                            )}
                         </div>
 
                         {/* Price */}
