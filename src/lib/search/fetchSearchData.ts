@@ -293,13 +293,13 @@ function transformHotelToProperty(hotel: any, cityName: string, requestedCurrenc
     // Get review data - reviewRating is typically 0-10 scale
     // If no reviewRating, convert starRating (1-5) to 10-scale
     const starRating = hotel.starRating || hotel.details?.star_rating || hotel.details?.hotel_star_rating || 0;
-    let rating = hotel.reviewRating || 0;
+    let rating = hotel.reviewRating || hotel.rating || 0;
     if (!rating && starRating > 0) {
         // Convert star rating to approximate review score (e.g., 3 stars = ~6.0, 4 stars = ~7.5, 5 stars = ~9.0)
         rating = starRating * 1.8;
     }
 
-    const reviewCount = hotel.reviewCount || hotel.details?.review_count || 0;
+    const reviewCount = hotel.reviewCount || hotel.reviews || hotel.details?.review_count || 0;
 
     const lat = hotel.coordinates?.lat || hotel.latitude || hotel.details?.latitude || hotel.details?.location?.latitude || 0;
     const lng = hotel.coordinates?.lng || hotel.longitude || hotel.details?.longitude || hotel.details?.location?.longitude || 0;
