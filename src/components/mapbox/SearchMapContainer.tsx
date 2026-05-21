@@ -68,29 +68,60 @@ export const SearchMapContainer = React.memo(({
     const { mapRef, isMapLoaded, handleMapLoad, handleMapStyleChange } = useMapboxInstance();
     const [bounds, setBounds] = React.useState<BBox | null>(null);
     const [zoom, setZoom] = React.useState(12);
+    const boundsRef = React.useRef<BBox | null>(null);
+    const zoomRef = React.useRef(12);
 
-    // Update bounds and zoom when map moves
+    const BOUNDS_EPS = 1e-5;
+    const ZOOM_EPS = 0.01;
+
+    // Only commit state when values actually change — avoids re-render loops from onMove.
     const updateMapState = useCallback(() => {
         const map = mapRef.current;
         if (!map) return;
-        
+
         const b = map.getBounds();
         if (!b) return;
-        setBounds([
-            b.getWest(),
-            b.getSouth(),
-            b.getEast(),
-            b.getNorth()
-        ]);
-        setZoom(map.getZoom());
+
+        const nextBounds: BBox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+        const nextZoom = map.getZoom();
+
+        const prev = boundsRef.current;
+        const boundsChanged =
+            !prev ||
+            Math.abs(prev[0] - nextBounds[0]) > BOUNDS_EPS ||
+            Math.abs(prev[1] - nextBounds[1]) > BOUNDS_EPS ||
+            Math.abs(prev[2] - nextBounds[2]) > BOUNDS_EPS ||
+            Math.abs(prev[3] - nextBounds[3]) > BOUNDS_EPS;
+        const zoomChanged = Math.abs(zoomRef.current - nextZoom) > ZOOM_EPS;
+
+        if (!boundsChanged && !zoomChanged) return;
+
+        boundsRef.current = nextBounds;
+        zoomRef.current = nextZoom;
+        setBounds(nextBounds);
+        setZoom(nextZoom);
     }, [mapRef]);
 
-    // Initial state and event listeners
     React.useEffect(() => {
         if (isMapLoaded) {
             updateMapState();
         }
     }, [isMapLoaded, updateMapState]);
+
+    const mapStateRafRef = React.useRef<number | null>(null);
+    const scheduleMapStateUpdate = useCallback(() => {
+        if (mapStateRafRef.current != null) return;
+        mapStateRafRef.current = requestAnimationFrame(() => {
+            mapStateRafRef.current = null;
+            updateMapState();
+        });
+    }, [updateMapState]);
+
+    React.useEffect(() => () => {
+        if (mapStateRafRef.current != null) {
+            cancelAnimationFrame(mapStateRafRef.current);
+        }
+    }, []);
 
     const isMobile = useIsMobile();
     const router = useRouter();
@@ -137,9 +168,29 @@ export const SearchMapContainer = React.memo(({
         }
     })), [mappableProperties, markerPrices]);
 
+    // Stable bbox until map reports viewport (prevents useSupercluster with null bounds).
+    const clusterBounds = useMemo<BBox>(() => {
+        if (bounds) return bounds;
+        if (mappableProperties.length === 0) {
+            return [-180, -85, 180, 85];
+        }
+        let minLng = Infinity;
+        let minLat = Infinity;
+        let maxLng = -Infinity;
+        let maxLat = -Infinity;
+        for (const p of mappableProperties) {
+            minLng = Math.min(minLng, p.coordinates.lng);
+            minLat = Math.min(minLat, p.coordinates.lat);
+            maxLng = Math.max(maxLng, p.coordinates.lng);
+            maxLat = Math.max(maxLat, p.coordinates.lat);
+        }
+        const pad = 0.05;
+        return [minLng - pad, minLat - pad, maxLng + pad, maxLat + pad];
+    }, [bounds, mappableProperties]);
+
     const { clusters, supercluster } = useSupercluster({
         points: points as any,
-        bounds: bounds!,
+        bounds: clusterBounds,
         zoom,
         options: { radius: 75, maxZoom: 16 }
     });
@@ -327,8 +378,7 @@ export const SearchMapContainer = React.memo(({
                 onStyleReady={handleMapLoad}
                 onClick={handleMapClick}
                 onMouseMove={onMouseMove}
-                // Update bounds/zoom on every move
-                onMove={updateMapState}
+                onMove={scheduleMapStateUpdate}
                 onMoveEnd={() => {
                     updateMapState();
                     runKakaoDiscovery();
