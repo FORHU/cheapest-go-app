@@ -42,7 +42,7 @@ export interface UseBookingFlowReturn {
   transactionId: string | null;
 
   // Actions
-  startPrebook: (offerId: string, currency: string, voucherCode?: string) => Promise<PrebookResponse>;
+  startPrebook: (offerId: string, currency: string, voucherCode?: string, adults?: number, children?: number) => Promise<PrebookResponse>;
   completeBooking: (params: Omit<BookingParams, 'prebookId'>) => Promise<void>;
   refreshPrebook: (offerId: string, currency: string, voucherCode?: string) => Promise<PrebookResponse>;
   /** Re-prebook with a voucher code (triggers new secretKey/transactionId) */
@@ -107,11 +107,13 @@ export function useBookingFlow(): UseBookingFlowReturn {
    * Start the prebook process
    */
   const startPrebook = useCallback(
-    async (offerId: string, currency: string, voucherCode?: string): Promise<PrebookResponse> => {
-      console.log('[useBookingFlow] Starting Prebook:', { offerId, currency, voucherCode });
-      setPriceData(null); // Clear stale price data
-      const params: { offerId: string; currency: string; voucherCode?: string } = { offerId, currency };
+    async (offerId: string, currency: string, voucherCode?: string, adults?: number, children?: number): Promise<PrebookResponse> => {
+      console.log('[useBookingFlow] Starting Prebook:', { offerId, currency, voucherCode, adults, children });
+      setPriceData(null);
+      const params: { offerId: string; currency: string; voucherCode?: string; adults?: number; children?: number } = { offerId, currency };
       if (voucherCode) params.voucherCode = voucherCode;
+      if (adults != null) params.adults = adults;
+      if (children != null) params.children = children;
       return prebookMutation.mutateAsync(params);
     },
     [prebookMutation.mutateAsync]

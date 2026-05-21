@@ -129,29 +129,27 @@ const PoliciesSection: React.FC<PoliciesSectionProps> = ({
             <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-3 lg:mb-6">Policies</h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-8">
-                {/* Check-in / Check-out */}
-                {(checkInTime || checkOutTime) && (
-                    <div className="space-y-1.5 lg:space-y-4">
-                        <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 lg:gap-2">
-                            <Clock size={12} className="lg:hidden" /><Clock size={18} className="hidden lg:block" />
-                            Check-in & Check-out
-                        </h3>
-                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-4 space-y-1.5 lg:space-y-3">
-                            {checkInTime && (
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-in</span>
-                                    <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">{checkInTime}</span>
-                                </div>
-                            )}
-                            {checkOutTime && (
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-out</span>
-                                    <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">{checkOutTime}</span>
-                                </div>
-                            )}
+                {/* Check-in / Check-out — always shown; falls back to "Contact property" */}
+                <div className="space-y-1.5 lg:space-y-4">
+                    <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 lg:gap-2">
+                        <Clock size={12} className="lg:hidden" /><Clock size={18} className="hidden lg:block" />
+                        Check-in & Check-out
+                    </h3>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-4 space-y-1.5 lg:space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-in</span>
+                            <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">
+                                {checkInTime || 'Contact property'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-[10px] lg:text-sm text-slate-600 dark:text-slate-400">Check-out</span>
+                            <span className="text-[10px] lg:text-sm font-medium text-slate-900 dark:text-white">
+                                {checkOutTime || 'Contact property'}
+                            </span>
                         </div>
                     </div>
-                )}
+                </div>
 
                 {/* Cancellation Policy */}
                 {cancellationPolicies && (
