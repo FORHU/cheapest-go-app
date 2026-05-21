@@ -15,7 +15,7 @@ import { MapMarker } from '../map/MapMarker';
 import { ClusterMarker } from '../map/ClusterMarker';
 import { MapPopup } from '../map/MapPopup';
 import useSupercluster from 'use-supercluster';
-import { BBox } from 'supercluster';
+type BBox = [number, number, number, number];
 import { MapSearchOverlay } from './components/MapSearchOverlay';
 import { useRouter } from 'next/navigation';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -75,6 +75,7 @@ export const SearchMapContainer = React.memo(({
         if (!map) return;
         
         const b = map.getBounds();
+        if (!b) return;
         setBounds([
             b.getWest(),
             b.getSouth(),
@@ -287,7 +288,7 @@ export const SearchMapContainer = React.memo(({
 
     // Construct GeoJSON for recommended places
     const recommendedGeoJson = useMemo(() => {
-        if (!exploreEnabled || !recommendedPlaces.length) return null;
+        if (!exploreEnabled || !recommendedPlaces.length) return undefined;
         return {
             type: 'FeatureCollection' as const,
             features: recommendedPlaces.map(p => ({

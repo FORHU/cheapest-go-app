@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '@/utils/env';
+import zlib from 'zlib';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -32,10 +33,10 @@ interface ReviewRow {
  *   { data: [ {...} ] }                — top-level array
  */
 async function fetchReviewsData(): Promise<ReviewRow[]> {
-    const res = await fetch(`${ETG_BASE}/hotel/incremental_reviews/dump/`, {
+    const res = await fetch(`${ETG_BASE}/hotel/reviews/dump/`, {
         method: 'POST',
         headers: etgHeaders(),
-        body: JSON.stringify({}),
+        body: JSON.stringify({ language: 'en' }),
         // 60s read timeout handled by Vercel's function timeout
     });
 
@@ -54,10 +55,12 @@ async function fetchReviewsData(): Promise<ReviewRow[]> {
     }
 
     // Case 2: inline hotel array under data.hotels
-    const hotelList: any[] =
+    const hotelList =
         json?.data?.hotels ||
         (Array.isArray(json?.data) ? json.data : null) ||
         (Array.isArray(json?.hotels) ? json.hotels : null) ||
+        json?.data ||
+        json ||
         [];
 
     return normalizeReviews(hotelList);
@@ -67,33 +70,55 @@ async function fetchDumpUrl(url: string): Promise<ReviewRow[]> {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`ETG dump download failed: ${res.status}`);
 
-    const text = await res.text();
+    const arrayBuffer = await res.arrayBuffer();
+    let buffer = Buffer.from(arrayBuffer);
 
-    // NDJSON (one JSON object per line)
-    if (text.trim().startsWith('{')) {
+    // Decompress gzip feed manually since it is stored compressed on S3
+    if (buffer[0] === 0x1f && buffer[1] === 0x8b) {
+        console.log('[etg-reviews-sync] Decompressing S3 gzip feed...');
+        buffer = zlib.gunzipSync(buffer);
+    }
+
+    const text = buffer.toString('utf8');
+
+    let parsedData: any;
+    try {
+        parsedData = JSON.parse(text);
+    } catch (e) {
+        console.log('[etg-reviews-sync] JSON.parse failed, attempting line-by-line NDJSON parsing...');
         const lines = text.split('\n').filter(Boolean);
-        const parsed = lines.flatMap(line => {
+        parsedData = lines.flatMap(line => {
             try { return [JSON.parse(line)]; } catch { return []; }
         });
-        return normalizeReviews(parsed);
     }
 
-    // Plain JSON array
-    const arr = JSON.parse(text);
-    return normalizeReviews(Array.isArray(arr) ? arr : arr?.hotels || []);
+    return normalizeReviews(parsedData);
 }
 
-function normalizeReviews(list: any[]): ReviewRow[] {
+function normalizeReviews(data: any): ReviewRow[] {
     const now = new Date().toISOString();
     const rows: ReviewRow[] = [];
-    for (const item of list) {
-        // ETG uses `id` or `hid` for hotel identifier; rating is 0-10
-        const id = String(item.id || item.hid || item.hotel_id || '');
-        const rating = parseFloat(item.rating ?? item.stars ?? 0) || 0;
-        const reviews_count = parseInt(item.reviews_count ?? item.total_reviews ?? 0) || 0;
-        if (!id) continue;
-        rows.push({ hotel_id: id, rating, reviews_count, synced_at: now });
+
+    if (Array.isArray(data)) {
+        for (const item of data) {
+            const id = String(item.id || item.hid || item.hotel_id || '');
+            const rating = parseFloat(item.rating ?? item.stars ?? 0) || 0;
+            const reviews_count = parseInt(item.reviews_count ?? item.total_reviews ?? (Array.isArray(item.reviews) ? item.reviews.length : 0)) || 0;
+            if (!id) continue;
+            rows.push({ hotel_id: id, rating, reviews_count, synced_at: now });
+        }
+    } else if (data && typeof data === 'object') {
+        for (const key of Object.keys(data)) {
+            const item = data[key];
+            if (!item) continue;
+            const id = String(item.hid || item.id || item.hotel_id || '');
+            const rating = parseFloat(item.rating ?? item.stars ?? 0) || 0;
+            const reviews_count = parseInt(item.reviews_count ?? item.total_reviews ?? (Array.isArray(item.reviews) ? item.reviews.length : 0)) || 0;
+            if (!id) continue;
+            rows.push({ hotel_id: id, rating, reviews_count, synced_at: now });
+        }
     }
+
     return rows;
 }
 
