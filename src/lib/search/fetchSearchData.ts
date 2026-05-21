@@ -313,7 +313,7 @@ function transformHotelToProperty(hotel: any, cityName: string, requestedCurrenc
         rating: rating,
         reviews: reviewCount,
         price,
-        currency,
+        currency: hotel.currency || currency,
         originalPrice,
         image: hotel.thumbnailUrl || hotel.image || '',
         images: (hotel.images?.length > 0 ? hotel.images : null)

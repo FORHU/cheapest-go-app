@@ -21,15 +21,6 @@ mutation CancelHotel(
           hotel
         }
         status
-        cancelPolicy {
-          refundable
-          cancelPenalties {
-            deadline
-            penaltyType
-            currency
-            value
-          }
-        }
         price {
           currency
           net
@@ -53,26 +44,28 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { clientReference, supplierReference } = body;
+    const { clientReference, supplierReference, tgxBookingId } = body;
 
-    if (!clientReference) {
-      throw new Error('clientReference is required');
+    if (!clientReference && !tgxBookingId) {
+      throw new Error('clientReference or tgxBookingId is required');
     }
 
-    console.log('[TGX Cancel] Cancelling clientRef:', clientReference);
+    console.log('[TGX Cancel] Cancelling clientRef:', clientReference, '| tgxBookingId:', tgxBookingId?.substring(0, 40));
 
-    const reference: any = { client: clientReference };
-    if (supplierReference) {
-      reference.supplier = supplierReference;
-    }
+    // Use TGX internal booking ID if available — most reliable (OTV requires it)
+    // Fall back to reference object (client + supplier refs)
+    const input: any = tgxBookingId
+      ? { bookingID: tgxBookingId }
+      : { reference: { client: clientReference, ...(supplierReference ? { supplier: supplierReference } : {}) } };
 
     const variables = {
-      input: { reference },
+      input,
       settings: {
         client: TRAVELGATEX_CLIENT,
-        context: 'TGX',
+        context: 'OTV',
         testMode: false,
         timeout: 60000,
+        suppliers: [{ code: 'OTV', accesses: [{ accessId: '38327' }] }],
       },
     };
 
@@ -115,7 +108,6 @@ Deno.serve(async (req: Request) => {
         bookingId: clientReference,
         status: 'cancelled',
         supplierReference: cancellation.reference?.supplier,
-        cancelPolicy: cancellation.cancelPolicy,
         price: cancellation.price,
       },
     }), {

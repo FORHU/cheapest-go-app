@@ -9,6 +9,9 @@ export const prebookSchema = z.object({
   offerId: z.string().min(1, 'Offer ID is required'),
   currency: z.string().length(3, 'Currency must be 3 characters (e.g., PHP)').optional(),
   voucherCode: z.string().optional(),
+  // TGX: needed to re-search with fresh options on checkout
+  adults: z.number().int().min(1).optional(),
+  children: z.number().int().min(0).optional(),
 });
 
 export type PrebookInput = z.infer<typeof prebookSchema>;

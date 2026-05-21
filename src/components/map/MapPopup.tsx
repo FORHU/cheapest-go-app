@@ -56,7 +56,8 @@ const MapPopup = React.memo(function MapPopup({
             : undefined,
         [property.originalPrice, sourceCurrency, targetCurrency]
     );
-    const ratingLabel = React.useMemo(() => getRatingLabel(property.rating), [property.rating]);
+    const rating = property.rating ?? 0;
+    const ratingLabel = React.useMemo(() => getRatingLabel(rating), [rating]);
 
     // Keep a stable ref to onClose so the effect never needs to re-run when the
     // parent re-renders and passes a new function identity.
@@ -108,7 +109,7 @@ const MapPopup = React.memo(function MapPopup({
             {/* Image */}
             <div className="relative">
                 <img
-                    src={property.image}
+                    src={property.image || undefined}
                     alt={property.name}
                     className={`w-full object-cover ${isLandscape ? 'h-16' : 'h-24'}`}
                     loading="lazy"
@@ -144,7 +145,7 @@ const MapPopup = React.memo(function MapPopup({
                 {/* Rating */}
                 <div className="flex items-center gap-1 mt-1">
                     <span className="text-[9px] font-bold text-white bg-blue-600 px-1 py-px rounded">
-                        {property.rating.toFixed(1)}
+                        {rating.toFixed(1)}
                     </span>
                     <span className="text-[9px] font-medium text-slate-700 dark:text-slate-300">
                         {ratingLabel}

@@ -32,8 +32,8 @@ export const metadata: Metadata = {
   title: 'CheapestGo | Discover and Book Your Next Global Journey',
   description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
   icons: {
-    icon: '/icon-192.png',
-    apple: '/icon-192.png',
+    icon: '/icon.png',
+    apple: '/icon.png',
   },
   appleWebApp: {
     capable: true,
@@ -86,7 +86,7 @@ export default function RootLayout({
               <AuthListener />
               <ExchangeRateListener />
               <PWAServiceWorkerRegistrar />
-              <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px]">
+              <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px">
                 <GlobalSparkle />
                 <div className="relative flex flex-col flex-1 pb-24 lg:pb-0">
                   {children}

@@ -15,6 +15,7 @@ import {
   getBookingDetailsLiteApi,
 } from './liteapi';
 import { bookTravelgateX, cancelTravelgateX } from './travelgatex';
+import { invokeEdgeFunction } from '@/utils/supabase/functions';
 import { normalizeLiteApiPolicy } from './policy-normalizer';
 import { stripe } from '@/lib/stripe/server';
 import { sendHotelRefundEmail } from './email';
@@ -406,6 +407,65 @@ async function _confirmAndSaveBookingInner(
 // TravelgateX: Confirm booking + save
 // ============================================================================
 
+function parseTgxToken(token: string): { hotelCode: string | null; checkIn: string | null; checkOut: string | null } {
+  const segs: Record<string, string> = {};
+  for (const seg of token.split('!~|')) {
+    if (seg.length > 1) segs[seg[0]] = seg.slice(1);
+  }
+  const parseYYMMDD = (v: string | undefined): string | null => {
+    if (!v || v.length !== 6) return null;
+    return `20${v.slice(0, 2)}-${v.slice(2, 4)}-${v.slice(4, 6)}`;
+  };
+  return { hotelCode: segs['d'] || null, checkIn: parseYYMMDD(segs['b']), checkOut: parseYYMMDD(segs['c']) };
+}
+
+async function getFreshTgxToken(expiredToken: string, adults: number, children: number, currency: string): Promise<string | null> {
+  const { hotelCode, checkIn, checkOut } = parseTgxToken(expiredToken);
+  console.log('[getFreshTgxToken] Parsed token → hotel:', hotelCode, 'in:', checkIn, 'out:', checkOut);
+  if (!hotelCode || !checkIn || !checkOut) {
+    console.error('[getFreshTgxToken] Could not parse hotel/dates from token:', expiredToken.substring(0, 80));
+    return null;
+  }
+  try {
+    const result = await invokeEdgeFunction('travelgatex-search', {
+      hotelCode, checkin: checkIn, checkout: checkOut, adults, children, currency, guest_nationality: 'KR',
+    });
+    const rooms: any[] = result?.data?.roomTypes || [];
+    console.log('[getFreshTgxToken] Fresh search → rooms found:', rooms.length);
+    const freshRoom = rooms[0];
+    const freshOfferId: string = freshRoom?.offerId || '';
+    if (!freshOfferId.startsWith('TGX:')) {
+      console.error('[getFreshTgxToken] No valid TGX offerId in fresh search. offerId:', freshOfferId.substring(0, 60));
+      return null;
+    }
+    const freshOptionId = freshOfferId.slice(4);
+    const freshNativeToken: string = freshRoom?.rates?.[0]?._tgx?.token || freshOptionId;
+    console.log('[getFreshTgxToken] opt.id:', freshOptionId.substring(0, 60), '| opt.token:', freshNativeToken.substring(0, 60));
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const tokensToTry = freshNativeToken !== freshOptionId
+      ? [freshNativeToken, freshOptionId]
+      : [freshOptionId];
+
+    for (const tok of tokensToTry) {
+      try {
+        const quoteResult = await invokeEdgeFunction('travelgatex-quote', { token: tok });
+        const bookToken: string = quoteResult?.data?.optionRefId || tok;
+        console.log('[getFreshTgxToken] Quote succeeded | quoted:', tok.substring(0, 60), '| bookToken:', bookToken.substring(0, 60));
+        return bookToken;
+      } catch (qErr: any) {
+        console.warn('[getFreshTgxToken] Quote failed for token', tok.substring(0, 40), ':', qErr.message?.substring(0, 150));
+      }
+    }
+    console.error('[getFreshTgxToken] All Quote attempts failed — cannot proceed with Book');
+    return null;
+  } catch (err: any) {
+    console.error('[getFreshTgxToken] Unexpected error:', err.message?.substring(0, 200));
+    return null;
+  }
+}
+
 export interface TgxConfirmInput {
   quoteToken: string;
   holder: { firstName: string; lastName: string; email: string };
@@ -443,19 +503,40 @@ export async function confirmAndSaveTgxBooking(
   }));
 
   let tgxResult: any;
+  let activeToken = params.quoteToken;
   try {
     tgxResult = await bookTravelgateX({
-      quoteToken: params.quoteToken,
+      quoteToken: activeToken,
       clientReference,
       holder: params.holder,
       rooms: [{ occupancyRefId: 1, paxes: [...adultPaxes, ...childPaxes] }],
     });
-  } catch (error) {
-    console.error('[confirmAndSaveTgxBooking] TGX book failed:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'TravelgateX booking failed',
-    };
+  } catch (firstError: any) {
+    const msg = firstError?.message || '';
+    const isExpired = /option not found|not found in|expired|unavailable|301|wrong_field|quote.*option|search.*found/i.test(msg);
+    if (isExpired) {
+      console.log('[confirmAndSaveTgxBooking] Token expired, retrying with fresh search...');
+      const freshToken = await getFreshTgxToken(activeToken, params.adults, params.children, params.currency);
+      if (freshToken) {
+        activeToken = freshToken;
+        try {
+          tgxResult = await bookTravelgateX({
+            quoteToken: freshToken,
+            clientReference,
+            holder: params.holder,
+            rooms: [{ occupancyRefId: 1, paxes: [...adultPaxes, ...childPaxes] }],
+          });
+        } catch (retryError: any) {
+          console.error('[confirmAndSaveTgxBooking] Retry also failed:', retryError.message);
+          return { success: false, error: retryError instanceof Error ? retryError.message : 'TravelgateX booking failed after retry' };
+        }
+      } else {
+        return { success: false, error: 'Room is no longer available for these dates' };
+      }
+    } else {
+      console.error('[confirmAndSaveTgxBooking] TGX book failed:', firstError);
+      return { success: false, error: firstError instanceof Error ? firstError.message : 'TravelgateX booking failed' };
+    }
   }
 
   const booking = tgxResult?.data;
@@ -467,6 +548,7 @@ export async function confirmAndSaveTgxBooking(
   const bookingId = booking.reference.client; // our clientReference
   const supplierRef = booking.reference.supplier;
   const hotelRef = booking.reference.hotel;
+  const tgxBookingId = booking.tgxBookingId ?? null;
   const rawStatus = (booking.status || 'confirmed').toLowerCase();
   const bookingStatus = (['confirmed', 'pending'].includes(rawStatus) ? rawStatus : 'confirmed') as 'confirmed' | 'pending';
 
@@ -564,7 +646,7 @@ export async function confirmAndSaveTgxBooking(
       .from('bookings')
       .update({
         provider: 'travelgatex',
-        provider_metadata: { supplierRef, hotelRef, clientReference },
+        provider_metadata: { supplierRef, hotelRef, clientReference, tgxBookingId },
         payment_intent_id: params.paymentIntentId ?? null,
       })
       .eq('booking_id', bookingId);
@@ -663,6 +745,7 @@ export async function cancelBooking(
         const result = await cancelTravelgateX({
           clientReference: bookingId,
           supplierReference: meta?.supplierRef,
+          tgxBookingId: meta?.tgxBookingId,
         });
         console.log('[cancelBooking] TGX cancellation result:', result?.data);
       } else {
@@ -774,7 +857,7 @@ export async function cancelBooking(
       }
 
       // C. Record result in refund_logs
-      const processResult = await processRefund(supabase, refundLogId, { ...liteApiInfo, stripeRefundId });
+      await processRefund(supabase, refundLogId, { ...liteApiInfo, stripeRefundId });
       // Source of truth: Stripe gave us a refund ID = customer was refunded. DB recording success is secondary.
       const refundSucceeded = !!stripeRefundId;
       const status = refundSucceeded ? 'cancelled_refunded' : 'cancelled_refund_failed';
@@ -875,12 +958,45 @@ export async function getBookingDetails(
   }
 
   try {
-    // Verify ownership
-    const { isOwner, error: ownerError } = await verifyBookingOwnership(supabase, bookingId, user.id);
-    if (!isOwner) {
-      return { success: false, error: ownerError || 'Not authorized to view this booking' };
+    // Verify ownership and fetch provider info in one query
+    const { data: bookingRow, error: fetchError } = await supabase
+      .from('bookings')
+      .select('user_id, provider, policy_type, cancellation_policy')
+      .eq('booking_id', bookingId)
+      .single();
+
+    if (fetchError || !bookingRow) {
+      return { success: false, error: 'Booking not found' };
+    }
+    if (bookingRow.user_id !== user.id) {
+      return { success: false, error: 'Not authorized to view this booking' };
     }
 
+    // TravelgateX bookings: policy is stored locally — no external API call needed
+    if (bookingRow.provider === 'travelgatex') {
+      const isRefundable = bookingRow.policy_type === 'free_cancellation';
+      const stored = bookingRow.cancellation_policy as any;
+      const cancellationPolicies = stored ?? {
+        refundableTag: isRefundable ? 'RFN' : 'NRFN',
+        cancelPolicyInfos: [],
+        hotelRemarks: [],
+      };
+      return {
+        success: true,
+        data: {
+          bookingId,
+          status: 'confirmed',
+          hotel: { name: '', hotelId: '' },
+          bookedRooms: [],
+          guestInfo: { guestFirstName: '', guestLastName: '', guestEmail: '' },
+          checkin: '',
+          checkout: '',
+          cancellationPolicies,
+        },
+      };
+    }
+
+    // LiteAPI bookings: fetch live policy from supplier
     const result = await getBookingDetailsLiteApi({ bookingId });
     return { success: true, data: result.data };
   } catch (error) {

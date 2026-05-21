@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { type MapTypeId, type MapDetailToggle } from '../components/MapDetailsPanel';
 
 export function useMapDetails() {
-    const [mapType, setMapType] = useState<MapTypeId>('default-3d');
+    const [mapType, setMapType] = useState<MapTypeId>('default');
     const [showDetailsPanel, setShowDetailsPanel] = useState(false);
     const [showLabels, setShowLabels] = useState(true);
     const [mapDetails, setMapDetails] = useState<MapDetailToggle[]>([
