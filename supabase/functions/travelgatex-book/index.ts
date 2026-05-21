@@ -73,10 +73,19 @@ Deno.serve(async (req: Request) => {
 
     console.log('[TGX Book] Booking with clientRef:', clientReference);
 
+    // Parse checkin, checkout, hotelCode from quoteToken (format: 31[a1[b260610[c260612[d9886890[...)
+    const tokenParts: Record<string, string> = {};
+    for (const seg of quoteToken.split('[')) {
+      if (seg.length > 1) tokenParts[seg[0]] = seg.slice(1);
+    }
+    const checkinYYMMDD  = tokenParts['b'] || '';
+    const checkoutYYMMDD = tokenParts['c'] || '';
+    const hotelCode      = tokenParts['d'] || '';
+
     const variables = {
       input: {
         clientReference,
-        deltaPrice: { amount: 0, percent: 10, applyBoth: false },
+        deltaPrice: { percent: 10, applyBoth: false },
         optionRefId: quoteToken,
         language: 'en',
         holder: {
@@ -133,7 +142,20 @@ Deno.serve(async (req: Request) => {
       throw new Error('No booking data returned from TravelgateX');
     }
 
-    return new Response(JSON.stringify({ data: booking }), {
+    // Construct TGX internal booking ID for reliable cancellation
+    // Format: n1@1[{checkinYYMMDD}[{checkoutYYMMDD}[{bookDateYYMMDD}[{hotelCode}[en[{currency}[38327[{clientRef}[{supplierRef}[
+    const today = new Date();
+    const bookDateYYMMDD = String(today.getFullYear()).slice(2) +
+      String(today.getMonth() + 1).padStart(2, '0') +
+      String(today.getDate()).padStart(2, '0');
+    const currency = booking.price?.currency || 'PHP';
+    const supplierRef = booking.reference?.supplier || '';
+    const tgxBookingId = checkinYYMMDD && checkoutYYMMDD && hotelCode
+      ? `n1@1[${checkinYYMMDD}[${checkoutYYMMDD}[${bookDateYYMMDD}[${hotelCode}[en[${currency}[38327[${clientReference}[${supplierRef}[`
+      : null;
+    console.log('[TGX Book] tgxBookingId:', tgxBookingId?.substring(0, 80));
+
+    return new Response(JSON.stringify({ data: { ...booking, tgxBookingId } }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });

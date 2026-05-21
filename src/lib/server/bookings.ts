@@ -548,6 +548,7 @@ export async function confirmAndSaveTgxBooking(
   const bookingId = booking.reference.client; // our clientReference
   const supplierRef = booking.reference.supplier;
   const hotelRef = booking.reference.hotel;
+  const tgxBookingId = booking.tgxBookingId ?? null;
   const rawStatus = (booking.status || 'confirmed').toLowerCase();
   const bookingStatus = (['confirmed', 'pending'].includes(rawStatus) ? rawStatus : 'confirmed') as 'confirmed' | 'pending';
 
@@ -645,7 +646,7 @@ export async function confirmAndSaveTgxBooking(
       .from('bookings')
       .update({
         provider: 'travelgatex',
-        provider_metadata: { supplierRef, hotelRef, clientReference },
+        provider_metadata: { supplierRef, hotelRef, clientReference, tgxBookingId },
         payment_intent_id: params.paymentIntentId ?? null,
       })
       .eq('booking_id', bookingId);
@@ -744,6 +745,7 @@ export async function cancelBooking(
         const result = await cancelTravelgateX({
           clientReference: bookingId,
           supplierReference: meta?.supplierRef,
+          tgxBookingId: meta?.tgxBookingId,
         });
         console.log('[cancelBooking] TGX cancellation result:', result?.data);
       } else {
@@ -956,12 +958,45 @@ export async function getBookingDetails(
   }
 
   try {
-    // Verify ownership
-    const { isOwner, error: ownerError } = await verifyBookingOwnership(supabase, bookingId, user.id);
-    if (!isOwner) {
-      return { success: false, error: ownerError || 'Not authorized to view this booking' };
+    // Verify ownership and fetch provider info in one query
+    const { data: bookingRow, error: fetchError } = await supabase
+      .from('bookings')
+      .select('user_id, provider, policy_type, cancellation_policy')
+      .eq('booking_id', bookingId)
+      .single();
+
+    if (fetchError || !bookingRow) {
+      return { success: false, error: 'Booking not found' };
+    }
+    if (bookingRow.user_id !== user.id) {
+      return { success: false, error: 'Not authorized to view this booking' };
     }
 
+    // TravelgateX bookings: policy is stored locally — no external API call needed
+    if (bookingRow.provider === 'travelgatex') {
+      const isRefundable = bookingRow.policy_type === 'free_cancellation';
+      const stored = bookingRow.cancellation_policy as any;
+      const cancellationPolicies = stored ?? {
+        refundableTag: isRefundable ? 'RFN' : 'NRFN',
+        cancelPolicyInfos: [],
+        hotelRemarks: [],
+      };
+      return {
+        success: true,
+        data: {
+          bookingId,
+          status: 'confirmed',
+          hotel: { name: '', hotelId: '' },
+          bookedRooms: [],
+          guestInfo: { guestFirstName: '', guestLastName: '', guestEmail: '' },
+          checkin: '',
+          checkout: '',
+          cancellationPolicies,
+        },
+      };
+    }
+
+    // LiteAPI bookings: fetch live policy from supplier
     const result = await getBookingDetailsLiteApi({ bookingId });
     return { success: true, data: result.data };
   } catch (error) {

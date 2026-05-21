@@ -56,8 +56,9 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             : undefined,
         [property.originalPrice, sourceCurrency, targetCurrency]
     );
-    const ratingLabel = React.useMemo(() => getRatingLabel(property.rating), [property.rating]);
-    const ratingColor = React.useMemo(() => getRatingColor(property.rating), [property.rating]);
+    const rating = property.rating ?? 0;
+    const ratingLabel = React.useMemo(() => getRatingLabel(rating), [rating]);
+    const ratingColor = React.useMemo(() => getRatingColor(rating), [rating]);
 
     return (
         <button
@@ -119,7 +120,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                     <div className="flex flex-col items-start mt-1 landscape:mt-0 w-full min-w-0 pr-1 gap-0.5">
                         <div className="flex items-center flex-shrink-0">
                             <span className={cn('text-[10px] font-bold text-white px-1 py-px rounded landscape:text-[9px] landscape:px-1 landscape:py-0', ratingColor)}>
-                                {property.rating.toFixed(1)}
+                                {rating.toFixed(1)}
                             </span>
                         </div>
 
@@ -177,7 +178,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         {/* Rating */}
                         <div className="flex items-center gap-1.5">
                             <span className={cn('text-[11px] font-bold text-white px-1.5 py-0.5 rounded', ratingColor)}>
-                                {property.rating.toFixed(1)}
+                                {rating.toFixed(1)}
                             </span>
                             <div className="flex flex-col min-w-0 landscape-compact:hidden">
                                 <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300 leading-none truncate">

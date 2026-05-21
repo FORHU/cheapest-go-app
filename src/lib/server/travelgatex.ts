@@ -49,6 +49,7 @@ export async function bookTravelgateX(params: {
 export async function cancelTravelgateX(params: {
     clientReference: string;
     supplierReference?: string;
+    tgxBookingId?: string;
 }) {
     return invokeEdgeFunction('travelgatex-cancel', params);
 }
