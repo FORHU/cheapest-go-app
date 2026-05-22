@@ -373,10 +373,15 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                             Free cancellation
                         </span>
                     )}
-                    {/* Hotel Name */}
-                    <h3 className="text-[11px] landscape:text-[10px] lg:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
-                        {property.name}
-                    </h3>
+                    {/* Hotel Name with rank number */}
+                    <div className="flex items-center gap-1.5 mb-0.5 md:mb-1">
+                        <span className="shrink-0 w-5 h-5 lg:w-6 lg:h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                            <span className={`text-white font-bold leading-none ${(index + 1) > 99 ? 'text-[7px] lg:text-[9px]' : (index + 1) > 9 ? 'text-[9px] lg:text-[11px]' : 'text-[10px] lg:text-[12px]'}`}>{index + 1}</span>
+                        </span>
+                        <h3 className="text-[11px] landscape:text-[10px] lg:text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors line-clamp-1">
+                            {property.name}
+                        </h3>
+                    </div>
 
                     {/* Location */}
                     <div className="flex items-center text-[9px] landscape:text-[8.5px] lg:text-sm text-slate-500 dark:text-slate-400 mb-1.5 md:mb-4">

@@ -12,6 +12,7 @@ interface MapMarkerProps {
     isHovered: boolean;
     onClick: (id: string) => void;
     onHover: (id: string | null) => void;
+    index?: number;
 }
 
 const MapMarker = React.memo(function MapMarker({
@@ -22,6 +23,7 @@ const MapMarker = React.memo(function MapMarker({
     isHovered,
     onClick,
     onHover,
+    index,
 }: MapMarkerProps) {
     const isActive = isSelected || isHovered;
 
@@ -52,12 +54,21 @@ const MapMarker = React.memo(function MapMarker({
                     'flex items-center gap-2 px-1.5 py-1 rounded-full bg-white dark:bg-slate-900 shadow-md ring-1 ring-black/5 dark:ring-white/10',
                     isActive ? 'ring-blue-500/50 shadow-lg' : ''
                 )}>
-                    {/* Icon Circle */}
+                    {/* Icon Circle / Number Badge */}
                     <div className={cn(
-                        'w-6 h-6 rounded-full flex items-center justify-center',
+                        'w-7 h-7 rounded-full flex items-center justify-center',
                         isSelected ? 'bg-blue-700' : 'bg-blue-500'
                     )}>
-                        <Bed className="w-3.5 h-3.5 text-white" />
+                        {index !== undefined ? (
+                            <span className={cn(
+                                'text-white font-bold leading-none',
+                                index > 99 ? 'text-[9px]' : index > 9 ? 'text-[11px]' : 'text-[13px]'
+                            )}>
+                                {index}
+                            </span>
+                        ) : (
+                            <Bed className="w-3.5 h-3.5 text-white" />
+                        )}
                     </div>
 
                     {/* Price Label */}

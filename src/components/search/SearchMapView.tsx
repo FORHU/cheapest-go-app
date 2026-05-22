@@ -476,6 +476,14 @@ function SearchMapView({
                     <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
                         <CurrencySelector variant="pill" align="right" className="sm:hidden" />
 
+                        {/* Property count pill */}
+                        <span className="hidden sm:inline px-2.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-semibold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                            {activeFilterCount > 0
+                                ? `${sortedProperties.length} of ${allProperties.filter((p: any) => p.name && p.price > 0).length}`
+                                : `${sortedProperties.length} hotels`
+                            }
+                        </span>
+
                         {/* Sort pills — scrollable on small screens */}
                         <div className="hidden sm:flex items-center gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden">
                             {SORT_PILLS.map(pill => (
@@ -528,7 +536,7 @@ function SearchMapView({
                         <>
                             {/* Scrollable hotel cards — scrollbar hidden so it doesn't steal width from cards */}
                             <div className="flex-1 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                {visibleProperties.map((property) => (
+                                {visibleProperties.map((property, idx) => (
                                     <MapPropertyCard
                                         key={property.id}
                                         property={property}
@@ -536,6 +544,7 @@ function SearchMapView({
                                         isHovered={hoveredId === property.id}
                                         onSelect={handleCardSelect}
                                         onHover={handleHover}
+                                        index={idx + 1}
                                     />
                                 ))}
                             </div>
@@ -586,15 +595,6 @@ function SearchMapView({
                         searchOverlayClassName="absolute top-4 left-20 z-20 w-[300px] md:w-[360px]"
                         defaultCenter={fallbackCoords ?? undefined}
                     />
-
-                    {/* Property count badge — shows loaded + filtered count */}
-                    <div className="absolute bottom-10 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300 z-10">
-                        {activeFilterCount > 0
-                            ? `${sortedProperties.length} of ${allProperties.filter((p: any) => p.name && p.price > 0).length} (filtered)`
-                            : `${sortedProperties.length} properties`
-                        }
-                    </div>
-
                 </div>
             </div>
 
@@ -631,7 +631,7 @@ function SearchMapView({
                             className="absolute bottom-[58px] left-0 right-0 w-full z-20"
                         >
                             <div className="w-full overflow-x-auto pb-2 pt-2 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                {sortedProperties.map((property) => (
+                                {sortedProperties.map((property, idx) => (
                                     <div key={property.id} className="snap-center shrink-0 w-[70vw] sm:w-[260px] landscape:w-[240px] shadow-lg rounded-md bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
                                         <MapPropertyCard
                                             property={property}
@@ -639,6 +639,7 @@ function SearchMapView({
                                             isHovered={hoveredId === property.id}
                                             onSelect={handleCardSelect}
                                             onHover={handleHover}
+                                            index={idx + 1}
                                         />
                                     </div>
                                 ))}
