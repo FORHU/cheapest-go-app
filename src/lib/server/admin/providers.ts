@@ -392,40 +392,6 @@ async function fetchMystiflyData(): Promise<ProviderIntegrationsData['mystifly']
     }
 }
 
-// ── LiteAPI (Supabase DB + Edge health) ─────────────────
-
-async function fetchLiteApiData(): Promise<ProviderIntegrationsData['liteapi']> {
-    const configured = !!env.SUPABASE_URL && !!env.SUPABASE_ANON_KEY;
-
-    if (!configured) {
-        return { status: 'not_configured', searchCount: null, bookingCount: null };
-    }
-
-    try {
-        const supabase = createAdminClient();
-        
-        // Fetch counts from tracking tables
-        const [searches, bookings] = await Promise.all([
-            supabase.from('flight_searches').select('*', { count: 'exact', head: true }),
-            supabase.from('unified_bookings').select('*', { count: 'exact', head: true }).eq('provider', 'liteapi'),
-        ]);
-
-        return {
-            status: 'healthy',
-            searchCount: searches.count || 0,
-            bookingCount: bookings.count || 0,
-        };
-    } catch (error) {
-        console.error('[providers] LiteAPI error:', error);
-        return {
-            status: 'error',
-            searchCount: null,
-            bookingCount: null,
-            errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        };
-    }
-}
-
 // ── Duffel Airlines List ─────────────────────────────
 
 export async function fetchAirlinesData(): Promise<DuffelAirline[]> {
@@ -461,14 +427,13 @@ export async function fetchAirlinesData(): Promise<DuffelAirline[]> {
 // ── Main export ─────────────────────────────────────────
 
 export async function getProviderIntegrations(): Promise<ProviderIntegrationsData & { airlines: DuffelAirline[] }> {
-    const [stripe, resend, duffel, mystifly, liteapi, airlines] = await Promise.all([
+    const [stripe, resend, duffel, mystifly, airlines] = await Promise.all([
         fetchStripeData(),
         fetchResendData(),
         fetchDuffelData(),
         fetchMystiflyData(),
-        fetchLiteApiData(),
         fetchAirlinesData(),
     ]);
 
-    return { stripe, resend, duffel, mystifly, liteapi, airlines };
+    return { stripe, resend, duffel, mystifly, airlines };
 }
