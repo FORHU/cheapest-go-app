@@ -70,13 +70,23 @@ export async function resolveDestinationWithFallbacks(
 
   const etgAuth = btoa(`${etgKeyId}:${etgApiKey}`);
 
-  // Try exact name, then strip common suffixes
+  // Try exact name, then strip common suffixes, then try adding "City" suffix
   let regionId = await resolveETGRegionId(cityName, etgAuth);
 
   if (!regionId) {
+    // Strip suffix: "Baguio City" → "Baguio"
     const simplified = cityName.replace(/\s+(city|province|island|metro|region|district|town|municipality)$/i, '').trim();
     if (simplified && simplified !== cityName) {
       regionId = await resolveETGRegionId(simplified, etgAuth);
+    }
+  }
+
+  if (!regionId) {
+    // Add "City" suffix: "Baguio" → "Baguio City"
+    // Handles Philippine cities (Baguio City, Cebu City, Davao City) stored with suffix in ETG
+    const hasSuffix = /\s+(city|province|island|metro|region|district|town|municipality)$/i.test(cityName);
+    if (!hasSuffix) {
+      regionId = await resolveETGRegionId(`${cityName} City`, etgAuth);
     }
   }
 
