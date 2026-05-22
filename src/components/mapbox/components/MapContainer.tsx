@@ -1,5 +1,5 @@
 import { Map, type StandardStyleConfig } from '@/components/ui/map';
-import { NavigationControl, MapRef } from 'react-map-gl/mapbox';
+import { NavigationControl, AttributionControl, MapRef } from 'react-map-gl/mapbox';
 import { Layers } from 'lucide-react';
 import { MapDetailsPanel } from './MapDetailsPanel';
 import { useMapDetails } from '../hooks/useMapDetails';
@@ -18,6 +18,7 @@ interface MapContainerProps {
     onMouseMove: (e: any) => void;
     onMove?: (e: any) => void;
     onMoveEnd?: (e: any) => void;
+    onDragStart?: (e: any) => void;
     children?: React.ReactNode;
     /**
      * When true the Layers button and MapDetailsPanel are NOT rendered.
@@ -27,6 +28,8 @@ interface MapContainerProps {
     mapStyle?: string;
     standardConfig?: StandardStyleConfig;
     enable3DTerrain?: boolean;
+    antialias?: boolean;
+    maxPitch?: number;
     onStyleReady?: (map: mapboxgl.Map) => void;
 }
 
@@ -38,11 +41,14 @@ export const MapContainer = ({
     onMouseMove,
     onMove,
     onMoveEnd,
+    onDragStart,
     children,
     hideLayersButton = false,
     mapStyle: propMapStyle,
     standardConfig: propStandardConfig,
     enable3DTerrain: propEnable3DTerrain,
+    antialias: propAntialias,
+    maxPitch: propMaxPitch,
     onStyleReady,
 }: MapContainerProps) => {
     // Internal details state — only active when this component owns the Layers UI.
@@ -69,18 +75,21 @@ export const MapContainer = ({
                 bearing: -10,
                 ...initialViewState,
             }}
-            maxPitch={60}
+            maxPitch={propMaxPitch ?? 85}
             onClick={onClick}
             onMouseMove={onMouseMove}
             onMove={onMove}
             onMoveEnd={onMoveEnd}
+            onDragStart={onDragStart}
             onLoad={onLoad}
             onStyleReady={onStyleReady}
             enable3DBuildings={false}
+            antialias={propAntialias ?? false}
             attributionControl={false}
             className="rounded-md min-h-0 w-full h-full"
         >
-            <NavigationControl position="bottom-right" showCompass visualizePitch />
+            <NavigationControl position="top-right" showCompass visualizePitch />
+            <AttributionControl position="top-right" compact />
             {children}
 
             {/* ── Layers button & panel — only rendered when this component owns them ── */}

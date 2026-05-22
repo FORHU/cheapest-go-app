@@ -13,6 +13,7 @@ interface MapPropertyCardProps {
     isHovered: boolean;
     onSelect: (id: string) => void;
     onHover: (id: string | null) => void;
+    index?: number;
 }
 
 function getRatingLabel(rating: number): string {
@@ -43,6 +44,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
     isHovered,
     onSelect,
     onHover,
+    index,
 }: MapPropertyCardProps) {
     const targetCurrency = useUserCurrency();
     const sourceCurrency = property.currency || 'USD';
@@ -105,9 +107,16 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                 {/* Details */}
                 <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
-                        <h3 className="text-[11px] font-bold text-slate-900 dark:text-white leading-tight line-clamp-1 landscape:text-[9.5px]">
-                            {property.name}
-                        </h3>
+                        <div className="flex items-center gap-1 mb-0.5">
+                            {index !== undefined && (
+                                <span className="shrink-0 w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
+                                    <span className={cn('text-white font-bold leading-none', index > 99 ? 'text-[6px]' : index > 9 ? 'text-[8px]' : 'text-[9px]')}>{index}</span>
+                                </span>
+                            )}
+                            <h3 className="text-[11px] font-bold text-slate-900 dark:text-white leading-tight line-clamp-1 landscape:text-[9.5px]">
+                                {property.name}
+                            </h3>
+                        </div>
                         <div className="flex items-center gap-0.5 mt-0.5 landscape:mt-0">
                             <MapPin className="w-2 h-2 text-blue-500 flex-shrink-0 landscape:w-1.5 landscape:h-1.5" />
                             <span className="text-[9px] text-slate-500 dark:text-slate-400 truncate landscape:text-[7.5px]">
@@ -165,9 +174,16 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                 {/* Details */}
                 <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
-                        <h3 className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-semibold text-slate-900 dark:text-white truncate leading-tight">
-                            {property.name}
-                        </h3>
+                        <div className="flex items-center gap-1.5">
+                            {index !== undefined && (
+                                <span className="shrink-0 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                                    <span className={cn('text-white font-bold leading-none', index > 99 ? 'text-[7px]' : index > 9 ? 'text-[9px]' : 'text-[10px]')}>{index}</span>
+                                </span>
+                            )}
+                            <h3 className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-semibold text-slate-900 dark:text-white truncate leading-tight">
+                                {property.name}
+                            </h3>
+                        </div>
                         <div className="flex items-center gap-1 mt-0.5">
                             <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                             <span className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 truncate">

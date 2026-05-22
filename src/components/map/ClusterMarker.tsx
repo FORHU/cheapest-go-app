@@ -50,7 +50,7 @@ export const ClusterMarker = React.memo(function ClusterMarker({
 
                     <div className="pr-2 text-[11px] font-bold text-slate-800 dark:text-white whitespace-nowrap tracking-tight">
                         <span className="text-slate-500 dark:text-slate-400 font-semibold">
-                            {count} {count === 1 ? 'stay' : 'stays'}
+                            {count} {count === 1 ? 'hotel' : 'hotels'}
                         </span>
                         <span className="mx-1 text-slate-300 dark:text-slate-600">·</span>
                         <span>{formattedPrice}+</span>

@@ -33,7 +33,9 @@ export const useNearbyGems = ({
     onClearDirections
 }: UseNearbyGemsProps) => {
     const [nearbyGems, setNearbyGems] = useState<any[]>([]);
-    const [isFetchingGems, setIsFetchingGems] = useState(false);
+    // Start loading immediately if we already have coordinates so the panel never
+    // flashes "No places found" before the first fetch begins.
+    const [isFetchingGems, setIsFetchingGems] = useState(() => !!(isLoaded && coordinates));
     const hasCoordinates = coordinates && coordinates.lat !== 0 && coordinates.lng !== 0;
 
     const buildPoiProxyImageUrl = (name: string, lat: number, lng: number, placeId?: string, fsqId?: string, category?: string) => {
@@ -76,48 +78,36 @@ export const useNearbyGems = ({
                     }
                 };
 
-                // Global Discovery Fallback (Google -> Foursquare -> Mapbox)
+                // Fetch Google Places and Foursquare in parallel, merge and deduplicate
                 let featuresToProcess: any[] = [];
                 try {
-                    // Try Google Places first
-                    let primaryFeatures: any[] = [];
-                    try {
-                        const googleRes = await fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=3000`, { signal });
-                        if (googleRes.ok) {
-                            const data = await googleRes.json();
-                            primaryFeatures = data.features || [];
-                        }
-                    } catch (e: any) {
-                        if (e.name !== 'AbortError') console.warn('Google discovery failed:', e);
-                    }
+                    const [googleResult, fsqResult] = await Promise.allSettled([
+                        fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=10000`, { signal })
+                            .then(r => r.ok ? r.json() : { features: [] })
+                            .then(d => (d.features || []) as any[])
+                            .catch(() => [] as any[]),
+                        fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=10000`, { signal })
+                            .then(r => r.ok ? r.json() : { features: [] })
+                            .then(d => (d.features || []) as any[])
+                            .catch(() => [] as any[]),
+                    ]);
 
-                    if (primaryFeatures.length > 0) {
-                        featuresToProcess = primaryFeatures;
-                    } else {
-                        // Fallback to Foursquare if Google fails or returns no results
-                        try {
-                            const fsqRes = await fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=3000`, { signal });
-                            if (fsqRes.ok) {
-                                const data = await fsqRes.json();
-                                featuresToProcess = data.features || [];
-                            }
-                        } catch (e: any) {
-                            if (e.name !== 'AbortError') console.warn('Foursquare discovery failed:', e);
-                        }
-                    }
+                    const googleFeatures = googleResult.status === 'fulfilled' ? googleResult.value : [];
+                    const fsqFeatures    = fsqResult.status === 'fulfilled'    ? fsqResult.value    : [];
 
-                    if (featuresToProcess.length > 0) {
-                        // Deduplicate by name (robust fallback)
-                        const seen = new Set();
-                        featuresToProcess = featuresToProcess.filter(f => {
-                            const nameKey = (f.properties?.name || '').toLowerCase().trim();
-                            if (!nameKey || seen.has(nameKey)) return false;
-                            seen.add(nameKey);
-                            return true;
-                        });
+                    // Merge: Google places first (have ratings/photos), FSQ fills gaps.
+                    // Deduplicate by normalised name so a place appearing in both APIs appears once.
+                    const seen = new Set<string>();
+                    const merged: any[] = [];
+                    for (const f of [...googleFeatures, ...fsqFeatures]) {
+                        const key = (f.properties?.name || '').toLowerCase().trim();
+                        if (!key || seen.has(key)) continue;
+                        seen.add(key);
+                        merged.push(f);
                     }
-                } catch (e) {
-                    console.warn('External discovery aggregate failed:', e);
+                    featuresToProcess = merged;
+                } catch (e: any) {
+                    if (e.name !== 'AbortError') console.warn('External discovery aggregate failed:', e);
                 }
 
                 if (featuresToProcess.length < 5) {
@@ -287,11 +277,14 @@ export const useNearbyGems = ({
                                 const hasReviews = (enriched.properties.userRatingsTotal || 0) > 0 || (enriched.properties.reviews && enriched.properties.reviews.length > 0);
                                 const hasLowRating = enriched.properties.rating !== undefined && enriched.properties.rating !== null && enriched.properties.rating < 3.5;
 
-                                if (hasRealImage && hasReviews && !hasLowRating) {
+                                // Keep if passes quality bar; if no real image, keep the stub so
+                                // Stage 1 results aren't silently wiped for regions outside Baguio.
+                                if (!hasLowRating && (hasRealImage || hasReviews)) {
                                     gemBuffer = gemBuffer.map(g => g.properties.name === name ? enriched : g);
-                                } else {
+                                } else if (hasLowRating) {
                                     gemBuffer = gemBuffer.filter(g => g.properties.name !== name);
                                 }
+                                // else: no image AND no reviews → keep the Stage 1 stub as-is
                                 if (Date.now() - lastUpdate > 800 || resolvedCount === initialGems.length - 1) {
                                     setNearbyGems([...gemBuffer]);
                                     lastUpdate = Date.now();

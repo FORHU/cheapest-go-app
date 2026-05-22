@@ -28,6 +28,11 @@ import { useKakaoSearch } from './hooks/useKakaoSearch';
 import { isLocationInKorea } from '@/utils/geo';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { cn, formatCurrency } from '@/lib/utils';
+import { MapGemsPanel } from '../map/MapGemsPanel';
+import { NearbyPlaceMarker } from '../map/NearbyPlaceMarker';
+import { NearbyPlacePopup } from '../map/NearbyPlacePopup';
+import { useNearbyGems } from '../property/hooks/useNearbyGems';
+import type { NearbyPlace } from '../map/useMapNearbyPlaces';
 
 // Haversine distance — defined outside component to avoid re-creation on every render
 const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; lng: number }) => {
@@ -41,6 +46,30 @@ const calculateDistance = (l1: { lat: number; lng: number }, l2: { lat: number; 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return (R * c).toFixed(2);
 };
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function createCircleGeoJSON(center: [number, number], radiusMeters: number): GeoJSON.Feature {
+    const points = 64;
+    const coords: [number, number][] = [];
+    const R = 6371000;
+    const lat = (center[1] * Math.PI) / 180;
+    const lng = (center[0] * Math.PI) / 180;
+    for (let i = 0; i <= points; i++) {
+        const angle = (i / points) * 2 * Math.PI;
+        const dlat = (radiusMeters / R) * Math.cos(angle);
+        const dlng = (radiusMeters / R) * Math.sin(angle) / Math.cos(lat);
+        coords.push([((lng + dlng) * 180) / Math.PI, ((lat + dlat) * 180) / Math.PI]);
+    }
+    return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] }, properties: {} };
+}
 
 interface SearchMapContainerProps {
     properties: MappableProperty[];
@@ -212,13 +241,29 @@ export const SearchMapContainer = React.memo(({
         onHoverPoi: setHoveredPoi,
     });
 
-    // 6. Viewport Management
+    // 6. Viewport Management — no auto-zoom when a marker is clicked
     useMapViewport({
         mapRef,
         isMapLoaded,
         properties: mappableProperties,
         selectedId,
+        disableFlyToSelected: true,
     });
+
+    // Index map: propertyId → 1-based position in mappableProperties (for marker number badges)
+    const propertyIndexMap = useMemo(() => {
+        const map: Record<string, number> = {};
+        mappableProperties.forEach((p, i) => { map[p.id] = i + 1; });
+        return map;
+    }, [mappableProperties]);
+
+    // Clear hotel selection when the user pans the map
+    const handleDragStart = useCallback(() => {
+        onSelectId(null);
+        setSelectedPoi(null);
+        setActiveGemName(null);
+        setSelectedNearbyPlace(null);
+    }, [onSelectId]);
 
     // 7. Derived UI State
 
@@ -244,6 +289,94 @@ export const SearchMapContainer = React.memo(({
             : null,
         [previewProperty, activePoi]
     );
+
+    // ── Nearby Gems (POI discovery panel) ────────────────────────────────────
+    const [nearbyCategory, setNearbyCategory] = React.useState('all');
+    const [nearbyRadius, setNearbyRadius] = React.useState(1000);
+    const [activeGemName, setActiveGemName] = React.useState<string | null>(null);
+    const [selectedNearbyPlace, setSelectedNearbyPlace] = React.useState<NearbyPlace | null>(null);
+
+    const { nearbyGems, isFetchingGems } = useNearbyGems({
+        isLoaded: isMapLoaded && !!selectedProperty,
+        coordinates: selectedProperty
+            ? { lat: selectedProperty.coordinates.lat, lng: selectedProperty.coordinates.lng }
+            : undefined,
+        selectedCategory: nearbyCategory,
+    });
+
+    const filteredGems = useMemo(() => {
+        if (!selectedProperty || nearbyGems.length === 0) return [];
+        return nearbyGems.filter((gem) => {
+            const lng = gem.geometry?.coordinates[0];
+            const lat = gem.geometry?.coordinates[1];
+            if (lat == null || lng == null) return false;
+            return haversineKm(
+                selectedProperty.coordinates.lat,
+                selectedProperty.coordinates.lng,
+                lat, lng,
+            ) * 1000 <= nearbyRadius;
+        });
+    }, [nearbyGems, selectedProperty, nearbyRadius]);
+
+    const nearbyPlaceMarkers = useMemo<NearbyPlace[]>(() =>
+        filteredGems.map((gem) => ({
+            name: gem.properties?.name || '',
+            category: gem.properties?.category || 'place',
+            lat: gem.geometry?.coordinates[1],
+            lng: gem.geometry?.coordinates[0],
+            rating: gem.properties?.rating,
+            userRatingsTotal: gem.properties?.userRatingsTotal,
+            placeId: gem.properties?.place_id,
+            vicinity: gem.properties?.vicinity,
+        })),
+        [filteredGems]
+    );
+
+    const radiusCircleGeoJSON = useMemo(() => {
+        if (!selectedProperty) return null;
+        return createCircleGeoJSON(
+            [selectedProperty.coordinates.lng, selectedProperty.coordinates.lat],
+            nearbyRadius,
+        );
+    }, [selectedProperty, nearbyRadius]);
+
+    const nearbyPlaceDistanceKm = useMemo(() => {
+        if (!selectedNearbyPlace || !selectedProperty) return null;
+        return haversineKm(
+            selectedProperty.coordinates.lat, selectedProperty.coordinates.lng,
+            selectedNearbyPlace.lat, selectedNearbyPlace.lng,
+        );
+    }, [selectedNearbyPlace, selectedProperty]);
+
+    const handleGemClick = useCallback((gem: any) => {
+        const name = gem.properties?.name || gem.name;
+        const lng = gem.geometry?.coordinates[0];
+        const lat = gem.geometry?.coordinates[1];
+        if (activeGemName === name) {
+            setActiveGemName(null);
+            setSelectedNearbyPlace(null);
+            return;
+        }
+        setActiveGemName(name);
+        setSelectedNearbyPlace({
+            name,
+            category: gem.properties?.category || 'place',
+            lat, lng,
+            rating: gem.properties?.rating,
+            userRatingsTotal: gem.properties?.userRatingsTotal,
+            placeId: gem.properties?.place_id,
+            vicinity: gem.properties?.vicinity,
+        });
+        mapRef.current?.flyTo({ center: [lng, lat], zoom: 16, pitch: 30, duration: 600 });
+    }, [activeGemName]);
+
+    // Clear gem state whenever the hotel selection is cleared
+    React.useEffect(() => {
+        if (!selectedId) {
+            setActiveGemName(null);
+            setSelectedNearbyPlace(null);
+        }
+    }, [selectedId]);
 
     // 6. Fetch Real Road GPS Route — only fires when user CLICKS a POI
     // (not on hover) to avoid unnecessary Directions API calls and re-renders.
@@ -309,7 +442,18 @@ export const SearchMapContainer = React.memo(({
         exploreEnabled,
         mapStyleUrl,
         standardConfig,
-    } = useMapDetails();
+    } = useMapDetails('default-3d');
+
+    // Full 3D standard config for the search map
+    const searchStandardConfig = React.useMemo(() => ({
+        ...standardConfig,
+        show3dObjects: true,
+        show3dBuildings: true,
+        show3dFacades: true,
+        show3dTrees: true,
+        show3dLandmarks: true,
+        lightPreset: 'day' as const,
+    }), [standardConfig]);
 
     // 7. Kakao Discovery for Korea
     const { results: recommendedPlaces, fetchRecommendations: fetchKakaoRecommendations } = useKakaoSearch();
@@ -365,10 +509,12 @@ export const SearchMapContainer = React.memo(({
             <MapContainer
                 mapRef={mapRef}
                 mapStyle={mapStyleUrl}
-                standardConfig={mapType === 'default-3d' ? standardConfig : undefined}
+                standardConfig={mapType === 'default-3d' ? searchStandardConfig : undefined}
                 enable3DTerrain={terrainEnabled}
+                antialias={true}
+                maxPitch={85}
                 initialViewState={{
-                    longitude: defaultCenter?.lng ?? 139.6917, // Tokyo as world-wide fallback
+                    longitude: defaultCenter?.lng ?? 139.6917,
                     latitude: defaultCenter?.lat ?? 35.6895,
                     zoom: 12,
                     pitch: 20,
@@ -383,6 +529,7 @@ export const SearchMapContainer = React.memo(({
                     updateMapState();
                     runKakaoDiscovery();
                 }}
+                onDragStart={handleDragStart}
                 hideLayersButton={true}
             >
 
@@ -463,9 +610,33 @@ export const SearchMapContainer = React.memo(({
                                     isHovered={p.id === hoveredId}
                                     onClick={onSelectId}
                                     onHover={onHoverId}
+                                    index={propertyIndexMap[p.id]}
                                 />
                             );
                         })}
+
+                        {/* Radius circle around selected hotel */}
+                        {radiusCircleGeoJSON && (
+                            <Source id="nearby-radius" type="geojson" data={radiusCircleGeoJSON}>
+                                <Layer id="nearby-radius-fill" type="fill"
+                                    paint={{ 'fill-color': '#3b82f6', 'fill-opacity': 0.06 }} />
+                                <Layer id="nearby-radius-outline" type="line"
+                                    paint={{ 'line-color': '#3b82f6', 'line-width': 1.5, 'line-opacity': 0.35, 'line-dasharray': [3, 2] }} />
+                            </Source>
+                        )}
+
+                        {/* Nearby place dot markers */}
+                        {selectedProperty && nearbyPlaceMarkers.map((place) => (
+                            <NearbyPlaceMarker
+                                key={`${place.name}-${place.lat}-${place.lng}`}
+                                place={place}
+                                isSelected={activeGemName === place.name}
+                                onClick={(p) => {
+                                    const gem = filteredGems.find(g => (g.properties?.name || g.name) === p.name);
+                                    if (gem) handleGemClick(gem);
+                                }}
+                            />
+                        ))}
 
                         {poiRouteData && (
                             <Source id="poi-route-source" type="geojson" data={poiRouteData}>
@@ -577,11 +748,24 @@ export const SearchMapContainer = React.memo(({
                     onClose={() => {
                         onSelectId(null);
                         setSelectedPoi(null);
+                        setActiveGemName(null);
+                        setSelectedNearbyPlace(null);
                     }}
                     onViewDetails={onViewDetails}
                     onSelect={(id) => onSelectId(id)}
                     isMobile={isMobile}
                 />
+
+                {selectedNearbyPlace && (
+                    <NearbyPlacePopup
+                        place={selectedNearbyPlace}
+                        distanceKm={nearbyPlaceDistanceKm}
+                        onClose={() => {
+                            setSelectedNearbyPlace(null);
+                            setActiveGemName(null);
+                        }}
+                    />
+                )}
             </MapContainer>
 
             {/* ── Mobile Centered Property Preview ── */}
@@ -593,11 +777,33 @@ export const SearchMapContainer = React.memo(({
                             onClose={() => {
                                 onSelectId(null);
                                 setSelectedPoi(null);
+                                setActiveGemName(null);
+                                setSelectedNearbyPlace(null);
                             }}
                             onViewDetails={onViewDetails}
                             isCentered={true}
                         />
                     </div>
+                </div>
+            )}
+
+            {/* ── Nearby Gems Panel — slides up when a hotel is selected ── */}
+            {selectedProperty && (
+                <div className="absolute bottom-2 left-2 right-2 z-10">
+                    <MapGemsPanel
+                        gems={filteredGems}
+                        isLoading={isFetchingGems}
+                        selectedCategory={nearbyCategory}
+                        onCategoryChange={(cat) => {
+                            setNearbyCategory(cat);
+                            setActiveGemName(null);
+                            setSelectedNearbyPlace(null);
+                        }}
+                        radiusMeters={nearbyRadius}
+                        onRadiusChange={setNearbyRadius}
+                        activeGemName={activeGemName}
+                        onGemClick={handleGemClick}
+                    />
                 </div>
             )}
 
