@@ -1,4 +1,3 @@
-import { prebookRoom } from '@/lib/server/bookings';
 import { invokeEdgeFunction } from '@/utils/supabase/functions';
 import { safeError } from '@/lib/server/safe-error';
 import { prebookSchema } from '@/lib/schemas/booking';
@@ -154,9 +153,7 @@ export async function POST(req: Request) {
             });
         }
 
-        // LiteAPI path
-        const data = await prebookRoom(parsed.data as any);
-        return Response.json(data);
+        return Response.json({ success: false, error: 'Only TravelgateX offers are supported' }, { status: 400 });
     } catch (err) {
         return Response.json(
             { success: false, error: safeError(err, 'prebook') },

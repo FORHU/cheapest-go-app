@@ -35,7 +35,7 @@ export const holderSchema = z.object({
 });
 
 export const bookingConfirmSchema = z.object({
-  provider: z.enum(['liteapi', 'travelgatex']).default('liteapi'),
+  provider: z.enum(['travelgatex']).default('travelgatex'),
   prebookId: z.string().min(1, 'Prebook ID is required'),
   holder: holderSchema,
   guests: z.array(guestSchema).min(1, 'At least one guest is required'),

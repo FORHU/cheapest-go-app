@@ -226,13 +226,6 @@ export interface DuffelOrder {
     createdAt: string;
 }
 
-export interface LiteApiProviderData {
-    status: ProviderStatus;
-    searchCount: number | null;
-    bookingCount: number | null;
-    errorMessage?: string;
-}
-
 export interface DuffelAirlineMetric {
     name: string;
     iataCode: string;
@@ -318,7 +311,6 @@ export interface ProviderIntegrationsData {
     resend: ResendProviderData;
     duffel: DuffelProviderData;
     mystifly: MystiflyProviderData;
-    liteapi: LiteApiProviderData;
 }
 
 export interface ApiLogRow {
