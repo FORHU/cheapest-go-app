@@ -31,7 +31,9 @@
     },
     "plugins": [
       "expo-router",
-      "@rnmapbox/maps"
+      "@rnmapbox/maps",
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
