@@ -278,7 +278,6 @@ export function MapResultsClient({ searchParams, destination }: MapResultsClient
 
     return (
         <div className="relative h-full w-full">
-            {status === 'streaming' && <StreamingBanner count={properties.length} />}
             <LazySearchMapView
                 properties={properties}
                 totalCount={totalCount}

@@ -24,6 +24,28 @@ function getRatingLabel(rating: number): string {
     return 'Pleasant';
 }
 
+const STAR_PATH = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
+
+function StarRating({ rating, size = 10 }: { rating: number; size?: number }) {
+    const pct = Math.min(100, Math.max(0, (rating / 10) * 100));
+    return (
+        <div className="relative inline-flex gap-px">
+            {Array.from({ length: 5 }).map((_, i) => (
+                <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-slate-200 dark:text-slate-700 flex-shrink-0">
+                    <path d={STAR_PATH} fill="currentColor" />
+                </svg>
+            ))}
+            <div className="absolute inset-0 overflow-hidden flex gap-px" style={{ width: `${pct}%` }}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                    <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-blue-500 flex-shrink-0">
+                        <path d={STAR_PATH} fill="currentColor" />
+                    </svg>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function useIsLandscapeMobile() {
     const [is, setIs] = useState(false);
     useEffect(() => {
@@ -57,7 +79,6 @@ const MapPopup = React.memo(function MapPopup({
         [property.originalPrice, sourceCurrency, targetCurrency]
     );
     const rating = property.rating ?? 0;
-    const ratingLabel = React.useMemo(() => getRatingLabel(rating), [rating]);
 
     // Keep a stable ref to onClose so the effect never needs to re-run when the
     // parent re-renders and passes a new function identity.
@@ -143,14 +164,12 @@ const MapPopup = React.memo(function MapPopup({
                 </div>
 
                 {/* Rating */}
-                <div className="flex items-center gap-1 mt-1">
-                    <span className="text-[9px] font-bold text-white bg-blue-600 px-1 py-px rounded">
-                        {rating.toFixed(1)}
-                    </span>
-                    <span className="text-[9px] font-medium text-slate-700 dark:text-slate-300">
-                        {ratingLabel}
-                    </span>
-                </div>
+                {rating > 0 && (
+                    <div className="flex items-center gap-1 mt-1">
+                        <StarRating rating={rating} size={10} />
+                        <span className="text-[9px] text-slate-500 dark:text-slate-400">{rating.toFixed(1)}</span>
+                    </div>
+                )}
 
                 {/* Price + CTA */}
                 <div className={`flex items-center justify-between border-t border-slate-100 dark:border-slate-800 ${isLandscape ? 'mt-1 pt-1' : 'mt-1.5 pt-1.5'}`}>
