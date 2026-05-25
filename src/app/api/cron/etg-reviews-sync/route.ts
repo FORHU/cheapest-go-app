@@ -25,6 +25,26 @@ interface ReviewRow {
     synced_at: string;
 }
 
+interface IndividualReviewRow {
+    hotel_id: string;
+    source_id: string;
+    reviewer_name: string | null;
+    review_date: string | null;
+    score: number | null;
+    pros: string | null;
+    cons: string | null;
+    traveler_type: string | null;
+    language: string | null;
+    headline: string | null;
+    country: string | null;
+    synced_at: string;
+}
+
+interface ParsedReviewsData {
+    aggregates: ReviewRow[];
+    individuals: IndividualReviewRow[];
+}
+
 /**
  * Parse the ETG reviews dump response.
  * ETG returns either:
@@ -32,12 +52,11 @@ interface ReviewRow {
  *   { data: { hotels: [...] } }        — inline array
  *   { data: [ {...} ] }                — top-level array
  */
-async function fetchReviewsData(): Promise<ReviewRow[]> {
+async function fetchReviewsData(): Promise<ParsedReviewsData> {
     const res = await fetch(`${ETG_BASE}/hotel/reviews/dump/`, {
         method: 'POST',
         headers: etgHeaders(),
         body: JSON.stringify({ language: 'en' }),
-        // 60s read timeout handled by Vercel's function timeout
     });
 
     if (!res.ok) {
@@ -66,7 +85,7 @@ async function fetchReviewsData(): Promise<ReviewRow[]> {
     return normalizeReviews(hotelList);
 }
 
-async function fetchDumpUrl(url: string): Promise<ReviewRow[]> {
+async function fetchDumpUrl(url: string): Promise<ParsedReviewsData> {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`ETG dump download failed: ${res.status}`);
 
@@ -95,39 +114,84 @@ async function fetchDumpUrl(url: string): Promise<ReviewRow[]> {
     return normalizeReviews(parsedData);
 }
 
-function normalizeReviews(data: any): ReviewRow[] {
+function extractIndividualReviews(hotelId: string, rawReviews: any[]): IndividualReviewRow[] {
     const now = new Date().toISOString();
-    const rows: ReviewRow[] = [];
+    return rawReviews.map((r: any, idx: number) => {
+        // ETG review fields — handle multiple possible field names
+        const sourceId = String(r.id || r.review_id || r.uid || `${hotelId}-${idx}`);
+        const name = r.author || r.author_name || r.reviewer || r.user || r.name || null;
+        const date = r.date || r.created_at || r.review_date || r.reviewed_at || null;
+        const rawScore = r.rating ?? r.score ?? r.grade ?? r.mark ?? null;
+        const score = rawScore !== null ? (parseFloat(rawScore) || null) : null;
+        const pros = r.advantages || r.pros || r.positive || r.plus || r.good || null;
+        const cons = r.disadvantages || r.cons || r.negative || r.minus || r.bad || null;
+        const travelerType = r.traveler_type || r.category || r.type || r.group_type || null;
+        const language = r.language || r.lang || null;
+        const headline = r.headline || r.title || r.subject || null;
+        const country = r.country || r.user_country || r.reviewer_country || null;
+
+        // Log first item's raw structure on initial run to verify field mapping
+        if (idx === 0 && hotelId) {
+            console.log('[etg-reviews-sync] Sample review fields:', JSON.stringify(r).slice(0, 300));
+        }
+
+        return {
+            hotel_id: hotelId,
+            source_id: sourceId,
+            reviewer_name: name ? String(name).slice(0, 200) : null,
+            review_date: date ? String(date).slice(0, 50) : null,
+            score,
+            pros: pros ? String(pros).slice(0, 2000) : null,
+            cons: cons ? String(cons).slice(0, 2000) : null,
+            traveler_type: travelerType ? String(travelerType).slice(0, 100) : null,
+            language: language ? String(language).slice(0, 10) : null,
+            headline: headline ? String(headline).slice(0, 500) : null,
+            country: country ? String(country).slice(0, 100) : null,
+            synced_at: now,
+        };
+    });
+}
+
+function normalizeReviews(data: any): ParsedReviewsData {
+    const now = new Date().toISOString();
+    const aggregates: ReviewRow[] = [];
+    const individuals: IndividualReviewRow[] = [];
+
+    const processItem = (item: any) => {
+        const id = String(item.id || item.hid || item.hotel_id || '');
+        if (!id) return;
+
+        const rawReviews = Array.isArray(item.reviews) ? item.reviews : [];
+        const rating = parseFloat(item.rating ?? item.stars ?? 0) || 0;
+        const reviews_count = parseInt(
+            item.reviews_count ?? item.total_reviews ?? rawReviews.length
+        ) || 0;
+
+        aggregates.push({ hotel_id: id, rating, reviews_count, synced_at: now });
+
+        if (rawReviews.length > 0) {
+            individuals.push(...extractIndividualReviews(id, rawReviews));
+        }
+    };
 
     if (Array.isArray(data)) {
-        for (const item of data) {
-            const id = String(item.id || item.hid || item.hotel_id || '');
-            const rating = parseFloat(item.rating ?? item.stars ?? 0) || 0;
-            const reviews_count = parseInt(item.reviews_count ?? item.total_reviews ?? (Array.isArray(item.reviews) ? item.reviews.length : 0)) || 0;
-            if (!id) continue;
-            rows.push({ hotel_id: id, rating, reviews_count, synced_at: now });
-        }
+        for (const item of data) processItem(item);
     } else if (data && typeof data === 'object') {
         for (const key of Object.keys(data)) {
-            const item = data[key];
-            if (!item) continue;
-            const id = String(item.hid || item.id || item.hotel_id || '');
-            const rating = parseFloat(item.rating ?? item.stars ?? 0) || 0;
-            const reviews_count = parseInt(item.reviews_count ?? item.total_reviews ?? (Array.isArray(item.reviews) ? item.reviews.length : 0)) || 0;
-            if (!id) continue;
-            rows.push({ hotel_id: id, rating, reviews_count, synced_at: now });
+            if (data[key]) processItem(data[key]);
         }
     }
 
-    return rows;
+    return { aggregates, individuals };
 }
 
 /**
  * GET /api/cron/etg-reviews-sync
  *
  * Called nightly by Vercel Cron (see vercel.json).
- * Downloads the ETG (RateHawk) bulk reviews dump, then upserts ratings into
- * the hotel_reviews table — keyed by numeric HID that TravelgateX returns.
+ * Downloads the ETG (RateHawk) bulk reviews dump, upserts aggregated ratings
+ * into hotel_reviews and individual review rows into hotel_review_items.
+ * Both tables are keyed by numeric HID that TravelgateX returns.
  *
  * Only rows whose hotel_id exists in hotel_content are kept (hotels we've seen
  * in real searches), avoiding unbounded table growth from the full ETG catalog.
@@ -150,15 +214,15 @@ export async function GET(req: NextRequest) {
 
     try {
         // 1. Fetch dump from ETG
-        const rows = await fetchReviewsData();
-        console.log(`[etg-reviews-sync] Parsed ${rows.length} review rows from dump`);
+        const { aggregates, individuals } = await fetchReviewsData();
+        console.log(`[etg-reviews-sync] Parsed ${aggregates.length} hotels, ${individuals.length} individual reviews`);
 
-        if (rows.length === 0) {
+        if (aggregates.length === 0) {
             return NextResponse.json({ success: true, synced: 0, message: 'Empty dump' });
         }
 
         // 2. Scope to hotel IDs we actually have in hotel_content (to keep the table small)
-        const allIds = rows.map(r => r.hotel_id);
+        const allIds = aggregates.map(r => r.hotel_id);
         const { data: knownContent } = await supabase
             .from('hotel_content')
             .select('hotel_id')
@@ -168,28 +232,48 @@ export async function GET(req: NextRequest) {
 
         // If hotel_content is empty (fresh install), upsert everything so reviews
         // are immediately available once content starts populating.
-        const toUpsert = knownIds.size > 0
-            ? rows.filter(r => knownIds.has(r.hotel_id))
-            : rows;
+        const useAll = knownIds.size === 0;
+        const toUpsertAgg = useAll ? aggregates : aggregates.filter(r => knownIds.has(r.hotel_id));
+        const toUpsertInd = useAll ? individuals : individuals.filter(r => knownIds.has(r.hotel_id));
 
-        console.log(`[etg-reviews-sync] Upserting ${toUpsert.length} matched rows`);
+        console.log(`[etg-reviews-sync] Upserting ${toUpsertAgg.length} aggregate rows, ${toUpsertInd.length} individual reviews`);
 
-        // 3. Batch upsert in chunks of 500 to avoid request size limits
         const CHUNK = 500;
-        let synced = 0;
-        for (let i = 0; i < toUpsert.length; i += CHUNK) {
-            const chunk = toUpsert.slice(i, i + CHUNK);
+        let syncedAgg = 0;
+        let syncedInd = 0;
+
+        // 3a. Upsert aggregate rows
+        for (let i = 0; i < toUpsertAgg.length; i += CHUNK) {
+            const chunk = toUpsertAgg.slice(i, i + CHUNK);
             const { error } = await supabase
                 .from('hotel_reviews')
                 .upsert(chunk, { onConflict: 'hotel_id' });
             if (error) {
-                console.error('[etg-reviews-sync] Upsert error:', error.message);
+                console.error('[etg-reviews-sync] Aggregate upsert error:', error.message);
             } else {
-                synced += chunk.length;
+                syncedAgg += chunk.length;
             }
         }
 
-        return NextResponse.json({ success: true, synced, total: rows.length });
+        // 3b. Upsert individual review rows
+        for (let i = 0; i < toUpsertInd.length; i += CHUNK) {
+            const chunk = toUpsertInd.slice(i, i + CHUNK);
+            const { error } = await supabase
+                .from('hotel_review_items')
+                .upsert(chunk, { onConflict: 'hotel_id,source_id' });
+            if (error) {
+                console.error('[etg-reviews-sync] Individual reviews upsert error:', error.message);
+            } else {
+                syncedInd += chunk.length;
+            }
+        }
+
+        return NextResponse.json({
+            success: true,
+            aggregates: syncedAgg,
+            individual_reviews: syncedInd,
+            total_hotels: aggregates.length,
+        });
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.error('[etg-reviews-sync] Fatal error:', message);

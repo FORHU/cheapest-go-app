@@ -1,9 +1,9 @@
 /**
  * Server-side data fetching utilities for hotel reviews.
- * Pure functions for use in server components.
+ * Reads from the hotel_review_items table populated by the nightly ETG sync cron.
  */
 
-import { getHotelReviews } from '@/utils/supabase/functions';
+import { createAdminClient } from '@/utils/supabase/admin';
 
 // Types
 export interface HotelReview {
@@ -84,32 +84,76 @@ export function getReviewerInitials(name: string): string {
 }
 
 /**
- * Main fetch function for reviews - server-side
- * Fetches all available reviews (up to 1000)
+ * Main fetch function for reviews — server-side.
+ * Individual reviews come from LiteAPI (real-time, per-hotel endpoint).
+ * Aggregate rating/count falls back to the ETG-synced hotel_reviews table.
  */
 export async function fetchHotelReviews(
     hotelId: string,
     options: FetchReviewsOptions = {}
 ): Promise<ReviewsDataWithSentiment> {
-    const { limit = 1000, offset = 0, getSentiment = false } = options;
+    const { limit = 1000 } = options;
+    // ETG stores numeric HIDs; TGX prefixes them with 'H' (e.g. H7002461 → 7002461)
+    const etgId = hotelId.replace(/^H/i, '');
 
     try {
-        const result = await getHotelReviews(hotelId, limit, offset, getSentiment);
-        const reviews = (result.reviews || []) as HotelReview[];
+        const supabase = createAdminClient();
 
-        return {
-            reviews,
-            averageRating: calculateAverageRating(reviews),
-            totalCount: reviews.length,
-            sentimentAnalysis: result.sentimentAnalysis || undefined,
-        };
+        const [liteApiResult, aggregateResult] = await Promise.all([
+            // Fetch individual reviews from LiteAPI
+            fetchLiteApiReviews(hotelId, limit),
+            // Fetch aggregate rating from ETG-synced table
+            supabase
+                .from('hotel_reviews')
+                .select('rating, reviews_count')
+                .eq('hotel_id', etgId)
+                .maybeSingle(),
+        ]);
+
+        const reviews = liteApiResult;
+        const aggregate = aggregateResult.data;
+        const averageRating = aggregate?.rating ?? calculateAverageRating(reviews);
+        const totalCount = aggregate?.reviews_count ?? reviews.length;
+
+        return { reviews, averageRating, totalCount };
     } catch (error) {
         console.error('[fetchHotelReviews] Error:', error);
-        return {
-            reviews: [],
-            averageRating: 0,
-            totalCount: 0
-        };
+        return { reviews: [], averageRating: 0, totalCount: 0 };
+    }
+}
+
+async function fetchLiteApiReviews(hotelId: string, limit: number): Promise<HotelReview[]> {
+    const apiKey = process.env.LITEAPI_KEY;
+    if (!apiKey) {
+        console.warn('[fetchLiteApiReviews] LITEAPI_KEY not set');
+        return [];
+    }
+    try {
+        const params = new URLSearchParams({ hotelId, limit: String(limit) });
+        const res = await fetch(`https://api.liteapi.travel/v3.0/data/reviews?${params}`, {
+            headers: { 'X-API-Key': apiKey, 'Accept': 'application/json' },
+            next: { revalidate: 3600 },
+        });
+        if (!res.ok) {
+            console.error(`[fetchLiteApiReviews] ${res.status} for ${hotelId}`);
+            return [];
+        }
+        const json = await res.json();
+        const raw: any[] = json?.data || [];
+        return raw.map(r => ({
+            averageScore: r.averageScore ?? r.rating ?? 0,
+            name: r.name || r.reviewer || 'Anonymous',
+            date: r.date || '',
+            headline: r.headline ?? undefined,
+            pros: r.pros ?? undefined,
+            cons: r.cons ?? undefined,
+            country: r.country ?? undefined,
+            type: r.type ?? r.travelerType ?? undefined,
+            language: r.language ?? undefined,
+        }));
+    } catch (err) {
+        console.error('[fetchLiteApiReviews] Error:', err);
+        return [];
     }
 }
 
@@ -172,7 +216,6 @@ export function calculateTravelerBreakdown(reviews: HotelReview[]): TravelerBrea
         } else if (type.includes('business') || type.includes('work')) {
             counts.business++;
         } else {
-            // Default to couple if unspecified
             counts.couple++;
         }
     });

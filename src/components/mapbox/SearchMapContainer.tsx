@@ -250,6 +250,22 @@ export const SearchMapContainer = React.memo(({
         disableFlyToSelected: true,
     });
 
+    // Center the map on the selected property (preserves current zoom level).
+    // On desktop the MapPopup has anchor="bottom" + offset=60 so it floats ~255px above
+    // the marker. Shift the easeTo target down by 160px so the popup card is visually
+    // centred in the viewport rather than the bare marker.
+    React.useEffect(() => {
+        if (!selectedId || !isMapLoaded) return;
+        const prop = mappableProperties.find(p => p.id === selectedId);
+        if (!prop) return;
+        mapRef.current?.easeTo({
+            center: [prop.coordinates.lng, prop.coordinates.lat],
+            offset: isMobile ? [0, 0] : [0, 160],
+            duration: 600,
+            essential: true,
+        });
+    }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Index map: propertyId → 1-based position in mappableProperties (for marker number badges)
     const propertyIndexMap = useMemo(() => {
         const map: Record<string, number> = {};
