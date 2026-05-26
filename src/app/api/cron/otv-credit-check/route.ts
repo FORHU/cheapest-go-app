@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     if (CREDIT_LIMIT > 0) {
         const { data: creditRows, error: creditErr } = await supabase
             .from('bookings')
-            .select('supplier_cost')
+            .select('supplier_cost, total_price')
             .eq('provider', 'travelgatex')
             .in('status', ['confirmed', 'pending'])
             .gt('check_out', new Date().toISOString());
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
             console.error('[otv-credit-check] Credit query error:', creditErr.message);
         } else {
             const outstanding = (creditRows ?? []).reduce(
-                (sum, r) => sum + (parseFloat(r.supplier_cost) || 0), 0
+                (sum, r) => sum + (parseFloat(r.supplier_cost ?? r.total_price) || 0), 0
             );
             const utilization = outstanding / CREDIT_LIMIT;
 
@@ -82,13 +82,14 @@ export async function GET(req: NextRequest) {
         .from('booking_policy_snapshots')
         .select(`
             free_cancel_deadline,
-            bookings!inner (
+            bookings!booking_policy_snapshots_booking_id_fkey!inner (
                 booking_id,
                 property_name,
                 holder_email,
                 check_in,
                 check_out,
                 supplier_cost,
+                total_price,
                 status,
                 provider
             )
@@ -108,7 +109,7 @@ export async function GET(req: NextRequest) {
             property: r.bookings?.property_name,
             checkIn: r.bookings?.check_in,
             freeCancelDeadline: r.free_cancel_deadline,
-            supplierCost: r.bookings?.supplier_cost,
+            supplierCost: r.bookings?.supplier_cost ?? r.bookings?.total_price,
         }));
 
         console.log(`[otv-credit-check] ${approaching.length} refundable bookings with deadline in next ${DEADLINE_WINDOW_HOURS}h`);
