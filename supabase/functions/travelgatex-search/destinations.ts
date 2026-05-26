@@ -23,12 +23,22 @@ async function resolveETGRegionId(
     if (!res.ok) return null;
     const json    = await res.json();
     const regions = json?.data?.regions as any[] || [];
+    const hotels  = json?.data?.hotels  as any[] || [];
     // Prefer exact City-type match, then any City, then first region
     const match =
       regions.find(r => r.type === 'City' && r.name.toLowerCase() === cityName.toLowerCase()) ||
       regions.find(r => r.type === 'City') ||
       regions[0];
-    if (!match) return null;
+    if (!match) {
+      // Fallback: extract region_id from hotel results (ETG sometimes returns hotels
+      // but empty regions for Korean cities like "Jeju-si")
+      const hotelRegionId = hotels[0]?.region_id;
+      if (hotelRegionId) {
+        console.log(`[DestResolve] ETG regions empty for "${cityName}", using hotel region_id=${hotelRegionId}`);
+        return String(hotelRegionId);
+      }
+      return null;
+    }
     console.log(`[DestResolve] ETG multicomplete "${cityName}" → region_id=${match.id} (${match.name}, ${match.type})`);
     return String(match.id);
   } catch {
@@ -74,8 +84,11 @@ export async function resolveDestinationWithFallbacks(
   let regionId = await resolveETGRegionId(cityName, etgAuth);
 
   if (!regionId) {
-    // Strip suffix: "Baguio City" → "Baguio"
-    const simplified = cityName.replace(/\s+(city|province|island|metro|region|district|town|municipality)$/i, '').trim();
+    // Strip suffix: "Baguio City" → "Baguio", "Jeju-si" → "Jeju", "Jeju-do" → "Jeju"
+    const simplified = cityName
+      .replace(/\s+(city|province|island|metro|region|district|town|municipality)$/i, '')
+      .replace(/-(si|do|gun|gu|myeon|eup)$/i, '')  // Korean geographic suffixes
+      .trim();
     if (simplified && simplified !== cityName) {
       regionId = await resolveETGRegionId(simplified, etgAuth);
     }
