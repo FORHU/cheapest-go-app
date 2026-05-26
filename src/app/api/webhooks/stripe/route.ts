@@ -4,6 +4,8 @@ import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
 import { createNotification } from '@/lib/server/admin/notify';
 import { env } from '@/utils/env';
 
+export const maxDuration = 30;
+
 // Lazy-initialize Stripe to avoid module-level crash during Vercel build
 // (env vars aren't available at build time when Next.js collects page data)
 let _stripe: import('stripe').default | null = null;
