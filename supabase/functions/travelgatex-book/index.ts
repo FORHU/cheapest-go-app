@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
     const variables = {
       input: {
         clientReference,
-        deltaPrice: { percent: 10, applyBoth: false },
+        deltaPrice: { percent: 0, applyBoth: false },
         optionRefId: quoteToken,
         language: 'en',
         holder: {
@@ -140,6 +140,13 @@ Deno.serve(async (req: Request) => {
     const booking = bookData?.booking;
     if (!booking) {
       throw new Error('No booking data returned from TravelgateX');
+    }
+
+    const otvStatus = booking.status;
+    console.log('[TGX Book] OTV booking status:', otvStatus);
+
+    if (otvStatus !== 'OK') {
+      throw new Error(`OTV booking not confirmed — status: ${otvStatus}`);
     }
 
     // Construct TGX internal booking ID for reliable cancellation
