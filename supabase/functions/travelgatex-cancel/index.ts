@@ -103,10 +103,18 @@ Deno.serve(async (req: Request) => {
       throw new Error('No cancellation data returned from TravelgateX');
     }
 
+    const otvStatus = cancellation.status;
+    console.log('[TGX Cancel] OTV cancellation status:', otvStatus);
+
+    if (otvStatus !== 'CANCELLED') {
+      throw new Error(`OTV cancellation not confirmed — status: ${otvStatus}`);
+    }
+
     return new Response(JSON.stringify({
       data: {
         bookingId: clientReference,
         status: 'cancelled',
+        otvStatus,
         supplierReference: cancellation.reference?.supplier,
         price: cancellation.price,
       },

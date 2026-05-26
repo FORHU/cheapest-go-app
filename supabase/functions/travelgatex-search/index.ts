@@ -222,8 +222,20 @@ Deno.serve(async (req: Request) => {
           return;
         }
 
+        // Only surface MERCHANT options — these are the ones where we collect
+        // payment from the guest and settle with OTV. DIRECT options expect the
+        // guest to pay the hotel directly, which is incompatible with Stripe checkout.
+        const merchantOptions = options.filter((o: any) => o.paymentType === 'MERCHANT');
+        const nonMerchantCount = options.length - merchantOptions.length;
+        if (nonMerchantCount > 0) console.warn(`[OTV] Filtered out ${nonMerchantCount} non-MERCHANT options`);
+
+        if (merchantOptions.length === 0) {
+          await send({ type: 'done', totalCount: 0, data: [] });
+          return;
+        }
+
         // ── Group by hotel, keep cheapest option per hotel ────────
-        const hotelMap = groupByHotel(options);
+        const hotelMap = groupByHotel(merchantOptions);
         const sorted   = Array.from(hotelMap.values())
           .sort((a: any, b: any) => (a.price?.gross || a.price?.net || Infinity) - (b.price?.gross || b.price?.net || Infinity));
 
