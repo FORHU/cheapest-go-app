@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/duffel-balance-check",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/otv-credit-check",
+      "schedule": "0 */12 * * *"
     }
   ]
 }
