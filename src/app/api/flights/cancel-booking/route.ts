@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { env } from "@/utils/env";
 
+export const maxDuration = 60;
+
 const cancelFlightSchema = z.object({
     bookingId: z.string().min(1, 'bookingId is required'),
 });

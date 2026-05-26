@@ -8,6 +8,8 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
+
+export const maxDuration = 120;
 import { parseDuffelOffer } from '@/lib/server/flights/providers/duffel';
 import { normalizedToFlightOffer } from '@/utils/flight-utils';
 

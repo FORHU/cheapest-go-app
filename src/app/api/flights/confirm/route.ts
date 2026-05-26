@@ -6,6 +6,8 @@ import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } fro
 import { rateLimit } from '@/lib/server/rate-limit';
 import { z } from 'zod';
 
+export const maxDuration = 60;
+
 const flightConfirmSchema = z.object({
     paymentIntentId: z.string().min(1, 'paymentIntentId is required'),
     sessionId: z.string().min(1, 'sessionId is required'),
