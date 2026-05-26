@@ -299,13 +299,15 @@ export async function confirmAndSaveTgxBooking(
       };
     }
 
-    // Update provider columns (RPC INSERT uses defaults; patch here)
+    // Update provider columns and financial audit fields (RPC INSERT uses defaults; patch here)
     await serviceClient
       .from('bookings')
       .update({
         provider: 'travelgatex',
         provider_metadata: { supplierRef, hotelRef, clientReference, tgxBookingId },
         payment_intent_id: params.paymentIntentId ?? null,
+        supplier_cost: price,       // OTV net price confirmed by TGX at booking time
+        charged_price: totalPrice,  // gross amount captured from guest via Stripe
       })
       .eq('booking_id', bookingId);
 
