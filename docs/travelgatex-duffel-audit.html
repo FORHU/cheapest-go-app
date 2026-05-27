@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TravelgateX & Duffel Integration Audit</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 40px; color: #1a1a1a; line-height: 1.7; }
+  h1 { font-size: 30px; border-bottom: 3px solid #1a1a1a; padding-bottom: 12px; margin-top: 0; }
+  h2 { font-size: 20px; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-top: 40px; color: #222; page-break-after: avoid; }
+  h3 { font-size: 16px; color: #333; margin-top: 24px; page-break-after: avoid; }
+  h4 { font-size: 14px; color: #444; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 13px; page-break-inside: avoid; }
+  th { background: #222; color: white; padding: 8px 12px; text-align: left; }
+  td { border: 1px solid #ddd; padding: 7px 12px; vertical-align: top; }
+  tr:nth-child(even) td { background: #f9f9f9; }
+  code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-size: 12px; font-family: Consolas, Monaco, monospace; }
+  pre { background: #f4f4f4; padding: 14px 16px; border-radius: 4px; font-size: 12px; line-height: 1.5; border-left: 4px solid #333; overflow-x: auto; page-break-inside: avoid; }
+  pre code { background: none; padding: 0; font-size: 12px; }
+  hr { border: none; border-top: 2px solid #eee; margin: 32px 0; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 3px 0; }
+  p { margin: 10px 0; }
+  .cover { text-align: center; padding: 80px 0 50px; border-bottom: 3px solid #1a1a1a; margin-bottom: 48px; }
+  .cover h1 { border: none; font-size: 38px; margin-bottom: 8px; }
+  .cover .subtitle { font-size: 17px; color: #444; margin: 6px 0; }
+  .cover .meta { font-size: 13px; color: #888; margin-top: 24px; line-height: 2; }
+  strong { color: #111; }
+  @media print {
+    body { margin: 0; }
+    h2 { page-break-before: auto; }
+    pre, table { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover"><h1>TravelgateX & Duffel Integration Audit</h1><div class="subtitle">Cheapest Go — Payment Flow, Security Hardening & Operations</div><div class="meta">Date: 2026-05-26<br>Project: cheapest-go-app</div></div>
+
+<strong>Project:</strong> Cheapest Go (<code>cheapest-go-app</code>)  
+<strong>Date:</strong> 2026-05-26  
+<strong>Scope:</strong> Hotel booking via TravelgateX (OTV/RateHawk) and flight booking via Duffel API — payment flow correctness, security hardening, operational readiness
+
+<hr>
+
+<h2>Table of Contents</h2>
+
+<p>1. [Architecture Overview](#1-architecture-overview)</p>
+<p>2. [TravelgateX Hotel Integration](#2-travelgatex-hotel-integration)</p>
+<p>3. [Payment Model: Merchant vs Direct](#3-payment-model-merchant-vs-direct)</p>
+<p>4. [OTV/RateHawk Credit Model](#4-otvratehawk-credit-model)</p>
+<p>5. [TravelgateX Money Flow](#5-travelgatex-money-flow)</p>
+<p>6. [Duffel Flight Integration](#6-duffel-flight-integration)</p>
+<p>7. [Duffel Money Flow](#7-duffel-money-flow)</p>
+<p>8. [Duffel Balance Operations](#8-duffel-balance-operations)</p>
+<p>9. [Stripe Integration](#9-stripe-integration)</p>
+<p>10. [Issues Found & Fixed](#10-issues-found--fixed)</p>
+<p>11. [Operational Monitoring](#11-operational-monitoring)</p>
+<p>12. [Environment Variables Reference](#12-environment-variables-reference)</p>
+<p>13. [Pre Go-Live Checklist](#13-pre-go-live-checklist)</p>
+<p>14. [File Reference](#14-file-reference)</p>
+
+<hr>
+
+<h2>1. Architecture Overview</h2>
+
+<p>Cheapest Go operates as an <strong>Online Travel Agency (OTA)</strong> using the merchant model:</p>
+
+<ul><li><strong>Hotels:</strong> Sourced from Emerging Travel (OTV/RateHawk) via the TravelgateX API gateway</li>
+<li><strong>Flights:</strong> Sourced from airlines worldwide via the Duffel API</li>
+<li><strong>Payments:</strong> Collected from customers via Stripe; suppliers paid separately</li>
+</ul>
+
+<pre><code>User ──── Stripe (collects gross) ──── Cheapest Go ──┬── OTV (monthly credit invoice)
+<p>                                                      └── Duffel (prepaid balance deduction)</p>
+</code></pre>
+
+<p>The spread between gross (customer payment) and net (supplier cost) is the platform's revenue.</p>
+
+<h3>Supplier Payment Models Compared</h3>
+
+<table><thead><tr><th>OTV / RateHawk (Hotels)</th><th>Duffel (Flights)</th></tr></thead><tbody><tr><td><strong>Model</strong></td><td>Credit line (pay later)</td><td>Prepaid balance (pay upfront)</td></tr>
+<tr><td><strong>Deduction timing</strong></td><td>Non-refundable: at booking. Refundable: at free-cancel deadline</td><td>Immediately on every order</td></tr>
+<tr><td><strong>Cash flow</strong></td><td>~30-day float — collect Stripe before paying OTV</td><td>Negative float — Duffel deducts before Stripe pays out</td></tr>
+<tr><td><strong>Runs out when</strong></td><td>Credit limit exhausted</td><td>Balance hits zero</td></tr>
+<tr><td><strong>Payment schedule</strong></td><td>Monthly invoice, pay within 5 working days of receipt</td><td>Manual top-up when balance is low</td></tr>
+<tr><td><strong>Risk</strong></td><td>Silent auto-cancellation of refundable bookings if credit maxed at deadline</td><td>Flight bookings fail if balance = 0</td></tr></tbody></table>
+<hr>
+
+<h2>2. TravelgateX Hotel Integration</h2>
+
+<h3>2.1 Supplier Configuration</h3>
+
+<table><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody><tr><td>API Endpoint</td><td><code>https://api.travelgate.com</code></td></tr>
+<tr><td>Auth Header</td><td><code>Apikey {TRAVELGATEX_API_KEY}</code></td></tr>
+<tr><td>Context</td><td><code>OTV</code></td></tr>
+<tr><td>Supplier Code</td><td><code>OTV</code> (Emerging Travel / RateHawk)</td></tr>
+<tr><td>Access ID</td><td><code>38327</code></td></tr>
+<tr><td>Test Mode</td><td><code>false</code> (production)</td></tr></tbody></table>
+<h3>2.2 Booking Flow</h3>
+
+<pre><code>1. SEARCH
+<p>   User selects destination + dates</p>
+<p>   → travelgatex-search edge function</p>
+<p>   → TGX GraphQL search query (context: OTV)</p>
+<p>   → Options returned with paymentType field</p>
+<p>   → Non-MERCHANT options filtered out [FIXED]</p>
+<p>   → Cheapest option per hotel surfaced to UI</p>
+
+<p>2. PREBOOK</p>
+<p>   User selects hotel</p>
+<p>   → /api/booking/prebook</p>
+<p>   → Fresh search (tokens expire quickly)</p>
+<p>   → Quote call to lock price</p>
+<p>   → Assert paymentType === MERCHANT [FIXED]</p>
+<p>   → Return prebookId = "TGX:{optionRefId}"</p>
+
+<p>3. PAYMENT</p>
+<p>   User fills guest details</p>
+<p>   → /api/booking/create-payment</p>
+<p>   → Apply 15% markup to OTV net price</p>
+<p>   → Create Stripe PaymentIntent (automatic capture)</p>
+<p>   → Return clientSecret to frontend</p>
+
+<p>4. CONFIRM</p>
+<p>   User completes Stripe payment</p>
+<p>   → /api/booking/confirm</p>
+<p>   → Verify Stripe PaymentIntent succeeded</p>
+<p>   → Call travelgatex-book edge function</p>
+<p>   → Assert booking.status === "OK" [FIXED]</p>
+<p>   → Save booking to database (supplier_cost = OTV net)</p>
+<p>   → Send confirmation email</p>
+
+<p>5. CANCEL (if needed)</p>
+<p>   → /api/booking/cancel</p>
+<p>   → Call travelgatex-cancel edge function</p>
+<p>   → Assert cancellation.status === "CANCELLED" [FIXED]</p>
+<p>   → Issue Stripe refund (proportional to penalty ratio)</p>
+<p>   → OTV credit restored on next invoice cycle</p>
+</code></pre>
+
+<h3>2.3 GraphQL Operations</h3>
+
+<strong>Search Query:</strong>
+<pre><code>query {
+<p>  hotelX {</p>
+<p>    search(criteria: $criteriaSearch, settings: $settings) {</p>
+<p>      options {</p>
+<p>        hotelCode</p>
+<p>        paymentType   # "MERCHANT" only — DIRECT filtered out</p>
+<p>        status</p>
+<p>        price { currency gross net }</p>
+<p>        token</p>
+<p>      }</p>
+<p>    }</p>
+<p>  }</p>
+<p>}</p>
+</code></pre>
+
+<strong>Book Mutation:</strong>
+<pre><code>mutation {
+<p>  hotelX {</p>
+<p>    book(input: $input, settings: $settings) {</p>
+<p>      booking {</p>
+<p>        reference { supplier client hotel }</p>
+<p>        status      # must be "OK" — anything else throws</p>
+<p>        price { currency net gross }</p>
+<p>        cancelPolicy { refundable cancelPenalties { deadline penaltyType currency value } }</p>
+<p>      }</p>
+<p>      errors { code type description }</p>
+<p>    }</p>
+<p>  }</p>
+<p>}</p>
+</code></pre>
+
+<strong>Cancel Mutation:</strong>
+<pre><code>mutation {
+<p>  hotelX {</p>
+<p>    cancel(input: $input, settings: $settings) {</p>
+<p>      cancellation {</p>
+<p>        reference { supplier client hotel }</p>
+<p>        status   # must be "CANCELLED" — anything else throws</p>
+<p>        price { currency net gross }</p>
+<p>      }</p>
+<p>    }</p>
+<p>  }</p>
+<p>}</p>
+</code></pre>
+
+<h3>2.4 Key Configuration</h3>
+
+<pre><code>// travelgatex-book/index.ts
+<p>deltaPrice: { percent: 0, applyBoth: false }</p>
+<p>// percent: 0  — quote price is binding; any increase rejects the booking</p>
+<p>// applyBoth: false — only rejects upward drift; accepts price decreases</p>
+</code></pre>
+
+<hr>
+
+<h2>3. Payment Model: Merchant vs Direct</h2>
+
+<h3>3.1 TravelgateX Connection Payment Type (Platform Fee)</h3>
+
+<p>This is TravelgateX's fee for the B2B connection — <strong>not</strong> the hotel payment model:</p>
+
+<table><thead><tr><th>Type</th><th>Meaning</th></tr></thead><tbody><tr><td><strong>Free</strong></td><td>No platform fee — development only</td></tr>
+<tr><td><strong>STD</strong></td><td>Both sides pay standard booking fee</td></tr>
+<tr><td><strong>SUP</strong></td><td>Buyer pays standard + supplement; supplier pays nothing</td></tr></tbody></table>
+<p>Currently <strong>Free</strong> (development). Must change before go-live.</p>
+
+<h3>3.2 Hotel Booking paymentType</h3>
+
+<table><thead><tr><th>Type</th><th>Meaning</th><th>Compatible with Stripe?</th></tr></thead><tbody><tr><td><strong>MERCHANT</strong></td><td>OTA collects from guest, pays supplier</td><td>✅ Yes — our model</td></tr>
+<tr><td><strong>DIRECT</strong></td><td>Guest pays hotel directly</td><td>❌ No</td></tr></tbody></table>
+<strong>Live API verification (2026-05-26):</strong> 48/48 options from OTV access <code>38327</code> returned <code>MERCHANT</code>. Defensive filtering is enforced in code regardless.
+
+<hr>
+
+<h2>4. OTV/RateHawk Credit Model</h2>
+
+<h3>4.1 How the Credit Line Works</h3>
+
+<p>Source: *Credit Limit Conditions.pptx* (Emerging Travel, April 30, 2026)</p>
+
+<p>RateHawk extends Cheapest Go a <strong>credit line</strong> — not a prepaid balance. This allows bookings to be made without immediate payment.</p>
+
+<strong>Rule 1 — Non-refundable bookings:</strong>
+<pre><code>Credit is consumed at the moment of booking confirmation.
+<p>Booking fails if remaining credit &lt; booking cost.</p>
+</code></pre>
+
+<strong>Rule 2 — Refundable bookings:</strong>
+<pre><code>Credit is NOT required to make the booking.
+<p>Credit must be available when the free cancellation deadline arrives.</p>
+<p>If credit is maxed at the deadline → OTV automatically cancels the booking.</p>
+</code></pre>
+
+<p>This is the most dangerous failure mode in the hotel integration:</p>
+<ul><li>User has a confirmed booking and has paid Stripe ✓</li>
+<li>Credit limit fills up with other bookings</li>
+<li>Free cancellation deadline arrives</li>
+<li>OTV cannot secure credit → silently auto-cancels the booking</li>
+<li>Guest arrives at hotel → no room</li>
+</ul>
+
+<h3>4.2 Payment Terms</h3>
+
+<table><thead><tr><th>Event</th><th>Timing</th></tr></thead><tbody><tr><td>Reporting period</td><td>All check-in dates within a calendar month</td></tr>
+<tr><td>Invoice issued</td><td>By 3rd of the following month</td></tr>
+<tr><td>Payment due</td><td>Within 5 working days of invoice receipt (~8th of month)</td></tr></tbody></table>
+<strong>Example:</strong>
+<pre><code>Guest checks out:   April 1, 2026
+<p>Invoice sent:       May 4, 2026</p>
+<p>Payment due:        May 11, 2026</p>
+</code></pre>
+
+<h3>4.3 Credit Utilization Calculation</h3>
+
+<p>Outstanding credit is tracked by summing <code>supplier_cost</code> for all confirmed OTV hotel bookings not yet checked out:</p>
+
+<pre><code>SELECT SUM(supplier_cost) as outstanding_credit
+<p>FROM bookings</p>
+<p>WHERE provider = 'travelgatex'</p>
+<p>  AND status IN ('confirmed', 'pending')</p>
+<p>  AND check_out &gt; NOW()</p>
+</code></pre>
+
+<p>This is a conservative estimate — it treats all bookings (refundable and non-refundable) as consuming credit simultaneously.</p>
+
+<h3>4.4 Cash Flow Advantage</h3>
+
+<p>Unlike Duffel, OTV's credit model creates a favourable cash flow position:</p>
+
+<pre><code>Day 1:   User books hotel — Stripe captures gross immediately
+<p>Day 1:   OTV credit consumed (not paid yet)</p>
+<p>Day ~35: Invoice received (up to 3rd of next month + 5 days)</p>
+<p>Day ~35: Pay OTV with Stripe payouts already received</p>
+
+<p>Float window: ~30 days where you hold the customer's payment</p>
+<p>              before settling with OTV</p>
+</code></pre>
+
+<hr>
+
+<h2>5. TravelgateX Money Flow</h2>
+
+<h3>5.1 Per Booking</h3>
+
+<pre><code>OTV net price:          PHP 10,000   ← stored as supplier_cost
+<p>Cheapest Go markup:          +15%</p>
+<p>User charged (gross):   PHP 11,500   ← Stripe captures; stored as charged_price</p>
+
+<p>Stripe fee (~2.5%):     -PHP    287</p>
+<p>Net in Stripe:           PHP 11,213</p>
+
+<p>OTV monthly invoice:    -PHP 10,000  ← paid ~30 days later</p>
+<p>Platform income:         PHP  1,213  (~10.5% effective after Stripe fees)</p>
+</code></pre>
+
+<h3>5.2 Markup Logic</h3>
+
+<pre><code>Hotel markup:   15%  (HOTEL_MARKUP)
+<p>Bundle markup:  12%  (BUNDLE_MARKUP — hotel + flight package)</p>
+</code></pre>
+
+<p>Applied in <code>/api/booking/create-payment/route.ts</code>. The three pricing columns in the database:</p>
+
+<table><thead><tr><th>Column</th><th>Value</th><th>Purpose</th></tr></thead><tbody><tr><td><code>supplier_cost</code></td><td>OTV net price</td><td>Credit tracking, reconciliation</td></tr>
+<tr><td><code>charged_price</code></td><td>Stripe gross amount</td><td>Revenue reporting</td></tr>
+<tr><td><code>markup_pct</code></td><td>0.15</td><td>Audit trail</td></tr></tbody></table>
+<h3>5.3 Refund Calculation on Cancellation</h3>
+
+<pre><code>refundRatio = refundAmount / (refundAmount + penaltyAmount)
+<p>stripeRefund = paymentIntentAmount × refundRatio</p>
+</code></pre>
+
+<code>paymentIntentAmount</code> is the gross (includes markup). The OTV penalty ratio is applied proportionally, preserving the markup structure on the retained penalty portion.
+
+<h3>5.4 Legal Considerations</h3>
+
+<p>1. <strong>Price transparency:</strong> Show the total charged. No requirement to disclose the markup breakdown.</p>
+<p>2. <strong>Tax on gross:</strong> VAT/tax must be calculated on what the user pays, not OTV's net cost. Verify with local accountant.</p>
+<p>3. <strong>OTV contract:</strong> Confirm RateHawk agreement permits 15% markup. Rate parity clauses may apply.</p>
+<p>4. <strong>Terms of Service:</strong> State that you are the merchant of record and prices include a service fee.</p>
+
+<hr>
+
+<h2>6. Duffel Flight Integration</h2>
+
+<h3>6.1 API Configuration</h3>
+
+<table><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody><tr><td>API Endpoint</td><td><code>https://api.duffel.com</code></td></tr>
+<tr><td>Auth Header</td><td><code>Bearer {DUFFEL_ACCESS_TOKEN}</code></td></tr>
+<tr><td>API Version</td><td><code>v2</code></td></tr>
+<tr><td>Idempotency</td><td>Required on all order/cancel calls</td></tr></tbody></table>
+<h3>6.2 Booking Flow</h3>
+
+<p>Duffel order is created <strong>before</strong> Stripe payment — offer_requests expire within minutes.</p>
+
+<pre><code>1. SEARCH
+<p>   → POST /air/offer_requests</p>
+<p>   → Returns offers with total_amount, total_currency</p>
+<p>   → Cached 10 min in flight_results_cache</p>
+
+<p>2. REVALIDATION</p>
+<p>   → revalidate-flight edge function</p>
+<p>   → Tolerance: $0.50 live / $10.00 sandbox</p>
+
+<p>3. SESSION CREATION</p>
+<p>   → create-booking-session (15 min TTL)</p>
+
+<p>4. DUFFEL PRE-ORDER  ← before Stripe</p>
+<p>   → POST /air/orders</p>
+<p>   → payments: [{ type: "balance", amount: orderTotal }]</p>
+<p>   → Duffel balance deducted immediately</p>
+<p>   → Returns order.id, booking_reference, e-tickets</p>
+<p>   → Stored in booking_sessions.duffel_pre_order_id</p>
+
+<p>5. STRIPE PAYMENT INTENT</p>
+<p>   → Apply 8% markup to Duffel order total</p>
+<p>   → capture_method: "automatic"</p>
+
+<p>6. CUSTOMER PAYS → Stripe captures</p>
+
+<p>7. WEBHOOK: payment_intent.succeeded</p>
+<p>   → create-booking reuses pre-order (no 2nd Duffel call)</p>
+<p>   → Saves PNR to flight_bookings</p>
+
+<p>8. CANCEL</p>
+<p>   → GET /air/orders/{id} — check "cancel" in available_actions</p>
+<p>   → POST /air/order_cancellations</p>
+<p>   → POST /air/order_cancellations/{id}/actions/confirm</p>
+<p>   → Issue Stripe refund</p>
+</code></pre>
+
+<h3>6.3 Duffel Payment Type: Balance</h3>
+
+<table><thead><tr><th>Type</th><th>Description</th><th>Compatible</th></tr></thead><tbody><tr><td><strong><code>balance</code></strong></td><td>Deduct from pre-funded account</td><td>✅ Current — supports markup</td></tr>
+<tr><td><strong><code>duffel_payments</code></strong></td><td>Duffel collects from customer</td><td>❌ No markup possible</td></tr>
+<tr><td><strong><code>arc_bsp_cash</code></strong></td><td>BSP travel agent settlement</td><td>❌ Not applicable</td></tr></tbody></table>
+<code>balance</code> is the correct choice — the only type that allows the markup model.
+
+<h3>6.4 Orphaned Order Handling</h3>
+
+<p>If Stripe PI creation fails after Duffel order is created, the <code>payment_intent.payment_failed</code> webhook auto-cancels the orphaned Duffel order:</p>
+
+<pre><code>// src/app/api/webhooks/stripe/route.ts (lines 261–331)
+<p>// 1. POST /air/order_cancellations  { order_id: duffelOrderId }</p>
+<p>// 2. POST /air/order_cancellations/{id}/actions/confirm</p>
+<p>// 3. Update booking_sessions.status = 'payment_failed'</p>
+</code></pre>
+
+<hr>
+
+<h2>7. Duffel Money Flow</h2>
+
+<h3>7.1 Per Booking</h3>
+
+<pre><code>Duffel net price:        USD 100.00   ← balance deducted immediately
+<p>Cheapest Go markup:           +8%</p>
+<p>User charged (gross):    USD 108.00   ← Stripe captures</p>
+
+<p>Stripe fee (~2.5%):      -USD   2.70</p>
+<p>Net in Stripe:            USD 105.30</p>
+
+<p>Duffel balance debit:    -USD 100.00</p>
+<p>Platform income:          USD   5.30  (~5% effective)</p>
+</code></pre>
+
+<h3>7.2 Cash Flow Gap</h3>
+
+<pre><code>Duffel deducts:   immediately at order creation
+<p>Stripe payout:    2–7 day rolling delay</p>
+
+<p>Gap window:       up to 7 days out-of-pocket</p>
+<p>Starting with $50,000 balance at $100/booking avg = 500 bookings runway</p>
+</code></pre>
+
+<hr>
+
+<h2>8. Duffel Balance Operations</h2>
+
+<h3>8.1 Safe Minimum Balance</h3>
+
+<pre><code>Minimum buffer = avg_bookings_per_day × avg_ticket_price × 7 days
+<p>Example (10/day, $100 avg): 10 × $100 × 7 = $7,000</p>
+</code></pre>
+
+<p>Set <code>DUFFEL_BALANCE_ALERT_THRESHOLD</code> to this value in Vercel.</p>
+
+<h3>8.2 Monitoring (Implemented)</h3>
+
+<strong>Cron — every 6 hours</strong> (<code>/api/cron/duffel-balance-check</code>):
+<ul><li>Fetches balance from <code>GET /air/payments/balances</code></li>
+<li>Fires admin notification if any currency < threshold</li>
+</ul>
+
+<strong>Pre-booking guard</strong> (live mode only):
+<ul><li>Checks cached balance before creating Duffel order</li>
+<li>Returns HTTP 503 if balance < offer total</li>
+<li>Balance API error is non-fatal (avoids Duffel outage blocking bookings)</li>
+<li>5-minute module-level cache to avoid per-request API calls</li>
+</ul>
+
+<h3>8.3 Top-Up Process</h3>
+
+<p>1. Withdraw from Stripe (Settings → Payouts)</p>
+<p>2. Duffel dashboard → Payments → Top up balance</p>
+<p>3. Wire: 1–3 business days. Card: immediate.</p>
+
+<hr>
+
+<h2>9. Stripe Integration</h2>
+
+<h3>9.1 Capture Methods</h3>
+
+<table><thead><tr><th>Provider</th><th>capture_method</th><th>Reason</th></tr></thead><tbody><tr><td>Hotels (OTV)</td><td><code>automatic</code></td><td>Confirmed immediately at booking</td></tr>
+<tr><td>Flights (Duffel)</td><td><code>automatic</code></td><td>Order confirmed before PI creation</td></tr>
+<tr><td>Flights (Mystifly)</td><td><code>manual</code></td><td>Hold funds until PNR confirmed; cancel if no PNR</td></tr></tbody></table>
+<h3>9.2 Webhook Events</h3>
+
+<table><thead><tr><th>Event</th><th>Action</th></tr></thead><tbody><tr><td><code>payment_intent.succeeded</code> (Duffel)</td><td>create-booking, issue e-ticket</td></tr>
+<tr><td><code>payment_intent.amount_capturable_updated</code> (Mystifly)</td><td>Capture after PNR confirmed</td></tr>
+<tr><td><code>payment_intent.payment_failed</code></td><td>Cancel orphaned Duffel pre-order</td></tr>
+<tr><td><code>payment_intent.canceled</code></td><td>Cancel orphaned Duffel pre-order</td></tr>
+<tr><td><code>charge.refunded</code></td><td>Update booking status to <code>refunded</code></td></tr></tbody></table>
+<h3>9.3 Security</h3>
+
+<ul><li>CSRF check on all booking mutation routes</li>
+<li>Rate limiting: 5 req/min (book), 10 (confirm), 20 (search)</li>
+<li>Ownership: all operations verify <code>user_id === authenticated user</code></li>
+<li>Stripe signature verification on all webhooks</li>
+<li>Dedup table: <code>stripe_processed_events</code> (unique constraint on <code>event_id</code>)</li>
+<li>Idempotency keys on all PaymentIntent and refund calls</li>
+</ul>
+
+<hr>
+
+<h2>10. Issues Found & Fixed</h2>
+
+<p>All resolved during audit on 2026-05-26.</p>
+
+<h3>Critical</h3>
+
+<table><thead><tr><th>#</th><th>Issue</th><th>File</th><th>Fix</th></tr></thead><tbody><tr><td>1</td><td>Non-MERCHANT hotel options not filtered — DIRECT option would Stripe-charge a guest who pays hotel directly</td><td><code>travelgatex-search/index.ts</code></td><td>Filter before <code>groupByHotel()</code>; warn on dropped count</td></tr>
+<tr><td>2</td><td>No paymentType assertion before Stripe checkout</td><td><code>prebook/route.ts</code></td><td>Hard HTTP 409 if quote returns non-MERCHANT</td></tr>
+<tr><td>3</td><td><code>booking.status</code> from OTV never checked — ON_REQUEST treated as confirmed</td><td><code>travelgatex-book/index.ts</code></td><td>Throw if status <code>!== 'OK'</code>; log actual value</td></tr>
+<tr><td>4</td><td><code>cancellation.status</code> from OTV never checked — edge function returned 200 even if OTV cancellation unconfirmed</td><td><code>travelgatex-cancel/index.ts</code></td><td>Throw if status <code>!== 'CANCELLED'</code>; return <code>otvStatus</code> in response</td></tr></tbody></table>
+<h3>Financial</h3>
+
+<table><thead><tr><th>#</th><th>Issue</th><th>File</th><th>Fix</th></tr></thead><tbody><tr><td>5</td><td><code>deltaPrice: 10%</code> — accepted bookings up to 10% more expensive than quoted, eroding margin</td><td><code>travelgatex-book/index.ts</code></td><td>Set to <code>0%</code> — quote price is binding</td></tr></tbody></table>
+<h3>Reliability</h3>
+
+<table><thead><tr><th>#</th><th>Issue</th><th>File</th><th>Fix</th></tr></thead><tbody><tr><td>6</td><td>No <code>maxDuration</code> on hotel routes — OTV cancel averages 13.5s, Vercel default killed it</td><td>confirm, cancel, prebook</td><td>120s / 60s / 60s</td></tr>
+<tr><td>7</td><td>No <code>maxDuration</code> on flight routes</td><td>book, cancel-booking, confirm</td><td>120s / 60s / 60s</td></tr>
+<tr><td>8</td><td>No <code>maxDuration</code> on Stripe webhook — Stripe expects response within 30s</td><td><code>webhooks/stripe/route.ts</code></td><td>30s</td></tr></tbody></table>
+<h3>Operational (New)</h3>
+
+<table><thead><tr><th>#</th><th>Feature</th><th>Files</th></tr></thead><tbody><tr><td>9</td><td>Duffel balance cron (every 6h) + pre-booking guard</td><td><code>cron/duffel-balance-check/route.ts</code>, <code>flights/duffel-balance.ts</code></td></tr>
+<tr><td>10</td><td>OTV credit utilization cron (every 12h) + refundable deadline monitor</td><td><code>cron/otv-credit-check/route.ts</code></td></tr>
+<tr><td>11</td><td>vercel.json cron entries for both monitors</td><td><code>vercel.json</code></td></tr></tbody></table>
+<hr>
+
+<h2>11. Operational Monitoring</h2>
+
+<h3>11.1 OTV Credit Monitor (<code>/api/cron/otv-credit-check</code>)</h3>
+
+<p>Runs every 12 hours. Two checks:</p>
+
+<strong>Credit utilization:</strong>
+<ul><li>Sums <code>supplier_cost</code> of all confirmed OTV bookings not yet checked out</li>
+<li>Compares against <code>OTV_CREDIT_LIMIT</code> env var</li>
+<li>Alerts admin dashboard if utilization ≥ 80% (configurable)</li>
+</ul>
+
+<strong>Refundable deadline monitor:</strong>
+<ul><li>Finds confirmed refundable OTV bookings whose <code>free_cancel_deadline</code> is within 48 hours</li>
+<li>Alerts admin with property name, check-in date, and deadline</li>
+<li>Action: either pay OTV invoice early to restore credit, or manually cancel and refund the user before OTV does it silently</li>
+</ul>
+
+<strong>Environment variables required:</strong>
+
+<table><thead><tr><th>Var</th><th>Purpose</th><th>Example</th></tr></thead><tbody><tr><td><code>OTV_CREDIT_LIMIT</code></td><td>Your agreed RateHawk credit limit</td><td><code>50000</code></td></tr>
+<tr><td><code>OTV_CREDIT_UTILIZATION_ALERT_PCT</code></td><td>Alert threshold (default 0.8 = 80%)</td><td><code>0.75</code></td></tr>
+<tr><td><code>OTV_DEADLINE_ALERT_HOURS</code></td><td>Deadline warning window (default 48h)</td><td><code>48</code></td></tr></tbody></table>
+<h3>11.2 Duffel Balance Monitor (<code>/api/cron/duffel-balance-check</code>)</h3>
+
+<p>Runs every 6 hours.</p>
+
+<ul><li>Fetches live balance from Duffel API</li>
+<li>Alerts if any currency < <code>DUFFEL_BALANCE_ALERT_THRESHOLD</code></li>
+<li>Pre-booking guard also checks balance at booking time (5-min cache)</li>
+</ul>
+
+<strong>Environment variables required:</strong>
+
+<table><thead><tr><th>Var</th><th>Purpose</th><th>Example</th></tr></thead><tbody><tr><td><code>DUFFEL_BALANCE_ALERT_THRESHOLD</code></td><td>Min balance before alert</td><td><code>7000</code></td></tr></tbody></table>
+<h3>11.3 Monthly Reconciliation (Manual)</h3>
+
+<p>At month end, reconcile:</p>
+
+<pre><code>OTV invoice total  ==  SUM(supplier_cost) WHERE provider='travelgatex'
+<p>                        AND check_in BETWEEN month_start AND month_end</p>
+
+<p>Stripe captures    ==  SUM(charged_price) WHERE provider='travelgatex'</p>
+<p>                        AND created_at BETWEEN month_start AND month_end</p>
+
+<p>Platform margin    ==  Stripe captures - OTV invoice - Stripe fees</p>
+</code></pre>
+
+<p>Query available via <code>get_revenue_stats()</code> RPC function in Supabase.</p>
+
+<hr>
+
+<h2>12. Environment Variables Reference</h2>
+
+<h3>Required — OTV / TravelgateX</h3>
+
+<table><thead><tr><th>Variable</th><th>Description</th></tr></thead><tbody><tr><td><code>TRAVELGATEX_API_KEY</code></td><td>TravelgateX API key (Apikey auth)</td></tr>
+<tr><td><code>TRAVELGATEX_CLIENT</code></td><td>Client identifier (<code>forhuinc</code>)</td></tr>
+<tr><td><code>OTV_CREDIT_LIMIT</code></td><td>RateHawk-agreed credit limit in base currency</td></tr>
+<tr><td><code>OTV_CREDIT_UTILIZATION_ALERT_PCT</code></td><td>Alert at this fraction of limit (default <code>0.8</code>)</td></tr>
+<tr><td><code>OTV_DEADLINE_ALERT_HOURS</code></td><td>Warn before free-cancel deadline (default <code>48</code>)</td></tr></tbody></table>
+<h3>Required — Duffel</h3>
+
+<table><thead><tr><th>Variable</th><th>Description</th></tr></thead><tbody><tr><td><code>DUFFEL_ACCESS_TOKEN</code></td><td>Duffel API token (starts with <code>duffel_live_</code> in production)</td></tr>
+<tr><td><code>DUFFEL_BALANCE_ALERT_THRESHOLD</code></td><td>Min balance before alert (e.g. <code>7000</code>)</td></tr></tbody></table>
+<h3>Required — Stripe</h3>
+
+<table><thead><tr><th>Variable</th><th>Description</th></tr></thead><tbody><tr><td><code>STRIPE_SECRET_KEY</code></td><td>Stripe secret key</td></tr>
+<tr><td><code>STRIPE_WEBHOOK_SECRET</code></td><td>Stripe webhook signing secret</td></tr></tbody></table>
+<h3>Required — Supabase</h3>
+
+<table><thead><tr><th>Variable</th><th>Description</th></tr></thead><tbody><tr><td><code>NEXT_PUBLIC_SUPABASE_URL</code></td><td>Supabase project URL</td></tr>
+<tr><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td>Service role key (server-side only)</td></tr></tbody></table>
+<h3>Optional</h3>
+
+<table><thead><tr><th>Variable</th><th>Description</th><th>Default</th></tr></thead><tbody><tr><td><code>CRON_SECRET</code></td><td>Bearer token for cron route auth</td><td>none</td></tr>
+<tr><td><code>TRAVELGATEX_TEST_MODE</code></td><td>Enable TGX test mode</td><td><code>false</code></td></tr></tbody></table>
+<hr>
+
+<h2>13. Pre Go-Live Checklist</h2>
+
+<h3>OTV / TravelgateX</h3>
+
+<ul><li>☐ Change connection payment type from <strong>Free → STD</strong> in TravelgateX admin (Emerging Travel connection)</li>
+<li>☐ Set <code>OTV_CREDIT_LIMIT</code> in Vercel to your agreed RateHawk credit amount</li>
+<li>☐ Confirm RateHawk contract allows 15% markup (check rate parity clauses)</li>
+<li>☐ Set up tax collection on gross price (local accountant sign-off)</li>
+<li>☐ Add merchant-of-record language to Terms of Service</li>
+<li>☐ Verify first monthly invoice reconciles to DB <code>supplier_cost</code> totals</li>
+</ul>
+
+<h3>Duffel</h3>
+
+<ul><li>☐ Confirm <code>DUFFEL_ACCESS_TOKEN</code> starts with <code>duffel_live_</code> (not <code>duffel_test_</code>)</li>
+<li>☐ Set <code>DUFFEL_BALANCE_ALERT_THRESHOLD</code> to 7-day runway value</li>
+<li>☐ Pre-fund Duffel account with sufficient balance for launch volume</li>
+<li>☐ Set Stripe payout to automatic daily to minimize top-up lag</li>
+</ul>
+
+<h3>Stripe</h3>
+
+<ul><li>☐ Confirm webhook endpoint is registered for all 5 event types</li>
+<li>☐ Verify <code>STRIPE_WEBHOOK_SECRET</code> matches live webhook signing secret</li>
+<li>☐ Confirm Vercel plan supports <code>maxDuration</code> up to 120s (requires Pro)</li>
+</ul>
+
+<h3>General</h3>
+
+<ul><li>☐ Set <code>CRON_SECRET</code> and register it in Vercel cron auth</li>
+<li>☐ Verify all 4 cron jobs appear in Vercel dashboard after deploy</li>
+<li>☐ Run manual test of <code>/api/cron/otv-credit-check</code> and <code>/api/cron/duffel-balance-check</code></li>
+<li>☐ Confirm admin notifications table is accessible in dashboard</li>
+</ul>
+
+<hr>
+
+<h2>14. File Reference</h2>
+
+<h3>TravelgateX / Hotels</h3>
+
+<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>supabase/functions/travelgatex-search/index.ts</code></td><td>Search; MERCHANT filter</td></tr>
+<tr><td><code>supabase/functions/travelgatex-search/search.ts</code></td><td>GraphQL query</td></tr>
+<tr><td><code>supabase/functions/travelgatex-search/transform.ts</code></td><td>Option → hotel transform</td></tr>
+<tr><td><code>supabase/functions/travelgatex-quote/index.ts</code></td><td>Quote handler</td></tr>
+<tr><td><code>supabase/functions/travelgatex-book/index.ts</code></td><td>Book; status guard; deltaPrice=0</td></tr>
+<tr><td><code>supabase/functions/travelgatex-cancel/index.ts</code></td><td>Cancel; status guard</td></tr>
+<tr><td><code>src/lib/server/travelgatex.ts</code></td><td>Gateway dispatcher</td></tr>
+<tr><td><code>src/app/api/booking/prebook/route.ts</code></td><td>Prebook; MERCHANT assert; maxDuration=60</td></tr>
+<tr><td><code>src/app/api/booking/confirm/route.ts</code></td><td>Confirm; maxDuration=120</td></tr>
+<tr><td><code>src/app/api/booking/cancel/route.ts</code></td><td>Cancel; maxDuration=60</td></tr>
+<tr><td><code>src/app/api/booking/create-payment/route.ts</code></td><td>Stripe PI; 15% markup</td></tr>
+<tr><td><code>src/lib/server/bookings.ts</code></td><td>Core booking/cancel logic</td></tr>
+<tr><td><code>src/lib/server/cancellation-engine.ts</code></td><td>Cancel penalty calculation</td></tr>
+<tr><td><code>src/app/api/cron/otv-credit-check/route.ts</code></td><td>OTV credit + deadline monitor</td></tr></tbody></table>
+<h3>Duffel / Flights</h3>
+
+<table><thead><tr><th>File</th><th>Purpose</th></tr></thead><tbody><tr><td><code>src/app/api/flights/book/route.ts</code></td><td>Pre-order; balance guard; Stripe PI; maxDuration=120</td></tr>
+<tr><td><code>src/app/api/flights/confirm/route.ts</code></td><td>Fallback confirm; maxDuration=60</td></tr>
+<tr><td><code>src/app/api/flights/cancel-booking/route.ts</code></td><td>Cancel + refund; maxDuration=60</td></tr>
+<tr><td><code>src/app/api/webhooks/stripe/route.ts</code></td><td>Webhook; orphan cancel; maxDuration=30</td></tr>
+<tr><td><code>src/lib/server/flights/duffel-balance.ts</code></td><td>Balance utility; 5-min cache</td></tr>
+<tr><td><code>src/app/api/cron/duffel-balance-check/route.ts</code></td><td>Balance monitor cron</td></tr>
+<tr><td><code>supabase/functions/_shared/duffelClient.ts</code></td><td>Duffel API client</td></tr>
+<tr><td><code>supabase/functions/create-booking/index.ts</code></td><td>Pre-order reuse; fallback booking</td></tr>
+<tr><td><code>supabase/functions/issue-ticket/index.ts</code></td><td>E-ticket issuance</td></tr></tbody></table>
+<h3>Database</h3>
+
+<table><thead><tr><th>Migration</th><th>Purpose</th></tr></thead><tbody><tr><td><code>001_create_bookings_table.sql</code></td><td>Base bookings schema</td></tr>
+<tr><td><code>004_booking_policy_system.sql</code></td><td>Policy snapshots + tiers</td></tr>
+<tr><td><code>20260413000000_add_financial_audit_to_hotels.sql</code></td><td><code>supplier_cost</code>, <code>charged_price</code>, <code>markup_pct</code></td></tr>
+<tr><td><code>20260428000000_add_provider_to_bookings.sql</code></td><td><code>provider</code>, <code>provider_metadata</code></td></tr></tbody></table>
+<hr>
+
+<p>*Generated from engineering audit session — 2026-05-26*</p>
+
+</body>
+</html>

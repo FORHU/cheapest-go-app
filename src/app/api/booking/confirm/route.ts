@@ -3,6 +3,8 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { confirmAndSaveTgxBooking } from '@/lib/server/bookings';
 import { stripe } from '@/lib/stripe/server';
 import { createNotification } from '@/lib/server/admin/notify';
+
+export const maxDuration = 120;
 import { sendBookingConfirmationEmail } from '@/lib/server/email';
 import { revalidatePath } from 'next/cache';
 import { rateLimit } from '@/lib/server/rate-limit';

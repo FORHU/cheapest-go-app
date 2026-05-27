@@ -3,6 +3,8 @@ import { safeError } from '@/lib/server/safe-error';
 import { prebookSchema } from '@/lib/schemas/booking';
 import { quoteTravelgateX } from '@/lib/server/travelgatex';
 
+export const maxDuration = 60;
+
 /**
  * TGX option tokens encode hotel code and dates in segments separated by "!~|".
  * Segment keys: b=checkin(YYMMDD), c=checkout(YYMMDD), d=hotelCode(numeric ETG ID)
@@ -125,6 +127,15 @@ export async function POST(req: Request) {
                 console.warn('[prebook/tgx] All Quote attempts failed for all rooms — blocking checkout');
                 return Response.json(
                     { success: false, error: 'This room is currently unavailable for booking. Please try a different hotel or check back later.' },
+                    { status: 409 }
+                );
+            }
+
+            // Hard gate: only MERCHANT options can proceed to Stripe checkout.
+            if (optionQuote.paymentType && optionQuote.paymentType !== 'MERCHANT') {
+                console.error('[prebook/tgx] Non-MERCHANT paymentType from quote:', optionQuote.paymentType);
+                return Response.json(
+                    { success: false, error: 'This room is not available for online payment. Please contact support.' },
                     { status: 409 }
                 );
             }

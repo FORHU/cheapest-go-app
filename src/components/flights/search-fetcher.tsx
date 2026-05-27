@@ -247,6 +247,12 @@ export function SearchFetcher({
                     ? { status: 'success', offers }
                     : { status: 'empty' }
                 );
+
+                // Capture cheapest price for "Continue Your Search" on the home page
+                if (offers.length > 0 && destination) {
+                    const cheapest = offers.reduce((min, o) => o.price.total < min.price.total ? o : min, offers[0]);
+                    useSearchStore.getState().updateRecentSearchPrice(destination, cheapest.price.total, cheapest.price.currency);
+                }
             } catch (err: any) {
                 clearTimeout(timeoutId);
                 clearTimeout(slowId);

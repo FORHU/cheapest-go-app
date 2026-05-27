@@ -243,7 +243,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             } else if (isRefundable) {
                                 // 🟡 Refundable with fee OR unknown penalty amount
                                 const feeLabel = penalty != null && penalty > 0
-                                    ? `Refundable (fee: ${fp?.refundPenaltyCurrency ?? ''}${penalty})`
+                                    ? `Refundable (fee: ${formatPrice(penalty, fp?.refundPenaltyCurrency ?? 'USD', targetCurrency)})`
                                     : 'Refundable (fees may apply)';
                                 return (
                                     <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400">
