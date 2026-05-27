@@ -216,10 +216,7 @@ export async function POST(req: NextRequest) {
 
         if (lateBooking?.pnr) {
             console.log('[/confirm] Late webhook booking found after create-booking failure. PNR:', lateBooking.pnr);
-            if (!bookingData.alreadyBooked) {
-                fireBookingEmail(supabase, sessionId, { bookingId: lateBooking.id, pnr: lateBooking.pnr, status: lateBooking.status }, provider)
-                    .catch(e => console.error('[/confirm] Email error:', e));
-            }
+            // Webhook already ran and sent the confirmation email — do not duplicate it here.
             return NextResponse.json({
                 success: true,
                 bookingId: lateBooking.id,

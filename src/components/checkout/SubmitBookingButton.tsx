@@ -9,6 +9,7 @@ interface SubmitBookingButtonProps {
     loading: boolean;
     prebooking: boolean;
     prebookId: string | null | undefined;
+    priceReady: boolean;
     isAuthenticated: boolean;
     totalPrice: number;
     prebookError: string | null;
@@ -19,6 +20,7 @@ export function SubmitBookingButton({
     loading,
     prebooking,
     prebookId,
+    priceReady,
     isAuthenticated,
     totalPrice,
     prebookError,
@@ -26,11 +28,13 @@ export function SubmitBookingButton({
 }: SubmitBookingButtonProps) {
     const currency = useUserCurrency();
     const symbol = getCurrencySymbol(currency);
-    const isDisabled = loading || (prebooking && !prebookId) || !!prebookError;
+    const isPriceVerifying = !!prebookId && !priceReady && !prebookError;
+    const isDisabled = loading || (prebooking && !prebookId) || isPriceVerifying || !!prebookError;
 
     const getButtonClasses = () => {
         if (loading) return 'bg-blue-500 text-white cursor-wait animate-pulse';
         if (prebooking && !prebookId) return 'bg-slate-300 text-slate-900 cursor-not-allowed';
+        if (isPriceVerifying) return 'bg-slate-300 text-slate-900 cursor-not-allowed';
         if (prebookError) return 'bg-slate-300 text-slate-900 cursor-not-allowed';
         if (!isAuthenticated) return 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20';
         return 'bg-yellow-400 hover:bg-yellow-500 text-slate-900 shadow-yellow-400/20 cursor-pointer';
@@ -68,7 +72,7 @@ export function SubmitBookingButton({
             <button
                 type="button"
                 onClick={isUnavailable ? () => window.history.back() : onSubmit}
-                disabled={loading || (prebooking && !prebookId) || (!!prebookError && !isUnavailable)}
+                disabled={loading || (prebooking && !prebookId) || isPriceVerifying || (!!prebookError && !isUnavailable)}
                 className={`w-full py-2 lg:py-3 font-bold text-[12px] lg:text-base rounded-lg lg:rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 lg:gap-3 ${
                     isUnavailable ? 'bg-red-600 hover:bg-red-700 text-white cursor-pointer' : getButtonClasses()
                 }`}
@@ -82,6 +86,11 @@ export function SubmitBookingButton({
                     <>
                         <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
                         <span>Verifying Room...</span>
+                    </>
+                ) : isPriceVerifying ? (
+                    <>
+                        <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
+                        <span>Verifying Price...</span>
                     </>
                 ) : isHotelUnavailable ? (
                     <span>Go back &amp; choose a different hotel</span>

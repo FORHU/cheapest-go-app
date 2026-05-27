@@ -42,14 +42,14 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showModifyModal, setShowModifyModal] = useState(false);
     const [showMapView, setShowMapView]         = useState(false);
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
-    const userCurrency = useUserCurrency();
+    const liveUserCurrency = useUserCurrency();
     const bookingCurrency = booking.currency || 'USD';
-    const displayPrice = mounted
-        ? Math.round(convertCurrency(booking.total_price, bookingCurrency, userCurrency))
-        : booking.total_price;
-    const displayCurrency = mounted ? userCurrency : bookingCurrency;
+    const [displayPrice, setDisplayPrice] = useState(booking.total_price);
+    const [displayCurrency, setDisplayCurrency] = useState(bookingCurrency);
+    useEffect(() => {
+        setDisplayPrice(Math.round(convertCurrency(booking.total_price, bookingCurrency, liveUserCurrency)));
+        setDisplayCurrency(liveUserCurrency);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const checkInDate = new Date(booking.check_in);
     const checkOutDate = new Date(booking.check_out);
