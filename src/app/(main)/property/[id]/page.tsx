@@ -133,6 +133,19 @@ export default async function PropertyPage({
     const city = fetchedDetails?.city || fetchedDetails?.details?.city || '';
     const country = fetchedDetails?.country || fetchedDetails?.details?.country || '';
 
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cheapestgo.com';
+    const propertySlug = buildPropertySlug(property.name, id);
+
+    const breadcrumbJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl}/` },
+            ...(city ? [{ '@type': 'ListItem', position: 2, name: `Stays in ${city}`, item: `${siteUrl}/search?destination=${encodeURIComponent(city)}` }] : []),
+            { '@type': 'ListItem', position: city ? 3 : 2, name: property.name, item: `${siteUrl}/property/${propertySlug}` },
+        ],
+    };
+
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Hotel',
@@ -170,6 +183,10 @@ export default async function PropertyPage({
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
             />
             {/* Mobile floating header — appears on scroll */}
             <MobilePropertyHeader propertyName={property.name} />
