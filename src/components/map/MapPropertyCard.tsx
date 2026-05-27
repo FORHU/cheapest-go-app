@@ -85,10 +85,12 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
     const ratingLabel = React.useMemo(() => getRatingLabel(rating), [rating]);
 
     return (
-        <button
-            type="button"
+        <div
+            role="button"
+            tabIndex={0}
             data-property-id={property.id}
             onClick={() => onSelect(property.id)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(property.id); } }}
             onMouseEnter={() => onHover(property.id)}
             onMouseLeave={() => onHover(null)}
             className={cn(
@@ -261,7 +263,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                     </div>
                 </div>
             </div>
-        </button>
+        </div>
     );
 });
 
