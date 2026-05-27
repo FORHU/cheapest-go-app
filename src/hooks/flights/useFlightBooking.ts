@@ -9,6 +9,7 @@ import type { SelectedBag } from '@/types/bags';
 import { createClient } from '@/utils/supabase/client';
 import { invokeEdgeFunction } from '@/utils/supabase/functions';
 import { useUser } from '@/stores/authStore';
+import { clientFetch } from '@/lib/api/client';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 

@@ -606,6 +606,7 @@ export function CheckoutContent() {
                                             loading={loading || isCreatingPayment}
                                             prebooking={prebooking}
                                             prebookId={prebookId}
+                                            priceReady={!!priceData}
                                             isAuthenticated={!!user}
                                             totalPrice={displayTotalPrice}
                                             prebookError={prebookError}

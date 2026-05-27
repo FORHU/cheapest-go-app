@@ -51,7 +51,10 @@ export async function POST(req: NextRequest) {
         const userId = user.id;
 
         // ── Validate ──
-        if (!provider || !['duffel', 'mystifly_v2', 'mystifly'].includes(provider)) {
+        if (provider === 'mystifly_v2' || provider === 'mystifly') {
+            return NextResponse.json({ success: false, error: 'Mystifly bookings are currently disabled' }, { status: 503 });
+        }
+        if (!provider || provider !== 'duffel') {
             return NextResponse.json({ success: false, error: 'invalid provider string passed' }, { status: 400 });
         }
         if (!flight || typeof flight !== 'object') {

@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
             }
 
             // Security: verify the payment belongs to this user
-            if (pi.metadata.userId !== user.id) {
+            if (pi.metadata?.userId !== user.id) {
                 return Response.json(
                     { success: false, error: 'Payment does not belong to this user' },
                     { status: 403 }

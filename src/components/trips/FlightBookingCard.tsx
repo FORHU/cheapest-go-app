@@ -341,8 +341,11 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             .finally(() => { if (!cancelled) setLoadingEligibility(false); });
         return () => { cancelled = true; };
     }, [localStatus, booking.pnr, booking.provider]); // eslint-disable-line react-hooks/exhaustive-deps
-    const userCurrency = useUserCurrency();
+    const liveUserCurrency = useUserCurrency();
     const bookingCurrency = booking.currency || 'USD';
+    const [frozenUserCurrency, setFrozenUserCurrency] = useState<string | null>(null);
+    useEffect(() => { setFrozenUserCurrency(liveUserCurrency); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const userCurrency = frozenUserCurrency ?? bookingCurrency;
     const convertPrice = (amount: number, fromCurrency = bookingCurrency) =>
         mounted ? Math.round(convertCurrency(amount, fromCurrency, userCurrency)) : amount;
     const displayCurrency = mounted ? userCurrency : bookingCurrency;
