@@ -173,86 +173,86 @@ export function VoiceAssistant() {
 
   if (!mounted || !supported) return null;
 
-  return createPortal(
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-      {/* Bubble */}
-      {open && (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-4 w-72 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 tracking-wide uppercase">
-              Hey Cheap
-            </span>
-            <button
-              onClick={handleClose}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            >
-              <X size={14} />
-            </button>
-          </div>
+  // return createPortal(
+  //   <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+  //     {/* Bubble */}
+  //     {open && (
+  //       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-4 w-72 space-y-3">
+  //         <div className="flex items-center justify-between">
+  //           <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 tracking-wide uppercase">
+  //             Hey Cheap
+  //           </span>
+  //           <button
+  //             onClick={handleClose}
+  //             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+  //           >
+  //             <X size={14} />
+  //           </button>
+  //         </div>
 
-          {status === 'listening' && (
-            <p className="text-sm text-slate-500 dark:text-slate-400 animate-pulse">
-              Listening…
-            </p>
-          )}
-          {status === 'thinking' && (
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Thinking…
-            </p>
-          )}
-          {status === 'error' && errorMsg && (
-            <p className="text-sm text-red-500">{errorMsg}</p>
-          )}
+  //         {status === 'listening' && (
+  //           <p className="text-sm text-slate-500 dark:text-slate-400 animate-pulse">
+  //             Listening…
+  //           </p>
+  //         )}
+  //         {status === 'thinking' && (
+  //           <p className="text-sm text-slate-500 dark:text-slate-400">
+  //             Thinking…
+  //           </p>
+  //         )}
+  //         {status === 'error' && errorMsg && (
+  //           <p className="text-sm text-red-500">{errorMsg}</p>
+  //         )}
 
-          {transcript && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              <span className="font-medium">You:</span> {transcript}
-            </p>
-          )}
-          {reply && (
-            <p className="text-sm text-slate-900 dark:text-white leading-snug">
-              {reply}
-            </p>
-          )}
+  //         {transcript && (
+  //           <p className="text-xs text-slate-500 dark:text-slate-400">
+  //             <span className="font-medium">You:</span> {transcript}
+  //           </p>
+  //         )}
+  //         {reply && (
+  //           <p className="text-sm text-slate-900 dark:text-white leading-snug">
+  //             {reply}
+  //           </p>
+  //         )}
 
-          {status === 'idle' && (
-            <p className="text-xs text-slate-400 text-center">
-              Tap the mic to speak again
-            </p>
-          )}
-        </div>
-      )}
+  //         {status === 'idle' && (
+  //           <p className="text-xs text-slate-400 text-center">
+  //             Tap the mic to speak again
+  //           </p>
+  //         )}
+  //       </div>
+  //     )}
 
-      {/* Mic button */}
-      <button
-        onClick={open ? handleMicClick : handleOpen}
-        title="Talk to Hey Cheap"
-        className={`relative w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors duration-200 ${
-          status === 'listening'
-            ? 'bg-red-500 hover:bg-red-600'
-            : status === 'thinking'
-              ? 'bg-slate-400 cursor-wait'
-              : status === 'speaking'
-                ? 'bg-green-500 hover:bg-green-600'
-                : 'bg-blue-600 hover:bg-blue-700'
-        }`}
-      >
-        {status === 'thinking' ? (
-          <Loader2 size={22} className="text-white animate-spin" />
-        ) : status === 'listening' ? (
-          <MicOff size={22} className="text-white" />
-        ) : (
-          <Mic size={22} className="text-white" />
-        )}
+  //     {/* Mic button */}
+  //     <button
+  //       onClick={open ? handleMicClick : handleOpen}
+  //       title="Talk to Hey Cheap"
+  //       className={`relative w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors duration-200 ${
+  //         status === 'listening'
+  //           ? 'bg-red-500 hover:bg-red-600'
+  //           : status === 'thinking'
+  //             ? 'bg-slate-400 cursor-wait'
+  //             : status === 'speaking'
+  //               ? 'bg-green-500 hover:bg-green-600'
+  //               : 'bg-blue-600 hover:bg-blue-700'
+  //       }`}
+  //     >
+  //       {status === 'thinking' ? (
+  //         <Loader2 size={22} className="text-white animate-spin" />
+  //       ) : status === 'listening' ? (
+  //         <MicOff size={22} className="text-white" />
+  //       ) : (
+  //         <Mic size={22} className="text-white" />
+  //       )}
 
-        {status === 'listening' && (
-          <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-40" />
-        )}
-        {status === 'speaking' && (
-          <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-30" />
-        )}
-      </button>
-    </div>,
-    document.body,
-  );
+  //       {status === 'listening' && (
+  //         <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-40" />
+  //       )}
+  //       {status === 'speaking' && (
+  //         <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-30" />
+  //       )}
+  //     </button>
+  //   </div>,
+  //   document.body,
+  // );
 }

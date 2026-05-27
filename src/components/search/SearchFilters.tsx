@@ -330,7 +330,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: "100%" }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-100 bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-size[40px_40px] flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
+                        className="fixed bottom-0 left-0 right-0 sm:top-[88px] sm:bottom-auto sm:left-auto sm:w-[340px] sm:max-h-[calc(100vh-120px)] max-h-[85vh] z-100 bg-alabaster dark:bg-obsidian bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px flex flex-col lg:hidden shadow-2xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200/50 dark:border-slate-800/50 overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Background Sparkles */}
