@@ -87,10 +87,18 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
         router.push(`/search?${params.toString()}`);
     }, [router]);
 
-    // Reset when search changes
+    const updateRecentSearchPrice = useSearchStore((s) => s.updateRecentSearchPrice);
+
+    // Reset when search changes and capture cheapest price for "Continue Your Search"
     React.useEffect(() => {
         setAllProperties(initialProperties);
         setTotalCount(initialTotalCount || initialProperties.length);
+        if (destination && initialProperties.length > 0) {
+            const cheapest = initialProperties.reduce((min, p) => p.price < min.price ? p : min, initialProperties[0]);
+            if (cheapest.price > 0) {
+                updateRecentSearchPrice(destination, cheapest.price, cheapest.currency || 'USD');
+            }
+        }
     }, [destination, searchParams]);
 
     // Count mappable properties (from allProperties for the map button badge)
