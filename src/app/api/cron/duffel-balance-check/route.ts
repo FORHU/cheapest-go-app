@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createNotification } from '@/lib/server/admin/notify';
 import { getDuffelBalances } from '@/lib/server/flights/duffel-balance';
+import { getAdminSettings } from '@/lib/server/admin/settings';
 import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
-
-// Alert when any currency balance drops below this USD-equivalent threshold.
-// Override via DUFFEL_BALANCE_ALERT_THRESHOLD env var.
-const ALERT_THRESHOLD = parseFloat(process.env.DUFFEL_BALANCE_ALERT_THRESHOLD ?? '500');
 
 export async function GET(req: NextRequest) {
     const authHeader = req.headers.get('authorization');
@@ -16,6 +13,9 @@ export async function GET(req: NextRequest) {
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const cfg = await getAdminSettings();
+    const ALERT_THRESHOLD = parseFloat(cfg.duffel_balance_alert_threshold ?? process.env.DUFFEL_BALANCE_ALERT_THRESHOLD ?? '500');
 
     const token = env.DUFFEL_TOKEN;
     if (!token) {
