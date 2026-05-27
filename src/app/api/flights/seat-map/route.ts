@@ -28,11 +28,17 @@ export async function POST(req: NextRequest) {
         const err = await res.json().catch(() => ({}));
         const msg = err?.errors?.[0]?.message ?? `Duffel seat map error ${res.status}`;
         console.error(`[seat-map] Duffel ${res.status} for offer ${offerId}:`, msg);
+
+        // 422 "no seat map available" = the flight simply doesn't support seat selection.
+        // Return 200 with empty seatMaps so SeatMapPanel calls onUnavailable() instead of
+        // onOfferExpired() — the latter would trigger an infinite refresh loop.
+        if (res.status === 422) {
+            return NextResponse.json({ success: true, seatMaps: [], unavailable: true });
+        }
+
         const clientMsg = res.status === 404
             ? 'This offer has expired. Please go back and search again for updated prices.'
-            : res.status === 422
-                ? 'Seat selection is not available for this flight.'
-                : msg;
+            : msg;
         return NextResponse.json({ success: false, error: clientMsg }, { status: res.status });
     }
 

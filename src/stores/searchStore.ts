@@ -9,6 +9,8 @@ export interface Destination {
     code?: string;
     countryCode?: string;
     id?: string;
+    lowestPrice?: number;
+    priceCurrency?: string;
 }
 
 export interface DateRange {
@@ -125,6 +127,7 @@ interface SearchState {
     addRecentSearch: (destination: Destination) => void;
     removeRecentSearch: (title: string) => void;
     clearRecentSearches: () => void;
+    updateRecentSearchPrice: (title: string, price: number, currency: string) => void;
     reset: () => void;
 
     // Flight Actions
@@ -245,6 +248,12 @@ export const useSearchStore = create<SearchState>()(
 
             removeRecentSearch: (title) => set((state) => ({
                 recentSearches: state.recentSearches.filter((d) => d.title !== title),
+            })),
+
+            updateRecentSearchPrice: (title, price, currency) => set((state) => ({
+                recentSearches: state.recentSearches.map((d) =>
+                    d.title === title ? { ...d, lowestPrice: price, priceCurrency: currency } : d
+                ),
             })),
 
             setActiveDropdown: (activeDropdown) => set({ activeDropdown }),

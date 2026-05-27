@@ -1132,7 +1132,7 @@ export default function FlightBookContent() {
                                             <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">Extra Bags</p>
                                             <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
                                                 {selectedBags.length > 0
-                                                    ? `${selectedBags.length} bag${selectedBags.length > 1 ? 's' : ''} added · +${new Intl.NumberFormat('en-US', { style: 'currency', currency: offer.price.currency }).format(selectedBags.reduce((s, b) => s + b.price, 0))}`
+                                                    ? `${selectedBags.length} bag${selectedBags.length > 1 ? 's' : ''} added · +${formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}`
                                                     : 'Optional — add checked or carry-on bags'}
                                             </p>
                                         </div>
@@ -1180,7 +1180,7 @@ export default function FlightBookContent() {
                                             <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">Seat Selection</p>
                                             <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
                                                 {selectedSeats.length > 0
-                                                    ? `${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''} selected · +${new Intl.NumberFormat('en-US', { style: 'currency', currency: offer.price.currency }).format(selectedSeats.reduce((s, x) => s + x.price, 0))}`
+                                                    ? `${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''} selected · +${formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency)}`
                                                     : 'Optional — pick your seat on the cabin map'}
                                             </p>
                                         </div>
