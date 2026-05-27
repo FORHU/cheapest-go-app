@@ -42,14 +42,13 @@ const PROVIDERS: ProviderConfig[] = [
     {
         name: FlightProvider.MYSTIFLY, // V1 Lowest Fares
         functionName: 'mystifly-search',
-        enabled: true,
+        enabled: false,
         timeoutMs: 20_000,
     },
     {
         name: FlightProvider.MYSTIFLY_V2, // V2 Branded Fares
         functionName: 'mystifly-v2-search',
-        // Enable V2 for both production and test environments.
-        enabled: true,
+        enabled: false,
         timeoutMs: 20_000,
     },
 ];
