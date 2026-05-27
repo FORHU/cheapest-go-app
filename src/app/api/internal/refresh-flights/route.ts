@@ -11,12 +11,12 @@ export async function POST(req: Request) {
     try {
         // 1. Security Check
         const authHeader = req.headers.get("authorization");
-        const cronSecret = process.env.CRON_SECRET || env.SUPABASE_SERVICE_ROLE_KEY;
-        if (!cronSecret) {
-            console.error('[Cron] CRON_SECRET and SUPABASE_SERVICE_ROLE_KEY are both unset — refusing request');
+        const internalSecret = process.env.INTERNAL_SECRET;
+        if (!internalSecret) {
+            console.error('[internal/refresh-flights] INTERNAL_SECRET is not configured');
             return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
         }
-        if (authHeader !== `Bearer ${cronSecret}`) {
+        if (authHeader !== `Bearer ${internalSecret}`) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

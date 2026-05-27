@@ -2,6 +2,7 @@ import { invokeEdgeFunction } from '@/utils/supabase/functions';
 import { safeError } from '@/lib/server/safe-error';
 import { prebookSchema } from '@/lib/schemas/booking';
 import { quoteTravelgateX } from '@/lib/server/travelgatex';
+import { rateLimit } from '@/lib/server/rate-limit';
 
 export const maxDuration = 60;
 
@@ -29,6 +30,11 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
     try {
+        const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'hotel-prebook' });
+        if (!rl.success) {
+            return Response.json({ success: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
+        }
+
         const body = await req.json();
         const parsed = prebookSchema.safeParse(body);
         if (!parsed.success) {

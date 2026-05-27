@@ -5,8 +5,15 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const internalSecret = Deno.env.get('INTERNAL_SECRET') ?? 'placeholder-internal-secret'
+    const internalSecret = Deno.env.get('INTERNAL_SECRET')
     const appUrl = Deno.env.get('APP_URL') ?? 'http://localhost:3000'
+
+    if (!internalSecret) {
+      return new Response(JSON.stringify({ error: 'INTERNAL_SECRET is not configured' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 500,
+      })
+    }
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 

@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/otv-credit-check",
       "schedule": "0 */12 * * *"
+    },
+    {
+      "path": "/api/cron/cache-cleanup",
+      "schedule": "0 3 * * *"
     }
   ]
 }
