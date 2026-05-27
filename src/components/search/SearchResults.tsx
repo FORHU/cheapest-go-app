@@ -221,6 +221,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
                                     variant="horizontal"
                                     property={property}
                                     index={index}
+                                    priority={index === 0}
                                     onClick={() => handlePropertyClick(property)}
                                 />
                             </div>
