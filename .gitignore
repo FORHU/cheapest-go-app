@@ -30,3 +30,4 @@ nul
 .env
 
 /src/generated/prisma
+*.tsbuildinfo

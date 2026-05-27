@@ -6,16 +6,14 @@ export { getAuthenticatedUser, getUserProfile, type AuthResult } from './auth';
 // Bookings
 export {
     verifyBookingOwnership,
-    prebookRoom,
-    confirmBooking,
-    confirmAndSaveBooking,
+    confirmAndSaveTgxBooking,
     cancelBooking,
     amendBooking,
     getBookingDetails,
     saveBookingToDatabase,
     getUserBookings,
-    type ConfirmAndSaveInput,
     type ConfirmAndSaveResult,
+    type TgxConfirmInput,
 } from './bookings';
 
 // Vouchers
@@ -36,19 +34,6 @@ export { normalizeLiteApiPolicy, type NormalizedPolicy } from './policy-normaliz
 
 // Cancellation Engine
 export { calculateCancellation, type CancellationResult } from './cancellation-engine';
-
-// LiteAPI gateway
-export {
-    autocompleteLiteApi,
-    searchLiteApi,
-    prebookLiteApi,
-    bookLiteApi,
-    cancelBookingLiteApi,
-    amendBookingLiteApi,
-    getBookingDetailsLiteApi,
-    listVouchersLiteApi,
-    getHotelReviewsLiteApi,
-} from './liteapi';
 
 // Types
 export type {

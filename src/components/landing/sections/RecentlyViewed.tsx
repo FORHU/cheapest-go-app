@@ -4,10 +4,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { History, Clock, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { SectionHeader, Badge, PriceDisplay } from '@/components/ui';
+import { SectionHeader, Badge } from '@/components/ui';
 import { useRecentSearches, useSearchStore } from '@/stores';
 import { type RecentItem } from '@/types';
-import { getCurrencySymbol } from '@/lib/currency';
+import { convertCurrency } from '@/lib/currency';
+import { formatCurrency } from '@/lib/utils';
 import { useUserCurrency, type Destination } from '@/stores/searchStore';
 
 interface RecentCardProps {
@@ -21,10 +22,15 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => 
   const [loading, setLoading] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
   const userCurrency = useUserCurrency();
-  const symbol = getCurrencySymbol(mounted ? userCurrency : 'KRW');
   const router = useRouter();
   const setDestination = useSearchStore((s) => s.setDestination);
   const setDestinationQuery = useSearchStore((s) => s.setDestinationQuery);
+
+  const displayPrice = React.useMemo(() => {
+    if (!destination.lowestPrice || destination.lowestPrice <= 0) return null;
+    const converted = convertCurrency(destination.lowestPrice, destination.priceCurrency || 'USD', mounted ? userCurrency : (destination.priceCurrency || 'USD'));
+    return formatCurrency(converted, mounted ? userCurrency : (destination.priceCurrency || 'USD'));
+  }, [destination.lowestPrice, destination.priceCurrency, userCurrency, mounted]);
 
   const handleClick = () => {
     if (loading) return;
@@ -81,7 +87,14 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => 
         </div>
         <div className="flex items-center justify-between mt-1.5 sm:mt-2 gap-1">
           <Badge variant="default" size="sm">{item.type}</Badge>
-          <PriceDisplay price={item.price} currency={symbol} size="sm" />
+          {displayPrice ? (
+            <div className="text-right">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 block leading-none">from</span>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">{displayPrice}</span>
+            </div>
+          ) : (
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">—</span>
+          )}
         </div>
       </div>
     </motion.div>
@@ -102,7 +115,7 @@ const RecentlyViewed = () => {
       dates: 'Recently searched',
       type: search.type === 'airport' ? 'Flight' : 'Stay',
       image: `https://picsum.photos/seed/${search.title.toLowerCase().replace(/\s/g, '')}/200/150`,
-      price: 0,
+      price: search.lowestPrice ?? 0,
     } as RecentItem,
     destination: search,
   }));

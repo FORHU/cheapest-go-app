@@ -9,6 +9,8 @@ export interface Destination {
     code?: string;
     countryCode?: string;
     id?: string;
+    lowestPrice?: number;
+    priceCurrency?: string;
 }
 
 export interface DateRange {
@@ -39,6 +41,9 @@ export interface SearchFilters {
     minReviewsCount: number;
     facilities: number[];
     strictFacilityFiltering: boolean;
+    propertyTypes: string[];   // 'hotel' | 'apartment' | 'resort' | 'villa'
+    boardTypes: string[];      // board/meal plan codes: 'RO' | 'BB' | 'HB' | 'FB' | 'AI'
+    refundable: boolean | null; // true = refundable only, null = show all
 }
 
 /** Destination suggestions state */
@@ -100,6 +105,9 @@ interface SearchState {
     setFilters: (filters: Partial<SearchFilters>) => void;
     toggleStarRating: (star: number) => void;
     toggleFacility: (facilityId: number) => void;
+    togglePropertyType: (type: string) => void;
+    toggleBoardType: (code: string) => void;
+    setRefundable: (value: boolean | null) => void;
     resetFilters: () => void;
 
     // Destination suggestions (moved from DestinationPicker useState)
@@ -119,6 +127,7 @@ interface SearchState {
     addRecentSearch: (destination: Destination) => void;
     removeRecentSearch: (title: string) => void;
     clearRecentSearches: () => void;
+    updateRecentSearchPrice: (title: string, price: number, currency: string) => void;
     reset: () => void;
 
     // Flight Actions
@@ -150,6 +159,9 @@ const initialFilters: SearchFilters = {
     minReviewsCount: 0,
     facilities: [],
     strictFacilityFiltering: false,
+    propertyTypes: [],
+    boardTypes: [],
+    refundable: null,
 };
 
 const initialSuggestions: SuggestionsState = {
@@ -238,6 +250,12 @@ export const useSearchStore = create<SearchState>()(
                 recentSearches: state.recentSearches.filter((d) => d.title !== title),
             })),
 
+            updateRecentSearchPrice: (title, price, currency) => set((state) => ({
+                recentSearches: state.recentSearches.map((d) =>
+                    d.title === title ? { ...d, lowestPrice: price, priceCurrency: currency } : d
+                ),
+            })),
+
             setActiveDropdown: (activeDropdown) => set({ activeDropdown }),
 
             setIsSearching: (isSearching) => set({ isSearching }),
@@ -262,6 +280,22 @@ export const useSearchStore = create<SearchState>()(
                 return { filters: { ...state.filters, facilities: newFacilities } };
             }),
 
+            togglePropertyType: (type) => set((state) => {
+                const cur = state.filters.propertyTypes;
+                const next = cur.includes(type) ? cur.filter(t => t !== type) : [...cur, type];
+                return { filters: { ...state.filters, propertyTypes: next } };
+            }),
+
+            toggleBoardType: (code) => set((state) => {
+                const cur = state.filters.boardTypes;
+                const next = cur.includes(code) ? cur.filter(c => c !== code) : [...cur, code];
+                return { filters: { ...state.filters, boardTypes: next } };
+            }),
+
+            setRefundable: (value) => set((state) => ({
+                filters: { ...state.filters, refundable: value }
+            })),
+
             resetFilters: () => set({ filters: initialFilters }),
 
             // Suggestions actions
@@ -284,6 +318,7 @@ export const useSearchStore = create<SearchState>()(
                 filters: initialFilters,
                 isMobileFiltersOpen: false,
                 suggestions: initialSuggestions,
+                flightState: initialFlightState,
             }),
 
             // Flight Actions Implementation
@@ -298,6 +333,12 @@ export const useSearchStore = create<SearchState>()(
                 const newFlights = [...state.flightState.flights];
                 if (newFlights[index]) {
                     newFlights[index] = { ...newFlights[index], ...segment };
+
+                    // Round-trip location syncing: automatically update return flight
+                    if (state.flightState.tripType === 'round-trip' && index === 0 && newFlights[1]) {
+                        if (segment.origin) newFlights[1].destination = segment.origin;
+                        if (segment.destination) newFlights[1].origin = segment.destination;
+                    }
 
                     // Date order auto-validation: enforce chronological order
                     if (segment.date) {
@@ -371,6 +412,7 @@ export const useSearchStore = create<SearchState>()(
                 userCurrency: state.userCurrency,
                 userCountry: state.userCountry,
                 searchMode: state.searchMode,
+                flightState: state.flightState,
             }) as SearchState,
             // Bump version to migrate existing users from PHP to KRW default
             version: 1,

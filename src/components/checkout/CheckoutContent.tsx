@@ -248,6 +248,15 @@ export function CheckoutContent() {
             return;
         }
 
+        // Guard: priceData may still be null in the brief render window between
+        // prebookId being set (Zustand) and priceData arriving (React state).
+        // Without this, the fallback totalPrice (store price × nights + 12% estimate)
+        // can be inflated and fail server-side amount validation.
+        if (!priceData) {
+            toast.error("Price is still being verified — please wait a moment and try again.");
+            return;
+        }
+
         // Always charge in selectedCurrency using the converted totalPrice.
         // priceData.total is LiteAPI's raw amount (may be in IDR, USD, etc.) —
         // using it directly with selectedCurrency would mismatch currency + amount.
@@ -499,7 +508,7 @@ export function CheckoutContent() {
                     )}
 
                     {/* Prebook Error — unavailability is handled inline near the button; show banner only for other errors */}
-                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && !/no longer available|not available|unavailable|sold out/i.test(prebookError) && (
+                    {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && !/no longer available|not available|unavailable|sold out|try a different hotel|currently unavailable for booking/i.test(prebookError) && (
                         <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg">
                             <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">Booking error</p>
                             <p className="text-sm text-red-600 dark:text-red-400 mb-3">{prebookError}</p>

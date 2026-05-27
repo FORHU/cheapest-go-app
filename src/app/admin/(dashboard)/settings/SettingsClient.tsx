@@ -15,7 +15,7 @@ import {
     Loader2,
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
-import { HeaderTitle } from '@/components/admin/HeaderTitle';
+
 import { EXCHANGE_RATES } from '@/lib/currency';
 import type { IntegrationKey } from '@/lib/server/admin/settings';
 
@@ -122,7 +122,7 @@ export function SettingsClient({ initialSettings, integrationKeys }: SettingsCli
 
     return (
         <div className="space-y-10 pb-20">
-            <HeaderTitle />
+
 
             {/* Toast */}
             {toast && (

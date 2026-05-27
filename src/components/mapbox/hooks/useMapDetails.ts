@@ -3,27 +3,34 @@
 import { useState, useCallback, useMemo } from 'react';
 import { type MapTypeId, type MapDetailToggle } from '../components/MapDetailsPanel';
 
-export function useMapDetails() {
-    const [mapType, setMapType] = useState<MapTypeId>('default-3d');
+export function useMapDetails(defaultMapType: MapTypeId = 'default') {
+    const [mapType, setMapType] = useState<MapTypeId>(defaultMapType);
     const [showDetailsPanel, setShowDetailsPanel] = useState(false);
     const [showLabels, setShowLabels] = useState(true);
     const [mapDetails, setMapDetails] = useState<MapDetailToggle[]>([
-        { id: 'discovery', label: 'Discovery', enabled: true },
-        { id: 'transit', label: 'Transit', enabled: false },
-        { id: 'traffic', label: 'Traffic', enabled: false },
-        { id: 'biking', label: 'Biking', enabled: false },
-        { id: 'terrain', label: 'Terrain', enabled: false },
+        { id: 'explore',  label: 'Explore',   enabled: true },
+        { id: 'transit',  label: 'Transit',   enabled: false },
+        { id: 'traffic',  label: 'Traffic',   enabled: false },
+        { id: 'biking',   label: 'Biking',    enabled: false },
+        { id: 'terrain',  label: 'Terrain',   enabled: false },
     ]);
 
-    const discoveryEnabled = mapDetails.find((d) => d.id === 'discovery')?.enabled ?? false;
-    const terrainEnabled = mapDetails.find((d) => d.id === 'terrain')?.enabled ?? false;
-    const trafficEnabled = mapDetails.find((d) => d.id === 'traffic')?.enabled ?? false;
-    const transitEnabled = mapDetails.find((d) => d.id === 'transit')?.enabled ?? false;
-    const bikingEnabled = mapDetails.find((d) => d.id === 'biking')?.enabled ?? false;
+    // Derive feature flags from the toggle list once; avoids repeated .find() calls per render
+    const { exploreEnabled, terrainEnabled, trafficEnabled, transitEnabled, bikingEnabled } = useMemo(() => {
+        const flag = (id: string) => mapDetails.find((d) => d.id === id)?.enabled ?? false;
+        return {
+            exploreEnabled: flag('explore'),
+            terrainEnabled:  flag('terrain'),
+            trafficEnabled:  flag('traffic'),
+            transitEnabled:  flag('transit'),
+            bikingEnabled:   flag('biking'),
+        };
+    }, [mapDetails]);
 
     const mapStyleUrl = useMemo(() => {
-        if (mapType === 'satellite') return 'mapbox://styles/mapbox/satellite-v9';
-        if (mapType === 'default') return 'mapbox://styles/mapbox/streets-v12';
+        const suffix = '?optimize=true';
+        if (mapType === 'satellite') return `mapbox://styles/mapbox/satellite-v9${suffix}`;
+        if (mapType === 'default')   return `mapbox://styles/mapbox/streets-v12${suffix}`;
         return 'standard';
     }, [mapType]);
 
@@ -33,15 +40,16 @@ export function useMapDetails() {
         show3dBuildings: true,
         show3dFacades: false,
         show3dTrees: true,
-        show3dLandmarks: false,
+        show3dLandmarks: true,
         showPointOfInterestLabels: showLabels,
         showRoadLabels: showLabels,
         showTransitLabels: showLabels,
         showPlaceLabels: showLabels,
         showTraffic: trafficEnabled,
         showTransit: transitEnabled,
+        showCycling: bikingEnabled,
         language: 'en',
-    }), [showLabels, trafficEnabled, transitEnabled]);
+    }), [showLabels, trafficEnabled, transitEnabled, bikingEnabled]);
 
     const handleMapTypeChange = useCallback((type: MapTypeId) => {
         setMapType(type);
@@ -69,7 +77,7 @@ export function useMapDetails() {
         mapDetails,
         handleDetailToggle,
         terrainEnabled,
-        discoveryEnabled,
+        exploreEnabled,
         mapStyleUrl,
         standardConfig,
     };

@@ -6,6 +6,8 @@ import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } fro
 import { rateLimit } from '@/lib/server/rate-limit';
 import { z } from 'zod';
 
+export const maxDuration = 60;
+
 const flightConfirmSchema = z.object({
     paymentIntentId: z.string().min(1, 'paymentIntentId is required'),
     sessionId: z.string().min(1, 'sessionId is required'),
@@ -32,7 +34,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
     // 10 confirm attempts per minute per IP
-    const rl = rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'flights-confirm' });
+    const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'flights-confirm' });
     if (!rl.success) {
         return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
@@ -60,7 +62,7 @@ export async function POST(req: NextRequest) {
         // ── Step 1: Verify payment server-side (never trust the client) ──────
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
         const provider = paymentIntent.metadata?.provider ?? '';
-        const isMystifly = provider === 'mystifly_v2';
+        const isMystifly = provider === 'mystifly_v2' || provider === 'mystifly';
 
         // Validate this PaymentIntent belongs to this session
         if (paymentIntent.metadata?.bookingSessionId !== sessionId) {

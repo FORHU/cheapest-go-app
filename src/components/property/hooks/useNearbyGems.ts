@@ -33,8 +33,22 @@ export const useNearbyGems = ({
     onClearDirections
 }: UseNearbyGemsProps) => {
     const [nearbyGems, setNearbyGems] = useState<any[]>([]);
-    const [isFetchingGems, setIsFetchingGems] = useState(false);
+    // Start loading immediately if we already have coordinates so the panel never
+    // flashes "No places found" before the first fetch begins.
+    const [isFetchingGems, setIsFetchingGems] = useState(() => !!(isLoaded && coordinates));
     const hasCoordinates = coordinates && coordinates.lat !== 0 && coordinates.lng !== 0;
+
+    const buildPoiProxyImageUrl = (name: string, lat: number, lng: number, placeId?: string, fsqId?: string, category?: string) => {
+        const params = new URLSearchParams({
+            name,
+            lat: String(lat),
+            lng: String(lng),
+        });
+        if (placeId) params.set('placeId', placeId);
+        if (fsqId) params.set('fsqId', fsqId);
+        if (category) params.set('category', category);
+        return `/api/poi-photo?${params.toString()}`;
+    };
 
     useEffect(() => {
         if (!isLoaded || !hasCoordinates || !env.MAPBOX_TOKEN) {
@@ -64,31 +78,36 @@ export const useNearbyGems = ({
                     }
                 };
 
-                // Global Discovery Fallback (Google + Foursquare -> Mapbox)
+                // Fetch Google Places and Foursquare in parallel, merge and deduplicate
                 let featuresToProcess: any[] = [];
                 try {
-                    const [googleRes, fsqRes] = await Promise.all([
-                        fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=3000`, { signal }),
-                        fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=3000`, { signal })
+                    const [googleResult, fsqResult] = await Promise.allSettled([
+                        fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=10000`, { signal })
+                            .then(r => r.ok ? r.json() : { features: [] })
+                            .then(d => (d.features || []) as any[])
+                            .catch(() => [] as any[]),
+                        fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=10000`, { signal })
+                            .then(r => r.ok ? r.json() : { features: [] })
+                            .then(d => (d.features || []) as any[])
+                            .catch(() => [] as any[]),
                     ]);
-                    
-                    const googleData = await googleRes.json().catch(() => ({ features: [] }));
-                    const fsqData = await fsqRes.json().catch(() => ({ features: [] }));
-                    
-                    const combined = [...(googleData.features || []), ...(fsqData.features || [])];
-                    
-                    if (combined.length > 0) {
-                        // Deduplicate by name (simple fallback)
-                        const seen = new Set();
-                        featuresToProcess = combined.filter(f => {
-                            const nameKey = (f.properties?.name || '').toLowerCase().trim();
-                            if (!nameKey || seen.has(nameKey)) return false;
-                            seen.add(nameKey);
-                            return true;
-                        });
+
+                    const googleFeatures = googleResult.status === 'fulfilled' ? googleResult.value : [];
+                    const fsqFeatures    = fsqResult.status === 'fulfilled'    ? fsqResult.value    : [];
+
+                    // Merge: Google places first (have ratings/photos), FSQ fills gaps.
+                    // Deduplicate by normalised name so a place appearing in both APIs appears once.
+                    const seen = new Set<string>();
+                    const merged: any[] = [];
+                    for (const f of [...googleFeatures, ...fsqFeatures]) {
+                        const key = (f.properties?.name || '').toLowerCase().trim();
+                        if (!key || seen.has(key)) continue;
+                        seen.add(key);
+                        merged.push(f);
                     }
-                } catch (e) {
-                    console.warn('External discovery failed:', e);
+                    featuresToProcess = merged;
+                } catch (e: any) {
+                    if (e.name !== 'AbortError') console.warn('External discovery aggregate failed:', e);
                 }
 
                 if (featuresToProcess.length < 5) {
@@ -128,6 +147,8 @@ export const useNearbyGems = ({
                     const name = f.properties.name || f.properties.place_name || f.properties.name_en;
                     const lng = f.geometry.coordinates[0];
                     const lat = f.geometry.coordinates[1];
+                    const placeId = f.properties?.place_id || '';
+                    const fsqId = f.properties?.fsq_id || '';
                     const source = f.properties?.source;
                     const isGoogleSource = source === 'google';
                     const isFsqSource = source === 'foursquare';
@@ -141,27 +162,34 @@ export const useNearbyGems = ({
 
                     return {
                         ...f,
+                        id: name, // Unique ID for feature-state
                         properties: {
                             ...f.properties,
                             name,
                             category: f.properties.category || 'Point of Interest',
                             icon,
-                            imageUrl: f.properties.photoUrl || getMapboxPoiImage(name, lat, lng),
+                            // Always route through our proxy so content-type validation + fallback logic is applied.
+                            imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, fsqId, cat),
                             rating: f.properties.rating,
                             userRatingsTotal: f.properties.userRatingsTotal || 0,
                             reviews: f.properties.reviews || [],
                             sourceLabel: source === 'fsq-google' ? 'Google & Foursquare Reviews' :
                                          source === 'foursquare' ? 'Foursquare Recommendations' : 
                                          'Google Reviews',
-                            isStub: !isGoogleSource && !isFsqSource, // Foursquare and Google Discovery provide enough initial data
+                            isStub: !isFsqSource, // Foursquare Discovery provides tips/details, but Google Discovery only provides basic info
                             source: source || 'mapbox'
                         }
                     };
                 });
                 setNearbyGems(initialGems);
 
+                // --- END STAGE 1 ---
+                // Render initial results immediately and remove blocking loading state.
+                // Background enrichment (Stage 2) will progressively update details.
+                setIsFetchingGems(false);
+
                 // --- STAGE 2: ENRICHMENT ---
-                const limiter = pLimit(8); 
+                const limiter = pLimit(3); 
                 let resolvedCount = 0;
                 let gemBuffer = [...initialGems];
                 let lastUpdate = Date.now();
@@ -172,8 +200,36 @@ export const useNearbyGems = ({
                         const name = featureStub.properties.name;
                         const lng = featureStub.geometry.coordinates[0];
                         const lat = featureStub.geometry.coordinates[1];
+                        const placeId = featureStub.properties.place_id || '';
+                        const fsqId = featureStub.properties.fsq_id || '';
 
-                        if (idx >= 6) await new Promise(r => setTimeout(r, 600 + (idx * 100)));
+                        // Fast-path: If it's already a rich feature from advanced discovery, skip background enrichment
+                        if (!featureStub.properties.isStub) {
+                            resolvedCount++;
+                            if (resolvedCount === initialGems.length && !signal.aborted) {
+                                setNearbyGems([...gemBuffer]);
+                                const enrichedCount = gemBuffer.filter(p => !p.properties.isStub).length;
+                                const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
+                                if (enrichedCount < 5 && isBaguio) {
+                                    const newGems = [...gemBuffer];
+                                    BAGUIO_DEFAULT_GEMS.forEach(gemFeature => {
+                                        const gemName = gemFeature.properties.name;
+                                        const gCat = gemFeature.properties.category.toLowerCase();
+                                        const sCat = selectedCategory === 'restaurant' ? 'dining' : selectedCategory;
+                                        const matchesCat = selectedCategory === 'all' || gCat.includes(sCat) || (selectedCategory === 'attraction' && (gCat.includes('sightseeing') || gCat.includes('landmark') || gCat.includes('park')));
+
+                                        if (matchesCat && !newGems.find(r => r.properties.name === gemName)) {
+                                            newGems.push({ 
+                                                ...gemFeature, 
+                                                properties: { ...gemFeature.properties, imageUrl: getMapboxPoiImage(gemName, gemFeature.geometry.coordinates[1], gemFeature.geometry.coordinates[0], gCat) }
+                                            });
+                                        }
+                                    });
+                                    setNearbyGems(newGems);
+                                }
+                            }
+                            return;
+                        }
 
                         try {
                             const lowerCat = (featureStub.properties.category || '').toLowerCase();
@@ -184,16 +240,19 @@ export const useNearbyGems = ({
                                 (lowerCat.includes('restaurant') || lowerCat.includes('cafe') || lowerCat.includes('food')) ? Utensils :
                                 (lowerCat.includes('park') || lowerCat.includes('garden')) ? Trees : Landmark;
 
-                            const proxyRes = await fetch(`/api/poi-photo?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}&full=true`, { signal });
+                            const proxyRes = await fetch(`/api/poi-photo?name=${encodeURIComponent(name)}&lat=${lat}&lng=${lng}&placeId=${placeId}&fsqId=${fsqId}${lowerCat ? `&category=${encodeURIComponent(lowerCat)}` : ''}&full=true`, { signal });
                             const proxyData = await proxyRes.json();
 
                             const enriched = {
                                 ...featureStub,
+                                id: name,
                                 properties: {
                                     ...featureStub.properties,
                                     translatedName: proxyData.nameEn || proxyData.name || featureStub.properties.name,
                                     icon: enrichmentIcon,
-                                    category: proxyData.vicinity || featureStub.properties.category,
+                                    imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, fsqId, lowerCat),
+                                    displayCategory: proxyData.category || featureStub.properties.category, // Use proxy's category for display if available
+                                    vicinity: proxyData.vicinity || featureStub.properties.vicinity,
                                     rating: proxyData.rating,
                                     userRatingsTotal: proxyData.userRatingsTotal,
                                     reviews: [
@@ -214,19 +273,25 @@ export const useNearbyGems = ({
                             };
 
                             if (!signal.aborted) {
-                                const hasLowRating = enriched.properties.rating !== undefined && enriched.properties.rating !== null && enriched.properties.rating < 3;
-                                if (!hasLowRating) {
+                                const hasRealImage = proxyData.source !== 'placeholder' && proxyData.source !== 'none' && proxyData.source !== 'error-fallback' && proxyData.source !== 'mock-fallback';
+                                const hasReviews = (enriched.properties.userRatingsTotal || 0) > 0 || (enriched.properties.reviews && enriched.properties.reviews.length > 0);
+                                const hasLowRating = enriched.properties.rating !== undefined && enriched.properties.rating !== null && enriched.properties.rating < 3.5;
+
+                                // Keep if passes quality bar; if no real image, keep the stub so
+                                // Stage 1 results aren't silently wiped for regions outside Baguio.
+                                if (!hasLowRating && (hasRealImage || hasReviews)) {
                                     gemBuffer = gemBuffer.map(g => g.properties.name === name ? enriched : g);
-                                } else {
+                                } else if (hasLowRating) {
                                     gemBuffer = gemBuffer.filter(g => g.properties.name !== name);
                                 }
+                                // else: no image AND no reviews → keep the Stage 1 stub as-is
                                 if (Date.now() - lastUpdate > 800 || resolvedCount === initialGems.length - 1) {
                                     setNearbyGems([...gemBuffer]);
                                     lastUpdate = Date.now();
                                 }
                             }
-                        } catch (e) {
-                            console.error(`Gem enrichment failed for ${name}:`, e);
+                        } catch (e: any) {
+                            if (e.name !== 'AbortError') console.error(`Gem enrichment failed for ${name}:`, e);
                         } finally {
                             resolvedCount++;
                             if (resolvedCount === initialGems.length && !signal.aborted) {
@@ -246,7 +311,7 @@ export const useNearbyGems = ({
                                         if (matchesCat && !newGems.find(r => r.properties.name === gemName)) {
                                             newGems.push({ 
                                                 ...gemFeature, 
-                                                properties: { ...gemFeature.properties, imageUrl: getMapboxPoiImage(gemName, gemFeature.geometry.coordinates[1], gemFeature.geometry.coordinates[0]) }
+                                                properties: { ...gemFeature.properties, imageUrl: getMapboxPoiImage(gemName, gemFeature.geometry.coordinates[1], gemFeature.geometry.coordinates[0], gCat) }
                                             });
                                         }
                                     });
@@ -258,7 +323,8 @@ export const useNearbyGems = ({
                 );
 
                 await Promise.all(retrievePromises);
-            } catch (err) {
+            } catch (err: any) {
+                if (err?.name === 'AbortError') return; // normal React cleanup — not an error
                 console.error('Fetching gems failed:', err);
                 const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
                 if (isBaguio && selectedCategory === 'all') setNearbyGems(BAGUIO_DEFAULT_GEMS);

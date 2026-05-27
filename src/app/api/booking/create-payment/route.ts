@@ -2,15 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { checkCsrf } from '@/lib/server/csrf';
 import { applyMarkup, toStripeAmount, HOTEL_MARKUP, BUNDLE_MARKUP } from '@/lib/pricing';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { env } from '@/utils/env';
+import { createHash } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+    const csrfError = checkCsrf(req);
+    if (csrfError) return csrfError;
+
     // 5 payment initiations per minute per IP
-    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-payment' });
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-payment' });
     if (!rl.success) {
         return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
@@ -45,12 +50,31 @@ export async function POST(req: NextRequest) {
             'nok', 'dkk', 'brl', 'mxn', 'zar', 'try', 'pln', 'czk', 'huf',
         ]);
 
+        // Per-currency maximum amounts (≈ $100,000 USD equivalent per currency).
+        // The old flat cap of 1,000,000 was designed for USD — it wrongly rejects
+        // legitimate bookings in high-unit currencies like KRW (₩1M ≈ $714) and IDR.
+        const MAX_AMOUNT_BY_CURRENCY: Record<string, number> = {
+            // Standard decimal currencies — $100k USD equivalent
+            usd: 100_000,     eur: 95_000,      gbp: 80_000,
+            aud: 160_000,     cad: 140_000,     sgd: 140_000,
+            hkd: 800_000,     chf: 92_000,      nzd: 170_000,
+            aed: 370_000,     inr: 8_500_000,   thb: 3_600_000,
+            php: 5_800_000,   myr: 480_000,     brl: 510_000,
+            mxn: 1_700_000,   zar: 1_900_000,   try: 3_200_000,
+            pln: 410_000,     czk: 2_300_000,   huf: 37_000_000,
+            sek: 1_100_000,   nok: 1_100_000,   dkk: 700_000,
+            // Zero-decimal currencies — amounts are whole units, so limits are larger
+            jpy: 15_000_000,  krw: 140_000_000, idr: 1_600_000_000,
+            vnd: 2_500_000_000,
+        };
+        const maxAmount = MAX_AMOUNT_BY_CURRENCY[currency?.toLowerCase()] ?? 100_000;
+
         // Validate
         if (!prebookId) {
             return NextResponse.json({ success: false, error: 'prebookId is required' }, { status: 400 });
         }
-        if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 1_000_000) {
-            return NextResponse.json({ success: false, error: 'Valid amount is required (must be between 0 and 1,000,000)' }, { status: 400 });
+        if (!amount || typeof amount !== 'number' || amount <= 0 || amount > maxAmount) {
+            return NextResponse.json({ success: false, error: `Valid amount is required (must be between 0 and ${maxAmount.toLocaleString()} ${currency?.toUpperCase() ?? ''})` }, { status: 400 });
         }
         if (!currency) {
             return NextResponse.json({ success: false, error: 'Currency is required' }, { status: 400 });
@@ -96,12 +120,19 @@ export async function POST(req: NextRequest) {
         console.log(`[create-payment] Hotel pricing: original=${pricing.originalPrice} ${currency}, charged=${pricing.chargedPrice}, markup=${(markupRate * 100).toFixed(0)}%${bundleFlightId ? ' (bundle)' : ' (standalone)'}`);
 
         // Create Stripe PaymentIntent (automatic capture — refund on LiteAPI failure)
+        // Include amount+currency in the hash so a price change (prebook refresh) produces a new key
+        // rather than a "same key, different params" Stripe rejection.
+        const prebookHash = createHash('sha256')
+            .update(`${prebookId}:${stripeAmount}:${currency.toLowerCase()}`)
+            .digest('hex')
+            .slice(0, 40);
+        const idempotencyKey = `hotel-pi-${user.id}-${prebookHash}`;
         const paymentIntent = await stripe.paymentIntents.create({
             amount: stripeAmount,
             currency: currency.toLowerCase(),
             capture_method: 'automatic',
             metadata: {
-                prebookId,
+                prebookId: prebookId.slice(0, 490),
                 userId: user.id,
                 holderEmail: holderEmail || '',
                 type: bundleFlightId ? 'hotel_bundle' : 'hotel',
@@ -110,8 +141,8 @@ export async function POST(req: NextRequest) {
                 markupRate: String(markupRate),
                 markupAmount: String(pricing.markupAmount),
             },
-            description: `Hotel Booking: ${propertyName || 'Hotel'} - ${roomName || 'Room'}`,
-        });
+            description: `CG: ${propertyName || 'Hotel'} — ${roomName || 'Room'}`,
+        }, { idempotencyKey });
 
         return NextResponse.json({
             success: true,

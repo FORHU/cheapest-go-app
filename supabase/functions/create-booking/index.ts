@@ -76,7 +76,7 @@ interface SessionFlight {
 interface BookingSession {
     id: string;
     user_id: string;
-    provider: 'mystifly_v2' | 'duffel';
+    provider: 'mystifly_v2' | 'mystifly' | 'duffel';
     flight: SessionFlight;
     passengers: SessionPassenger[];
     contact: SessionContact;
@@ -276,7 +276,7 @@ Deno.serve(async (req: Request) => {
             rawOfferType: typeof bs.flight._rawOffer,
         });
 
-        const isMystifly = bs.provider === 'mystifly_v2';
+        const isMystifly = bs.provider === 'mystifly_v2' || bs.provider === 'mystifly';
 
         // ── 2. Call Provider to Book ──
         let result: ProviderBookingResult;
@@ -284,7 +284,7 @@ Deno.serve(async (req: Request) => {
 
         if (isMystifly) {
             try {
-                result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact, 'mystifly_v2', (raw) => { mystiflyRawData = raw; });
+                result = await bookWithMystifly(bs.flight, bs.passengers, bs.contact, bs.provider as 'mystifly_v2' | 'mystifly', (raw) => { mystiflyRawData = raw; });
             } catch (mystiflyErr: any) {
                 // Mystifly booking failed — immediately cancel the authorized PaymentIntent.
                 // The card was only held (requires_capture), never charged. Release the hold.
@@ -643,7 +643,7 @@ async function bookWithMystifly(
     flight: SessionFlight,
     passengers: SessionPassenger[],
     contact: SessionContact,
-    provider: 'mystifly_v2',
+    provider: 'mystifly_v2' | 'mystifly',
     onRawData?: (raw: any) => void,
 ): Promise<ProviderBookingResult> {
     // UUID-format FareSources (e.g. "3430ac34-593c-439c-...") are V2 fares.

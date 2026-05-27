@@ -4,6 +4,8 @@ import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
 import { createNotification } from '@/lib/server/admin/notify';
 import { env } from '@/utils/env';
 
+export const maxDuration = 30;
+
 // Lazy-initialize Stripe to avoid module-level crash during Vercel build
 // (env vars aren't available at build time when Next.js collects page data)
 let _stripe: import('stripe').default | null = null;
@@ -239,8 +241,22 @@ export async function POST(req: NextRequest) {
 
         } catch (err) {
             console.error('[Webhook] Duffel booking error:', err);
+            // Payment was captured but booking failed — auto-refund the customer.
+            // Idempotency key ensures duplicate webhook deliveries don't double-refund.
+            try {
+                await getStripe().refunds.create(
+                    { payment_intent: pi.id },
+                    { idempotencyKey: `webhook-auto-refund-${pi.id}` },
+                );
+                console.log(`[Webhook] Auto-refunded PI ${pi.id} after Duffel booking failure`);
+                await supabase
+                    .from('booking_sessions')
+                    .update({ status: 'payment_failed' })
+                    .eq('id', bookingSessionId);
+            } catch (refundErr: any) {
+                console.error(`[Webhook] CRITICAL: Auto-refund failed for PI ${pi.id}:`, refundErr.message);
+            }
             // DO NOT return 5xx — that causes Stripe to retry and may double-book.
-            // Alert on-call team in production.
         }
     }
 
