@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createNotification } from '@/lib/server/admin/notify';
+import { getAdminSettings } from '@/lib/server/admin/settings';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
-
-// Set OTV_CREDIT_LIMIT in Vercel env vars to your RateHawk-agreed credit limit.
-const CREDIT_LIMIT = parseFloat(process.env.OTV_CREDIT_LIMIT ?? '0');
-
-// Alert when outstanding credit exceeds this % of the limit (default 80%)
-const UTILIZATION_ALERT_PCT = parseFloat(process.env.OTV_CREDIT_UTILIZATION_ALERT_PCT ?? '0.8');
-
-// Alert on refundable bookings whose free-cancel deadline is within this many hours
-const DEADLINE_WINDOW_HOURS = parseInt(process.env.OTV_DEADLINE_ALERT_HOURS ?? '48');
 
 export async function GET(req: NextRequest) {
     const authHeader = req.headers.get('authorization');
@@ -25,6 +17,12 @@ export async function GET(req: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    // Load operational thresholds from admin_settings, fall back to env vars.
+    const cfg = await getAdminSettings();
+    const CREDIT_LIMIT = parseFloat(cfg.otv_credit_limit ?? process.env.OTV_CREDIT_LIMIT ?? '0');
+    const UTILIZATION_ALERT_PCT = parseFloat(cfg.otv_credit_utilization_alert_pct ?? process.env.OTV_CREDIT_UTILIZATION_ALERT_PCT ?? '0.8');
+    const DEADLINE_WINDOW_HOURS = parseInt(cfg.otv_deadline_alert_hours ?? process.env.OTV_DEADLINE_ALERT_HOURS ?? '48');
 
     const results: Record<string, any> = {};
 
