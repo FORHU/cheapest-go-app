@@ -248,6 +248,15 @@ export function CheckoutContent() {
             return;
         }
 
+        // Guard: priceData may still be null in the brief render window between
+        // prebookId being set (Zustand) and priceData arriving (React state).
+        // Without this, the fallback totalPrice (store price × nights + 12% estimate)
+        // can be inflated and fail server-side amount validation.
+        if (!priceData) {
+            toast.error("Price is still being verified — please wait a moment and try again.");
+            return;
+        }
+
         // Always charge in selectedCurrency using the converted totalPrice.
         // priceData.total is LiteAPI's raw amount (may be in IDR, USD, etc.) —
         // using it directly with selectedCurrency would mismatch currency + amount.

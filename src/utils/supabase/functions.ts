@@ -120,20 +120,6 @@ export async function preBook(params: any) {
     return invokeEdgeFunction('pre-book', params);
 }
 
-// Specific helper for fetching hotel reviews
-export async function getHotelReviews(
-    hotelId: string,
-    limit: number = 20,
-    offset: number = 0,
-    getSentiment: boolean = false
-) {
-    const result = await invokeEdgeFunction('liteapi-reviews', { hotelId, limit, offset, getSentiment });
-    return {
-        reviews: result?.data || [],
-        sentimentAnalysis: result?.sentimentAnalysis || null,
-    };
-}
-
 // Specific helper for fetching hotel details
 export async function getHotelDetails(hotelId: string, options: any = {}) {
     const { checkIn, checkOut, adults, children, rooms, currency } = options;
