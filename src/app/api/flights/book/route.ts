@@ -8,6 +8,8 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
+
+export const maxDuration = 120;
 import { parseDuffelOffer } from '@/lib/server/flights/providers/duffel';
 import { normalizedToFlightOffer } from '@/utils/flight-utils';
 
@@ -18,7 +20,7 @@ export async function POST(req: NextRequest) {
     if (csrfError) return csrfError;
 
     // 5 booking attempts per minute per IP
-    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book' });
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book' });
     if (!rl.success) {
         return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest) {
         const userId = user.id;
 
         // ── Validate ──
-        if (!provider || !['duffel', 'mystifly_v2'].includes(provider)) {
+        if (!provider || !['duffel', 'mystifly_v2', 'mystifly'].includes(provider)) {
             return NextResponse.json({ success: false, error: 'invalid provider string passed' }, { status: 400 });
         }
         if (!flight || typeof flight !== 'object') {
@@ -291,6 +293,28 @@ export async function POST(req: NextRequest) {
 
             const isSandbox = duffelToken.startsWith('duffel_test_');
             const priceTolerance = isSandbox ? 10.00 : 0.50;
+
+            // Pre-booking balance guard — catch insufficient balance before Duffel deducts.
+            // Skip in sandbox mode (test balances are virtual).
+            if (!isSandbox) {
+                try {
+                    const { getDuffelBalances, getAvailableBalance } = await import('@/lib/server/flights/duffel-balance');
+                    const balances = await getDuffelBalances(duffelToken);
+                    const offerCurrency = (flight as any).currency ?? 'USD';
+                    const offerTotal = parseFloat((flight as any).price ?? '0');
+                    const available = getAvailableBalance(balances, offerCurrency);
+                    if (available < offerTotal) {
+                        console.error(`[/book] Duffel balance insufficient: ${available} ${offerCurrency} < ${offerTotal}`);
+                        return NextResponse.json(
+                            { success: false, error: 'Flight booking is temporarily unavailable. Please try again shortly.' },
+                            { status: 503 }
+                        );
+                    }
+                } catch (balErr: any) {
+                    // Non-fatal — log and proceed. A Duffel API error here should not block the booking.
+                    console.warn('[/book] Duffel balance check failed (non-fatal):', balErr.message);
+                }
+            }
             const refreshPoolSize = isSandbox ? 3 : 2;
             console.log(`[/book] Duffel ${isSandbox ? 'SANDBOX' : 'LIVE'} mode: tolerance=${priceTolerance}, pool=${refreshPoolSize}`);
 
@@ -784,7 +808,7 @@ export async function POST(req: NextRequest) {
 
         // ── Step 2: Create Stripe PaymentIntent ──
         const stripeStart = Date.now();
-        const isMystifly = provider === 'mystifly_v2';
+        const isMystifly = provider === 'mystifly_v2' || provider === 'mystifly';
 
         // Apply platform markup before charging the customer.
         // For Duffel: use the order's actual locked total (already validated by Duffel, includes services).
@@ -802,6 +826,8 @@ export async function POST(req: NextRequest) {
 
         console.log(`[/book] Pricing: original=${pricing.originalPrice} ${flightCurrency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%, markupAmount=${pricing.markupAmount}`);
 
+        // Idempotency key prevents duplicate charges if the client retries on network error.
+        const piIdempotencyKey = `flight-pi-${userId}-${sessionId}`;
         const paymentIntent = await stripe.paymentIntents.create({
             amount: flightStripeAmount,
             currency: flightCurrency,
@@ -825,8 +851,8 @@ export async function POST(req: NextRequest) {
                 // Bundle link — hotel booking ID this flight is paired with
                 ...(bundleHotelId ? { bundleHotelId, type: 'flight_bundle' } : { type: 'flight' }),
             },
-            description: `Flight Booking: ${flight.segments[0]?.origin} to ${flight.segments[flight.segments.length - 1]?.destination}`,
-        });
+            description: `CG: ${flight.segments[0]?.origin} → ${flight.segments[flight.segments.length - 1]?.destination}`,
+        }, { idempotencyKey: piIdempotencyKey });
         logApiCall({
             provider: 'stripe', endpoint: 'paymentIntents.create', durationMs: Date.now() - stripeStart,
             requestParams: { amount: flightStripeAmount, currency: flightCurrency, captureMethod: isMystifly ? 'manual' : 'automatic', markupRate: pricing.markupRate },

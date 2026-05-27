@@ -262,7 +262,12 @@ export interface FlightBookingRecord {
   pnr: string;
   provider: 'duffel' | 'mystifly_v2';
   total_price: number;
+  supplier_cost?: number;
+  charged_price?: number;
+  markup_pct?: number;
   currency?: string;
+  payment_intent_id?: string;
+  session_id?: string;
   trip_type?: 'one-way' | 'round-trip' | 'multi-city';
   status: 'booked' | 'pnr_created' | 'awaiting_ticket' | 'ticketed' | 'failed' | 'cancel_requested' | 'cancelled' | 'cancel_failed' | 'refund_pending' | 'refund_failed' | 'refunded' | 'cancelled_provider_missing';
   created_at: string;

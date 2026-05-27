@@ -1,6 +1,6 @@
 import { FlightResultCache, FlightSearchParams, FlightSearch, FlightOffer, FlightResult } from "@/types/flights";
 import { searchDuffel } from "./providers/duffel";
-import { searchMystiflyV2 } from "./providers/mystifly";
+// import { searchMystiflyV2 } from "./providers/mystifly"; // sandbox only — re-enable with live key
 import { createClient } from "@/utils/supabase/server";
 import { normalizedToFlightOffer } from "@/utils/flight-utils";
 import { logApiCall } from "@/lib/server/api-logger";
@@ -68,7 +68,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     // 3. Fetch from providers in parallel with resilience (allSettled)
     const providers = [
         { name: "Duffel", call: searchDuffel(params) },
-        { name: "MystiflyV2", call: searchMystiflyV2(params) },
+        // { name: "MystiflyV2", call: searchMystiflyV2(params) }, // sandbox only — re-enable with live key
     ];
 
     const settlement = await Promise.allSettled(

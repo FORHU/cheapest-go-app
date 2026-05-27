@@ -16,7 +16,7 @@ export const maxDuration = 60;
  * Body: { origin, destination, adults, cabin, dates: string[] }
  */
 export async function POST(req: NextRequest) {
-    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'price-cal-live' });
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'price-cal-live' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     let body: unknown;
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
 
-    const { origin, destination, adults = 1, cabin = 'economy', dates } = body as Record<string, unknown>;
+    const { origin, destination, adults = 1, cabin = 'economy', dates, returnDate, provider } = body as Record<string, any>;
 
     if (typeof origin !== 'string' || !/^[A-Z]{3}$/.test(origin)) {
         return NextResponse.json({ error: 'Invalid origin' }, { status: 400 });
@@ -48,15 +48,20 @@ export async function POST(req: NextRequest) {
     // Search all dates in parallel with individual error isolation
     const results = await Promise.allSettled(
         validDates.map(async (date) => {
-            const offers = await searchFlights({
+            const allOffers = await searchFlights({
                 origin: origin as string,
                 destination: destination as string,
                 departureDate: date,
+                returnDate: returnDate as string | undefined,
                 adults: typeof adults === 'number' ? adults : parseInt(String(adults)) || 1,
                 children: 0,
                 infants: 0,
                 cabinClass: (cabin as CabinClass) || 'economy',
             });
+
+            const offers = provider 
+                ? allOffers.filter(o => o.provider === provider)
+                : allOffers;
 
             if (!offers?.length) return { date, price: null };
 

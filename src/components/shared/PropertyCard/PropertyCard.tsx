@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
 import { type Property } from '@/types';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
+import { buildPropertySlug } from '@/lib/utils';
 import { useUserCurrency } from '@/stores/searchStore';
 import SaveButton from '@/components/common/SaveButton';
 
@@ -74,22 +75,26 @@ const AmenityIcon: React.FC<{ amenity: string }> = ({ amenity }) => {
  * Rating label based on score
  */
 const getRatingLabel = (rating: number): string => {
+    if (rating === 0) return '';
     if (rating >= 9) return 'Exceptional';
     if (rating >= 8) return 'Excellent';
     if (rating >= 7) return 'Very Good';
     if (rating >= 6) return 'Good';
-    return 'Average';
+    if (rating >= 5) return 'Average';
+    return 'Poor';
 };
 
 /**
  * Rating badge color based on score - distinct colors for each level
  */
 const getRatingColor = (rating: number): string => {
-    if (rating >= 9) return 'bg-indigo-600';    // Exceptional - Deep indigo/purple
-    if (rating >= 8) return 'bg-emerald-500';   // Excellent - Vibrant green
-    if (rating >= 7) return 'bg-teal-500';      // Very Good - Teal
-    if (rating >= 6) return 'bg-blue-500';      // Good - Blue
-    return 'bg-amber-500';                       // Average - Warm amber/orange
+    if (rating === 0) return 'bg-slate-400';
+    if (rating >= 9)  return 'bg-emerald-600';
+    if (rating >= 8)  return 'bg-blue-600';
+    if (rating >= 7)  return 'bg-blue-500';
+    if (rating >= 6)  return 'bg-amber-500';
+    if (rating >= 5)  return 'bg-orange-500';
+    return 'bg-red-500';
 };
 
 /**
@@ -177,11 +182,11 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
             className={`relative group cursor-pointer ${className}`}
         >
             {/* Glow effect on hover */}
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-2xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
+            <div className="absolute -inset-0.5 bg-linear-to-r from-blue-500 via-purple-500 to-cyan-500 rounded-2xl opacity-0 group-hover:opacity-75 blur-xl transition-all duration-500 group-hover:duration-200" />
 
             {/* Card content — Airbnb-style size/layout: 4:3 image, rounded corners */}
             <div className="relative bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-md dark:shadow-black/20 backdrop-blur-sm transition-shadow h-full flex flex-col">
-                <div className="relative aspect-[2/1] sm:aspect-[4/3] overflow-hidden rounded-t-2xl landscape-compact-img landscape-img flex-shrink-0">
+                <div className="relative aspect-2/1 sm:aspect-4/3 overflow-hidden rounded-t-2xl landscape-compact-img landscape-img shrink-0">
                     {imgSrc && (
                         <Image
                             src={imgSrc}
@@ -193,7 +198,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             loading={priority ? undefined : 'lazy'}
                         />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
                     {displayBadges.length > 0 && (
                         <motion.div
                             initial={{ x: -20, opacity: 0 }}
@@ -201,12 +206,12 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             transition={{ delay: index * 0.1 + 0.3 }}
                             className={`absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 py-px sm:px-3 sm:py-1 ${badgeClasses[badgeColor]} text-white text-[9px] sm:text-xs font-medium rounded-full flex items-center gap-0.5 sm:gap-1 shadow-lg landscape-badge`}
                         >
-                            {badgeColor === 'blue' && <Star size={10} fill="currentColor" className="flex-shrink-0" />}
+                            {badgeColor === 'blue' && <Star size={10} fill="currentColor" className="shrink-0" />}
                             {displayBadges[0]}
                         </motion.div>
                     )}
                     
-                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10">
+                    <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10">
                         <SaveButton
                             type="hotel"
                             title={displayName}
@@ -214,42 +219,29 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                             price={rawPrice}
                             currency={sourceCurrency}
                             imageUrl={imgSrc}
-                            deepLink={property?.id ? `/property/${property.id}` : '#'}
+                            deepLink={property?.id ? `/property/${buildPropertySlug(property.name, property.id)}` : '#'}
                             snapshot={property as any}
                             size="sm"
                         />
                     </div>
                 </div>
 
-                <div className="p-1.5 sm:p-3 md:p-4 landscape-compact-content flex flex-col flex-1">
-                    <h3 className="font-semibold text-slate-900 dark:text-white text-[11px] sm:text-sm line-clamp-2 min-h-[2.4em] leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <div className="p-3 sm:p-4 flex flex-col flex-1">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base line-clamp-1 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {displayName}
                     </h3>
-                    <p className="text-[9px] sm:text-xs text-slate-500 dark:text-slate-400 -mt-1 flex items-center gap-0.5 sm:gap-1 min-w-0">
-                        <MapPin className="w-2 h-2 sm:w-3 sm:h-3 text-blue-500 flex-shrink-0" />
+                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1 min-w-0">
+                        <MapPin className="w-3 h-3 text-blue-500 shrink-0" />
                         <span className="truncate">{displayLocation}</span>
                     </p>
 
-                    {displayRating && (
-                        <div className="flex items-center gap-0.5 sm:gap-1.5 mt-0.5 sm:mt-1 flex-wrap">
-                            <span className="px-1 py-px sm:px-1.5 sm:py-0.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-[9px] sm:text-xs font-bold rounded-md shadow-sm">
-                                {displayRating}
-                            </span>
-                            {displayReviews && (
-                                <span className="text-[8px] sm:text-xs text-slate-500 dark:text-slate-400">
-                                    ({displayReviews.toLocaleString(undefined, { maximumFractionDigits: 0 })} reviews)
-                                </span>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Includes/tags */}
+                    {/* Tags (optional) */}
                     {includes && includes.length > 0 && (
-                        <div className="flex flex-wrap gap-0.5 sm:gap-1 mt-1 sm:mt-1.5 content-start">
-                            {includes.map((inc) => (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                            {includes.slice(0, 2).map((inc) => (
                                 <span
                                     key={inc}
-                                    className="text-[8px] sm:text-xs bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 text-green-600 dark:text-green-400 px-1 py-px sm:px-2 sm:py-0.5 rounded-full border border-green-200 dark:border-green-800"
+                                    className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-md"
                                 >
                                     {inc}
                                 </span>
@@ -257,20 +249,34 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                         </div>
                     )}
 
-                    <div className="mt-auto pt-1 sm:pt-2 flex items-baseline gap-0.5 sm:gap-1.5 flex-wrap">
-                        {displayOriginalPrice && (
-                            <span className="text-[8px] sm:text-xs text-slate-400 line-through">
-                                {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            </span>
-                        )}
-                        <span className="text-xs sm:text-base lg:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                            {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            {priceLabel && (
-                                <span className="font-normal text-slate-500 text-[8px] sm:text-sm">
-                                    {priceLabel}
+                    {/* Bottom Row: Rating and Price */}
+                    <div className="mt-auto pt-3 flex items-center justify-between">
+                        {displayRating ? (
+                            <div className="flex items-center gap-2">
+                                <span className={`px-1.5 py-0.5 ${getRatingColor(displayRating)} text-white text-[10px] sm:text-xs font-bold rounded`}>
+                                    {displayRating.toFixed(1)}
                                 </span>
+                                <span className="text-[10px] sm:text-xs font-medium text-slate-700 dark:text-slate-300">
+                                    {getRatingLabel(displayRating)}
+                                </span>
+                            </div>
+                        ) : <div />}
+
+                        <div className="text-right">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400">
+                                    {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                    /night
+                                </span>
+                            </div>
+                            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                                <div className="text-[10px] text-slate-400 line-through leading-none mt-0.5">
+                                    {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </div>
                             )}
-                        </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -314,9 +320,9 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
             onClick={onClick}
         >
             {/* Image Section */}
-            <div className="md:w-[240px] relative h-[140px] md:h-auto flex-shrink-0 p-2 md:p-3 md:pr-0">
+            <div className="md:w-[240px] relative h-[110px] md:h-auto shrink-0 p-1.5 md:p-3 md:pr-0">
                 <div className="absolute inset-2 md:inset-3 md:right-0 rounded-xl overflow-hidden">
-                    {property.image && (
+                    {property.image ? (
                         <Image
                             src={property.image}
                             alt={property.name}
@@ -325,6 +331,20 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                             className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
                             loading="lazy"
                         />
+                    ) : (
+                        <div className="w-full h-full bg-linear-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
+                            <svg viewBox="0 0 64 64" className="w-12 h-12 text-slate-300 dark:text-slate-600" fill="currentColor">
+                                <rect x="8" y="20" width="48" height="36" rx="2"/>
+                                <rect x="14" y="28" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="28" y="28" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="42" y="28" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="14" y="42" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="28" y="42" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="42" y="42" width="8" height="8" fill="white" opacity="0.6"/>
+                                <rect x="24" y="8" width="16" height="16" rx="1"/>
+                                <rect x="30" y="50" width="4" height="6" fill="white" opacity="0.6"/>
+                            </svg>
+                        </div>
                     )}
                 </div>
                 {/* Heart icon */}
@@ -336,7 +356,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                         price={property.price}
                         currency={property.currency || 'KRW'}
                         imageUrl={property.image}
-                        deepLink={`/property/${property.id}`}
+                        deepLink={`/property/${buildPropertySlug(property.name, property.id)}`}
                         snapshot={property as any}
                         size="sm"
                     />
@@ -353,14 +373,19 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                             Free cancellation
                         </span>
                     )}
-                    {/* Hotel Name */}
-                    <h3 className="text-[12px] landscape:text-[11px] lg:text-xl font-bold text-slate-900 dark:text-white mb-0.5 md:mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
-                        {property.name}
-                    </h3>
+                    {/* Hotel Name with rank number */}
+                    <div className="flex items-center gap-1.5 mb-0.5 md:mb-1">
+                        <span className="shrink-0 w-5 h-5 lg:w-6 lg:h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                            <span className={`text-white font-bold leading-none ${(index + 1) > 99 ? 'text-[7px] lg:text-[9px]' : (index + 1) > 9 ? 'text-[9px] lg:text-[11px]' : 'text-[10px] lg:text-[12px]'}`}>{index + 1}</span>
+                        </span>
+                        <h3 className="text-[11px] landscape:text-[10px] lg:text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors line-clamp-1">
+                            {property.name}
+                        </h3>
+                    </div>
 
                     {/* Location */}
-                    <div className="flex items-center text-[10px] landscape:text-[9px] lg:text-sm text-slate-500 dark:text-slate-400 mb-2 md:mb-4">
-                        <MapPin className="w-2.5 h-2.5 lg:w-4 lg:h-4 mr-0.5 md:mr-1 shrink-0" />
+                    <div className="flex items-center text-[9px] landscape:text-[8.5px] lg:text-sm text-slate-500 dark:text-slate-400 mb-1.5 md:mb-4">
+                        <MapPin className="w-2 h-2 lg:w-4 lg:h-4 mr-0.5 md:mr-1 shrink-0" />
                         <span className="line-clamp-1">{property.location}</span>
                     </div>
                 </div>
@@ -368,12 +393,18 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                 <div className="flex items-end justify-between mt-1 md:mt-4">
                     {/* Rating Section */}
                     <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="px-1.5 py-0.5 lg:px-2 lg:py-1 bg-blue-600 text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg">
-                            {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
-                        </div>
-                        <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
-                            {getRatingLabel(property.rating)}
-                        </span>
+                        {property.rating > 0 ? (
+                            <>
+                                <div className={`px-1.5 py-0.5 lg:px-2 lg:py-1 ${getRatingColor(property.rating)} text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg`}>
+                                    {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                                </div>
+                                <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    {getRatingLabel(property.rating)}
+                                </span>
+                            </>
+                        ) : (
+                            <span className="text-[9px] landscape:text-[8px] lg:text-sm text-slate-400 dark:text-slate-500">No rating yet</span>
+                        )}
                     </div>
 
                     {/* Price Section */}
@@ -384,7 +415,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                             </div>
                         )}
                         <div className="flex items-baseline gap-1 md:gap-1.5">
-                            <span className="text-[13px] landscape:text-[12px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
+                            <span className="text-[12px] landscape:text-[11px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
                                 {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             </span>
                             <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">

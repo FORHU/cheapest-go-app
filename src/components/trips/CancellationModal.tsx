@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import type { BookingRecord } from '@/services/booking.service';
 import { formatCurrency } from '@/lib/utils';
+import { convertCurrency } from '@/lib/currency';
+import { useUserCurrency } from '@/stores/searchStore';
 import { calculateCancellationFee, extractNoShowPenalty, extractEarlyDepartureFee } from '@/lib/cancellation';
 import {
     derivePolicyType,
@@ -27,6 +29,7 @@ interface CancellationModalProps {
 
 export default function CancellationModal({ booking, isOpen, onClose, onCancelled }: CancellationModalProps) {
     const isRefundRetry = booking.status === 'cancelled_refund_failed';
+    const userCurrency = useUserCurrency();
     const [mounted, setMounted] = useState(false);
     useEffect(() => {
         setMounted(true);
@@ -55,11 +58,18 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
     // Merge: prefer fresh data from API, fall back to cached
     const cancellationPolicies = bookingDetails?.cancellationPolicies || booking.cancellation_policy;
 
-    // Calculate fee using shared helper
-    const feeResult = useMemo(
-        () => calculateCancellationFee(cancellationPolicies, booking.total_price, booking.currency),
-        [cancellationPolicies, booking.total_price, booking.currency]
-    );
+    // Calculate fee in stored currency, then convert to user's display currency
+    const feeResult = useMemo(() => {
+        const raw = calculateCancellationFee(cancellationPolicies, booking.total_price, booking.currency);
+        const displayCurrency = userCurrency || booking.currency;
+        if (displayCurrency === booking.currency) return raw;
+        return {
+            ...raw,
+            fee: convertCurrency(raw.fee, booking.currency, displayCurrency),
+            refund: convertCurrency(raw.refund, booking.currency, displayCurrency),
+            currency: displayCurrency,
+        };
+    }, [cancellationPolicies, booking.total_price, booking.currency, userCurrency]);
 
     // Derive policy type using the formatter bridge
     const policyType = useMemo(
@@ -170,7 +180,10 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                                 Booking ID: {booking.booking_id}
                                             </span>
                                             <span className="font-semibold text-slate-900 dark:text-white">
-                                                {formatCurrency(booking.total_price, booking.currency)}
+                                                {formatCurrency(
+                                                    convertCurrency(booking.total_price, booking.currency, userCurrency || booking.currency),
+                                                    userCurrency || booking.currency
+                                                )}
                                             </span>
                                         </div>
                                     </div>

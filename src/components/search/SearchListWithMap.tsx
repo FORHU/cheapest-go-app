@@ -10,6 +10,7 @@ import { MapPopup } from '@/components/map/MapPopup';
 import { computeBounds } from '@/components/map/types';
 import type { MappableProperty } from '@/components/map/types';
 import { type Property } from '@/types';
+import { buildPropertySlug } from '@/lib/utils';
 import { MapModal } from '@/components/map/MapModal';
 import { MapSearchOverlay } from '@/components/mapbox/components/MapSearchOverlay';
 import { MapPin, Layers } from 'lucide-react';
@@ -83,9 +84,12 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
         (id: string) => {
             const params = new URLSearchParams(searchParams?.toString() || '');
             params.delete('view');
-            router.push(`/property/${id}?${params.toString()}`);
+            const prop = mappableProperties.find(p => p.id === id);
+            if (prop?.rateId) params.set('rateId', prop.rateId);
+            const slug = prop ? buildPropertySlug(prop.name, id) : id;
+            router.push(`/property/${slug}?${params.toString()}`);
         },
-        [router, searchParams]
+        [router, searchParams, mappableProperties]
     );
 
     const handleMarkerClick = useCallback(

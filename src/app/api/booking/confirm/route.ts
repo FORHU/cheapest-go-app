@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
-import { confirmAndSaveBooking } from '@/lib/server/bookings';
+import { confirmAndSaveTgxBooking } from '@/lib/server/bookings';
 import { stripe } from '@/lib/stripe/server';
 import { createNotification } from '@/lib/server/admin/notify';
+
+export const maxDuration = 120;
 import { sendBookingConfirmationEmail } from '@/lib/server/email';
 import { revalidatePath } from 'next/cache';
 import { rateLimit } from '@/lib/server/rate-limit';
@@ -19,7 +21,7 @@ export async function POST(req: NextRequest) {
     if (csrfError) return csrfError;
 
     // 5 booking confirmations per minute per IP
-    const rl = rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-confirm' });
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-confirm' });
     if (!rl.success) {
         return Response.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
@@ -88,8 +90,28 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Unified flow: LiteAPI confirm → normalize policy → atomic DB save
-        const result = await confirmAndSaveBooking(body, user);
+        // TravelgateX path: prebookId is encoded as "TGX:{quoteToken}"
+        const quoteToken = String(body.prebookId).startsWith('TGX:')
+            ? String(body.prebookId).slice(4)
+            : String(body.prebookId);
+
+        const result = await confirmAndSaveTgxBooking({
+            quoteToken,
+            holder: body.holder,
+            guests: body.guests || [],
+            propertyName: body.propertyName || '',
+            propertyImage: body.propertyImage,
+            roomName: body.roomName || body.holder?.firstName || 'Standard Room',
+            checkIn: body.checkIn || '',
+            checkOut: body.checkOut || '',
+            adults: body.adults || 2,
+            children: body.children || 0,
+            currency: body.currency || 'USD',
+            specialRequests: body.specialRequests,
+            paymentIntentId: body.paymentIntentId,
+            voucherCode: body.voucherCode,
+            discountAmount: body.discountAmount,
+        }, user);
 
         if (result.success) {
             revalidatePath('/trips');
@@ -98,60 +120,43 @@ export async function POST(req: NextRequest) {
                 `Booking ${result.data?.bookingId || ''} confirmed for ${user.email}.`,
                 'booking'
             );
-
-            // Send confirmation email with retry (max 3 attempts, exponential backoff)
-            const sendEmailWithRetry = async (attempt = 1): Promise<void> => {
-                try {
-                    await sendBookingConfirmationEmail({
-                        bookingId: result.data?.bookingId || '',
-                        email: body.holder?.email || user.email || '',
-                        guestName: `${body.holder?.firstName || ''} ${body.holder?.lastName || ''}`.trim(),
-                        hotelName: body.propertyName || '',
-                        roomName: body.roomName || '',
-                        checkIn: body.checkIn || '',
-                        checkOut: body.checkOut || '',
-                        totalPrice: result.data?.totalPrice || 0,
-                        currency: result.data?.currency || body.currency || 'PHP',
-                    });
-                } catch (e) {
-                    if (attempt < 3) {
-                        await new Promise(r => setTimeout(r, 1000 * attempt));
-                        return sendEmailWithRetry(attempt + 1);
-                    }
-                    console.error(`[confirm] Email failed after ${attempt} attempts:`, e);
-                    createNotification(
-                        'Email Delivery Failed',
-                        `Confirmation email failed for booking ${result.data?.bookingId || ''} (${body.holder?.email || user.email}). Manual resend required.`,
-                        'system'
-                    );
-                }
-            };
-            sendEmailWithRetry();
-
-            // Structured financial event log for hotel payment
-            if (body.paymentIntentId) {
-                console.log(JSON.stringify({
-                    _event: 'financial',
-                    type: 'payment',
-                    bookingType: 'hotel',
-                    bookingId: result.data?.bookingId,
-                    paymentIntentId: body.paymentIntentId,
-                    amount: result.data?.totalPrice || 0,
-                    currency: result.data?.currency || body.currency || 'PHP',
-                    userId: user.id.slice(0, 8),
-                    timestamp: new Date().toISOString(),
-                }));
-            }
-
+            sendBookingConfirmationEmail({
+                bookingId: result.data?.bookingId || '',
+                email: body.holder?.email || user.email || '',
+                guestName: `${body.holder?.firstName || ''} ${body.holder?.lastName || ''}`.trim(),
+                hotelName: body.propertyName || '',
+                roomName: body.roomName || '',
+                checkIn: body.checkIn || '',
+                checkOut: body.checkOut || '',
+                totalPrice: result.data?.totalPrice || 0,
+                currency: result.data?.currency || body.currency || 'USD',
+            }).catch(e => console.error('[confirm] Email failed:', e));
             return Response.json(result);
         }
 
-        // ── DB save failed AFTER LiteAPI confirmed the booking ──
-        // The hotel IS booked — do NOT refund Stripe. Alert admin instead.
-        if (result.liteApiConfirmed) {
+        // Booking failed — refund Stripe payment if captured
+        if (!result.providerConfirmed && body.paymentIntentId) {
+            try {
+                const refund = await stripe.refunds.create({ payment_intent: body.paymentIntentId });
+                console.log(`[confirm] Auto-refunded ${refund.id} for failed booking`);
+                return Response.json({
+                    success: false,
+                    error: (result.error || 'Booking failed') + '. Your payment has been automatically refunded.',
+                });
+            } catch (refundErr: any) {
+                console.error('[confirm] Refund failed:', refundErr.message);
+                return Response.json({
+                    success: false,
+                    error: (result.error || 'Booking failed') + '. Please contact support for a refund.',
+                });
+            }
+        }
+
+        // DB save failed after booking confirmed — do NOT refund
+        if (result.providerConfirmed) {
             createNotification(
-                'CRITICAL: DB Save Failed After LiteAPI Confirm',
-                `Booking ${result.data?.bookingId || 'unknown'} confirmed in LiteAPI for ${user.email} but DB save failed. Manual reconciliation required. PaymentIntent: ${body.paymentIntentId || 'N/A'}`,
+                'CRITICAL: DB Save Failed After Booking Confirm',
+                `Booking ${result.data?.bookingId || 'unknown'} confirmed for ${user.email} but DB save failed. Manual reconciliation required. PaymentIntent: ${body.paymentIntentId || 'N/A'}`,
                 'booking'
             );
             return Response.json({
@@ -159,34 +164,6 @@ export async function POST(req: NextRequest) {
                 error: result.error,
                 data: result.data,
             }, { status: 500 });
-        }
-
-        // ── LiteAPI failed — refund Stripe payment if it was charged ──
-        if (body.paymentIntentId) {
-            let refundSuccess = false;
-            try {
-                const refund = await stripe.refunds.create({ payment_intent: body.paymentIntentId });
-                refundSuccess = true;
-                // Structured financial event log (hotel bookings can't use booking_financial_events FK yet)
-                console.log(JSON.stringify({
-                    _event: 'financial',
-                    type: 'refund',
-                    bookingType: 'hotel',
-                    paymentIntentId: body.paymentIntentId,
-                    refundId: refund.id,
-                    amount: refund.amount / 100,
-                    currency: (refund.currency || 'usd').toUpperCase(),
-                    reason: 'liteapi_failure',
-                    userId: user.id.slice(0, 8),
-                    timestamp: new Date().toISOString(),
-                }));
-            } catch (refundErr: any) {
-                console.error('[confirm] Failed to refund:', refundErr.message);
-            }
-            return Response.json({
-                success: false,
-                error: (result.error || 'Booking failed') + (refundSuccess ? '. Your payment has been automatically refunded.' : '. Please contact support for a refund.'),
-            });
         }
 
         return Response.json(result);

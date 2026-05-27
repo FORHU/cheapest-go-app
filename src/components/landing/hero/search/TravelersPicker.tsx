@@ -4,6 +4,13 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, ChevronDown, X } from 'lucide-react';
 import { useSearchStore, useTravelers, useActiveDropdown, RoomOccupancy } from '@/stores/searchStore';
+import { cn } from '@/lib/utils';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface CounterProps {
     label: string;
@@ -16,11 +23,11 @@ interface CounterProps {
 
 const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onChange }) => (
     <div className="flex justify-between items-center py-2">
-        <div>
-            <span className="text-[11px] font-normal text-slate-900 dark:text-white block">{label}</span>
-            {sublabel && <span className="text-[9px] font-normal text-slate-400">{sublabel}</span>}
+        <div className="flex-1">
+            <span className="text-[10px] font-normal text-slate-900 dark:text-white block">{label}</span>
+            {sublabel && <span className="text-[8.5px] font-normal text-slate-400">{sublabel}</span>}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
             <button
                 disabled={value <= min}
                 onClick={() => onChange(value - 1)}
@@ -28,7 +35,7 @@ const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onC
             >
                 <Minus size={12} />
             </button>
-            <span className="w-4 text-center font-normal text-[11px] text-slate-900 dark:text-white">
+            <span className="w-6 text-center font-normal text-[10.5px] text-slate-900 dark:text-white">
                 {value}
             </span>
             <button
@@ -49,58 +56,35 @@ const ChildAgeSelector: React.FC<{
     onAgeChange: (index: number, age: number) => void;
     onRemove: (index: number) => void;
 }> = ({ age, index, onAgeChange, onRemove }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isOpen]);
-
     return (
-        <div className="flex items-center gap-1.5" ref={dropdownRef}>
-            <div className="relative">
-                <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                >
-                    <span>Child {index + 1}: {age} yrs</span>
-                    <ChevronDown size={12} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                </button>
-                <AnimatePresence>
-                    {isOpen && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -5 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -5 }}
-                            className="absolute top-full left-0 mt-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-20 max-h-40 overflow-y-auto min-w-[100px]"
+        <div className="flex items-center gap-1.5">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <button
+                        className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    >
+                        <span>Child {index + 1}: {age} yrs</span>
+                        <ChevronDown size={10} className="text-slate-400" />
+                    </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="rounded-xl min-w-[100px] max-h-48 overflow-y-auto thin-scrollbar">
+                    {Array.from({ length: 18 }, (_, i) => (
+                        <DropdownMenuItem
+                            key={i}
+                            onClick={() => onAgeChange(index, i)}
+                            className={cn(
+                                "text-[11px] font-semibold py-1.5",
+                                age === i ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" : "text-slate-700 dark:text-slate-300"
+                            )}
                         >
-                            {Array.from({ length: 18 }, (_, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => {
-                                        onAgeChange(index, i);
-                                        setIsOpen(false);
-                                    }}
-                                    className={`block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-100 dark:hover:bg-slate-700 ${age === i ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}
-                                >
-                                    {i} years
-                                </button>
-                            ))}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
+                            {i} years old
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
             <button
                 onClick={() => onRemove(index)}
-                className="p-0.5 text-slate-400 hover:text-red-500 transition-colors"
+                className="p-1 text-slate-400 hover:text-red-500 transition-colors"
             >
                 <X size={12} />
             </button>
@@ -232,7 +216,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                             </h4>
                         )}
 
-                        <div className="divide-y divide-slate-100 dark:divide-white/5">
+                        <div className="space-y-1">
                             <Counter
                                 label="Adults"
                                 value={adults}
@@ -240,11 +224,10 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                                 max={10}
                                 onChange={(val) => setTravelers({ adults: val })}
                             />
-                            <div className="py-3">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <span className="text-[11px] font-normal text-slate-900 dark:text-white block">Children</span>
-                                        <span className="text-[9px] font-normal text-slate-400">Ages 0 to 17</span>
+                                <div className="flex justify-between items-center py-2">
+                                    <div className="flex-1">
+                                        <span className="text-[10px] font-normal text-slate-900 dark:text-white block">Children</span>
+                                        <span className="text-[8.5px] font-normal text-slate-400">Ages 0 to 17</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <button
@@ -254,7 +237,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                                         >
                                             <Minus size={12} />
                                         </button>
-                                        <span className="w-4 text-center font-normal text-[11px] text-slate-900 dark:text-white">
+                                        <span className="w-6 text-center font-normal text-[10.5px] text-slate-900 dark:text-white">
                                             {children}
                                         </span>
                                         <button
@@ -281,7 +264,6 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                                         ))}
                                     </div>
                                 )}
-                            </div>
                             <Counter
                                 label="Rooms"
                                 value={rooms}
@@ -301,7 +283,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
 
                     {/* Footer */}
                     {!inline && (
-                        <div className="flex flex-col gap-3 p-6 border-t border-slate-100 dark:border-white/5">
+                        <div className="flex flex-col gap-3 p-6">
                             <button
                                 onClick={onClose}
                                 className="w-full py-3 bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian rounded-xl font-bold text-sm hover:opacity-90 transition-all"

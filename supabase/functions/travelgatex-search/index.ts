@@ -1,4 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getCacheKey, getFromCache, setCache, getRawCache, setRawCache } from './cache.ts';
+import { resolveDestinationWithFallbacks } from './destinations.ts';
+import { CITY_CENTERS_STATIC, computeClusterCenter, haversineKm } from './geo.ts';
+import { fetchHotelContent } from './content.ts';
+import { SEARCH_QUERY, buildOccupancies, groupByHotel, extractEtgHid } from './search.ts';
+import { transformOptionToHotel } from './transform.ts';
 
 declare const Deno: any;
 
@@ -7,169 +14,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ── In-Memory Cache ─────────────────────────────────────────────
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const cache = new Map<string, { data: any; expiresAt: number }>();
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of cache.entries()) {
-    if (now > entry.expiresAt) cache.delete(key);
-  }
-}, 60_000);
-
-function getCacheKey(params: Record<string, any>): string {
-  const keys = Object.keys(params).sort();
-  return keys.map(k => `${k}:${JSON.stringify(params[k])}`).join('|');
-}
-
-function getFromCache(key: string): any | null {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expiresAt) { cache.delete(key); return null; }
-  return entry.data;
-}
-
-function setCache(key: string, data: any): void {
-  cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
-}
-
-// ── GraphQL Query ────────────────────────────────────────────────
-const SEARCH_QUERY = `
-query (
-  $criteriaSearch: HotelCriteriaSearchInput
-  $settings: HotelSettingsInput
-  $filterSearch: HotelXFilterSearchInput
-) {
-  hotelX {
-    search(
-      criteria: $criteriaSearch
-      settings: $settings
-      filterSearch: $filterSearch
-    ) {
-      options {
-        id
-        hotelCode
-        hotelName
-        boardCode
-        paymentType
-        status
-        token
-        accessCode
-        supplierCode
-        rateRules
-        price {
-          currency
-          binding
-          net
-          gross
-        }
-        cancelPolicy {
-          refundable
-          cancelPenalties {
-            deadline
-            penaltyType
-            currency
-            value
-          }
-        }
-        rooms {
-          occupancyRefId
-          code
-          description
-        }
-      }
-      errors { code type description }
-    }
-  }
-}
-`;
-
-// ── Helpers ──────────────────────────────────────────────────────
-
-function buildOccupancies(
-  adults: number,
-  children: number,
-  childrenAges: number[],
-  rooms: number
-) {
-  const adultsPerRoom = Math.ceil(adults / rooms);
-  const childrenPerRoom = Math.ceil(childrenAges.length / rooms);
-  let remainingAdults = adults;
-  const remainingAges = [...childrenAges];
-  const occupancies = [];
-
-  for (let i = 0; i < rooms; i++) {
-    const roomAdults = Math.max(Math.min(adultsPerRoom, remainingAdults), 1);
-    remainingAdults -= roomAdults;
-    const roomAges = remainingAges.splice(0, childrenPerRoom);
-
-    occupancies.push({
-      paxes: [
-        ...Array(roomAdults).fill(null).map(() => ({ age: 30 })),
-        ...roomAges.map((age: number) => ({ age })),
-      ],
-    });
-  }
-  return occupancies;
-}
-
-
-/** Group search options by hotelCode, keeping the cheapest option per hotel */
-function groupByHotel(options: any[]): Map<string, any> {
-  const map = new Map<string, any>();
-  for (const option of options) {
-    const code = option.hotelCode;
-    if (!code) continue;
-    if (!map.has(code)) {
-      map.set(code, option);
-    } else {
-      const existing = map.get(code);
-      const existingPrice = existing.price?.gross || existing.price?.net || Infinity;
-      const newPrice = option.price?.gross || option.price?.net || Infinity;
-      if (newPrice < existingPrice) map.set(code, option);
-    }
-  }
-  return map;
-}
-
-function transformOptionToHotel(option: any, cityName: string, currency: string) {
-  const price = option.price?.gross || option.price?.net || 0;
-  const isRefundable = option.cancelPolicy?.refundable === true;
-
-  return {
-    hotelId: option.hotelCode,
-    name: option.hotelName || `Hotel ${option.hotelCode}`,
-    location: cityName,
-    description: '',
-    rating: 0,
-    reviews: 0,
-    price,
-    currency: option.price?.currency || currency,
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=800',
-    images: [],
-    amenities: [],
-    badges: [],
-    type: 'hotel',
-    coordinates: { lat: 0, lng: 0 },
-    refundableTag: isRefundable ? 'RFN' : 'NRFN',
-    boardTypes: option.boardCode ? [option.boardCode] : [],
-    starRating: 0,
-    latitude: 0,
-    longitude: 0,
-    // TravelgateX-specific fields needed for quote/book flows
-    _tgx: {
-      optionId: option.id,
-      token: option.token,
-      accessCode: option.accessCode,
-      supplierCode: option.supplierCode,
-      boardCode: option.boardCode,
-      rateRules: option.rateRules,
-    },
-  };
-}
-
-// ── Main Handler ─────────────────────────────────────────────────
+const ENDPOINT         = 'https://api.travelgate.com';
+const OTV_SUPPLIER     = 'OTV';
+const OTV_CONTEXT      = 'OTV';
+const OTV_ACCESS_CODE  = '38327';
+const GEO_RADIUS_KM    = 30;
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -177,170 +26,505 @@ Deno.serve(async (req: Request) => {
   }
 
   const TRAVELGATEX_API_KEY = Deno.env.get('TRAVELGATEX_API_KEY');
-  const TRAVELGATEX_ACCESS_CODE = Deno.env.get('TRAVELGATEX_CODE') || '37606';
-  const TRAVELGATEX_CLIENT = Deno.env.get('TRAVELGATEX_CLIENT') || 'forhuinc';
-  const ENDPOINT = 'https://api.travelgate.com';
+  const TRAVELGATEX_CLIENT  = Deno.env.get('TRAVELGATEX_CLIENT') || 'forhuinc';
+  const TRAVELGATEX_TEST_MODE = Deno.env.get('TRAVELGATEX_TEST_MODE') === 'true';
+  const ETG_KEY_ID  = Deno.env.get('ETG_KEY_ID')  || Deno.env.get('RATEHAWK_KEY_ID')  || '';
+  const ETG_API_KEY = Deno.env.get('ETG_API_KEY') || Deno.env.get('RATEHAWK_API_KEY') || '';
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
 
   try {
-    const t0 = Date.now();
+    const t0   = Date.now();
     const body = await req.json();
+    console.log('===== OTV SEARCH REQUEST =====', JSON.stringify(body).substring(0, 300));
 
-    console.log('===== TRAVELGATEX SEARCH REQUEST =====', JSON.stringify(body).substring(0, 300));
-
-    // ── Cache lookup ──
+    // ── In-memory response cache ──────────────────────────────────
     const cacheKey = getCacheKey(body);
-    const cached = getFromCache(cacheKey);
+    const cached   = getFromCache(cacheKey);
     if (cached) {
       console.log(`[Cache HIT] ${Date.now() - t0}ms`);
-      return new Response(JSON.stringify(cached), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'HIT' },
-        status: 200,
+      const ndjson = [
+        JSON.stringify({ type: 'hotels', source: 'cache', data: cached.data || [], allMappable: cached.allMappable || [], totalCount: cached.totalCount || 0 }),
+        JSON.stringify({ type: 'done', totalCount: cached.totalCount || 0 }),
+      ].join('\n') + '\n';
+      return new Response(ndjson, {
+        headers: { ...corsHeaders, 'Content-Type': 'application/x-ndjson', 'X-Cache': 'HIT' },
       });
     }
 
+    // Normalize params
+    const checkin  = body.checkin  || body.checkIn;
+    const checkout = body.checkout || body.checkOut;
     const {
-      checkin,
-      checkout,
-      adults = 2,
-      children = 0,
-      childrenAges = [],
-      rooms = 1,
-      currency = 'USD',
-      guest_nationality: nationality = 'PH',
-      cityName = '',
+      adults = 2, children = 0, childrenAges = [], rooms = 1,
+      currency = 'USD', guest_nationality: nationality = 'KR',
       countryCode = '',
-      destinationCode, // TravelgateX destination code — overrides countryCode if provided
+      destinationCode,
     } = body;
+    const cityName: string = body.cityName || body.destination || '';
 
-    if (!checkin || !checkout) {
-      throw new Error('checkin and checkout are required');
+    const offset = typeof body.offset === 'number' ? body.offset : 0;
+    const limit  = typeof body.limit  === 'number' ? body.limit  : 15;
+    const { offset: _o, limit: _l, ...bodyWithoutPagination } = body;
+    const rawCacheKey = getCacheKey(bodyWithoutPagination);
+
+    // ── Load More fast path ───────────────────────────────────────
+    const cachedRaw = getRawCache(rawCacheKey);
+    if (cachedRaw && offset > 0) {
+      const fallbackCity = cityName || body.destination || '';
+      const pageHotels  = cachedRaw.allHotels
+        .slice(offset, offset + limit)
+        .map((h: any) => (h.location || !fallbackCity) ? h : { ...h, location: fallbackCity });
+      console.log(`[RawCache HIT] offset=${offset} → ${pageHotels.length}/${cachedRaw.allHotels.length} in ${Date.now() - t0}ms`);
+      return new Response(JSON.stringify({ data: pageHotels, totalCount: cachedRaw.allHotels.length }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'RAW-HIT' },
+      });
     }
 
-    // Destination: use explicit destinationCode if provided, otherwise fall back to countryCode
-    const destCode = destinationCode || countryCode || '';
+    if (!checkin || !checkout) throw new Error('checkin and checkout are required');
 
-    // Build occupancies (TravelgateX uses paxes with ages)
+    // ── DB search cache check (pre-warmed by cron) ────────────────
+    if (cityName && offset === 0) {
+      try {
+        const dbCacheKey = `${cityName.toLowerCase().trim()}|${checkin}|${checkout}|${adults}|${children}|${rooms}|${currency}|${nationality}`;
+        const { data: dbCached } = await supabase
+          .from('search_results_cache')
+          .select('hotels, total_count')
+          .eq('cache_key', dbCacheKey)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+
+        if (dbCached?.hotels?.length > 0) {
+          console.log(`[DB Cache HIT] "${cityName}" ${checkin}→${checkout}: ${dbCached.total_count} hotels in ${Date.now() - t0}ms`);
+          // Patch missing location with cityName (covers stale cache entries built before ETG city extraction fix)
+          const hotels = (dbCached.hotels as any[]).map(h => h.location ? h : { ...h, location: cityName });
+          setRawCache(rawCacheKey, { allHotels: hotels });
+          const ndjson = [
+            JSON.stringify({ type: 'hotels', source: 'cache', data: hotels.slice(0, limit), allMappable: hotels.map(h => ({ id: h.hotelId, name: h.name, price: h.price, currency: h.currency, coordinates: h.coordinates, rating: h.rating, image: h.image })), totalCount: hotels.length }),
+            JSON.stringify({ type: 'done', totalCount: hotels.length }),
+          ].join('\n') + '\n';
+          return new Response(ndjson, {
+            headers: { ...corsHeaders, 'Content-Type': 'application/x-ndjson', 'X-Cache': 'DB-HIT' },
+          });
+        }
+      } catch (e: any) {
+        console.error('[DB Cache] Read error:', e.message);
+      }
+    }
+
+    // ── Single-hotel detail mode ──────────────────────────────────
+    const directHotelCode = body.hotelCode as string | undefined;
+    if (directHotelCode) {
+      return await handleSingleHotel(
+        directHotelCode, body, checkin, checkout, adults, children, childrenAges, rooms,
+        currency, nationality, supabase, ENDPOINT, TRAVELGATEX_API_KEY, TRAVELGATEX_CLIENT,
+        TRAVELGATEX_TEST_MODE, ETG_KEY_ID, ETG_API_KEY, corsHeaders
+      );
+    }
+
+    // ── Destination resolution via ETG multicomplete ──────────────
+    let destCodes: string[] = [];
+    if (destinationCode) {
+      destCodes = [destinationCode];
+    } else if (cityName) {
+      const { destCodes: resolved, resolvedFrom } = await resolveDestinationWithFallbacks(
+        cityName, countryCode, supabase, ETG_KEY_ID, ETG_API_KEY
+      );
+      destCodes = resolved;
+      if (destCodes.length > 0) {
+        console.log(`[OTV] Resolved "${cityName}" via ETG multicomplete → region_id=${destCodes[0]} (from "${resolvedFrom}")`);
+      } else {
+        console.warn(`[OTV] Could not resolve destination for "${cityName}"`);
+      }
+    }
+
+    if (destCodes.length === 0) {
+      return new Response(
+        JSON.stringify({ type: 'done', totalCount: 0, data: [] }) + '\n',
+        { headers: { ...corsHeaders, 'Content-Type': 'application/x-ndjson' } }
+      );
+    }
+
+    // ── Build OTV search ──────────────────────────────────────────
     const normalizedAges: number[] = Array.isArray(childrenAges) ? childrenAges : [];
     if (normalizedAges.length === 0 && children > 0) {
       for (let i = 0; i < children; i++) normalizedAges.push(10);
     }
     const occupancies = buildOccupancies(adults, children, normalizedAges, rooms);
 
-    const variables = {
-      criteriaSearch: {
-        checkIn: checkin,
-        checkOut: checkout,
-        occupancies,
-        destinations: [destCode],
-        currency,
-        nationality,
-        markets: [nationality],
-        language: 'en',
-      },
-      settings: {
-        client: TRAVELGATEX_CLIENT,
-        context: 'TGX',
-        testMode: false,
-        timeout: 25000,
-        suppliers: [
-          {
-            code: 'FASTX',
-            accesses: [{ accessId: TRAVELGATEX_ACCESS_CODE }],
-          },
-        ],
-      },
+    const criteriaSearch = {
+      checkIn: checkin, checkOut: checkout, occupancies,
+      currency, nationality, markets: [nationality], language: 'en',
+      destinations: destCodes,
     };
 
-    const t1 = Date.now();
-    const response = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Apikey ${TRAVELGATEX_API_KEY}`,
-        'Content-Type': 'application/json',
-        'Accept-Encoding': 'gzip',
-        'Connection': 'keep-alive',
-      },
-      body: JSON.stringify({ query: SEARCH_QUERY, variables }),
+    const settings = {
+      client: TRAVELGATEX_CLIENT,
+      context: OTV_CONTEXT,
+      testMode: TRAVELGATEX_TEST_MODE,
+      timeout: 25000,
+      suppliers: [{ code: OTV_SUPPLIER, accesses: [{ accessId: OTV_ACCESS_CODE }] }],
+      plugins: [{
+        step: 'REQUEST',
+        pluginsType: { type: 'PRE_STEP', name: 'search_by_destination', parameters: [{ key: 'accessID', value: OTV_ACCESS_CODE }] },
+      }],
+    };
+
+    // ── Streaming response ────────────────────────────────────────
+    const { readable, writable } = new TransformStream();
+    const writer  = writable.getWriter();
+    const encoder = new TextEncoder();
+    const send = async (obj: object) => {
+      try { await writer.write(encoder.encode(JSON.stringify(obj) + '\n')); } catch {}
+    };
+
+    const cityKey          = cityName.toLowerCase().trim();
+    const staticCityCenter = CITY_CENTERS_STATIC[cityKey] ?? null;
+
+    const streamResponse = new Response(readable, {
+      headers: { ...corsHeaders, 'Content-Type': 'application/x-ndjson', 'X-Cache': 'MISS' },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`TravelgateX API ${response.status}: ${errorText}`);
-    }
+    (async () => {
+      try {
+        // ── OTV search ────────────────────────────────────────────
+        const t1 = Date.now();
+        const otvFetch = fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'Authorization': `Apikey ${TRAVELGATEX_API_KEY}`, 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip' },
+          body: JSON.stringify({ query: SEARCH_QUERY, variables: { criteriaSearch, settings } }),
+        }).then(r => r.ok ? r.json() : (console.error(`[OTV] HTTP ${r.status}`), null))
+          .catch((e: any) => { console.error('[OTV] fetch error:', e.message); return null; });
 
-    const result = await response.json();
-    const t2 = Date.now();
+        const otvTimeout = new Promise<null>(resolve => setTimeout(() => { console.error('[OTV] 30s timeout'); resolve(null); }, 30000));
+        const otvResult  = await Promise.race([otvFetch, otvTimeout]);
 
-    if (result.errors) {
-      throw new Error(`GraphQL error: ${JSON.stringify(result.errors)}`);
-    }
+        console.log(`[OTV] Search: ${Date.now() - t1}ms`);
 
-    const searchData = result.data?.hotelX?.search;
+        if (!otvResult) {
+          await send({ type: 'done', totalCount: 0, data: [] });
+          return;
+        }
 
-    // DEBUG: log full response for diagnosis
-    console.log('[TravelgateX] Full searchData:', JSON.stringify(searchData).substring(0, 2000));
+        if (otvResult.errors) console.error('[OTV] GraphQL errors:', JSON.stringify(otvResult.errors));
+        const searchData = otvResult.data?.hotelX?.search;
+        if (searchData?.errors?.length)   console.warn('[OTV] Errors:', JSON.stringify(searchData.errors));
+        if (searchData?.warnings?.length) console.warn('[OTV] Warnings:', JSON.stringify(searchData.warnings));
 
-    if (searchData?.errors?.length > 0) {
-      console.warn('[TravelgateX] Search errors:', JSON.stringify(searchData.errors));
-    }
-    if (searchData?.warnings?.length > 0) {
-      console.warn('[TravelgateX] Search warnings:', JSON.stringify(searchData.warnings));
-    }
+        const options: any[] = searchData?.options || [];
+        console.log(`[OTV] ${options.length} options returned`);
 
-    const options: any[] = searchData?.options || [];
-    console.log(`[TravelgateX] API: ${t2 - t1}ms, options: ${options.length}`);
+        if (options.length === 0) {
+          await send({ type: 'done', totalCount: 0, data: [] });
+          return;
+        }
 
-    if (options.length === 0) {
-      return new Response(JSON.stringify({
-        data: [],
-        _debug: {
-          errors: searchData?.errors || [],
-          warnings: searchData?.warnings || [],
-          destCode,
-          ms: t2 - t1,
-        },
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'MISS' },
-        status: 200,
-      });
-    }
+        // Only surface MERCHANT options — these are the ones where we collect
+        // payment from the guest and settle with OTV. DIRECT options expect the
+        // guest to pay the hotel directly, which is incompatible with Stripe checkout.
+        const merchantOptions = options.filter((o: any) => o.paymentType === 'MERCHANT');
+        const nonMerchantCount = options.length - merchantOptions.length;
+        if (nonMerchantCount > 0) console.warn(`[OTV] Filtered out ${nonMerchantCount} non-MERCHANT options`);
 
-    // Group by hotel and pick cheapest option per hotel
-    const hotelMap = groupByHotel(options);
-    const hotels = Array.from(hotelMap.values())
-      .map(option => transformOptionToHotel(option, cityName, currency));
+        if (merchantOptions.length === 0) {
+          await send({ type: 'done', totalCount: 0, data: [] });
+          return;
+        }
 
-    console.log(JSON.stringify({
-      _event: 'travelgatex_search_analytics',
-      cityName,
-      countryCode,
-      destCode,
-      checkin,
-      checkout,
-      rooms,
-      adults,
-      children,
-      optionCount: options.length,
-      hotelCount: hotels.length,
-      duration_ms: Date.now() - t0,
-      api_ms: t2 - t1,
-      testMode: false,
-      timestamp: new Date().toISOString(),
-    }));
+        // ── Group by hotel, keep cheapest option per hotel ────────
+        const hotelMap = groupByHotel(merchantOptions);
+        const sorted   = Array.from(hotelMap.values())
+          .sort((a: any, b: any) => (a.price?.gross || a.price?.net || Infinity) - (b.price?.gross || b.price?.net || Infinity));
 
-    const responseData = { data: hotels };
-    setCache(cacheKey, responseData);
+        // Build hotelCode → ETG HID map (with OTV, hotelCode IS the ETG HID)
+        const hotelCodeToEtgHid = new Map<string, string>();
+        for (const opt of sorted) {
+          const hid = extractEtgHid(opt.id) || opt.hotelCode;
+          if (hid && opt.hotelCode) hotelCodeToEtgHid.set(opt.hotelCode, hid);
+        }
 
-    return new Response(JSON.stringify(responseData), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Cache': 'MISS' },
-      status: 200,
-    });
+        const uniqueCodes = sorted.map((o: any) => o.hotelCode);
+
+        // ── Phase 1: DB-cached content (fast) ─────────────────────
+        const t1db = Date.now();
+        const contentMap = await Promise.race([
+          fetchHotelContent(
+            supabase, ENDPOINT, TRAVELGATEX_API_KEY, OTV_ACCESS_CODE,
+            uniqueCodes, hotelCodeToEtgHid, ETG_KEY_ID, ETG_API_KEY, 0, true
+          ),
+          new Promise<Map<string, any>>(resolve => setTimeout(() => {
+            console.log('[Content] DB slow — proceeding with empty after 3s');
+            resolve(new Map());
+          }, 3000)),
+        ]);
+        console.log(`[Content] DB: ${Date.now() - t1db}ms, hits=${contentMap.size}`);
+
+        // ── Transform & geo-filter ────────────────────────────────
+        const hotels = sorted
+          .map((o: any) => transformOptionToHotel(o, cityName, currency, contentMap.get(o.hotelCode)))
+          .filter(h => {
+            const isRawCode = /^Hotel \d+$/.test(h.name);
+            return !isRawCode || !!h.image;
+          });
+
+        const cityCenter = staticCityCenter ?? computeClusterCenter(hotels);
+        const filtered   = cityCenter
+          ? hotels.filter(h => {
+              const { lat, lng } = h.coordinates || {};
+              if (!lat || !lng) return true;
+              return haversineKm(cityCenter.lat, cityCenter.lng, lat, lng) <= GEO_RADIUS_KM;
+            })
+          : hotels;
+
+        console.log(`[OTV] ${hotels.length} → ${filtered.length} within ${GEO_RADIUS_KM}km`);
+
+        // Send first batch immediately
+        await send({
+          type: 'hotels', source: 'otv',
+          data: filtered,
+          totalCount: filtered.length,
+          allMappable: filtered
+            .filter(h => h.coordinates?.lat && h.coordinates?.lng)
+            .map(h => ({ id: h.hotelId, name: h.name, price: h.price, currency: h.currency, coordinates: h.coordinates, rating: h.rating, image: h.image, provider: 'OTV' })),
+        });
+
+        // ── Phase 2: Inline content fetch for hotels missing images ──────────
+        // Runs before `done` so the current user receives enriched results.
+        // A 10s timeout ensures we never stall indefinitely when ETG is slow.
+        const missingContent = uniqueCodes.filter((id: string) => !contentMap.get(id)?.images?.length);
+        let finalFiltered = filtered;
+
+        if (missingContent.length > 0) {
+          console.log(`[Phase2] ${missingContent.length} hotels missing content — fetching inline`);
+          const t2 = Date.now();
+
+          const phase2Content = await Promise.race([
+            fetchHotelContent(
+              supabase, ENDPOINT, TRAVELGATEX_API_KEY, OTV_ACCESS_CODE,
+              missingContent, hotelCodeToEtgHid, ETG_KEY_ID, ETG_API_KEY, Infinity
+            ),
+            new Promise<Map<string, any>>(resolve =>
+              setTimeout(() => { console.log('[Phase2] 10s timeout reached'); resolve(new Map()); }, 10000)
+            ),
+          ]);
+
+          console.log(`[Phase2] ${phase2Content.size} hits in ${Date.now() - t2}ms`);
+
+          if (phase2Content.size > 0) {
+            const mergedContent = new Map([...contentMap, ...phase2Content]);
+            const updatedHotels = sorted
+              .map((o: any) => transformOptionToHotel(o, cityName, currency, mergedContent.get(o.hotelCode)))
+              .filter(h => !(/^Hotel \d+$/.test(h.name)) || !!h.image);
+
+            const geoCenter2 = staticCityCenter ?? computeClusterCenter(updatedHotels);
+            finalFiltered = geoCenter2
+              ? updatedHotels.filter(h => {
+                  const { lat, lng } = h.coordinates || {};
+                  if (!lat || !lng) return true;
+                  return haversineKm(geoCenter2.lat, geoCenter2.lng, lat, lng) <= GEO_RADIUS_KM;
+                })
+              : updatedHotels;
+          }
+        }
+
+        // ── Only keep hotels with images ──────────────────────────
+        const withImages = finalFiltered.filter(h => !!h.image);
+        console.log(`[ImageFilter] ${filtered.length} → ${withImages.length} with images`);
+
+        // ── Cache results ─────────────────────────────────────────
+        setRawCache(rawCacheKey, { allHotels: withImages });
+        const responseData = {
+          data: withImages.slice(0, limit),
+          totalCount: withImages.length,
+          allMappable: withImages.map(h => ({
+            id: h.hotelId, name: h.name, price: h.price, currency: h.currency,
+            coordinates: h.coordinates, rating: h.rating, starRating: h.starRating,
+            image: h.image, provider: 'OTV',
+          })),
+        };
+        setCache(cacheKey, responseData);
+
+        // Save to DB search cache (for cron pre-warming reads)
+        if (cityName && withImages.length > 0) {
+          const dbCacheKey = `${cityName.toLowerCase().trim()}|${checkin}|${checkout}|${adults}|${children}|${rooms}|${currency}|${nationality}`;
+          const expiresAt  = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(); // 12h TTL
+          supabase.from('search_results_cache').upsert({
+            cache_key: dbCacheKey, city_name: cityName, region_id: parseInt(destCodes[0]) || 0,
+            checkin, checkout, adults, children, rooms, currency, nationality,
+            hotels: withImages, total_count: withImages.length,
+            cached_at: new Date().toISOString(), expires_at: expiresAt,
+          }, { onConflict: 'cache_key' }).then(({ error }: any) => {
+            if (error) console.error('[DB Cache] Save error:', error.message);
+            else console.log(`[DB Cache] Saved ${withImages.length} hotels for "${cityName}"`);
+          });
+        }
+
+        console.log(JSON.stringify({
+          _event: 'otv_search_analytics',
+          cityName, checkin, checkout, rooms, adults, children,
+          hotelCount: withImages.length,
+          regionId: destCodes[0],
+          duration_ms: Date.now() - t0,
+          timestamp: new Date().toISOString(),
+        }));
+
+        await send({
+          type: 'done',
+          totalCount: withImages.length,
+          data: withImages,
+          allMappable: withImages
+            .filter((h: any) => h.coordinates?.lat && h.coordinates?.lng)
+            .map((h: any) => ({ id: h.hotelId, name: h.name, price: h.price, currency: h.currency, coordinates: h.coordinates, rating: h.rating, image: h.image })),
+        });
+
+      } catch (e: any) {
+        console.error('[Stream Error]', e.message);
+        await send({ type: 'error', message: e.message });
+      } finally {
+        writer.close();
+      }
+    })();
+
+    return streamResponse;
 
   } catch (error: any) {
-    console.error('[TravelgateX Search Error]', error.message);
+    console.error('[OTV Search Error]', error.message);
     return new Response(JSON.stringify({ error: 'Search failed', details: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     });
   }
 });
+
+// ── Single-hotel detail handler ───────────────────────────────────
+async function handleSingleHotel(
+  directHotelCode: string,
+  _body: any,
+  checkin: string,
+  checkout: string,
+  adults: number,
+  children: number,
+  childrenAges: number[],
+  rooms: number,
+  currency: string,
+  nationality: string,
+  supabase: any,
+  endpoint: string,
+  apiKey: string,
+  client: string,
+  testMode: boolean,
+  etgKeyId: string,
+  etgApiKey: string,
+  corsHeaders: Record<string, string>
+): Promise<Response> {
+  const t1 = Date.now();
+  const normalizedAges: number[] = Array.isArray(childrenAges) ? childrenAges : [];
+  if (normalizedAges.length === 0 && children > 0) for (let i = 0; i < children; i++) normalizedAges.push(10);
+  const occupancies = buildOccupancies(adults, children, normalizedAges, rooms);
+
+  const otvRes = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Authorization': `Apikey ${apiKey}`, 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip' },
+    body: JSON.stringify({
+      query: SEARCH_QUERY,
+      variables: {
+        criteriaSearch: { checkIn: checkin, checkOut: checkout, occupancies, currency, nationality, markets: [nationality], language: 'en', hotels: [directHotelCode] },
+        settings: { client, context: OTV_CONTEXT, testMode, timeout: 15000, suppliers: [{ code: OTV_SUPPLIER, accesses: [{ accessId: OTV_ACCESS_CODE }] }] },
+      },
+    }),
+  }).catch(() => null);
+
+  const options: any[] = (otvRes?.ok ? (await otvRes.json()) : {})?.data?.hotelX?.search?.options ?? [];
+  console.log(`[OTV Detail] hotelCode=${directHotelCode} → ${options.length} options in ${Date.now() - t1}ms`);
+
+  const hotelCodeToEtgHid = new Map([[directHotelCode, directHotelCode]]);
+  const contentMap = await fetchHotelContent(
+    supabase, endpoint, apiKey, OTV_ACCESS_CODE,
+    [directHotelCode], hotelCodeToEtgHid, etgKeyId, etgApiKey, 1
+  );
+  const content = contentMap.get(directHotelCode);
+
+  if (options.length === 0) {
+    return new Response(JSON.stringify({ data: content ? {
+      hotelId: directHotelCode, name: content.name, images: content.images || [],
+      thumbnailUrl: content.images?.[0] || '', description: content.description || '',
+      latitude: content.lat, longitude: content.lng, starRating: content.starRating,
+      address: content.address, city: content.city, country: content.country, roomTypes: [],
+      checkInTime: content.checkInTime, checkOutTime: content.checkOutTime,
+      reviewRating: content.reviewRating, reviewCount: content.reviewCount,
+      amenityGroups: content.amenityGroups || [],
+      hotelFacilities: (content.amenityGroups || []).flatMap((g: any) => g.amenities || []),
+      hotelImportantInformation: content.importantInformation,
+    } : null }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+
+  const hotelMap  = groupByHotel(options);
+  const best      = Array.from(hotelMap.values())[0] as any;
+  const hotelBase = transformOptionToHotel(best, '', currency, content);
+
+  const roomGroups = content?.roomGroups || [];
+  const hotelImgs  = content?.images || [];
+
+  const roomTypes = options.map((opt: any, roomIdx: number) => {
+    const tgxName  = (opt.rooms?.[0]?.description || '').toLowerCase();
+    const matched  = roomGroups.find(g => {
+      const gn = g.name.toLowerCase();
+      return tgxName && gn && (tgxName.includes(gn.split(' ')[0]) || gn.includes(tgxName.split(' ')[0]));
+    });
+    const roomPhotos = matched?.images?.length
+      ? matched.images.slice(0, 3)
+      : hotelImgs.slice((roomIdx % Math.max(1, Math.floor(hotelImgs.length / 3))) * 3,
+                        (roomIdx % Math.max(1, Math.floor(hotelImgs.length / 3))) * 3 + 3);
+    return {
+      offerId:    `TGX:${opt.id}`,
+      roomName:   opt.rooms?.[0]?.description || 'Standard Room',
+      roomPhotos: roomPhotos.length ? roomPhotos : hotelImgs.slice(0, 3),
+      rates: [{
+        name:          opt.rooms?.[0]?.description || 'Standard Room',
+        boardType:     opt.boardCode || '',
+        refundableTag: opt.cancelPolicy?.refundable ? 'RFN' : 'NRFN',
+        retailRate:    { total: [{ amount: opt.price?.gross || opt.price?.net || 0, currency: opt.price?.currency || currency }] },
+        cancelPolicy:  opt.cancelPolicy,
+        _tgx:          { optionId: opt.id, token: opt.token, accessCode: opt.accessCode, supplierCode: opt.supplierCode, boardCode: opt.boardCode },
+      }],
+    };
+  });
+
+  const firstOpt  = options[0];
+  const cancelPolicy = firstOpt?.cancelPolicy;
+  const cancellationPolicies = cancelPolicy ? {
+    refundableTag: cancelPolicy.refundable ? 'RFN' : 'NRFN',
+    cancelPolicyInfos: (cancelPolicy.cancelPenalties || []).map((p: any) => ({
+      type: p.penaltyType || 'PENALTY',
+      cancelTime: p.deadline || undefined,
+      amount: p.value || 0,
+      currency: p.currency || currency,
+    })),
+  } : undefined;
+
+  const hotelDetail = {
+    ...hotelBase,
+    hotelId: directHotelCode,
+    roomTypes,
+    latitude:  content?.lat  || hotelBase.coordinates?.lat  || 0,
+    longitude: content?.lng  || hotelBase.coordinates?.lng  || 0,
+    thumbnailUrl: content?.images?.[0] || '',
+    images:    content?.images || [],
+    description: content?.description || '',
+    city: content?.city, country: content?.country, address: content?.address,
+    starRating: content?.starRating || 0,
+    checkInTime: content?.checkInTime, checkOutTime: content?.checkOutTime,
+    reviewRating: content?.reviewRating, reviewCount: content?.reviewCount,
+    amenityGroups: content?.amenityGroups || [],
+    hotelFacilities: (content?.amenityGroups || []).flatMap((g: any) => g.amenities || []),
+    hotelImportantInformation: content?.importantInformation,
+    cancellationPolicies,
+  };
+
+  return new Response(JSON.stringify({ data: hotelDetail }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}

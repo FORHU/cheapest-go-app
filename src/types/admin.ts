@@ -226,13 +226,6 @@ export interface DuffelOrder {
     createdAt: string;
 }
 
-export interface LiteApiProviderData {
-    status: ProviderStatus;
-    searchCount: number | null;
-    bookingCount: number | null;
-    errorMessage?: string;
-}
-
 export interface DuffelAirlineMetric {
     name: string;
     iataCode: string;
@@ -248,6 +241,16 @@ export interface DuffelRouteMetric {
     count: number;
     value: number;
     currency: string;
+}
+
+export interface DuffelAirline {
+    id: string;
+    name: string;
+    iataCode: string;
+    logoUrl: string | null;
+    region: string;
+    active: boolean;
+    alliance: string | null;
 }
 
 export interface DuffelDayPoint {
@@ -308,7 +311,6 @@ export interface ProviderIntegrationsData {
     resend: ResendProviderData;
     duffel: DuffelProviderData;
     mystifly: MystiflyProviderData;
-    liteapi: LiteApiProviderData;
 }
 
 export interface ApiLogRow {

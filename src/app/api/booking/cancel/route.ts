@@ -3,6 +3,8 @@ import { cancelBooking } from '@/lib/server/bookings';
 import { createNotification } from '@/lib/server/admin/notify';
 import { sendHotelCancellationEmail } from '@/lib/server/email';
 import { revalidatePath } from 'next/cache';
+
+export const maxDuration = 60;
 import { cancelBookingSchema } from '@/lib/schemas/booking';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { env } from '@/utils/env';

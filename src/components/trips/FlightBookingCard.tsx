@@ -8,6 +8,7 @@ import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
+import { FormDatePicker } from '@/components/common/FormDatePicker';
 
 interface FlightBookingCardProps {
     booking: FlightBookingRecord;
@@ -53,21 +54,108 @@ const CANCELLABLE_STATUSES = new Set(['confirmed', 'ticketed', 'booked', 'pnr_cr
 
 interface CancelModalProps {
     booking: FlightBookingRecord;
-    onConfirm: () => void;
+    onConfirm: (cancellationId?: string) => void;
     onClose: () => void;
     isLoading: boolean;
     error: string | null;
+    displayCurrency: string;
 }
 
-function CancelModal({ booking, onConfirm, onClose, isLoading, error }: CancelModalProps) {
+function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCurrency }: CancelModalProps) {
     const [mounted, setMounted] = useState(false);
+    const [quoteLoading, setQuoteLoading] = useState(booking.provider === 'duffel');
+    const [quoteData, setQuoteData] = useState<{ refundAmount: number; refundCurrency: string; penaltyAmount: number; cancellationId: string | null } | null>(null);
+    const [quoteError, setQuoteError] = useState<string | null>(null);
+
     useEffect(() => {
         setMounted(true);
         document.body.style.overflow = 'hidden';
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
+        return () => { document.body.style.overflow = 'unset'; };
     }, []);
+
+    // Fetch live Duffel quote on mount
+    useEffect(() => {
+        if (booking.provider !== 'duffel') return;
+        let cancelled = false;
+        setQuoteLoading(true);
+        fetch('/api/flights/cancel-quote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId: booking.id }),
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (cancelled) return;
+                if (data.success) {
+                    setQuoteData({ refundAmount: data.refundAmount, refundCurrency: data.refundCurrency, penaltyAmount: data.penaltyAmount, cancellationId: data.cancellationId });
+                } else if (data.requiresManualCancellation) {
+                    setQuoteError('This booking cannot be cancelled online. Please contact support.');
+                } else if (!data.noQuote) {
+                    setQuoteError(data.error ?? 'Could not fetch cancellation quote from airline.');
+                }
+            })
+            .catch(() => { if (!cancelled) setQuoteError('Network error fetching cancellation quote.'); })
+            .finally(() => { if (!cancelled) setQuoteLoading(false); });
+        return () => { cancelled = true; };
+    }, [booking.id, booking.provider]);
+
+    const fmtAmount = (amount: number, fromCurrency: string) =>
+        formatCurrency(convertCurrency(amount, fromCurrency, displayCurrency), displayCurrency);
+
+    // Build the refund summary line for Duffel (live quote) vs Mystifly (stored policy)
+    const renderRefundSummary = () => {
+        if (booking.provider === 'duffel') {
+            if (quoteLoading) {
+                return (
+                    <li className="flex items-center gap-1.5">
+                        <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                        Checking with airline for live refund amount…
+                    </li>
+                );
+            }
+            if (quoteError) {
+                return <li className="text-red-600 dark:text-red-400">{quoteError}</li>;
+            }
+            if (quoteData) {
+                const hasRefund = quoteData.refundAmount > 0;
+                return hasRefund ? (
+                    <>
+                        <li className="font-semibold text-emerald-700 dark:text-emerald-400">
+                            You will receive {fmtAmount(quoteData.refundAmount, quoteData.refundCurrency)} back.
+                        </li>
+                        {quoteData.penaltyAmount > 0 && (
+                            <li>Airline penalty applied: {fmtAmount(quoteData.penaltyAmount, quoteData.refundCurrency)}</li>
+                        )}
+                    </>
+                ) : (
+                    <li className="font-semibold text-red-600 dark:text-red-400">
+                        No refund will be issued — this fare is non-refundable.
+                    </li>
+                );
+            }
+            // Fallback to stored policy if quote unavailable
+        }
+
+        // Mystifly or Duffel fallback
+        if (booking.fare_policy?.isRefundable === false) {
+            return (
+                <>
+                    <li className="font-bold text-red-600 dark:text-red-400">The fare rules indicate this ticket is non-refundable.</li>
+                    <li>You will receive $0 back if you cancel.</li>
+                </>
+            );
+        }
+        return (
+            <>
+                <li>Refund eligibility and amounts are strictly determined by the airline&apos;s fare rules.</li>
+                {booking.fare_policy?.refundPenaltyAmount ? (
+                    <li>Estimated airline penalty: {fmtAmount(booking.fare_policy.refundPenaltyAmount, booking.fare_policy.refundPenaltyCurrency || booking.currency || 'USD')}</li>
+                ) : (
+                    <li>Cancellation penalties set by the airline will be deducted.</li>
+                )}
+            </>
+        );
+    };
 
     if (!mounted) return null;
 
@@ -92,25 +180,11 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error }: CancelMo
                     </div>
                 </div>
 
-                {/* Policy note */}
+                {/* Refund summary */}
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4 text-xs text-amber-900 dark:text-amber-400 space-y-2">
-                    <p className="font-semibold text-amber-800 dark:text-amber-500">Refund Policy Reminder:</p>
+                    <p className="font-semibold text-amber-800 dark:text-amber-500">Refund Policy:</p>
                     <ul className="list-disc list-inside space-y-1 text-amber-700 dark:text-amber-400/90">
-                        {booking.fare_policy?.isRefundable === false ? (
-                            <>
-                                <li className="font-bold text-red-600 dark:text-red-400">The fare rules indicate this ticket is non-refundable.</li>
-                                <li>{booking.provider === 'duffel' ? 'The actual refund amount will be confirmed by the airline at the time of cancellation — you may still receive a partial or full refund.' : 'You will receive $0 back if you cancel.'}</li>
-                            </>
-                        ) : (
-                            <>
-                                <li>Refund eligibility and amounts are strictly determined by the airline's fare rules.</li>
-                                {booking.fare_policy?.refundPenaltyAmount ? (
-                                    <li>Estimated airline penalty: {formatCurrency(booking.fare_policy.refundPenaltyAmount, booking.fare_policy.refundPenaltyCurrency || booking.currency || 'USD')}</li>
-                                ) : (
-                                    <li>Cancellation penalties set by the airline will be deducted.</li>
-                                )}
-                            </>
-                        )}
+                        {renderRefundSummary()}
                         <li>If a refund is issued, it typically takes 5–10 business days.</li>
                         <li className="font-semibold pt-1 text-amber-800 dark:text-amber-500">This action cannot be undone.</li>
                     </ul>
@@ -132,14 +206,19 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error }: CancelMo
                         Keep Booking
                     </button>
                     <button
-                        onClick={onConfirm}
-                        disabled={isLoading}
+                        onClick={() => onConfirm(quoteData?.cancellationId ?? undefined)}
+                        disabled={isLoading || quoteLoading}
                         className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {isLoading ? (
                             <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
                                 Cancelling…
+                            </>
+                        ) : quoteLoading ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Loading…
                             </>
                         ) : (
                             'Yes, Cancel Booking'
@@ -159,6 +238,9 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancelError, setCancelError] = useState<string | null>(null);
     const [localStatus, setLocalStatus] = useState<FlightBookingRecord['status']>(booking.status);
+    const [cancelSuccessStatus, setCancelSuccessStatus] = useState<string | null>(null);
+    const [localRefundAmount, setLocalRefundAmount] = useState<number | null>(null);
+    const [localRefundCurrency, setLocalRefundCurrency] = useState<string | null>(null);
     const [showTripDetails, setShowTripDetails] = useState(false);
     const [tripDetails, setTripDetails] = useState<any>(null);
     const [loadingTripDetails, setLoadingTripDetails] = useState(false);
@@ -325,14 +407,14 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         || new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
     // ── Cancel handler ──────────────────────────────────────────────
-    const handleCancelConfirm = async () => {
+    const handleCancelConfirm = async (cancellationId?: string) => {
         setIsCancelling(true);
         setCancelError(null);
         try {
             const res = await fetch('/api/flights/cancel-booking', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bookingId: booking.id }),
+                body: JSON.stringify({ bookingId: booking.id, ...(cancellationId && { cancellationId }) }),
             });
             const data = await res.json();
 
@@ -353,6 +435,9 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             }
 
             setLocalStatus(data.status as FlightBookingRecord['status']); // 'refunded' or 'refund_pending' or 'refund_failed'
+            setCancelSuccessStatus(data.status);
+            if (data.refundAmount !== undefined) setLocalRefundAmount(data.refundAmount);
+            if (data.refundCurrency) setLocalRefundCurrency(data.refundCurrency);
             setShowCancelModal(false);
             onCancelled?.(booking.id);
         } catch {
@@ -969,10 +1054,29 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     onClose={() => { setShowCancelModal(false); setCancelError(null); }}
                     isLoading={isCancelling}
                     error={cancelError}
+                    displayCurrency={displayCurrency}
                 />
             )}
 
             <div className="bg-white dark:bg-slate-900 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all group cursor-default">
+
+                {/* ── Cancellation success banner ── */}
+                {cancelSuccessStatus && (
+                    <div className={`flex items-center gap-2 px-4 py-2.5 text-xs font-medium ${
+                        cancelSuccessStatus === 'refunded'
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-b border-emerald-200 dark:border-emerald-800'
+                            : cancelSuccessStatus === 'refund_pending'
+                            ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border-b border-purple-200 dark:border-purple-800'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700'
+                    }`}>
+                        <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                        {cancelSuccessStatus === 'refunded'
+                            ? 'Booking cancelled. Refund has been processed.'
+                            : cancelSuccessStatus === 'refund_pending'
+                            ? 'Booking cancelled. Refund is being processed — check back shortly.'
+                            : 'Booking cancelled successfully.'}
+                    </div>
+                )}
 
                 {/* ── MOBILE layout ── */}
                 <div className="flex flex-row md:hidden min-h-[96px]">
@@ -1018,7 +1122,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </div>
                         <div className="mt-auto flex items-center justify-between gap-2">
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(convertPrice(booking.total_price), displayCurrency)}
+                                {formatCurrency(convertPrice(booking.charged_price ?? booking.total_price), displayCurrency)}
                             </span>
                             {canCancel && (
                                 <button
@@ -1215,24 +1319,32 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         <div className="text-right w-full">
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">Total paid</div>
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(convertPrice(booking.total_price), displayCurrency)}
+                                {formatCurrency(convertPrice(booking.charged_price ?? booking.total_price), displayCurrency)}
                             </span>
                         </div>
 
                         <div className="flex flex-col items-end gap-2 w-full mt-2">
-                            {(localStatus === 'cancelled' || localStatus === 'refunded' || localStatus === 'refund_pending') && booking.refund_amount !== undefined && (
-                                <div className="text-right mt-1 p-2 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 w-full">
-                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Total Refund</div>
-                                    <div className="text-xs font-bold text-green-600 dark:text-green-400">
-                                        {formatCurrency(convertPrice(booking.refund_amount, booking.refund_currency || 'USD'), displayCurrency)}
-                                    </div>
-                                    {(booking.refund_penalty_amount ?? 0) > 0 && (
-                                        <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
-                                            Penalty applied: {formatCurrency(convertPrice(booking.refund_penalty_amount!, booking.refund_currency || 'USD'), displayCurrency)}
+                            {(localStatus === 'cancelled' || localStatus === 'refunded' || localStatus === 'refund_pending') && (() => {
+                                const refundAmt = localRefundAmount !== null ? localRefundAmount : (booking.refund_amount ?? 0);
+                                const refundCurr = localRefundCurrency ?? booking.refund_currency ?? 'USD';
+                                const hasRefund = refundAmt > 0;
+                                if (!hasRefund && localRefundAmount === null && booking.refund_amount === undefined) return null;
+                                return (
+                                    <div className={`text-right mt-1 p-2 rounded border w-full ${hasRefund ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+                                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Total Refund</div>
+                                        <div className={`text-xs font-bold ${hasRefund ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                            {hasRefund
+                                                ? formatCurrency(convertPrice(refundAmt, refundCurr), displayCurrency)
+                                                : 'No refund issued'}
                                         </div>
-                                    )}
-                                </div>
-                            )}
+                                        {(booking.refund_penalty_amount ?? 0) > 0 && (
+                                            <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                                Penalty applied: {formatCurrency(convertPrice(booking.refund_penalty_amount!, booking.refund_currency || 'USD'), displayCurrency)}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
                             {(localStatus === 'cancel_failed' || localStatus === 'refund_failed') ? (
                                 /* ── Cancel/Refund Failed: prominent retry block ── */
@@ -1742,11 +1854,11 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div className="col-span-2">
                                                     <label className="text-[10px] text-slate-400 block mb-0.5">New Departure Date</label>
-                                                    <input
-                                                        type="date"
+                                                    <FormDatePicker
                                                         value={seg.departureDate}
-                                                        onChange={e => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, departureDate: e.target.value } : s))}
-                                                        className="w-full text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-2 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                                                        onChange={val => setReissueNewSegments(prev => prev.map((s, idx) => idx === i ? { ...s, departureDate: val } : s))}
+                                                        className="h-8 bg-slate-50 dark:bg-slate-700"
+                                                        placeholder="Select new date"
                                                     />
                                                 </div>
                                                 <div>

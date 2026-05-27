@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { DollarSign } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { CancellationFeeResult } from '@/lib/cancellation';
 
@@ -13,7 +13,7 @@ export function CancellationFeeCard({ feeResult }: CancellationFeeCardProps) {
     return (
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-5">
             <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <Wallet className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <span className="font-medium text-blue-900 dark:text-blue-100">
                     If you cancel now:
                 </span>

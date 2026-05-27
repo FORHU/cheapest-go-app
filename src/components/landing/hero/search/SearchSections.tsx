@@ -20,10 +20,10 @@ export const DestinationSection: React.FC = () => {
             >
                 <MapPin className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
+                    <label className="text-ui-label">
                         Where to?
                     </label>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[150px]">
+                    <div className="text-ui-value truncate max-w-[150px]">
                         {destination?.title || query || 'Search destination'}
                     </div>
                 </div>
@@ -34,38 +34,66 @@ export const DestinationSection: React.FC = () => {
 
 };
 
-export const DateSection: React.FC = () => {
+export const CheckInSection: React.FC = () => {
     const { setActiveDropdown } = useSearchStore();
-    const { checkIn, checkOut } = useDates();
+    const { checkIn } = useDates();
 
-    const formatDateRange = () => {
-        if (!checkIn && !checkOut) return 'Select dates';
-        const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-        const checkInStr = checkIn ? new Date(checkIn).toLocaleDateString('en-US', options) : 'Start';
-        const checkOutStr = checkOut ? new Date(checkOut).toLocaleDateString('en-US', options) : 'End';
-        return `${checkInStr} — ${checkOutStr}`;
+    const formatDate = (date: Date | null) => {
+        if (!date) return 'Select date';
+        return new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
     return (
         <div className="flex-1 min-w-0 relative h-16 group">
             <div
                 className="w-full h-full flex items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
-                onClick={() => setActiveDropdown('dates')}
+                onClick={() => setActiveDropdown('dates-in')}
+                data-datepicker-trigger
             >
-                <Calendar className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
+                <Calendar className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
-                        Dates
+                    <label className="text-ui-label">
+                        Check-in
                     </label>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                        {formatDateRange()}
+                    <div className="text-ui-value truncate">
+                        {formatDate(checkIn)}
                     </div>
                 </div>
             </div>
-            <DatePicker />
+            <DatePicker triggerDropdown="dates-in" />
         </div>
     );
+};
 
+export const CheckOutSection: React.FC = () => {
+    const { setActiveDropdown } = useSearchStore();
+    const { checkOut } = useDates();
+
+    const formatDate = (date: Date | null) => {
+        if (!date) return 'Select date';
+        return new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    };
+
+    return (
+        <div className="flex-1 min-w-0 relative h-16 group">
+            <div
+                className="w-full h-full flex items-center px-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                onClick={() => setActiveDropdown('dates-out')}
+                data-datepicker-trigger
+            >
+                <Calendar className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" size={20} />
+                <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
+                    <label className="text-ui-label">
+                        Check-out
+                    </label>
+                    <div className="text-ui-value truncate">
+                        {formatDate(checkOut)}
+                    </div>
+                </div>
+            </div>
+            <DatePicker initialCheckOutMode triggerDropdown="dates-out" />
+        </div>
+    );
 };
 
 export const TravelersSection: React.FC = () => {
@@ -91,10 +119,10 @@ export const TravelersSection: React.FC = () => {
             >
                 <User className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
-                    <label className="text-[10px] uppercase font-mono text-slate-500 font-medium tracking-wider">
+                    <label className="text-ui-label">
                         Travelers
                     </label>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white truncate pr-6">
+                    <div className="text-ui-value truncate pr-6">
                         {formatTravelers()}
                     </div>
                 </div>
