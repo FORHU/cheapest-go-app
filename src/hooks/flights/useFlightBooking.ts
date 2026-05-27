@@ -340,9 +340,9 @@ export function useFlightBooking() {
             };
 
             // CRITICAL-3 FIX: Don't send userId — server extracts it from JWT
-            const res = await fetch('/api/flights/book', {
+            const res = await clientFetch('/api/flights/book', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
                 body: JSON.stringify({
                     provider: offer.provider,
                     flight: flightPayload,
@@ -487,9 +487,9 @@ export function useFlightBooking() {
             setTimeout(async () => {
                 if (resolved) return;
                 try {
-                    const res = await fetch('/api/flights/confirm', {
+                    const res = await clientFetch('/api/flights/confirm', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
                         body: JSON.stringify({ paymentIntentId, sessionId }),
                     });
                     const data = await res.json();

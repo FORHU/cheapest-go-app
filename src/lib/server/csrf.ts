@@ -1,8 +1,11 @@
 /**
- * CSRF protection for API routes via Origin/Referer header verification.
+ * CSRF protection for API routes.
  *
- * Rejects requests whose Origin does not match the configured SITE_URL.
- * This stops cross-origin forms and scripts from hitting state-mutating endpoints.
+ * Primary check: presence of the custom `X-Requested-By: cheapestgo-client` header.
+ * Cross-origin requests cannot set custom headers without a CORS preflight, which
+ * the browser would block — making this a valid same-origin proof.
+ *
+ * Fallback: Origin/Referer header must match NEXT_PUBLIC_SITE_URL.
  *
  * Usage:
  *   const csrfError = checkCsrf(req);
@@ -28,20 +31,22 @@ export function checkCsrf(req: NextRequest): NextResponse | null {
     // Skip enforcement in development for easier local testing
     if (process.env.NODE_ENV !== 'production') return null;
 
+    // ── Primary check: custom header (JS-settable, blocks cross-origin attackers) ──
+    // Cross-origin scripts cannot include custom headers without a CORS preflight,
+    // which the browser will block. Our apiFetch always sends this header.
+    const requestedBy = req.headers.get('x-requested-by');
+    if (requestedBy === 'cheapestgo-client') return null;
+
+    // ── Fallback: Origin / Referer header matching ──
     const origin = req.headers.get('origin');
     const referer = req.headers.get('referer');
+    const requestOrigin = origin ?? (referer ? new URL(referer).origin : null);
 
-    // Prefer Origin; fall back to Referer host
-    const requestOrigin = origin
-        ?? (referer ? new URL(referer).origin : null);
+    if (requestOrigin && ALLOWED_ORIGINS.has(requestOrigin)) return null;
 
-    if (!requestOrigin || !ALLOWED_ORIGINS.has(requestOrigin)) {
-        console.warn(`[csrf] Blocked request from origin: ${requestOrigin}`);
-        return NextResponse.json(
-            { success: false, error: 'Forbidden' },
-            { status: 403 }
-        );
-    }
-
-    return null;
+    console.warn(`[csrf] Blocked request — no valid CSRF proof. origin: ${requestOrigin}, x-requested-by: ${requestedBy}`);
+    return NextResponse.json(
+        { success: false, error: 'Forbidden' },
+        { status: 403 }
+    );
 }
