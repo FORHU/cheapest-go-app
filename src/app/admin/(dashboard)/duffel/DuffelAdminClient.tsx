@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, memo } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plane, ExternalLink,
@@ -47,11 +48,14 @@ const AirlineLogo = memo(({ iataCode, name, logoUrl, size = "w-5 h-5" }: { iataC
     if (!iataCode || isError || !currentUrl) return <Plane size={16} className="text-slate-300" />;
 
     return (
-        <img 
-            src={currentUrl} 
-            alt={name} 
+        <Image
+            src={currentUrl}
+            alt={name}
+            width={20}
+            height={20}
             className={`${size} object-contain filter dark:brightness-0 dark:invert`}
             onError={() => stage < 2 ? setStage(s => s + 1) : setIsError(true)}
+            unoptimized
         />
     );
 });
