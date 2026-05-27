@@ -211,6 +211,8 @@ function SearchMapView({
     React.useEffect(() => { setDisplayCount(LIST_PAGE_SIZE); }, [searchKey]); // eslint-disable-line react-hooks/exhaustive-deps
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
+    const cardRefs = React.useRef<Map<string, HTMLDivElement>>(new Map());
+    const lastScrolledIdRef = React.useRef<string | null>(null);
     const [sortBy, setSortBy] = useState<SortValue>('recommended');
     const [showMobileMap, setShowMobileMap] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
@@ -224,7 +226,8 @@ function SearchMapView({
     const activeFilterCount = propertyTypes.length + boardTypes.length + (refundable !== null ? 1 : 0);
 
     // ── Map Pins ─────────────────────────────────────────────
-    // Use allMappable (the 151 basic objects) if provided, otherwise allProperties
+    // Use allMappable (fast coord-only list) if provided, otherwise fall back to allProperties.
+    // allMappable is used for map pins only; sortedProperties drives the list.
     const mappableProperties = useMemo<MappableProperty[]>(() => {
         const source = allMappable.length > 0 ? allMappable : allProperties;
         const filtered = source
@@ -294,11 +297,28 @@ function SearchMapView({
 
     // Client-side display pagination — all hotels are already in sortedProperties from streaming
     const canLoadMore = displayCount < sortedProperties.length;
-    const handleShowMore = useCallback(() => setDisplayCount(prev => prev + LIST_PAGE_SIZE), []);
+    const loadMoreFirstIdxRef = React.useRef<number | null>(null);
+    const handleShowMore = useCallback(() => {
+        setDisplayCount(prev => {
+            loadMoreFirstIdxRef.current = prev;
+            return prev + LIST_PAGE_SIZE;
+        });
+    }, []);
     const visibleProperties = useMemo(
         () => sortedProperties.slice(0, displayCount),
         [sortedProperties, displayCount]
     );
+
+    // After Load More, scroll the list to the first newly visible card
+    React.useEffect(() => {
+        if (loadMoreFirstIdxRef.current === null) return;
+        const idx = loadMoreFirstIdxRef.current;
+        loadMoreFirstIdxRef.current = null;
+        const firstNew = sortedProperties[idx];
+        if (!firstNew) return;
+        const card = cardRefs.current.get(firstNew.id);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, [visibleProperties]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // When no results, fall back to the searched destination's known coordinates
     const fallbackCoords = useMemo(() => {
@@ -336,6 +356,26 @@ function SearchMapView({
     const handleHover = useCallback((id: string | null) => {
         setHoveredId(id);
     }, []);
+
+    // Scroll the desktop list to show the selected hotel card
+    React.useEffect(() => {
+        if (!selectedId) {
+            lastScrolledIdRef.current = null;
+            return;
+        }
+        if (lastScrolledIdRef.current === selectedId) return;
+        const card = cardRefs.current.get(selectedId);
+        if (card) {
+            lastScrolledIdRef.current = selectedId;
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            // Card not rendered yet — expand the visible list to include it
+            const idx = sortedProperties.findIndex((p: any) => p.id === selectedId);
+            if (idx !== -1) {
+                setDisplayCount(prev => Math.max(prev, idx + 1));
+            }
+        }
+    }, [selectedId, visibleProperties]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Price range summary ─────────────────────────────────
     const priceRange = useMemo(() => {
@@ -476,6 +516,14 @@ function SearchMapView({
                     <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
                         <CurrencySelector variant="pill" align="right" className="sm:hidden" />
 
+                        {/* Property count pill */}
+                        <span className="hidden sm:inline px-2.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-semibold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 whitespace-nowrap">
+                            {activeFilterCount > 0
+                                ? `${sortedProperties.length} of ${allProperties.filter((p: any) => p.name && p.price > 0).length}`
+                                : `${sortedProperties.length} hotels`
+                            }
+                        </span>
+
                         {/* Sort pills — scrollable on small screens */}
                         <div className="hidden sm:flex items-center gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden">
                             {SORT_PILLS.map(pill => (
@@ -528,19 +576,28 @@ function SearchMapView({
                         <>
                             {/* Scrollable hotel cards — scrollbar hidden so it doesn't steal width from cards */}
                             <div className="flex-1 overflow-y-auto overscroll-contain [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                {visibleProperties.map((property) => (
-                                    <MapPropertyCard
+                                {visibleProperties.map((property, idx) => (
+                                    <div
                                         key={property.id}
-                                        property={property}
-                                        isSelected={selectedId === property.id}
-                                        isHovered={hoveredId === property.id}
-                                        onSelect={handleCardSelect}
-                                        onHover={handleHover}
-                                    />
+                                        ref={(el) => {
+                                            if (el) cardRefs.current.set(property.id, el);
+                                            else cardRefs.current.delete(property.id);
+                                        }}
+                                    >
+                                        <MapPropertyCard
+                                            property={property}
+                                            isSelected={selectedId === property.id}
+                                            isHovered={hoveredId === property.id}
+                                            onSelect={handleCardSelect}
+                                            onHover={handleHover}
+                                            onViewDetails={handleViewDetails}
+                                            index={idx + 1}
+                                        />
+                                    </div>
                                 ))}
                             </div>
                             {/* Sticky pagination footer — always visible, never scrolls */}
-                            <div className="shrink-0 py-3 px-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950">
+                            <div className="shrink-0 py-3 px-3">
                                 {canLoadMore ? (
                                     <button
                                         onClick={handleShowMore}
@@ -548,11 +605,6 @@ function SearchMapView({
                                     >
                                         Load More · showing {displayCount} of {sortedProperties.length}
                                     </button>
-                                ) : isStreaming ? (
-                                    <div className="flex items-center justify-center gap-2 py-1 text-[10px] text-slate-500 dark:text-slate-400">
-                                        <span className="w-3 h-3 rounded-full border-[1.5px] border-blue-500 border-t-transparent animate-spin shrink-0" />
-                                        Loading more hotels…
-                                    </div>
                                 ) : (
                                     <p className="text-center text-[10px] text-slate-400 font-medium">All {sortedProperties.length} results loaded</p>
                                 )}
@@ -577,7 +629,7 @@ function SearchMapView({
                     style={{ marginRight: 'max(0px, calc((100vw - 1400px) / 2))' }}
                 >
                     <SearchMapContainer
-                        properties={sortedProperties}
+                        properties={mappableProperties}
                         selectedId={selectedId}
                         onSelectId={setSelectedId}
                         hoveredId={hoveredId}
@@ -586,23 +638,6 @@ function SearchMapView({
                         searchOverlayClassName="absolute top-4 left-20 z-20 w-[300px] md:w-[360px]"
                         defaultCenter={fallbackCoords ?? undefined}
                     />
-
-                    {/* Property count badge — shows loaded + filtered count */}
-                    <div className="absolute bottom-10 left-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-[11px] font-medium text-slate-700 dark:text-slate-300 z-10">
-                        {activeFilterCount > 0
-                            ? `${sortedProperties.length} of ${allProperties.filter((p: any) => p.name && p.price > 0).length} (filtered)`
-                            : `${sortedProperties.length} properties`
-                        }
-                    </div>
-
-                    {/* Floating List View Toggle */}
-                    <button
-                        onClick={handleBackToList}
-                        className="absolute bottom-6 right-20 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-[14px] font-bold z-50 pointer-events-auto"
-                    >
-                        <List size={16} strokeWidth={2.5} />
-                        Show List
-                    </button>
                 </div>
             </div>
 
@@ -636,17 +671,26 @@ function SearchMapView({
                                     setShowMobileMap(false);
                                 }
                             }}
-                            className="absolute bottom-2 left-0 right-0 w-full z-20"
+                            className="absolute bottom-[58px] left-0 right-0 w-full z-20"
                         >
-                            <div className="w-full overflow-x-auto pb-2 pt-2 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                {sortedProperties.map((property) => (
-                                    <div key={property.id} className="snap-center shrink-0 w-[70vw] sm:w-[260px] landscape:w-[240px] shadow-lg rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                            {/* Hotel count badge */}
+                            <div className="px-4 pb-1.5 flex items-center justify-between">
+                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                    {sortedProperties.length} hotels found
+                                </span>
+                                <span className="text-[10px] text-slate-400">Swipe to browse</span>
+                            </div>
+                            <div className="w-full overflow-x-auto pb-2 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                {sortedProperties.slice(0, 50).map((property, idx) => (
+                                    <div key={property.id} className="snap-center shrink-0 w-[72vw] sm:w-[280px] landscape:w-[240px] shadow-lg rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
                                         <MapPropertyCard
                                             property={property}
                                             isSelected={selectedId === property.id}
                                             isHovered={hoveredId === property.id}
                                             onSelect={handleCardSelect}
                                             onHover={handleHover}
+                                            onViewDetails={handleViewDetails}
+                                            index={idx + 1}
                                         />
                                     </div>
                                 ))}
@@ -663,7 +707,7 @@ function SearchMapView({
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 50, opacity: 0 }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="absolute bottom-2 left-0 right-0 h-10 z-20 flex justify-center items-center cursor-grab active:cursor-grabbing"
+                            className="absolute bottom-[80px] left-0 right-0 h-10 z-20 flex justify-center items-center cursor-grab active:cursor-grabbing"
                             drag="y"
                             dragConstraints={{ top: 0, bottom: 0 }}
                             dragElastic={0.2}
@@ -682,12 +726,12 @@ function SearchMapView({
                 {/* Floating List Button (Repositioned to left, above cards) */}
                 <div className={cn(
                     "absolute left-4 z-50 transition-all duration-300",
-                    showMobileMap ? "bottom-[115px]" : "bottom-[40px]",
+                    showMobileMap ? "bottom-[168px]" : "bottom-[80px]",
                     "landscape:bottom-[100px] landscape:left-2"
                 )}>
                     <button
                         onClick={handleBackToList}
-                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-[11px]"
+                        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-[11px]"
                     >
                         <List size={14} />
                         List

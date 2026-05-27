@@ -91,9 +91,9 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
     // Loading state — show skeleton cards
     if (loading) {
         return (
-            <div className="space-y-2">
+            <div className="space-y-3">
                 {/* Animated header */}
-                <div className="flex items-center justify-center gap-2 lg:gap-3 py-3 lg:py-6">
+                <div className="flex items-center justify-center gap-2 lg:gap-3 py-2 lg:py-4">
                     <div className="relative">
                         <div className="w-8 h-8 lg:w-12 lg:h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
                             <Plane className="w-4 h-4 lg:w-6 lg:h-6 text-indigo-500 animate-pulse" />
@@ -162,17 +162,41 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
 
 function PaginatedResults({ offers, onSelect, resetKey }: { offers: FlightOffer[]; onSelect?: (offer: FlightOffer) => void; resetKey?: unknown }) {
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+    const [isAutoLoading, setIsAutoLoading] = useState(false);
+    const sentinelRef = React.useRef<HTMLDivElement>(null);
 
     // Reset to first page whenever the offer list or filters change
     React.useEffect(() => { setVisibleCount(PAGE_SIZE); }, [resetKey]);
 
+    // Infinite Scroll Implementation
+    React.useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && offers.length > visibleCount) {
+                    setIsAutoLoading(true);
+                    // Artificial delay for smoother transition/skeleton visibility
+                    setTimeout(() => {
+                        setVisibleCount(prev => Math.min(prev + PAGE_SIZE, offers.length));
+                        setIsAutoLoading(false);
+                    }, 1200);
+                }
+            },
+            { threshold: 0.1, rootMargin: '100px' }
+        );
+
+        if (sentinelRef.current) {
+            observer.observe(sentinelRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [offers.length, visibleCount]);
+
     const visible = offers.slice(0, visibleCount);
-    const remaining = offers.length - visibleCount;
-    const hasMore = remaining > 0;
+    const hasMore = offers.length > visibleCount;
 
     return (
-        <div className="space-y-2">
-            <AnimatePresence>
+        <div className="space-y-3">
+            <AnimatePresence mode="popLayout">
                 {visible.map((offer, idx) => (
                     <FlightCard
                         key={`${offer.offerId}-${idx}`}
@@ -183,23 +207,33 @@ function PaginatedResults({ offers, onSelect, resetKey }: { offers: FlightOffer[
                 ))}
             </AnimatePresence>
 
-            {hasMore && (
-                <motion.div
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="pt-2 flex flex-col items-center gap-2"
-                >
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
-                        Showing {visible.length} of {offers.length} flights
+            {/* Sentinel element for infinite scroll */}
+            <div ref={sentinelRef} className="h-1 w-full pointer-events-none" />
+
+            {/* Loading Skeleton for Infinite Scroll */}
+            {(hasMore || isAutoLoading) && (
+                <div className="space-y-3 pb-8">
+                    <FlightCardSkeleton index={0} />
+                    <FlightCardSkeleton index={1} />
+                    <FlightCardSkeleton index={2} />
+                    <div className="flex flex-col items-center gap-2 py-4">
+                        <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 animate-pulse">
+                            <div className="w-1 h-1 rounded-full bg-indigo-500" />
+                            <p className="text-[10px] font-bold uppercase tracking-widest">
+                                Discovering more options ({visible.length} of {offers.length})
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* End of Results Message */}
+            {!hasMore && !isAutoLoading && offers.length > 0 && (
+                <div className="pt-4 pb-12 text-center">
+                    <p className="text-[10px] font-normal text-slate-400 dark:text-slate-500 uppercase tracking-widest opacity-60">
+                        You&apos;ve seen all {offers.length} available flights. Happy travels!
                     </p>
-                    <button
-                        onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
-                        className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md text-sm font-medium text-slate-700 dark:text-slate-200 transition-all"
-                    >
-                        <ChevronDown className="w-4 h-4 text-blue-500" />
-                        Show {Math.min(remaining, PAGE_SIZE)} more flights
-                    </button>
-                </motion.div>
+                </div>
             )}
         </div>
     );

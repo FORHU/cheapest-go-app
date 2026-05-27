@@ -17,13 +17,11 @@ interface MapTypeTile {
     thumbnail: string;
 }
 
-function DiscoveryIcon({ size = 'w-8 h-8' }: { size?: string }) {
+function ExploreIcon({ size = 'w-8 h-8' }: { size?: string }) {
     return (
-        <svg viewBox="0 0 24 24" className={size} fill="none" stroke="currentColor" strokeWidth={1.5}>
+        <svg viewBox="0 0 24 24" className={size} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 2v2M12 20v2M2 12h2M20 12h2M12 5l-1 1M12 5l1 1" />
-            <path d="M12 19l-1-1M12 19l1-1M5 12l1 1M5 12l1-1M19 12l-1 1M19 12l-1-1" />
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
         </svg>
     );
 }
@@ -90,7 +88,7 @@ function TerrainIcon({ size = 'w-8 h-8' }: { size?: string }) {
 }
 
 const getDetailIcons = (sizeClass: string): Record<string, React.ReactNode> => ({
-    discovery: <DiscoveryIcon size={sizeClass} />,
+    explore: <ExploreIcon size={sizeClass} />,
     transit: <TransitIcon size={sizeClass} />,
     traffic: <TrafficIcon size={sizeClass} />,
     biking: <BikingIcon size={sizeClass} />,
@@ -122,8 +120,8 @@ export function MapDetailsPanel({
     if (!isOpen) return null;
 
     return (
-        <div className={`absolute top-2 left-2 z-[60] bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300
-            w-[210px] md:w-[300px]
+        <div className={`absolute z-[60] bg-white dark:bg-slate-900 rounded-md shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300
+            w-[210px] md:w-[300px] left-4 top-[80px] lg:top-[38px]
         `}>
             {/* Header */}
             <div className={`flex items-center justify-between px-2.5 pt-2.5 pb-1.5 md:px-4 md:pt-4 md:pb-2`}>
@@ -148,7 +146,7 @@ export function MapDetailsPanel({
                             onClick={() => onDetailToggle(detail.id)}
                             disabled={isDisabled}
                             className={`
-                                flex flex-col items-center gap-1 rounded-xl border-2 transition-all cursor-pointer
+                                flex flex-col items-center gap-1 rounded-md border-2 transition-all cursor-pointer
                                 p-1.5 md:p-2
                                 ${
                                     isDisabled
@@ -190,7 +188,7 @@ export function MapDetailsPanel({
                             key={tile.id}
                             onClick={() => onMapTypeChange(tile.id)}
                             className={`
-                                flex flex-col items-center gap-1 rounded-xl border-2 overflow-hidden transition-all cursor-pointer
+                                flex flex-col items-center gap-1 rounded-md border-2 overflow-hidden transition-all cursor-pointer
                                 ${
                                     mapType === tile.id
                                         ? 'border-blue-500'

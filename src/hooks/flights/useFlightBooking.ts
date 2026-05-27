@@ -7,6 +7,8 @@ import type { FlightOffer } from '@/types/flights';
 import type { SelectedSeat } from '@/types/seatMap';
 import type { SelectedBag } from '@/types/bags';
 import { createClient } from '@/utils/supabase/client';
+import { invokeEdgeFunction } from '@/utils/supabase/functions';
+import { useUser } from '@/stores/authStore';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
 
@@ -107,6 +109,38 @@ export function useFlightBooking() {
         };
     });
 
+    const user = useUser();
+
+    // Autofill from profile when user logs in
+    useEffect(() => {
+        if (!user) return;
+
+        // Autofill Passenger 1 if blank
+        setPassengers(prev => {
+            if (prev.length > 0 && !prev[0].firstName && !prev[0].lastName) {
+                const next = [...prev];
+                next[0] = {
+                    ...next[0],
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                };
+                return next;
+            }
+            return prev;
+        });
+
+        // Autofill Contact if blank
+        setContact(prev => {
+            if (!prev.email) {
+                return {
+                    ...prev,
+                    email: user.email || '',
+                };
+            }
+            return prev;
+        });
+    }, [user]);
+
     // Effect to persist passengers and contact to sessionStorage
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -188,22 +222,19 @@ export function useFlightBooking() {
             const { data: { user } } = await createClient().auth.getUser();
 
             try {
-                const { data, error } = await createClient().functions.invoke('revalidate-flight', {
-                    body: {
-                        provider: parsedOffer.provider,
-                        userId: user?.id || 'anonymous',
-                        flightPayload: {
-                            oldPrice: parsedOffer?.price?.total,
-                            currency: parsedOffer?.price?.currency,
-                            traceId: parsedOffer?.provider?.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
-                            flight: parsedOffer?.provider === 'duffel'
-                                ? ((parsedOffer as any).raw || (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
-                                : undefined,
-                        }
+                const data = await invokeEdgeFunction('revalidate-flight', {
+                    provider: parsedOffer.provider,
+                    userId: user?.id || 'anonymous',
+                    flightPayload: {
+                        oldPrice: parsedOffer?.price?.total,
+                        currency: parsedOffer?.price?.currency,
+                        traceId: parsedOffer?.provider?.startsWith('mystifly') ? ((parsedOffer as any).traceId ?? parsedOffer.offerId) : undefined,
+                        flight: parsedOffer?.provider === 'duffel'
+                            ? ((parsedOffer as any).raw || (parsedOffer as any)._rawOffer || (parsedOffer as any).rawOffer || parsedOffer)
+                            : undefined,
                     }
                 });
 
-                if (error) throw error;
                 if (!data.success) throw new Error(data.error || 'Revalidation failed');
                 if (!data.seatsAvailable) {
                     // SearchIdentifier errors mean the revalidation API can't run — not that
@@ -309,9 +340,9 @@ export function useFlightBooking() {
             };
 
             // CRITICAL-3 FIX: Don't send userId — server extracts it from JWT
-            const res = await fetch('/api/flights/book', {
+            const res = await clientFetch('/api/flights/book', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
                 body: JSON.stringify({
                     provider: offer.provider,
                     flight: flightPayload,
@@ -456,9 +487,9 @@ export function useFlightBooking() {
             setTimeout(async () => {
                 if (resolved) return;
                 try {
-                    const res = await fetch('/api/flights/confirm', {
+                    const res = await clientFetch('/api/flights/confirm', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
                         body: JSON.stringify({ paymentIntentId, sessionId }),
                     });
                     const data = await res.json();

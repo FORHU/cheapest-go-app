@@ -9,7 +9,7 @@ import { cn } from '@/utils/cn';
 import SignInDropdown from '../auth/SignInDropdown';
 
 const navItems = [
-    { label: 'Search', icon: Search, href: '/' },
+    { label: 'Home', icon: Search, href: '/' },
     { label: 'Trips', icon: PlaneTakeoff, href: '/trips' },
     { label: 'Profile', icon: User, href: '#profile' },
 ];
@@ -18,74 +18,101 @@ export const MobileBottomNav = () => {
     const pathname = usePathname();
     const [isProfileOpen, setIsProfileOpen] = React.useState(false);
 
+    // Determine active index
+    const activeIndex = React.useMemo(() => {
+        if (isProfileOpen) return 2;
+        if (pathname === '/' || pathname === '/flights/search') return 0;
+        if (pathname === '/trips') return 1;
+        return 0;
+    }, [pathname, isProfileOpen]);
+
     return (
         <>
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] w-full bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-[12px] shadow-[0_-8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_-8px_30px_rgb(0,0,0,0.2)]">
-                <nav className="flex items-center justify-around w-full px-2 py-1.5">
-                    {navItems.map((item) => {
-                        const isProfile = item.label === 'Profile';
-                        const isActive = isProfile 
-                            ? isProfileOpen
-                            : item.href === '/'
-                                ? pathname === '/' || pathname === '/flights/search'
-                                : pathname === item.href;
-
-                        const content = (
-                            <div className="relative flex flex-col items-center gap-1 min-w-[64px]">
-                                {/* Icon Wrapper with background for active state */}
-                                <div className={cn(
-                                    "relative p-2.5 rounded-2xl transition-all duration-300",
-                                    isActive
-                                        ? "bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                                        : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
-                                )}>
-                                    {isActive && (
-                                        <motion.div
-                                            layoutId="nav-bg"
-                                            className="absolute inset-0 bg-blue-50 dark:bg-blue-500/20 rounded-2xl -z-10"
-                                            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                                        />
-                                    )}
-                                    <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] px-3 pb-[calc(env(safe-area-inset-bottom,0px)+6px)]">
+                {/* Main Nav Container */}
+                <div className="relative bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-xl shadow-[0_-8px_30px_rgba(0,0,0,0.06)] dark:shadow-[0_-15px_40px_rgba(0,0,0,0.25)] border border-white/20 dark:border-white/10 h-11 flex items-center">
+                    
+                    {/* Animated Curve Indicator */}
+                    <motion.div
+                        className="absolute top-0 h-full w-[33.33%] flex justify-center"
+                        animate={{ x: `${activeIndex * 100}%` }}
+                        transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+                    >
+                        {/* The "Hump" Curve */}
+                        <div className="absolute -top-5 w-16 h-16 bg-transparent flex justify-center">
+                            {/* Outer curve using SVG */}
+                            <svg className="absolute top-4 w-[130%] h-8 fill-white dark:fill-slate-900" viewBox="0 0 100 40">
+                                <path d="M 0 40 Q 20 40 25 30 Q 30 15 50 15 Q 70 15 75 30 Q 80 40 100 40" />
+                            </svg>
+                            
+                            {/* The Floating Circle */}
+                            <motion.div 
+                                className="relative size-9 bg-white dark:bg-slate-900 rounded-full shadow-sm flex items-center justify-center border-[2px] border-alabaster dark:border-obsidian"
+                                layoutId="active-circle"
+                            >
+                                <div className="text-blue-600 dark:text-blue-400">
+                                    {React.createElement(navItems[activeIndex].icon, { size: 16, strokeWidth: 2.5 })}
                                 </div>
+                            </motion.div>
+                        </div>
+                    </motion.div>
 
-                                {/* Label */}
-                                <span className={cn(
-                                    "text-[10px] font-bold transition-colors duration-300",
-                                    isActive
-                                        ? "text-blue-600 dark:text-blue-400"
-                                        : "text-slate-400 dark:text-slate-500"
-                                )}>
-                                    {item.label}
-                                </span>
-                            </div>
-                        );
+                    <nav className="flex items-center justify-around w-full relative z-10">
+                        {navItems.map((item, index) => {
+                            const isProfile = item.label === 'Profile';
+                            const isActive = index === activeIndex;
 
-                        if (isProfile) {
+                            const content = (
+                                <div className="relative flex flex-col items-center gap-0.5 transition-all duration-300">
+                                    {/* Icon - hide when active because it's in the circle */}
+                                    <div className={cn(
+                                        "transition-all duration-300",
+                                        isActive ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"
+                                    )}>
+                                        <item.icon 
+                                            size={16} 
+                                            strokeWidth={2} 
+                                            className="text-slate-400 dark:text-slate-500" 
+                                        />
+                                    </div>
+
+                                    {/* Label */}
+                                    <span className={cn(
+                                        "text-[8px] font-bold transition-all duration-300",
+                                        isActive 
+                                            ? "text-blue-600 dark:text-blue-400 translate-y-0.5" 
+                                            : "text-slate-400 dark:text-slate-500"
+                                    )}>
+                                        {item.label}
+                                    </span>
+                                </div>
+                            );
+
+                            if (isProfile) {
+                                return (
+                                    <button
+                                        key={item.label}
+                                        onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                        className="relative outline-none w-1/3 py-2"
+                                    >
+                                        {content}
+                                    </button>
+                                );
+                            }
+
                             return (
-                                <button
+                                <Link
                                     key={item.label}
-                                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                    className="relative"
+                                    href={item.href}
+                                    onClick={() => setIsProfileOpen(false)}
+                                    className="outline-none w-1/3 py-2"
                                 >
                                     {content}
-                                </button>
+                                </Link>
                             );
-                        }
-
-                        return (
-                            <Link
-                                key={item.label}
-                                href={item.href}
-                                onClick={() => setIsProfileOpen(false)}
-                            >
-                                {content}
-                            </Link>
-                        );
-                    })}
-                </nav>
-                {/* Safe area spacer for devices with home indicator */}
-                <div className="h-[env(safe-area-inset-bottom)]" />
+                        })}
+                    </nav>
+                </div>
             </div>
 
             {/* Profile Drawer */}

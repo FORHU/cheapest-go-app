@@ -15,7 +15,7 @@ interface BackButtonProps {
 const BackButton: React.FC<BackButtonProps> = ({ label = "Back", className = "", href, bareIcon = false }) => {
     const router = useRouter();
 
-    const buttonClasses = `flex items-center text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors group ${className}`;
+    const buttonClasses = `flex items-center text-blue-600 hover:text-blue-700 font-normal text-sm transition-colors group ${className}`;
     const content = bareIcon ? (
         <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
     ) : (

@@ -11,6 +11,7 @@ import { buildGeoJson, MappableProperty } from '../utils/buildGeoJson';
 export const useMapMarkers = (
     properties: MappableProperty[],
     displayPrices?: Record<string, string>,
+    convertedPrices?: Record<string, number>,
 ) => {
     // Filter out invalid or zero coordinates
     const mappableProperties = useMemo(() => {
@@ -23,8 +24,8 @@ export const useMapMarkers = (
     }, [properties]);
 
     const geoJsonData = useMemo(() => {
-        return buildGeoJson(mappableProperties, displayPrices);
-    }, [mappableProperties, displayPrices]);
+        return buildGeoJson(mappableProperties, displayPrices, convertedPrices);
+    }, [mappableProperties, displayPrices, convertedPrices]);
 
     const shouldCluster = useMemo(() => mappableProperties.length > 20, [mappableProperties]);
 

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useSession } from '@/stores/authStore';
 
 interface SaveButtonProps {
     type: 'flight' | 'hotel';
@@ -27,6 +29,9 @@ export default function SaveButton({
     const [loading, setLoading] = useState(false);
     const [checked, setChecked] = useState(false); // has the initial check run?
 
+    const router = useRouter();
+    const session = useSession();
+
     // On mount, check if this item is already saved
     useEffect(() => {
         let cancelled = false;
@@ -50,14 +55,25 @@ export default function SaveButton({
     const toggle = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (loading) return;
+
+        if (!session) {
+            router.push('/login');
+            return;
+        }
+
+        if (loading || !checked) return;
+
+        // Optimistic update
+        const previousSaved = saved;
+        const previousSavedId = savedId;
+        
+        setSaved(!previousSaved);
         setLoading(true);
 
         try {
-            if (saved && savedId) {
-                const res = await fetch(`/api/saved-trips/${savedId}`, { method: 'DELETE' });
+            if (previousSaved && previousSavedId) {
+                const res = await fetch(`/api/saved-trips/${previousSavedId}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
-                setSaved(false);
                 setSavedId(null);
             } else {
                 const res = await fetch('/api/saved-trips', {
@@ -67,8 +83,7 @@ export default function SaveButton({
                 });
 
                 if (res.status === 401) {
-                    console.warn('[SaveButton] Unauthorized: User must be logged in to save trips.');
-                    // Optionally: window.location.href = '/login'; or show modal
+                    router.push('/login');
                     return;
                 }
 
@@ -79,13 +94,17 @@ export default function SaveButton({
 
                 const json = await res.json();
                 if (json.success) {
-                    setSaved(true);
                     setSavedId(json.data?.id ?? null);
                 }
             }
         } catch (error) {
             console.error('[SaveButton] Error:', error);
-        } finally { setLoading(false); }
+            // Revert on error
+            setSaved(previousSaved);
+            setSavedId(previousSavedId);
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     const iconSize = size === 'sm' ? 14 : 16;

@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         const userId = user.id;
 
         // ── Validate ──
-        if (!provider || !['duffel', 'mystifly_v2'].includes(provider)) {
+        if (!provider || !['duffel', 'mystifly_v2', 'mystifly'].includes(provider)) {
             return NextResponse.json({ success: false, error: 'invalid provider string passed' }, { status: 400 });
         }
         if (!flight || typeof flight !== 'object') {
@@ -808,7 +808,7 @@ export async function POST(req: NextRequest) {
 
         // ── Step 2: Create Stripe PaymentIntent ──
         const stripeStart = Date.now();
-        const isMystifly = provider === 'mystifly_v2';
+        const isMystifly = provider === 'mystifly_v2' || provider === 'mystifly';
 
         // Apply platform markup before charging the customer.
         // For Duffel: use the order's actual locked total (already validated by Duffel, includes services).

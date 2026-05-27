@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
             }, 400);
         }
 
-        if (body.provider !== 'mystifly_v2' && body.provider !== 'duffel') {
+        if (body.provider !== 'mystifly_v2' && body.provider !== 'mystifly' && body.provider !== 'duffel') {
             return jsonResponse(corsHeaders, {
                 success: false,
                 error: `Unknown provider: ${body.provider}`,
@@ -139,7 +139,7 @@ Deno.serve(async (req: Request) => {
         // ── Route to provider ──
         let result: RevalidateResult;
 
-        if (body.provider === 'mystifly_v2') {
+        if (body.provider === 'mystifly_v2' || body.provider === 'mystifly') {
             result = await revalidateMystifly(body, oldPrice, startMs);
         } else {
             // Duffel — re-read policy from the stored flight offer in the booking session.
@@ -248,8 +248,8 @@ async function revalidateMystifly(
     //    SearchIdentifier on ALL revalidate endpoints (V1 and V2), but SearchIdentifier
     //    is only returned by V2 search and is often empty/missing. Skipping here is
     //    safe because the booking API validates the fare independently.
-    if (body.provider === 'mystifly_v2') {
-        console.warn(`[revalidate-flight] mystifly_v2: skipping revalidation (SearchIdentifier unreliable) — soft-passing with original price`);
+    if (body.provider === 'mystifly_v2' || body.provider === 'mystifly') {
+        console.warn(`[revalidate-flight] ${body.provider}: skipping revalidation (SearchIdentifier unreliable) — soft-passing with original price`);
         return {
             success: true,
             priceChanged: false,
