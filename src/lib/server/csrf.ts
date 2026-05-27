@@ -13,6 +13,10 @@ import { NextRequest, NextResponse } from 'next/server';
 const ALLOWED_ORIGINS = (() => {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cheapestgo.com';
     const origins = new Set([siteUrl.replace(/\/$/, '')]);
+    // Vercel sets VERCEL_URL on every deployment (preview + production)
+    if (process.env.VERCEL_URL) {
+        origins.add(`https://${process.env.VERCEL_URL}`);
+    }
     // Always allow localhost in development
     if (process.env.NODE_ENV !== 'production') {
         origins.add('http://localhost:3000');

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { X, Star, MapPin, Globe, Phone, Clock, User, Quote, Camera, Image as ImageIcon, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -65,7 +66,7 @@ function ReviewCard({ review }: { review: Review }) {
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                     {review.profile_photo_url ? (
-                        <img src={review.profile_photo_url} alt="" className="w-8 h-8 rounded-full" />
+                        <Image src={review.profile_photo_url} alt="" width={32} height={32} className="w-8 h-8 rounded-full" unoptimized />
                     ) : (
                         <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-500">
                             <User size={14} />
