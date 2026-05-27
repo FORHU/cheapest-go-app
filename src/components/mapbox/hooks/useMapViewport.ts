@@ -4,10 +4,12 @@ import { getBoundsFromProperties } from '../utils/getBoundsFromProperties';
 import { MappableProperty } from '../utils/buildGeoJson';
 
 interface UseMapViewportProps {
-    mapRef: React.RefObject<MapRef | null>; // Fix: Allow null in RefObject type
+    mapRef: React.RefObject<MapRef | null>;
     isMapLoaded: boolean;
     properties: MappableProperty[];
     selectedId?: string | null;
+    /** When true, skip the flyTo animation when a property is selected. */
+    disableFlyToSelected?: boolean;
 }
 
 export const useMapViewport = ({
@@ -15,6 +17,7 @@ export const useMapViewport = ({
     isMapLoaded,
     properties,
     selectedId,
+    disableFlyToSelected = false,
 }: UseMapViewportProps) => {
     const propertiesKey = useMemo(() => properties.map(p => p.id).join(','), [properties]);
     const hasFittedRef = useRef<string | null>(null);
@@ -60,9 +63,9 @@ export const useMapViewport = ({
         );
     }, [isMapLoaded, propertiesKey, mapRef, selectedId]);
 
-    // 2. Fly to specific property when selected
+    // 2. Fly to specific property when selected (skip if caller opted out)
     useEffect(() => {
-        if (!isMapLoaded || !selectedId) return;
+        if (!isMapLoaded || !selectedId || disableFlyToSelected) return;
 
         const map = mapRef.current;
         if (!map) return;
@@ -78,5 +81,5 @@ export const useMapViewport = ({
                 essential: true
             });
         }
-    }, [isMapLoaded, selectedId, properties, mapRef]);
+    }, [isMapLoaded, selectedId, properties, mapRef, disableFlyToSelected]);
 };

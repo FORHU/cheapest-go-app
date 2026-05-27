@@ -156,8 +156,8 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                 }
             `}
         >
-            {/* ─── Save/Heart Button (top-right corner) ─── */}
-            <div className="absolute top-2 right-2 z-10">
+            {/* ─── Save/Heart Button (mobile only — top-right corner) ─── */}
+            <div className="absolute top-2 right-2 z-10 lg:hidden">
                 <SaveButton
                     type="flight"
                     title={`${primary.departure.airport} → ${last.arrival.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
@@ -172,10 +172,11 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
             </div>
 
             <div className="flex flex-col lg:flex-row">
-                {/* ─── Flight Info (left) ─── */}
-                <div className="flex-1 px-3 py-2 lg:p-4">
+                {/* ─── Flight Info + Expand (left) ─── */}
+                <div className="flex-1 min-w-0">
+                  <div className="px-3 py-2 lg:px-4 lg:py-2.5">
                     {/* Airline header */}
-                    <div className="flex items-center gap-1.5 lg:gap-2 mb-1 lg:mb-2">
+                    <div className="flex items-center gap-1.5 lg:gap-2 mb-1 lg:mb-1.5">
                         <AirlineLogo code={primary.airline.code} name={primary.airline.name} />
                         <div className="min-w-0">
                             <div className="flex items-center gap-1 lg:gap-2">
@@ -191,7 +192,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     </div>
 
                     {/* Route timeline */}
-                    <div className="flex items-center gap-1.5 lg:gap-3 min-w-0 w-full mt-1">
+                    <div className="flex items-center gap-1.5 lg:gap-3 min-w-0 w-full">
                         <div className="text-center">
                             <div className="text-xs lg:text-base font-normal text-slate-900 dark:text-white leading-tight">{formatTime(primary.departure.time)}</div>
                             <div className="text-[8px] lg:text-[10px] text-slate-500 dark:text-slate-400 font-normal">{primary.departure.airport}</div>
@@ -217,7 +218,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     </div>
 
                     {/* Tags */}
-                    <div className="flex flex-wrap gap-0.5 lg:gap-1 mt-1 lg:mt-2 min-w-0 overflow-hidden">
+                    <div className="flex flex-wrap gap-0.5 lg:gap-1 mt-1 lg:mt-1.5 min-w-0 overflow-hidden">
                         {offer.baggage && (
                             <span className="inline-flex items-center gap-0.5 px-1 lg:px-2 py-px lg:py-0.5 rounded-full text-[8px] lg:text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                                 <Luggage className="w-2 h-2 lg:w-3 lg:h-3" />
@@ -294,10 +295,130 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             </span>
                         )}
                     </div>
+                  </div>
+
+                  {/* ─── Expand Toggle ─── */}
+                  {offer.segments.length > 1 && (
+                      <button
+                          onClick={() => setExpanded(!expanded)}
+                          className="flex items-center gap-0.5 px-3 lg:px-4 pb-1.5 text-[10px] lg:text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
+                      >
+                          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          {expanded ? 'Hide details' : (offer.alternatives && offer.alternatives.length > 0 ? `Compare ${offer.alternatives.length + 1} options` : 'Show all segments')}
+                      </button>
+                  )}
+
+                  {/* ─── Expanded View (Details + Alternatives) ─── */}
+                  <AnimatePresence>
+                      {expanded && (
+                          <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                              className="border-t border-slate-100 dark:border-slate-800 overflow-hidden"
+                          >
+                          {/* Alternatives / Brands Section */}
+                          {offer.alternatives && offer.alternatives.length > 0 && (
+                              <div className="bg-slate-50/50 dark:bg-slate-800/20 px-2.5 lg:px-5 py-3 border-b border-slate-100 dark:border-slate-800">
+                                  <h4 className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                      <BadgeDollarSign className="w-3.5 h-3.5 text-indigo-500" />
+                                      Available Fare Options
+                                  </h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                      {/* Current main offer as one of the options */}
+                                      <div className="flex flex-col p-2.5 rounded-lg border-2 border-indigo-500 bg-white dark:bg-slate-900 shadow-sm">
+                                          <div className="flex justify-between items-start mb-1">
+                                              <span className="text-[11px] font-normal text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 rounded uppercase">
+                                                  {offer.brandedFare?.brandName || offer.brandedFare?.fareType || 'Standard'}
+                                              </span>
+                                              <span className="text-xs font-normal text-slate-900 dark:text-white">
+                                                  {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
+                                              </span>
+                                          </div>
+                                          <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
+                                              {(offer.segments[0].cabinClass || 'economy').replace('_', ' ')} · Best value
+                                          </p>
+                                          <button
+                                              disabled
+                                              className="mt-auto py-1 px-3 rounded bg-indigo-600 text-white text-[10px] font-normal opacity-50 cursor-default"
+                                          >
+                                              Currently Selected
+                                          </button>
+                                      </div>
+
+                                      {/* Alternatives */}
+                                      {offer.alternatives.map((alt) => (
+                                          <div key={alt.offerId} className="flex flex-col p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300 transition-colors">
+                                              <div className="flex justify-between items-start mb-1">
+                                                  <span className="text-[11px] font-normal text-slate-600 dark:text-slate-300 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded uppercase">
+                                                      {alt.brandedFare?.brandName || alt.brandedFare?.fareType || 'Option'}
+                                                  </span>
+                                                  <span className="text-xs font-normal text-slate-900 dark:text-white">
+                                                      {formatPrice(alt.price.total, alt.price.currency, targetCurrency)}
+                                                  </span>
+                                              </div>
+                                              <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
+                                                  {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')}{process.env.NODE_ENV !== 'production' ? ` · ${providerLabel(alt.provider)}` : ''}
+                                              </p>
+                                              <button
+                                                  onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      onSelect?.(alt);
+                                                  }}
+                                                  className="mt-auto py-1 px-3 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-700 dark:text-slate-300 text-[10px] font-normal transition-colors"
+                                              >
+                                                  Select {alt.brandedFare?.brandName || alt.brandedFare?.fareType || 'this'}
+                                              </button>
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* Flight Detail Segments */}
+                          <div className="px-2.5 lg:px-5 pb-2 lg:pb-4 space-y-0.5 lg:space-y-1">
+                              {routeIndices.map((idx, routeIndex) => {
+                                  const legSegments = legGroups[idx];
+                                  if (!legSegments || legSegments.length === 0) return null;
+
+                                  let label = `Leg ${routeIndex + 1}`;
+                                  if (routeIndices.length === 2) {
+                                      label = routeIndex === 0 ? 'Outbound' : 'Return';
+                                  }
+
+                                  return (
+                                      <div className="pt-3" key={idx}>
+                                          <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                                              {label}
+                                          </div>
+                                          {legSegments.map((seg, i) => <SegmentRow key={`${idx}-${i}`} segment={seg} />)}
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                          </motion.div>
+                      )}
+                  </AnimatePresence>
                 </div>
 
                 {/* ─── Price + CTA (right) ─── */}
-                <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-1 lg:gap-1.5 lg:w-[180px] px-3 py-1.5 lg:p-4 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+                <div className="relative flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-between gap-1 lg:gap-1.5 lg:w-[180px] px-3 py-1.5 lg:py-3 lg:px-4 lg:border-l border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+                    {/* Heart button — desktop only, inline */}
+                    <div className="hidden lg:flex justify-end w-full mb-1 relative z-10">
+                        <SaveButton
+                            type="flight"
+                            title={`${primary.departure.airport} → ${last.arrival.airport} · ${primary.departure.time?.slice(0, 10) ?? ''}`}
+                            subtitle={`${primary.airline.name} · ${formatDuration(offer.totalDuration)} · ${stopsLabel(offer.totalStops)}`}
+                            price={offer.price.total}
+                            currency={offer.price.currency}
+                            imageUrl={`https://pics.avs.io/40/40/${(primary.airline.code || '').toUpperCase()}.png`}
+                            deepLink={`/flights/search?origin=${primary.departure.airport}&destination=${last.arrival.airport}&departure=${primary.departure.time?.slice(0, 10) ?? ''}`}
+                            snapshot={{ offerId: offer.offerId, provider: offer.provider }}
+                            size="sm"
+                        />
+                    </div>
+
                     <div className="lg:text-right">
                         <div className="text-xs lg:text-lg font-normal text-slate-900 dark:text-white leading-tight">
                             {formatPrice(offer.price.pricePerAdult, offer.price.currency, targetCurrency)}<span className="text-[8px] lg:text-xs text-slate-400 dark:text-slate-500">/person</span>
@@ -307,7 +428,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 lg:mt-auto">
                         <button
                             onClick={() => onSelect?.(offer)}
                             className="px-4 lg:px-6 py-1 lg:py-2 rounded-full lg:rounded-lg lg:w-auto bg-blue-600 hover:bg-blue-700 text-white font-normal text-[10px] lg:text-sm transition-colors flex items-center justify-center gap-1 shrink-0"
@@ -318,110 +439,6 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                     </div>
                 </div>
             </div>
-
-            {/* ─── Expand Toggle ─── */}
-            {offer.segments.length > 1 && (
-                <button
-                    onClick={() => setExpanded(!expanded)}
-                    className="flex items-center gap-0.5 px-2.5 lg:px-4 pb-1 lg:pb-2 text-[10px] lg:text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
-                >
-                    {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    {expanded ? 'Hide details' : (offer.alternatives && offer.alternatives.length > 0 ? `Compare ${offer.alternatives.length + 1} options` : 'Show all segments')}
-                </button>
-            )}
-
-            {/* ─── Expanded View (Details + Alternatives) ─── */}
-            <AnimatePresence>
-                {expanded && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
-                        className="border-t border-slate-100 dark:border-slate-800 overflow-hidden"
-                    >
-                    {/* Alternatives / Brands Section */}
-                    {offer.alternatives && offer.alternatives.length > 0 && (
-                        <div className="bg-slate-50/50 dark:bg-slate-800/20 px-2.5 lg:px-5 py-3 border-b border-slate-100 dark:border-slate-800">
-                            <h4 className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                <BadgeDollarSign className="w-3.5 h-3.5 text-indigo-500" />
-                                Available Fare Options
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {/* Current main offer as one of the options */}
-                                <div className="flex flex-col p-2.5 rounded-lg border-2 border-indigo-500 bg-white dark:bg-slate-900 shadow-sm">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <span className="text-[11px] font-normal text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 rounded uppercase">
-                                            {offer.brandedFare?.brandName || offer.brandedFare?.fareType || 'Standard'}
-                                        </span>
-                                        <span className="text-xs font-normal text-slate-900 dark:text-white">
-                                            {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
-                                        </span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
-                                        {(offer.segments[0].cabinClass || 'economy').replace('_', ' ')} · Best value
-                                    </p>
-                                    <button
-                                        disabled
-                                        className="mt-auto py-1 px-3 rounded bg-indigo-600 text-white text-[10px] font-normal opacity-50 cursor-default"
-                                    >
-                                        Currently Selected
-                                    </button>
-                                </div>
-
-                                {/* Alternatives */}
-                                {offer.alternatives.map((alt) => (
-                                    <div key={alt.offerId} className="flex flex-col p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300 transition-colors">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="text-[11px] font-normal text-slate-600 dark:text-slate-300 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded uppercase">
-                                                {alt.brandedFare?.brandName || alt.brandedFare?.fareType || 'Option'}
-                                            </span>
-                                            <span className="text-xs font-normal text-slate-900 dark:text-white">
-                                                {formatPrice(alt.price.total, alt.price.currency, targetCurrency)}
-                                            </span>
-                                        </div>
-                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
-                                            {(alt.segments[0].cabinClass || 'economy').replace('_', ' ')}{process.env.NODE_ENV !== 'production' ? ` · ${providerLabel(alt.provider)}` : ''}
-                                        </p>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onSelect?.(alt);
-                                            }}
-                                            className="mt-auto py-1 px-3 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-700 dark:text-slate-300 text-[10px] font-normal transition-colors"
-                                        >
-                                            Select {alt.brandedFare?.brandName || alt.brandedFare?.fareType || 'this'}
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Flight Detail Segments */}
-                    <div className="px-2.5 lg:px-5 pb-2 lg:pb-4 space-y-0.5 lg:space-y-1">
-                        {routeIndices.map((idx, routeIndex) => {
-                            const legSegments = legGroups[idx];
-                            if (!legSegments || legSegments.length === 0) return null;
-
-                            let label = `Leg ${routeIndex + 1}`;
-                            if (routeIndices.length === 2) {
-                                label = routeIndex === 0 ? 'Outbound' : 'Return';
-                            }
-
-                            return (
-                                <div className="pt-3" key={idx}>
-                                    <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                                        {label}
-                                    </div>
-                                    {legSegments.map((seg, i) => <SegmentRow key={`${idx}-${i}`} segment={seg} />)}
-                                </div>
-                            );
-                        })}
-                    </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </motion.div>
     );
 };

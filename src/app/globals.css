@@ -74,20 +74,26 @@
 
 /* Consistency wrappers — matching Hotel Search hierarchy (Smaller Scale) */
 @utility text-ui-label {
-  @apply text-fluid-3xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400;
+  @apply text-fluid-3xs font-normal uppercase tracking-widest text-slate-500 dark:text-slate-400;
 }
 
 @utility text-ui-value {
   @apply text-fluid-xs font-normal text-blue-600 dark:text-blue-400;
 }
 
-/* Custom Utilities for Grid Backgrounds (simulating standard utility behavior) */
+/* Custom Utilities for Grid Backgrounds */
 @utility bg-grid-obsidian {
   background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 @utility bg-grid-alabaster {
   background-image: linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+@utility bg-size-40px_40px {
+  background-size: 40px 40px;
 }
 
 @utility thin-scrollbar {
@@ -206,12 +212,12 @@ body {
 
 /* Position Mapbox zoom buttons above property cards on mobile with 5px gap */
 .mobile-search-map.map-cards-visible .mapboxgl-ctrl-bottom-right {
-  bottom: 115px !important;
+  bottom: 168px !important;
   transition: bottom 0.3s ease;
 }
 
 .mobile-search-map.map-cards-hidden .mapboxgl-ctrl-bottom-right {
-  bottom: 45px !important;
+  bottom: 80px !important;
   transition: bottom 0.3s ease;
 }
 

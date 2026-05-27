@@ -50,12 +50,31 @@ export async function POST(req: NextRequest) {
             'nok', 'dkk', 'brl', 'mxn', 'zar', 'try', 'pln', 'czk', 'huf',
         ]);
 
+        // Per-currency maximum amounts (≈ $100,000 USD equivalent per currency).
+        // The old flat cap of 1,000,000 was designed for USD — it wrongly rejects
+        // legitimate bookings in high-unit currencies like KRW (₩1M ≈ $714) and IDR.
+        const MAX_AMOUNT_BY_CURRENCY: Record<string, number> = {
+            // Standard decimal currencies — $100k USD equivalent
+            usd: 100_000,     eur: 95_000,      gbp: 80_000,
+            aud: 160_000,     cad: 140_000,     sgd: 140_000,
+            hkd: 800_000,     chf: 92_000,      nzd: 170_000,
+            aed: 370_000,     inr: 8_500_000,   thb: 3_600_000,
+            php: 5_800_000,   myr: 480_000,     brl: 510_000,
+            mxn: 1_700_000,   zar: 1_900_000,   try: 3_200_000,
+            pln: 410_000,     czk: 2_300_000,   huf: 37_000_000,
+            sek: 1_100_000,   nok: 1_100_000,   dkk: 700_000,
+            // Zero-decimal currencies — amounts are whole units, so limits are larger
+            jpy: 15_000_000,  krw: 140_000_000, idr: 1_600_000_000,
+            vnd: 2_500_000_000,
+        };
+        const maxAmount = MAX_AMOUNT_BY_CURRENCY[currency?.toLowerCase()] ?? 100_000;
+
         // Validate
         if (!prebookId) {
             return NextResponse.json({ success: false, error: 'prebookId is required' }, { status: 400 });
         }
-        if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 1_000_000) {
-            return NextResponse.json({ success: false, error: 'Valid amount is required (must be between 0 and 1,000,000)' }, { status: 400 });
+        if (!amount || typeof amount !== 'number' || amount <= 0 || amount > maxAmount) {
+            return NextResponse.json({ success: false, error: `Valid amount is required (must be between 0 and ${maxAmount.toLocaleString()} ${currency?.toUpperCase() ?? ''})` }, { status: 400 });
         }
         if (!currency) {
             return NextResponse.json({ success: false, error: 'Currency is required' }, { status: 400 });

@@ -290,3 +290,8 @@ export function searchAirports(query: string, limit: number = 8): Airport[] {
         countryCode: s.airport.countryCode,
     }));
 }
+
+export function getAirportByCode(iataCode: string): Airport | undefined {
+    return AIRPORTS.find(a => a.iata === iataCode.toUpperCase());
+}
+

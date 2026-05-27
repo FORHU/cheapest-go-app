@@ -16,6 +16,7 @@ export interface MappableProperty extends Property {
 export const buildGeoJson = (
     properties: MappableProperty[],
     displayPrices?: Record<string, string>,
+    convertedPrices?: Record<string, number>,
 ) => {
     return {
         type: 'FeatureCollection' as const,
@@ -26,6 +27,7 @@ export const buildGeoJson = (
             properties: {
                 id: p.id,
                 price: p.price,
+                convertedPrice: convertedPrices?.[p.id] ?? p.price,
                 // Pre-formatted string consumed by the GL symbol layer
                 displayPrice: displayPrices?.[p.id] ?? formatCurrency(p.price, p.currency),
                 name: p.name,

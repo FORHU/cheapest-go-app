@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useCallback, useRef } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
 import { TiltCard } from '@/components/ui';
 import HeroHeadline from './HeroHeadline';
 import AISearchBar from './AISearchBar';
 import AISuggestionChips from './AISuggestionChips';
+import { useSearchMode } from '@/stores/searchStore';
 
 const Hero = () => {
     const prefersReducedMotion = useReducedMotion();
     const suggestionHandlerRef = useRef<((prompt: string) => void) | null>(null);
+    const searchMode = useSearchMode();
 
     const handleSuggestionReady = useCallback((handler: (prompt: string) => void) => {
         suggestionHandlerRef.current = handler;
@@ -45,8 +47,21 @@ const Hero = () => {
                 </motion.div>
             </motion.div>
 
-            {/* Suggestion Chips — below the floating search bar */}
-            <AISuggestionChips onSuggestionClick={handleChipClick} />
+            {/* Suggestion Chips — only visible when AI search tab is active */}
+            <AnimatePresence>
+                {searchMode === 'ai' && (
+                    <motion.div
+                        key="suggestion-chips"
+                        initial={{ opacity: 0, y: -8, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                        exit={{ opacity: 0, y: -8, height: 0 }}
+                        transition={{ duration: 0.25, ease: 'easeInOut' }}
+                        className="overflow-hidden w-full"
+                    >
+                        <AISuggestionChips onSuggestionClick={handleChipClick} />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </section>
     );
 };
