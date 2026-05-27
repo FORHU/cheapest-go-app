@@ -6,6 +6,7 @@ export const maxDuration = 60;
 
 const cancelFlightSchema = z.object({
     bookingId: z.string().min(1, 'bookingId is required'),
+    cancellationId: z.string().optional(), // Pre-fetched Duffel quote ID — skip the quote step if provided
 });
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
-        const { bookingId } = cancelParsed.data;
+        const { bookingId, cancellationId: preQuotedCancellationId } = cancelParsed.data;
 
         // Service-role client for all DB operations (bypasses RLS)
         const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
         // ── Step 1: Load booking ──────────────────────────────────────
         const { data: booking, error: fetchErr } = await supabase
             .from('flight_bookings')
-            .select('id, user_id, status, provider, pnr, payment_intent_id, created_at, cancellation_log, session_id, total_price, payment_currency, refund_amount, refund_penalty_amount, refund_currency, supplier_currency')
+            .select('id, user_id, status, provider, pnr, payment_intent_id, created_at, cancellation_log, session_id, total_price, charged_price, payment_currency, refund_amount, refund_penalty_amount, refund_currency, supplier_currency')
             .eq('id', bookingId)
             .single();
 
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
                     supplierCancellationId = result.cancellationId;
                 } else {
                     // Duffel cancellation
-                    const result = await cancelDuffel(booking);
+                    const result = await cancelDuffel(booking, preQuotedCancellationId);
                     supplierSuccess = result.success;
                     refundAmount = Math.min(result.refundAmount ?? 0, booking.total_price);
                     penaltyAmount = result.penaltyAmount ?? Math.max(0, booking.total_price - (result.refundAmount ?? 0));
@@ -300,6 +301,8 @@ export async function POST(req: NextRequest) {
         let refunded = false;
         let stripeError: string | undefined;
         let cachedPi: Awaited<ReturnType<typeof stripe.paymentIntents.retrieve>> | null = null;
+        let actualStripeRefundAmount = 0;
+        let actualStripeCurrency = refundCurrency.toUpperCase();
 
         // If payment_intent_id wasn't saved on the booking (e.g. DB write failed at booking time),
         // search Stripe by bookingSessionId metadata — that's what the flight book route stores on the PI.
@@ -340,11 +343,15 @@ export async function POST(req: NextRequest) {
                     console.log(`[cancel-booking:stripe] PI is uncaptured (Mystifly pre-ticket) — cancelling PI instead of refunding`);
                     await stripe.paymentIntents.cancel(paymentIntentId!, { cancellation_reason: 'requested_by_customer' });
                     refunded = true;
+                    actualStripeRefundAmount = piAmount / 100;
+                    actualStripeCurrency = piCurrency.toUpperCase();
                     console.log(`[cancel-booking] Uncaptured PI cancelled (Mystifly pre-ticket): ${paymentIntentId}`);
                     await supabase
                         .from('flight_bookings')
                         .update({
                             status: 'refunded',
+                            refund_amount: actualStripeRefundAmount,
+                            refund_currency: actualStripeCurrency,
                             cancellation_log: [...(booking.cancellation_log ?? []), logEntry, cancelLog, refundPendingLog,
                                 { at: new Date().toISOString(), oldStatus: 'refund_pending', newStatus: 'refunded', note: 'PI cancelled (uncaptured)' }],
                         })
@@ -396,18 +403,24 @@ export async function POST(req: NextRequest) {
 
                 if (stripeRefund.status === 'succeeded' || stripeRefund.status === 'pending') {
                     refunded = true;
+                    actualStripeRefundAmount = refundAmountCents / 100;
+                    actualStripeCurrency = piCurrency.toUpperCase();
                     const refundedLog = {
                         at: new Date().toISOString(),
                         oldStatus: 'refund_pending',
                         newStatus: 'refunded',
                         stripeRefundId: stripeRefund.id,
-                        refundAmount,
+                        stripeRefundAmount: actualStripeRefundAmount,
+                        stripeRefundCurrency: actualStripeCurrency,
+                        supplierRefundAmount: refundAmount,
                     };
 
                     await supabase
                         .from('flight_bookings')
                         .update({
                             status: 'refunded',
+                            refund_amount: actualStripeRefundAmount,
+                            refund_currency: actualStripeCurrency,
                             cancellation_log: [...(booking.cancellation_log ?? []), logEntry, cancelLog, refundPendingLog, refundedLog],
                         })
                         .eq('id', bookingId);
@@ -491,7 +504,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             status: stripeError ? 'refund_failed' : (refunded ? 'refunded' : 'refund_pending'),
-            refundAmount,
+            refundAmount: refunded ? actualStripeRefundAmount : refundAmount,
+            refundCurrency: refunded ? actualStripeCurrency : refundCurrency,
             penaltyAmount,
             currency: refundCurrency,
             stripeError,
@@ -566,7 +580,7 @@ async function cancelMystifly(booking: any): Promise<CancelResult> {
     };
 }
 
-async function cancelDuffel(booking: any): Promise<CancelResult> {
+async function cancelDuffel(booking: any, preQuotedCancellationId?: string): Promise<CancelResult> {
     const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
     const duffelToken = env.DUFFEL_TOKEN;
     if (!duffelToken) {
@@ -631,20 +645,26 @@ async function cancelDuffel(booking: any): Promise<CancelResult> {
             return { success: false, requiresManualCancellation: true, error: 'Booking cannot be cancelled via API. Contact support for manual cancellation.' };
         }
 
-        // Step 1: Create cancellation — returns a refund preview (not yet confirmed)
-        const cancellationRes = await fetch('https://api.duffel.com/air/order_cancellations', {
-            method: 'POST',
-            headers: DUFFEL_HEADERS,
-            body: JSON.stringify({ data: { order_id: orderId } }),
-            signal: controller.signal,
-        });
+        // Step 1: Create cancellation quote — skip if a pre-quoted cancellationId was passed
+        // (user already saw the quote in the modal via /api/flights/cancel-quote)
+        let cancellationId: string;
+        if (preQuotedCancellationId) {
+            cancellationId = preQuotedCancellationId;
+            console.log(`[cancel-booking] Using pre-quoted cancellationId: ${cancellationId}`);
+        } else {
+            const cancellationRes = await fetch('https://api.duffel.com/air/order_cancellations', {
+                method: 'POST',
+                headers: DUFFEL_HEADERS,
+                body: JSON.stringify({ data: { order_id: orderId } }),
+                signal: controller.signal,
+            });
 
-        const cancellationData = await cancellationRes.json();
-        if (!cancellationRes.ok) {
-            return { success: false, error: cancellationData?.errors?.[0]?.message ?? 'Duffel cancellation quote failed' };
+            const cancellationData = await cancellationRes.json();
+            if (!cancellationRes.ok) {
+                return { success: false, error: cancellationData?.errors?.[0]?.message ?? 'Duffel cancellation quote failed' };
+            }
+            cancellationId = cancellationData?.data?.id;
         }
-
-        const cancellationId: string = cancellationData?.data?.id;
 
         // Step 2: Confirm the cancellation — this is what actually cancels the order.
         // Use the confirmed response values (not preview) as the authoritative refund data.
