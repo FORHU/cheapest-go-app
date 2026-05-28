@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { calculateHaversineDistance } from '@/utils/geo';
-import { getMapboxPoiImage } from '@/utils/images';
+import { getPoiImageUrl } from '@/utils/images';
 import { mapPoiDetails } from '@/utils/poi-mapper';
 import { env } from '@/utils/env';
-import { BAGUIO_DEFAULT_GEMS, POI_ICON_MAP } from '@/config/map-discovery';
+import { POI_ICON_MAP } from '@/config/map-discovery';
 import { Landmark, Trees, Utensils, Pill, ShoppingBasket, Bus } from 'lucide-react';
 
 interface UseNearbyGemsProps {
     isLoaded: boolean;
     coordinates?: { lat: number; lng: number };
     selectedCategory: string;
+    radiusMeters?: number;
     onClearDirections?: () => void;
 }
 
@@ -30,6 +31,7 @@ export const useNearbyGems = ({
     isLoaded,
     coordinates,
     selectedCategory,
+    radiusMeters = 5000,
     onClearDirections
 }: UseNearbyGemsProps) => {
     const [nearbyGems, setNearbyGems] = useState<any[]>([]);
@@ -82,11 +84,11 @@ export const useNearbyGems = ({
                 let featuresToProcess: any[] = [];
                 try {
                     const [googleResult, fsqResult] = await Promise.allSettled([
-                        fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=10000`, { signal })
+                        fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
                             .then(r => r.ok ? r.json() : { features: [] })
                             .then(d => (d.features || []) as any[])
                             .catch(() => [] as any[]),
-                        fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=10000`, { signal })
+                        fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
                             .then(r => r.ok ? r.json() : { features: [] })
                             .then(d => (d.features || []) as any[])
                             .catch(() => [] as any[]),
@@ -137,7 +139,7 @@ export const useNearbyGems = ({
                     onClearDirections();
                 }
 
-                featuresToProcess = featuresToProcess.slice(0, 20);
+                featuresToProcess = featuresToProcess.slice(0, 30);
                 if (featuresToProcess.length === 0) {
                     setIsFetchingGems(false);
                     return;
@@ -208,25 +210,6 @@ export const useNearbyGems = ({
                             resolvedCount++;
                             if (resolvedCount === initialGems.length && !signal.aborted) {
                                 setNearbyGems([...gemBuffer]);
-                                const enrichedCount = gemBuffer.filter(p => !p.properties.isStub).length;
-                                const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
-                                if (enrichedCount < 5 && isBaguio) {
-                                    const newGems = [...gemBuffer];
-                                    BAGUIO_DEFAULT_GEMS.forEach(gemFeature => {
-                                        const gemName = gemFeature.properties.name;
-                                        const gCat = gemFeature.properties.category.toLowerCase();
-                                        const sCat = selectedCategory === 'restaurant' ? 'dining' : selectedCategory;
-                                        const matchesCat = selectedCategory === 'all' || gCat.includes(sCat) || (selectedCategory === 'attraction' && (gCat.includes('sightseeing') || gCat.includes('landmark') || gCat.includes('park')));
-
-                                        if (matchesCat && !newGems.find(r => r.properties.name === gemName)) {
-                                            newGems.push({ 
-                                                ...gemFeature, 
-                                                properties: { ...gemFeature.properties, imageUrl: getMapboxPoiImage(gemName, gemFeature.geometry.coordinates[1], gemFeature.geometry.coordinates[0], gCat) }
-                                            });
-                                        }
-                                    });
-                                    setNearbyGems(newGems);
-                                }
                             }
                             return;
                         }
@@ -296,27 +279,6 @@ export const useNearbyGems = ({
                             resolvedCount++;
                             if (resolvedCount === initialGems.length && !signal.aborted) {
                                 setNearbyGems([...gemBuffer]);
-                                
-                                // Final Baguio Fallback
-                                const enrichedCount = gemBuffer.filter(p => !p.properties.isStub).length;
-                                const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
-                                if (enrichedCount < 5 && isBaguio) {
-                                    const newGems = [...gemBuffer];
-                                    BAGUIO_DEFAULT_GEMS.forEach(gemFeature => {
-                                        const gemName = gemFeature.properties.name;
-                                        const gCat = gemFeature.properties.category.toLowerCase();
-                                        const sCat = selectedCategory === 'restaurant' ? 'dining' : selectedCategory;
-                                        const matchesCat = selectedCategory === 'all' || gCat.includes(sCat) || (selectedCategory === 'attraction' && (gCat.includes('sightseeing') || gCat.includes('landmark') || gCat.includes('park')));
-
-                                        if (matchesCat && !newGems.find(r => r.properties.name === gemName)) {
-                                            newGems.push({ 
-                                                ...gemFeature, 
-                                                properties: { ...gemFeature.properties, imageUrl: getMapboxPoiImage(gemName, gemFeature.geometry.coordinates[1], gemFeature.geometry.coordinates[0], gCat) }
-                                            });
-                                        }
-                                    });
-                                    setNearbyGems(newGems);
-                                }
                             }
                         }
                     })
@@ -326,8 +288,6 @@ export const useNearbyGems = ({
             } catch (err: any) {
                 if (err?.name === 'AbortError') return; // normal React cleanup — not an error
                 console.error('Fetching gems failed:', err);
-                const isBaguio = Math.abs(coordinates.lat - 16.41) < 0.2 && Math.abs(coordinates.lng - 120.6) < 0.2;
-                if (isBaguio && selectedCategory === 'all') setNearbyGems(BAGUIO_DEFAULT_GEMS);
             } finally {
                 if (!signal.aborted) setIsFetchingGems(false);
             }
@@ -335,7 +295,7 @@ export const useNearbyGems = ({
 
         fetchTopGems();
         return () => controller.abort();
-    }, [isLoaded, hasCoordinates, coordinates?.lat, coordinates?.lng, selectedCategory]);
+    }, [isLoaded, hasCoordinates, coordinates?.lat, coordinates?.lng, selectedCategory, radiusMeters]);
 
     return { nearbyGems, isFetchingGems, setNearbyGems };
 };

@@ -1,8 +1,16 @@
 import React from 'react';
 import Image from 'next/image';
-import { ChevronRight, ChevronLeft, Search, Star, Maximize, Minimize, Navigation } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Search, Star, Maximize, Minimize, Navigation, MapPin } from 'lucide-react';
 import { POI_FILTERS } from '@/config/map-discovery';
-import { getMapboxPoiImage } from '@/utils/images';
+import { getPoiImageUrl } from '@/utils/images';
+import { cn } from '@/lib/utils';
+
+const DISTANCE_OPTIONS = [
+    { label: '1 km', value: 1000 },
+    { label: '2 km', value: 2000 },
+    { label: '5 km', value: 5000 },
+    { label: '10 km', value: 10000 },
+] as const;
 
 interface PoiDiscoveryProps {
     isFullscreen: boolean;
@@ -26,6 +34,8 @@ interface PoiDiscoveryProps {
     handleOptimizeRoute?: () => void;
     isOptimizing?: boolean;
     hasOptimizedRoute?: boolean;
+    radiusMeters?: number;
+    onRadiusChange?: (r: number) => void;
 }
 
 export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
@@ -45,6 +55,8 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
     mapRef,
     gemsScrollRef,
     scrollGems,
+    radiusMeters = 2000,
+    onRadiusChange,
 }) => {
     return (
         <div className={`transition-all duration-500 ease-in-out group/nearby flex flex-col gap-1 sm:gap-1.5
@@ -53,8 +65,11 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                 : 'relative lg:absolute lg:bottom-2 lg:left-1/2 lg:-translate-x-1/2 lg:w-[96%] lg:z-30 w-full mt-3 lg:mt-0'
             }
         `}>
-            {/* Category Filter Dropdown */}
-            <div className="flex items-center justify-between gap-2 w-full px-1 sm:px-2 pb-1 lg:px-0">
+            {/* Controls row: category + distance + fullscreen */}
+            <div className="flex items-center justify-between gap-2 w-full px-1 sm:px-2 pb-1 lg:px-0 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+
+                {/* Category Filter Dropdown */}
                 <div className="relative">
                     <button
                         onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
@@ -103,6 +118,29 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                         </>
                     )}
                 </div>
+
+                {/* Distance Filter */}
+                {onRadiusChange && (
+                    <div className="flex items-center gap-0.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-full h-7 px-2 shadow-md">
+                        <MapPin size={10} className="text-blue-500 mr-0.5 shrink-0" />
+                        {DISTANCE_OPTIONS.map(({ label, value }) => (
+                            <button
+                                key={value}
+                                onClick={() => onRadiusChange(value)}
+                                className={cn(
+                                    'px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer whitespace-nowrap',
+                                    radiusMeters === value
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-blue-500'
+                                )}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                </div>{/* end left controls */}
 
                 {isFullscreen && (
                     <div className="flex items-center gap-1.5">
@@ -155,7 +193,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                         const lng = poi.geometry?.coordinates[0] || poi.coordinates.lng;
                         const lat = poi.geometry?.coordinates[1] || poi.coordinates.lat;
                         const category = poi.properties?.category || poi.category;
-                        const imageUrl = poi.properties?.imageUrl || (poi.imageUrl || getMapboxPoiImage(name, lat, lng, category));
+                        const imageUrl = poi.properties?.imageUrl || poi.imageUrl || getPoiImageUrl(name, lat, lng, { category });
                         
                         const ratingValue = Number(poi.properties?.rating);
                         const ratingDisplay = Number.isFinite(ratingValue) 

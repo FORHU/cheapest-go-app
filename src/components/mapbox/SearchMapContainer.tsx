@@ -6,16 +6,12 @@ import { useMapboxInstance } from './hooks/useMapboxInstance';
 import { useMapInteractions, PoiData } from './hooks/useMapInteractions';
 import { useMapViewport } from './hooks/useMapViewport';
 import { MapContainer } from './components/MapContainer';
-import { ClusterLayer } from './components/ClusterLayer';
 import { SelectedPropertyPopup } from './components/SelectedPropertyPopup';
 import { Source, Layer } from 'react-map-gl/mapbox';
 
 import { PoiPopup } from './components/PoiPopup';
 import { MapMarker } from '../map/MapMarker';
-import { ClusterMarker } from '../map/ClusterMarker';
 import { MapPopup } from '../map/MapPopup';
-import useSupercluster from 'use-supercluster';
-type BBox = [number, number, number, number];
 import { MapSearchOverlay } from './components/MapSearchOverlay';
 import { useRouter } from 'next/navigation';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -95,62 +91,6 @@ export const SearchMapContainer = React.memo(({
 }: SearchMapContainerProps) => {
     // 1. Map Instance
     const { mapRef, isMapLoaded, handleMapLoad, handleMapStyleChange } = useMapboxInstance();
-    const [bounds, setBounds] = React.useState<BBox | null>(null);
-    const [zoom, setZoom] = React.useState(12);
-    const boundsRef = React.useRef<BBox | null>(null);
-    const zoomRef = React.useRef(12);
-
-    const BOUNDS_EPS = 1e-5;
-    const ZOOM_EPS = 0.01;
-
-    // Only commit state when values actually change — avoids re-render loops from onMove.
-    const updateMapState = useCallback(() => {
-        const map = mapRef.current;
-        if (!map) return;
-
-        const b = map.getBounds();
-        if (!b) return;
-
-        const nextBounds: BBox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
-        const nextZoom = map.getZoom();
-
-        const prev = boundsRef.current;
-        const boundsChanged =
-            !prev ||
-            Math.abs(prev[0] - nextBounds[0]) > BOUNDS_EPS ||
-            Math.abs(prev[1] - nextBounds[1]) > BOUNDS_EPS ||
-            Math.abs(prev[2] - nextBounds[2]) > BOUNDS_EPS ||
-            Math.abs(prev[3] - nextBounds[3]) > BOUNDS_EPS;
-        const zoomChanged = Math.abs(zoomRef.current - nextZoom) > ZOOM_EPS;
-
-        if (!boundsChanged && !zoomChanged) return;
-
-        boundsRef.current = nextBounds;
-        zoomRef.current = nextZoom;
-        setBounds(nextBounds);
-        setZoom(nextZoom);
-    }, [mapRef]);
-
-    React.useEffect(() => {
-        if (isMapLoaded) {
-            updateMapState();
-        }
-    }, [isMapLoaded, updateMapState]);
-
-    const mapStateRafRef = React.useRef<number | null>(null);
-    const scheduleMapStateUpdate = useCallback(() => {
-        if (mapStateRafRef.current != null) return;
-        mapStateRafRef.current = requestAnimationFrame(() => {
-            mapStateRafRef.current = null;
-            updateMapState();
-        });
-    }, [updateMapState]);
-
-    React.useEffect(() => () => {
-        if (mapStateRafRef.current != null) {
-            cancelAnimationFrame(mapStateRafRef.current);
-        }
-    }, []);
 
     const isMobile = useIsMobile();
     const router = useRouter();
@@ -182,48 +122,6 @@ export const SearchMapContainer = React.memo(({
         return formatted;
     }, [mappableProperties, markerPrices, targetCurrency]);
 
-    // 4. Map Data & Preparation
-    const points = useMemo(() => mappableProperties.map(p => ({
-        type: 'Feature' as const,
-        properties: {
-            cluster: false,
-            propertyId: p.id,
-            price: markerPrices[p.id],
-            property: p
-        },
-        geometry: {
-            type: 'Point' as const,
-            coordinates: [p.coordinates.lng, p.coordinates.lat]
-        }
-    })), [mappableProperties, markerPrices]);
-
-    // Stable bbox until map reports viewport (prevents useSupercluster with null bounds).
-    const clusterBounds = useMemo<BBox>(() => {
-        if (bounds) return bounds;
-        if (mappableProperties.length === 0) {
-            return [-180, -85, 180, 85];
-        }
-        let minLng = Infinity;
-        let minLat = Infinity;
-        let maxLng = -Infinity;
-        let maxLat = -Infinity;
-        for (const p of mappableProperties) {
-            minLng = Math.min(minLng, p.coordinates.lng);
-            minLat = Math.min(minLat, p.coordinates.lat);
-            maxLng = Math.max(maxLng, p.coordinates.lng);
-            maxLat = Math.max(maxLat, p.coordinates.lat);
-        }
-        const pad = 0.05;
-        return [minLng - pad, minLat - pad, maxLng + pad, maxLat + pad];
-    }, [bounds, mappableProperties]);
-
-    const { clusters, supercluster } = useSupercluster({
-        points: points as any,
-        bounds: clusterBounds,
-        zoom,
-        options: { radius: 75, maxZoom: 16 }
-    });
-
     // POI Selection/Hover State
     const [selectedPoi, setSelectedPoi] = React.useState<PoiData | null>(null);
     const [hoveredPoi, setHoveredPoi] = React.useState<PoiData | null>(null);
@@ -234,12 +132,23 @@ export const SearchMapContainer = React.memo(({
     const [walkDuration, setWalkDuration] = React.useState<string | null>(null);
 
     // 5. Interactions
-    const { handleMapClick, onMouseMove } = useMapInteractions({
+    const { handleMapClick, onMouseMove, attachMouseLeave } = useMapInteractions({
         mapRef,
         onSelectId,
         onSelectPoi: setSelectedPoi,
         onHoverPoi: setHoveredPoi,
     });
+
+    // Attach the mouseleave listener once the map instance is ready.
+    // This restores the cursor to the CSS 'grab' base whenever the pointer
+    // exits the canvas — fixes the invisible-cursor bug during throttle gaps.
+    React.useEffect(() => {
+        if (!isMapLoaded || !mapRef.current) return;
+        const map = mapRef.current.getMap();
+        if (!map) return;
+        const cleanup = attachMouseLeave(map);
+        return cleanup;
+    }, [isMapLoaded, attachMouseLeave]);
 
     // 6. Viewport Management — no auto-zoom when a marker is clicked
     useMapViewport({
@@ -250,18 +159,20 @@ export const SearchMapContainer = React.memo(({
         disableFlyToSelected: true,
     });
 
-    // Center the map on the selected property (preserves current zoom level).
-    // On desktop the MapPopup has anchor="bottom" + offset=60 so it floats ~255px above
-    // the marker. Shift the easeTo target down by 160px so the popup card is visually
-    // centred in the viewport rather than the bare marker.
+    // Center and zoom to the selected property.
+    // On desktop the MapPopup (anchor="bottom", offset=60) floats ~180px above the marker.
+    // offset [0, 120] positions the hotel ~120px below viewport centre so the popup is
+    // visually centred and clears the ~150px-tall gems panel at the bottom.
     React.useEffect(() => {
         if (!selectedId || !isMapLoaded) return;
         const prop = mappableProperties.find(p => p.id === selectedId);
         if (!prop) return;
+        const currentZoom = mapRef.current?.getZoom() ?? 12;
         mapRef.current?.easeTo({
             center: [prop.coordinates.lng, prop.coordinates.lat],
-            offset: isMobile ? [0, 0] : [0, 160],
-            duration: 600,
+            zoom: Math.max(currentZoom, 16),
+            offset: isMobile ? [0, 0] : [0, 120],
+            duration: 800,
             essential: true,
         });
     }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -273,13 +184,13 @@ export const SearchMapContainer = React.memo(({
         return map;
     }, [mappableProperties]);
 
-    // Clear hotel selection when the user pans the map
+    // On pan: keep the hotel selection so POI markers stay visible on the map.
+    // Only clear sub-selections (clicked POI popup and active gem highlight).
     const handleDragStart = useCallback(() => {
-        onSelectId(null);
         setSelectedPoi(null);
         setActiveGemName(null);
         setSelectedNearbyPlace(null);
-    }, [onSelectId]);
+    }, []);
 
     // 7. Derived UI State
 
@@ -318,21 +229,14 @@ export const SearchMapContainer = React.memo(({
             ? { lat: selectedProperty.coordinates.lat, lng: selectedProperty.coordinates.lng }
             : undefined,
         selectedCategory: nearbyCategory,
+        radiusMeters: nearbyRadius,
     });
 
-    const filteredGems = useMemo(() => {
-        if (!selectedProperty || nearbyGems.length === 0) return [];
-        return nearbyGems.filter((gem) => {
-            const lng = gem.geometry?.coordinates[0];
-            const lat = gem.geometry?.coordinates[1];
-            if (lat == null || lng == null) return false;
-            return haversineKm(
-                selectedProperty.coordinates.lat,
-                selectedProperty.coordinates.lng,
-                lat, lng,
-            ) * 1000 <= nearbyRadius;
-        });
-    }, [nearbyGems, selectedProperty, nearbyRadius]);
+    // API already filters by radius — use results directly
+    const filteredGems = useMemo(
+        () => (selectedProperty ? nearbyGems : []),
+        [nearbyGems, selectedProperty],
+    );
 
     const nearbyPlaceMarkers = useMemo<NearbyPlace[]>(() =>
         filteredGems.map((gem) => ({
@@ -540,96 +444,27 @@ export const SearchMapContainer = React.memo(({
                 onStyleReady={handleMapLoad}
                 onClick={handleMapClick}
                 onMouseMove={onMouseMove}
-                onMove={scheduleMapStateUpdate}
-                onMoveEnd={() => {
-                    updateMapState();
-                    runKakaoDiscovery();
-                }}
+                onMoveEnd={runKakaoDiscovery}
                 onDragStart={handleDragStart}
                 hideLayersButton={true}
             >
 
                 {isMapLoaded && (
                     <>
-                        {/* Clusters and Markers */}
-                        {clusters.map(cluster => {
-                            const [longitude, latitude] = cluster.geometry.coordinates;
-                            const {
-                                cluster: isCluster,
-                                point_count: pointCount,
-                                propertyId,
-                                property
-                            } = cluster.properties;
-
-                            if (isCluster) {
-                                // Find min price in this cluster
-                                const leaves = supercluster?.getLeaves(cluster.id as number);
-                                const minPrice = leaves?.reduce((min, leaf) => 
-                                    Math.min(min, leaf.properties.price), Infinity) || 0;
-
-                                return (
-                                    <ClusterMarker
-                                        key={`cluster-${cluster.id}`}
-                                        latitude={latitude}
-                                        longitude={longitude}
-                                        count={pointCount}
-                                        minPrice={minPrice}
-                                        currency={targetCurrency}
-                                        onClick={() => {
-                                            const leaves = supercluster?.getLeaves(cluster.id as number, Infinity);
-                                            if (leaves && leaves.length > 0) {
-                                                const lons = leaves.map(l => l.geometry.coordinates[0]);
-                                                const lats = leaves.map(l => l.geometry.coordinates[1]);
-                                                const bounds: [[number, number], [number, number]] = [
-                                                    [Math.min(...lons), Math.min(...lats)],
-                                                    [Math.max(...lons), Math.max(...lats)]
-                                                ];
-                                                
-                                                // If all points are at the same location, zoom in specifically
-                                                if (bounds[0][0] === bounds[1][0] && bounds[0][1] === bounds[1][1]) {
-                                                    mapRef.current?.flyTo({
-                                                        center: [longitude, latitude],
-                                                        zoom: Math.min((zoom || 12) + 2, 18),
-                                                        duration: 1000
-                                                    });
-                                                } else {
-                                                    mapRef.current?.fitBounds(bounds, {
-                                                        padding: 80,
-                                                        duration: 1000
-                                                    });
-                                                }
-                                            } else {
-                                                const expansionZoom = Math.min(
-                                                    supercluster?.getClusterExpansionZoom(cluster.id as number) || 18,
-                                                    18
-                                                );
-                                                mapRef.current?.flyTo({
-                                                    center: [longitude, latitude],
-                                                    zoom: expansionZoom,
-                                                    duration: 1000
-                                                });
-                                            }
-                                        }}
-                                    />
-                                );
-                            }
-
-                            // Single point
-                            const p = property as any;
-                            return (
-                                <MapMarker
-                                    key={`marker-${p.id}`}
-                                    property={p}
-                                    displayPrice={markerPrices[p.id] ?? 0}
-                                    displayCurrency={targetCurrency}
-                                    isSelected={p.id === selectedId}
-                                    isHovered={p.id === hoveredId}
-                                    onClick={onSelectId}
-                                    onHover={onHoverId}
-                                    index={propertyIndexMap[p.id]}
-                                />
-                            );
-                        })}
+                        {/* Individual hotel markers — hidden when a hotel is selected (SelectedPropertyPopup shows the active one) */}
+                        {!selectedId && mappableProperties.map((p) => (
+                            <MapMarker
+                                key={`marker-${p.id}`}
+                                property={p}
+                                displayPrice={markerPrices[p.id] ?? 0}
+                                displayCurrency={targetCurrency}
+                                isSelected={false}
+                                isHovered={p.id === hoveredId}
+                                onClick={onSelectId}
+                                onHover={onHoverId}
+                                index={propertyIndexMap[p.id]}
+                            />
+                        ))}
 
                         {/* Radius circle around selected hotel */}
                         {radiusCircleGeoJSON && (

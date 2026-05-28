@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Search, Star, MapPin, Loader2 } from 'lucide-react';
 import { POI_FILTERS } from '@/config/map-discovery';
-import { getMapboxPoiImage } from '@/utils/images';
+import { getPoiImageUrl } from '@/utils/images';
 import { cn } from '@/lib/utils';
 
 const DISTANCE_OPTIONS = [
@@ -37,6 +37,24 @@ export function MapGemsPanel({
 }: MapGemsPanelProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+
+    // Track per-card image load status so we can show skeletons and hide broken ones.
+    // Keyed by gem name — new names naturally start absent (→ 'loading').
+    // We do NOT reset on every gems update because useNearbyGems pushes many progressive
+    // array references during enrichment; resetting would re-skeleton already-loaded cards.
+    const [imageStatus, setImageStatus] = useState<Record<string, 'loading' | 'loaded' | 'error'>>({});
+
+    // Only wipe state when the user picks a completely different category/radius (i.e. a
+    // fresh search), not on every enrichment batch. We detect a "fresh" search by watching
+    // the identity of the *first* gem name — if that changes the whole set changed.
+    const firstGemName = gems[0] ? (gems[0].properties?.name || gems[0].name) : null;
+    const prevFirstRef = React.useRef<string | null>(null);
+    React.useEffect(() => {
+        if (firstGemName !== prevFirstRef.current) {
+            prevFirstRef.current = firstGemName;
+            setImageStatus({});
+        }
+    }, [firstGemName]);
 
     const scroll = (dir: 'left' | 'right') =>
         scrollRef.current?.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' });
@@ -120,7 +138,7 @@ export function MapGemsPanel({
                         <Loader2 size={10} className="text-blue-500 animate-spin" />
                     ) : (
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                            {gems.length} nearby
+                            {gems.length - Object.values(imageStatus).filter(s => s === 'error').length} nearby
                         </span>
                     )}
                 </div>
@@ -159,11 +177,16 @@ export function MapGemsPanel({
                     {/* Gem cards */}
                     {gems.map((gem, idx) => {
                         const name = gem.properties?.name || gem.name;
+                        const status = imageStatus[name] ?? 'loading';
+
+                        // Don't render cards whose image definitively failed
+                        if (status === 'error') return null;
+
                         const isActive = activeGemName === name;
                         const lng = gem.geometry?.coordinates[0];
                         const lat = gem.geometry?.coordinates[1];
                         const category = gem.properties?.category || gem.category || '';
-                        const imageUrl = gem.properties?.imageUrl || getMapboxPoiImage(name, lat, lng, category);
+                        const imageUrl = gem.properties?.imageUrl || getPoiImageUrl(name, lat, lng, { category });
                         const ratingRaw = Number(gem.properties?.rating);
                         const ratingDisplay = Number.isFinite(ratingRaw)
                             ? (Number.isInteger(ratingRaw) ? String(ratingRaw) : ratingRaw.toFixed(1))
@@ -173,58 +196,71 @@ export function MapGemsPanel({
                         return (
                             <div
                                 key={`${name}-${idx}`}
-                                onClick={() => onGemClick(gem)}
+                                onClick={() => status === 'loaded' && onGemClick(gem)}
                                 className={cn(
-                                    'group relative flex-shrink-0 cursor-pointer rounded-2xl overflow-hidden transition-all duration-300',
+                                    'group relative flex-shrink-0 rounded-2xl overflow-hidden transition-all duration-300',
                                     'w-36 h-24 sm:w-44 sm:h-28',
+                                    status === 'loaded' ? 'cursor-pointer' : 'cursor-default',
                                     isActive
-                                        ? 'ring-[3px] ring-blue-500 ring-offset-1 shadow-2xl scale-[1.03] z-10'
+                                        ? 'shadow-2xl scale-[1.03] z-10'
                                         : 'shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95'
                                 )}
                             >
+                                {/* Skeleton shown while image is loading */}
+                                {status === 'loading' && (
+                                    <div className="absolute inset-0 bg-slate-200 dark:bg-slate-800 animate-pulse rounded-2xl z-10" />
+                                )}
+
                                 <Image
                                     src={imageUrl}
                                     alt={name}
                                     fill
                                     sizes="176px"
                                     className="object-cover transition-transform duration-700 group-hover:scale-110"
-                                    loading="lazy"
+                                    loading="eager"
+                                    onLoad={() => setImageStatus(prev => ({ ...prev, [name]: 'loaded' }))}
+                                    onError={() => setImageStatus(prev => ({ ...prev, [name]: 'error' }))}
                                 />
-                                <div className={cn(
-                                    'absolute inset-0 bg-gradient-to-t transition-opacity duration-300',
-                                    isActive
-                                        ? 'from-blue-900/80 via-black/20 to-transparent'
-                                        : 'from-black/80 via-black/10 to-transparent group-hover:from-black/90'
-                                )} />
 
-                                {ratingDisplay && (
-                                    <div className="absolute top-2 left-2 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md rounded-full px-1.5 py-0.5 flex items-center gap-0.5 shadow-sm">
-                                        <Star size={9} className="text-blue-500 fill-blue-500" />
-                                        <span className="text-[10px] font-extrabold text-slate-800 dark:text-white">
-                                            {ratingDisplay}
-                                        </span>
-                                    </div>
+                                {status === 'loaded' && (
+                                    <>
+                                        <div className={cn(
+                                            'absolute inset-0 bg-gradient-to-t transition-opacity duration-300',
+                                            isActive
+                                                ? 'from-blue-900/80 via-black/20 to-transparent'
+                                                : 'from-black/80 via-black/10 to-transparent group-hover:from-black/90'
+                                        )} />
+
+                                        {ratingDisplay && (
+                                            <div className="absolute top-2 left-2 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md rounded-full px-1.5 py-0.5 flex items-center gap-0.5 shadow-sm">
+                                                <Star size={9} className="text-blue-500 fill-blue-500" />
+                                                <span className="text-[10px] font-extrabold text-slate-800 dark:text-white">
+                                                    {ratingDisplay}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        <div className="absolute inset-0 p-2.5 flex flex-col justify-end text-white">
+                                            <div className="flex items-center gap-1 mb-0.5 opacity-90">
+                                                {React.createElement(Icon, { size: 10, className: 'shrink-0 text-blue-300' })}
+                                                <span className="text-[8px] font-bold uppercase tracking-widest truncate">
+                                                    {gem.properties?.displayCategory || category}
+                                                </span>
+                                            </div>
+                                            <h4 className="text-[11px] font-black leading-tight line-clamp-2 drop-shadow-lg">
+                                                {gem.properties?.translatedName || name}
+                                            </h4>
+                                        </div>
+
+                                        {isActive && (
+                                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-500 border-2 border-white shadow-lg flex items-center justify-center">
+                                                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                            </div>
+                                        )}
+
+                                        <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-2xl pointer-events-none" />
+                                    </>
                                 )}
-
-                                <div className="absolute inset-0 p-2.5 flex flex-col justify-end text-white">
-                                    <div className="flex items-center gap-1 mb-0.5 opacity-90">
-                                        {React.createElement(Icon, { size: 10, className: 'shrink-0 text-blue-300' })}
-                                        <span className="text-[8px] font-bold uppercase tracking-widest truncate">
-                                            {gem.properties?.displayCategory || category}
-                                        </span>
-                                    </div>
-                                    <h4 className="text-[11px] font-black leading-tight line-clamp-2 drop-shadow-lg">
-                                        {gem.properties?.translatedName || name}
-                                    </h4>
-                                </div>
-
-                                {isActive && (
-                                    <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-500 border-2 border-white shadow-lg flex items-center justify-center">
-                                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                                    </div>
-                                )}
-
-                                <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-2xl pointer-events-none" />
                             </div>
                         );
                     })}
