@@ -17,14 +17,12 @@ import { useWeather } from '@/hooks/useWeather';
 import { WeatherWidget } from './WeatherWidget';
 import { isLocationInKorea, normalizeKakaoPoi, calculateHaversineDistance } from '@/utils/geo';
 import { formatDuration } from '@/utils/format';
-import { getMapboxPoiImage } from '@/utils/images';
 import { 
-    GOOGLE_MAPS_SEARCH_URL, 
-    POI_FILTERS, 
-    BAGUIO_DEFAULT_GEMS, 
-    NEARBY_CATEGORIES, 
+    GOOGLE_MAPS_SEARCH_URL,
+    POI_FILTERS,
+    NEARBY_CATEGORIES,
     MAP_FILTER_CONFIG,
-    POI_ICON_MAP 
+    POI_ICON_MAP
 } from '@/config/map-discovery';
 import { mapPoiDetails, getMapPoiCategory } from '@/utils/poi-mapper';
 import { useNearbyGems } from './hooks/useNearbyGems';
@@ -52,7 +50,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         const [isLoaded, setIsLoaded] = useState(false);
         const [mounted, setMounted] = useState(false);
         const [isFullscreen, setIsFullscreen] = useState(false);
-        const [activeMapFilters, setActiveMapFilters] = useState<string[]>(['dining', 'lodging', 'nature', 'explore']);
+        const [activeMapFilters, setActiveMapFilters] = useState<string[]>(['dining', 'nature', 'explore', 'grocery', 'medical', 'transit']);
 
 
 
@@ -134,6 +132,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
         // Nearby Image Gems State
 
         const [selectedCategory, setSelectedCategory] = useState('all');
+        const [nearbyRadius, setNearbyRadius] = useState(2000);
         const [transportProfile, setTransportProfile] = useState<'driving-traffic' | 'driving' | 'walking' | 'cycling'>('driving-traffic');
         const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
         const [isLocating, setIsLocating] = useState(false);
@@ -231,6 +230,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             isLoaded,
             coordinates,
             selectedCategory,
+            radiusMeters: nearbyRadius,
             onClearDirections: clearDirections
         });
 
@@ -803,7 +803,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                 </div>
 
                 {isFullscreen && mounted ? createPortal(
-                    <PoiDiscovery 
+                    <PoiDiscovery
                         isFullscreen={isFullscreen}
                         selectedCategory={selectedCategory}
                         setSelectedCategory={setSelectedCategory}
@@ -825,10 +825,12 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                         handleOptimizeRoute={handleOptimizeRoute}
                         isOptimizing={isOptimizing}
                         hasOptimizedRoute={!!optimizedRouteGeometry}
+                        radiusMeters={nearbyRadius}
+                        onRadiusChange={setNearbyRadius}
                     />,
                     document.body
                 ) : (
-                    <PoiDiscovery 
+                    <PoiDiscovery
                         isFullscreen={isFullscreen}
                         selectedCategory={selectedCategory}
                         setSelectedCategory={setSelectedCategory}
@@ -850,6 +852,8 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                         handleOptimizeRoute={handleOptimizeRoute}
                         isOptimizing={isOptimizing}
                         hasOptimizedRoute={!!optimizedRouteGeometry}
+                        radiusMeters={nearbyRadius}
+                        onRadiusChange={setNearbyRadius}
                     />
                 )}
                 <PoiDetailsModal isOpen={!!modalPoi} onClose={() => setModalPoiId(null)} poi={modalPoi} />
