@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { calculateHaversineDistance } from '@/utils/geo';
 import { getPoiImageUrl } from '@/utils/images';
+import { getPoiImageUrl } from '@/utils/images';
 import { mapPoiDetails } from '@/utils/poi-mapper';
 import { env } from '@/utils/env';
+import { POI_ICON_MAP } from '@/config/map-discovery';
 import { POI_ICON_MAP } from '@/config/map-discovery';
 import { Landmark, Trees, Utensils, Pill, ShoppingBasket, Bus } from 'lucide-react';
 
@@ -10,6 +12,7 @@ interface UseNearbyGemsProps {
     isLoaded: boolean;
     coordinates?: { lat: number; lng: number };
     selectedCategory: string;
+    radiusMeters?: number;
     radiusMeters?: number;
     onClearDirections?: () => void;
 }
@@ -31,6 +34,7 @@ export const useNearbyGems = ({
     isLoaded,
     coordinates,
     selectedCategory,
+    radiusMeters = 5000,
     radiusMeters = 5000,
     onClearDirections
 }: UseNearbyGemsProps) => {
@@ -82,11 +86,31 @@ export const useNearbyGems = ({
                 // Fetch Google Places discovery results
                 let featuresToProcess: any[] = [];
                 try {
-                    const googleFeatures = await fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
-                        .then(r => r.ok ? r.json() : { features: [] })
-                        .then(d => (d.features || []) as any[])
-                        .catch(() => [] as any[]);
-                    featuresToProcess = googleFeatures;
+                    const [googleResult, fsqResult] = await Promise.allSettled([
+                        fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
+                            .then(r => r.ok ? r.json() : { features: [] })
+                            .then(d => (d.features || []) as any[])
+                            .catch(() => [] as any[]),
+                        fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
+                            .then(r => r.ok ? r.json() : { features: [] })
+                            .then(d => (d.features || []) as any[])
+                            .catch(() => [] as any[]),
+                    ]);
+
+                    const googleFeatures = googleResult.status === 'fulfilled' ? googleResult.value : [];
+                    const fsqFeatures    = fsqResult.status === 'fulfilled'    ? fsqResult.value    : [];
+
+                    // Merge: Google places first (have ratings/photos), FSQ fills gaps.
+                    // Deduplicate by normalised name so a place appearing in both APIs appears once.
+                    const seen = new Set<string>();
+                    const merged: any[] = [];
+                    for (const f of [...googleFeatures, ...fsqFeatures]) {
+                        const key = (f.properties?.name || '').toLowerCase().trim();
+                        if (!key || seen.has(key)) continue;
+                        seen.add(key);
+                        merged.push(f);
+                    }
+                    featuresToProcess = merged;
                 } catch (e: any) {
                     if (e.name !== 'AbortError') console.warn('External discovery failed:', e);
                 }
@@ -118,6 +142,7 @@ export const useNearbyGems = ({
                     onClearDirections();
                 }
 
+                featuresToProcess = featuresToProcess.slice(0, 30);
                 featuresToProcess = featuresToProcess.slice(0, 30);
                 if (featuresToProcess.length === 0) {
                     setIsFetchingGems(false);
@@ -272,6 +297,7 @@ export const useNearbyGems = ({
 
         fetchTopGems();
         return () => controller.abort();
+    }, [isLoaded, hasCoordinates, coordinates?.lat, coordinates?.lng, selectedCategory, radiusMeters]);
     }, [isLoaded, hasCoordinates, coordinates?.lat, coordinates?.lng, selectedCategory, radiusMeters]);
 
     return { nearbyGems, isFetchingGems, setNearbyGems };
