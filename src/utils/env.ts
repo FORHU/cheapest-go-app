@@ -54,6 +54,10 @@ export const env = {
     // ETG / RateHawk B2B (hotel reviews nightly sync)
     ETG_KEY_ID: process.env.ETG_KEY_ID,
     ETG_API_KEY: process.env.ETG_API_KEY,
+
+    // Mobile API — shared secret for /api/mobile/* endpoints
+    MOBILE_API_KEY: process.env.MOBILE_API_KEY!,
+    MOBILE_GUEST_USER_ID: process.env.MOBILE_GUEST_USER_ID,
 };
 
 /**
