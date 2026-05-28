@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type Property } from '@/types';
 import { useViewingRoom, useBookingActions } from '@/stores/bookingStore';
@@ -10,6 +10,8 @@ import RoomDetailsView from './RoomDetailsView';
 import { RoomCard } from './RoomCard';
 import { useUserCurrency } from '@/stores/searchStore';
 import { convertCurrency } from '@/lib/currency';
+
+type RateFilter = 'all' | 'rfn' | 'nrfn';
 
 interface RoomListProps {
     property: Property;
@@ -34,6 +36,19 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
         roomTypes,
         hotelImages,
     });
+
+    const [rateFilter, setRateFilter] = useState<RateFilter>('all');
+
+    const filteredRooms = rateFilter === 'all'
+        ? groupedRooms
+        : groupedRooms.filter(g =>
+            rateFilter === 'rfn'
+                ? g.rateOptions.some(r => r.refundable === true)
+                : g.rateOptions.some(r => r.refundable === false)
+        );
+
+    const rfnCount  = groupedRooms.filter(g => g.rateOptions.some(r => r.refundable === true)).length;
+    const nrfnCount = groupedRooms.filter(g => g.rateOptions.some(r => r.refundable === false)).length;
 
     const targetCurrency = useUserCurrency();
 
@@ -78,13 +93,38 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
 
     return (
         <div id="room-list-section" className="mt-6 lg:mt-8 scroll-mt-24">
-            <h3 className="text-[14px] lg:text-xl font-display font-bold text-slate-900 dark:text-white mb-4 lg:mb-6">
-                Available Rooms {hasRooms && `(${groupedRooms.length})`}
+            <h3 className="text-[14px] lg:text-xl font-display font-bold text-slate-900 dark:text-white mb-3 lg:mb-4">
+                Available Rooms {hasRooms && `(${filteredRooms.length})`}
             </h3>
+
+            {hasRooms && (
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                    {([
+                        { key: 'all',  label: 'All',             count: groupedRooms.length },
+                        { key: 'rfn',  label: 'Refundable',      count: rfnCount },
+                        { key: 'nrfn', label: 'Non-refundable',  count: nrfnCount },
+                    ] as { key: RateFilter; label: string; count: number }[]).map(({ key, label, count }) => (
+                        <button
+                            key={key}
+                            onClick={() => setRateFilter(key)}
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                rateFilter === key
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'
+                            }`}
+                        >
+                            {label}
+                            <span className={`text-[10px] px-1 rounded-full ${rateFilter === key ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                                {count}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className="flex flex-col gap-4">
                 {hasRooms ? (
-                    groupedRooms.map((groupedRoom, index) => {
+                    filteredRooms.length > 0 ? filteredRooms.map((groupedRoom, index) => {
                         const roomImage = getImage(groupedRoom, index);
                         const hasMultipleRates = groupedRoom.rateOptions.length > 1;
                         const lowestRate = groupedRoom.rateOptions[0];
@@ -119,7 +159,11 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                 }}
                             />
                         );
-                    })
+                    }) : (
+                        <div className="py-6 text-center text-slate-400 text-sm">
+                            No {rateFilter === 'rfn' ? 'refundable' : 'non-refundable'} rooms available.
+                        </div>
+                    )
                 ) : property._tgx?.token ? (
                     // TravelgateX property — show a single booking card using the search token
                     <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-5 flex flex-col gap-3">
