@@ -350,6 +350,17 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         mounted ? Math.round(convertCurrency(amount, fromCurrency, userCurrency)) : amount;
     const displayCurrency = mounted ? userCurrency : bookingCurrency;
 
+    // Freeze "Total paid" at mount — uses rates current at first render (before async ECB
+    // fetch updates EXCHANGE_RATES), so the amount never fluctuates between page loads.
+    const [frozenTotal, setFrozenTotal] = useState<{ amount: number; currency: string } | null>(null);
+    useEffect(() => {
+        const raw = booking.charged_price ?? booking.total_price;
+        setFrozenTotal({
+            amount: Math.round(convertCurrency(raw, bookingCurrency, liveUserCurrency)),
+            currency: liveUserCurrency,
+        });
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     const segments = booking.flight_segments || [];
     const firstSegment = segments[0];
     const lastSegment = segments[segments.length - 1];
@@ -1125,7 +1136,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </div>
                         <div className="mt-auto flex items-center justify-between gap-2">
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(convertPrice(booking.charged_price ?? booking.total_price), displayCurrency)}
+                                {formatCurrency(
+                                    frozenTotal?.amount ?? (booking.charged_price ?? booking.total_price),
+                                    frozenTotal?.currency ?? bookingCurrency
+                                )}
                             </span>
                             {canCancel && (
                                 <button
@@ -1322,7 +1336,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         <div className="text-right w-full">
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">Total paid</div>
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
-                                {formatCurrency(convertPrice(booking.charged_price ?? booking.total_price), displayCurrency)}
+                                {formatCurrency(
+                                    frozenTotal?.amount ?? (booking.charged_price ?? booking.total_price),
+                                    frozenTotal?.currency ?? bookingCurrency
+                                )}
                             </span>
                         </div>
 
