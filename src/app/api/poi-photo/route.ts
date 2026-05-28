@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
     const roundedLat = parseFloat(lat).toFixed(4);
     const roundedLng = parseFloat(lng).toFixed(4);
-    const cacheKey = `${name}|${roundedLat}|${roundedLng}|v10`;
+    const cacheKey = `${name}|${roundedLat}|${roundedLng}|v11`;
 
     // Serve from cache
     const cached = await getCached(cacheKey);
@@ -88,16 +88,37 @@ export async function GET(req: NextRequest) {
 
         if (full) return NextResponse.json(resultMetadata);
 
+        const isStaticMapUrl = (u: string) =>
+            u.includes('/maps/api/staticmap') ||
+            u.includes('maps.googleapis.com/maps/vt') ||
+            u.includes('maps.google.com/maps/vt') ||
+            u.includes('khms') || // Google satellite tile CDN
+            u.includes('mts') ||  // Google Maps tile service
+            u.includes('lh3.googleusercontent.com/p/') === false && u.includes('googleusercontent.com') && !u.includes('photo_reference');
+
         const tryFetchImage = async (url: string) => {
+            // Reject known static-map URL patterns before even fetching
+            if (isStaticMapUrl(url)) {
+                return { res: null as any, contentType: '', isImage: false };
+            }
             const res = await fetch(url, { next: { revalidate: 3600 } });
             const contentType = res.headers.get('content-type') || '';
-            return { res, contentType, isImage: contentType.toLowerCase().startsWith('image/') };
+            // After following redirects, res.url is the *final* URL.
+            // Google Places Photo API sometimes redirects to a Static Maps tile when
+            // the place has no user-uploaded photo — detect and reject that.
+            const finalUrl = res.url || url;
+            const resolvedToMap = isStaticMapUrl(finalUrl);
+            return {
+                res,
+                contentType,
+                isImage: contentType.toLowerCase().startsWith('image/') && !resolvedToMap,
+            };
         };
 
         let finalUrl = resultMetadata.photoUrl;
         let { res: imgRes, contentType, isImage } = await tryFetchImage(finalUrl);
 
-        if (!imgRes.ok || !isImage) {
+        if (!imgRes?.ok || !isImage) {
             const candidates = [
                 resultMetadata.source === 'google' ? resultMetadata.foursquarePhotoUrl : resultMetadata.googlePhotoUrl,
                 resultMetadata.googlePhotoUrl,
@@ -107,7 +128,7 @@ export async function GET(req: NextRequest) {
 
             for (const url of candidates) {
                 const candidate = await tryFetchImage(url);
-                if (candidate.res.ok && candidate.isImage) {
+                if (candidate.res?.ok && candidate.isImage) {
                     finalUrl = url;
                     imgRes = candidate.res;
                     contentType = candidate.contentType;
@@ -117,7 +138,7 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        if (!imgRes.ok || !isImage) return NextResponse.redirect(finalUrl);
+        if (!imgRes?.ok || !isImage) return NextResponse.redirect(finalUrl);
 
         return new NextResponse(await imgRes.arrayBuffer(), {
             headers: {
@@ -161,10 +182,20 @@ async function buildMetadata(
     ]);
 
     if (googleResult) {
+        // Validate that the Google photo URL won't resolve to a Static Maps tile.
+        // The Places Photo API endpoint itself (/maps/api/place/photo) is fine —
+        // it may redirect to a real photo. But if Google already gave us a
+        // staticmap URL directly, discard it so FSQ/placeholder takes over.
+        const googlePhotoOk =
+            googleResult.photoUrl &&
+            !googleResult.photoUrl.includes('/maps/api/staticmap') &&
+            !googleResult.photoUrl.includes('maps.google.com/maps/api/staticmap');
+
         Object.assign(meta, googleResult, {
-            googlePhotoUrl: googleResult.photoUrl || null,
+            googlePhotoUrl: googlePhotoOk ? googleResult.photoUrl : null,
+            photoUrl: googlePhotoOk ? googleResult.photoUrl : null,
             nameEn: googleResult.name,
-            source: googleResult.photoUrl ? 'google' : 'none',
+            source: googlePhotoOk ? 'google' : 'none',
         });
     }
 
