@@ -136,17 +136,9 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                 {/* Details */}
                 <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                     <div className="min-w-0">
-                        <h3 className="text-[11.5px] font-bold text-slate-900 dark:text-white leading-tight line-clamp-1">
+                        <h3 className="text-[11.5px] font-bold text-slate-900 dark:text-white leading-tight line-clamp-2">
                             {property.name}
                         </h3>
-                        {property.location ? (
-                            <div className="flex items-center gap-0.5 mt-0.5">
-                                <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-                                <span className="text-[9px] text-slate-500 dark:text-slate-400 truncate">
-                                    {property.location}
-                                </span>
-                            </div>
-                        ) : null}
                     </div>
 
                     {/* Rating badge */}
@@ -207,20 +199,15 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                 {/* Details */}
                 <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-start gap-1.5">
                             {index !== undefined && (
-                                <span className="shrink-0 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                                <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
                                     <span className={cn('text-white font-bold leading-none', index > 99 ? 'text-[7px]' : index > 9 ? 'text-[9px]' : 'text-[10px]')}>{index}</span>
                                 </span>
                             )}
-                            <h3 className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-semibold text-slate-900 dark:text-white truncate leading-tight">
+                            <h3 className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-semibold text-slate-900 dark:text-white line-clamp-2 leading-tight">
                                 {property.name}
                             </h3>
-                        </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                            <span className="text-[clamp(0.625rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 truncate">
-                                {property.location}
-                            </span>
                         </div>
                     </div>
 

@@ -1,19 +1,21 @@
-import { 
-    Search, 
-    Utensils, 
-    Landmark, 
-    ShoppingBasket, 
-    Pill, 
-    Bus, 
-    Trees, 
-    Bed, 
-    Coffee, 
-    GraduationCap, 
-    Building2, 
-    Banknote, 
-    Church, 
-    Library 
+import {
+    Search,
+    Utensils,
+    Landmark,
+    ShoppingBasket,
+    Pill,
+    Bus,
+    Trees,
+    Bed,
+    Coffee,
+    GraduationCap,
+    Building2,
+    Banknote,
+    Church,
+    Library
 } from 'lucide-react';
+
+// NOTE: No hardcoded place fallbacks. Discovery is always live via Google Places + Foursquare.
 
 /**
  * Constants and configuration for map discovery and POI filtering.
@@ -48,38 +50,6 @@ export const MAP_FILTER_CONFIG = [
     { id: 'transit', label: 'Transit', icon: Bus, keywords: ['bus', 'train', 'station', 'transit', 'subway', 'metro', 'airport'] },
 ];
 
-export const BAGUIO_DEFAULT_GEMS = [
-    { 
-        type: 'Feature' as const, 
-        geometry: { type: 'Point' as const, coordinates: [120.5946, 16.4124] },
-        properties: { name: 'Burnham Park', category: 'Park', icon: Trees, rating: 4.5 }
-    },
-    { 
-        type: 'Feature' as const, 
-        geometry: { type: 'Point' as const, coordinates: [120.6274, 16.4231] },
-        properties: { name: 'Mines View Park', category: 'Sightseeing', icon: Landmark, rating: 4.4 }
-    },
-    { 
-        type: 'Feature' as const, 
-        geometry: { type: 'Point' as const, coordinates: [120.5971, 16.4138] },
-        properties: { name: 'Session Road', category: 'Shopping', icon: ShoppingBasket, rating: 4.6 }
-    },
-    { 
-        type: 'Feature' as const, 
-        geometry: { type: 'Point' as const, coordinates: [120.5937, 16.4162] },
-        properties: { name: 'Good Taste Cafe', category: 'Dining', icon: Utensils, rating: 4.7 }
-    },
-    { 
-        type: 'Feature' as const, 
-        geometry: { type: 'Point' as const, coordinates: [120.5847, 16.3986] },
-        properties: { name: 'Chaya Baguio', category: 'Dining', icon: Utensils, rating: 4.8 }
-    },
-    { 
-        type: 'Feature' as const, 
-        geometry: { type: 'Point' as const, coordinates: [120.5975, 16.4135] },
-        properties: { name: 'Vizco\'s Restaurant', category: 'Dining', icon: Utensils, rating: 4.5 }
-    },
-];
 
 export const POI_ICON_MAP: Record<string, any> = {
     restaurant: Utensils, 

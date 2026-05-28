@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Popup } from 'react-map-gl/mapbox';
-import { MapPin, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -86,25 +86,7 @@ const MapPopup = React.memo(function MapPopup({
     useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
     useEffect(() => {
-        let startY = 0;
-        let startX = 0;
-
-        const handleTouchStart = (e: TouchEvent) => {
-            startY = e.touches[0].clientY;
-            startX = e.touches[0].clientX;
-        };
-
-        const handleTouchMove = (e: TouchEvent) => {
-            if (!startY || !startX) return;
-            const diffY = Math.abs(e.touches[0].clientY - startY);
-            const diffX = Math.abs(e.touches[0].clientX - startX);
-            if (diffY > 10 || diffX > 10) onCloseRef.current();
-        };
-
         const handleMapClose = () => onCloseRef.current();
-
-        window.addEventListener('touchstart', handleTouchStart, { passive: true });
-        window.addEventListener('touchmove', handleTouchMove, { passive: true });
 
         const map = mapRef?.current?.getMap();
         if (map) {
@@ -114,8 +96,6 @@ const MapPopup = React.memo(function MapPopup({
         }
 
         return () => {
-            window.removeEventListener('touchstart', handleTouchStart);
-            window.removeEventListener('touchmove', handleTouchMove);
             if (map) {
                 map.off('dragstart', handleMapClose);
                 map.off('zoomstart', handleMapClose);
@@ -125,7 +105,7 @@ const MapPopup = React.memo(function MapPopup({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mapRef])
     const content = (
-        <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl w-[240px] border border-slate-200 dark:border-slate-800">
+        <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl w-[240px]">
 
             {/* Image */}
             <div className="relative">
@@ -155,13 +135,6 @@ const MapPopup = React.memo(function MapPopup({
                 <h3 className={`font-bold text-slate-900 dark:text-white leading-tight truncate ${isLandscape ? 'text-[10px]' : 'text-[11px]'}`}>
                     {property.name}
                 </h3>
-
-                <div className="flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                        {property.location}
-                    </span>
-                </div>
 
                 {/* Rating */}
                 {rating > 0 && (

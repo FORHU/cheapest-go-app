@@ -1,4 +1,4 @@
-import { useCallback, useRef, useMemo } from 'react';
+import { useCallback, useRef } from 'react';
 import type { MapRef } from 'react-map-gl/mapbox';
 
 export interface PoiData {
@@ -151,22 +151,25 @@ export const useMapInteractions = ({
     }, [onSelectId, onSelectPoi]);
 
     // Throttled hover handler — keep map interaction smooth under heavy marker density.
-    // Only queries our known interactive layers, not the full Standard style.
+    // Cursor is managed via the has-pointer-cursor class on the canvas container rather
+    // than canvas inline style — CSS !important (globals.css) beats Mapbox's own
+    // inline-style resets, so we never need to fight Mapbox's 60fps cursor management.
     const lastMoveTime = useRef<number>(0);
     const lastPoiName = useRef<string | null>(null);
     const onMouseMove = useCallback((e: any) => {
         const now = Date.now();
-        // Increased throttle to ~150ms (~7fps) — hover tooltips don't need 60fps
         if (now - lastMoveTime.current < 150) return;
         lastMoveTime.current = now;
 
         const map = e.target;
         if (!map || !e.point) return;
+        const container = map.getCanvasContainer(); // .mapboxgl-canvas-container
 
         try {
-            // Skip expensive POI hit-testing while map is actively panning/zooming.
+            // During pan/zoom animations skip expensive hit-testing.
+            // has-pointer-cursor removal lets CSS show grab via !important rule.
             if (map.isMoving() || map.isZooming() || map.isRotating()) {
-                map.getCanvas().style.cursor = '';
+                container.classList.remove('has-pointer-cursor');
                 if (lastPoiName.current !== null) {
                     lastPoiName.current = null;
                     onHoverPoi(null);
@@ -191,7 +194,7 @@ export const useMapInteractions = ({
             );
 
             if (isProperty) {
-                map.getCanvas().style.cursor = 'pointer';
+                container.classList.add('has-pointer-cursor');
                 if (lastPoiName.current !== null) {
                     lastPoiName.current = null;
                     onHoverPoi(null);
@@ -202,7 +205,7 @@ export const useMapInteractions = ({
             // Over a discovery POI?
             const discoveryHit = interactiveHits.find((f: any) => f.layer?.id === 'discovery-poi-layer');
             if (discoveryHit) {
-                map.getCanvas().style.cursor = 'pointer';
+                container.classList.add('has-pointer-cursor');
                 const nextName = discoveryHit.properties?.name || null;
                 if (nextName !== lastPoiName.current) {
                     lastPoiName.current = nextName;
@@ -211,8 +214,8 @@ export const useMapInteractions = ({
                 return;
             }
 
-            // Not over any interactive element — clear hover state
-            map.getCanvas().style.cursor = '';
+            // Not over any interactive element — remove pointer class, CSS shows grab
+            container.classList.remove('has-pointer-cursor');
             if (lastPoiName.current !== null) {
                 lastPoiName.current = null;
                 onHoverPoi(null);
