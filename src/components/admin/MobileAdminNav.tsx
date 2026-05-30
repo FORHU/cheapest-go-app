@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard, CalendarRange, Users, Banknote,
     MoreHorizontal, X, Shield, Building2, BarChart3,
-    Settings, Mail, Plane, Bell, Star, MapPin, Tag, Bookmark, Smartphone,
+    Settings, Mail, Plane, Bell, Star, MapPin, Tag, Bookmark, Smartphone, CreditCard, Globe,
 } from 'lucide-react';
 
 // ── Bottom bar tabs (most-used pages) ──────────────────────────────────────
@@ -55,8 +55,10 @@ const ALL_GROUPS = [
     {
         title: 'Integrations',
         items: [
-            { label: 'Duffel',     href: '/admin/duffel',  icon: Plane },
-            { label: 'Mobile App', href: '/admin/mobile',  icon: Smartphone },
+            { label: 'Stripe',      href: '/admin/stripe',       icon: CreditCard },
+            { label: 'Duffel',      href: '/admin/duffel',       icon: Plane },
+            { label: 'TravelgateX', href: '/admin/travelgatex',  icon: Globe },
+            { label: 'Mobile App',  href: '/admin/mobile',       icon: Smartphone },
         ],
     },
 ];
