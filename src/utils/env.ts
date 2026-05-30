@@ -44,10 +44,13 @@ export const env = {
     // HOTEL_MARKUP_PERCENTAGE:  15% — OTA standard; hotel prices are opaque across platforms
     FLIGHT_MARKUP_PERCENTAGE: process.env.FLIGHT_MARKUP_PERCENTAGE || '0.08',
     HOTEL_MARKUP_PERCENTAGE: process.env.HOTEL_MARKUP_PERCENTAGE || '0.15',
-    // TravelGateX
-    TRAVELGATE_API_KEY: process.env.TRAVELGATE_API_KEY,
-    TRAVELGATE_CODE: process.env.TRAVELGATE_CODE,
-    TRAVELGATE_ENDPOINT_URL: process.env.TRAVELGATE_ENDPOINT_URL,
+    // TravelgateX
+    TRAVELGATE_API_KEY: process.env.TRAVELGATEX_API_KEY || process.env.TRAVELGATE_API_KEY,
+    TRAVELGATE_CODE: process.env.TRAVELGATEX_CODE || process.env.TRAVELGATE_CODE,
+    TRAVELGATE_ENDPOINT_URL: process.env.TRAVELGATEX_ENDPOINT_URL || process.env.TRAVELGATE_ENDPOINT_URL,
+    TRAVELGATE_CLIENT: process.env.TRAVELGATEX_CLIENT || 'forhuinc',
+    TRAVELGATE_SUPPLIER: process.env.TRAVELGATEX_SUPPLIER || 'OTV',
+    TRAVELGATE_CONTEXT: process.env.TRAVELGATEX_CONTEXT || 'OTV',
     // Foursquare
     FOURSQUARE_API_KEY: process.env.FOURSQUARE_SERVICE_API_KEY,
 

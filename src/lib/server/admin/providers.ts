@@ -430,6 +430,9 @@ async function fetchTravelgateXData(): Promise<ProviderIntegrationsData['travelg
     const apiKey = env.TRAVELGATE_API_KEY;
     const accessCode = env.TRAVELGATE_CODE || '38327';
     const endpoint = env.TRAVELGATE_ENDPOINT_URL || 'https://api.travelgate.com';
+    const clientName = env.TRAVELGATE_CLIENT || 'forhuinc';
+    const supplierCode = env.TRAVELGATE_SUPPLIER || 'OTV';
+    const contextCode = env.TRAVELGATE_CONTEXT || 'OTV';
 
     const EMPTY: ProviderIntegrationsData['travelgatex'] = {
         status: 'not_configured',
@@ -531,9 +534,9 @@ async function fetchTravelgateXData(): Promise<ProviderIntegrationsData['travelg
             status: 'healthy',
             apiKeyConfigured: true,
             accessCode,
-            clientName: 'forhuinc',
-            contextCode: 'OTV',
-            supplierCode: 'OTV',
+            clientName,
+            contextCode,
+            supplierCode,
             totalBookings: bookingsRes.count ?? allBookings.length,
             confirmedBookings: confirmed,
             cancelledBookings: cancelled,
@@ -551,9 +554,9 @@ async function fetchTravelgateXData(): Promise<ProviderIntegrationsData['travelg
             status: 'error',
             apiKeyConfigured: !!apiKey,
             accessCode,
-            clientName: 'forhuinc',
-            contextCode: 'OTV',
-            supplierCode: 'OTV',
+            clientName,
+            contextCode,
+            supplierCode,
             errorMessage: error instanceof Error ? error.message : 'Unknown error',
         };
     }
