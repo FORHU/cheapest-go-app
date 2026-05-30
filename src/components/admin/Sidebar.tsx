@@ -19,6 +19,11 @@ import {
     Banknote,
     Plug,
     ChevronDown,
+    Bell,
+    Star,
+    MapPin,
+    Tag,
+    Bookmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -51,11 +56,21 @@ const navGroups: NavGroup[] = [
         ],
     },
     {
+        title: 'Content',
+        items: [
+            { label: 'Destinations', href: '/admin/destinations', icon: MapPin },
+            { label: 'Deals & Vouchers', href: '/admin/deals',    icon: Tag },
+            { label: 'Saved Trips',  href: '/admin/saved-trips',  icon: Bookmark },
+        ],
+    },
+    {
         title: 'General',
         items: [
-            { label: 'Communication', href: '/admin/communication', icon: Mail },
-            { label: 'Analytics',     href: '/admin/analytics',     icon: BarChart3 },
-            { label: 'Settings',      href: '/admin/settings',      icon: Settings },
+            { label: 'Communication', href: '/admin/communication',  icon: Mail },
+            { label: 'Analytics',     href: '/admin/analytics',      icon: BarChart3 },
+            { label: 'Price Alerts',  href: '/admin/price-alerts',   icon: Bell },
+            { label: 'Reviews',       href: '/admin/reviews',        icon: Star },
+            { label: 'Settings',      href: '/admin/settings',       icon: Settings },
         ],
     },
     {

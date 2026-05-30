@@ -95,9 +95,10 @@ export async function POST(req: NextRequest) {
             const { createClient } = await import('@supabase/supabase-js');
             const svc = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
             const { data: { user: tokenUser } } = await svc.auth.getUser(supabaseToken);
-            if (tokenUser?.id) {
-                userId = tokenUser.id;
+            if (!tokenUser?.id) {
+                return NextResponse.json({ success: false, error: 'Invalid session. Please log in again.' }, { status: 401 });
             }
+            userId = tokenUser.id;
         }
 
         // ── Step 1: Price revalidation ────────────────────────────────────

@@ -70,6 +70,36 @@ export function AdminLayoutClient({
                 subtitle: 'Configure platform-wide preferences and security',
                 image: 'https://images.unsplash.com/photo-1454165833767-027ff33027ef?auto=format&fit=crop&q=80&w=1600'
             },
+            communication: {
+                title: 'Communication',
+                subtitle: 'Email logs, delivery status, and retry history',
+                image: 'https://images.unsplash.com/photo-1596526131083-e8c633c948d2?auto=format&fit=crop&q=80&w=1600'
+            },
+            destinations: {
+                title: 'Destinations',
+                subtitle: 'Manage featured destinations shown on the landing page',
+                image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80&w=1600'
+            },
+            deals: {
+                title: 'Deals & Vouchers',
+                subtitle: 'Manage flight deals, weekend offers, and promo codes',
+                image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=1600'
+            },
+            'saved-trips': {
+                title: 'Saved Trips',
+                subtitle: 'View and manage customer saved flights and hotels',
+                image: 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?auto=format&fit=crop&q=80&w=1600'
+            },
+            'price-alerts': {
+                title: 'Price Alerts',
+                subtitle: 'Monitor and manage customer flight price alerts',
+                image: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1600'
+            },
+            reviews: {
+                title: 'Reviews',
+                subtitle: 'Moderate hotel reviews across all properties',
+                image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&q=80&w=1600'
+            },
             duffel: {
                 title: 'Duffel',
                 subtitle: 'Live flight orders & integration health',
@@ -85,7 +115,7 @@ export function AdminLayoutClient({
     }, [pathname]);
 
     return (
-        <div className="flex h-screen bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px] overflow-hidden font-sans">
+        <div className="flex h-screen bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px overflow-hidden font-sans">
             <GlobalSparkle />
 
             {/* Mobile Sidebar overlay */}
@@ -122,7 +152,7 @@ export function AdminLayoutClient({
                                 alt={bannerConfig.title}
                                 className="w-full h-full object-cover transition-opacity duration-500"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+                            <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/60" />
 
                             <div className="absolute bottom-8 left-8 sm:left-12 text-white">
                                 <h2 className="text-2xl sm:text-3xl font-black tracking-tighter drop-shadow-lg">
