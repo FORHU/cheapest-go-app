@@ -8,8 +8,9 @@ export const dynamic = 'force-dynamic';
  * Protected by CRON_SECRET header to prevent public access.
  */
 export async function GET(req: NextRequest) {
+    const cronSecret = process.env.CRON_SECRET;
     const secret = req.headers.get('x-cron-secret');
-    if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
+    if (!cronSecret || secret !== cronSecret) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
