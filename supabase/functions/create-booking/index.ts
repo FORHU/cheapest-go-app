@@ -105,6 +105,8 @@ interface ProviderBookingResult {
     rawPrice?: number;
     rawCurrency?: string;
     ticketNumbers?: string[];
+    /** Seat designators per passenger index, e.g. ["14A", "14B"]. Duffel only. */
+    seatNumbers?: string[];
     holdAllowed?: boolean;
 }
 
@@ -1087,6 +1089,15 @@ async function bookWithDuffel(
 
         const airlinePnr = finalOrder.booking_reference ?? finalOrder.id;
 
+        // Extract seat designators per passenger (e.g. "14A").
+        // Duffel returns passengers[].seats[].designator when seat services were booked.
+        const seatNumbers: string[] = (finalOrder.passengers ?? [])
+            .map((p: any) => {
+                const seats: any[] = p.seats ?? [];
+                return seats.map((s: any) => s.designator ?? '').filter(Boolean).join('/');
+            })
+            .filter((s: string) => s.length > 0);
+
         return {
             pnr: airlinePnr,
             providerOrderId: finalOrder.id,
@@ -1094,6 +1105,7 @@ async function bookWithDuffel(
             rawPrice: parseFloat(finalOrder.total_amount ?? '0') || undefined,
             rawCurrency: finalOrder.total_currency ?? undefined,
             ticketNumbers: ticketNumbers.length > 0 ? ticketNumbers : undefined,
+            seatNumbers: seatNumbers.length > 0 ? seatNumbers : undefined,
         };
     } catch (e: any) {
         console.error('[create-booking] Duffel Order Error:', e);
@@ -1136,6 +1148,7 @@ async function insertSegmentsAndPassengers(
         type: pax.type,
         passport: pax.passport ?? null,
         ticket_number: result.ticketNumbers?.[idx] ?? null,
+        seat_number: result.seatNumbers?.[idx] ?? null,
     }));
 
     if (passengers.length > 0) {
