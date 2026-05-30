@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Sidebar } from '@/components/admin/Sidebar';
 import { TopNav } from '@/components/admin/TopNav';
+import { MobileAdminNav } from '@/components/admin/MobileAdminNav';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
@@ -100,6 +101,11 @@ export function AdminLayoutClient({
                 subtitle: 'Moderate hotel reviews across all properties',
                 image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&q=80&w=1600'
             },
+            mobile: {
+                title: 'Mobile App',
+                subtitle: 'Manage the CheapestGo React Native app — API key, bookings, config',
+                image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80&w=1600'
+            },
             duffel: {
                 title: 'Duffel',
                 subtitle: 'Live flight orders & integration health',
@@ -144,9 +150,9 @@ export function AdminLayoutClient({
                 <TopNav onMenuClick={() => setIsSidebarOpen(true)} isCollapsed={isCollapsed} />
 
                 <main className="flex-1 overflow-y-auto custom-scrollbar">
-                    {/* Page Banner Container with Padding for Rounded Corners */}
-                    <div className="p-4 sm:p-6 lg:p-8 pb-0 lg:pb-0">
-                        <div className="relative h-48 sm:h-64 w-full overflow-hidden rounded-3xl shadow-2xl">
+                    {/* Page Banner */}
+                    <div className="p-3 sm:p-6 lg:p-8 pb-0 lg:pb-0">
+                        <div className="relative h-32 sm:h-64 w-full overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl">
                             <img
                                 src={bannerConfig.image}
                                 alt={bannerConfig.title}
@@ -154,22 +160,26 @@ export function AdminLayoutClient({
                             />
                             <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/60" />
 
-                            <div className="absolute bottom-8 left-8 sm:left-12 text-white">
-                                <h2 className="text-2xl sm:text-3xl font-black tracking-tighter drop-shadow-lg">
+                            <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-12 text-white">
+                                <h2 className="text-xl sm:text-3xl font-black tracking-tighter drop-shadow-lg">
                                     {bannerConfig.title}
                                 </h2>
-                                <p className="text-sm font-bold text-white/90 uppercase tracking-widest mt-1 drop-shadow-md">
+                                <p className="text-[11px] sm:text-sm font-bold text-white/90 uppercase tracking-widest mt-0.5 sm:mt-1 drop-shadow-md hidden sm:block">
                                     {bannerConfig.subtitle}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="p-4 sm:p-6 lg:p-8">
+                    {/* Extra bottom padding on mobile so content clears the bottom nav */}
+                    <div className="p-3 sm:p-6 lg:p-8 pb-24 sm:pb-8">
                         {children}
                     </div>
                 </main>
             </div>
+
+            {/* Mobile bottom navigation */}
+            <MobileAdminNav />
         </div>
     );
 }
