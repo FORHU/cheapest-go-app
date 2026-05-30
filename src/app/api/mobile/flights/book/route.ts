@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe/server';
 import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { getMobileApiKey } from '@/lib/server/mobile-auth';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
@@ -24,9 +25,10 @@ export const dynamic = 'force-dynamic';
  * Returns: { success, clientSecret, sessionId }
  */
 export async function POST(req: NextRequest) {
-    // ── API key auth ──────────────────────────────────────────────────────
+    // ── API key auth — DB key takes priority over env var ─────────────────
     const apiKey = req.headers.get('x-mobile-api-key');
-    if (!apiKey || apiKey !== env.MOBILE_API_KEY) {
+    const activeKey = await getMobileApiKey();
+    if (!apiKey || !activeKey || apiKey !== activeKey) {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 

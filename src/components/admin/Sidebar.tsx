@@ -24,6 +24,7 @@ import {
     MapPin,
     Tag,
     Bookmark,
+    Smartphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -76,7 +77,8 @@ const navGroups: NavGroup[] = [
     {
         title: 'Integrations',
         items: [
-            { label: 'Duffel', href: '/admin/duffel', icon: Plane, badge: 'Live' },
+            { label: 'Duffel',      href: '/admin/duffel',  icon: Plane,       badge: 'Live' },
+            { label: 'Mobile App',  href: '/admin/mobile',  icon: Smartphone,  badge: 'App' },
         ],
     },
 ];
