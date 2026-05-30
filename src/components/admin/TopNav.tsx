@@ -149,18 +149,30 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
     };
 
     return (
-        <header className="h-20 flex items-center justify-between px-6 sm:px-8 border-b border-slate-100 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl sticky top-0 settlement-header z-20">
+        <header className="h-14 sm:h-20 flex items-center justify-between px-3 sm:px-8 border-b border-slate-100 dark:border-white/5 bg-white/70 dark:bg-obsidian/70 backdrop-blur-xl sticky top-0 settlement-header z-20">
             {/* Left: Menu & Search */}
-            <div className="flex items-center gap-6 flex-1">
+            <div className="flex items-center gap-2 sm:gap-6 flex-1">
+                {/* Hamburger — md+ only (mobile uses bottom nav) */}
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="md:hidden text-slate-500"
+                    className="hidden md:flex text-slate-500"
                     onClick={onMenuClick}
                 >
                     <Menu size={20} />
                 </Button>
 
+                {/* Mobile: icon-only search button */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsSearchOpen(true)}
+                    className="sm:hidden w-9 h-9 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10"
+                >
+                    <Search size={18} />
+                </Button>
+
+                {/* sm+: full search bar */}
                 <button
                     onClick={() => setIsSearchOpen(true)}
                     className="relative max-w-md w-full hidden sm:flex items-center gap-3 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg py-2.5 pl-11 pr-12 text-sm font-medium text-slate-400 hover:border-slate-200 dark:hover:border-white/20 transition-all cursor-pointer text-left"
@@ -177,7 +189,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
             </div>
 
             {/* Right: Actions & Profile */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-1 sm:gap-4">
                 <Button
                     variant="ghost"
                     size="icon"
@@ -250,9 +262,9 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <div className="h-10 w-[1px] bg-slate-100 dark:bg-white/5 mx-2 hidden sm:block" />
+                <div className="h-10 w-[1px] bg-slate-100 dark:bg-white/5 mx-1 sm:mx-2 hidden sm:block" />
 
-                <div className="flex items-center gap-3 pl-2 cursor-pointer group">
+                <div className="flex items-center gap-2 sm:gap-3 sm:pl-2 cursor-pointer group">
                     <div className="text-right hidden sm:block">
                         <p className="text-sm font-black text-slate-900 dark:text-white leading-none group-hover:text-blue-600 transition-colors">
                             {user ? `${user.firstName} ${user.lastName}` : 'Guest User'}
@@ -261,16 +273,16 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                             {user?.role === 'admin' ? 'Administrator' : 'Standard User'}
                         </p>
                     </div>
-                    <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-600/20 ring-2 ring-white dark:ring-white/10 ring-offset-2 dark:ring-offset-transparent overflow-hidden transition-transform group-hover:scale-105">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-600/20 ring-2 ring-white dark:ring-white/10 ring-offset-2 dark:ring-offset-transparent overflow-hidden transition-transform group-hover:scale-105">
                         {user?.avatar ? (
                             <Image src={user.avatar} alt="Profile" width={40} height={40} className="w-full h-full object-cover" />
                         ) : (
-                            <User size={20} />
+                            <User size={18} />
                         )}
                     </div>
                 </div>
 
-                <div className="h-10 w-[1px] bg-slate-100 dark:bg-white/5 mx-2 hidden sm:block" />
+                <div className="h-10 w-[1px] bg-slate-100 dark:bg-white/5 mx-1 sm:mx-2 hidden sm:block" />
 
                 <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
                     <DialogTrigger asChild>

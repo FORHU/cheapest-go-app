@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 185 44" fill="none" role="img" aria-label="CheapestGo">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Icon mark -->
+  <circle cx="22" cy="22" r="21" fill="url(#g)"/>
+  <g transform="translate(22,22) rotate(45)">
+    <rect x="-2.5" y="-12" width="5" height="24" rx="2.5" fill="white"/>
+    <path d="M 2.5,-4 L 14,3 L 2.5,1 Z" fill="white"/>
+    <path d="M -2.5,-4 L -14,3 L -2.5,1 Z" fill="white"/>
+    <path d="M 2.5,8 L 7,12 L 2.5,10 Z" fill="white"/>
+    <path d="M -2.5,8 L -7,12 L -2.5,10 Z" fill="white"/>
+  </g>
+
+  <!-- Wordmark (dark mode: light text for "cheapest") -->
+  <text x="54" y="30"
+    font-family="'Inter Tight','Inter',-apple-system,BlinkMacSystemFont,sans-serif"
+    font-size="22">
+    <tspan font-weight="400" fill="#f1f5f9" letter-spacing="-0.3">cheapest</tspan><tspan font-weight="700" fill="#60a5fa" letter-spacing="-0.5">Go</tspan>
+  </text>
+</svg>

@@ -36,7 +36,11 @@ function formatDateLabel(dateStr: string, timeframe: string): string {
 
 export function RevenueChart({ data, defaultCurrency }: RevenueChartProps) {
     const userCurrency = useUserCurrency();
-    const activeCurrency = defaultCurrency || userCurrency || 'PHP';
+    const [mounted, setMounted] = useState(false);
+    React.useEffect(() => setMounted(true), []);
+    // Use defaultCurrency until mounted so server and client first-render agree.
+    // After mount, the user's persisted currency preference takes over.
+    const activeCurrency = (mounted ? (userCurrency || defaultCurrency) : defaultCurrency) || 'PHP';
     const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Sidebar } from '@/components/admin/Sidebar';
 import { TopNav } from '@/components/admin/TopNav';
+import { MobileAdminNav } from '@/components/admin/MobileAdminNav';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
@@ -70,6 +71,51 @@ export function AdminLayoutClient({
                 subtitle: 'Configure platform-wide preferences and security',
                 image: 'https://images.unsplash.com/photo-1454165833767-027ff33027ef?auto=format&fit=crop&q=80&w=1600'
             },
+            communication: {
+                title: 'Communication',
+                subtitle: 'Email logs, delivery status, and retry history',
+                image: 'https://images.unsplash.com/photo-1596526131083-e8c633c948d2?auto=format&fit=crop&q=80&w=1600'
+            },
+            destinations: {
+                title: 'Destinations',
+                subtitle: 'Manage featured destinations shown on the landing page',
+                image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80&w=1600'
+            },
+            deals: {
+                title: 'Deals & Vouchers',
+                subtitle: 'Manage flight deals, weekend offers, and promo codes',
+                image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80&w=1600'
+            },
+            'saved-trips': {
+                title: 'Saved Trips',
+                subtitle: 'View and manage customer saved flights and hotels',
+                image: 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?auto=format&fit=crop&q=80&w=1600'
+            },
+            'price-alerts': {
+                title: 'Price Alerts',
+                subtitle: 'Monitor and manage customer flight price alerts',
+                image: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1600'
+            },
+            reviews: {
+                title: 'Reviews',
+                subtitle: 'Moderate hotel reviews across all properties',
+                image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&q=80&w=1600'
+            },
+            stripe: {
+                title: 'Stripe',
+                subtitle: 'Balance, payments, refunds, disputes and payouts',
+                image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&q=80&w=1600'
+            },
+            travelgatex: {
+                title: 'TravelgateX · OTV',
+                subtitle: 'Hotel provider integration health — WorldOTA / RateHawk via OTV access',
+                image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&q=80&w=1600'
+            },
+            mobile: {
+                title: 'Mobile App',
+                subtitle: 'Manage the CheapestGo React Native app — API key, bookings, config',
+                image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80&w=1600'
+            },
             duffel: {
                 title: 'Duffel',
                 subtitle: 'Live flight orders & integration health',
@@ -85,7 +131,7 @@ export function AdminLayoutClient({
     }, [pathname]);
 
     return (
-        <div className="flex h-screen bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-[length:40px_40px] overflow-hidden font-sans">
+        <div className="flex h-screen bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px overflow-hidden font-sans">
             <GlobalSparkle />
 
             {/* Mobile Sidebar overlay */}
@@ -114,32 +160,36 @@ export function AdminLayoutClient({
                 <TopNav onMenuClick={() => setIsSidebarOpen(true)} isCollapsed={isCollapsed} />
 
                 <main className="flex-1 overflow-y-auto custom-scrollbar">
-                    {/* Page Banner Container with Padding for Rounded Corners */}
-                    <div className="p-4 sm:p-6 lg:p-8 pb-0 lg:pb-0">
-                        <div className="relative h-48 sm:h-64 w-full overflow-hidden rounded-3xl shadow-2xl">
+                    {/* Page Banner */}
+                    <div className="p-3 sm:p-6 lg:p-8 pb-0 lg:pb-0">
+                        <div className="relative h-32 sm:h-64 w-full overflow-hidden rounded-2xl sm:rounded-3xl shadow-2xl">
                             <img
                                 src={bannerConfig.image}
                                 alt={bannerConfig.title}
                                 className="w-full h-full object-cover transition-opacity duration-500"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+                            <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/60" />
 
-                            <div className="absolute bottom-8 left-8 sm:left-12 text-white">
-                                <h2 className="text-2xl sm:text-3xl font-black tracking-tighter drop-shadow-lg">
+                            <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-12 text-white">
+                                <h2 className="text-xl sm:text-3xl font-black tracking-tighter drop-shadow-lg">
                                     {bannerConfig.title}
                                 </h2>
-                                <p className="text-sm font-bold text-white/90 uppercase tracking-widest mt-1 drop-shadow-md">
+                                <p className="text-[11px] sm:text-sm font-bold text-white/90 uppercase tracking-widest mt-0.5 sm:mt-1 drop-shadow-md hidden sm:block">
                                     {bannerConfig.subtitle}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="p-4 sm:p-6 lg:p-8">
+                    {/* Extra bottom padding on mobile so content clears the bottom nav */}
+                    <div className="p-3 sm:p-6 lg:p-8 pb-24 sm:pb-8">
                         {children}
                     </div>
                 </main>
             </div>
+
+            {/* Mobile bottom navigation */}
+            <MobileAdminNav />
         </div>
     );
 }

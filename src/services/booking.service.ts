@@ -251,6 +251,7 @@ export interface FlightPassengerRecord {
   type: string;
   passport?: string | null;
   ticket_number?: string | null;
+  seat_number?: string | null;
 }
 
 /**
