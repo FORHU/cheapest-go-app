@@ -15,6 +15,18 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
         return [];
     }
 
+    // ── Fix 1: Reject past dates before hitting Duffel (422 prevention) ────────
+    // Duffel requires departure_date >= today. Use UTC date to avoid timezone drift.
+    const todayUTC = new Date().toISOString().slice(0, 10);
+    if (params.departureDate < todayUTC) {
+        console.warn(`[Duffel] Skipping — departure_date ${params.departureDate} is in the past (today: ${todayUTC})`);
+        return [];
+    }
+    if (params.returnDate && params.returnDate < params.departureDate) {
+        console.warn(`[Duffel] Skipping — returnDate ${params.returnDate} is before departureDate ${params.departureDate}`);
+        return [];
+    }
+
     console.log(`[Duffel] Starting search: ${params.origin} -> ${params.destination} (${params.departureDate})`);
 
     // 1. Prepare Passengers
@@ -45,57 +57,96 @@ export async function searchDuffel(params: FlightSearchParams): Promise<FlightRe
 
     const startMs = Date.now();
 
-    try {
-        const response = await fetch(DUFFEL_API_URL, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Duffel-Version": "v2",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(10000)
-        });
+    // ── Fix 2 & 3: Retry on 429 (rate limit) and 500 (transient error) ─────────
+    const MAX_RETRIES = 2;
+    let lastStatus = 0;
+    let lastErrMsg = '';
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            const errMsg = `Duffel API Error: ${response.status} - ${JSON.stringify(errorData)}`;
-            console.error(`[Duffel] API error (${response.status}):`, errMsg);
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const response = await fetch(DUFFEL_API_URL, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Duffel-Version": "v2",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(body),
+                signal: AbortSignal.timeout(12000),
+            });
+
+            lastStatus = response.status;
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                lastErrMsg = `Duffel API Error: ${response.status} - ${JSON.stringify(errorData)}`;
+
+                // 429 — respect Retry-After header, then retry
+                if (response.status === 429 && attempt < MAX_RETRIES) {
+                    const retryAfter = parseInt(response.headers.get('Retry-After') ?? '5', 10);
+                    const waitMs = Math.min(retryAfter * 1000, 10_000); // cap at 10s
+                    console.warn(`[Duffel] Rate limited (429). Waiting ${waitMs}ms before retry ${attempt + 1}/${MAX_RETRIES}`);
+                    await new Promise(r => setTimeout(r, waitMs));
+                    continue;
+                }
+
+                // 500 — transient server error, retry after brief backoff
+                if (response.status === 500 && attempt < MAX_RETRIES) {
+                    const waitMs = 2000 * (attempt + 1); // 2s, 4s
+                    console.warn(`[Duffel] Server error (500). Retrying in ${waitMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+                    await new Promise(r => setTimeout(r, waitMs));
+                    continue;
+                }
+
+                console.error(`[Duffel] API error (${response.status}):`, lastErrMsg);
+                logApiCall({
+                    provider: 'duffel', endpoint: DUFFEL_API_URL,
+                    requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, cabinClass: params.cabinClass },
+                    responseStatus: response.status, durationMs: Date.now() - startMs,
+                    errorMessage: lastErrMsg, searchId: params.searchId,
+                });
+                return [];
+            }
+
+            const json = await response.json();
+            const offers = json.data?.offers || [];
+            const results = offers.map((offer: any) => parseDuffelOffer(offer, params.cabinClass));
+
             logApiCall({
                 provider: 'duffel', endpoint: DUFFEL_API_URL,
-                requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, children: params.children, infants: params.infants, cabinClass: params.cabinClass },
-                responseStatus: response.status, durationMs: Date.now() - startMs,
-                errorMessage: errMsg, searchId: params.searchId,
+                requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, cabinClass: params.cabinClass },
+                responseStatus: 200, durationMs: Date.now() - startMs,
+                responseSummary: { resultCount: results.length, attempts: attempt + 1 },
+                searchId: params.searchId,
             });
+
+            return results;
+
+        } catch (error: any) {
+            const isTimeout = error.name === 'TimeoutError' || error.name === 'AbortError';
+
+            // Retry timeouts (500-equivalent transient failures)
+            if (isTimeout && attempt < MAX_RETRIES) {
+                const waitMs = 1500 * (attempt + 1);
+                console.warn(`[Duffel] Timeout on attempt ${attempt + 1}. Retrying in ${waitMs}ms`);
+                await new Promise(r => setTimeout(r, waitMs));
+                continue;
+            }
+
+            logApiCall({
+                provider: 'duffel', endpoint: DUFFEL_API_URL,
+                requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate },
+                durationMs: Date.now() - startMs,
+                errorMessage: error.message, searchId: params.searchId,
+            });
+            console.error("[Duffel] Search failed after retries:", error.message);
             return [];
         }
-
-        const json = await response.json();
-        const offers = json.data?.offers || [];
-
-        // 3. Normalize Results
-        const results = offers.map((offer: any) => parseDuffelOffer(offer, params.cabinClass));
-
-        logApiCall({
-            provider: 'duffel', endpoint: DUFFEL_API_URL,
-            requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate, adults: params.adults, cabinClass: params.cabinClass },
-            responseStatus: 200, durationMs: Date.now() - startMs,
-            responseSummary: { resultCount: results.length },
-            searchId: params.searchId,
-        });
-
-        return results;
-
-    } catch (error: any) {
-        logApiCall({
-            provider: 'duffel', endpoint: DUFFEL_API_URL,
-            requestParams: { origin: params.origin, destination: params.destination, departureDate: params.departureDate },
-            durationMs: Date.now() - startMs,
-            errorMessage: error.message, searchId: params.searchId,
-        });
-        console.error("[Duffel] Search failed:", error.message);
-        return [];
     }
+
+    // Exhausted retries
+    console.error(`[Duffel] Giving up after ${MAX_RETRIES} retries. Last status: ${lastStatus}`);
+    return [];
 }
 
 export function parseDuffelOffer(offer: any, cabinClassFallback?: string) {

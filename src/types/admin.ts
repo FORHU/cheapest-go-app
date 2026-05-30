@@ -306,11 +306,53 @@ export interface MystiflyProviderData {
     errorMessage?: string;
 }
 
+export interface TravelgateXHotelBooking {
+    id: string;
+    reference: string;
+    guestName: string;
+    hotelName: string | null;
+    destination: string | null;
+    checkIn: string;
+    checkOut: string;
+    status: 'confirmed' | 'cancelled' | 'pending';
+    amount: number;
+    currency: string;
+    createdAt: string;
+}
+
+export interface TravelgateXApiLog {
+    id: string;
+    endpoint: string;
+    responseStatus: number | null;
+    durationMs: number;
+    errorMessage: string | null;
+    createdAt: string;
+}
+
+export interface TravelgateXProviderData {
+    status: ProviderStatus;
+    apiKeyConfigured: boolean;
+    accessCode: string | null;
+    clientName: string | null;
+    contextCode: string | null;
+    supplierCode: string | null;
+    totalBookings: number | null;
+    confirmedBookings: number | null;
+    cancelledBookings: number | null;
+    totalRevenue: number | null;
+    revenueCurrency: string | null;
+    otvStatus: 'active' | 'no_rates' | 'unknown';
+    recentBookings: TravelgateXHotelBooking[];
+    recentApiLogs: TravelgateXApiLog[];
+    errorMessage?: string;
+}
+
 export interface ProviderIntegrationsData {
     stripe: StripeProviderData;
     resend: ResendProviderData;
     duffel: DuffelProviderData;
     mystifly: MystiflyProviderData;
+    travelgatex: TravelgateXProviderData;
 }
 
 export interface ApiLogRow {

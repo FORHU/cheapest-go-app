@@ -25,6 +25,7 @@ import {
     Tag,
     Bookmark,
     Smartphone,
+    CreditCard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -77,8 +78,10 @@ const navGroups: NavGroup[] = [
     {
         title: 'Integrations',
         items: [
-            { label: 'Duffel',      href: '/admin/duffel',  icon: Plane,       badge: 'Live' },
-            { label: 'Mobile App',  href: '/admin/mobile',  icon: Smartphone,  badge: 'App' },
+            { label: 'Stripe',        href: '/admin/stripe',       icon: CreditCard,  badge: 'Live' },
+            { label: 'Duffel',        href: '/admin/duffel',       icon: Plane,       badge: 'Live' },
+            { label: 'TravelgateX',   href: '/admin/travelgatex',  icon: Globe,       badge: 'OTV' },
+            { label: 'Mobile App',    href: '/admin/mobile',       icon: Smartphone,  badge: 'App' },
         ],
     },
 ];

@@ -43,7 +43,10 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
     } = data;
 
     const userCurrency = useUserCurrency();
-    const activeCurrency = defaultCurrency || userCurrency || 'PHP';
+    const [mounted, setMounted] = useState(false);
+    React.useEffect(() => setMounted(true), []);
+    // Defer to defaultCurrency until mounted so server + client first-render agree.
+    const activeCurrency = (mounted ? (userCurrency || defaultCurrency) : defaultCurrency) || 'PHP';
     const [isProvidersCollapsed, setIsProvidersCollapsed] = useState(false);
 
     const handleExport = () => {

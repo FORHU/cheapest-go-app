@@ -101,6 +101,16 @@ export function AdminLayoutClient({
                 subtitle: 'Moderate hotel reviews across all properties',
                 image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&q=80&w=1600'
             },
+            stripe: {
+                title: 'Stripe',
+                subtitle: 'Balance, payments, refunds, disputes and payouts',
+                image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&q=80&w=1600'
+            },
+            travelgatex: {
+                title: 'TravelgateX · OTV',
+                subtitle: 'Hotel provider integration health — WorldOTA / RateHawk via OTV access',
+                image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&q=80&w=1600'
+            },
             mobile: {
                 title: 'Mobile App',
                 subtitle: 'Manage the CheapestGo React Native app — API key, bookings, config',
