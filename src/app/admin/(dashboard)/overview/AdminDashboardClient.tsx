@@ -10,7 +10,6 @@ import {
     Users, Briefcase, Globe, Zap, Clock
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ProjectAnalytics } from '@/components/admin/ProjectAnalytics';
 import { Button } from '@/components/ui/Button';
 import { StatCard } from '@/components/admin/StatCard';
 import { formatCurrency } from '@/lib/utils';
@@ -23,6 +22,7 @@ import { ConversionFunnel } from '@/components/admin/dashboard/ConversionFunnel'
 import { TopRoutes } from '@/components/admin/dashboard/TopRoutes';
 import { ProviderIntegrations } from '@/components/admin/dashboard/ProviderIntegrations';
 import { DuffelDashboard } from '@/components/admin/dashboard/DuffelDashboard';
+import { formatDate } from '@/lib/utils';
 
 interface AdminDashboardClientProps {
     data: DashboardData;
@@ -43,8 +43,43 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
     } = data;
 
     const userCurrency = useUserCurrency();
-    const activeCurrency = defaultCurrency || userCurrency || 'PHP';
+    const [mounted, setMounted] = useState(false);
+    React.useEffect(() => setMounted(true), []);
+    // Defer to defaultCurrency until mounted so server + client first-render agree.
+    const activeCurrency = (mounted ? (userCurrency || defaultCurrency) : defaultCurrency) || 'PHP';
     const [isProvidersCollapsed, setIsProvidersCollapsed] = useState(false);
+
+    const handleExport = () => {
+        const rows: string[][] = [
+            ['Section', 'Metric', 'Value'],
+            ['Overview', 'Total Bookings', String(liveStats.totalBookings)],
+            ['Overview', 'Revenue', formatCurrency(convertCurrency(liveStats.revenue, 'PHP', activeCurrency), activeCurrency)],
+            ['Overview', 'Pending Bookings', String(liveStats.pendingBookings)],
+            ['Overview', 'Cancelled Bookings', String(liveStats.cancelledBookings)],
+            ['Financial', 'Daily Revenue', formatCurrency(convertCurrency(revenueStats.dailyRevenue, 'PHP', activeCurrency), activeCurrency)],
+            ['Financial', 'Monthly Revenue', formatCurrency(convertCurrency(revenueStats.monthlyRevenue, 'PHP', activeCurrency), activeCurrency)],
+            ['Financial', 'Total Markup', formatCurrency(convertCurrency(revenueStats.totalMarkup, 'PHP', activeCurrency), activeCurrency)],
+            ['Financial', 'Total Profit', formatCurrency(convertCurrency(revenueStats.totalProfit, 'PHP', activeCurrency), activeCurrency)],
+            [],
+            ['Recent Transactions', 'Customer', 'Action', 'Amount', 'Type'],
+            ...recentActivity.slice(0, 6).map(a => ['Transaction', a.user, a.action, a.amount, a.type]),
+            [],
+            ['Supplier Breakdown', 'Supplier', 'Share %', 'Bookings'],
+            ...supplierBreakdown.map(s => ['Supplier', s.name, String(s.value), String(s.count)]),
+        ];
+
+        const csv = rows.map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `dashboard-export-${new Date().toISOString().split('T')[0]}.csv`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
     const topMetrics = useMemo(() => [
         { label: 'Total Bookings', value: liveStats.totalBookings.toString(), trend: 'Successful orders', icon: Briefcase, variant: 'blue' as const },
@@ -63,7 +98,7 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
     return (
         <div className="pt-8 space-y-12 pb-20 w-full px-4 lg:px-8">
             <div className="flex items-center justify-end">
-                <Button variant="outline" className="bg-blue-600 hover:bg-blue-500 rounded-xl font-black text-[10px] uppercase tracking-widest h-10 px-6 text-white border-0 shadow-lg shadow-blue-500/20">
+                <Button onClick={handleExport} variant="outline" className="bg-blue-600 hover:bg-blue-500 rounded-xl font-black text-[10px] uppercase tracking-widest h-10 px-6 text-white border-0 shadow-lg shadow-blue-500/20">
                     <FileDown size={14} className="mr-2" /> Export
                 </Button>
             </div>
@@ -123,12 +158,12 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                     </div>
                 </div>
 
-                {/* Bottom Row: Recent Transactions */}
-                <div className="col-span-12">
+                {/* Bottom Row: Recent Transactions + Top Routes */}
+                <div className="col-span-12 lg:col-span-8">
                     <div className="space-y-6">
                         <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Recent Transactions</h2>
                         <div className="bg-white dark:bg-obsidian border border-slate-100 dark:border-white/10 rounded-3xl p-8 shadow-sm">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {recentActivity.slice(0, 6).map((activity) => (
                                     <div key={activity.id} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all border border-slate-50 dark:border-white/5">
                                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${activity.type === 'flight' ? 'bg-blue-500/10 text-blue-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
@@ -144,6 +179,10 @@ export default function AdminDashboardClient({ data }: AdminDashboardClientProps
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div className="col-span-12 lg:col-span-4">
+                    <TopRoutes routes={topRoutes} />
                 </div>
             </div>
 

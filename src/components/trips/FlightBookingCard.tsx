@@ -1133,6 +1133,17 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                             <span className="font-mono">{booking.pnr}</span>
                             <span>·</span>
                             <span>{booking.passengers?.length || 0} pax</span>
+                            {/* Seat badges — mobile */}
+                            {booking.passengers?.some(p => p.seat_number) && (
+                                <span className="flex items-center gap-1">
+                                    <span>·</span>
+                                    {booking.passengers.filter(p => p.seat_number).map((p, idx) => (
+                                        <span key={idx} className="font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1 rounded text-[9px]">
+                                            {p.seat_number}
+                                        </span>
+                                    ))}
+                                </span>
+                            )}
                         </div>
                         <div className="mt-auto flex items-center justify-between gap-2">
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
@@ -1290,6 +1301,25 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                         {booking.passengers.filter(p => p.ticket_number).map((p, idx) => (
                                             <span key={idx} className="text-slate-500">
                                                 {p.first_name} {p.last_name} <span className="text-slate-300 dark:text-slate-600">|</span> <span className="font-mono text-slate-700 dark:text-slate-300">{p.ticket_number}</span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Seat assignments — shown when seats were pre-selected at booking */}
+                            {booking.passengers?.some(p => p.seat_number) && (
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-blue-500 font-bold px-1 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-[9px] uppercase border border-blue-100 dark:border-blue-800 shrink-0">SEAT</span>
+                                        <span className="font-medium text-[11px] text-slate-600 dark:text-slate-300">Assigned Seats</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 text-[10px]">
+                                        {booking.passengers.filter(p => p.seat_number).map((p, idx) => (
+                                            <span key={idx} className="text-slate-500 flex items-center gap-1">
+                                                {p.first_name} {p.last_name}
+                                                <span className="text-slate-300 dark:text-slate-600">|</span>
+                                                <span className="font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">{p.seat_number}</span>
                                             </span>
                                         ))}
                                     </div>

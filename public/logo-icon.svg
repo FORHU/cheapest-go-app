@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" fill="none" role="img" aria-label="CheapestGo icon">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <circle cx="22" cy="22" r="21" fill="url(#g)"/>
+  <!-- Commercial airplane top-down view, pointing northeast -->
+  <g transform="translate(22,22) rotate(45)">
+    <!-- Fuselage -->
+    <rect x="-2.5" y="-12" width="5" height="24" rx="2.5" fill="white"/>
+    <!-- Main wings swept back -->
+    <path d="M 2.5,-4 L 14,3 L 2.5,1 Z" fill="white"/>
+    <path d="M -2.5,-4 L -14,3 L -2.5,1 Z" fill="white"/>
+    <!-- Tail stabilizer -->
+    <path d="M 2.5,8 L 7,12 L 2.5,10 Z" fill="white"/>
+    <path d="M -2.5,8 L -7,12 L -2.5,10 Z" fill="white"/>
+  </g>
+</svg>

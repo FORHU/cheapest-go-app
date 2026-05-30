@@ -24,10 +24,26 @@ create index if not exists hotel_review_items_score_idx on hotel_review_items (h
 
 alter table hotel_review_items enable row level security;
 
-create policy "hotel_review_items_public_read"
-  on hotel_review_items for select
-  using (true);
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where tablename = 'hotel_review_items'
+    and policyname = 'hotel_review_items_public_read'
+  ) then
+    create policy "hotel_review_items_public_read"
+      on hotel_review_items for select
+      using (true);
+  end if;
+end $$;
 
-create policy "hotel_review_items_service_write"
-  on hotel_review_items for all
-  using (auth.role() = 'service_role');
+do $$ begin
+  if not exists (
+    select 1 from pg_policies
+    where tablename = 'hotel_review_items'
+    and policyname = 'hotel_review_items_service_write'
+  ) then
+    create policy "hotel_review_items_service_write"
+      on hotel_review_items for all
+      using (auth.role() = 'service_role');
+  end if;
+end $$;

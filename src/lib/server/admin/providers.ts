@@ -1,7 +1,7 @@
 import { getStripe } from '@/lib/stripe/server';
 import { env } from '@/utils/env';
 import { createAdminClient } from '@/utils/supabase/admin';
-import type { ProviderIntegrationsData, DuffelAirline } from '@/types/admin';
+import type { ProviderIntegrationsData, DuffelAirline, TravelgateXHotelBooking, TravelgateXApiLog } from '@/types/admin';
 
 // ── Stripe ──────────────────────────────────────────────
 
@@ -424,16 +424,152 @@ export async function fetchAirlinesData(): Promise<DuffelAirline[]> {
     }
 }
 
+// ── TravelgateX (OTV/WorldOTA) ──────────────────────────
+
+async function fetchTravelgateXData(): Promise<ProviderIntegrationsData['travelgatex']> {
+    const apiKey = env.TRAVELGATE_API_KEY;
+    const accessCode = env.TRAVELGATE_CODE || '38327';
+    const endpoint = env.TRAVELGATE_ENDPOINT_URL || 'https://api.travelgate.com';
+
+    const EMPTY: ProviderIntegrationsData['travelgatex'] = {
+        status: 'not_configured',
+        apiKeyConfigured: false,
+        accessCode: null,
+        clientName: null,
+        contextCode: null,
+        supplierCode: null,
+        totalBookings: null,
+        confirmedBookings: null,
+        cancelledBookings: null,
+        totalRevenue: null,
+        revenueCurrency: null,
+        otvStatus: 'unknown',
+        recentBookings: [],
+        recentApiLogs: [],
+    };
+
+    if (!apiKey) return EMPTY;
+
+    try {
+        const supabase = createAdminClient();
+
+        // Run Supabase queries and TGX health check concurrently
+        const [bookingsRes, apiLogsRes, healthResult] = await Promise.all([
+            supabase
+                .from('unified_bookings')
+                .select('*', { count: 'exact' })
+                .eq('type', 'hotel')
+                .in('provider', ['OTV', 'travelgatex', 'travelgate'])
+                .order('created_at', { ascending: false })
+                .limit(20),
+
+            supabase
+                .from('api_logs')
+                .select('id, endpoint, response_status, duration_ms, error_message, created_at')
+                .ilike('provider', '%travelgate%')
+                .order('created_at', { ascending: false })
+                .limit(10),
+
+            // Lightweight destination health check — proves API key + access code work
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Apikey ${apiKey}`,
+                    'Content-Type': 'application/json',
+                    'Accept-Encoding': 'gzip',
+                },
+                body: JSON.stringify({
+                    query: `query { hotelX { destinationSearcher(criteria: { access: "${accessCode}", text: "Paris", maxSize: 1 }) { ... on DestinationData { code type } } } }`,
+                }),
+                signal: AbortSignal.timeout(8000),
+            }).then(async r => {
+                if (!r.ok) return 'no_rates' as const;
+                const body = await r.json();
+                const results = body?.data?.hotelX?.destinationSearcher;
+                return Array.isArray(results) && results.length > 0 ? 'active' as const : 'no_rates' as const;
+            }).catch(() => 'unknown' as const),
+        ]);
+
+        const allBookings = bookingsRes.data || [];
+        const confirmed = allBookings.filter((b: any) => b.status === 'confirmed').length;
+        const cancelled = allBookings.filter((b: any) => b.status === 'cancelled').length;
+        const totalRevenue = allBookings
+            .filter((b: any) => b.status === 'confirmed')
+            .reduce((sum: number, b: any) => sum + (Number(b.total_price) || 0), 0);
+
+        const recentBookings: TravelgateXHotelBooking[] = allBookings.slice(0, 10).map((b: any) => {
+            const meta = b.metadata as any;
+            return {
+                id: b.id,
+                reference: b.external_id || b.id.slice(0, 8).toUpperCase(),
+                guestName: meta?.holder
+                    ? `${meta.holder.firstName || ''} ${meta.holder.lastName || ''}`.trim()
+                    : meta?.passengers?.[0]
+                        ? `${meta.passengers[0].firstName || ''} ${meta.passengers[0].lastName || ''}`.trim()
+                        : 'Unknown Guest',
+                hotelName: meta?.hotelName || meta?.hotel?.name || null,
+                destination: meta?.destination || meta?.destinationCode || null,
+                checkIn: meta?.checkIn || b.departure_date || '',
+                checkOut: meta?.checkOut || b.return_date || '',
+                status: b.status === 'confirmed' ? 'confirmed' : b.status === 'cancelled' ? 'cancelled' : 'pending',
+                amount: Number(b.total_price) || 0,
+                currency: b.currency || 'USD',
+                createdAt: b.created_at,
+            };
+        });
+
+        const recentApiLogs: TravelgateXApiLog[] = (apiLogsRes.data || []).map((log: any) => ({
+            id: log.id,
+            endpoint: log.endpoint || '',
+            responseStatus: log.response_status,
+            durationMs: log.duration_ms || 0,
+            errorMessage: log.error_message,
+            createdAt: log.created_at,
+        }));
+
+        return {
+            status: 'healthy',
+            apiKeyConfigured: true,
+            accessCode,
+            clientName: 'forhuinc',
+            contextCode: 'OTV',
+            supplierCode: 'OTV',
+            totalBookings: bookingsRes.count ?? allBookings.length,
+            confirmedBookings: confirmed,
+            cancelledBookings: cancelled,
+            totalRevenue: Math.round(totalRevenue * 100) / 100,
+            revenueCurrency: allBookings[0]?.currency || 'USD',
+            otvStatus: healthResult,
+            recentBookings,
+            recentApiLogs,
+        };
+
+    } catch (error) {
+        console.error('[providers] TravelgateX error:', error);
+        return {
+            ...EMPTY,
+            status: 'error',
+            apiKeyConfigured: !!apiKey,
+            accessCode,
+            clientName: 'forhuinc',
+            contextCode: 'OTV',
+            supplierCode: 'OTV',
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        };
+    }
+}
+
 // ── Main export ─────────────────────────────────────────
 
 export async function getProviderIntegrations(): Promise<ProviderIntegrationsData & { airlines: DuffelAirline[] }> {
-    const [stripe, resend, duffel, mystifly, airlines] = await Promise.all([
+    const [stripe, resend, duffel, mystifly, travelgatex, airlines] = await Promise.all([
         fetchStripeData(),
         fetchResendData(),
         fetchDuffelData(),
         fetchMystiflyData(),
+        fetchTravelgateXData(),
         fetchAirlinesData(),
     ]);
 
-    return { stripe, resend, duffel, mystifly, airlines };
+    return { stripe, resend, duffel, mystifly, travelgatex, airlines };
 }
