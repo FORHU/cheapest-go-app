@@ -893,9 +893,51 @@ export async function POST(req: NextRequest) {
 
         if (sessionUpdateError) {
             console.error('[/book] CRITICAL — failed to save payment_intent_id to session:', sessionUpdateError.message);
-            // The Duffel pre-order already exists but we cannot link it to the session.
-            // Cancel the PaymentIntent immediately so the customer is never charged
-            // for a booking we cannot track.
+
+            // Cancel the Duffel pre-order FIRST — it exists in Duffel's system and holds a
+            // real seat. If we only cancel Stripe and leave the Duffel order open, the seat
+            // remains locked on our Duffel balance until the hold expires (5–30 min).
+            if (duffelPreOrder?.orderId) {
+                try {
+                    const duffelToken = env.DUFFEL_TOKEN;
+                    // Step 1: create order cancellation (get refund quote)
+                    const cancelQuoteRes = await fetch('https://api.duffel.com/air/order_cancellations', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${duffelToken}`,
+                            'Duffel-Version': 'v2',
+                        },
+                        body: JSON.stringify({ data: { order_id: duffelPreOrder.orderId } }),
+                        signal: AbortSignal.timeout(8000),
+                    });
+                    if (cancelQuoteRes.ok) {
+                        const cancelQuote = await cancelQuoteRes.json();
+                        const cancellationId = cancelQuote?.data?.id;
+                        if (cancellationId) {
+                            // Step 2: confirm the cancellation
+                            await fetch(`https://api.duffel.com/air/order_cancellations/${cancellationId}/actions/confirm`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${duffelToken}`,
+                                    'Duffel-Version': 'v2',
+                                },
+                                signal: AbortSignal.timeout(8000),
+                            });
+                            console.log(`[/book] Duffel order ${duffelPreOrder.orderId} cancelled (cancellation: ${cancellationId})`);
+                        }
+                    } else {
+                        const errBody = await cancelQuoteRes.text().catch(() => '');
+                        console.error(`[/book] Duffel cancellation quote failed (${cancelQuoteRes.status}): ${errBody} — order ${duffelPreOrder.orderId} may need manual cancellation`);
+                    }
+                } catch (duffelCancelErr: any) {
+                    // Log loudly — ops must manually cancel this order in the Duffel dashboard
+                    console.error(`[/book] ORPHANED DUFFEL ORDER: ${duffelPreOrder.orderId} — cancel failed: ${duffelCancelErr.message}. Manual cancellation required.`);
+                }
+            }
+
+            // Cancel the Stripe PaymentIntent so the customer is never charged
             try {
                 await stripe.paymentIntents.cancel(paymentIntent.id);
                 console.log('[/book] PaymentIntent cancelled after session update failure:', paymentIntent.id);
