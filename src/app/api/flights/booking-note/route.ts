@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/utils/env';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     // ── Save to Supabase if bookingId provided ──
     if (bookingId) {
         try {
-            const supabase = createClient(supabaseUrl, supabaseKey);
+            const supabase = createAdminClient();
             const rows = notes.map((note: string) => ({
                 booking_id: bookingId,
                 note,

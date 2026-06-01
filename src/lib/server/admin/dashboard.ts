@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { EXCHANGE_RATES } from '@/lib/currency';
 import { DashboardStats, AnalyticsData, SupplierBreakdown, RecentActivity, AdvancedAnalyticsData, RevenueTrend, ConversionFunnel, RouteMetric, DashboardData, ApiLogRow } from '@/types/admin';

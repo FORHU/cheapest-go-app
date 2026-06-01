@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { searchFlights } from '@/lib/server/flights/search-flights';
 import { sendPriceAlertEmail } from '@/lib/server/email';
 import { env } from '@/utils/env';
@@ -7,7 +7,7 @@ import { env } from '@/utils/env';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min — Vercel Pro/Enterprise
 
-const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createAdminClient();
 
 /**
  * GET /api/cron/check-price-alerts

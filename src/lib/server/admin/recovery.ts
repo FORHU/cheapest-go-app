@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { stripe } from '@/lib/stripe/server';
 import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';

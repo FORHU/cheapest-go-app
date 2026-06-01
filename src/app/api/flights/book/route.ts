@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
@@ -109,8 +110,7 @@ export async function POST(req: NextRequest) {
         // ── Duplicate flight booking guard ──
         // Duffel segments use iata_code; Mystifly uses iataCode or plain string — handle all.
         {
-            const { createClient: createSvc } = await import('@supabase/supabase-js');
-            const svc = createSvc(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+            const svc = createAdminClient();
 
             const rawFlight = flight as any;
             // Duffel: slices[0].segments[0]; Mystifly: segments[0]
@@ -879,8 +879,7 @@ export async function POST(req: NextRequest) {
         // Storing the pre-order data in the session means create-booking can use it
         // directly without a Stripe API round-trip (avoids STRIPE_SECRET_KEY dependency
         // in the edge function and eliminates any race/auth issues).
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const supabase = createAdminClient();
 
         // Step 3a: Critical — PI id + status only. Must not fail.
         const { error: sessionUpdateError } = await supabase

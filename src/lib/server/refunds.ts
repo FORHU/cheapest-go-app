@@ -1,4 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+;
+import type { DbClient } from '@/lib/db/query-builder';
 import { CancellationResult } from '@/lib/server/cancellation-engine';
 
 // ============================================================================
@@ -37,7 +38,7 @@ export interface LiteApiRefundInfo {
  * Should be called immediately after a refundable cancellation is confirmed.
  */
 export async function createRefundRequest(
-    supabase: SupabaseClient,
+    supabase: DbClient,
     bookingId: string,
     calculation: CancellationResult,
     userId?: string
@@ -84,7 +85,7 @@ export async function createRefundRequest(
  * this just records the outcome in refund_logs.
  */
 export async function processRefund(
-    supabase: SupabaseClient,
+    supabase: DbClient,
     refundLogId: string,
     liteApiInfo: LiteApiRefundInfo
 ): Promise<ProcessRefundResult> {

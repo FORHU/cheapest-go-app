@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { createNotification } from '@/lib/server/admin/notify';
 import { sendFlightBookingConfirmationEmail, sendFlightRefundEmail } from '@/lib/server/email';
 import { env } from '@/utils/env';
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const supabase = createAdminClient();
 
         // ─── 1. Provider Parsing & Event Mapping ─────────────────────
         let provider = 'unknown';

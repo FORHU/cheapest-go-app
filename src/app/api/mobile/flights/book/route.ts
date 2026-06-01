@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/utils/env';
 import { stripe } from '@/lib/stripe/server';
@@ -94,8 +95,7 @@ export async function POST(req: NextRequest) {
         let userId = env.MOBILE_GUEST_USER_ID ?? '00000000-0000-0000-0000-000000000001';
         const supabaseToken = req.headers.get('x-supabase-token');
         if (supabaseToken) {
-            const { createClient } = await import('@supabase/supabase-js');
-            const svc = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+            const svc = createAdminClient();
             const { data: { user: tokenUser } } = await svc.auth.getUser(supabaseToken);
             if (!tokenUser?.id) {
                 return NextResponse.json({ success: false, error: 'Invalid session. Please log in again.' }, { status: 401 });
@@ -274,8 +274,7 @@ export async function POST(req: NextRequest) {
             .map((d: any) => d.unique_identifier as string);
 
         // ── Step 4: Store pre-order in session ────────────────────────────
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const supabase = createAdminClient();
 
         await supabase.from('booking_sessions').update({
             duffel_pre_order_id: order.id,

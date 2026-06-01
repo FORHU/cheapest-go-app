@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from '@/utils/postgres/admin';
 import { cache } from "react";
 import { type Deal, type VacationPackage } from "@/types";
 import { env } from "@/utils/env";
@@ -15,7 +15,7 @@ import {
 let publicClient: any = null;
 function getPublicClient() {
     if (!publicClient) {
-        publicClient = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+        publicClient = createAdminClient();
     }
     return publicClient;
 }

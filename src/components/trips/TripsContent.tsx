@@ -9,7 +9,7 @@ import type { BookingRecord, FlightBookingRecord } from '@/services/booking.serv
 import BookingCard from './BookingCard';
 import FlightBookingCard from './FlightBookingCard';
 import type { TripsData } from '@/lib/trips';
-import { createClient } from '@/utils/supabase/client';
+// Realtime replaced with polling — no Supabase client needed
 
 type TabValue = 'upcoming' | 'past' | 'all' | 'wishlist';
 const VALID_TABS: TabValue[] = ['upcoming', 'past', 'all', 'wishlist'];
@@ -49,32 +49,27 @@ export function TripsContent({ initialData }: TripsContentProps) {
     }
   }, [user, isLoading, router]);
 
-  // Realtime: refresh page when any flight booking status changes (e.g. awaiting_ticket → ticketed)
+  // Poll for booking status changes every 30 seconds while the tab is visible.
+  // Replaces the Supabase Realtime subscription (postgres_changes) which required
+  // the Supabase WebSocket service. router.refresh() re-runs Server Components
+  // so the page gets fresh data without a full reload.
   useEffect(() => {
     if (!user) return;
-    const supabase = createClient();
-    const channel = supabase
-      .channel('flight-booking-status')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'flight_bookings',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const oldStatus = payload.old?.status;
-          const newStatus = payload.new?.status;
-          if (oldStatus !== newStatus) {
-            console.log(`[trips] Booking status changed: ${oldStatus} → ${newStatus}, refreshing`);
-            router.refresh();
-          }
-        }
-      )
-      .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Only poll for "in-progress" bookings (awaiting_ticket, pnr_created, booked)
+    // where status changes are expected. Stop polling once stable.
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          router.refresh();
+        }
+      }, 30_000); // 30-second poll
+    };
+
+    startPolling();
+    return () => { if (interval) clearInterval(interval); };
   }, [user, router]);
 
   const rawTab = searchParams?.get('tab');

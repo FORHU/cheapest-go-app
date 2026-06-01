@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createAdminClient();
     const results: Record<string, number | string> = {};
 
     // 1. Expired search cache rows

@@ -1,4 +1,4 @@
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { DbClient } from '@/lib/db/query-builder';
 
 export interface UserPreferences {
   typicalAdults: number;
@@ -28,7 +28,7 @@ const DEFAULTS: UserPreferences = {
 
 export async function getPreferences(
   user: User,
-  supabase: SupabaseClient,
+  supabase: DbClient,
 ): Promise<UserPreferences> {
   const { data } = await supabase
     .from('profiles')
@@ -42,7 +42,7 @@ export async function getPreferences(
 
 export async function updatePreferences(
   user: User,
-  supabase: SupabaseClient,
+  supabase: DbClient,
   patch: Partial<UserPreferences>,
 ): Promise<UserPreferences> {
   const current = await getPreferences(user, supabase);
@@ -63,7 +63,7 @@ export async function updatePreferences(
 /** Derive preferences from booking history and save them. */
 export async function syncPreferencesFromHistory(
   user: User,
-  supabase: SupabaseClient,
+  supabase: DbClient,
 ): Promise<UserPreferences> {
   const [hotelRows, flightRows] = await Promise.all([
     supabase

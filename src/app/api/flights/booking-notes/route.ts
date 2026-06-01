@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/utils/env';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const supabaseUrl = env.SUPABASE_URL;
     const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createAdminClient();
 
     const { data, error } = await supabase
         .from('flight_booking_notes')

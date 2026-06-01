@@ -4,7 +4,8 @@ import { stripe } from '@/lib/stripe/server';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
 import { applyMarkup, toStripeAmount, HOTEL_MARKUP, BUNDLE_MARKUP } from '@/lib/pricing';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 import { createHash } from 'crypto';
 
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
         // ── Duplicate booking guard ──
         // Warn if the user already has an active booking for the same property + overlapping dates.
         if (propertyName && checkIn && checkOut) {
-            const svc = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+            const svc = createAdminClient();
             const ACTIVE_STATUSES = ['confirmed', 'pending', 'completed'];
             const { data: existing } = await svc
                 .from('bookings')

@@ -1,5 +1,5 @@
-import type { SupabaseClient, User } from '@supabase/supabase-js';
-import { createClient } from '@supabase/supabase-js';
+import type { DbClient } from '@/lib/db/query-builder';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from "@/utils/env";
 import {
   amendBookingSchema,
@@ -40,7 +40,7 @@ export interface ConfirmAndSaveResult {
 // ============================================================================
 
 export async function verifyBookingOwnership(
-  supabase: SupabaseClient,
+  supabase: DbClient,
   bookingId: string,
   userId: string,
 ): Promise<{ isOwner: boolean; error?: string }> {
@@ -263,7 +263,7 @@ export async function confirmAndSaveTgxBooking(
   };
 
   try {
-    const serviceClient = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const serviceClient = createAdminClient();
 
     const snapshotPayload = {
       policy_type: policyType,
@@ -367,7 +367,7 @@ export async function confirmAndSaveTgxBooking(
     console.error('[confirmAndSaveTgxBooking] DB error after TGX confirmed — attempting emergency INSERT:', error);
     // Last-resort: insert a minimal record so the booking is at least traceable
     try {
-      const serviceClient = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+      const serviceClient = createAdminClient();
       await serviceClient.from('bookings').insert({
         ...bookingPayload,
         provider: 'travelgatex',
@@ -405,7 +405,7 @@ import type { LiteApiRefundInfo } from './refunds';
 export async function cancelBooking(
   bookingId: string,
   user: User,
-  supabase: SupabaseClient
+  supabase: DbClient
 ): Promise<CancelBookingResult> {
   if (!bookingId || typeof bookingId !== 'string' || bookingId.trim().length === 0) {
     return { success: false, error: 'Booking ID is required' };
@@ -544,7 +544,7 @@ export async function cancelBooking(
 
           // Log to financial events ledger (hotel path uses hotel_booking_id TEXT column).
           // Use service client — financial events table requires service role to bypass RLS.
-          const svcForFinance = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+          const svcForFinance = createAdminClient();
           svcForFinance
             .from('booking_financial_events')
             .insert({
@@ -637,7 +637,7 @@ export async function cancelBooking(
 export async function amendBooking(
   params: AmendBookingParams,
   user: User,
-  supabase: SupabaseClient
+  supabase: DbClient
 ): Promise<AmendBookingResult> {
   const validation = amendBookingSchema.safeParse(params);
   if (!validation.success) {
@@ -681,7 +681,7 @@ export async function amendBooking(
 export async function getBookingDetails(
   bookingId: string,
   user: User,
-  supabase: SupabaseClient
+  supabase: DbClient
 ): Promise<BookingDetailsResult> {
   if (!bookingId || typeof bookingId !== 'string' || bookingId.trim().length === 0) {
     return { success: false, error: 'Booking ID is required' };
@@ -743,7 +743,7 @@ export async function getBookingDetails(
 export async function saveBookingToDatabase(
   params: SaveBookingParams,
   user: User,
-  supabase: SupabaseClient
+  supabase: DbClient
 ): Promise<{ success: boolean; error?: string }> {
   const validation = saveBookingSchema.safeParse(params);
   if (!validation.success) {
@@ -795,7 +795,7 @@ export async function saveBookingToDatabase(
 
 export async function getUserBookings(
   user: User,
-  supabase: SupabaseClient
+  supabase: DbClient
 ): Promise<GetUserBookingsResult> {
   try {
     const { data, error } = await supabase

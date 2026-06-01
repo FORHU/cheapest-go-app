@@ -1,8 +1,6 @@
-import { createServerClient } from "@supabase/ssr";
-import { type NextRequest, NextResponse } from "next/server";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// DEPRECATED — replaced by src/utils/postgres/middleware.ts. Safe to delete.
+export { updateSession } from '@/utils/postgres/middleware';
+/*
 
 // Routes that require authentication
 const protectedRoutes = ['/checkout', '/trips', '/account'];

@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { requireAdmin, isAuthError } from '@/lib/server/admin';

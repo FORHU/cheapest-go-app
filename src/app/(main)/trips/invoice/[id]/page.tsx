@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { notFound, redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/supabase/admin';
