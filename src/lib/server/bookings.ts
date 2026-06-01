@@ -239,30 +239,31 @@ export async function confirmAndSaveTgxBooking(
   const isRefundable = booking.cancelPolicy?.refundable === true;
   const policyType = isRefundable ? 'free_cancellation' : 'non_refundable';
 
+  // Build outside try so the catch block can reference it for emergency recovery
+  const bookingPayload = {
+    booking_id: bookingId,
+    user_id: user.id,
+    property_name: params.propertyName,
+    property_image: params.propertyImage ?? null,
+    room_name: params.roomName,
+    check_in: params.checkIn,
+    check_out: params.checkOut,
+    guests_adults: params.adults,
+    guests_children: params.children ?? 0,
+    total_price: totalPrice,
+    currency,
+    holder_first_name: params.holder.firstName,
+    holder_last_name: params.holder.lastName,
+    holder_email: params.holder.email,
+    status: bookingStatus,
+    special_requests: params.specialRequests ?? null,
+    voucher_code: params.voucherCode ?? null,
+    discount_amount: params.discountAmount ?? 0,
+    policy_type: policyType,
+  };
+
   try {
     const serviceClient = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-
-    const bookingPayload = {
-      booking_id: bookingId,
-      user_id: user.id,
-      property_name: params.propertyName,
-      property_image: params.propertyImage ?? null,
-      room_name: params.roomName,
-      check_in: params.checkIn,
-      check_out: params.checkOut,
-      guests_adults: params.adults,
-      guests_children: params.children ?? 0,
-      total_price: totalPrice,
-      currency,
-      holder_first_name: params.holder.firstName,
-      holder_last_name: params.holder.lastName,
-      holder_email: params.holder.email,
-      status: bookingStatus,
-      special_requests: params.specialRequests ?? null,
-      voucher_code: params.voucherCode ?? null,
-      discount_amount: params.discountAmount ?? 0,
-      policy_type: policyType,
-    };
 
     const snapshotPayload = {
       policy_type: policyType,
@@ -289,8 +290,49 @@ export async function confirmAndSaveTgxBooking(
     });
 
     if (rpcError) {
-      console.error('[confirmAndSaveTgxBooking] DB save failed after TGX confirmed:', rpcError);
-      console.error('CRITICAL: TGX booking', bookingId, 'confirmed but DB save failed. Manual reconciliation required.');
+      console.error('[confirmAndSaveTgxBooking] RPC failed after TGX confirmed — attempting fallback INSERT:', rpcError);
+
+      // Fallback: direct INSERT without policy tiers. The booking is saved with
+      // basic fields so cancellation/refund can still be processed. Cancel policy
+      // will be marked incomplete for manual ops review.
+      const { error: fallbackError } = await serviceClient
+        .from('bookings')
+        .insert({
+          ...bookingPayload,
+          // Tag as incomplete so ops can identify and patch cancel tiers
+          special_requests: [bookingPayload.special_requests, '[POLICY_TIERS_MISSING — see RPC error log]']
+            .filter(Boolean).join(' | '),
+        });
+
+      if (!fallbackError) {
+        // Patch provider/financial columns separately (same as the happy path below)
+        await serviceClient
+          .from('bookings')
+          .update({
+            provider: 'travelgatex',
+            provider_metadata: { supplierRef, hotelRef, clientReference, tgxBookingId },
+            payment_intent_id: params.paymentIntentId ?? null,
+            supplier_cost: price,
+            charged_price: totalPrice,
+          })
+          .eq('booking_id', bookingId);
+
+        console.warn(
+          '[confirmAndSaveTgxBooking] Fallback INSERT succeeded for', bookingId,
+          '— cancel policy tiers missing, manual review required'
+        );
+        return {
+          success: true,
+          data: { bookingId, status: bookingStatus, policyType, policySummary: snapshotPayload.summary, totalPrice, currency },
+        };
+      }
+
+      // Both RPC and direct INSERT failed — truly orphaned booking
+      console.error(
+        'CRITICAL: TGX booking', bookingId,
+        'confirmed but ALL DB saves failed. Supplier ref:', supplierRef,
+        'PI:', params.paymentIntentId, '— Manual reconciliation required.',
+      );
       return {
         success: false,
         providerConfirmed: true,
@@ -322,7 +364,27 @@ export async function confirmAndSaveTgxBooking(
       data: { bookingId, status: bookingStatus, policyType, policySummary: snapshotPayload.summary, totalPrice, currency },
     };
   } catch (error) {
-    console.error('[confirmAndSaveTgxBooking] DB error:', error);
+    console.error('[confirmAndSaveTgxBooking] DB error after TGX confirmed — attempting emergency INSERT:', error);
+    // Last-resort: insert a minimal record so the booking is at least traceable
+    try {
+      const serviceClient = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+      await serviceClient.from('bookings').insert({
+        ...bookingPayload,
+        provider: 'travelgatex',
+        payment_intent_id: params.paymentIntentId ?? null,
+        supplier_cost: price,
+        charged_price: totalPrice,
+        special_requests: [bookingPayload.special_requests, '[EMERGENCY_RECOVERY — exception during save]']
+          .filter(Boolean).join(' | '),
+      });
+      console.warn('[confirmAndSaveTgxBooking] Emergency INSERT succeeded for', bookingId);
+      return {
+        success: true,
+        data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency },
+      };
+    } catch (emergencyErr) {
+      console.error('CRITICAL: Emergency INSERT also failed for', bookingId, ':', emergencyErr);
+    }
     return {
       success: false,
       providerConfirmed: true,

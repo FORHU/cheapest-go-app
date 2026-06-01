@@ -82,6 +82,12 @@ export interface RateLimitOptions {
     limit: number;
     windowMs?: number;
     prefix?: string;
+    /**
+     * When provided the rate limit key is scoped to this user ID instead of IP.
+     * Use for authenticated endpoints — prevents IP-spoofing bypasses and gives
+     * per-user quotas which are more meaningful than per-IP on shared networks.
+     */
+    userId?: string;
 }
 
 export interface RateLimitResult {
@@ -90,18 +96,43 @@ export interface RateLimitResult {
     resetAt: number;
 }
 
+/**
+ * Derive a stable client identifier for anonymous rate limiting.
+ *
+ * On Vercel the edge network sets `x-real-ip` to the true client IP and
+ * clients cannot override it. We prefer this over `x-forwarded-for` where
+ * the leftmost entry is the client-supplied value (spoofable).
+ *
+ * Fallback order: x-real-ip → rightmost x-forwarded-for → 'unknown'
+ */
 function getClientKey(req: Request): string {
-    const forwarded = (req as any).headers?.get?.('x-forwarded-for') ?? '';
-    const ip = (forwarded as string).split(',')[0].trim() || 'unknown';
-    return ip;
+    const headers = (req as any).headers;
+    const get = (name: string): string => headers?.get?.(name) ?? '';
+
+    // x-real-ip is set by Vercel's edge and is not forwardable by clients
+    const realIp = get('x-real-ip').trim();
+    if (realIp) return realIp;
+
+    // Fallback: take the rightmost entry in x-forwarded-for.
+    // Vercel appends the client IP, so the last entry is the most trustworthy.
+    const forwarded = get('x-forwarded-for');
+    if (forwarded) {
+        const parts = forwarded.split(',');
+        const last = parts[parts.length - 1]?.trim();
+        if (last) return last;
+    }
+
+    return 'unknown';
 }
 
 export async function rateLimit(
     req: Request,
     options: RateLimitOptions,
 ): Promise<RateLimitResult> {
-    const { limit, windowMs = 60_000, prefix = 'rl' } = options;
-    const key = `${prefix}:${getClientKey(req)}`;
+    const { limit, windowMs = 60_000, prefix = 'rl', userId } = options;
+    // Authenticated routes key on user ID — immune to IP spoofing
+    const clientId = userId ?? getClientKey(req);
+    const key = `${prefix}:${clientId}`;
 
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
         try {

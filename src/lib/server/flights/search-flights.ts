@@ -31,10 +31,11 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
     const cacheStart = Date.now();
     const cachedResults = await getExistingCachedResults(params, TTL_MINUTES);
     if (cachedResults && cachedResults.length > 0) {
-        // Mystifly V2 fares cached without a SearchIdentifier are unbookable — drop them.
-        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        // Strip all Mystifly results — Mystifly is not active at launch (Duffel-only).
+        // Any cached mystifly/mystifly_v2 offers would reach the /flights/book endpoint
+        // and get rejected with 503, creating a broken checkout experience.
         const bookableResults = cachedResults.filter(r =>
-            r.provider !== 'mystifly_v2' || !UUID_RE.test(r.offer_id ?? '')
+            r.provider !== 'mystifly' && r.provider !== 'mystifly_v2'
         );
         console.log(`[Cache] Found valid hit for ${params.origin}->${params.destination} (TTL: ${TTL_MINUTES}m, total: ${cachedResults.length}, bookable: ${bookableResults.length})`);
         logApiCall({
@@ -47,7 +48,7 @@ export async function searchFlights(params: FlightSearchParams): Promise<FlightO
         if (bookableResults.length > 0) {
             return bookableResults.map(r => normalizedToFlightOffer(r, params.returnDate ? 'round-trip' : 'one-way'));
         }
-        // All cached results were unbookable V2 fares — fall through to live search
+        // All cached results were from inactive providers — fall through to live search
     }
     logApiCall({
         provider: 'cache', endpoint: 'flight_results_cache', durationMs: Date.now() - cacheStart,

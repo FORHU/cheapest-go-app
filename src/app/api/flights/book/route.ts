@@ -19,17 +19,19 @@ export async function POST(req: NextRequest) {
     const csrfError = checkCsrf(req);
     if (csrfError) return csrfError;
 
-    // 5 booking attempts per minute per IP
-    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book' });
+    // Auth first so rate limit keys on user ID instead of IP (IP is spoofable)
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError || !user) {
+        return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+
+    // 5 booking attempts per minute per user
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book', userId: user.id });
     if (!rl.success) {
         return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
 
     try {
-        const { user, error: authError } = await getAuthenticatedUser();
-        if (authError || !user) {
-            return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
-        }
 
         const body = await req.json();
         const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal, confirmedPrice, bundleHotelId } = body as {
@@ -52,7 +54,13 @@ export async function POST(req: NextRequest) {
 
         // ── Validate ──
         if (provider === 'mystifly_v2' || provider === 'mystifly') {
-            return NextResponse.json({ success: false, error: 'Mystifly bookings are currently disabled' }, { status: 503 });
+            // Mystifly is not active — this offer should never reach checkout because
+            // search-flights.ts filters all Mystifly results from the cache. If it somehow
+            // does, return a user-friendly message asking them to search again.
+            return NextResponse.json({
+                success: false,
+                error: 'This fare is no longer available. Please search again for current prices.',
+            }, { status: 422 });
         }
         if (!provider || provider !== 'duffel') {
             return NextResponse.json({ success: false, error: 'invalid provider string passed' }, { status: 400 });
@@ -157,7 +165,8 @@ export async function POST(req: NextRequest) {
         // V2 UUID FareSources require SearchIdentifier on all Mystifly endpoints (revalidate + book).
         // Mystifly does not return SearchIdentifier in search responses, so these fares are unbookable.
         // Fail here immediately rather than authorizing a charge we can't complete.
-        if (provider === 'mystifly_v2') {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if ((provider as string) === 'mystifly_v2') {
             const traceId: string = (flight as any).traceId ?? '';
             const fareCode = traceId.split('|')[0];
             const searchIdentifier = traceId.split('|')[3]; // tunneled format: FSC|convId||SearchId
@@ -209,7 +218,8 @@ export async function POST(req: NextRequest) {
         if (!revalData.success || !revalData.seatsAvailable) {
             // Mystifly: SearchIdentifier is frequently missing from search responses.
             // Soft-pass these errors and let the booking API validate the fare instead.
-            const isMystiflyProvider = provider === 'mystifly_v2';
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            const isMystiflyProvider = (provider as string) === 'mystifly_v2';
             const isSearchIdError = /searchIdentifier.*empty|cannot revalidate/i.test(revalData.error || '');
             if (isMystiflyProvider && isSearchIdError) {
                 console.warn('[/book] SearchIdentifier revalidation error — soft-passing for Mystifly, proceeding to booking');
@@ -237,7 +247,8 @@ export async function POST(req: NextRequest) {
 
         const serverFarePolicy = revalData.farePolicy || farePolicy;
         const sanitizedFlight = { ...flight };
-        if (provider === 'mystifly_v2') {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if ((provider as string) === 'mystifly_v2') {
             delete (sanitizedFlight as any).rawOffer;
             delete (sanitizedFlight as any)._rawOffer;
         }
@@ -811,7 +822,8 @@ export async function POST(req: NextRequest) {
 
         // ── Step 2: Create Stripe PaymentIntent ──
         const stripeStart = Date.now();
-        const isMystifly = provider === 'mystifly_v2' || provider === 'mystifly';
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const isMystifly = (provider as string) === 'mystifly_v2' || (provider as string) === 'mystifly';
 
         // Apply platform markup before charging the customer.
         // For Duffel: use the order's actual locked total (already validated by Duffel, includes services).
@@ -881,6 +893,19 @@ export async function POST(req: NextRequest) {
 
         if (sessionUpdateError) {
             console.error('[/book] CRITICAL — failed to save payment_intent_id to session:', sessionUpdateError.message);
+            // The Duffel pre-order already exists but we cannot link it to the session.
+            // Cancel the PaymentIntent immediately so the customer is never charged
+            // for a booking we cannot track.
+            try {
+                await stripe.paymentIntents.cancel(paymentIntent.id);
+                console.log('[/book] PaymentIntent cancelled after session update failure:', paymentIntent.id);
+            } catch (cancelErr: any) {
+                console.error('[/book] Could not cancel PI after session update failure:', cancelErr.message, '— PI:', paymentIntent.id);
+            }
+            return NextResponse.json({
+                success: false,
+                error: 'A session error occurred. Your card was not charged. Please try again.',
+            }, { status: 500 });
         }
 
         // Step 3a-ii: Audit fields (non-critical — columns may not exist yet).

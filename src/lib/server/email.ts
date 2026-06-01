@@ -17,6 +17,54 @@ function escapeHtml(str: string): string {
 export type EmailLogStatus = 'queued' | 'sent' | 'failed';
 export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' | 'awaiting_ticket' | 'price_alert';
 
+/**
+ * Returns true if an email of this type has already been sent (or queued)
+ * for this booking — used to suppress duplicates before calling Resend.
+ */
+async function isEmailAlreadySent(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    supabase: any,
+    bookingId: string,
+    emailType: EmailType,
+): Promise<boolean> {
+    const { data } = await supabase
+        .from('email_logs')
+        .select('id')
+        .eq('booking_id', bookingId)
+        .eq('email_type', emailType)
+        .in('status', ['sent', 'queued'])
+        .maybeSingle();
+    return data !== null;
+}
+
+/**
+ * Guard called at the top of every email send function.
+ * Returns a resolved { duplicate: true } result if the email was already sent,
+ * or null to signal that the caller should proceed with sending.
+ *
+ * Usage:
+ *   const dup = await checkEmailDuplicate(bookingId, 'confirmation');
+ *   if (dup) return dup;
+ */
+async function checkEmailDuplicate(
+    bookingId: string | undefined,
+    emailType: EmailType,
+): Promise<SendBookingEmailResult | null> {
+    if (!bookingId) return null;
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !supabaseServiceKey) return null;
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const alreadySent = await isEmailAlreadySent(supabase, bookingId, emailType);
+    if (alreadySent) {
+        console.warn(`[email] Duplicate suppressed before send: ${emailType} for booking ${bookingId}`);
+        return { success: true }; // treat as success — email was already delivered
+    }
+    return null;
+}
+
 async function logEmail(params: {
     bookingId?: string;
     recipient: string;
@@ -27,16 +75,27 @@ async function logEmail(params: {
     metadata?: Record<string, any>;
     /** Store the rendered HTML so the retry-emails cron can re-send without regenerating. */
     htmlBody?: string;
-}) {
+}): Promise<{ duplicate: boolean }> {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.warn('[logEmail] Supabase credentials not found');
-        return;
+        return { duplicate: false };
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Deduplication: suppress if a sent/queued record already exists for this booking + type.
+    // The unique index on email_logs (booking_id, email_type) WHERE status IN ('sent','queued')
+    // acts as a final safety net, but checking first gives a clean log message.
+    if (params.bookingId && params.status !== 'failed') {
+        const alreadySent = await isEmailAlreadySent(supabase, params.bookingId, params.emailType);
+        if (alreadySent) {
+            console.warn(`[logEmail] Duplicate suppressed: ${params.emailType} for booking ${params.bookingId}`);
+            return { duplicate: true };
+        }
+    }
 
     // Merge htmlBody into metadata for failed/queued entries (retry needs it)
     const metadata = {
@@ -58,8 +117,15 @@ async function logEmail(params: {
         }]);
 
     if (error) {
+        // Unique-constraint violation = concurrent duplicate (race was won by the other caller)
+        if (error.code === '23505') {
+            console.warn(`[logEmail] Unique constraint prevented duplicate: ${params.emailType} for booking ${params.bookingId}`);
+            return { duplicate: true };
+        }
         console.error('[logEmail] Failed to insert log:', error);
     }
+
+    return { duplicate: false };
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -94,6 +160,10 @@ export async function sendBookingConfirmationEmail(
     if (!email || !bookingId) {
         return { success: false, error: 'Missing required fields' };
     }
+
+    // Dedup: bail out immediately if this confirmation was already sent/queued
+    const dup = await checkEmailDuplicate(bookingId, 'confirmation');
+    if (dup) return dup;
 
     try {
         // Format price
@@ -546,6 +616,10 @@ export async function sendFlightBookingConfirmationEmail(
     if (!email || !bookingId) {
         return { success: false, error: 'Missing required fields' };
     }
+
+    // Dedup: bail out immediately if this confirmation was already sent/queued
+    const dup = await checkEmailDuplicate(bookingId, 'confirmation');
+    if (dup) return dup;
 
     try {
         const formattedPrice = new Intl.NumberFormat('en-US', {

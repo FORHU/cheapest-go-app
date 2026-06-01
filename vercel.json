@@ -19,6 +19,14 @@
     {
       "path": "/api/cron/cache-cleanup",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/internal/retry-emails",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/internal/auto-recover",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

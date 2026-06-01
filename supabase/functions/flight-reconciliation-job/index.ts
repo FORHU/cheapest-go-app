@@ -82,8 +82,17 @@ serve(async (req) => {
                         }
                     }
                 } else if (booking.provider === "mystifly" || booking.provider === "mystifly_v2") {
-                    // For Mystifly, you would call `RetrieveFlightDetails` or similar via PNR
-                    // For skeleton purposes, assume status unchanged unless manually coded
+                    // Mystifly is not active in production (Duffel-only at launch).
+                    // Reconciliation for Mystifly bookings requires calling the
+                    // RetrieveFlightDetails endpoint with the booking PNR — implement
+                    // when Mystifly goes live. For now, log and skip so the job
+                    // doesn't silently mark these as synced.
+                    console.log(
+                        `[Reconciliation] Skipping Mystifly booking ${booking.id} (pnr: ${booking.pnr}) — ` +
+                        `Mystifly reconciliation not yet implemented. Manual review required for this booking.`
+                    );
+                    // Do NOT update actualStatus — leave the booking in its current DB state
+                    continue;
                 }
 
                 // 3. Compare and Repair Inconsistencies
