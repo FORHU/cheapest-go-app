@@ -179,6 +179,22 @@ Deno.serve(async (req: Request) => {
 
         const bs = session as BookingSession;
 
+        // ── Session expiry check ──
+        // expires_at is set when the session is created (NOW() + 15 min).
+        // If the customer took too long to complete payment the Duffel offer will
+        // also have expired, so we fail early with a clear message instead of
+        // letting the supplier call fail with a cryptic error.
+        // We do NOT reject sessions with a pre-created Duffel order (duffel_pre_order_id)
+        // because the order already exists — we just need to confirm it.
+        const hasDuffelPreOrder = !!bs.duffel_pre_order_id;
+        if (!hasDuffelPreOrder && bs.expires_at && new Date(bs.expires_at) < new Date()) {
+            console.warn(`[create-booking] Session ${sessionId} expired at ${bs.expires_at} — rejecting`);
+            return jsonResponse(corsHeaders, {
+                success: false,
+                error: 'Booking session expired. The payment will be refunded automatically.',
+            }, 410);
+        }
+
         // Resolve the authoritative PI ID: prefer the one passed directly from the webhook
         // (which always has it from the Stripe event), fall back to the session column.
         // This fixes the root cause of null payment_intent_id in flight_bookings.

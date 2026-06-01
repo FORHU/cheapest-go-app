@@ -242,11 +242,14 @@ export async function POST(req: NextRequest) {
         } catch (err) {
             console.error('[Webhook] Duffel booking error:', err);
             // Payment was captured but booking failed — auto-refund the customer.
-            // Idempotency key ensures duplicate webhook deliveries don't double-refund.
+            // Key on event.id (not pi.id): one refund attempt per Stripe webhook delivery.
+            // If Stripe retries the same event, the idempotency key deduplicates at Stripe.
+            // If a genuinely different event fires for the same PI, it gets its own key and
+            // is blocked by Stripe's "already refunded" check — not a double-refund risk.
             try {
                 await getStripe().refunds.create(
                     { payment_intent: pi.id },
-                    { idempotencyKey: `webhook-auto-refund-${pi.id}` },
+                    { idempotencyKey: `webhook-auto-refund-${event.id}` },
                 );
                 console.log(`[Webhook] Auto-refunded PI ${pi.id} after Duffel booking failure`);
                 await supabase

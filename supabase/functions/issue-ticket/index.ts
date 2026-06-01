@@ -130,18 +130,10 @@ Deno.serve(async (req: Request) => {
             providerStatus: result.providerStatus,
         });
 
-        // ── 3. Update Booking Status to "ticketed" ──
-        const { error: updateError } = await supabase
-            .from('flight_bookings')
-            .update({ status: 'ticketed' })
-            .eq('id', bookingId);
-
-        if (updateError) {
-            console.error('[issue-ticket] Failed to update booking status:', updateError);
-            throw new Error(`Failed to update booking: ${updateError.message}`);
-        }
-
-        // ── 4. Save E-Ticket Numbers to Passengers ──
+        // ── 3. Save E-Ticket Numbers to Passengers FIRST ──
+        // Write ticket numbers before flipping the booking status.
+        // If this fails, the booking stays in awaiting_ticket and the next
+        // invocation retries — the customer never sees "Ticketed" without numbers.
         if (result.ticketNumbers.length > 0) {
             const { data: passengers } = await supabase
                 .from('passengers')
@@ -150,18 +142,33 @@ Deno.serve(async (req: Request) => {
                 .order('created_at', { ascending: true });
 
             if (passengers?.length) {
-                const updates = passengers.map((pax: any, idx: number) => ({
+                // Bulk upsert — single round-trip instead of N sequential updates
+                const upsertRows = passengers.map((pax: any, idx: number) => ({
                     id: pax.id,
                     ticket_number: result.ticketNumbers[idx] ?? result.ticketNumbers[0],
                 }));
 
-                for (const update of updates) {
-                    await supabase
-                        .from('passengers')
-                        .update({ ticket_number: update.ticket_number })
-                        .eq('id', update.id);
+                const { error: paxError } = await supabase
+                    .from('passengers')
+                    .upsert(upsertRows, { onConflict: 'id' });
+
+                if (paxError) {
+                    console.error('[issue-ticket] Failed to save ticket numbers to passengers:', paxError);
+                    throw new Error(`Failed to save ticket numbers: ${paxError.message}`);
                 }
             }
+        }
+
+        // ── 4. Update Booking Status to "ticketed" ──
+        // Passengers now have ticket numbers — safe to mark the booking as ticketed.
+        const { error: updateError } = await supabase
+            .from('flight_bookings')
+            .update({ status: 'ticketed' })
+            .eq('id', bookingId);
+
+        if (updateError) {
+            console.error('[issue-ticket] Failed to update booking status:', updateError);
+            throw new Error(`Failed to update booking: ${updateError.message}`);
         }
 
         const durationMs = Date.now() - startMs;

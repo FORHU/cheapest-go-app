@@ -542,6 +542,24 @@ export async function cancelBooking(
           stripeRefundId = stripeRefund.id;
           console.log(`[cancelBooking] Stripe refund issued: ${stripeRefundId} — ${refundAmountCents} ${piCurrency} cents`);
 
+          // Log to financial events ledger (hotel path uses hotel_booking_id TEXT column).
+          // Use service client — financial events table requires service role to bypass RLS.
+          const svcForFinance = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+          svcForFinance
+            .from('booking_financial_events')
+            .insert({
+              hotel_booking_id: bookingId,
+              event_type: 'refund',
+              amount: refundAmountCents / 100,
+              currency: piCurrency.toUpperCase(),
+              provider: 'stripe',
+              transaction_id: stripeRefundId,
+              metadata: { type: 'hotel_cancellation', penaltyAmount: calculation.penaltyAmount },
+            })
+            .then(({ error }: { error: { message: string } | null }) => {
+              if (error) console.warn('[cancelBooking] Financial event log failed (non-critical):', error.message);
+            });
+
           // Fire refund receipt email (non-blocking)
           supabase
             .from('bookings')

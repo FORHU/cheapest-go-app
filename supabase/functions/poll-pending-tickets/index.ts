@@ -115,12 +115,9 @@ Deno.serve(async (req: Request) => {
                 || ticketStatus === 'confirmed';
 
             if (isTicketed) {
-                await supabase
-                    .from('flight_bookings')
-                    .update({ status: 'ticketed' })
-                    .eq('id', booking.id);
-
-                // Update ticket_number on each passenger row
+                // Save ticket numbers to passengers FIRST, then flip booking status.
+                // This ensures we never show "Ticketed" with no ticket numbers if the
+                // status update succeeds but passenger updates haven't run yet.
                 if (passengerInfos.length > 0) {
                     for (const p of passengerInfos) {
                         const pax = p.Passenger ?? p;
@@ -143,6 +140,12 @@ Deno.serve(async (req: Request) => {
                         .update({ ticket_number: eTickets[0] })
                         .eq('booking_id', booking.id);
                 }
+
+                // Only flip to ticketed after passenger records are saved
+                await supabase
+                    .from('flight_bookings')
+                    .update({ status: 'ticketed' })
+                    .eq('id', booking.id);
 
                 console.log(`[poll-pending-tickets] ✅ ${booking.pnr} is now TICKETED (eTickets: ${eTickets.join(', ')})`);
                 results.ticketed++;
@@ -203,33 +206,64 @@ async function handleRefund(
     booking: { id: string; pnr: string; payment_intent_id: string | null; session_id?: string | null; total_price?: number; currency?: string },
     supabase: ReturnType<typeof createClient>,
 ): Promise<void> {
-    await supabase.from('flight_bookings').update({ status: 'failed' }).eq('id', booking.id);
-
+    // Guard: verify we CAN refund BEFORE changing any status.
+    // Previous bug: status was set to 'failed' on line 1, then early-returned
+    // without issuing a Stripe refund — customer's money was never returned.
     if (!booking.payment_intent_id || !STRIPE_SECRET_KEY) {
-        console.warn(`[poll-pending-tickets] No payment_intent_id for ${booking.id} — cannot auto-refund`);
+        // Mark as refund_pending so ops can manually process the refund.
+        // Do NOT mark as 'failed' — that implies the case is closed.
+        await supabase
+            .from('flight_bookings')
+            .update({ status: 'refund_pending' })
+            .eq('id', booking.id);
+        console.error(
+            `[poll-pending-tickets] CRITICAL: Booking ${booking.id} (pnr: ${booking.pnr}) expired ` +
+            `but has no payment_intent_id — marked refund_pending for manual ops processing`
+        );
         return;
     }
 
     try {
         const body = new URLSearchParams();
         body.set('payment_intent', booking.payment_intent_id);
+        // Idempotency key: booking-specific so safe to retry if the function crashes mid-run
+        body.set('idempotency_key', `poll-refund-${booking.id}`);
 
         const refundRes = await fetch('https://api.stripe.com/v1/refunds', {
             method: 'POST',
             headers: {
                 'Authorization': `Basic ${btoa(STRIPE_SECRET_KEY + ':')}`,
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'Idempotency-Key': `poll-refund-${booking.id}`,
             },
             body: body.toString(),
         });
 
         const refundData = await refundRes.json();
+
         if (refundData.id) {
+            // Refund confirmed by Stripe — now safe to mark the booking as refunded
+            await supabase
+                .from('flight_bookings')
+                .update({ status: 'refunded' })
+                .eq('id', booking.id);
             console.log(`[poll-pending-tickets] Refund issued for ${booking.id}: ${refundData.id}`);
         } else {
-            console.error(`[poll-pending-tickets] Stripe refund failed for ${booking.id}:`, refundData);
+            // Stripe rejected the refund (already refunded, invalid PI, etc.)
+            const errCode = refundData?.error?.code ?? 'unknown';
+            if (errCode === 'charge_already_refunded') {
+                // Already refunded via another path — mark accordingly
+                await supabase.from('flight_bookings').update({ status: 'refunded' }).eq('id', booking.id);
+                console.log(`[poll-pending-tickets] Booking ${booking.id} already refunded in Stripe`);
+            } else {
+                // Unknown Stripe error — leave as refund_pending for ops
+                await supabase.from('flight_bookings').update({ status: 'refund_pending' }).eq('id', booking.id);
+                console.error(`[poll-pending-tickets] Stripe refund failed for ${booking.id}:`, refundData);
+            }
         }
     } catch (err: any) {
+        // Network or parse error — leave as refund_pending, not failed
+        await supabase.from('flight_bookings').update({ status: 'refund_pending' }).eq('id', booking.id);
         console.error(`[poll-pending-tickets] Stripe error for ${booking.id}:`, err.message);
     }
 }
