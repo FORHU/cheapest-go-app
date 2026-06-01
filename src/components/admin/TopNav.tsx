@@ -262,7 +262,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <div className="h-10 w-[1px] bg-slate-100 dark:bg-white/5 mx-1 sm:mx-2 hidden sm:block" />
+                <div className="h-10 w-1px bg-slate-100 dark:bg-white/5 mx-1 sm:mx-2 hidden sm:block" />
 
                 <div className="flex items-center gap-2 sm:gap-3 sm:pl-2 cursor-pointer group">
                     <div className="text-right hidden sm:block">
@@ -282,7 +282,7 @@ export function TopNav({ onMenuClick, isCollapsed }: TopNavProps) {
                     </div>
                 </div>
 
-                <div className="h-10 w-[1px] bg-slate-100 dark:bg-white/5 mx-1 sm:mx-2 hidden sm:block" />
+                <div className="h-10 w-1px bg-slate-100 dark:bg-white/5 mx-1 sm:mx-2 hidden sm:block" />
 
                 <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
                     <DialogTrigger asChild>

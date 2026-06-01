@@ -1,6 +1,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const require = createRequire(import.meta.url);
 
@@ -74,4 +75,12 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Suppress noisy Sentry CLI output during builds
+  silent: !process.env.CI,
+  // Upload source maps only in CI/production to avoid leaking them locally
+  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  // Automatically tree-shake Sentry logger statements in production
+  hideSourceMaps: true,
+});

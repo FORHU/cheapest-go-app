@@ -20,20 +20,22 @@ export async function POST(req: NextRequest) {
     const csrfError = checkCsrf(req);
     if (csrfError) return csrfError;
 
-    // 5 booking confirmations per minute per IP
-    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-confirm' });
+    // Auth first so rate limit keys on user ID instead of IP (IP is spoofable)
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError || !user) {
+        return Response.json(
+            { success: false, error: 'Authentication required' },
+            { status: 401 }
+        );
+    }
+
+    // 5 booking confirmations per minute per user
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-confirm', userId: user.id });
     if (!rl.success) {
         return Response.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
 
     try {
-        const { user, error: authError } = await getAuthenticatedUser();
-        if (authError || !user) {
-            return Response.json(
-                { success: false, error: 'Authentication required' },
-                { status: 401 }
-            );
-        }
 
         const body = await req.json();
         const parsed = bookingConfirmSchema.safeParse(body);
