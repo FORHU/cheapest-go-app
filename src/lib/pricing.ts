@@ -168,10 +168,10 @@ export function calculateStripeFee(chargedPrice: number): number {
  * Enriches a booking object with financial details (markup, supplier cost, net profit).
  * Uses estimated formulas if data is missing from the database.
  * 
- * Formulas (per latest directive):
+ * Formulas:
  * - Standard (Flight): totalPrice / 1.08 (8% markup)
- * - Standard (Hotel):  totalPrice / 1.12 (12% markup)
- * - Bundle:           totalPrice / 1.15 (15% markup)
+ * - Standard (Hotel):  totalPrice / 1.15 (15% markup)
+ * - Bundle:           totalPrice / 1.12 (12% markup)
  */
 export function enrichBookingFinances<T extends { 
     type: string; 

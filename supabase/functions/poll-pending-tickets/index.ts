@@ -116,8 +116,11 @@ Deno.serve(async (req: Request) => {
 
             if (isTicketed) {
                 // Save ticket numbers to passengers FIRST, then flip booking status.
-                // This ensures we never show "Ticketed" with no ticket numbers if the
-                // status update succeeds but passenger updates haven't run yet.
+                // Abort the entire booking transition if any single passenger update
+                // fails — a partial write leaves the booking in a worse state than
+                // leaving it in awaiting_ticket (next poll will retry cleanly).
+                let passengerWriteFailed = false;
+
                 if (passengerInfos.length > 0) {
                     for (const p of passengerInfos) {
                         const pax = p.Passenger ?? p;
@@ -126,22 +129,38 @@ Deno.serve(async (req: Request) => {
                         if (!eTicket) continue;
                         const firstName = (name.PassengerFirstName ?? '').toLowerCase();
                         const lastName = (name.PassengerLastName ?? '').toLowerCase();
-                        await supabase
+                        const { error: paxErr } = await supabase
                             .from('passengers')
                             .update({ ticket_number: eTicket })
                             .eq('booking_id', booking.id)
                             .ilike('first_name', firstName)
                             .ilike('last_name', lastName);
+                        if (paxErr) {
+                            console.error(`[poll-pending-tickets] Failed to save ticket number for passenger (${firstName} ${lastName}) on booking ${booking.id}:`, paxErr);
+                            passengerWriteFailed = true;
+                            break; // halt — do not write remaining passengers or flip status
+                        }
                     }
                 } else if (eTickets.length > 0) {
-                    // Legacy: assign first eTicket to first passenger
-                    await supabase
+                    // Legacy: assign first eTicket to all passengers for this booking
+                    const { error: legacyErr } = await supabase
                         .from('passengers')
                         .update({ ticket_number: eTickets[0] })
                         .eq('booking_id', booking.id);
+                    if (legacyErr) {
+                        console.error(`[poll-pending-tickets] Legacy ticket number write failed for booking ${booking.id}:`, legacyErr);
+                        passengerWriteFailed = true;
+                    }
                 }
 
-                // Only flip to ticketed after passenger records are saved
+                if (passengerWriteFailed) {
+                    // Leave booking in awaiting_ticket — next poll cycle will retry
+                    console.warn(`[poll-pending-tickets] ⚠️ ${booking.pnr} ticket numbers not fully saved — leaving in awaiting_ticket for retry`);
+                    results.unchanged++;
+                    continue;
+                }
+
+                // All passenger records saved — safe to flip booking status
                 await supabase
                     .from('flight_bookings')
                     .update({ status: 'ticketed' })

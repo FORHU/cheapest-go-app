@@ -1,5 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { env } from '@/utils/env';
 
 export interface AdminAuthResult {
     user: { id: string; email: string };
@@ -10,11 +12,16 @@ export interface AdminAuthResult {
 /**
  * Verifies the caller is an authenticated admin.
  * Returns the user + supabase client on success, or a NextResponse error on failure.
+ *
+ * Profile role is read with the SERVICE ROLE KEY so RLS policies on the profiles
+ * table do not affect the lookup. Previously this used the anon-key client, which
+ * worked only because the own-row SELECT policy matched — fragile and undocumented.
  */
 export async function requireAdmin(): Promise<AdminAuthResult | NextResponse> {
+    // Use the SSR client (cookie-based) to verify the JWT / session
     const supabase = await createClient();
     let user = null;
-    
+
     try {
         const { data } = await supabase.auth.getUser();
         user = data.user;
@@ -29,7 +36,10 @@ export async function requireAdmin(): Promise<AdminAuthResult | NextResponse> {
         );
     }
 
-    const { data: profile, error: profileError } = await supabase
+    // Read profile role with service role client — bypasses RLS entirely,
+    // so neither the own-row policy nor the admin policy is evaluated.
+    const svcClient = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const { data: profile, error: profileError } = await svcClient
         .from('profiles')
         .select('role')
         .eq('id', user.id)

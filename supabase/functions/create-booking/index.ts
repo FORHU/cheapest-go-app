@@ -179,43 +179,33 @@ Deno.serve(async (req: Request) => {
 
         const bs = session as BookingSession;
 
-        // ── Session expiry check ──
-        // expires_at is set when the session is created (NOW() + 15 min).
-        // If the customer took too long to complete payment the Duffel offer will
-        // also have expired, so we fail early with a clear message instead of
-        // letting the supplier call fail with a cryptic error.
-        // We do NOT reject sessions with a pre-created Duffel order (duffel_pre_order_id)
-        // because the order already exists — we just need to confirm it.
-        const hasDuffelPreOrder = !!bs.duffel_pre_order_id;
-        if (!hasDuffelPreOrder && bs.expires_at && new Date(bs.expires_at) < new Date()) {
-            console.warn(`[create-booking] Session ${sessionId} expired at ${bs.expires_at} — rejecting`);
-            return jsonResponse(corsHeaders, {
-                success: false,
-                error: 'Booking session expired. The payment will be refunded automatically.',
-            }, 410);
-        }
-
         // Resolve the authoritative PI ID: prefer the one passed directly from the webhook
         // (which always has it from the Stripe event), fall back to the session column.
         // This fixes the root cause of null payment_intent_id in flight_bookings.
         const resolvedPaymentIntentId = webhookPiId ?? bs.payment_intent_id ?? null;
 
-        // ── Atomic status claim — prevents double-booking when webhook and
-        //    /api/flights/confirm race each other. Only one UPDATE will succeed.
+        // ── Atomic status claim + expiry check ────────────────────────────────
+        // The claim UPDATE and the expiry check are intentionally combined into a
+        // single WHERE clause so they are evaluated atomically by PostgreSQL.
         //
-        //    Strategy: use the already-read bs.status as the optimistic lock value.
-        //    If another process changed the status between our SELECT and this UPDATE,
-        //    the WHERE clause won't match → 0 rows returned → we lost the race.
+        // Previous bug: a two-step (check → claim) pattern had a race window where
+        // the session could expire between the check and the claim, leaving the
+        // booking stranded in 'processing' with no auto-recovery path.
         //
-        //    Claimable statuses:
-        //      'pending'            — Duffel: session untouched
-        //      'initiated'          — Mystifly: /book updated session after PaymentIntent created
-        //      'payment_authorized' — Mystifly: Stripe webhook set before calling us
-        // 'payment_initiated' = set by /api/flights/book after Stripe PI is created (all providers)
-        // 'initiated'         = legacy Mystifly status (kept for backwards-compat)
-        // 'payment_authorized'= Mystifly after Stripe webhook marks the hold
-        // 'pending'           = initial state (Duffel before /book runs)
+        // Fix: the claim only succeeds when ALL of:
+        //   1. Status is still claimable (status IN (...))
+        //   2. Session is not expired (expires_at > now() OR has a Duffel pre-order)
+        //
+        // Zero rows returned means EITHER already claimed OR expired.
+        // We distinguish the two cases by re-fetching the session after failure.
+        //
+        // Claimable statuses:
+        //   'pending'             — Duffel: session untouched
+        //   'initiated'           — Mystifly: /book updated session after PaymentIntent created
+        //   'payment_initiated'   — set by /api/flights/book after Stripe PI is created
+        //   'payment_authorized'  — Mystifly: Stripe webhook marks the hold
         const claimableStatuses = ['pending', 'initiated', 'payment_initiated', 'payment_authorized'];
+        const hasDuffelPreOrder = !!bs.duffel_pre_order_id;
 
         if (!claimableStatuses.includes(bs.status)) {
             // Fast-path: session is already terminal — no point trying to UPDATE
@@ -241,18 +231,43 @@ Deno.serve(async (req: Request) => {
             );
         }
 
-        // Optimistic-lock UPDATE: only succeeds if status hasn't changed since our SELECT
-        const { data: claimedRows, error: claimError } = await supabase
+        // Atomic claim: status lock + expiry check in one UPDATE.
+        // For sessions with a Duffel pre-order, skip the expiry condition —
+        // the order already exists in Duffel and just needs to be confirmed.
+        let claimQuery = supabase
             .from('booking_sessions')
             .update({ status: 'processing' })
             .eq('id', sessionId)
-            .eq('status', bs.status)   // ← optimistic lock on the exact status we read
-            .select('id');
+            .eq('status', bs.status);   // optimistic lock on the exact status we read
 
-        console.log('[create-booking] Claim result:', { claimed: claimedRows?.length, sessionStatus: bs.status, claimError });
+        if (!hasDuffelPreOrder && bs.expires_at) {
+            // Only claim if session has not yet expired
+            claimQuery = claimQuery.gt('expires_at', new Date().toISOString());
+        }
+
+        const { data: claimedRows, error: claimError } = await claimQuery.select('id');
+
+        console.log('[create-booking] Claim result:', { claimed: claimedRows?.length, sessionStatus: bs.status, hasDuffelPreOrder, claimError });
 
         if (!claimedRows || claimedRows.length === 0) {
-            // Race condition: another call already claimed this session
+            // Zero rows — either another call claimed first, or the session expired.
+            // Re-fetch to distinguish the two cases.
+            const { data: freshSession } = await supabase
+                .from('booking_sessions')
+                .select('status, expires_at')
+                .eq('id', sessionId)
+                .maybeSingle();
+
+            // Check if it expired (and we just lost the race because of expiry)
+            if (freshSession?.expires_at && new Date(freshSession.expires_at) < new Date() && !hasDuffelPreOrder) {
+                console.warn(`[create-booking] Session ${sessionId} expired — rejecting`);
+                return jsonResponse(corsHeaders, {
+                    success: false,
+                    error: 'Booking session expired. The payment will be refunded automatically.',
+                }, 410);
+            }
+
+            // Otherwise another caller already claimed it — check if booking exists
             const { data: existingBooking } = await supabase
                 .from('flight_bookings')
                 .select('id, pnr, status')
@@ -270,19 +285,9 @@ Deno.serve(async (req: Request) => {
             }
 
             return jsonResponse(corsHeaders,
-                { success: false, error: `Session already processed (status: ${bs.status})` },
+                { success: false, error: `Session already processing (status: ${freshSession?.status ?? bs.status})` },
                 409,
             );
-        }
-
-        // Validate expiry
-        if (new Date(bs.expires_at) < new Date()) {
-            await supabase
-                .from('booking_sessions')
-                .update({ status: 'expired' })
-                .eq('id', sessionId);
-
-            return jsonResponse(corsHeaders, { success: false, error: 'Booking session has expired' }, 410);
         }
 
         console.log('[create-booking] Processing session:', {

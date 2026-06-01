@@ -61,6 +61,9 @@ export const env = {
     // Mobile API — shared secret for /api/mobile/* endpoints
     MOBILE_API_KEY: process.env.MOBILE_API_KEY!,
     MOBILE_GUEST_USER_ID: process.env.MOBILE_GUEST_USER_ID,
+
+    // Sentry error monitoring
+    SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
 };
 
 /**
