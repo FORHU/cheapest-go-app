@@ -1,12 +1,33 @@
 /**
  * Environment variable utility for safe access and validation.
  * Centralized configuration to prevent direct process.env usage.
+ *
+ * After Supabase migration:
+ *   - DATABASE_URL            → PostgreSQL connection string (required)
+ *   - DATABASE_URL_UNPOOLED   → Direct connection for migrations (optional)
+ *   - FUNCTIONS_BASE_URL      → Self-hosted edge function server (optional)
+ *   - FUNCTIONS_SECRET        → Shared secret for internal function calls
+ *
+ * Supabase variables are kept as aliases during the transition period so that
+ * Edge Functions (still in Deno) and any un-migrated code continue to work.
+ * Remove them once all Edge Functions are converted to API routes.
  */
 export const env = {
-    // Supabase
+    // ── PostgreSQL (new) ─────────────────────────────────────────────────────
+    DATABASE_URL: process.env.DATABASE_URL!,
+    DATABASE_URL_UNPOOLED: process.env.DATABASE_URL_UNPOOLED,
+    DATABASE_SSL: process.env.DATABASE_SSL,
+
+    // ── Supabase (legacy aliases — remove after full migration) ─────────────
+    // These still work because Supabase IS PostgreSQL under the hood.
+    // Supabase Edge Functions still use these during the Deno → API route migration.
     SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
     SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+
+    // ── Internal function calling ────────────────────────────────────────────
+    FUNCTIONS_BASE_URL: process.env.FUNCTIONS_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL,
+    FUNCTIONS_SECRET: process.env.FUNCTIONS_SECRET || process.env.INTERNAL_SECRET,
 
     // Flight Providers
     DUFFEL_TOKEN: process.env.DUFFEL_ACCESS_TOKEN!,

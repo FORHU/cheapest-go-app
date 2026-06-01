@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from "@/utils/env";
 
 // ─── HTML Escaping (prevent XSS in email templates) ─────────────────
@@ -56,7 +56,7 @@ async function checkEmailDuplicate(
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !supabaseServiceKey) return null;
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createAdminClient();
     const alreadySent = await isEmailAlreadySent(supabase, bookingId, emailType);
     if (alreadySent) {
         console.warn(`[email] Duplicate suppressed before send: ${emailType} for booking ${bookingId}`);
@@ -84,7 +84,7 @@ async function logEmail(params: {
         return { duplicate: false };
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createAdminClient();
 
     // Deduplication: suppress if a sent/queued record already exists for this booking + type.
     // The unique index on email_logs (booking_id, email_type) WHERE status IN ('sent','queued')
@@ -257,7 +257,7 @@ export async function sendBookingConfirmationEmail(
 
         // Create Supabase client if keys are available
         const supabase = supabaseUrl && supabaseServiceKey
-            ? createClient(supabaseUrl, supabaseServiceKey)
+            ? createAdminClient()
             : null;
 
         // Store email record in database

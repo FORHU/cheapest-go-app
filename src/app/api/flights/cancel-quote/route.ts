@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 import { checkCsrf } from '@/lib/server/csrf';
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'bookingId is required' }, { status: 400 });
     }
 
-    const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createAdminClient();
 
     const { data: booking, error: fetchErr } = await supabase
         .from('flight_bookings')

@@ -8,7 +8,8 @@ const cancelFlightSchema = z.object({
     bookingId: z.string().min(1, 'bookingId is required'),
     cancellationId: z.string().optional(), // Pre-fetched Duffel quote ID — skip the quote step if provided
 });
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { createClient } from '@/utils/supabase/server';
 import { stripe } from '@/lib/stripe/server';
 import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
         const { bookingId, cancellationId: preQuotedCancellationId } = cancelParsed.data;
 
         // Service-role client for all DB operations (bypasses RLS)
-        const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const supabase = createAdminClient();
 
 
         // ── Step 1: Load booking ──────────────────────────────────────
@@ -581,7 +582,7 @@ async function cancelMystifly(booking: any): Promise<CancelResult> {
 }
 
 async function cancelDuffel(booking: any, preQuotedCancellationId?: string): Promise<CancelResult> {
-    const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createAdminClient();
     const duffelToken = env.DUFFEL_TOKEN;
     if (!duffelToken) {
         return { success: false, error: 'DUFFEL_ACCESS_TOKEN not configured' };

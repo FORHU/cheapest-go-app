@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { env } from '@/utils/env';
@@ -7,7 +7,7 @@ import { sendPriceAlertConfirmationEmail } from '@/lib/server/email';
 
 export const dynamic = 'force-dynamic';
 
-const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createAdminClient();
 
 const VALID_CABINS = new Set(['economy', 'premium_economy', 'business', 'first']);
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/utils/env';
 import { stripe } from '@/lib/stripe/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
@@ -42,14 +42,14 @@ export async function POST(req: NextRequest) {
         // Validate Supabase token if present (used for audit logging)
         const supabaseToken = req.headers.get('x-supabase-token');
         if (supabaseToken) {
-            const svc = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+            const svc = createAdminClient();
             const { data: { user: tokenUser } } = await svc.auth.getUser(supabaseToken);
             if (!tokenUser) {
                 return NextResponse.json({ success: false, error: 'Invalid session. Please log in again.' }, { status: 401 });
             }
         }
 
-        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const supabase = createAdminClient();
         const edgeFnHeaders = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,

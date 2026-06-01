@@ -1,9 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/utils/supabase/client';
 import { useEffect } from 'react';
 import { queryKeys, staleTimes } from '@/lib/queryClient';
-
-const supabase = createClient();
 
 export function useDashboardData() {
     const queryClient = useQueryClient();
@@ -144,22 +141,15 @@ export function useDashboardData() {
         }
     });
 
-    // 5. Setup Real-time Subscription
+    // 5. Poll for dashboard updates every 60 seconds (replaces Supabase Realtime channel).
+    // React Query's refetchInterval handles the refresh; no WebSocket dependency.
     useEffect(() => {
-        const channel = supabase
-            .channel('admin-dashboard-changes')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'unified_bookings' },
-                () => {
-                    queryClient.invalidateQueries({ queryKey: queryKeys.admin.all });
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                queryClient.invalidateQueries({ queryKey: queryKeys.admin.all });
+            }
+        }, 60_000);
+        return () => clearInterval(interval);
     }, [queryClient]);
 
     return {

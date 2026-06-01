@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { z } from 'zod';
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         const { paymentIntentId, sessionId } = confirmParsed.data;
 
         // Service-role client for all DB operations
-        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const supabase = createAdminClient();
 
         // ── Step 1: Verify payment server-side (never trust the client) ──────
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);

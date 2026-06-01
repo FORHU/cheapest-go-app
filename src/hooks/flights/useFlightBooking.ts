@@ -6,7 +6,6 @@ import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/l
 import type { FlightOffer } from '@/types/flights';
 import type { SelectedSeat } from '@/types/seatMap';
 import type { SelectedBag } from '@/types/bags';
-import { createClient } from '@/utils/supabase/client';
 import { invokeEdgeFunction } from '@/utils/supabase/functions';
 import { useUser } from '@/stores/authStore';
 import { clientFetch } from '@/lib/api/client';
@@ -220,7 +219,7 @@ export function useFlightBooking() {
         // Auto-revalidate the flight
         let isMounted = true;
         const revalidate = async () => {
-            const { data: { user } } = await createClient().auth.getUser();
+            
 
             try {
                 const data = await invokeEdgeFunction('revalidate-flight', {
@@ -302,7 +301,7 @@ export function useFlightBooking() {
             const bundleHotelId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('bundleHotelId') : null;
 
             // Client-side auth check (fast-fail UX; server re-verifies via JWT)
-            const { data: { user } } = await createClient().auth.getUser();
+            
 
             if (!user) {
                 throw new Error("unauthenticated");

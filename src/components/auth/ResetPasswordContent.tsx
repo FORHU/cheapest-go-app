@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { PlaneTakeoff, ArrowLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePasswordValidation } from '@/hooks';
-import { createClient } from '@/utils/supabase/client';
 
 export function ResetPasswordContent() {
     const { isLoading } = useAuthStore();
@@ -15,27 +14,27 @@ export function ResetPasswordContent() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
 
-    // Use hook for password validation
     const { requirements, allMet } = usePasswordValidation(password);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
-        if (!allMet) {
-            setError('Password does not meet all requirements');
-            return;
-        }
+        if (!allMet) { setError('Password does not meet all requirements'); return; }
+        if (password !== confirmPassword) { setError('Passwords do not match'); return; }
 
-        if (password !== confirmPassword) {
-            setError('Passwords do not match');
-            return;
-        }
+        // Extract token from URL (?token=...)
+        const token = new URLSearchParams(window.location.search).get('token');
+        if (!token) { setError('Invalid reset link. Please request a new one.'); return; }
 
         try {
-            const supabase = createClient();
-            const { error: updateError } = await supabase.auth.updateUser({ password });
-            if (updateError) throw updateError;
+            const res = await fetch('/api/auth/reset-password', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-By': 'cheapestgo-client' },
+                body: JSON.stringify({ token, password }),
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || 'Failed to reset password');
             setSuccess(true);
         } catch (err: any) {
             setError(err?.message || 'Failed to reset password. Please try again.');

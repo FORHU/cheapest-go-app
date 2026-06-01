@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,10 +7,7 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cheapestgo.com';
 
 async function getDestinations(): Promise<{ city: string; country: string }[]> {
     try {
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
+        const supabase = createAdminClient();
         const { data } = await supabase
             .from('popular_destinations')
             .select('city, country')

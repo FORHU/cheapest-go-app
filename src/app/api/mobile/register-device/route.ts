@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
 import { rateLimit } from '@/lib/server/rate-limit';
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Invalid Expo push token format' }, { status: 400 });
     }
 
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createAdminClient();
 
     const { error } = await supabase
         .from('device_push_tokens')

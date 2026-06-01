@@ -27,6 +27,18 @@
     {
       "path": "/api/internal/auto-recover",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/poll-pending-tickets",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/refresh-popular-flights",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-sessions",
+      "schedule": "0 4 * * *"
     }
   ]
 }

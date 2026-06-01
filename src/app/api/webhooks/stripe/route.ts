@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { sendFlightBookingConfirmationEmail } from '@/lib/server/email';
@@ -57,8 +58,7 @@ export async function POST(req: NextRequest) {
 
     // ── Idempotency: deduplicate processed events ────────────────────────────
     if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
-        const { createClient: createSbClient } = await import('@supabase/supabase-js');
-        const dedupClient = createSbClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const dedupClient = createAdminClient();
         const { error: dedupError } = await dedupClient
             .from('stripe_processed_events')
             .insert({ event_id: event.id, event_type: event.type, processed_at: new Date().toISOString() });
@@ -87,8 +87,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create supabase client once — used in both Mystifly and Duffel handlers
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createAdminClient();
 
     // ── Mystifly: manual capture → amount_capturable_updated ────────────────
     if (event.type === 'payment_intent.amount_capturable_updated') {

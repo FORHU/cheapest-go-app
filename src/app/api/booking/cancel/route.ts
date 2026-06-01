@@ -6,7 +6,8 @@ import { revalidatePath } from 'next/cache';
 
 export const maxDuration = 60;
 import { cancelBookingSchema } from '@/lib/schemas/booking';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
 
         // Service-role client bypasses RLS for refund_logs and bookings writes.
         // We still use the user-scoped client (supabase) only for ownership reads below.
-        const serviceClient = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const serviceClient = createAdminClient();
         const data = await cancelBooking(bookingId, user, serviceClient);
 
         // Revalidate trips page after cancellation
