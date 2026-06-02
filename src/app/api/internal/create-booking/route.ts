@@ -319,6 +319,8 @@ async function handleDuffel(ctx: {
         } catch { /* non-critical */ }
     }
 
+    const farePolicy: any = session.fare_policy ?? null;
+    const tripType: string = flight.tripType ?? flight.trip_type ?? 'one-way';
     const bookingStatus = preOrderTicketed ? 'ticketed' : 'awaiting_ticket';
 
     // ── Insert flight_bookings ───────────────────────────────────────────
