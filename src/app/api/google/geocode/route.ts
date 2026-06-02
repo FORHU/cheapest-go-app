@@ -3,8 +3,15 @@ import { env } from '@/utils/env';
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
-    const lat = searchParams.get('lat');
-    const lng = searchParams.get('lng');
+    let lat = searchParams.get('lat');
+    let lng = searchParams.get('lng');
+    // Support combined ?latlng=lat,lng format (used by VoiceAssistant)
+    const latlng = searchParams.get('latlng');
+    if (latlng && !lat && !lng) {
+        const [rawLat, rawLng] = latlng.split(',');
+        lat = rawLat?.trim() ?? null;
+        lng = rawLng?.trim() ?? null;
+    }
     const placeId = searchParams.get('place_id');
 
     const key = env.GOOGLE_PLACES_API_KEY;

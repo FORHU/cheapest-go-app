@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
     const rl = await rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'price-alerts-get' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, error: authError } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { data, error } = await supabase
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
     const rl = await rateLimit(req, { limit: 10, windowMs: 60_000, prefix: 'price-alerts-post' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, error: authError } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     let body: unknown;

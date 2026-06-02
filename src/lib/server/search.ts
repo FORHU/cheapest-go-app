@@ -7,7 +7,7 @@ export interface AutocompleteResult {
     subtitle: string;
     countryCode: string;
     id?: string;
-    /** TravelgateX TGX-context destination code (populated once FastX catalog is synced) */
+    /** TravelgateX destination code — embedded so the search page can pass it directly */
     code?: string;
 }
 
@@ -58,6 +58,35 @@ async function fetchCitiesFromMapbox(query: string): Promise<AutocompleteResult[
     }
 }
 
+/**
+ * Resolve a TravelgateX destination code for a given city name.
+ * Prefers CITY type results; falls back to ZONE if no CITY found.
+ * Best-effort — returns undefined on any failure so it never blocks autocomplete.
+ */
+async function resolveTgxCode(cityName: string): Promise<string | undefined> {
+    try {
+        const { tgxGraphQL, getTgxConfig } = await import('@/lib/server/stays/travelgatex/client');
+        const cfg = getTgxConfig();
+        const result = await tgxGraphQL(
+            `query TgxResolveCity($access: ID!, $text: String!, $maxSize: Int) {
+               hotelX {
+                 destinationSearcher(criteria: { access: $access, text: $text, maxSize: $maxSize }) {
+                   ... on DestinationData { code type }
+                 }
+               }
+             }`,
+            { access: cfg.accessCode, text: cityName, maxSize: 50 }
+        );
+        const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
+        // Prefer CITY type; fall back to first ZONE if no CITY found
+        const cityItem = items.find((i: any) => i.type === 'CITY');
+        const zoneItem = items.find((i: any) => i.type === 'ZONE');
+        return cityItem?.code ?? zoneItem?.code ?? undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 async function fetchAutocomplete(query: string): Promise<AutocompleteResult[]> {
     const countryResults = matchCountries(query);
 
@@ -70,8 +99,21 @@ async function fetchAutocomplete(query: string): Promise<AutocompleteResult[]> {
         return countryResults;
     }
 
-    const cityResults = await fetchCitiesFromMapbox(query);
-    return [...countryResults, ...cityResults];
+    // Run Mapbox geocoding + TGX destination code lookup in parallel
+    const [cityResults, tgxCode] = await Promise.all([
+        fetchCitiesFromMapbox(query),
+        resolveTgxCode(query),
+    ]);
+
+    // Attach the TGX code to the top (most relevant) city result
+    const enriched = cityResults.map((city, idx) => {
+        if (idx === 0 && tgxCode) {
+            return { ...city, code: tgxCode };
+        }
+        return city;
+    });
+
+    return [...countryResults, ...enriched];
 }
 
 const getCachedAutocomplete = unstable_cache(
@@ -83,6 +125,8 @@ const getCachedAutocomplete = unstable_cache(
 /**
  * Autocomplete destinations via Mapbox Geocoding with server-side caching.
  * Countries come from the local list; cities from Mapbox Places API.
+ * The top city result is enriched with its TravelgateX destination code
+ * so the search page can pass `destinationCode` directly (no fallback needed).
  */
 export async function autocompleteDestinations(
     query: string

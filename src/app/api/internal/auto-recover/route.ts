@@ -15,13 +15,13 @@ const MAX_AGE_HOURS = 24; // Don't retry sessions older than 24h
  * Detects sessions where payment succeeded but booking was never created,
  * then automatically retries the booking via the create-booking Edge Function.
  *
- * Auth: Bearer token must match CRON_SECRET or SUPABASE_SERVICE_ROLE_KEY.
+ * Auth: Bearer token must match CRON_SECRET or FUNCTIONS_SECRET.
  */
 export async function POST(req: Request) {
     try {
         // ── Auth check ──────────────────────────────────────────────
         const authHeader = req.headers.get('authorization');
-        const cronSecret = process.env.CRON_SECRET || env.SUPABASE_SERVICE_ROLE_KEY;
+        const cronSecret = process.env.CRON_SECRET || process.env.FUNCTIONS_SECRET;
         if (authHeader !== `Bearer ${cronSecret}`) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
@@ -53,14 +53,14 @@ export async function POST(req: Request) {
         }
 
         // Filter out sessions that already have a booking in flight_bookings
-        const sessionIds = stuckSessions.map(s => s.id);
+        const sessionIds = stuckSessions.map((s: any) => s.id);
         const { data: existingBookings } = await supabase
             .from('flight_bookings')
             .select('session_id')
             .in('session_id', sessionIds);
 
-        const bookedSessionIds = new Set((existingBookings || []).map(b => b.session_id));
-        const mismatches = stuckSessions.filter(s => !bookedSessionIds.has(s.id));
+        const bookedSessionIds = new Set((existingBookings || []).map((b: any) => b.session_id));
+        const mismatches = stuckSessions.filter((s: any) => !bookedSessionIds.has(s.id));
 
         if (mismatches.length === 0) {
             return NextResponse.json({ success: true, recovered: 0, message: 'All sessions already have bookings' });
@@ -73,11 +73,12 @@ export async function POST(req: Request) {
 
         for (const session of mismatches) {
             try {
-                const res = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
+                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+                const res = await fetch(`${siteUrl}/api/internal/create-booking`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+                        'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
                     },
                     body: JSON.stringify({ sessionId: session.id }),
                 });

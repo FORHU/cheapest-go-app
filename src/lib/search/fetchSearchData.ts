@@ -10,15 +10,11 @@ import { searchTravelgateX } from '@/lib/server/travelgatex';
 import { COUNTRY_DEFAULT_CITY, COUNTRY_NAME_TO_CODE } from '@/lib/constants/countries';
 import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const adminSupabase = supabaseUrl && supabaseServiceKey
-    ? createAdminClient()
-    : null;
+const adminSupabase = createAdminClient();
 
 async function fetchHotelRatings(hotelIds: string[]): Promise<Map<string, { rating: number; reviews_count: number }>> {
     const map = new Map<string, { rating: number; reviews_count: number }>();
-    if (!adminSupabase || hotelIds.length === 0) return map;
+    if (hotelIds.length === 0) return map;
     try {
         const { data } = await adminSupabase
             .from('hotel_reviews')

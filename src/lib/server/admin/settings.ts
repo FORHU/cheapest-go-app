@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/utils/postgres/admin';
-import { createAdminClient } from '@/utils/supabase/admin';
 
 export interface IntegrationKey {
     label: string;
@@ -65,16 +64,10 @@ export function getIntegrationKeys(): IntegrationKey[] {
 
     return [
         {
-            label: 'Supabase URL',
-            provider: 'supabase',
-            configured: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-            masked: process.env.NEXT_PUBLIC_SUPABASE_URL || 'Not configured',
-        },
-        {
-            label: 'Supabase Service Role',
-            provider: 'supabase',
-            configured: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-            masked: mask(process.env.SUPABASE_SERVICE_ROLE_KEY),
+            label: 'Database',
+            provider: 'postgres',
+            configured: !!process.env.DATABASE_URL,
+            masked: process.env.DATABASE_URL ? 'postgresql://****' : 'Not configured',
         },
         {
             label: 'Stripe Secret Key',

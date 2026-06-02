@@ -1,6 +1,6 @@
 /**
  * Cron: /api/cron/poll-pending-tickets
- * Schedule: every 5 minutes  (*/5 * * * *)
+ * Schedule: every 5 minutes  (`*\/5 * * * *`)
  *
  * Replaces the pg_cron job that invoked the Supabase Edge Function.
  * Now delegates to the internal /api/fn/poll-pending-tickets route which
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
             },
             body: JSON.stringify({}),
         });

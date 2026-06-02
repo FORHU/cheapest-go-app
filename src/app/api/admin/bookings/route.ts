@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
                 const refundResult = await adminForceRefund(bookingId, reason);
                 return NextResponse.json(refundResult);
             case 'refund_history':
-                const historyRes = await auth.supabase
+                const historyRes = await auth.db
                     .from('refund_logs')
                     .select('*')
                     .or(`booking_id.eq.${bookingId},booking_id.eq.${bookingId.slice(0, 8).toUpperCase()}`)

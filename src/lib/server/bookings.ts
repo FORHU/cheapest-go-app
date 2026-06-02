@@ -1,4 +1,5 @@
 import type { DbClient } from '@/lib/db/query-builder';
+import type { User } from '@/types/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from "@/utils/env";
 import {
@@ -6,7 +7,7 @@ import {
   saveBookingSchema,
 } from '@/lib/schemas';
 import { bookTravelgateX, cancelTravelgateX } from './travelgatex';
-import { invokeEdgeFunction } from '@/utils/supabase/functions';
+import { invokeEdgeFunction } from '@/utils/postgres/functions';
 
 import { stripe } from '@/lib/stripe/server';
 import { sendHotelRefundEmail } from './email';

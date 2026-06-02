@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 /**
  * Server-side data fetching for trips page.
  * Uses shared server auth utility for authenticated requests.
@@ -35,7 +36,8 @@ const EMPTY_TRIPS: TripsData = {
  * Returns empty data if user is not authenticated.
  */
 export async function fetchTripsData(): Promise<TripsData> {
-  const { user, supabase, error: authError } = await getAuthenticatedUser();
+  const { user, error: authError } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
 
   if (authError || !user) {
     return EMPTY_TRIPS;

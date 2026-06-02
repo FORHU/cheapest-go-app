@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/postgres/admin';
-import { createAdminClient } from '@/utils/postgres/admin';
 import { createNotification } from '@/lib/server/admin/notify';
 import { sendFlightBookingConfirmationEmail, sendFlightRefundEmail } from '@/lib/server/email';
 import { env } from '@/utils/env';

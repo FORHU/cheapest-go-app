@@ -14,7 +14,6 @@
  */
 
 import { createAdminClient } from '@/utils/postgres/admin';
-import { createAdminClient } from '@/utils/supabase/admin';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -1,4 +1,5 @@
 import type { DbClient } from '@/lib/db/query-builder';
+import type { User } from '@/types/auth';
 
 export interface UserPreferences {
   typicalAdults: number;
@@ -119,7 +120,7 @@ export async function syncPreferencesFromHistory(
       .filter(Boolean)
       .slice(0, 5);
     if (destinations.length > 0) {
-      patch.favoriteDestinations = [...new Set(destinations)];
+      patch.favoriteDestinations = [...new Set(destinations)] as string[];
     }
   }
 

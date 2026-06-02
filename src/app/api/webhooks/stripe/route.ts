@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     console.log(`[Stripe Webhook] Event: ${event.type} id=${event.id}`);
 
     // ── Idempotency: deduplicate processed events ────────────────────────────
-    if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+    {
         const dedupClient = createAdminClient();
         const { error: dedupError } = await dedupClient
             .from('stripe_processed_events')
@@ -65,26 +65,19 @@ export async function POST(req: NextRequest) {
 
         if (dedupError) {
             if (dedupError.code === '23505') {
-                // Unique violation — already processed
                 console.log(`[Stripe Webhook] Duplicate event ${event.id} — skipping`);
                 return NextResponse.json({ received: true });
             }
-            // Table may not exist yet — log and continue
-            if (!dedupError.message?.includes('does not exist')) {
-                console.warn('[Stripe Webhook] Dedup insert error:', dedupError.message);
-            }
+            console.warn('[Stripe Webhook] Dedup insert error:', dedupError.message);
         }
     }
 
-    const headers = {
+    const internalHeaders = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
     };
 
-    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-        console.error('[Stripe Webhook] Missing Supabase env vars');
-        return NextResponse.json({ received: true });
-    }
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
     // Create supabase client once — used in both Mystifly and Duffel handlers
     const supabase = createAdminClient();
@@ -115,9 +108,9 @@ export async function POST(req: NextRequest) {
                 .eq('id', bookingSessionId)
                 .in('status', ['initiated', 'payment_initiated']);
 
-            const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
+            const bookingRes = await fetch(`${siteUrl}/api/internal/create-booking`, {
                 method: 'POST',
-                headers,
+                headers: internalHeaders,
                 body: JSON.stringify({ sessionId: bookingSessionId }),
             });
 
@@ -186,9 +179,9 @@ export async function POST(req: NextRequest) {
             // which can be null if the Step 3a update in /api/flights/book failed silently
             // (e.g. column doesn't exist yet). This ensures flight_bookings always gets the
             // PI ID so cancel-booking can issue Stripe refunds correctly.
-            const bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
+            const bookingRes = await fetch(`${siteUrl}/api/internal/create-booking`, {
                 method: 'POST',
-                headers,
+                headers: internalHeaders,
                 body: JSON.stringify({ sessionId: bookingSessionId, paymentIntentId: pi.id }),
             });
 
@@ -201,9 +194,9 @@ export async function POST(req: NextRequest) {
             // Auto-ticket Duffel orders
             if (bookingData.status !== 'ticketed' && !bookingData.alreadyBooked && bookingData.bookingId) {
                 console.log(`[Webhook] Auto-ticketing Duffel order: ${bookingData.bookingId}`);
-                const ticketRes = await fetch(`${env.SUPABASE_URL}/functions/v1/issue-ticket`, {
+                const ticketRes = await fetch(`${siteUrl}/api/internal/issue-ticket`, {
                     method: 'POST',
-                    headers,
+                    headers: internalHeaders,
                     body: JSON.stringify({ bookingId: bookingData.bookingId }),
                 });
                 const ticketData = await ticketRes.json();

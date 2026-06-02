@@ -65,14 +65,14 @@ export function getSqlAdmin(): postgres.Sql {
  */
 export async function withUserContext<T>(
     userId: string,
-    fn: (sql: postgres.Sql) => Promise<T>,
+    fn: (sql: postgres.TransactionSql) => Promise<T>,
 ): Promise<T> {
     const sql = getSql();
     return sql.begin(async (tx) => {
         // Set the session variable that our custom auth.uid() reads
         await tx`SELECT set_config('app.current_user_id', ${userId}, true)`;
         return fn(tx);
-    });
+    }) as Promise<T>;
 }
 
 /**

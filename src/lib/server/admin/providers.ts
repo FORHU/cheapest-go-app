@@ -1,7 +1,6 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { env } from '@/utils/env';
-import { createAdminClient } from '@/utils/supabase/admin';
 import type { ProviderIntegrationsData, DuffelAirline, TravelgateXHotelBooking, TravelgateXApiLog } from '@/types/admin';
 
 // ── Stripe ──────────────────────────────────────────────

@@ -70,9 +70,10 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
         const edgeFnHeaders = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
         };
 
         const flightTotal = typeof flight.price === 'number'
@@ -88,23 +89,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Invalid flight price' }, { status: 400 });
         }
 
-        // ── Resolve real user ID from Supabase session token ─────────────
-        // Mobile app sends X-Supabase-Token with the logged-in user's access token.
-        // Validate it server-side to get the real user ID.
-        // Falls back to MOBILE_GUEST_USER_ID only if no token is present.
-        let userId = env.MOBILE_GUEST_USER_ID ?? '00000000-0000-0000-0000-000000000001';
-        const supabaseToken = req.headers.get('x-supabase-token');
-        if (supabaseToken) {
-            const svc = createAdminClient();
-            const { data: { user: tokenUser } } = await svc.auth.getUser(supabaseToken);
-            if (!tokenUser?.id) {
-                return NextResponse.json({ success: false, error: 'Invalid session. Please log in again.' }, { status: 401 });
-            }
-            userId = tokenUser.id;
+        // ── Resolve real user ID from session ────────────────────────────
+        // Mobile app auth uses Lucia sessions via the cg-session cookie.
+        // Falls back to MOBILE_GUEST_USER_ID only if no session is present.
+        const { getSession } = await import('@/lib/auth/session');
+        const { user: sessionUser } = await getSession();
+        let userId = sessionUser?.id ?? env.MOBILE_GUEST_USER_ID ?? '00000000-0000-0000-0000-000000000001';
+        if (!sessionUser?.id && !env.MOBILE_GUEST_USER_ID) {
+            return NextResponse.json({ success: false, error: 'Invalid session. Please log in again.' }, { status: 401 });
         }
 
         // ── Step 1: Price revalidation ────────────────────────────────────
-        const revalRes = await fetch(`${env.SUPABASE_URL}/functions/v1/revalidate-flight`, {
+        const revalRes = await fetch(`${siteUrl}/api/internal/revalidate-flight`, {
             method: 'POST',
             headers: edgeFnHeaders,
             body: JSON.stringify({ userId, provider, flightPayload: { ...flight, oldPrice: flightTotal } }),
@@ -129,27 +125,34 @@ export async function POST(req: NextRequest) {
 
         const farePolicy = revalData.farePolicy || { isRefundable: false, isChangeable: false };
 
-        // ── Step 2: Create booking session ────────────────────────────────
-        const sessionRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking-session`, {
-            method: 'POST',
-            headers: edgeFnHeaders,
-            body: JSON.stringify({
-                userId,
+        // ── Step 2: Create booking session (direct DB insert) ────────────
+        const db = createAdminClient();
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+        const { data: sessionRow, error: sessionError } = await db
+            .from('booking_sessions')
+            .insert({
+                user_id: userId,
                 provider,
-                flight,
-                passengers,
-                contact,
-                idempotencyKey: idempotencyKey ?? crypto.randomUUID(),
-                farePolicy,
-                ...(seatServiceIds?.length ? { seatServiceIds, seatTotal: seatTotal ?? 0 } : {}),
-                ...(bagServiceIds?.length ? { bagServiceIds, bagTotal: bagTotal ?? 0 } : {}),
-            }),
-        });
-        const sessionData = await sessionRes.json();
-        if (!sessionData.success) {
-            throw new Error(sessionData.error || 'Failed to create booking session');
+                flight: flight as any,
+                passengers: passengers as any,
+                contact: contact as any,
+                idempotency_key: idempotencyKey ?? crypto.randomUUID(),
+                is_refundable: farePolicy?.isRefundable ?? null,
+                is_changeable: farePolicy?.isChangeable ?? null,
+                refund_penalty_amount: farePolicy?.refundPenaltyAmount ?? null,
+                refund_penalty_currency: farePolicy?.refundPenaltyCurrency ?? null,
+                fare_policy: farePolicy as any,
+                policy_locked: true,
+                status: 'initiated',
+                expires_at: expiresAt,
+                ...(seatServiceIds?.length ? { seat_service_ids: seatServiceIds, seat_total: seatTotal ?? 0 } : {}),
+            })
+            .select('id')
+            .single();
+        if (sessionError || !sessionRow) {
+            throw new Error(sessionError?.message || 'Failed to create booking session');
         }
-        const sessionId = sessionData.sessionId;
+        const sessionId = (sessionRow as any).id;
 
         // ── Step 3: Duffel pre-order ──────────────────────────────────────
         // Create the airline order BEFORE charging the card so the fare is locked.

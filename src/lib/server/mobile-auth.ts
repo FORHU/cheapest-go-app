@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/utils/postgres/admin';
-import { createAdminClient } from '@/utils/supabase/admin';
 import { env } from '@/utils/env';
 
 // Module-level cache — survives across requests within a warm serverless instance.

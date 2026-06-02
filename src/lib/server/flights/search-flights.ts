@@ -1,7 +1,7 @@
 import { FlightResultCache, FlightSearchParams, FlightSearch, FlightOffer, FlightResult } from "@/types/flights";
 import { searchDuffel } from "./providers/duffel";
 // import { searchMystiflyV2 } from "./providers/mystifly"; // sandbox only — re-enable with live key
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/utils/postgres/server";
 import { normalizedToFlightOffer } from "@/utils/flight-utils";
 import { logApiCall } from "@/lib/server/api-logger";
 

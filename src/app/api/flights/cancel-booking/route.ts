@@ -9,8 +9,6 @@ const cancelFlightSchema = z.object({
     cancellationId: z.string().optional(), // Pre-fetched Duffel quote ID — skip the quote step if provided
 });
 import { createAdminClient } from '@/utils/postgres/admin';
-import { createAdminClient } from '@/utils/postgres/admin';
-import { createClient } from '@/utils/supabase/server';
 import { stripe } from '@/lib/stripe/server';
 import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
 import { checkCsrf } from '@/lib/server/csrf';
@@ -38,11 +36,10 @@ export async function POST(req: NextRequest) {
     const startMs = Date.now();
 
     try {
-        // ── Auth — use cookie-aware server client (same as confirm/route.ts) ─
-        const supabaseAuth = await createClient();
-        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-        if (authError || !user) {
-            console.error('[cancel-booking] Auth error:', authError?.message);
+        // ── Auth — use Lucia session ─────────────────────────────────────
+        const { getSession } = await import('@/lib/auth/session');
+        const { user: sessionUser } = await getSession();
+        if (!sessionUser) {
             return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
         }
 
@@ -88,7 +85,7 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Security: booking must belong to authenticated user ───────
-        if (booking.user_id !== user.id) {
+        if (booking.user_id !== sessionUser.id) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
         }
 
@@ -543,24 +540,12 @@ async function cancelMystifly(booking: any): Promise<CancelResult> {
 
     console.log(`[cancel-booking] Mystifly cancel via edge fn: PNR=${uniqueId}`);
 
-    const supabaseUrl = env.SUPABASE_URL;
-    const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
-
-    const res = await fetch(`${supabaseUrl}/functions/v1/mystifly-cancel`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-            'apikey': supabaseKey,
-        },
-        body: JSON.stringify({ uniqueId }),
-    });
-
+    const { invokeEdgeFunction } = await import('@/utils/postgres/functions');
     let data: any;
     try {
-        data = await res.json();
-    } catch {
-        return { success: false, error: `Mystifly cancel edge fn returned non-JSON (HTTP ${res.status})` };
+        data = await invokeEdgeFunction('mystifly-cancel', { uniqueId });
+    } catch (e: any) {
+        return { success: false, error: `Mystifly cancel failed: ${e.message}` };
     }
 
     if (!data.success) {

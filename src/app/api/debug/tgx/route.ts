@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { searchTravelgateX } from '@/lib/server/travelgatex';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,36 +21,13 @@ export async function GET(req: NextRequest) {
     const checkout = searchParams.get('checkout') || '2026-07-05';
     const adults = Number(searchParams.get('adults') || '2');
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!;
-    const functionUrl = `${supabaseUrl}/functions/v1/travelgatex-search`;
-
-    const payload = {
-        checkin,
-        checkout,
-        adults,
-        children: 0,
-        rooms: 1,
-        currency: 'USD',
-        cityName: city,
-        countryCode: '',
-    };
+    const payload = { checkin, checkout, adults, children: 0, rooms: 1, currency: 'USD', cityName: city, countryCode: '' };
 
     let rawResult: any = null;
     let error: string | null = null;
 
     try {
-        const res = await fetch(functionUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseKey}`,
-                'apikey': supabaseKey,
-            },
-            body: JSON.stringify(payload),
-        });
-
-        rawResult = await res.json();
+        rawResult = await searchTravelgateX(payload);
     } catch (e: any) {
         error = e.message;
     }
