@@ -1,4 +1,4 @@
-export const revalidate = 1800; // regenerate every 30 minutes
+export const revalidate = 300; // regenerate every 5 minutes
 
 import { Suspense } from "react";
 import Script from "next/script";

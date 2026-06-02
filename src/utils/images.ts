@@ -2,12 +2,10 @@
  * Returns a URL for a POI image.
  *
  * Routes through the /api/poi-photo proxy which tries:
- *   1. Google Places Photo API  (prefers real photos)
- *   2. Foursquare Photos API    (cross-provider fallback)
- *   3. Styled text placeholder  (absolute last resort — no map tiles)
+ *   1. Google Places Photo API
+ *   2. Styled text placeholder  (absolute last resort — no map tiles)
  *
- * Accepts an optional placeId / fsqId so the proxy can skip the
- * name-based search step and hit the correct provider directly.
+ * Accepts an optional placeId so the proxy can skip the name-based search step.
  */
 export const getPoiImageUrl = (
     name: string,
@@ -16,7 +14,6 @@ export const getPoiImageUrl = (
     options?: {
         category?: string;
         placeId?: string;
-        fsqId?: string;
     }
 ): string => {
     const params = new URLSearchParams({
@@ -26,7 +23,6 @@ export const getPoiImageUrl = (
     });
     if (options?.category) params.set('category', options.category);
     if (options?.placeId)  params.set('placeId',  options.placeId);
-    if (options?.fsqId)    params.set('fsqId',    options.fsqId);
     return `/api/poi-photo?${params.toString()}`;
 };
 

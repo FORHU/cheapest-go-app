@@ -48,7 +48,7 @@ Deno.serve(async (_req: Request) => {
     // 1. Load all deal rows
     const { data: deals, error: loadErr } = await supabase
         .from('flight_deals')
-        .select('id, origin, destination, departure_date, return_date, baseline_price')
+        .select('id, origin, destination, departure_date, return_date, baseline_price, cabin_class')
 
     if (loadErr) {
         console.error('[refresh-deal-prices] Failed to load deals:', loadErr.message)
@@ -85,7 +85,7 @@ Deno.serve(async (_req: Request) => {
                     segments,
                     tripType,
                     adults: 1,
-                    cabinClass: 'economy',
+                    cabinClass: deal.cabin_class ?? 'economy',
                     maxOffers: 5,          // Only need cheapest — limit for speed
                 }),
             })
@@ -118,6 +118,7 @@ Deno.serve(async (_req: Request) => {
             const patch = {
                 price: livePrice,
                 airline: liveAirline,
+                cabin_class: deal.cabin_class ?? 'economy',
                 discount_tag: computeDiscountTag(livePrice, baseline),
                 ends_in: computeEndsIn(deal.departure_date),
                 last_refreshed_at: new Date().toISOString(),

@@ -15,7 +15,7 @@ import {
     Library
 } from 'lucide-react';
 
-// NOTE: No hardcoded place fallbacks. Discovery is always live via Google Places + Foursquare.
+// NOTE: No hardcoded place fallbacks. Discovery is always live via Google Places.
 
 /**
  * Constants and configuration for map discovery and POI filtering.

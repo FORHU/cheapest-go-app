@@ -15,15 +15,16 @@ interface DealsClientProps {
         page: number;
         pageSize: number;
         totalPages: number;
-        stats: { vouchers: number; activeVouchers: number; flightDeals: number; weekendDeals: number };
+        stats: { vouchers: number; activeVouchers: number; flightDeals: number; weekendDeals: number; hotelDeals: number };
     };
     searchParams: { tab: string; page: number; q: string };
 }
 
 const TABS = [
-    { key: 'vouchers', label: 'Vouchers', icon: Ticket },
-    { key: 'flight_deals', label: 'Flight Deals', icon: Plane },
-    { key: 'weekend_deals', label: 'Weekend Deals', icon: Star },
+    { key: 'vouchers',      label: 'Vouchers',       icon: Ticket    },
+    { key: 'flight_deals',  label: 'Flight Deals',   icon: Plane     },
+    { key: 'hotel_deals',   label: 'Hotel Deals',    icon: Building2 },
+    { key: 'weekend_deals', label: 'Weekend Deals',  icon: Star      },
 ];
 
 const EMPTY_VOUCHER = { code: '', description: '', discount_type: 'percent', discount_value: '', min_booking_amount: '', usage_limit: '', valid_until: '' };
@@ -118,11 +119,12 @@ export function DealsClient({ data, searchParams }: DealsClientProps) {
     return (
         <div className="space-y-10 pb-20">
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
                 <StatCard title="Vouchers" value={String(data.stats.vouchers)} icon={Ticket} variant="white" trend={`${data.stats.activeVouchers} active`} />
                 <StatCard title="Active Vouchers" value={String(data.stats.activeVouchers)} icon={ToggleRight} variant="white" trend="Live codes" />
                 <StatCard title="Flight Deals" value={String(data.stats.flightDeals)} icon={Plane} variant="white" trend="Routes" />
-                <StatCard title="Weekend Deals" value={String(data.stats.weekendDeals)} icon={Building2} variant="white" trend="Hotel deals" />
+                <StatCard title="Hotel Deals" value={String(data.stats.hotelDeals)} icon={Building2} variant="white" trend="Unique stays" />
+                <StatCard title="Weekend Deals" value={String(data.stats.weekendDeals)} icon={Star} variant="white" trend="Packages" />
             </div>
 
             {/* Tabs */}
@@ -142,7 +144,17 @@ export function DealsClient({ data, searchParams }: DealsClientProps) {
             <div className="flex items-center gap-3">
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                    <Input placeholder={tab === 'vouchers' ? 'Search code or description…' : tab === 'flight_deals' ? 'Search route or airline…' : 'Search name or location…'} className="pl-9 h-12 rounded-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <Input
+                        placeholder={
+                            tab === 'vouchers' ? 'Search code or description…' :
+                            tab === 'flight_deals' ? 'Search route or airline…' :
+                            tab === 'hotel_deals' ? 'Search name, location or category…' :
+                            'Search name or location…'
+                        }
+                        className="pl-9 h-12 rounded-xl"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
                 {searchTerm && (
                     <Button variant="ghost" size="sm" onClick={() => { setSearchTerm(''); updateParam({ q: '', page: 1 }); }} className="text-slate-500 hover:text-rose-500">Reset <XCircle className="ml-1 h-4 w-4" /></Button>
@@ -195,6 +207,8 @@ export function DealsClient({ data, searchParams }: DealsClientProps) {
                                 {tab === 'flight_deals' && <>
                                     <TableHead className="pl-6">Route</TableHead>
                                     <TableHead>Airline</TableHead>
+                                    <TableHead>Cabin</TableHead>
+                                    <TableHead>Trip</TableHead>
                                     <TableHead>Price</TableHead>
                                     <TableHead>Discount</TableHead>
                                     <TableHead>Departure</TableHead>
@@ -202,6 +216,14 @@ export function DealsClient({ data, searchParams }: DealsClientProps) {
                                 {tab === 'weekend_deals' && <>
                                     <TableHead className="pl-6">Property</TableHead>
                                     <TableHead>Location</TableHead>
+                                    <TableHead>Rating</TableHead>
+                                    <TableHead>Price</TableHead>
+                                    <TableHead>Badge</TableHead>
+                                </>}
+                                {tab === 'hotel_deals' && <>
+                                    <TableHead className="pl-6">Property</TableHead>
+                                    <TableHead>Location</TableHead>
+                                    <TableHead>Category</TableHead>
                                     <TableHead>Rating</TableHead>
                                     <TableHead>Price</TableHead>
                                     <TableHead>Badge</TableHead>
@@ -226,6 +248,24 @@ export function DealsClient({ data, searchParams }: DealsClientProps) {
                                     {tab === 'flight_deals' && <>
                                         <TableCell className="pl-6"><span className="font-black text-sm text-slate-900 dark:text-white">{item.origin} → {item.destination}</span></TableCell>
                                         <TableCell><span className="text-sm text-slate-600 dark:text-slate-300">{item.airline ?? '—'}</span></TableCell>
+                                        <TableCell>
+                                            <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                                                item.cabin_class === 'first'           ? 'text-purple-700 bg-purple-500/10' :
+                                                item.cabin_class === 'business'        ? 'text-amber-700 bg-amber-500/10' :
+                                                item.cabin_class === 'premium_economy' ? 'text-sky-700 bg-sky-500/10' :
+                                                'text-slate-500 bg-slate-100 dark:bg-white/5'
+                                            }`}>
+                                                {item.cabin_class === 'first' ? 'First' :
+                                                 item.cabin_class === 'business' ? 'Business' :
+                                                 item.cabin_class === 'premium_economy' ? 'Premium' :
+                                                 'Economy'}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className={`text-xs font-medium px-2 py-1 rounded-lg ${item.return_date ? 'text-blue-600 bg-blue-500/10' : 'text-slate-500 bg-slate-100 dark:bg-white/5'}`}>
+                                                {item.return_date ? 'Round-trip' : 'One-way'}
+                                            </span>
+                                        </TableCell>
                                         <TableCell><span className="font-bold text-emerald-600">{formatCurrency(item.price, item.currency ?? 'USD')}</span></TableCell>
                                         <TableCell><span className="text-xs font-bold text-amber-600 bg-amber-500/10 px-2 py-1 rounded-lg">{item.discount_tag ?? '—'}</span></TableCell>
                                         <TableCell><span className="text-xs text-slate-500">{item.departure_date ?? '—'}</span></TableCell>
@@ -235,6 +275,14 @@ export function DealsClient({ data, searchParams }: DealsClientProps) {
                                         <TableCell><span className="text-sm text-slate-600 dark:text-slate-300">{item.location}</span></TableCell>
                                         <TableCell><span className="text-sm font-bold text-amber-500">★ {item.rating?.toFixed(1) ?? '—'}</span></TableCell>
                                         <TableCell><span className="font-bold text-emerald-600">{formatCurrency(item.sale_price, 'USD')}</span><span className="text-xs text-slate-400 line-through ml-1">{formatCurrency(item.original_price, 'USD')}</span></TableCell>
+                                        <TableCell><span className="text-xs font-bold text-blue-600 bg-blue-500/10 px-2 py-1 rounded-lg">{item.badge ?? '—'}</span></TableCell>
+                                    </>}
+                                    {tab === 'hotel_deals' && <>
+                                        <TableCell className="pl-6"><span className="font-bold text-sm text-slate-900 dark:text-white">{item.name}</span></TableCell>
+                                        <TableCell><span className="text-sm text-slate-600 dark:text-slate-300">{item.location}</span></TableCell>
+                                        <TableCell><span className="text-xs text-slate-500 dark:text-slate-400">{item.category ?? '—'}</span></TableCell>
+                                        <TableCell><span className="text-sm font-bold text-amber-500">★ {item.rating?.toFixed(1) ?? '—'}</span></TableCell>
+                                        <TableCell><span className="font-bold text-emerald-600">{formatCurrency(item.price ?? 0, 'PHP')}</span></TableCell>
                                         <TableCell><span className="text-xs font-bold text-blue-600 bg-blue-500/10 px-2 py-1 rounded-lg">{item.badge ?? '—'}</span></TableCell>
                                     </>}
                                     <TableCell className="pr-6 text-right">

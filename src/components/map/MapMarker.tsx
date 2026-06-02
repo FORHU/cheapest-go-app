@@ -45,7 +45,7 @@ const MapMarker = React.memo(function MapMarker({
                 onMouseEnter={() => onHover(property.id)}
                 onMouseLeave={() => onHover(null)}
                 className={cn(
-                    'flex flex-col items-center group',
+                    'flex flex-col items-center group cursor-pointer',
                     isSelected ? 'scale-110 -translate-y-1' : 'scale-100'
                 )}
             >
