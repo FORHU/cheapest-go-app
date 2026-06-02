@@ -7,6 +7,8 @@ export interface Deal {
     discount: string;
     originalPrice: number;
     salePrice: number;
+    /** Currency the prices are stored in — defaults to 'USD'. Used for correct conversion. */
+    currency?: string;
     image: string;
     endsIn: string;
     tag?: string;
@@ -15,6 +17,8 @@ export interface Deal {
     destination?: string;
     departure_date?: string;
     return_date?: string;
+    /** Cabin class from flight_deals.cabin_class — 'economy' | 'premium_economy' | 'business' | 'first' */
+    cabinClass?: string;
     // Live price metadata — set by cron job
     lastRefreshedAt?: string;
 }

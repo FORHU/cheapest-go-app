@@ -40,14 +40,13 @@ export const useNearbyGems = ({
     const [isFetchingGems, setIsFetchingGems] = useState(() => !!(isLoaded && coordinates));
     const hasCoordinates = coordinates && coordinates.lat !== 0 && coordinates.lng !== 0;
 
-    const buildPoiProxyImageUrl = (name: string, lat: number, lng: number, placeId?: string, fsqId?: string, category?: string) => {
+    const buildPoiProxyImageUrl = (name: string, lat: number, lng: number, placeId?: string, category?: string) => {
         const params = new URLSearchParams({
             name,
             lat: String(lat),
             lng: String(lng),
         });
         if (placeId) params.set('placeId', placeId);
-        if (fsqId) params.set('fsqId', fsqId);
         if (category) params.set('category', category);
         return `/api/poi-photo?${params.toString()}`;
     };
@@ -80,36 +79,16 @@ export const useNearbyGems = ({
                     }
                 };
 
-                // Fetch Google Places and Foursquare in parallel, merge and deduplicate
+                // Fetch Google Places discovery results
                 let featuresToProcess: any[] = [];
                 try {
-                    const [googleResult, fsqResult] = await Promise.allSettled([
-                        fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
-                            .then(r => r.ok ? r.json() : { features: [] })
-                            .then(d => (d.features || []) as any[])
-                            .catch(() => [] as any[]),
-                        fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
-                            .then(r => r.ok ? r.json() : { features: [] })
-                            .then(d => (d.features || []) as any[])
-                            .catch(() => [] as any[]),
-                    ]);
-
-                    const googleFeatures = googleResult.status === 'fulfilled' ? googleResult.value : [];
-                    const fsqFeatures    = fsqResult.status === 'fulfilled'    ? fsqResult.value    : [];
-
-                    // Merge: Google places first (have ratings/photos), FSQ fills gaps.
-                    // Deduplicate by normalised name so a place appearing in both APIs appears once.
-                    const seen = new Set<string>();
-                    const merged: any[] = [];
-                    for (const f of [...googleFeatures, ...fsqFeatures]) {
-                        const key = (f.properties?.name || '').toLowerCase().trim();
-                        if (!key || seen.has(key)) continue;
-                        seen.add(key);
-                        merged.push(f);
-                    }
-                    featuresToProcess = merged;
+                    const googleFeatures = await fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
+                        .then(r => r.ok ? r.json() : { features: [] })
+                        .then(d => (d.features || []) as any[])
+                        .catch(() => [] as any[]);
+                    featuresToProcess = googleFeatures;
                 } catch (e: any) {
-                    if (e.name !== 'AbortError') console.warn('External discovery aggregate failed:', e);
+                    if (e.name !== 'AbortError') console.warn('External discovery failed:', e);
                 }
 
                 if (featuresToProcess.length < 5) {
@@ -150,10 +129,8 @@ export const useNearbyGems = ({
                     const lng = f.geometry.coordinates[0];
                     const lat = f.geometry.coordinates[1];
                     const placeId = f.properties?.place_id || '';
-                    const fsqId = f.properties?.fsq_id || '';
                     const source = f.properties?.source;
-                    const isGoogleSource = source === 'google';
-                    const isFsqSource = source === 'foursquare';
+                    const isFsqSource = source === 'foursquare' || source === 'fsq-google';
 
                     // Determine icon based on category or maki
                     const cat = (f.properties.category || '').toLowerCase();
@@ -171,7 +148,7 @@ export const useNearbyGems = ({
                             category: f.properties.category || 'Point of Interest',
                             icon,
                             // Always route through our proxy so content-type validation + fallback logic is applied.
-                            imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, fsqId, cat),
+                            imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, cat),
                             rating: f.properties.rating,
                             userRatingsTotal: f.properties.userRatingsTotal || 0,
                             reviews: f.properties.reviews || [],
