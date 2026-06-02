@@ -57,6 +57,14 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: true, data: data ?? [], total: count ?? 0, page, pageSize, totalPages: Math.ceil((count ?? 0) / pageSize) });
     }
 
+    if (tab === 'hotel_deals') {
+        let query = supabase.from('unique_stays').select('*', { count: 'exact' });
+        if (q) query = query.or(`name.ilike.%${q}%,location.ilike.%${q}%,category.ilike.%${q}%`);
+        const { data, error, count } = await query.order('created_at', { ascending: false }).range(offset, offset + pageSize - 1);
+        if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return NextResponse.json({ success: true, data: data ?? [], total: count ?? 0, page, pageSize, totalPages: Math.ceil((count ?? 0) / pageSize) });
+    }
+
     return NextResponse.json({ success: false, error: 'Invalid tab' }, { status: 400 });
 }
 
@@ -70,7 +78,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { action, tab, id, ids } = body;
     const supabase = createAdminClient();
-    const tableMap: Record<string, string> = { vouchers: 'vouchers', flight_deals: 'flight_deals', weekend_deals: 'weekend_flight_deals' };
+    const tableMap: Record<string, string> = { vouchers: 'vouchers', flight_deals: 'flight_deals', weekend_deals: 'weekend_flight_deals', hotel_deals: 'unique_stays' };
     const table = tableMap[tab];
     if (!table) return NextResponse.json({ success: false, error: 'Invalid tab' }, { status: 400 });
 

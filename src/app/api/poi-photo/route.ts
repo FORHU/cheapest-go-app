@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getCached, setCache } from '@/lib/server/poi-cache';
 import { tryGooglePlaces } from '@/lib/server/poi-google';
-import { tryFoursquare } from '@/lib/server/poi-foursquare';
 import { getPlaceholderUrl } from '@/lib/server/poi-placeholder';
 
 const inFlightRequests = new Map<string, Promise<any>>();
@@ -24,7 +23,6 @@ export async function GET(req: NextRequest) {
     const lat = searchParams.get('lat') || '0';
     const lng = searchParams.get('lng') || '0';
     const placeId = searchParams.get('placeId') || '';
-    const fsqId = searchParams.get('fsqId') || '';
     const category = searchParams.get('category') || '';
     const full = searchParams.get('full') === 'true';
 
@@ -72,7 +70,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!resultMetadata) {
-        const metadataPromise = buildMetadata(name, lat, lng, placeId, fsqId, category, cacheKey);
+        const metadataPromise = buildMetadata(name, lat, lng, placeId, category, cacheKey);
         inFlightRequests.set(cacheKey, metadataPromise);
         try {
             resultMetadata = await metadataPromise;
@@ -92,20 +90,16 @@ export async function GET(req: NextRequest) {
             u.includes('/maps/api/staticmap') ||
             u.includes('maps.googleapis.com/maps/vt') ||
             u.includes('maps.google.com/maps/vt') ||
-            u.includes('khms') || // Google satellite tile CDN
-            u.includes('mts') ||  // Google Maps tile service
+            u.includes('khms') ||
+            u.includes('mts') ||
             u.includes('lh3.googleusercontent.com/p/') === false && u.includes('googleusercontent.com') && !u.includes('photo_reference');
 
         const tryFetchImage = async (url: string) => {
-            // Reject known static-map URL patterns before even fetching
             if (isStaticMapUrl(url)) {
                 return { res: null as any, contentType: '', isImage: false };
             }
             const res = await fetch(url, { next: { revalidate: 3600 } });
             const contentType = res.headers.get('content-type') || '';
-            // After following redirects, res.url is the *final* URL.
-            // Google Places Photo API sometimes redirects to a Static Maps tile when
-            // the place has no user-uploaded photo — detect and reject that.
             const finalUrl = res.url || url;
             const resolvedToMap = isStaticMapUrl(finalUrl);
             return {
@@ -120,9 +114,7 @@ export async function GET(req: NextRequest) {
 
         if (!imgRes?.ok || !isImage) {
             const candidates = [
-                resultMetadata.source === 'google' ? resultMetadata.foursquarePhotoUrl : resultMetadata.googlePhotoUrl,
                 resultMetadata.googlePhotoUrl,
-                resultMetadata.foursquarePhotoUrl,
                 getPlaceholderUrl(name, category, lat, lng),
             ].filter((u, i, arr): u is string => !!u && arr.indexOf(u) === i);
 
@@ -158,7 +150,6 @@ async function buildMetadata(
     lat: string,
     lng: string,
     placeId: string,
-    fsqId: string,
     category: string,
     cacheKey: string
 ) {
@@ -168,7 +159,6 @@ async function buildMetadata(
     const meta: any = {
         photoUrl: null,
         googlePhotoUrl: null,
-        foursquarePhotoUrl: null,
         rating: null,
         userRatingsTotal: null,
         vicinity: null,
@@ -176,16 +166,9 @@ async function buildMetadata(
         source: 'none',
     };
 
-    const [googleResult, fsqResult] = await Promise.all([
-        tryGooglePlaces(name, lat, lng, placeId),
-        tryFoursquare(name, lat, lng, fsqId),
-    ]);
+    const googleResult = await tryGooglePlaces(name, lat, lng, placeId);
 
     if (googleResult) {
-        // Validate that the Google photo URL won't resolve to a Static Maps tile.
-        // The Places Photo API endpoint itself (/maps/api/place/photo) is fine —
-        // it may redirect to a real photo. But if Google already gave us a
-        // staticmap URL directly, discard it so FSQ/placeholder takes over.
         const googlePhotoOk =
             googleResult.photoUrl &&
             !googleResult.photoUrl.includes('/maps/api/staticmap') &&
@@ -197,35 +180,6 @@ async function buildMetadata(
             nameEn: googleResult.name,
             source: googlePhotoOk ? 'google' : 'none',
         });
-    }
-
-    if (fsqResult) {
-        if (!meta.category && fsqResult.category) meta.category = fsqResult.category;
-        if (!meta.rating && fsqResult.rating) {
-            meta.rating = fsqResult.rating;
-            meta.userRatingsTotal = fsqResult.userRatingsTotal;
-        }
-        if (!meta.vicinity && fsqResult.vicinity) meta.vicinity = fsqResult.vicinity;
-        if (!meta.openingHours && fsqResult.openingHours) meta.openingHours = fsqResult.openingHours;
-
-        // Interleave FSQ tips and Google reviews
-        const googleReviews = [...(meta.reviews || [])];
-        const fsqTips = [...fsqResult.tips];
-        const merged = [];
-        while (merged.length < 10 && (googleReviews.length > 0 || fsqTips.length > 0)) {
-            if (fsqTips.length > 0) merged.push(fsqTips.shift());
-            if (googleReviews.length > 0 && merged.length < 10) merged.push(googleReviews.shift());
-        }
-        meta.reviews = merged;
-
-        if (!meta.photoUrl && fsqResult.photoUrl) {
-            meta.photoUrl = fsqResult.photoUrl;
-            meta.foursquarePhotoUrl = fsqResult.photoUrl;
-            meta.source = 'foursquare';
-        } else if (meta.photoUrl && fsqResult.tips.length > 0) {
-            meta.foursquarePhotoUrl = fsqResult.photoUrl || null;
-            meta.source = 'fsq-google';
-        }
     }
 
     // Default opening hours for always-open venue types

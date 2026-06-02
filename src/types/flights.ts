@@ -159,6 +159,8 @@ export const AIRLINES: Record<string, string> = {
   'KE': 'Korean Air', 'OZ': 'Asiana Airlines', '7C': 'Jeju Air', 'TW': 'T\'way Air',
   'LJ': 'Jin Air', 'ZE': 'Eastar Jet', 'BX': 'Air Busan', 'RS': 'Air Seoul',
   'PR': 'Philippine Airlines', '5J': 'Cebu Pacific', 'Z2': 'AirAsia Philippines',
+  '2P': 'PAL Express', 'DG': 'Cebgo', 'P8': 'Sunlight Air',
+  'RB': 'Royal Brunei Airlines', 'MI': 'SilkAir',
   'JL': 'Japan Airlines', 'NH': 'ANA', 'MM': 'Peach Aviation', 'JW': 'Vanilla Air',
   'SQ': 'Singapore Airlines', 'TR': 'Scoot', 'MH': 'Malaysia Airlines', 'AK': 'AirAsia',
   'TG': 'Thai Airways', 'FD': 'Thai AirAsia', 'VN': 'Vietnam Airlines', 'VJ': 'VietJet',
@@ -182,8 +184,15 @@ export const AIRLINES: Record<string, string> = {
   'FR': 'Ryanair', 'U2': 'easyJet', 'W6': 'Wizz Air', 'VY': 'Vueling',
   'ET': 'Ethiopian Airlines', 'SA': 'South African Airways', 'KQ': 'Kenya Airways',
   'AT': 'Royal Air Maroc', 'MS': 'EgyptAir',
+  // Special / virtual codes returned by GDS systems
+  // "ZZ" is a synthetic carrier code Duffel uses for interline / codeshare itineraries
+  // where no single marketing carrier owns the full journey.
+  'ZZ': 'Multiple Airlines',
+  'XX': 'Multiple Airlines',
+  '00': 'Charter Flight',
 };
 
 export function getAirlineName(code: string): string {
-  return AIRLINES[code] || code;
+  if (!code) return 'Best Available Fare';
+  return AIRLINES[code] ?? code;
 }
