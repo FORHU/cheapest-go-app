@@ -43,6 +43,7 @@ export const bookingConfirmSchema = z.object({
     method: z.string().min(1, 'Payment method is required'),
     transactionId: z.string().optional(),
   }),
+  cancellationPolicies: z.any().optional(),
 });
 
 export type BookingConfirmInput = z.infer<typeof bookingConfirmSchema>;

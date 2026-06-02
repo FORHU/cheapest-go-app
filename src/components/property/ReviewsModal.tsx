@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { X, ThumbsUp, ThumbsDown, MapPin, ChevronDown } from 'lucide-react';
-import { HotelReview, formatReviewDate, getReviewerInitials, getRatingColor, getRatingLabel } from '@/lib/property/fetchReviews';
+import { HotelReview, formatReviewDate, getReviewerInitials, getRatingColor, getRatingLabel } from '@/lib/property/reviewsUtils';
 
 interface ReviewsModalProps {
     isOpen: boolean;

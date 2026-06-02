@@ -74,15 +74,18 @@ async function fetchHotelReviews(hotelCodes: string[]) {
 
 async function fetchHotelCodesByCity(cityName: string, countryCode?: string): Promise<string[]> {
     const sql = getSqlAdmin();
+    // Normalize: strip suffixes like "-si", "-do", "-gu" common in Korean city names
+    const normalized = cityName.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
+    const pattern = `%${normalized}%`;
     const rows = countryCode
         ? await sql`
             SELECT hotel_id FROM hotel_content
-            WHERE LOWER(city) = LOWER(${cityName}) AND LOWER(country) = LOWER(${countryCode})
+            WHERE city ILIKE ${pattern} AND LOWER(country) = LOWER(${countryCode})
             LIMIT 300
           `
         : await sql`
             SELECT hotel_id FROM hotel_content
-            WHERE LOWER(city) = LOWER(${cityName})
+            WHERE city ILIKE ${pattern}
             LIMIT 300
           `;
     return rows.map((r: any) => r.hotel_id);
@@ -107,32 +110,31 @@ export interface TgxSearchParams {
 
 // ─── Core search function ─────────────────────────────────────────────────────
 
-async function resolveCityDestination(cityName: string): Promise<string[]> {
+/** Query TGX's OTV hotel portfolio to discover hotel codes for a city not yet in our DB. */
+async function fetchOtvHotelCodesByCity(cityName: string, destinationCode?: string): Promise<string[]> {
     try {
         const cfg = getTgxConfig();
-        const destResult = await tgxGraphQL(
-            `query TgxResolveDestination($access: ID!, $text: String!) {
+        const criteria: Record<string, unknown> = { access: cfg.accessCode, maxSize: 300 };
+        if (destinationCode) criteria.destinationCodes = [destinationCode];
+
+        const result = await tgxGraphQL(
+            `query OtvHotelPortfolio($criteria: HotelXHotelListInput!) {
                hotelX {
-                 destinationSearcher(criteria: { access: $access, text: $text, maxSize: 50 }) {
-                   ... on DestinationData { code type }
+                 hotels(criteria: $criteria) {
+                   hotels { hotelCode }
                  }
                }
              }`,
-            { access: cfg.accessCode, text: cityName }
+            { criteria }
         );
-        const items: any[] = destResult?.data?.hotelX?.destinationSearcher ?? [];
-        const city = items.find((i) => i.type === 'CITY');
-        const zone = items.find((i) => i.type === 'ZONE');
-        const resolved = city?.code ?? zone?.code;
-        if (resolved) {
-            console.log(`[tgx-search] Resolved "${cityName}" → ${resolved}`);
-            return [resolved];
-        }
-        console.warn(`[tgx-search] No TGX code for "${cityName}", using raw name`);
-        return [cityName];
+
+        const hotels: any[] = result?.data?.hotelX?.hotels?.hotels ?? [];
+        const codes = hotels.map((h: any) => String(h.hotelCode)).filter(Boolean);
+        console.log(`[tgx-search] OTV portfolio returned ${codes.length} hotel codes for "${cityName}"`);
+        return codes;
     } catch (e: any) {
-        console.warn('[tgx-search] Destination resolution failed:', e.message);
-        return [cityName];
+        console.warn('[tgx-search] OTV portfolio query failed:', e.message);
+        return [];
     }
 }
 
@@ -165,10 +167,7 @@ export async function runTgxSearch(params: TgxSearchParams) {
     } else if (destinationCode) {
         destinations = [String(destinationCode)];
     } else if (cityName) {
-        // Resolve TGX destination code from city name — one extra API call.
-        // The autocomplete enriches results with TGX codes, so this path
-        // should only trigger for direct URL navigation without a code.
-        destinations = await resolveCityDestination(cityName);
+        destinations = [cityName]; // will be overridden by fallback if empty hotels
     } else {
         throw new Error('destinationCode, hotelCode, or cityName is required');
     }
@@ -188,53 +187,50 @@ export async function runTgxSearch(params: TgxSearchParams) {
     const options: TgxOption[] = result?.data?.hotelX?.search?.options || [];
     const gqlErrors = result?.data?.hotelX?.search?.errors || [];
 
-    // When a stored destinationCode produces "Empty hotels", the URL code may be
-    // stale or not mapped to the OTV supplier.
+    // OTV destination codes don't work for city-level search — fall back to hotel codes.
     if (hasEmptyHotelsError(gqlErrors) && !hotelCode) {
-        // 1. Try fresh city resolution first (handles stale URL codes)
-        if (cityName) {
-            console.warn(`[tgx-search] destinationCode "${destinationCode ?? 'n/a'}" got Empty hotels — retrying with cityName "${cityName}"`);
-            const freshDestinations = await resolveCityDestination(cityName);
-            if (freshDestinations[0] !== destinationCode) {
-                const retryCriteria = { ...criteria, destinations: freshDestinations };
-                delete (retryCriteria as any).hotels;
-                const retryResult = await tgxGraphQL(CITY_SEARCH_QUERY, { criteria: retryCriteria, settings });
-                const retryOptions: TgxOption[] = retryResult?.data?.hotelX?.search?.options || [];
-                const retryErrors = retryResult?.data?.hotelX?.search?.errors || [];
-                if (!hasEmptyHotelsError(retryErrors) && retryOptions.length > 0) {
-                    const retryMerchant = retryOptions.filter(
-                        (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
-                    );
-                    return buildCityResults(retryMerchant, cityName, countryCode);
-                }
-                if (retryErrors.length) {
-                    console.warn('[tgx-search] Retry GraphQL errors:', retryErrors.map((e: any) => e.description || e.code).join(', '));
-                }
-            }
-        }
-
-        // 2. Destination code is a genuine OTV catalog gap — search by hotel codes from DB
         const fallbackCity = cityName ?? '';
-        if (fallbackCity) {
-            console.warn(`[tgx-search] Destination "${destinationCode ?? fallbackCity}" not in OTV catalog — falling back to hotel-code search from DB`);
-            const dbHotelCodes = await fetchHotelCodesByCity(fallbackCity, countryCode);
-            if (dbHotelCodes.length > 0) {
-                console.log(`[tgx-search] Found ${dbHotelCodes.length} hotel codes in DB for "${fallbackCity}" — searching TGX by hotel code`);
-                const fallbackCriteria = { ...criteria, hotels: dbHotelCodes };
+        if (!fallbackCity) {
+            console.warn('[tgx-search] Empty hotels and no cityName to fall back with');
+        } else {
+            // 1. DB hotel codes (OTV IDs cached from previous searches / ETG seed)
+            console.warn(`[tgx-search] OTV destination search empty for "${fallbackCity}" — trying hotel-code search`);
+            let otvCodes = await fetchHotelCodesByCity(fallbackCity, countryCode);
+
+            // 2. OTV hotel portfolio query when DB is empty (new city, never seeded)
+            if (otvCodes.length === 0) {
+                console.log(`[tgx-search] DB empty for "${fallbackCity}" — querying OTV portfolio`);
+                otvCodes = await fetchOtvHotelCodesByCity(fallbackCity, destinationCode ?? destinations?.[0]);
+            }
+
+            if (otvCodes.length > 0) {
+                console.log(`[tgx-search] Searching TGX with ${otvCodes.length} OTV hotel codes for "${fallbackCity}"`);
+                const fallbackCriteria = { ...criteria, hotels: otvCodes };
                 delete (fallbackCriteria as any).destinations;
-                const fallbackResult = await tgxGraphQL(CITY_SEARCH_QUERY, { criteria: fallbackCriteria, settings });
-                const fallbackOptions: TgxOption[] = fallbackResult?.data?.hotelX?.search?.options || [];
-                const fallbackErrors = fallbackResult?.data?.hotelX?.search?.errors || [];
+
+                let fallbackResult = await tgxGraphQL(CITY_SEARCH_QUERY, { criteria: fallbackCriteria, settings });
+                let fallbackOptions: TgxOption[] = fallbackResult?.data?.hotelX?.search?.options || [];
+                let fallbackErrors: any[]         = fallbackResult?.data?.hotelX?.search?.errors || [];
+
+                // TGX sometimes returns "Empty hotels" on the first hotel-code search for
+                // codes it hasn't recently cached. One retry after a short delay fixes this.
+                if (hasEmptyHotelsError(fallbackErrors) && fallbackOptions.length === 0) {
+                    console.log('[tgx-search] Hotel-code search returned Empty hotels — retrying in 1.5s');
+                    await new Promise(r => setTimeout(r, 1500));
+                    fallbackResult  = await tgxGraphQL(CITY_SEARCH_QUERY, { criteria: fallbackCriteria, settings });
+                    fallbackOptions = fallbackResult?.data?.hotelX?.search?.options || [];
+                    fallbackErrors  = fallbackResult?.data?.hotelX?.search?.errors || [];
+                }
+
                 if (fallbackErrors.length) {
-                    console.warn('[tgx-search] Hotel-code fallback errors:', fallbackErrors.map((e: any) => e.description || e.code).join(', '));
+                    console.warn('[tgx-search] Hotel-code search errors:', fallbackErrors.map((e: any) => e.description || e.code).join(', '));
                 }
                 const fallbackMerchant = fallbackOptions.filter(
                     (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
                 );
                 return buildCityResults(fallbackMerchant, fallbackCity, countryCode);
-            } else {
-                console.warn(`[tgx-search] No hotel codes found in DB for "${fallbackCity}" — no TGX results`);
             }
+            console.warn(`[tgx-search] No OTV hotel codes found for "${fallbackCity}" — no results`);
         }
     }
 
@@ -252,7 +248,36 @@ export async function runTgxSearch(params: TgxSearchParams) {
         const roomTypes = merchantOptions
             .sort((a, b) => (a.price.gross || a.price.net) - (b.price.gross || b.price.net))
             .map(normalizeOption);
-        return { data: { roomTypes } };
+
+        const [contentMap, reviewMap] = await Promise.all([
+            fetchHotelContent([String(hotelCode)]),
+            fetchHotelReviews([String(hotelCode)]),
+        ]);
+        const content = contentMap.get(String(hotelCode));
+        const reviews = reviewMap.get(String(hotelCode));
+        const imageList: string[] = content?.images ?? [];
+        const reviewRating = Number(reviews?.rating ?? content?.review_rating ?? 0);
+
+        return {
+            data: {
+                roomTypes,
+                hotelId:     String(hotelCode),
+                name:        content?.name || String(hotelCode),
+                images:      imageList,
+                image:       imageList[0] ?? '',
+                lat:         Number(content?.lat ?? 0),
+                lng:         Number(content?.lng ?? 0),
+                coordinates: { lat: Number(content?.lat ?? 0), lng: Number(content?.lng ?? 0) },
+                address:     content?.address ?? '',
+                city:        content?.city ?? '',
+                country:     content?.country ?? '',
+                description: content?.description ?? '',
+                amenities:   content?.amenities ?? [],
+                starRating:  content?.star_rating ?? 0,
+                reviewRating,
+                reviewCount: reviews?.reviews_count ?? content?.review_count ?? 0,
+            },
+        };
     }
 
     return buildCityResults(merchantOptions, cityName, countryCode);
@@ -284,29 +309,37 @@ async function buildCityResults(
         const content = contentMap.get(code);
         const reviews = reviewMap.get(code);
         const tokenId = opt.token || opt.id;
+        const reviewRating = Number(reviews?.rating ?? content?.review_rating ?? 0);
+        const imageList: string[] = content?.images ?? [];
         return {
-            hotelId:     code,
-            name:        content?.name || code,
-            price:       opt.price.gross || opt.price.net,
-            currency:    opt.price.currency,
-            offerId:     `TGX:${tokenId}`,
+            hotelId:      code,
+            id:           code,
+            name:         content?.name || code,
+            price:        opt.price.gross || opt.price.net,
+            currency:     opt.price.currency,
+            offerId:      `TGX:${tokenId}`,
             refundableTag: opt.cancelPolicy?.refundable ? 'REFUNDABLE' : 'NON_REFUNDABLE',
-            starRating:  content?.star_rating ?? 0,
-            images:      content?.images ?? [],
-            lat:         content?.lat ?? 0,
-            lng:         content?.lng ?? 0,
-            address:     content?.address ?? '',
-            city:        content?.city ?? cityName ?? '',
-            country:     content?.country ?? countryCode ?? '',
-            description: content?.description ?? '',
-            amenities:   content?.amenities ?? [],
-            reviewRating: reviews?.rating ?? content?.review_rating ?? 0,
+            starRating:   content?.star_rating ?? 0,
+            images:       imageList,
+            image:        imageList[0] ?? '',
+            lat:          Number(content?.lat ?? 0),
+            lng:          Number(content?.lng ?? 0),
+            coordinates:  { lat: Number(content?.lat ?? 0), lng: Number(content?.lng ?? 0) },
+            address:      content?.address ?? '',
+            location:     content?.address ?? '',
+            city:         content?.city ?? cityName ?? '',
+            country:      content?.country ?? countryCode ?? '',
+            description:  content?.description ?? '',
+            amenities:    content?.amenities ?? [],
+            reviewRating,
+            rating:       reviewRating,
+            reviews:      reviews?.reviews_count ?? content?.review_count ?? 0,
             reviewCount:  reviews?.reviews_count ?? content?.review_count ?? 0,
-            checkInTime: content?.check_in_time ?? null,
+            checkInTime:  content?.check_in_time ?? null,
             checkOutTime: content?.check_out_time ?? null,
-            boardCode:   opt.boardCode,
-            roomTypes:   [normalizeOption(opt)],
-            _tgxToken:   opt.token,
+            boardCode:    opt.boardCode,
+            roomTypes:    [normalizeOption(opt)],
+            _tgxToken:    opt.token,
         };
     });
 

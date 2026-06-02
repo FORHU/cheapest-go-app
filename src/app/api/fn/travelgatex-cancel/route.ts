@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { tgxGraphQL, getTgxSettings } from '@/lib/server/stays/travelgatex/client';
+import { tgxGraphQL, getTgxSettings, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -26,7 +26,7 @@ mutation TgxCancel($input: HotelCancelInput!, $settings: HotelSettingsInput!) {
 
 export async function POST(req: NextRequest) {
     try {
-        const { clientReference, supplierReference, tgxBookingId } = await req.json();
+        const { clientReference, supplierReference, tgxBookingId, hotelCode } = await req.json();
 
         if (!clientReference && !supplierReference && !tgxBookingId) {
             return NextResponse.json({
@@ -35,14 +35,24 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        const settings = getTgxSettings();
+        const cfg = getTgxConfig();
+        const settings = getTgxSettings(cfg);
 
-        // TGX cancel input: id is the booking reference (supplier or client)
+        // bookingID alone is sufficient per TGX docs; accessCode+hotelCode+reference is the fallback.
         const input: Record<string, any> = {};
-        if (tgxBookingId) input.id = tgxBookingId;
-        else if (supplierReference) input.id = supplierReference;
-        else input.clientLocator = clientReference;
+        if (tgxBookingId) {
+            input.bookingID = tgxBookingId;
+        } else {
+            input.accessCode = cfg.accessCode;
+            if (hotelCode) input.hotelCode = hotelCode;
+            if (supplierReference) {
+                input.reference = { supplier: supplierReference };
+            } else {
+                input.reference = { client: clientReference };
+            }
+        }
 
+        console.log('[travelgatex-cancel] input:', JSON.stringify(input));
         const result = await tgxGraphQL(MUTATION, { input, settings });
 
         const cancellation = result?.data?.hotelX?.cancel?.cancellation;

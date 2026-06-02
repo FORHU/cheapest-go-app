@@ -3,8 +3,9 @@ import { env } from "@/utils/env";
 
 // ─── HTML Escaping (prevent XSS in email templates) ─────────────────
 
-function escapeHtml(str: string): string {
-    return str
+function escapeHtml(str: string | null | undefined): string {
+    if (!str) return '';
+    return String(str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')

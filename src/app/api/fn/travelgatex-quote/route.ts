@@ -21,7 +21,6 @@ query TgxQuote($criteria: HotelCriteriaQuoteInput!, $settings: HotelSettingsInpu
         paymentType
         status
         price { currency net gross }
-        token
         rooms { code description occupancyRefId }
         cancelPolicy {
           refundable
@@ -58,7 +57,7 @@ export async function POST(req: NextRequest) {
 
         // Normalize to the shape prebook/route.ts expects
         const data = {
-            optionRefId:  quote.optionRefId || quote.token || token,
+            optionRefId:  quote.optionRefId || token,
             hotelCode:    quote.hotelCode,
             boardCode:    quote.boardCode,
             paymentType:  quote.paymentType,
@@ -68,7 +67,6 @@ export async function POST(req: NextRequest) {
                 gross:    quote.price?.gross ?? 0,
                 currency: quote.price?.currency ?? 'USD',
             },
-            token:        quote.token,
             rooms:        quote.rooms ?? [],
             cancelPolicy: quote.cancelPolicy,
         };

@@ -36,11 +36,11 @@ function stripHtml(html: string): string {
 }
 
 // Import centralized rating helper functions
-import { getRatingLabel, getRatingColor as getRatingBgColor } from '@/lib/property/fetchReviews';
+import { getRatingLabel, getRatingColor as getRatingBgColor } from '@/lib/property/reviewsUtils';
 
 const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsData }) => {
     // Use real review data if available, fallback to property data
-    const rating = reviewsData?.averageRating || property.rating;
+    const rating = Number(reviewsData?.averageRating || property.rating) || 0;
     const reviewCount = reviewsData?.totalCount || property.reviews;
 
     // UI state for expanding description and amenities

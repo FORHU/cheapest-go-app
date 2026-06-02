@@ -1,13 +1,14 @@
 "use client";
 
-import { getRatingColor, getRatingLabel } from '@/lib/property/fetchReviews';
+import { getRatingColor, getRatingLabel } from '@/lib/property/reviewsUtils';
 
 interface ReviewsSummaryProps {
     averageRating: number;
     totalCount: number;
 }
 
-export default function ReviewsSummary({ averageRating, totalCount }: ReviewsSummaryProps) {
+export default function ReviewsSummary({ averageRating: rawRating, totalCount }: ReviewsSummaryProps) {
+    const averageRating = Number(rawRating) || 0;
     if (totalCount === 0) {
         return (
             <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">

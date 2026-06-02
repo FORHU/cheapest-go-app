@@ -64,6 +64,7 @@ export async function cancelTravelgateX(params: {
     clientReference: string;
     supplierReference?: string;
     tgxBookingId?: string;
+    hotelCode?: string;
 }) {
     return callInternalRoute('/api/fn/travelgatex-cancel', params);
 }

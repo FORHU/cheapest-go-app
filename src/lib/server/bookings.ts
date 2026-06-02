@@ -1,12 +1,12 @@
 import type { DbClient } from '@/lib/db/query-builder';
 import type { User } from '@/types/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
-import { env } from "@/utils/env";
 import {
   amendBookingSchema,
   saveBookingSchema,
 } from '@/lib/schemas';
 import { bookTravelgateX, cancelTravelgateX } from './travelgatex';
+import { getSqlAdmin } from '@/lib/db/postgres';
 import { invokeEdgeFunction } from '@/utils/postgres/functions';
 
 import { stripe } from '@/lib/stripe/server';
@@ -141,6 +141,7 @@ export interface TgxConfirmInput {
   paymentIntentId?: string;
   voucherCode?: string;
   discountAmount?: number;
+  cancellationPolicies?: any;
 }
 
 export async function confirmAndSaveTgxBooking(
@@ -199,15 +200,18 @@ export async function confirmAndSaveTgxBooking(
   }
 
   const booking = tgxResult?.data;
-  if (!booking?.reference?.client) {
+  // travelgatex-book route returns flat clientRef/supplierRef/hotelRef fields
+  const clientRef = booking?.clientRef || booking?.reference?.client;
+  if (!clientRef) {
     console.error('[confirmAndSaveTgxBooking] No reference in TGX response:', tgxResult);
     return { success: false, error: 'Booking failed — no reference returned from TravelgateX' };
   }
 
-  const bookingId = booking.reference.client; // our clientReference
-  const supplierRef = booking.reference.supplier;
-  const hotelRef = booking.reference.hotel;
-  const tgxBookingId = booking.tgxBookingId ?? null;
+  const bookingId = clientRef; // our clientReference
+  const supplierRef = booking?.supplierRef || booking?.reference?.supplier;
+  const hotelRef = booking?.hotelRef || booking?.reference?.hotel;
+  const hotelCode = booking?.hotelCode ?? null;
+  const tgxBookingId = booking?.tgxBookingId ?? null;
   const rawStatus = (booking.status || 'confirmed').toLowerCase();
   const bookingStatus = (['confirmed', 'pending'].includes(rawStatus) ? rawStatus : 'confirmed') as 'confirmed' | 'pending';
 
@@ -237,8 +241,23 @@ export async function confirmAndSaveTgxBooking(
     }
   }
 
-  const isRefundable = booking.cancelPolicy?.refundable === true;
+  // Prefer the prebook cancel policy (quote-time, shown to user at checkout) over the
+  // book response — TGX suppliers sometimes return refundable:false at book time even
+  // when the quote showed a free-cancellation window.
+  const prebookPolicy = params.cancellationPolicies;
+  const isRefundable = prebookPolicy
+    ? prebookPolicy.refundableTag === 'RFN'
+    : booking.cancelPolicy?.refundable === true;
   const policyType = isRefundable ? 'free_cancellation' : 'non_refundable';
+  const storedCancelPolicy = prebookPolicy ?? (booking.cancelPolicy ? {
+    refundableTag: isRefundable ? 'RFN' : 'NRFN',
+    cancelPolicyInfos: (booking.cancelPolicy.cancelPenalties || []).map((p: any) => ({
+      cancelTime: p.deadline,
+      amount: p.value ?? 0,
+      currency: p.currency || currency,
+      type: p.penaltyType || 'AMOUNT',
+    })),
+  } : null);
 
   // Build outside try so the catch block can reference it for emergency recovery
   const bookingPayload = {
@@ -311,10 +330,11 @@ export async function confirmAndSaveTgxBooking(
           .from('bookings')
           .update({
             provider: 'travelgatex',
-            provider_metadata: { supplierRef, hotelRef, clientReference, tgxBookingId },
+            provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference, tgxBookingId },
             payment_intent_id: params.paymentIntentId ?? null,
             supplier_cost: price,
             charged_price: totalPrice,
+            cancellation_policy: storedCancelPolicy ?? null,
           })
           .eq('booking_id', bookingId);
 
@@ -347,7 +367,7 @@ export async function confirmAndSaveTgxBooking(
       .from('bookings')
       .update({
         provider: 'travelgatex',
-        provider_metadata: { supplierRef, hotelRef, clientReference, tgxBookingId },
+        provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference, tgxBookingId },
         payment_intent_id: params.paymentIntentId ?? null,
         supplier_cost: price,       // OTV net price confirmed by TGX at booking time
         charged_price: totalPrice,  // gross amount captured from guest via Stripe
@@ -455,7 +475,7 @@ export async function cancelBooking(
     // 4. Cancel with the appropriate provider
     const { data: bookingRow } = await supabase
       .from('bookings')
-      .select('status, provider, provider_metadata')
+      .select('status, provider, provider_metadata, property_name')
       .eq('booking_id', bookingId)
       .single();
     const isRefundRetry = bookingRow?.status === 'cancelled_refund_failed';
@@ -464,12 +484,50 @@ export async function cancelBooking(
     if (!isRefundRetry) {
       if (isTgx) {
         const meta = bookingRow?.provider_metadata as any;
-        const result = await cancelTravelgateX({
-          clientReference: bookingId,
-          supplierReference: meta?.supplierRef,
-          tgxBookingId: meta?.tgxBookingId,
-        });
-        console.log('[cancelBooking] TGX cancellation result:', result?.data);
+
+        // hotelCode is stored in provider_metadata for bookings made after this fix.
+        // For older bookings: try three fallbacks in order.
+        let cancelHotelCode: string | undefined = meta?.hotelCode;
+        if (!cancelHotelCode && bookingRow?.property_name) {
+          const propName = bookingRow.property_name as string;
+
+          // 1. property_name IS the hotel code when hotel wasn't in hotel_content at booking time
+          //    (the UI falls back to showing the numeric ID as the name).
+          if (/^\d+$/.test(propName) || /^[A-Z]{2}\d+$/.test(propName)) {
+            cancelHotelCode = propName;
+            console.log('[cancelBooking] hotelCode derived from property_name (ID fallback):', cancelHotelCode);
+          } else {
+            // 2. Look up hotel_content by exact hotel_id match (name stored as ID)
+            //    then fall back to ILIKE on the hotel name.
+            const sql = getSqlAdmin();
+            const rows = await sql`
+              SELECT hotel_id FROM hotel_content
+              WHERE hotel_id = ${propName}
+                 OR name ILIKE ${propName}
+              LIMIT 1
+            `;
+            cancelHotelCode = rows[0]?.hotel_id ?? undefined;
+            if (cancelHotelCode) {
+              console.log('[cancelBooking] hotelCode resolved from hotel_content:', cancelHotelCode);
+            } else {
+              console.warn('[cancelBooking] hotelCode not found — cancellation may fail. property_name:', propName);
+            }
+          }
+        }
+
+        // Supplier 207 "Request not accepted by supplier" means non-refundable/past-deadline —
+        // proceed with our internal cancel regardless; log the outcome for ops review.
+        try {
+          const result = await cancelTravelgateX({
+            clientReference: bookingId,
+            supplierReference: meta?.supplierRef,
+            tgxBookingId: meta?.tgxBookingId,
+            hotelCode: cancelHotelCode,
+          });
+          console.log('[cancelBooking] TGX cancellation result:', result?.data);
+        } catch (tgxErr: any) {
+          console.warn('[cancelBooking] TGX cancel failed (proceeding with internal cancel):', tgxErr.message?.slice(0, 200));
+        }
       }
     } else {
       console.log('[cancelBooking] Skipping provider cancel call — retrying Stripe refund for cancelled_refund_failed booking');
@@ -543,23 +601,6 @@ export async function cancelBooking(
           stripeRefundId = stripeRefund.id;
           console.log(`[cancelBooking] Stripe refund issued: ${stripeRefundId} — ${refundAmountCents} ${piCurrency} cents`);
 
-          // Log to financial events ledger (hotel path uses hotel_booking_id TEXT column).
-          // Use service client — financial events table requires service role to bypass RLS.
-          const svcForFinance = createAdminClient();
-          svcForFinance
-            .from('booking_financial_events')
-            .insert({
-              hotel_booking_id: bookingId,
-              event_type: 'refund',
-              amount: refundAmountCents / 100,
-              currency: piCurrency.toUpperCase(),
-              provider: 'stripe',
-              transaction_id: stripeRefundId,
-              metadata: { type: 'hotel_cancellation', penaltyAmount: calculation.penaltyAmount },
-            })
-            .then(({ error }: { error: { message: string } | null }) => {
-              if (error) console.warn('[cancelBooking] Financial event log failed (non-critical):', error.message);
-            });
 
           // Fire refund receipt email (non-blocking)
           supabase
@@ -759,7 +800,7 @@ export async function saveBookingToDatabase(
       booking_id: data.bookingId,
       user_id: user.id,
       property_name: data.propertyName,
-      property_image: data.propertyImage,
+      property_image: data.propertyImage ?? null,
       room_name: data.roomName,
       check_in: data.checkIn,
       check_out: data.checkOut,
@@ -771,8 +812,8 @@ export async function saveBookingToDatabase(
       holder_last_name: data.holderLastName,
       holder_email: data.holderEmail,
       status: 'confirmed',
-      special_requests: data.specialRequests,
-      cancellation_policy: data.cancellationPolicy,
+      special_requests: data.specialRequests ?? null,
+      cancellation_policy: data.cancellationPolicy ?? null,
     }, { onConflict: 'booking_id', ignoreDuplicates: true });
 
     if (insertError) {

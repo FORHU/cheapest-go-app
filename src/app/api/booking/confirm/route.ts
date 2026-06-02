@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
             paymentIntentId: body.paymentIntentId,
             voucherCode: body.voucherCode,
             discountAmount: body.discountAmount,
+            cancellationPolicies: body.cancellationPolicies,
         }, user);
 
         if (result.success) {

@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 const MUTATION = `
-mutation TgxBook($input: HotelCriteriaBookingInput!, $settings: HotelSettingsInput!) {
+mutation TgxBook($input: HotelBookInput!, $settings: HotelSettingsInput!) {
   hotelX {
     book(input: $input, settings: $settings) {
       booking {
@@ -22,15 +22,6 @@ mutation TgxBook($input: HotelCriteriaBookingInput!, $settings: HotelSettingsInp
         status
         price { currency net gross }
         hotel { hotelCode hotelName }
-        rooms {
-          code description occupancyRefId refundable
-          paxes { name surname age }
-          price { currency net gross }
-          cancelPolicy {
-            refundable
-            cancelPenalties { deadline hoursBefore penaltyType currency value }
-          }
-        }
         cancelPolicy {
           refundable
           cancelPenalties { deadline hoursBefore penaltyType currency value }
@@ -56,13 +47,17 @@ export async function POST(req: NextRequest) {
         const settings = getTgxSettings();
 
         const input = {
-            optionRefId:    quoteToken,
-            clientLocator:  clientReference,
-            deltaPrice:     { percent: 0, applyBoth: false },
+            optionRefId:     quoteToken,
+            clientReference: clientReference,
+            language:        'en',
+            deltaPrice:      { percent: 0, applyBoth: false },
             holder: {
                 name:    holder.firstName?.toUpperCase() ?? '',
                 surname: holder.lastName?.toUpperCase() ?? '',
-                email:   holder.email ?? '',
+                // TGX HolderInput: email lives inside contactInfo (PaxInput has no name/surname)
+                contactInfo: {
+                    email: holder.email ?? '',
+                },
             },
             rooms: rooms.map((r: any) => ({
                 occupancyRefId: r.occupancyRefId ?? 1,
@@ -72,8 +67,13 @@ export async function POST(req: NextRequest) {
                     age:     p.age ?? 30,
                 })),
             })),
-            payment: { type: 'MERCHANT' },
+            // No payment field — HotelBookInput has paymentCard (for card data) but
+            // MERCHANT bookings are settled supplier-side; payment type flows via context
         };
+
+        if (process.env.NODE_ENV === 'development') {
+            console.log('[travelgatex-book] input:', JSON.stringify({ ...input, optionRefId: input.optionRefId.slice(0, 60) + '…' }, null, 2));
+        }
 
         const result = await tgxGraphQL(MUTATION, { input, settings });
 
@@ -108,7 +108,6 @@ export async function POST(req: NextRequest) {
                 hotelCode:       booking.hotel?.hotelCode,
                 hotelName:       booking.hotel?.hotelName,
                 price:           booking.price,
-                rooms:           booking.rooms,
                 cancelPolicy:    booking.cancelPolicy,
             },
         });
