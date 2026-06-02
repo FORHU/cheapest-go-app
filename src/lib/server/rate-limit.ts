@@ -1,13 +1,11 @@
 /**
- * Rate limiter — Supabase PostgreSQL-backed with in-memory fallback.
+ * Rate limiter — PostgreSQL-backed with in-memory fallback.
  *
- * When NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are set (they
- * always are in production), counters are stored in the rate_limit_counters
- * table via the increment_rate_limit RPC. This survives Vercel cold-starts
- * and is shared across all running instances.
+ * Counters are stored in the rate_limit_counters table via the
+ * increment_rate_limit RPC. This survives cold-starts and is shared
+ * across all running instances.
  *
- * Without those vars (e.g. a bare unit-test environment), falls back to a
- * per-process Map (original behavior).
+ * Falls back to a per-process Map when the DB is unreachable.
  *
  * Usage:
  *   const result = await rateLimit(req, { limit: 10, windowMs: 60_000 });
@@ -48,26 +46,20 @@ function inMemoryRateLimit(key: string, limit: number, windowMs: number): RateLi
     };
 }
 
-// ── Supabase RPC helper ──────────────────────────────────────────────────────
-async function supabaseRateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// ── PostgreSQL RPC helper ────────────────────────────────────────────────────
+async function postgresRateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
+    const { getSqlAdmin } = await import('@/lib/db/postgres');
+    const sql = getSqlAdmin();
 
-    const resp = await fetch(`${url}/rest/v1/rpc/increment_rate_limit`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${serviceKey}`,
-            'apikey': serviceKey,
-        },
-        body: JSON.stringify({ p_key: key, p_window_ms: windowMs }),
-        signal: AbortSignal.timeout(2000),
-    });
+    const rows = await sql`
+        SELECT current_count, reset_at
+        FROM increment_rate_limit(${key}, ${windowMs}::bigint)
+    `;
 
-    if (!resp.ok) throw new Error(`Supabase rate limit RPC failed: ${resp.status}`);
+    const row = rows[0];
+    if (!row) throw new Error('increment_rate_limit returned no rows');
 
-    const [row] = await resp.json(); // RPC returns a single-row array
-    const count: number = row.current_count;
+    const count: number = Number(row.current_count);
     const resetAt = new Date(row.reset_at).getTime();
 
     return {
@@ -134,11 +126,11 @@ export async function rateLimit(
     const clientId = userId ?? getClientKey(req);
     const key = `${prefix}:${clientId}`;
 
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (process.env.DATABASE_URL) {
         try {
-            return await supabaseRateLimit(key, limit, windowMs);
+            return await postgresRateLimit(key, limit, windowMs);
         } catch (err) {
-            console.warn('[rate-limit] Supabase unavailable, falling back to in-memory:', (err as Error).message);
+            console.warn('[rate-limit] Postgres unavailable, falling back to in-memory:', (err as Error).message);
         }
     }
 

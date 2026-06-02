@@ -1,4 +1,4 @@
-import { invokeEdgeFunction } from '@/utils/supabase/functions';
+import { invokeEdgeFunction } from '@/utils/postgres/functions';
 import { safeError } from '@/lib/server/safe-error';
 import { prebookSchema } from '@/lib/schemas/booking';
 import { quoteTravelgateX } from '@/lib/server/travelgatex';

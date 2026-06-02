@@ -14,11 +14,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+    runtime: 'nodejs',
     matcher: [
-        /*
-         * Match all request paths except static assets, images, and _next internals.
-         * This mirrors the Supabase SSR recommendation.
-         */
         '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 };

@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { requireAdmin, isAuthError } from '@/lib/server/admin';
 import { createNotification } from '@/lib/server/admin/notify';
-import { createAdminClient } from '@/utils/supabase/admin';
 import { logAdminAction } from '@/lib/server/admin/audit';
 
 export async function POST(req: NextRequest) {
@@ -55,15 +54,15 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // 2. Sync user_metadata so client-side extraction stays consistent
-        const { error: metadataError } = await adminSupabase.auth.admin.updateUserById(
-            userId,
-            { user_metadata: { role: newRole } }
-        );
+        // 2. Also update the users table (Lucia auth source of truth for role)
+        const { error: userError } = await adminSupabase
+            .from('users')
+            .update({ role: newRole })
+            .eq('id', userId);
 
-        if (metadataError) {
+        if (userError) {
             // Non-fatal: profiles table is already updated
-            console.error('[Admin Promote] Metadata sync error:', metadataError);
+            console.error('[Admin Promote] Users table sync error:', userError);
         }
 
         logAdminAction({

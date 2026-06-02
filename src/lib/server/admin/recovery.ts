@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/utils/postgres/admin';
-import { createAdminClient } from '@/utils/supabase/admin';
 import { stripe } from '@/lib/stripe/server';
 import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
 import { createNotification, logAdminAction } from './notify';
@@ -565,23 +564,30 @@ export async function getMonitoringData(): Promise<MonitoringData> {
         .order('created_at', { ascending: false });
 
     // Filter out sessions that DO have a booking (just in case status didn't update)
-    const sessionIds = (potentialMismatches || []).map(s => s.id);
+    const sessionIds = (potentialMismatches || []).map((s: any) => s.id);
     const { data: existingBookings } = await supabase
         .from('flight_bookings')
         .select('session_id')
         .in('session_id', sessionIds);
 
-    const existingUnified = await supabase
-        .from('unified_bookings')
-        .select('id')
-        .filter('metadata->>bookingSessionId', 'in', `(${sessionIds.join(',')})`);
+    let existingUnifiedIds: string[] = [];
+    if (sessionIds.length > 0) {
+        try {
+            const { getSqlAdmin } = await import('@/lib/db/postgres');
+            const rows = await getSqlAdmin().unsafe(
+                `SELECT id FROM unified_bookings WHERE metadata->>'bookingSessionId' = ANY($1::text[])`,
+                [sessionIds] as any
+            );
+            existingUnifiedIds = rows.map((r: any) => r.id);
+        } catch { /* ignore — non-critical */ }
+    }
 
     const bookedSessionIds = new Set([
-        ...(existingBookings || []).map(b => b.session_id),
-        // Unified might be harder to filter by session_id in a single query reliably without GIN index optimization
+        ...(existingBookings || []).map((b: any) => b.session_id),
+        ...existingUnifiedIds,
     ]);
 
-    const mismatches = (potentialMismatches || []).filter(s => !bookedSessionIds.has(s.id));
+    const mismatches = (potentialMismatches || []).filter((s: any) => !bookedSessionIds.has(s.id));
 
     // 4. Awaiting Tickets (Mystifly async queue)
     const { data: awaitingRes, error: awaitingErr } = await supabase
@@ -594,7 +600,7 @@ export async function getMonitoringData(): Promise<MonitoringData> {
         .order('ticket_time_limit', { ascending: true })
         .limit(100);
 
-    const awaitingTickets = (awaitingRes || []).map(b => {
+    const awaitingTickets = (awaitingRes || []).map((b: any) => {
         const contact = (b.booking_sessions as any)?.contact;
         const customerName = (b.booking_sessions as any)?.passengers?.[0]
             ? `${(b.booking_sessions as any).passengers[0].firstName} ${(b.booking_sessions as any).passengers[0].lastName}`
@@ -614,10 +620,10 @@ export async function getMonitoringData(): Promise<MonitoringData> {
 
     return {
         failedBookings: [
-            ...(failedBookings || []).map(b => ({ ...b, type: 'flight' })),
-            ...(failedUnified || []).map(b => ({ ...b, type: b.type }))
+            ...(failedBookings || []).map((b: any) => ({ ...b, type: 'flight' })),
+            ...(failedUnified || []).map((b: any) => ({ ...b, type: b.type }))
         ],
-        mismatches: mismatches.map(s => ({
+        mismatches: mismatches.map((s: any) => ({
             id: s.id,
             provider: s.provider,
             payment_intent_id: s.payment_intent_id,
@@ -639,18 +645,14 @@ export async function getMonitoringData(): Promise<MonitoringData> {
  */
 export async function adminRetryBooking(sessionId: string): Promise<RecoveryActionResult> {
     try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        const functionsSecret = process.env.FUNCTIONS_SECRET;
 
-        if (!supabaseUrl || !serviceRoleKey) {
-            return { success: false, message: 'Server configuration error (missing keys)' };
-        }
-
-        const res = await fetch(`${supabaseUrl}/functions/v1/create-booking`, {
+        const res = await fetch(`${siteUrl}/api/internal/create-booking`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${serviceRoleKey}`,
+                'Authorization': `Bearer ${functionsSecret}`,
             },
             body: JSON.stringify({ sessionId }),
         });

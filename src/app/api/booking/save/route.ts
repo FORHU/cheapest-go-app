@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { saveBookingToDatabase } from '@/lib/server/bookings';
 import { revalidatePath } from 'next/cache';
@@ -5,7 +6,8 @@ import { revalidatePath } from 'next/cache';
 export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
     try {
-        const { user, supabase, error: authError } = await getAuthenticatedUser();
+        const { user, error: authError } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
         if (authError || !user) {
             return Response.json(
                 { success: false, error: 'Authentication required' },

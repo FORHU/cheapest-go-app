@@ -52,10 +52,6 @@ async function checkEmailDuplicate(
 ): Promise<SendBookingEmailResult | null> {
     if (!bookingId) return null;
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !supabaseServiceKey) return null;
-
     const supabase = createAdminClient();
     const alreadySent = await isEmailAlreadySent(supabase, bookingId, emailType);
     if (alreadySent) {
@@ -76,14 +72,6 @@ async function logEmail(params: {
     /** Store the rendered HTML so the retry-emails cron can re-send without regenerating. */
     htmlBody?: string;
 }): Promise<{ duplicate: boolean }> {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-        console.warn('[logEmail] Supabase credentials not found');
-        return { duplicate: false };
-    }
-
     const supabase = createAdminClient();
 
     // Deduplication: suppress if a sent/queued record already exists for this booking + type.
@@ -252,16 +240,10 @@ export async function sendBookingConfirmationEmail(
 </html>
     `;
 
-        const supabaseUrl = env.SUPABASE_URL;
-        const supabaseServiceKey = env.SUPABASE_SERVICE_ROLE_KEY;
-
-        // Create Supabase client if keys are available
-        const supabase = supabaseUrl && supabaseServiceKey
-            ? createAdminClient()
-            : null;
+        const supabase = createAdminClient();
 
         // Store email record in database
-        if (supabase) {
+        {
             const { error: dbError } = await supabase
                 .from('booking_emails')
                 .insert([{

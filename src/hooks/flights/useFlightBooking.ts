@@ -6,7 +6,7 @@ import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/l
 import type { FlightOffer } from '@/types/flights';
 import type { SelectedSeat } from '@/types/seatMap';
 import type { SelectedBag } from '@/types/bags';
-import { invokeEdgeFunction } from '@/utils/supabase/functions';
+import { invokeEdgeFunction } from '@/utils/postgres/functions';
 import { useUser } from '@/stores/authStore';
 import { clientFetch } from '@/lib/api/client';
 

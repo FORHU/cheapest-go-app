@@ -41,7 +41,6 @@ export async function POST(req: NextRequest) {
 
     try {
         const { user, error: authError } = await getAuthenticatedUser();
-        const { env } = await import("@/utils/env");
         if (authError || !user) {
             return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
         }
@@ -137,19 +136,21 @@ export async function POST(req: NextRequest) {
         //   Duffel:   creates order (payment already captured)
         console.log('[/confirm] Booking not in DB, calling create-booking as fallback. Session:', sessionId);
 
-        const edgeFnHeaders = {
+        const internalHeaders = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
         };
+
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
         const bookingAbort = new AbortController();
         const bookingTimeout = setTimeout(() => bookingAbort.abort(), 55_000); // 55s — under Vercel's 60s limit
 
         let bookingRes: Response;
         try {
-            bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
+            bookingRes = await fetch(`${siteUrl}/api/internal/create-booking`, {
                 method: 'POST',
-                headers: edgeFnHeaders,
+                headers: internalHeaders,
                 body: JSON.stringify({ sessionId }),
                 signal: bookingAbort.signal,
             });
@@ -179,9 +180,9 @@ export async function POST(req: NextRequest) {
             // Duffel: auto-ticket if needed
             if (!isMystifly && bookingData.status !== 'ticketed' && !bookingData.alreadyBooked && bookingData.bookingId) {
                 console.log('[/confirm] Auto-ticketing Duffel order:', bookingData.bookingId);
-                const ticketRes = await fetch(`${env.SUPABASE_URL}/functions/v1/issue-ticket`, {
+                const ticketRes = await fetch(`${siteUrl}/api/internal/issue-ticket`, {
                     method: 'POST',
-                    headers: edgeFnHeaders,
+                    headers: internalHeaders,
                     body: JSON.stringify({ bookingId: bookingData.bookingId }),
                 });
                 const ticketData = await ticketRes.json();

@@ -673,6 +673,7 @@ export function CheckoutContent() {
                                         isAuthenticated={!!user}
                                         totalPrice={displayTotalPrice}
                                         prebookError={prebookError}
+                                        priceReady={!!priceData}
                                         onSubmit={handleProceedToPayment}
                                     />
                                 </div>

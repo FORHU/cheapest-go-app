@@ -149,10 +149,14 @@ export const useAuthStore = create<AuthState>((set, get) => {
                 set({ user: null });
             }),
 
-        socialLogin: async (_provider) => {
-            // OAuth social login requires additional provider setup.
-            // Implementation: configure OAuth provider, redirect to /api/auth/oauth/{provider}
-            throw new Error('Social login requires OAuth provider configuration. See docs/oauth-setup.md');
+        socialLogin: async (provider) => {
+            // Redirect to server-side OAuth initiation route.
+            // Currently only Google is supported.
+            if (provider === 'google') {
+                window.location.href = '/api/auth/oauth/google';
+                return;
+            }
+            throw new Error(`OAuth provider "${provider}" is not configured yet.`);
         },
 
         resetPassword: (email) => {

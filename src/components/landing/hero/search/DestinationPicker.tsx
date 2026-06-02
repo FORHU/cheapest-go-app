@@ -52,7 +52,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
             return result.success ? result.data : [];
         },
         enabled: debouncedQuery.length >= 2,
-        staleTime: 0,
+        staleTime: 5 * 60 * 1000, // cache 5 min — TGX destination codes don't change
         placeholderData: (prev) => prev,
     });
 

@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/utils/postgres/admin';
-import { env } from '@/utils/env';
 
 export interface ApiLogEntry {
     provider: string;
@@ -20,15 +19,7 @@ export interface ApiLogEntry {
  */
 export function logApiCall(entry: ApiLogEntry): void {
     try {
-        const url = env.SUPABASE_URL;
-        const key = env.SUPABASE_SERVICE_ROLE_KEY;
-
-        if (!url || !key) {
-            // Missing credentials — skip silently
-            return;
-        }
-
-        const supabase = createClient(url, key);
+        const supabase = createAdminClient();
 
         Promise.resolve(
             supabase

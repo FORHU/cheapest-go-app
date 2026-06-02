@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
             console.error('[otv-credit-check] Credit query error:', creditErr.message);
         } else {
             const outstanding = (creditRows ?? []).reduce(
-                (sum, r) => sum + (parseFloat(r.supplier_cost ?? r.total_price) || 0), 0
+                (sum: number, r: any) => sum + (parseFloat(r.supplier_cost ?? r.total_price) || 0), 0
             );
             const utilization = outstanding / CREDIT_LIMIT;
 

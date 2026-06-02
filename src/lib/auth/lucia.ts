@@ -9,7 +9,6 @@
  */
 
 import { Lucia } from 'lucia';
-import { NodePostgresAdapter } from '@lucia-auth/adapter-postgresql'; // not published yet — use custom below
 import { getSqlAdmin } from '@/lib/db/postgres';
 
 // ─── Custom PostgreSQL adapter for postgres.js ────────────────────────────────
@@ -30,7 +29,11 @@ class PostgresJsAdapter implements Adapter {
                 s.attributes   AS session_attrs,
                 u.id           AS user_id,
                 u.email,
-                u.attributes   AS user_attrs
+                u.first_name,
+                u.last_name,
+                u.avatar_url,
+                u.role,
+                u.banned_at
             FROM sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.id = ${sessionId}
@@ -45,7 +48,14 @@ class PostgresJsAdapter implements Adapter {
         };
         const user: DatabaseUser = {
             id: r.user_id,
-            attributes: { email: r.email, ...(r.user_attrs ?? {}) },
+            attributes: {
+                email: r.email,
+                first_name: r.first_name,
+                last_name: r.last_name,
+                avatar_url: r.avatar_url,
+                role: r.role,
+                banned_at: r.banned_at,
+            },
         };
         return [session, user];
     }

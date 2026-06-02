@@ -4,7 +4,7 @@
  */
 
 import { cache } from 'react';
-import { preBook, getHotelDetails, invokeEdgeFunction } from '@/utils/supabase/functions';
+import { preBook, getHotelDetails, invokeEdgeFunction } from '@/utils/postgres/functions';
 import { type Property } from '@/types';
 export type PropertyData = Property;
 

@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+                'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
             },
             body: JSON.stringify({}),
         });

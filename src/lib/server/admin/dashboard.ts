@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/utils/postgres/admin';
-import { createAdminClient } from '@/utils/supabase/admin';
 import { EXCHANGE_RATES } from '@/lib/currency';
 import { DashboardStats, AnalyticsData, SupplierBreakdown, RecentActivity, AdvancedAnalyticsData, RevenueTrend, ConversionFunnel, RouteMetric, DashboardData, ApiLogRow } from '@/types/admin';
 import { getProviderIntegrations } from './providers';
@@ -113,8 +112,8 @@ export async function getDashboardData(): Promise<DashboardData> {
         supabase.from('flight_bookings').select('id'),
     ]);
 
-    const hotelCount  = (unifiedTypes.data?.filter(b => b.type === 'hotel').length || 0) + (legacyHotels.data?.length || 0);
-    const flightCount = (unifiedTypes.data?.filter(b => b.type === 'flight').length || 0) + (legacyFlights.data?.length || 0);
+    const hotelCount  = (unifiedTypes.data?.filter((b: any) => b.type === 'hotel').length || 0) + (legacyHotels.data?.length || 0);
+    const flightCount = (unifiedTypes.data?.filter((b: any) => b.type === 'flight').length || 0) + (legacyFlights.data?.length || 0);
     const typeTotal   = hotelCount + flightCount || 1;
 
     const supplierBreakdown: SupplierBreakdown[] = [
@@ -130,18 +129,18 @@ export async function getDashboardData(): Promise<DashboardData> {
         supabase.from('flight_bookings').select('id, provider, status, total_price, created_at, user_id').order('created_at', { ascending: false }).limit(5),
     ]);
 
-    const flightBookingIds = flightRecent.data?.map(b => b.id) || [];
+    const flightBookingIds = flightRecent.data?.map((b: any) => b.id) || [];
     const { data: passengers } = flightBookingIds.length > 0
         ? await supabase.from('passengers').select('booking_id, first_name, last_name').in('booking_id', flightBookingIds)
         : { data: [] };
 
-    const passengerMap = (passengers || []).reduce((acc: Record<string, string>, p) => {
+    const passengerMap = (passengers || []).reduce((acc: Record<string, string>, p: any) => {
         if (!acc[p.booking_id]) acc[p.booking_id] = `${p.first_name || ''} ${p.last_name || ''}`.trim();
         return acc;
     }, {});
 
     const aggregatedActivity = [
-        ...(unifiedRecent.data || []).map(item => {
+        ...(unifiedRecent.data || []).map((item: any) => {
             const meta = item.metadata as any;
             const name = meta?.passengers?.[0]
                 ? `${meta.passengers[0].firstName} ${meta.passengers[0].lastName}`
@@ -156,7 +155,7 @@ export async function getDashboardData(): Promise<DashboardData> {
                 type: isNeg ? 'cancel' : item.type,
             };
         }),
-        ...(hotelRecent.data || []).map(item => {
+        ...(hotelRecent.data || []).map((item: any) => {
             const isNeg = item.status === 'cancelled' || item.status === 'refunded';
             return {
                 id: item.id,
@@ -167,7 +166,7 @@ export async function getDashboardData(): Promise<DashboardData> {
                 type: isNeg ? 'cancel' : 'hotel',
             };
         }),
-        ...(flightRecent.data || []).map(item => {
+        ...(flightRecent.data || []).map((item: any) => {
             const isNeg = item.status === 'cancelled' || item.status === 'refunded';
             return {
                 id: item.id,
@@ -207,7 +206,7 @@ export async function getDashboardData(): Promise<DashboardData> {
             destination: b.property_name || 'Legacy Hotel',
         })),
         ...(flightTrend.data || []).map((b: any) => {
-            const segment = (flightSegments.data || []).find(s => s.booking_id === b.id);
+            const segment = (flightSegments.data || []).find((s: any) => s.booking_id === b.id);
             return {
                 price: Number(b.charged_price || b.total_price) * PHP_RATE,
                 date: b.created_at,
@@ -313,12 +312,12 @@ export async function getAdvancedAnalytics(): Promise<AdvancedAnalyticsData> {
         .select('provider, status');
 
     const providers = ['mystifly', 'duffel', 'liteapi'];
-    const providerSuccess = providers.map(p => {
-        const pBookings = (bookings || []).filter(b => b.provider === p);
+    const providerSuccess = providers.map((p: any) => {
+        const pBookings = (bookings || []).filter((b: any) => b.provider === p);
         return {
             name: p.charAt(0).toUpperCase() + p.slice(1),
-            success: pBookings.filter(b => ['confirmed', 'ticketed'].includes(b.status)).length,
-            failure: pBookings.filter(b => ['failed', 'cancelled'].includes(b.status)).length,
+            success: pBookings.filter((b: any) => ['confirmed', 'ticketed'].includes(b.status)).length,
+            failure: pBookings.filter((b: any) => ['failed', 'cancelled'].includes(b.status)).length,
         };
     });
 
@@ -331,9 +330,9 @@ export async function getAdvancedAnalytics(): Promise<AdvancedAnalyticsData> {
     const ticketingLatency = Array.from({ length: 7 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (6 - i));
-        const dayBookings = (ticketedBookings || []).filter(b => new Date(b.created_at).toDateString() === d.toDateString());
+        const dayBookings = (ticketedBookings || []).filter((b: any) => new Date(b.created_at).toDateString() === d.toDateString());
         const avgSeconds = dayBookings.length > 0
-            ? dayBookings.reduce((acc, b) => acc + Math.max(0, (new Date(b.updated_at).getTime() - new Date(b.created_at).getTime()) / 1000), 0) / dayBookings.length
+            ? dayBookings.reduce((acc: number, b: any) => acc + Math.max(0, (new Date(b.updated_at).getTime() - new Date(b.created_at).getTime()) / 1000), 0) / dayBookings.length
             : 0;
         return { day: days[d.getDay()], avgSeconds: Math.round(avgSeconds) };
     });
@@ -345,7 +344,7 @@ export async function getAdvancedAnalytics(): Promise<AdvancedAnalyticsData> {
         .order('created_at', { ascending: false })
         .limit(10);
 
-    const errorLogs = (apiErrors || []).map(log => ({
+    const errorLogs = (apiErrors || []).map((log: any) => ({
         id: log.id,
         timestamp: log.created_at,
         functionName: `${log.provider}/${log.endpoint}`,

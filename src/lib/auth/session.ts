@@ -52,17 +52,17 @@ export async function getSession(): Promise<SessionResult> {
         cookieStore.set(newCookie.name, newCookie.value, newCookie.attributes);
     }
 
-    const u = user.attributes;
+    // In Lucia v3, user attributes are merged directly onto the User object
     return {
         session,
         user: {
             id: user.id,
-            email: u.email,
-            firstName: u.first_name,
-            lastName: u.last_name,
-            avatarUrl: u.avatar_url,
-            role: u.role ?? 'user',
-            bannedAt: u.banned_at,
+            email: (user as any).email,
+            firstName: (user as any).first_name,
+            lastName: (user as any).last_name,
+            avatarUrl: (user as any).avatar_url,
+            role: ((user as any).role ?? 'user') as 'user' | 'admin',
+            bannedAt: (user as any).banned_at,
         },
     };
 }

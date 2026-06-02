@@ -1,7 +1,6 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { notFound, redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/server/auth';
-import { createAdminClient } from '@/utils/supabase/admin';
 import { formatCurrency, calculateNights } from '@/lib/utils';
 import { PrintButton } from './PrintButton';
 
@@ -14,7 +13,8 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     const { id } = await params;
     const { type } = await searchParams;
 
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, error: authError } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
     if (authError || !user) redirect('/login');
 
     // Check if viewer is an admin — admins can view any customer's receipt

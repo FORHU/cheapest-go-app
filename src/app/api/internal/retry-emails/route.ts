@@ -14,7 +14,7 @@ const MAX_AGE_HOURS = 48; // Don't retry emails older than 48h
  * Reads the stored HTML body from email_logs.metadata.htmlBody and
  * re-sends via Resend API. Updates the log entry status on success.
  *
- * Auth: Bearer token must match CRON_SECRET or SUPABASE_SERVICE_ROLE_KEY.
+ * Auth: Bearer token must match CRON_SECRET or FUNCTIONS_SECRET.
  * Set up a cron job in Coolify to call this every 15 minutes:
  *   curl -X POST https://your-domain/api/internal/retry-emails \
  *        -H "Authorization: Bearer $CRON_SECRET"
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     try {
         // ── Auth check ──────────────────────────────────────────────
         const authHeader = req.headers.get('authorization');
-        const cronSecret = process.env.CRON_SECRET || env.SUPABASE_SERVICE_ROLE_KEY;
+        const cronSecret = process.env.CRON_SECRET || process.env.FUNCTIONS_SECRET;
         if (authHeader !== `Bearer ${cronSecret}`) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }

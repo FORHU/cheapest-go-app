@@ -1,10 +1,12 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { getPreferences, updatePreferences, syncPreferencesFromHistory } from '@/lib/server/preferences';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const { user, supabase, error } = await getAuthenticatedUser();
+  const { user, error } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
   if (error || !user) return Response.json({ error: 'Authentication required' }, { status: 401 });
 
   const prefs = await getPreferences(user, supabase);
@@ -12,7 +14,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const { user, supabase, error } = await getAuthenticatedUser();
+  const { user, error } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
   if (error || !user) return Response.json({ error: 'Authentication required' }, { status: 401 });
 
   const body = await req.json();

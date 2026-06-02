@@ -78,14 +78,11 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-            console.error('[/book] Missing Supabase env variables');
-            return NextResponse.json({ success: false, error: 'Server misconfiguration' }, { status: 500 });
-        }
-
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        // Headers for ported internal routes (FUNCTIONS_SECRET)
         const edgeFnHeaders = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
         };
 
         // Resolve price/currency — client sends flat format (price: number, currency: string)
@@ -195,7 +192,7 @@ export async function POST(req: NextRequest) {
 
         // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
         const revalStart = Date.now();
-        const revalEndpoint = `${env.SUPABASE_URL}/functions/v1/revalidate-flight`;
+        const revalEndpoint = `${siteUrl}/api/internal/revalidate-flight`;
         const revalRes = await fetch(revalEndpoint, {
             method: 'POST',
             headers: edgeFnHeaders,
@@ -254,38 +251,48 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Step 1: Create Booking Session ──
+        // ── Step 1: Create Booking Session (direct DB insert) ──
         const sessionStart = Date.now();
-        const sessionEndpoint = `${env.SUPABASE_URL}/functions/v1/create-booking-session`;
-        const sessionRes = await fetch(sessionEndpoint, {
-            method: 'POST',
-            headers: edgeFnHeaders,
-            body: JSON.stringify({
-                userId,
+        const db = createAdminClient();
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+        const { data: sessionRow, error: sessionError } = await db
+            .from('booking_sessions')
+            .insert({
+                user_id: userId,
                 provider,
-                flight: sanitizedFlight,
-                passengers,
-                contact,
-                idempotencyKey,
-                farePolicy: serverFarePolicy,
-                ...(seatServiceIds?.length ? { seatServiceIds, seatTotal: seatTotal ?? 0 } : {}),
-                ...(bagServiceIds?.length ? { bagServiceIds, bagTotal: bagTotal ?? 0 } : {}),
-            }),
-        });
+                flight: sanitizedFlight as any,
+                passengers: passengers as any,
+                contact: contact as any,
+                idempotency_key: idempotencyKey,
+                policy_source: (serverFarePolicy as any)?.policySource ?? null,
+                policy_version: (serverFarePolicy as any)?.policyVersion ?? null,
+                is_refundable: (serverFarePolicy as any)?.isRefundable ?? null,
+                is_changeable: (serverFarePolicy as any)?.isChangeable ?? null,
+                refund_penalty_amount: (serverFarePolicy as any)?.refundPenaltyAmount ?? null,
+                refund_penalty_currency: (serverFarePolicy as any)?.refundPenaltyCurrency ?? null,
+                fare_policy: serverFarePolicy as any,
+                policy_locked: true,
+                status: 'initiated',
+                expires_at: expiresAt,
+                ...(seatServiceIds?.length ? { seat_service_ids: seatServiceIds, seat_total: seatTotal ?? 0 } : {}),
+            })
+            .select('id')
+            .single();
 
-        const sessionData = await sessionRes.json();
         logApiCall({
-            provider, endpoint: sessionEndpoint, durationMs: Date.now() - sessionStart,
+            provider, endpoint: 'create-booking-session (internal)', durationMs: Date.now() - sessionStart,
             requestParams: { origin: flight.segments?.[0]?.origin, destination: flight.segments?.[flight.segments.length - 1]?.destination, passengerCount: passengers.length },
-            responseStatus: sessionRes.status, userId,
-            responseSummary: { sessionId: sessionData.sessionId },
-            errorMessage: !sessionData.success ? (sessionData.error || 'Failed to create booking session') : undefined,
+            responseStatus: sessionError ? 500 : 200, userId,
+            responseSummary: { sessionId: (sessionRow as any)?.id },
+            errorMessage: sessionError?.message,
         });
 
-        if (!sessionData.success) {
-            throw new Error(sessionData.error || 'Failed to create booking session');
+        if (sessionError || !sessionRow) {
+            throw new Error(sessionError?.message || 'Failed to create booking session');
         }
 
-        const sessionId = sessionData.sessionId;
+        const sessionId = (sessionRow as any).id;
 
         // ── Step 1.5 (Duffel only): Create the order NOW, before Stripe ──
         // Duffel offer_requests expire within minutes of the search, making

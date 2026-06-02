@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { createAdminClient } from '@/utils/postgres/admin';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 import { checkCsrf } from '@/lib/server/csrf';
@@ -23,9 +21,9 @@ export async function POST(req: NextRequest) {
     const csrfError = checkCsrf(req);
     if (csrfError) return csrfError;
 
-    const supabaseAuth = await createClient();
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
+    const { getSession } = await import('@/lib/auth/session');
+    const { user } = await getSession();
+    if (!user) {
         return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
 

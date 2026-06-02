@@ -1,15 +1,7 @@
 /**
- * Supabase-compatible PostgreSQL query builder.
+ * PostgreSQL query builder with a fluent interface compatible with @supabase/supabase-js.
  *
- * Implements the same fluent interface as @supabase/supabase-js so that
- * existing code works with zero changes by updating only the import:
- *
- *   // Before:
- *   import { createClient } from '@/utils/supabase/server'
- *   const supabase = await createClient()
- *   const { data, error } = await supabase.from('bookings').select('*').eq('id', id)
- *
- *   // After:
+ * Usage:
  *   import { createClient } from '@/utils/postgres/server'
  *   const db = createClient()
  *   const { data, error } = await db.from('bookings').select('*').eq('id', id)
@@ -21,7 +13,7 @@
 
 import type { Sql } from 'postgres';
 
-export type DbResult<T = any> = { data: T | null; error: DbError | null };
+export type DbResult<T = any> = { data: T | null; error: DbError | null; count?: number | null };
 export type DbError = { message: string; code?: string; details?: string };
 
 // ─── Filter types ────────────────────────────────────────────────────────────
@@ -142,17 +134,20 @@ export class QueryBuilder<T = any> implements PromiseLike<DbResult<T>> {
     private _insertData: Record<string, unknown> | Record<string, unknown>[] | null = null;
     private _updateData: Record<string, unknown> | null = null;
     private _countMode: 'exact' | 'planned' | 'estimated' | null = null;
+    private _head = false;
     private _onConflict = '';
     private _ignoreDuplicates = false;
+    private _deleteCount = false;
 
     constructor(private readonly sql: Sql, private readonly table: string) {}
 
     // ── Column/operation selectors ─────────────────────────────────────────────
 
-    select(cols = '*', opts?: { count?: 'exact' | 'planned' | 'estimated' }): this {
+    select(cols = '*', opts?: { count?: 'exact' | 'planned' | 'estimated'; head?: boolean }): this {
         this._op = 'select';
         this._cols = parseColumns(cols);
         if (opts?.count) this._countMode = opts.count;
+        if (opts?.head) this._head = true;
         return this;
     }
 
@@ -177,8 +172,9 @@ export class QueryBuilder<T = any> implements PromiseLike<DbResult<T>> {
         return this;
     }
 
-    delete(): this {
+    delete(opts?: { count?: 'exact' | 'planned' | 'estimated' }): this {
         this._op = 'delete';
+        if (opts?.count) this._deleteCount = true;
         return this;
     }
 
@@ -274,13 +270,18 @@ export class QueryBuilder<T = any> implements PromiseLike<DbResult<T>> {
 
     private async _runSelect(): Promise<any[]> {
         const { clause, values } = buildWhere(this._filters, this.sql);
+        // head: true → COUNT only, no data rows (like Supabase's head option)
+        if (this._head) {
+            const q = `SELECT COUNT(*) AS _total_count FROM "${this.table}" ${clause}`;
+            return this.sql.unsafe(q, values as any[]);
+        }
         const cols = this._countMode ? `*, COUNT(*) OVER() AS _total_count` : this._cols;
         let q = `SELECT ${cols} FROM "${this.table}"`;
         if (clause) q += ` ${clause}`;
         if (this._orderBy.length) q += ` ORDER BY ${this._orderBy.join(', ')}`;
         if (this._limit !== null) q += ` LIMIT ${this._limit}`;
         if (this._offset !== null) q += ` OFFSET ${this._offset}`;
-        return this.sql.unsafe(q, values);
+        return this.sql.unsafe(q, values as any[]);
     }
 
     private async _runInsert(): Promise<any[]> {
@@ -332,14 +333,17 @@ export class QueryBuilder<T = any> implements PromiseLike<DbResult<T>> {
             .join(', ');
 
         let q = `UPDATE "${this.table}" SET ${setClause} ${clause} ${returning}`;
-        return this.sql.unsafe(q, values);
+        return this.sql.unsafe(q, values as any[]);
     }
 
     private async _runDelete(): Promise<any[]> {
         const { clause, values } = buildWhere(this._filters, this.sql);
-        const returning = this._returning ? `RETURNING ${this._returning}` : '';
+        // If count was requested, use RETURNING to get deleted row count
+        const returning = this._deleteCount
+            ? 'RETURNING 1'
+            : (this._returning ? `RETURNING ${this._returning}` : '');
         let q = `DELETE FROM "${this.table}" ${clause} ${returning}`;
-        return this.sql.unsafe(q, values);
+        return this.sql.unsafe(q, values as any[]);
     }
 
     private async _runUpsert(): Promise<any[]> {
@@ -367,10 +371,19 @@ export class QueryBuilder<T = any> implements PromiseLike<DbResult<T>> {
     }
 
     private _format(rows: any[]): DbResult<T> {
+        if (this._head) {
+            const count = Number(rows[0]?._total_count ?? 0);
+            return { data: null, error: null, count };
+        }
+
+        if (this._deleteCount) {
+            return { data: null, error: null, count: rows.length };
+        }
+
         if (this._countMode) {
-            const count = rows[0]?._total_count ?? rows.length;
+            const count = rows[0]?._total_count !== undefined ? Number(rows[0]._total_count) : rows.length;
             const cleaned = rows.map(({ _total_count: _, ...rest }) => rest);
-            return { data: cleaned as any, error: null } as any;
+            return { data: cleaned as any, error: null, count } as any;
         }
 
         if (this._single) {
@@ -446,7 +459,7 @@ export class DbClient {
     }
 
     /** Run raw SQL — escape hatch for complex queries */
-    get sql(): Sql { return this.sql; }
+    get rawSql(): Sql { return (this as any)._sql; }
 }
 
 export function createDbClient(sql: Sql): DbClient {

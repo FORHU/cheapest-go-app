@@ -1,31 +1,18 @@
 /**
  * Edge Function bridge — /api/fn/[name]
  *
- * During migration, Edge Functions still live in supabase/functions/ as Deno code.
- * This route acts as a proxy: it forwards requests to the self-hosted function
- * server (FUNCTIONS_BASE_URL) or returns a 501 if no server is configured.
+ * Fallback proxy for any function not yet implemented as a dedicated API route.
+ * Set FUNCTIONS_BASE_URL to point at a self-hosted function server (e.g. Deno Deploy).
+ * Without it, returns 501.
  *
- * Migration path for each function:
- *   1. Create src/app/api/fn/{name}/route.ts with the Node.js equivalent
- *   2. Delete the supabase/functions/{name} directory
- *   3. The dynamic [name] catch-all is only a fallback for unconverted functions
- *
- * Functions already converted to dedicated API routes will shadow this handler
- * because Next.js uses the most specific matching route.
+ * Functions with a dedicated src/app/api/fn/{name}/route.ts shadow this handler
+ * automatically — Next.js uses the most specific matching route.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 
 const FUNCTIONS_BASE_URL = process.env.FUNCTIONS_BASE_URL;
-// Legacy Supabase URL for functions not yet migrated
-const SUPABASE_FUNCTIONS_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1`
-    : null;
-
-const FUNCTIONS_SECRET =
-    process.env.FUNCTIONS_SECRET ||
-    process.env.INTERNAL_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
+const FUNCTIONS_SECRET = process.env.FUNCTIONS_SECRET || process.env.INTERNAL_SECRET;
 
 export async function POST(
     req: NextRequest,
@@ -33,16 +20,14 @@ export async function POST(
 ) {
     const { name } = await params;
 
-    // Try self-hosted function server first
-    const targetBase = FUNCTIONS_BASE_URL || SUPABASE_FUNCTIONS_URL;
-    if (!targetBase) {
+    if (!FUNCTIONS_BASE_URL) {
         return NextResponse.json(
             { error: `Function "${name}" has not been migrated to an API route yet. Set FUNCTIONS_BASE_URL or create src/app/api/fn/${name}/route.ts` },
             { status: 501 }
         );
     }
 
-    const targetUrl = `${targetBase}/${name}`;
+    const targetUrl = `${FUNCTIONS_BASE_URL}/${name}`;
     const body = await req.text();
 
     try {

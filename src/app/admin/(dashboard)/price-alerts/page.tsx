@@ -1,5 +1,4 @@
 import { createAdminClient } from '@/utils/postgres/admin';
-import { createAdminClient } from '@/utils/supabase/admin';
 import { PriceAlertsClient } from './PriceAlertsClient';
 
 export const dynamic = 'force-dynamic';
