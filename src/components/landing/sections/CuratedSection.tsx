@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import SaveButton from '@/components/common/SaveButton';
 import { styleTabs } from '@/types';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';

@@ -210,7 +210,7 @@ export const useNearbyGems = ({
                                     ...featureStub.properties,
                                     translatedName: proxyData.nameEn || proxyData.name || featureStub.properties.name,
                                     icon: enrichmentIcon,
-                                    imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, fsqId, lowerCat),
+                                    imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, lowerCat),
                                     displayCategory: proxyData.category || featureStub.properties.category, // Use proxy's category for display if available
                                     vicinity: proxyData.vicinity || featureStub.properties.vicinity,
                                     rating: proxyData.rating,

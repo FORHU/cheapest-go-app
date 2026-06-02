@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     try {
 
         const body = await req.json();
-        const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal, confirmedPrice, bundleHotelId } = body as {
+        const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal, confirmedPrice, bundleHotelId, displayCurrency } = body as {
             provider: string;
             flight: FlightOffer;
             passengers: any[];
