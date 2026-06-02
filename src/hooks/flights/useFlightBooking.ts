@@ -8,6 +8,7 @@ import type { SelectedSeat } from '@/types/seatMap';
 import type { SelectedBag } from '@/types/bags';
 import { invokeEdgeFunction } from '@/utils/postgres/functions';
 import { useUser } from '@/stores/authStore';
+import { useUserCurrency } from '@/stores/searchStore';
 import { clientFetch } from '@/lib/api/client';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
@@ -110,6 +111,7 @@ export function useFlightBooking() {
     });
 
     const user = useUser();
+    const userCurrency = useUserCurrency();
 
     // Autofill from profile when user logs in
     useEffect(() => {
@@ -354,6 +356,7 @@ export function useFlightBooking() {
                     ...(bagServiceIds.length > 0 ? { bagServiceIds, bagTotal } : {}),
                     ...((offer as any)._confirmedPrice !== undefined ? { confirmedPrice: (offer as any)._confirmedPrice } : {}),
                     ...(bundleHotelId ? { bundleHotelId } : {}),
+                    displayCurrency: userCurrency || 'USD',
                 }),
             });
 
