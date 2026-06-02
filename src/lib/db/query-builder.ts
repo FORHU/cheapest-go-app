@@ -41,7 +41,7 @@ function parseColumns(cols: string): string {
 
 // ─── SQL fragment builder ─────────────────────────────────────────────────────
 
-function buildWhere(filters: Filter[], sql: Sql): { clause: string; values: unknown[] } {
+function buildWhere(filters: Filter[], _sql: Sql): { clause: string; values: unknown[] } {
     if (filters.length === 0) return { clause: '', values: [] };
 
     const parts: string[] = [];
@@ -144,6 +144,11 @@ export class QueryBuilder<T = any> implements PromiseLike<DbResult<T>> {
     // ── Column/operation selectors ─────────────────────────────────────────────
 
     select(cols = '*', opts?: { count?: 'exact' | 'planned' | 'estimated'; head?: boolean }): this {
+        // When chained after insert/update/delete, set RETURNING clause instead of overriding op.
+        if (this._op === 'insert' || this._op === 'update' || this._op === 'delete' || this._op === 'upsert') {
+            this._returning = parseColumns(cols);
+            return this;
+        }
         this._op = 'select';
         this._cols = parseColumns(cols);
         if (opts?.count) this._countMode = opts.count;
@@ -287,13 +292,6 @@ export class QueryBuilder<T = any> implements PromiseLike<DbResult<T>> {
     private async _runInsert(): Promise<any[]> {
         const rows = Array.isArray(this._insertData) ? this._insertData : [this._insertData!];
         if (rows.length === 0) return [];
-        const keys = Object.keys(rows[0]);
-        const cols = keys.map((k) => `"${k}"`).join(', ');
-
-        const valueRows = rows.map((row) =>
-            `(${keys.map((_, i) => `$${_ ? _ : i + 1}`).join(', ')})`,
-        );
-
         // Use postgres.js safe parameterised approach
         const conflict = this._ignoreDuplicates ? 'ON CONFLICT DO NOTHING' : '';
         const returning = this._returning ? `RETURNING ${this._returning}` : '';
@@ -425,12 +423,19 @@ export class RpcBuilder<T = any> implements PromiseLike<DbResult<T>> {
 
     private async _execute(): Promise<DbResult<T>> {
         try {
-            // Build CALL or SELECT based on function type
-            const paramStr = Object.keys(this.params)
-                .map((k) => `${k} := ${JSON.stringify(this.params[k])}`)
-                .join(', ');
+            const keys = Object.keys(this.params);
+            const values = keys.map((k) => {
+                const v = this.params[k];
+                return (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
+            });
+            // Cast object params to ::jsonb so PostgreSQL receives the correct type.
+            const paramStr = keys.map((k, i) => {
+                const isObj = this.params[k] !== null && typeof this.params[k] === 'object';
+                return `${k} := $${i + 1}${isObj ? '::jsonb' : ''}`;
+            }).join(', ');
             const rows = await this.sql.unsafe(
                 `SELECT * FROM ${this.fn}(${paramStr})`,
+                values as any[],
             );
 
             if (this._single) {

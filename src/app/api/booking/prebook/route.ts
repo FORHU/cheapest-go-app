@@ -7,6 +7,50 @@ import { rateLimit } from '@/lib/server/rate-limit';
 export const maxDuration = 60;
 
 /**
+ * Convert TGX cancel policy → app-standard CancellationPolicy shape.
+ *
+ * TGX:  { refundable: bool, cancelPenalties: [{deadline, penaltyType, value, currency}] }
+ * App:  { refundableTag: 'RFN'|'NRFN', cancelPolicyInfos: [{cancelTime, amount, type, currency}] }
+ *
+ * The component shows:
+ *  - amount === 0  → "Cancel by [date] — Free Cancellation"
+ *  - amount  >  0  → "Cancel after [date] — [amount] fee"
+ * So for a refundable booking we prepend a free entry using the first deadline as the cutoff.
+ */
+function normalizeTgxCancelPolicy(tgxPolicy: any): object {
+    if (!tgxPolicy) return {};
+
+    const penalties: any[] = tgxPolicy.cancelPenalties || [];
+    const refundable: boolean = tgxPolicy.refundable ?? false;
+    const cancelPolicyInfos: object[] = [];
+
+    if (refundable && penalties.length > 0) {
+        // Free-cancellation window: "cancel by [first deadline] at no charge"
+        cancelPolicyInfos.push({
+            cancelTime: penalties[0].deadline,
+            amount: 0,
+            currency: penalties[0].currency || 'USD',
+            type: 'AMOUNT',
+        });
+    }
+
+    for (const p of penalties) {
+        cancelPolicyInfos.push({
+            cancelTime: p.deadline,
+            // IMPORT = fixed fee, PERCENT = percentage of total, NIGHTS = nights × rate
+            amount: p.value ?? 0,
+            currency: p.currency || 'USD',
+            type: p.penaltyType || 'AMOUNT',
+        });
+    }
+
+    return {
+        refundableTag: refundable ? 'RFN' : 'NRFN',
+        cancelPolicyInfos,
+    };
+}
+
+/**
  * TGX option tokens encode hotel code and dates in segments separated by "!~|".
  * Segment keys: b=checkin(YYMMDD), c=checkout(YYMMDD), d=hotelCode(numeric ETG ID)
  */
@@ -163,7 +207,7 @@ export async function POST(req: Request) {
                         total: optionQuote.price?.gross || optionQuote.price?.net || 0,
                     },
                     currency: optionQuote.price?.currency || currency,
-                    cancellationPolicies: optionQuote.cancelPolicy,
+                    cancellationPolicies: normalizeTgxCancelPolicy(optionQuote.cancelPolicy),
                     boardCode: optionQuote.boardCode || '',
                     rooms: optionQuote.rooms || [],
                 },

@@ -328,7 +328,7 @@ function transformHotelToProperty(hotel: any, cityName: string, requestedCurrenc
 async function fetchSearchPropertiesInner(queryParams: SearchQueryParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
     // Run TGX and Duffel in parallel (LiteAPI dropped)
     const [tgxSettled, duffelSettled] = await Promise.allSettled([
-        searchTravelgateX({ ...(queryParams as unknown as Record<string, unknown>), limit: 100, offset: 0 }),
+        searchTravelgateX(queryParams as unknown as import('@/lib/server/stays/travelgatex/search').TgxSearchParams),
         searchDuffelStays(queryParams),
     ]);
 

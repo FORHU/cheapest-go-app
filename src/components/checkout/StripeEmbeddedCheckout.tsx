@@ -32,7 +32,7 @@ function CheckoutForm({ clientSecret, onSuccess }: {
         if (!stripe || !elements) return;
 
         setIsLoading(true);
-        setSubmitted(true); // Permanently disable after first click
+        setSubmitted(true);
 
         const { error, paymentIntent } = await stripe.confirmPayment({
             elements,
@@ -46,11 +46,9 @@ function CheckoutForm({ clientSecret, onSuccess }: {
             setMessage(error.message || "An unexpected error occurred.");
             setIsLoading(false);
         } else if (paymentIntent && (
-            paymentIntent.status === 'succeeded' ||          // Duffel: automatic capture
-            paymentIntent.status === 'requires_capture'      // Mystifly: manual capture (card held, not yet charged)
+            paymentIntent.status === 'succeeded' ||
+            paymentIntent.status === 'requires_capture'
         )) {
-            // Pass the PaymentIntent ID up so the parent can verify server-side
-            // /api/flights/confirm handles both statuses correctly
             onSuccess(paymentIntent.id);
         } else {
             setMessage("Payment is processing...");
@@ -62,7 +60,17 @@ function CheckoutForm({ clientSecret, onSuccess }: {
         <form onSubmit={handleSubmit} className="p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm mt-4">
             <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">Complete Payment</h2>
 
-            <PaymentElement className="mb-4" options={{ layout: 'accordion' }} />
+            <PaymentElement
+                className="mb-4"
+                options={{ layout: 'accordion' }}
+                onLoadError={(event) => {
+                    console.error('[stripe] PaymentElement load error:', event.elementType, event.error);
+                    setMessage(
+                        (event.error as any)?.message ||
+                        'Failed to load the payment form. Please refresh and try again.'
+                    );
+                }}
+            />
 
             <button
                 disabled={isLoading || submitted || !stripe || !elements}
@@ -80,13 +88,19 @@ export default function StripeEmbeddedCheckout({ clientSecret, onSuccess }: {
     clientSecret: string;
     onSuccess: (paymentIntentId: string) => void;
 }) {
-    // Clean up Stripe's floating badge/iframe elements when this component unmounts
+    // Remove Stripe's floating iframes from <body> on true unmount.
+    // Guard with a 300ms timer so React Strict Mode's synthetic first-mount cleanup
+    // (which runs synchronously before re-mount) doesn't yank iframes mid-init.
     useEffect(() => {
+        let settled = false;
+        const timer = setTimeout(() => { settled = true; }, 300);
         return () => {
-            // Stripe.js injects floating iframes and divs into <body> that persist after unmount
-            document.querySelectorAll(
-                'iframe[name*="privateStripe"], iframe[name*="__stripe"], div[class*="__PrivateStripeElement"]'
-            ).forEach(el => el.remove());
+            clearTimeout(timer);
+            if (settled) {
+                document.querySelectorAll(
+                    'iframe[name*="privateStripe"], iframe[name*="__stripe"], div[class*="__PrivateStripeElement"]'
+                ).forEach(el => el.remove());
+            }
         };
     }, []);
 

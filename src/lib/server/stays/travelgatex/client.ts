@@ -21,13 +21,11 @@ export function getTgxConfig() {
 }
 
 export function getTgxSettings(cfg = getTgxConfig()) {
-    // Pin the supplier and access explicitly so the search uses the same access
-    // (38327) that destinationSearcher uses. Without this, context routing may
-    // resolve to a different access where destination codes don't match.
+    // Do NOT add explicit suppliers here — TGX routes via context automatically,
+    // and pinning an accessId filters out results when it doesn't match the account config.
     return {
-        context:   cfg.context,
-        client:    cfg.client,
-        suppliers: [{ code: cfg.supplier, accesses: [{ accessId: cfg.accessCode }] }],
+        context: cfg.context,
+        client:  cfg.client,
     };
 }
 
@@ -58,7 +56,8 @@ export async function tgxGraphQL<T = any>(query: string, variables?: Record<stri
 
     if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw new Error(`TravelgateX API error ${res.status}: ${text.slice(0, 200)}`);
+        console.error('[tgx] HTTP error body:', text.slice(0, 2000));
+        throw new Error(`TravelgateX API error ${res.status}: ${text.slice(0, 2000)}`);
     }
 
     const body = await res.json();
