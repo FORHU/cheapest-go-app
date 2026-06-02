@@ -132,6 +132,7 @@ const Map = React.memo(
             const [isStyleLoaded, setIsStyleLoaded] = React.useState(false);
             const [mapReady, setMapReady] = React.useState(false);
             const [firstSymbolId, setFirstSymbolId] = React.useState<string>();
+            const cursorPatchedRef = React.useRef(false);
 
             // Handle style loading and configuration
             React.useEffect(() => {
@@ -271,6 +272,47 @@ const Map = React.memo(
                 [onLoad]
             );
 
+            // Keep every canvas inside the map container at a visible cursor.
+            // Mapbox GL v3 Standard style can create additional compositor canvases
+            // (terrain, fog, etc.) above .mapboxgl-canvas that have no class and no
+            // inline cursor — those canvases catch mousemove events and render with
+            // an invisible cursor even when CSS cursor:grab !important is set on the
+            // container, because CSS inheritance is broken through compositor layers.
+            //
+            // Fix: attach a mousemove listener to the map *container* element (not the
+            // canvas) that runs in the bubble phase — after Mapbox's own handlers — and
+            // stamps cursor:grab on every canvas that isn't already showing an
+            // intentional interactive cursor.
+            React.useEffect(() => {
+                if (!mapReady || cursorPatchedRef.current) return;
+                const map = mapRef.current?.getMap();
+                if (!map) return;
+
+                const container = map.getContainer(); // div.mapboxgl-map
+                cursorPatchedRef.current = true;
+
+                const restoreCursor = () => {
+                    const canvases = container.querySelectorAll<HTMLCanvasElement>('canvas');
+                    canvases.forEach(c => {
+                        if (c.style.cursor === '' || c.style.cursor === 'auto') {
+                            c.style.cursor = 'grab';
+                        }
+                    });
+                };
+
+                // Run once immediately so the cursor is set before the first move.
+                restoreCursor();
+
+                container.addEventListener('mousemove', restoreCursor);
+                container.addEventListener('mouseenter', restoreCursor);
+
+                return () => {
+                    container.removeEventListener('mousemove', restoreCursor);
+                    container.removeEventListener('mouseenter', restoreCursor);
+                    cursorPatchedRef.current = false;
+                };
+            }, [mapReady, mapRef]);
+
             // Optimized runtime config updates (e.g. switching lightPreset)
             // Uses a separate effect to apply properties without triggering the full setup logic.
             const lastConfigRef = React.useRef<string>('');
@@ -313,7 +355,7 @@ const Map = React.memo(
             return (
                 <div
                     className={cn(
-                        'relative w-full h-full min-h-[200px] rounded-lg overflow-hidden',
+                        'relative w-full h-full min-h-[200px] rounded-lg [overflow:clip] cursor-grab active:cursor-grabbing',
                         className
                     )}
                 >

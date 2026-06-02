@@ -225,5 +225,15 @@ export const useMapInteractions = ({
         }
     }, [onHoverPoi]);
 
-    return { handleMapClick, onMouseMove };
+    // Attaches a mouseleave listener to the canvas container so the pointer cursor
+    // is cleared whenever the mouse exits the map — fixes invisible-cursor gaps
+    // left by the 150ms throttle on onMouseMove.
+    const attachMouseLeave = useCallback((map: any) => {
+        const container = map.getCanvasContainer();
+        const handleLeave = () => container.classList.remove('has-pointer-cursor');
+        container.addEventListener('mouseleave', handleLeave);
+        return () => container.removeEventListener('mouseleave', handleLeave);
+    }, []);
+
+    return { handleMapClick, onMouseMove, attachMouseLeave };
 };

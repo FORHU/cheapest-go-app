@@ -2,6 +2,7 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { cache } from "react";
 import { type Deal, type VacationPackage } from "@/types";
 import { env } from "@/utils/env";
+import { getAirlineName } from "@/types/flights";
 import {
     DESTINATION_PRICE_MARKUP,
     DESTINATION_INCLUDES_DEFAULT,
@@ -41,7 +42,7 @@ async function supabaseQuery(table: string, limit: number) {
         }
 
         const result = await Promise.race([
-            query.limit(limit),
+            query.limit(limit ?? 20),
             makeTimeout(table),
         ]);
         // Only retry on network-level fetch failures, NOT on our own timeout
@@ -61,21 +62,23 @@ async function supabaseQuery(table: string, limit: number) {
 
 // ─── Per-section cached fetchers ─────────────────────────────────────────────
 export const getFlightDeals = cache(async (): Promise<Deal[]> => {
-    const { data, error } = await supabaseQuery("flight_deals", 10);
+    const { data, error } = await supabaseQuery("flight_deals", 20);
     if (error) console.error("[Landing] flight_deals error:", (error as any).message ?? error);
     return data?.map((d: any) => ({
         id: String(d.id),
         title: `${d.origin} → ${d.destination}`,
-        subtitle: d.airline || "Best flexible fares",
+        subtitle: d.airline ? getAirlineName(d.airline) : "Best flexible fares",
         discount: d.discount_tag || "",
         originalPrice: Number(d.baseline_price || d.original_price || 0),
         salePrice: Number(d.price || 0),
+        currency: d.currency || 'USD',
         image: d.image_url || "https://picsum.photos/seed/travel/400/300",
         endsIn: d.ends_in || "Limited Time",
         origin: d.origin || undefined,
         destination: d.destination || undefined,
         departure_date: d.departure_date || undefined,
         return_date: d.return_date || undefined,
+        cabinClass: d.cabin_class || 'economy',
         lastRefreshedAt: d.last_refreshed_at || undefined,
     })) ?? [];
 });
@@ -192,16 +195,18 @@ export const getLandingData = cache(async () => {
     const mappedFlightDeals: Deal[] = flightDeals?.map(d => ({
         id: String(d.id),
         title: `${d.origin} → ${d.destination}`,
-        subtitle: d.airline || "Best flexible fares",
+        subtitle: d.airline ? getAirlineName(d.airline) : "Best flexible fares",
         discount: d.discount_tag || "",
         originalPrice: Number(d.baseline_price || d.original_price || 0),
         salePrice: Number(d.price || 0),
+        currency: d.currency || 'USD',
         image: d.image_url || "https://picsum.photos/seed/travel/400/300",
         endsIn: d.ends_in || "Limited Time",
         origin: d.origin || undefined,
         destination: d.destination || undefined,
         departure_date: d.departure_date || undefined,
         return_date: d.return_date || undefined,
+        cabinClass: d.cabin_class || 'economy',
         lastRefreshedAt: d.last_refreshed_at || undefined,
     })) ?? [];
 

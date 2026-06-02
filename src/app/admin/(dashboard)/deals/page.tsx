@@ -44,14 +44,21 @@ export default async function AdminDealsPage({
         const res = await query.order('created_at', { ascending: false }).range(offset, offset + pageSize - 1);
         data = res.data ?? [];
         count = res.count ?? 0;
+    } else if (tab === 'hotel_deals') {
+        let query = supabase.from('unique_stays').select('*', { count: 'exact' });
+        if (q) query = query.or(`name.ilike.%${q}%,location.ilike.%${q}%,category.ilike.%${q}%`);
+        const res = await query.order('created_at', { ascending: false }).range(offset, offset + pageSize - 1);
+        data = res.data ?? [];
+        count = res.count ?? 0;
     }
 
     // Summary counts across all tabs
-    const [{ count: voucherTotal }, { count: flightDealTotal }, { count: weekendTotal }, { count: activeVouchers }] = await Promise.all([
+    const [{ count: voucherTotal }, { count: flightDealTotal }, { count: weekendTotal }, { count: activeVouchers }, { count: hotelDealTotal }] = await Promise.all([
         supabase.from('vouchers').select('*', { count: 'exact', head: true }),
         supabase.from('flight_deals').select('*', { count: 'exact', head: true }),
         supabase.from('weekend_flight_deals').select('*', { count: 'exact', head: true }),
         supabase.from('vouchers').select('*', { count: 'exact', head: true }).eq('active', true),
+        supabase.from('unique_stays').select('*', { count: 'exact', head: true }),
     ]);
 
     return (
@@ -67,6 +74,7 @@ export default async function AdminDealsPage({
                     activeVouchers: activeVouchers ?? 0,
                     flightDeals: flightDealTotal ?? 0,
                     weekendDeals: weekendTotal ?? 0,
+                    hotelDeals: hotelDealTotal ?? 0,
                 },
             }}
             searchParams={{ tab, page, q }}

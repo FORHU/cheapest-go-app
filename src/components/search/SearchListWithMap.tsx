@@ -183,7 +183,7 @@ function SearchListWithMap({ properties, children }: SearchListWithMapProps) {
             {/* RIGHT — Sticky Map Sidebar (desktop/tablet only) */}
             {/* Hidden on mobile (< md), Visible on tablet (md+) */}
             <div className="hidden md:block md:w-[45%] lg:w-[45%] xl:w-[40%] flex-shrink-0">
-                <div className="sticky top-[80px] h-[calc(100vh-120px)] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 ml-4 lg:ml-6">
+                <div className="sticky top-[80px] h-[calc(100vh-120px)] rounded-2xl [overflow:clip] border border-slate-200 dark:border-slate-700 ml-4 lg:ml-6">
                     {/* relative wrapper is required so absolute overlays stack above the map canvas */}
                     <div className="relative h-full w-full">
                         <Map

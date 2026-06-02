@@ -61,9 +61,6 @@ export const env = {
     TRAVELGATE_CLIENT: process.env.TRAVELGATEX_CLIENT || 'forhuinc',
     TRAVELGATE_SUPPLIER: process.env.TRAVELGATEX_SUPPLIER || 'OTV',
     TRAVELGATE_CONTEXT: process.env.TRAVELGATEX_CONTEXT || 'OTV',
-    // Foursquare
-    FOURSQUARE_API_KEY: process.env.FOURSQUARE_SERVICE_API_KEY,
-
     // ETG / RateHawk B2B (hotel reviews nightly sync)
     ETG_KEY_ID: process.env.ETG_KEY_ID,
     ETG_API_KEY: process.env.ETG_API_KEY,

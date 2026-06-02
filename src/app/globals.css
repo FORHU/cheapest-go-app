@@ -295,9 +295,12 @@ body {
    Grabbing is last in source order so it wins over pointer at equal specificity. */
 .mapboxgl-map,
 .mapboxgl-canvas-container {
-  cursor: grab;
+  cursor: grab !important;
 }
-.mapboxgl-canvas-container .mapboxgl-canvas {
+/* Target every canvas inside the map — Mapbox GL v3 Standard style can add
+   extra compositor canvases above .mapboxgl-canvas that have no class and
+   therefore no cursor, making the cursor invisible when those are on top. */
+.mapboxgl-map canvas {
   cursor: grab !important;
 }
 .mapboxgl-canvas-container.has-pointer-cursor .mapboxgl-canvas {
@@ -305,7 +308,7 @@ body {
 }
 .mapboxgl-map:active,
 .mapboxgl-canvas-container:active,
-.mapboxgl-canvas-container:active .mapboxgl-canvas {
+.mapboxgl-map:active canvas {
   cursor: grabbing !important;
 }
 
@@ -317,6 +320,7 @@ body {
 .mapboxgl-marker {
   contain: layout style;
   will-change: transform;
+  cursor: pointer !important;
 }
 
 /* Reduce compositing cost: disable backdrop-blur on overlays sitting on top
@@ -600,19 +604,3 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* ── Mapbox canvas cursor fix ──────────────────────────────────────────────
-   The JS mousemove handler runs at most every 150ms. During the gap
-   Mapbox resets canvas.style.cursor to '' (empty), which on canvas
-   elements renders as an invisible cursor on some browsers.
-   Setting grab here via CSS ensures the cursor is always visible;
-   the JS handler only overrides it with 'pointer' when needed and
-   resets to '' (not 'grab') so this CSS base takes over immediately.  */
-.mapboxgl-canvas {
-    cursor: grab !important;
-}
-.mapboxgl-canvas:active {
-    cursor: grabbing !important;
-}
-.mapboxgl-canvas[style*="cursor: pointer"] {
-    cursor: pointer !important;
-}
