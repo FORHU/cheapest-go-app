@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { extractCountryCode, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
+import { getSqlAdmin } from '@/lib/db/postgres';
 
 export interface AutocompleteResult {
     type: 'city' | 'country';
@@ -28,7 +29,9 @@ async function fetchCitiesFromMapbox(query: string): Promise<AutocompleteResult[
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!token) return [];
 
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=place,locality,region&limit=6&access_token=${token}`;
+    // proximity=Seoul biases results toward Asia/popular travel regions.
+    // language=en ensures consistent city name casing across locales.
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?types=place,locality,region&limit=8&language=en&proximity=126.9780,37.5665&access_token=${token}`;
 
     try {
         const res = await fetch(url, { next: { revalidate: 300 } });
@@ -59,29 +62,108 @@ async function fetchCitiesFromMapbox(query: string): Promise<AutocompleteResult[
 }
 
 /**
- * Resolve a TravelgateX destination code for a given city name.
- * Prefers CITY type results; falls back to ZONE if no CITY found.
- * Best-effort — returns undefined on any failure so it never blocks autocomplete.
+ * Filter Mapbox city results to those that have hotels in hotel_content,
+ * matched on both city name AND country code to avoid false positives
+ * (e.g. "Jeju, Ethiopia" matching our "Jeju, South Korea" hotels).
  */
-async function resolveTgxCode(cityName: string): Promise<string | undefined> {
+async function filterCitiesWithHotels(
+    cities: Array<{ title: string; countryCode: string }>
+): Promise<Set<string>> {
+    if (!cities.length) return new Set();
+    try {
+        const sql = getSqlAdmin();
+        // Build composite keys "city|countrycode" for exact matching
+        const pairs = cities.map(c => ({
+            city: c.title.toLowerCase(),
+            country: c.countryCode.toLowerCase(),
+        }));
+        const cityNames = pairs.map(p => p.city);
+        const rows = await sql`
+            SELECT DISTINCT LOWER(city) AS city, LOWER(country) AS country
+            FROM hotel_content
+            WHERE LOWER(city) = ANY(${cityNames})
+        `;
+        // Build a set of "city|country" composite keys that have hotels
+        const matched = new Set(rows.map((r: any) => `${r.city}|${r.country}`));
+        // Return a set of city titles (original case key) that matched by city+country
+        const result = new Set<string>();
+        for (const p of pairs) {
+            if (matched.has(`${p.city}|${p.country}`)) {
+                result.add(p.city);
+            }
+        }
+        // Fallback: if no exact country match found, try city-only (for cities
+        // where country field is blank in hotel_content)
+        if (result.size === 0) {
+            const cityOnlyMatched = new Set(rows.map((r: any) => r.city as string));
+            for (const p of pairs) {
+                if (cityOnlyMatched.has(p.city)) result.add(p.city);
+            }
+        }
+        return result;
+    } catch {
+        return new Set(cities.map(c => c.title.toLowerCase()));
+    }
+}
+
+// In-process cache — avoids repeat DB lookups within the same server process
+const _destCodeCache = new Map<string, string>();
+
+/**
+ * Resolve a TravelgateX destination code for a given city.
+ * Checks in-process cache → DB → TGX API (in that order).
+ * Writes back to DB so future lookups skip the TGX API call entirely.
+ */
+export async function resolveTgxDestinationCode(cityName: string): Promise<string | undefined> {
+    const key = cityName.toLowerCase().trim();
+
+    // 1. In-process cache (fastest)
+    if (_destCodeCache.has(key)) return _destCodeCache.get(key);
+
+    // 2. DB cache (fast, survives server restarts)
+    try {
+        const sql = getSqlAdmin();
+        const rows = await sql`SELECT destination_code FROM tgx_destination_cache WHERE city_key = ${key} LIMIT 1`;
+        if (rows.length > 0) {
+            const code = rows[0].destination_code as string;
+            _destCodeCache.set(key, code);
+            return code;
+        }
+    } catch { /* non-fatal — fall through to TGX */ }
     try {
         const { tgxGraphQL, getTgxConfig } = await import('@/lib/server/stays/travelgatex/client');
         const cfg = getTgxConfig();
-        const result = await tgxGraphQL(
-            `query TgxResolveCity($access: ID!, $text: String!, $maxSize: Int) {
-               hotelX {
-                 destinationSearcher(criteria: { access: $access, text: $text, maxSize: $maxSize }) {
-                   ... on DestinationData { code type }
-                 }
-               }
-             }`,
-            { access: cfg.accessCode, text: cityName, maxSize: 50 }
+        const timeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('resolve timeout')), 8000)
         );
+        const result = await Promise.race([
+            tgxGraphQL(
+                `query TgxResolveCity($access: ID!, $text: String!, $maxSize: Int) {
+                   hotelX {
+                     destinationSearcher(criteria: { access: $access, text: $text, maxSize: $maxSize }) {
+                       ... on DestinationData { code type }
+                     }
+                   }
+                 }`,
+                { access: cfg.accessCode, text: cityName, maxSize: 20 }
+            ),
+            timeout,
+        ]);
         const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
-        // Prefer CITY type; fall back to first ZONE if no CITY found
         const cityItem = items.find((i: any) => i.type === 'CITY');
         const zoneItem = items.find((i: any) => i.type === 'ZONE');
-        return cityItem?.code ?? zoneItem?.code ?? undefined;
+        const code = cityItem?.code ?? zoneItem?.code ?? undefined;
+        if (code) {
+            _destCodeCache.set(key, code);
+            // Write to DB (fire-and-forget — non-blocking)
+            try {
+                const sql = getSqlAdmin();
+                sql`INSERT INTO tgx_destination_cache (city_key, destination_code)
+                    VALUES (${key}, ${code})
+                    ON CONFLICT (city_key) DO NOTHING`.catch(() => {});
+            } catch { /* non-fatal */ }
+        }
+        return code;
     } catch {
         return undefined;
     }
@@ -99,21 +181,19 @@ async function fetchAutocomplete(query: string): Promise<AutocompleteResult[]> {
         return countryResults;
     }
 
-    // Run Mapbox geocoding + TGX destination code lookup in parallel
-    const [cityResults, tgxCode] = await Promise.all([
-        fetchCitiesFromMapbox(query),
-        resolveTgxCode(query),
-    ]);
+    const cityResults = await fetchCitiesFromMapbox(query);
+    if (!cityResults.length) return countryResults;
 
-    // Attach the TGX code to the top (most relevant) city result
-    const enriched = cityResults.map((city, idx) => {
-        if (idx === 0 && tgxCode) {
-            return { ...city, code: tgxCode };
-        }
-        return city;
-    });
+    // Only show cities that have hotels in our TGX inventory (hotel_content).
+    // This prevents "No results found" after selecting a Mapbox city we don't cover.
+    // Sort: cities with hotels in our DB come first, others still shown below.
+    const citiesWithHotels = await filterCitiesWithHotels(cityResults);
+    const sorted = [
+        ...cityResults.filter(c => citiesWithHotels.has(c.title.toLowerCase())),
+        ...cityResults.filter(c => !citiesWithHotels.has(c.title.toLowerCase())),
+    ];
 
-    return [...countryResults, ...enriched];
+    return [...countryResults, ...sorted];
 }
 
 const getCachedAutocomplete = unstable_cache(

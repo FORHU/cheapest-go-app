@@ -20,12 +20,16 @@ export function getTgxConfig() {
     };
 }
 
-export function getTgxSettings(cfg = getTgxConfig()) {
+export function getTgxSettings(cfg = getTgxConfig(), timeout = 18000) {
     // Do NOT add explicit suppliers here — TGX routes via context automatically,
     // and pinning an accessId filters out results when it doesn't match the account config.
+    // timeout: mandatory per TGX docs; max 25,000 ms for Search.
+    // auditTransactions: false improves response time.
     return {
-        context: cfg.context,
-        client:  cfg.client,
+        context:           cfg.context,
+        client:            cfg.client,
+        timeout,
+        auditTransactions: false,
     };
 }
 
@@ -51,7 +55,7 @@ export async function tgxGraphQL<T = any>(query: string, variables?: Record<stri
             'Accept-Encoding': 'gzip',
         },
         body: payload,
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(22_000),
     });
 
     if (!res.ok) {
