@@ -115,6 +115,8 @@ export async function POST(req: NextRequest) {
         const flight: any = session.flight ?? {};
         const passengers: any[] = session.passengers ?? [];
         const paymentIntentId: string = piIdFromCaller ?? session.payment_intent_id ?? '';
+        const farePolicy: any = session.fare_policy ?? null;
+        const tripType: string = flight.tripType ?? flight.trip_type ?? 'one-way';
 
         console.log(`[create-booking] Processing session ${sessionId} provider=${provider}`);
 
@@ -323,19 +325,28 @@ async function handleDuffel(ctx: {
     const bookingRows = await sql`
         INSERT INTO flight_bookings (
             user_id, session_id, provider, pnr, status,
+            total_price, currency,
             payment_intent_id, confirmed_price, confirmed_currency,
-            duffel_order_id, ticket_numbers
+            charged_price, supplier_cost,
+            duffel_order_id, ticket_numbers,
+            fare_policy, trip_type
         ) VALUES (
             ${session.user_id},
             ${sessionId},
             ${'duffel'},
             ${preOrderPnr},
             ${bookingStatus},
+            ${confirmedPrice},
+            ${confirmedCurrency},
             ${paymentIntentId || null},
             ${confirmedPrice},
             ${confirmedCurrency},
+            ${confirmedPrice},
+            ${session.original_price ?? confirmedPrice},
             ${preOrderId},
-            ${JSON.stringify(preOrderTickets)}
+            ${JSON.stringify(preOrderTickets)},
+            ${farePolicy ? sql.json(farePolicy) : null},
+            ${tripType}
         )
         RETURNING id
     `;
@@ -490,22 +501,30 @@ async function insertPassengers(
 ) {
     if (!bookingId) return;
 
+    // Normalise type to schema constraint values: ADT | CHD | INF
+    const normaliseType = (raw: string | undefined) => {
+        const map: Record<string, string> = {
+            ADT: 'ADT', adult: 'ADT',
+            CHD: 'CHD', child: 'CHD',
+            INF: 'INF', infant: 'INF',
+        };
+        return map[raw ?? ''] ?? 'ADT';
+    };
+
     for (let i = 0; i < passengers.length; i++) {
         const pax = passengers[i];
         try {
             await sql`
                 INSERT INTO passengers (
-                    booking_id, user_id,
+                    booking_id,
                     first_name, last_name,
-                    date_of_birth, passenger_type,
-                    ticket_number, passport_number
+                    type,
+                    ticket_number, passport
                 ) VALUES (
                     ${bookingId},
-                    ${userId},
-                    ${pax.firstName ?? ''},
-                    ${pax.lastName ?? ''},
-                    ${pax.birthDate ?? pax.dob ?? null},
-                    ${pax.type ?? pax.passengerType ?? 'adult'},
+                    ${pax.firstName ?? pax.first_name ?? ''},
+                    ${pax.lastName ?? pax.last_name ?? ''},
+                    ${normaliseType(pax.type ?? pax.passengerType)},
                     ${ticketNumbers[i] ?? null},
                     ${pax.passport?.number ?? pax.passportNumber ?? null}
                 )

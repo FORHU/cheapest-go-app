@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/postgres/admin';
+import { getSqlAdmin } from '@/lib/db/postgres';
 /**
  * Server-side data fetching for trips page.
  * Uses shared server auth utility for authenticated requests.
@@ -43,28 +44,52 @@ export async function fetchTripsData(): Promise<TripsData> {
     return EMPTY_TRIPS;
   }
 
-  const [hotelsResponse, flightsResponse] = await Promise.all([
+  const sql = getSqlAdmin();
+
+  const [hotelsResponse, rawFlightBookings, rawSegments, rawPassengers] = await Promise.all([
     supabase
       .from('bookings')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
-    supabase
-      .from('flight_bookings')
-      .select('*, flight_segments(*), passengers(*)')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+    sql`SELECT * FROM flight_bookings WHERE user_id = ${user.id} ORDER BY created_at DESC`,
+    sql`
+      SELECT fs.* FROM flight_segments fs
+      JOIN flight_bookings fb ON fb.id = fs.booking_id
+      WHERE fb.user_id = ${user.id}
+      ORDER BY fs.departure ASC
+    `,
+    sql`
+      SELECT p.* FROM passengers p
+      JOIN flight_bookings fb ON fb.id = p.booking_id
+      WHERE fb.user_id = ${user.id}
+    `,
   ]);
 
   if (hotelsResponse.error) {
     console.error('Failed to fetch hotel bookings:', hotelsResponse.error);
   }
-  if (flightsResponse.error) {
-    console.error('Failed to fetch flight bookings:', flightsResponse.error);
+
+  // Group segments and passengers by booking_id
+  const segmentsByBooking = new Map<string, any[]>();
+  for (const seg of rawSegments) {
+    const id = seg.booking_id;
+    if (!segmentsByBooking.has(id)) segmentsByBooking.set(id, []);
+    segmentsByBooking.get(id)!.push(seg);
+  }
+  const passengersByBooking = new Map<string, any[]>();
+  for (const pax of rawPassengers) {
+    const id = pax.booking_id;
+    if (!passengersByBooking.has(id)) passengersByBooking.set(id, []);
+    passengersByBooking.get(id)!.push(pax);
   }
 
   const bookings = (hotelsResponse.data || []) as BookingRecord[];
-  const flightBookings = (flightsResponse.data || []) as FlightBookingRecord[];
+  const flightBookings = rawFlightBookings.map((fb: any) => ({
+    ...fb,
+    flight_segments: segmentsByBooking.get(fb.id) ?? [],
+    passengers: passengersByBooking.get(fb.id) ?? [],
+  })) as FlightBookingRecord[];
   const now = new Date();
 
   const CANCELLED_STATUSES: BookingRecord['status'][] = ['cancelled', 'cancelled_refunded', 'cancelled_refund_failed'];

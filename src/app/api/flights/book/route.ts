@@ -9,6 +9,7 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
+import { convertCurrency } from '@/lib/currency';
 
 export const maxDuration = 120;
 import { parseDuffelOffer } from '@/lib/server/flights/providers/duffel';
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
             bagTotal?: number;
             confirmedPrice?: number;
             bundleHotelId?: string;
+            displayCurrency?: string;
         };
 
         // Use server-verified user ID
@@ -844,15 +846,23 @@ export async function POST(req: NextRequest) {
             : flightTotal + Math.max(0, seatTotal ?? 0) + Math.max(0, bagTotal ?? 0);
         const totalWithSeats = stripeBase;
         const pricing = applyMarkup(totalWithSeats, FLIGHT_MARKUP);
-        const flightStripeAmount = toStripeAmount(pricing.chargedPrice, flightCurrency);
+
+        // Charge the customer in their selected display currency, not Duffel's USD.
+        // This ensures the refund amount exactly matches what they paid — no FX drift.
+        const chargeInCurrency = (displayCurrency || flightCurrency).toLowerCase();
+        const chargePrice = chargeInCurrency !== flightCurrency
+            ? Math.round(convertCurrency(pricing.chargedPrice, flightCurrency, chargeInCurrency.toUpperCase()) * 100) / 100
+            : pricing.chargedPrice;
+        const flightStripeAmount = toStripeAmount(chargePrice, chargeInCurrency);
 
         console.log(`[/book] Pricing: original=${pricing.originalPrice} ${flightCurrency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%, markupAmount=${pricing.markupAmount}`);
+        console.log(`[/book] Stripe charge: ${chargePrice} ${chargeInCurrency} (converted from ${pricing.chargedPrice} ${flightCurrency})`);
 
         // Idempotency key prevents duplicate charges if the client retries on network error.
         const piIdempotencyKey = `flight-pi-${userId}-${sessionId}`;
         const paymentIntent = await stripe.paymentIntents.create({
             amount: flightStripeAmount,
-            currency: flightCurrency,
+            currency: chargeInCurrency,
             capture_method: isMystifly ? 'manual' : 'automatic',
             metadata: {
                 bookingSessionId: sessionId,
@@ -962,8 +972,9 @@ export async function POST(req: NextRequest) {
             .update({
                 currency: flightCurrency,
                 original_price: pricing.originalPrice,
-                charged_price: pricing.chargedPrice,
+                charged_price: chargePrice,
                 markup_pct: pricing.markupRate,
+                payment_currency: chargeInCurrency.toUpperCase(),
             })
             .eq('id', sessionId)
             .then(({ error }) => {
