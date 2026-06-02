@@ -81,6 +81,20 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
         addRecentSearch(destination);
         if (onSelect) onSelect(destination);
         onClose();
+
+        // Resolve TGX destination code in background after selection (city type only).
+        // Updates the stored destination with the code so search can use it directly.
+        if (destination.type === 'city' && !destination.code) {
+            apiFetch('/api/autocomplete/resolve', { cityName: destination.title })
+                .then((res: any) => {
+                    if (res?.success && res.code) {
+                        const enriched = { ...destination, code: res.code };
+                        setDestination(enriched);
+                        addRecentSearch(enriched);
+                    }
+                })
+                .catch(() => {});
+        }
     };
 
     const getIcon = (type: Destination['type']) => {
