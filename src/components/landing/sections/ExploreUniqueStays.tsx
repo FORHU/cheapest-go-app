@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import SaveButton from '@/components/common/SaveButton';
 import { type SimpleProperty, uniqueTabs } from '@/types';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
-import { useDragScroll } from '@/hooks/useDragScroll';
 
 // ── Card ──────────────────────────────────────────────────────────────────────
 interface UniqueStayCardProps {
@@ -17,7 +16,7 @@ interface UniqueStayCardProps {
   variant?: 'carousel' | 'grid';
 }
 
-const UniqueStayCardImpl: React.FC<UniqueStayCardProps> = ({ stay, index, variant = 'carousel' }) => {
+const UniqueStayCard: React.FC<UniqueStayCardProps> = ({ stay, index, variant = 'carousel' }) => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -106,16 +105,39 @@ const UniqueStayCardImpl: React.FC<UniqueStayCardProps> = ({ stay, index, varian
   );
 };
 
-const UniqueStayCard = React.memo(UniqueStayCardImpl);
-UniqueStayCard.displayName = 'UniqueStayCard';
-
 // ── Section ───────────────────────────────────────────────────────────────────
 export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ stays }) => {
   const [activeTab, setActiveTab] = useState(uniqueTabs[0]);
   const displayStays = stays || [];
+  const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef   = useRef<HTMLDivElement>(null);
-  const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
+  const [activePage, setActivePage] = useState(0);
   const [showAll,    setShowAll]    = useState(false);
+
+  const scroll = useCallback((dir: 'left' | 'right') => {
+    scrollRef.current?.scrollBy({ left: dir === 'left' ? -540 : 540, behavior: 'smooth' });
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    setActivePage(maxScroll > 0 && el.scrollLeft / maxScroll >= 0.5 ? 1 : 0);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
+  const goToPage = useCallback((page: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: page === 0 ? 0 : el.scrollWidth - el.clientWidth, behavior: 'smooth' });
+    setActivePage(page);
+  }, []);
 
   return (
     <section className="w-full py-2 md:py-4 lg:py-5">
@@ -148,6 +170,22 @@ export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ sta
             >
               {showAll ? 'Show less ↑' : 'View all →'}
             </button>
+            <motion.button
+              whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+              onClick={() => scroll('left')}
+              aria-label="Previous unique stays"
+              className="p-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+              onClick={() => scroll('right')}
+              aria-label="Next unique stays"
+              className="p-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+            >
+              <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            </motion.button>
           </div>
         </div>
 
@@ -171,11 +209,11 @@ export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ sta
           ))}
         </div>
 
-        {/* Horizontal scroll row */}
+        {/* Carousel */}
         <div
-          ref={rowRef}
-          {...dragProps}
-          className="flex overflow-x-auto snap-x snap-mandatory gap-3 pt-5 pb-3 -mt-5 -mx-4 sm:-mx-6 px-4 sm:px-6 scroll-px-4 sm:scroll-px-6 cursor-grab active:cursor-grabbing select-none"
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex overflow-x-auto snap-x snap-mandatory gap-3 pt-5 pb-3 -mt-5"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
         >
           {displayStays.map((stay, i) => (
@@ -183,10 +221,35 @@ export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ sta
           ))}
         </div>
 
+        {/* Pagination dots */}
+        {displayStays.length > 0 && (
+          <div className="flex justify-center items-center gap-2 mt-3">
+            {[0, 1].map(page => (
+              <button
+                key={page}
+                onClick={() => goToPage(page)}
+                aria-label={`Go to page ${page + 1}`}
+                className={`rounded-full transition-all duration-300 ${
+                  activePage === page
+                    ? 'w-6 h-2 bg-blue-500'
+                    : 'w-2 h-2 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
         {/* "View all" expanded grid */}
         <AnimatePresence>
           {showAll && (
             <motion.div
+              ref={gridRef}
+              key="unique-stays-grid"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ duration: 0.28, ease: 'easeOut' }}
+              className="mt-6"
               ref={gridRef}
               key="unique-stays-grid"
               initial={{ opacity: 0, y: 16 }}
@@ -210,8 +273,25 @@ export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ sta
                 {displayStays.map((stay, i) => (
                   <UniqueStayCard key={stay.id} stay={stay} index={i} variant="grid" />
                 ))}
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  All {displayStays.length} stays
+                </p>
+                <button
+                  onClick={() => setShowAll(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  Collapse ↑
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {displayStays.map((stay, i) => (
+                  <UniqueStayCard key={stay.id} stay={stay} index={i} variant="grid" />
+                ))}
               </div>
             </motion.div>
+          )}
+        </AnimatePresence>
           )}
         </AnimatePresence>
       </div>
