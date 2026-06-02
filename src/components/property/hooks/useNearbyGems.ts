@@ -86,31 +86,11 @@ export const useNearbyGems = ({
                 // Fetch Google Places discovery results
                 let featuresToProcess: any[] = [];
                 try {
-                    const [googleResult, fsqResult] = await Promise.allSettled([
-                        fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
-                            .then(r => r.ok ? r.json() : { features: [] })
-                            .then(d => (d.features || []) as any[])
-                            .catch(() => [] as any[]),
-                        fetch(`/api/foursquare/recommendations?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
-                            .then(r => r.ok ? r.json() : { features: [] })
-                            .then(d => (d.features || []) as any[])
-                            .catch(() => [] as any[]),
-                    ]);
-
-                    const googleFeatures = googleResult.status === 'fulfilled' ? googleResult.value : [];
-                    const fsqFeatures    = fsqResult.status === 'fulfilled'    ? fsqResult.value    : [];
-
-                    // Merge: Google places first (have ratings/photos), FSQ fills gaps.
-                    // Deduplicate by normalised name so a place appearing in both APIs appears once.
-                    const seen = new Set<string>();
-                    const merged: any[] = [];
-                    for (const f of [...googleFeatures, ...fsqFeatures]) {
-                        const key = (f.properties?.name || '').toLowerCase().trim();
-                        if (!key || seen.has(key)) continue;
-                        seen.add(key);
-                        merged.push(f);
-                    }
-                    featuresToProcess = merged;
+                    const googleFeatures = await fetch(`/api/places/discover?lat=${coordinates.lat}&lng=${coordinates.lng}&category=${selectedCategory}&radius=${radiusMeters}`, { signal })
+                        .then(r => r.ok ? r.json() : { features: [] })
+                        .then(d => (d.features || []) as any[])
+                        .catch(() => [] as any[]);
+                    featuresToProcess = googleFeatures;
                 } catch (e: any) {
                     if (e.name !== 'AbortError') console.warn('External discovery failed:', e);
                 }

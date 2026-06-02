@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, MapPin } from 'lucide-react';
+import { Sparkles, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
+import SaveButton from '@/components/common/SaveButton';
 import SaveButton from '@/components/common/SaveButton';
 import { type WeekendDeal } from '@/types';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
+import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
-import { useDragScroll } from '@/hooks/useDragScroll';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getRatingLabel(r: number): string {
@@ -35,7 +36,7 @@ interface FlashGetawayCardProps {
   variant?: 'carousel' | 'grid';
 }
 
-const FlashGetawayCardImpl: React.FC<FlashGetawayCardProps> = ({ deal, index, variant = 'carousel' }) => {
+const FlashGetawayCard: React.FC<FlashGetawayCardProps> = ({ deal, index, variant = 'carousel' }) => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -146,17 +147,41 @@ const FlashGetawayCardImpl: React.FC<FlashGetawayCardProps> = ({ deal, index, va
   );
 };
 
-const FlashGetawayCard = React.memo(FlashGetawayCardImpl);
-FlashGetawayCard.displayName = 'FlashGetawayCard';
-
 // ── Section ───────────────────────────────────────────────────────────────────
 export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ deals }) => {
   const displayDeals = deals || [];
+  const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
+  const [activePage, setActivePage] = useState(0);
   const [showAll, setShowAll] = useState(false);
 
+  const scroll = useCallback((dir: 'left' | 'right') => {
+    scrollRef.current?.scrollBy({ left: dir === 'left' ? -540 : 540, behavior: 'smooth' });
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    setActivePage(maxScroll > 0 && el.scrollLeft / maxScroll >= 0.5 ? 1 : 0);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
+  const goToPage = useCallback((page: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: page === 0 ? 0 : el.scrollWidth - el.clientWidth, behavior: 'smooth' });
+    setActivePage(page);
+  }, []);
+
   return (
+    <section className="w-full py-2 md:py-4 lg:py-5">
     <section className="w-full py-2 md:py-4 lg:py-5">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
@@ -187,20 +212,54 @@ export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ de
             >
               {showAll ? 'Show less ↑' : 'View all →'}
             </button>
+            <motion.button
+              whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+              onClick={() => scroll('left')}
+              aria-label="Previous deals"
+              className="p-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
+              onClick={() => scroll('right')}
+              aria-label="Next deals"
+              className="p-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+            >
+              <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            </motion.button>
           </div>
         </div>
 
-        {/* Horizontal scroll row */}
+        {/* Carousel */}
         <div
-          ref={rowRef}
-          {...dragProps}
-          className="flex overflow-x-auto snap-x snap-mandatory gap-3 pt-5 pb-3 -mt-5 -mx-4 sm:-mx-6 px-4 sm:px-6 scroll-px-4 sm:scroll-px-6 cursor-grab active:cursor-grabbing select-none"
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex overflow-x-auto snap-x snap-mandatory gap-3 pt-5 pb-3 -mt-5"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
         >
           {displayDeals.map((deal, i) => (
             <FlashGetawayCard key={deal.id} deal={deal} index={i} />
           ))}
         </div>
+
+        {/* Pagination dots */}
+        {displayDeals.length > 0 && (
+          <div className="flex justify-center items-center gap-2 mt-3">
+            {[0, 1].map(page => (
+              <button
+                key={page}
+                onClick={() => goToPage(page)}
+                aria-label={`Go to page ${page + 1}`}
+                className={`rounded-full transition-all duration-300 ${
+                  activePage === page
+                    ? 'w-6 h-2 bg-blue-500'
+                    : 'w-2 h-2 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500'
+                }`}
+              />
+            ))}
+          </div>
+        )}
 
         {/* "View all" expanded grid */}
         <AnimatePresence>
@@ -225,6 +284,14 @@ export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ de
                   Collapse ↑
                 </button>
               </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {displayDeals.map((deal, i) => (
+                  <FlashGetawayCard key={deal.id} deal={deal} index={i} variant="grid" />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {displayDeals.map((deal, i) => (
                   <FlashGetawayCard key={deal.id} deal={deal} index={i} variant="grid" />

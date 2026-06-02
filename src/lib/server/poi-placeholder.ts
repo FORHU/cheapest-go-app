@@ -1,5 +1,5 @@
 /**
- * Last-resort placeholder when both Google Places and Foursquare return no photo.
+ * Last-resort placeholder when Google Places returns no photo.
  *
  * Previously this returned a Mapbox Static map tile, which was visually confusing
  * (a zoomed-in street map is not a photo of the place). Now returns a styled
