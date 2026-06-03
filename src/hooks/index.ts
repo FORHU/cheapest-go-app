@@ -16,6 +16,9 @@ export type { UseBookingOptions } from './mutations/useBooking';
 // Checkout hooks
 export { useCheckoutForm, useCheckoutPrebook, usePricingCalculation } from './checkout';
 
+// Drag-to-scroll for horizontal card rows
+export { useDragScroll } from './useDragScroll';
+
 // Room hooks (property page)
 export { useRoomGrouping } from './room';
 export type { UseRoomGroupingOptions, UseRoomGroupingReturn } from './room';
