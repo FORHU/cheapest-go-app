@@ -6,7 +6,7 @@ import { useAuthStore, useUser } from '@/stores/authStore';
 
 interface UseCheckoutPrebookOptions {
     selectedCurrency: string;
-    startPrebook: (offerId: string, currency: string, voucherCode?: string, adults?: number, children?: number) => Promise<any>;
+    startPrebook: (offerId: string, currency: string, voucherCode?: string, adults?: number, children?: number, roomName?: string) => Promise<any>;
     prebookError: string | null;
 }
 
@@ -40,7 +40,7 @@ export function useCheckoutPrebook({
             !prebookFailedRef.current.has(prebookKey)
         ) {
             prebookInitiatedRef.current = prebookKey;
-            startPrebook(selectedRoom.offerId, selectedCurrency, undefined, adults, children).catch((_err: Error) => {
+            startPrebook(selectedRoom.offerId, selectedCurrency, undefined, adults, children, selectedRoom.title).catch((_err: Error) => {
                 // Mark permanently failed so the effect never re-triggers
                 prebookFailedRef.current.add(prebookKey);
                 prebookInitiatedRef.current = prebookKey;
@@ -55,7 +55,7 @@ export function useCheckoutPrebook({
         if (user && prebookError && !isUnavailable && selectedRoom?.offerId && !isAuthModalOpen) {
             prebookInitiatedRef.current = null;
             prebookFailedRef.current.delete(prebookKey);
-            startPrebook(selectedRoom.offerId, selectedCurrency, undefined, adults, children).catch(console.error);
+            startPrebook(selectedRoom.offerId, selectedCurrency, undefined, adults, children, selectedRoom.title).catch(console.error);
         }
     }, [user, prebookError, selectedRoom?.offerId, isAuthModalOpen, startPrebook, selectedCurrency]);
 
@@ -65,7 +65,7 @@ export function useCheckoutPrebook({
         prebookInitiatedRef.current = null;
         prebookFailedRef.current.delete(prebookKey);
         if (selectedRoom?.offerId) {
-            startPrebook(selectedRoom.offerId, selectedCurrency);
+            startPrebook(selectedRoom.offerId, selectedCurrency, undefined, adults, children, selectedRoom.title);
         }
     };
 

@@ -43,7 +43,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                 FROM hotel_content
                 WHERE city ILIKE ${pattern} AND LOWER(country) = LOWER(${countryCode})
                 ORDER BY review_count DESC NULLS LAST
-                LIMIT 300
+                LIMIT 1000
               `
             : await sql`
                 SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
@@ -51,7 +51,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                 FROM hotel_content
                 WHERE city ILIKE ${pattern}
                 ORDER BY review_count DESC NULLS LAST
-                LIMIT 300
+                LIMIT 1000
               `;
 
         return rows.map((r: any) => ({
@@ -64,6 +64,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
             image:        (r.images as string[] | null)?.[0] ?? '',
             starRating:   r.star_rating ?? 0,
             reviewRating: Number(r.review_rating ?? 0),
+            rating:       Number(r.review_rating ?? 0),
             reviewCount:  Number(r.review_count ?? 0),
             lat:          Number(r.lat ?? 0),
             lng:          Number(r.lng ?? 0),
@@ -83,7 +84,6 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
 }
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 55;
 
 const enc = new TextEncoder();
 

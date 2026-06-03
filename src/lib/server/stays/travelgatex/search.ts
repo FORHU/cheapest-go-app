@@ -133,12 +133,12 @@ async function fetchHotelCodesByCity(cityName: string, countryCode?: string): Pr
         ? await sql`
             SELECT hotel_id FROM hotel_content
             WHERE city ILIKE ${pattern} AND LOWER(country) = LOWER(${countryCode})
-            LIMIT 200
+            LIMIT 1000
           `
         : await sql`
             SELECT hotel_id FROM hotel_content
             WHERE city ILIKE ${pattern}
-            LIMIT 200
+            LIMIT 1000
           `;
     return rows.map((r: any) => r.hotel_id);
 }
@@ -445,10 +445,9 @@ async function buildCityResults(
         }
     }
 
-    // Sort cheapest-first, cap at 300 so DB enrichment stays fast
+    // Sort cheapest-first — no cap, Coolify/Cloudflare has no serverless timeout
     const hotelCodes = Array.from(byHotel.entries())
         .sort(([, a], [, b]) => (a.price.gross || a.price.net) - (b.price.gross || b.price.net))
-        .slice(0, 300)
         .map(([code]) => code);
     const [contentMap, reviewMap] = await Promise.all([
         fetchHotelContent(hotelCodes),

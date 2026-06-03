@@ -1,9 +1,4 @@
-import SearchFilters from '@/components/search/SearchFilters';
-import { ResponsiveSearchHeader } from '@/components/search/ResponsiveSearchHeader';
-import { HotelResultsClient } from '@/components/search/HotelResultsClient';
-import { MapResultsClient } from '@/components/search/MapResultsClient';
-import { CountryCityPicker } from '@/components/search/CountryCityPicker';
-import BackButton from '@/components/common/BackButton';
+import { SearchPageClient } from '@/components/search/SearchPageClient';
 import { fetchFacilities } from '@/lib/search';
 
 export const dynamic = 'force-dynamic';
@@ -19,54 +14,22 @@ export default async function SearchPage(props: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const searchParams = await props.searchParams;
-    const viewMode = searchParams.view === 'list' ? 'list' : 'map';
 
-    // Flatten to Record<string, string> for client component props (arrays → first value)
     const flatParams = Object.fromEntries(
         Object.entries(searchParams).map(([k, v]) => [k, Array.isArray(v) ? v[0] ?? '' : v ?? ''])
     ) as Record<string, string>;
 
     const dest = flatParams.destination || '';
+    const initialView = flatParams.view === 'list' ? 'list' : 'map';
 
-    // ─── MAP VIEW ───────────────────────────────────────────────────
-    if (viewMode === 'map') {
-        return (
-            <main className="h-[calc(100dvh-64px)] w-full overflow-hidden flex flex-col">
-                {flatParams.destinationType === 'country' && (
-                    <div className="shrink-0 px-3 pt-2">
-                        <CountryCityPicker searchParams={flatParams} />
-                    </div>
-                )}
-                <div className="flex-1 overflow-hidden">
-                    <MapResultsClient searchParams={flatParams} destination={dest} />
-                </div>
-            </main>
-        );
-    }
-
-    // Facilities are fast (Supabase lookup) — await here so filters render immediately
     const initialFacilities = await fetchFacilities();
 
-    // ─── LIST VIEW ──────────────────────────────────────────────────
     return (
-        <main className="min-h-screen pt-3 md:pt-6 pb-8 md:pb-16 px-3 md:px-6">
-            <div className="max-w-[1400px] mx-auto">
-                <div className="hidden lg:block mb-4">
-                    <BackButton label="Back to Home" href="/" />
-                </div>
-                <ResponsiveSearchHeader />
-            </div>
-
-            <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
-                {/* Filters sidebar renders immediately — no hotel data dependency */}
-                <SearchFilters
-                    initialFacilities={initialFacilities}
-                    previewCoordinates={null}
-                />
-
-                {/* Hotel list fetches client-side — page shell appears in <1s */}
-                <HotelResultsClient searchParams={flatParams} />
-            </div>
-        </main>
+        <SearchPageClient
+            searchParams={flatParams}
+            destination={dest}
+            initialFacilities={initialFacilities}
+            initialView={initialView}
+        />
     );
 }
