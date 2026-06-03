@@ -8,6 +8,7 @@ import { AppBanner } from "@/components/landing/layout";
 import {
   SectionSkeleton,
   DealsSectionStream,
+  HotelDealsSectionStream,
   StaysForEveryStyleStream,
   ExploreVacationPackagesStream,
   ExploreUniqueStaysStream,
@@ -89,6 +90,9 @@ export default function Home() {
             <DealsSectionStream />
           </Suspense>
           <Suspense fallback={<SectionSkeleton />}>
+            <HotelDealsSectionStream />
+          </Suspense>
+          {/* <Suspense fallback={<SectionSkeleton />}>
             <StaysForEveryStyleStream />
           </Suspense>
           <Suspense fallback={<SectionSkeleton />}>
@@ -99,7 +103,7 @@ export default function Home() {
           </Suspense>
           <Suspense fallback={<SectionSkeleton />}>
             <LastMinuteWeekendDealsStream />
-          </Suspense>
+          </Suspense> */}
         </div>
       </div>
 
