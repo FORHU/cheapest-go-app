@@ -2,6 +2,7 @@ import SearchFilters from '@/components/search/SearchFilters';
 import { ResponsiveSearchHeader } from '@/components/search/ResponsiveSearchHeader';
 import { HotelResultsClient } from '@/components/search/HotelResultsClient';
 import { MapResultsClient } from '@/components/search/MapResultsClient';
+import { CountryCityPicker } from '@/components/search/CountryCityPicker';
 import BackButton from '@/components/common/BackButton';
 import { fetchFacilities } from '@/lib/search';
 
@@ -30,8 +31,15 @@ export default async function SearchPage(props: {
     // ─── MAP VIEW ───────────────────────────────────────────────────
     if (viewMode === 'map') {
         return (
-            <main className="h-[calc(100dvh-64px)] w-full overflow-hidden">
-                <MapResultsClient searchParams={flatParams} destination={dest} />
+            <main className="h-[calc(100dvh-64px)] w-full overflow-hidden flex flex-col">
+                {flatParams.destinationType === 'country' && (
+                    <div className="shrink-0 px-3 pt-2">
+                        <CountryCityPicker searchParams={flatParams} />
+                    </div>
+                )}
+                <div className="flex-1 overflow-hidden">
+                    <MapResultsClient searchParams={flatParams} destination={dest} />
+                </div>
             </main>
         );
     }

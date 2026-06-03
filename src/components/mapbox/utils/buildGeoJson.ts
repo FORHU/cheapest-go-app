@@ -27,9 +27,9 @@ export const buildGeoJson = (
             properties: {
                 id: p.id,
                 price: p.price,
-                convertedPrice: convertedPrices?.[p.id] ?? p.price,
-                // Pre-formatted string consumed by the GL symbol layer
-                displayPrice: displayPrices?.[p.id] ?? formatCurrency(p.price, p.currency),
+                // Use sentinel MAX when price is still loading so cluster minPrice never shows ₩0
+                convertedPrice: (p as any).priceLoading ? 999_999_999 : (convertedPrices?.[p.id] ?? p.price),
+                displayPrice: (p as any).priceLoading ? '···' : (displayPrices?.[p.id] ?? formatCurrency(p.price, p.currency)),
                 name: p.name,
                 rating: p.rating,
                 image: p.images?.[0] ?? p.image ?? '',

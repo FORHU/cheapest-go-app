@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { Property } from '@/types';
 import SearchResults from './SearchResults';
+import { CountryCityPicker } from './CountryCityPicker';
 
 interface HotelResultsClientProps {
     searchParams: Record<string, string>;
@@ -97,10 +98,13 @@ export function HotelResultsClient({ searchParams }: HotelResultsClientProps) {
     }
 
     return (
-        <SearchResults
-            initialProperties={properties}
-            totalCount={totalCount}
-            rawSearchParams={queryParams}
-        />
+        <div className="flex-1 min-w-0">
+            <CountryCityPicker searchParams={searchParams} />
+            <SearchResults
+                initialProperties={properties}
+                totalCount={totalCount}
+                rawSearchParams={queryParams}
+            />
+        </div>
     );
 }
