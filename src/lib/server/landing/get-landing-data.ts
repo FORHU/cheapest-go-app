@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { cache } from "react";
-import { type Deal, type VacationPackage } from "@/types";
+import { type Deal, type VacationPackage, type WeekendDeal } from "@/types";
 import { env } from "@/utils/env";
 import { getAirlineName } from "@/types/flights";
 import {
@@ -98,10 +98,10 @@ export const getFlightDeals = cache(async (): Promise<Deal[]> => {
     );
 });
 
-export const getWeekendDeals = cache(async () => {
+export const getWeekendDeals = cache(async (): Promise<WeekendDeal[]> => {
     const { data, error } = await supabaseQuery("weekend_flight_deals", 10);
     if (error) console.error("[Landing] weekend_flight_deals error:", (error as any).message ?? error);
-    const mapped = data?.map((d: any) => ({
+    const mapped: WeekendDeal[] = data?.map((d: any) => ({
         id: d.id,
         name: d.name,
         location: d.location,
