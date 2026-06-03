@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, ChevronLeft, ChevronRight, Heart, Ticket } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import SaveButton from '@/components/common/SaveButton';
+import SectionHeader from './SectionHeader';
 import { type Deal } from '@/types';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
+import { useDragScroll } from '@/hooks/useDragScroll';
 
 // ── IATA lookups ──────────────────────────────────────────────────────────────
 const AIRPORT_CITIES: Record<string, string> = {
@@ -142,7 +144,7 @@ function buildBookingUrl(deal: Deal): string {
 // ── Card ──────────────────────────────────────────────────────────────────────
 interface DealCardProps { deal: Deal; index: number; variant?: 'carousel' | 'grid' }
 
-export const DealCard: React.FC<DealCardProps> = ({ deal, index, variant = 'carousel' }) => {
+const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carousel' }) => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -260,7 +262,7 @@ export const DealCard: React.FC<DealCardProps> = ({ deal, index, variant = 'caro
           {/* Bookmark button — top right */}
           <button
             onClick={e => { e.stopPropagation(); setIsSaved(v => !v); }}
-            className="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors"
+            className="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer"
             aria-label="Save deal"
           >
             <Heart
@@ -282,7 +284,7 @@ export const DealCard: React.FC<DealCardProps> = ({ deal, index, variant = 'caro
                 </span>
               </div>
               {deal.endsIn && (
-                <span className="text-[10px] font-semibold text-white/90 mb-0.5">
+                <span className="text-[10px] text-white/90 mb-0.5">
                   Ends in {deal.endsIn}
                 </span>
               )}
@@ -317,7 +319,7 @@ export const DealCard: React.FC<DealCardProps> = ({ deal, index, variant = 'caro
             </p>
             <button
               onClick={e => { e.stopPropagation(); router.push(bookingUrl); }}
-              className="shrink-0 inline-flex items-center gap-1 text-[11px] text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-sm transition-colors leading-none"
+              className="shrink-0 inline-flex items-center gap-1 text-[11px] text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-sm transition-colors cursor-pointer leading-none"
             >
               Book Now
             </button>
@@ -329,6 +331,9 @@ export const DealCard: React.FC<DealCardProps> = ({ deal, index, variant = 'caro
     </motion.div>
   );
 };
+
+export const DealCard = React.memo(DealCardImpl);
+DealCard.displayName = 'DealCard';
 
 // ── Location detection via browser timezone (zero API calls, zero permissions) ─
 // Timezone strings are far more specific than country codes: "Asia/Manila" can
@@ -421,9 +426,8 @@ interface DealsSectionProps { deals?: Deal[] }
 
 const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
   const rawDeals  = deals || [];
-  const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef   = useRef<HTMLDivElement>(null);
-  const [activePage, setActivePage] = useState(0);
+  const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
   const [showAll,    setShowAll]    = useState(false);
   const [tripType,   setTripType]   = useState<'all' | 'oneway' | 'roundtrip'>('all');
 
@@ -449,131 +453,58 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
   const isPersonalized = userOrigin != null &&
     displayDeals.some(d => d.origin === userOrigin);
 
-  const scroll = useCallback((dir: 'left' | 'right') => {
-    scrollRef.current?.scrollBy({ left: dir === 'left' ? -540 : 540, behavior: 'smooth' });
-  }, []);
-
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const maxScroll = el.scrollWidth - el.clientWidth;
-    setActivePage(maxScroll > 0 && el.scrollLeft / maxScroll >= 0.5 ? 1 : 0);
-  }, []);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', handleScroll, { passive: true });
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
-
-  const goToPage = useCallback((page: number) => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const maxScroll = el.scrollWidth - el.clientWidth;
-    el.scrollTo({ left: page === 0 ? 0 : maxScroll, behavior: 'smooth' });
-    setActivePage(page);
-  }, []);
-
   return (
     <section className="w-full py-2 md:py-4 lg:py-5">
     <section className="w-full py-2 md:py-4 lg:py-5">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900 dark:text-white">
-              {isPersonalized
-                ? <>Deals from <span className="text-blue-600 dark:text-blue-400">{userCity ?? userOrigin}</span></>
-                : 'Exclusive Deals & Offers'}
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {isPersonalized
-                ? `Departing from ${userCity ?? userOrigin} · updated every hour`
-                : 'Flash prices — updated every hour'}
-            </p>
-
-            {/* Trip-type filter pills */}
-            <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {([
-                { key: 'all',       label: 'All' },
-                { key: 'oneway',    label: 'One Way' },
-                { key: 'roundtrip', label: 'Round Trip' },
-              ] as const).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setTripType(key)}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-normal transition-all ${
-                    tripType === key
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+        <SectionHeader
+          showAll={showAll}
+          onToggleShowAll={() => {
+            setShowAll(v => !v);
+            if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+          }}
+          title={isPersonalized
+            ? <>Flight Deals from <span className="text-blue-600 dark:text-blue-400">{userCity ?? userOrigin}</span></>
+            : 'Exclusive Deals & Offers'}
+          subtitle={isPersonalized
+            ? `Departing from ${userCity ?? userOrigin} · updated every hour`
+            : 'Flash prices — updated every hour'}
+        >
+          {/* Trip-type filter pills */}
+          <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {([
+              { key: 'all',       label: 'All' },
+              { key: 'oneway',    label: 'One Way' },
+              { key: 'roundtrip', label: 'Round Trip' },
+            ] as const).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setTripType(key)}
+                className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-normal transition-all ${
+                  tripType === key
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
+        </SectionHeader>
 
-          <div className="flex items-center gap-2 mt-1">
-            <button
-              onClick={() => {
-                setShowAll(v => !v);
-                if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-              }}
-              className="text-sm text-blue-500 hover:text-blue-600 font-medium mr-1 hidden sm:flex items-center gap-0.5 transition-colors"
-            >
-              {showAll ? 'Show less ↑' : 'View all →'}
-            </button>
-            <motion.button
-              whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-              onClick={() => scroll('left')}
-              aria-label="Previous deals"
-              className="p-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}
-              onClick={() => scroll('right')}
-              aria-label="Next deals"
-              className="p-2 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
-            >
-              <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-            </motion.button>
-          </div>
-        </div>
-
-        {/* Carousel */}
+        {/* Horizontal scroll row */}
         <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex overflow-x-auto snap-x snap-mandatory gap-3 pt-5 pb-3 -mt-5"
+          ref={rowRef}
+          {...dragProps}
+          className="flex overflow-x-auto snap-x snap-mandatory gap-3 pt-5 pb-3 -mt-5 -mx-4 sm:-mx-6 px-4 sm:px-6 scroll-px-4 sm:scroll-px-6 cursor-grab active:cursor-grabbing select-none"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
         >
           {displayDeals.map((deal, i) => (
             <DealCard key={deal.id} deal={deal} index={i} />
           ))}
         </div>
-
-        {/* Pagination dots */}
-        {displayDeals.length > 0 && (
-          <div className="flex justify-center items-center gap-2 mt-3">
-            {[0, 1].map((page) => (
-              <button
-                key={page}
-                onClick={() => goToPage(page)}
-                aria-label={`Go to page ${page + 1}`}
-                className={`rounded-full transition-all duration-300 ${
-                  activePage === page
-                    ? 'w-6 h-2 bg-blue-500'
-                    : 'w-2 h-2 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500'
-                }`}
-              />
-            ))}
-          </div>
-        )}
 
         {/* "View all" expanded grid */}
         <AnimatePresence>
