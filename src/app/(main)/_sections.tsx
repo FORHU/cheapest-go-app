@@ -5,6 +5,7 @@
  */
 import {
     DealsSection,
+    HotelDealsSection,
     StaysForEveryStyle,
     ExploreVacationPackages,
     ExploreUniqueStays,
@@ -42,6 +43,11 @@ export function SectionSkeleton() {
 export async function DealsSectionStream() {
     const deals = await getFlightDeals();
     return <DealsSection deals={deals} />;
+}
+
+export async function HotelDealsSectionStream() {
+    const deals = await getWeekendDeals();
+    return <HotelDealsSection deals={deals} />;
 }
 
 export async function StaysForEveryStyleStream() {

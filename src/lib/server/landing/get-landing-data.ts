@@ -26,6 +26,17 @@ function getPublicClient() {
 // the landing page. On network errors (fetch failed) we do one retry.
 const QUERY_TIMEOUT_MS = 30000;
 
+/** Keep the first item for each key — drops content-identical duplicate rows. */
+function dedupeBy<T>(items: T[], key: (item: T) => string): T[] {
+    const seen = new Set<string>();
+    return items.filter(item => {
+        const k = key(item).toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+    });
+}
+
 async function supabaseQuery(table: string, limit: number) {
     try {
         const supabase = getPublicClient();
@@ -64,7 +75,7 @@ async function supabaseQuery(table: string, limit: number) {
 export const getFlightDeals = cache(async (): Promise<Deal[]> => {
     const { data, error } = await supabaseQuery("flight_deals", 20);
     if (error) console.error("[Landing] flight_deals error:", (error as any).message ?? error);
-    return data?.map((d: any) => ({
+    const mapped: Deal[] = data?.map((d: any) => ({
         id: String(d.id),
         title: `${d.origin} → ${d.destination}`,
         subtitle: d.airline ? getAirlineName(d.airline) : "Best flexible fares",
@@ -81,12 +92,16 @@ export const getFlightDeals = cache(async (): Promise<Deal[]> => {
         cabinClass: d.cabin_class || 'economy',
         lastRefreshedAt: d.last_refreshed_at || undefined,
     })) ?? [];
+    // Drop duplicate fares (same route, airline, cabin, dates and price).
+    return dedupeBy(mapped, d =>
+        `${d.origin}|${d.destination}|${d.subtitle}|${d.cabinClass}|${d.departure_date}|${d.return_date}|${d.salePrice}`
+    );
 });
 
 export const getWeekendDeals = cache(async () => {
     const { data, error } = await supabaseQuery("weekend_flight_deals", 10);
     if (error) console.error("[Landing] weekend_flight_deals error:", (error as any).message ?? error);
-    return data?.map((d: any) => ({
+    const mapped = data?.map((d: any) => ({
         id: d.id,
         name: d.name,
         location: d.location,
@@ -94,9 +109,12 @@ export const getWeekendDeals = cache(async () => {
         reviews: Number(d.reviews || 0),
         originalPrice: Number(d.original_price || 0),
         salePrice: Number(d.sale_price || 0),
+        currency: d.currency || 'PHP',
         image: d.image_url || "https://picsum.photos/seed/stay/400/300",
         badge: d.badge,
     })) ?? [];
+    // Drop duplicate hotels (same property in the same location).
+    return dedupeBy(mapped, d => `${d.name}|${d.location}`);
 });
 
 export const getPopularDestinations = cache(async (): Promise<VacationPackage[]> => {
@@ -219,6 +237,7 @@ export const getLandingData = cache(async () => {
         reviews: Number(d.reviews || 0),
         originalPrice: Number(d.original_price || 0),
         salePrice: Number(d.sale_price || 0),
+        currency: d.currency || 'PHP',
         image: d.image_url || "https://picsum.photos/seed/stay/400/300",
         badge: d.badge
     })) ?? [];
