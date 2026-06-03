@@ -51,6 +51,23 @@ function normalizeTgxCancelPolicy(tgxPolicy: any): object {
 }
 
 /**
+ * Case-insensitive, punctuation-stripped room name comparison.
+ * Returns true when at least 2 significant words overlap — handles variants like
+ * "Deluxe King Room" vs "DELUXE KING ROOM (NON-REFUNDABLE)".
+ */
+function roomNamesMatch(a: string, b: string): boolean {
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+    const na = normalize(a);
+    const nb = normalize(b);
+    if (!na || !nb) return false;
+    if (na === nb || na.includes(nb) || nb.includes(na)) return true;
+    const stopWords = new Set(['room', 'type', 'bed', 'with', 'and', 'the', 'for']);
+    const wordsA = na.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+    const wordsB = new Set(nb.split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w)));
+    return wordsA.filter(w => wordsB.has(w)).length >= 2;
+}
+
+/**
  * TGX option tokens encode hotel code and dates in segments separated by "!~|".
  * Segment keys: b=checkin(YYMMDD), c=checkout(YYMMDD), d=hotelCode(numeric ETG ID)
  */
@@ -120,33 +137,42 @@ export async function POST(req: Request) {
                 return Response.json({ success: false, error: 'Room is no longer available for the selected dates' }, { status: 409 });
             }
 
-            // Use the cheapest available room's fresh optionRefId
-            const freshRoom = freshRooms[0];
-            const freshOfferId: string = freshRoom?.offerId || '';
-            if (!freshOfferId.startsWith('TGX:')) {
+            // Build candidate list: preferred room first (matching user's original selection),
+            // then other rooms as fallbacks. This ensures we quote the right room when possible
+            // rather than always defaulting to the cheapest available room.
+            const originalRoomName: string = parsed.data.roomName || '';
+            const matchedRooms = originalRoomName
+                ? freshRooms.filter(r => roomNamesMatch(r.roomName || r.roomType || '', originalRoomName))
+                : [];
+            const otherRooms = originalRoomName
+                ? freshRooms.filter(r => !roomNamesMatch(r.roomName || r.roomType || '', originalRoomName))
+                : freshRooms;
+            const candidates = [...matchedRooms, ...otherRooms].slice(0, 5);
+
+            if (candidates.length === 0) {
+                return Response.json({ success: false, error: 'Room is no longer available for the selected dates' }, { status: 409 });
+            }
+
+            const firstCandidate = candidates[0];
+            const firstOfferId: string = firstCandidate?.offerId || '';
+            if (!firstOfferId.startsWith('TGX:')) {
                 return Response.json({ success: false, error: 'Fresh search returned unexpected offer format' }, { status: 500 });
             }
-            // opt.id — used as prebookId (parseable for hotel code/dates in retry path)
-            const freshOptionRefId = freshOfferId.slice(4);
-            // opt.token — OTV's native quote token; prefer it over opt.id for Quote/Book.
-            // Fallback to opt.id if token is not present (older search response).
-            const rawOptToken: string | undefined = freshRoom?.rates?.[0]?._tgx?.token;
-            const freshQuoteToken: string = rawOptToken || freshOptionRefId;
-            console.log('[prebook/tgx] opt.id:', freshOptionRefId.substring(0, 60), '| opt.token:', (rawOptToken || 'NONE').substring(0, 60), '| same:', freshQuoteToken === freshOptionRefId);
+            console.log('[prebook/tgx] originalRoomName:', originalRoomName || '(none)', '| matched:', matchedRooms.length, '| candidates:', candidates.map(r => r.roomName || r.roomType).join(', ').substring(0, 120));
 
             // OTV needs a moment to propagate the freshly-searched option into its
             // valuation cache. 3 s is more conservative than 1.5 s; avoids rate_not_found
             // on options that were genuinely just fetched.
             await new Promise(resolve => setTimeout(resolve, 3000));
 
-            // Try to quote each available room until one succeeds.
+            // Try to quote each candidate until one succeeds.
             // OTV sometimes marks a specific rate as "not found" in valuation even though
             // it appeared in Search; trying subsequent rooms often yields a quotable option.
             let optionQuote: any = null;
-            let quotedToken = freshOptionRefId;
-            let successfulRoom = freshRoom;
+            let quotedToken = firstOfferId.slice(4);
+            let successfulRoom = firstCandidate;
 
-            for (const room of freshRooms.slice(0, 5)) {
+            for (const room of candidates) {
                 const rOfferId: string = room?.offerId || '';
                 if (!rOfferId.startsWith('TGX:')) continue;
                 const rOptionId = rOfferId.slice(4);
@@ -194,7 +220,11 @@ export async function POST(req: Request) {
             // TGX docs: Book's optionRefId should be the identifier from the Quote step (optionQuote.optionRefId),
             // NOT the search token. Fall back to the quoted token if the field is absent.
             const bookToken = optionQuote.optionRefId || quotedToken;
-            console.log('[prebook/tgx] Quote succeeded | quoted with:', quotedToken.substring(0, 40), '| book token:', bookToken.substring(0, 60), '| room:', successfulRoom?.roomName, '| price:', optionQuote.price?.gross || optionQuote.price?.net, optionQuote.price?.currency);
+            const bookedRoomName: string = successfulRoom?.roomName || successfulRoom?.roomType || '';
+            const roomSubstituted = originalRoomName
+                ? !roomNamesMatch(bookedRoomName, originalRoomName)
+                : false;
+            console.log('[prebook/tgx] Quote succeeded | quoted with:', quotedToken.substring(0, 40), '| book token:', bookToken.substring(0, 60), '| room:', bookedRoomName, '| substituted:', roomSubstituted, '| price:', optionQuote.price?.gross || optionQuote.price?.net, optionQuote.price?.currency);
 
             return Response.json({
                 success: true,
@@ -210,6 +240,10 @@ export async function POST(req: Request) {
                     cancellationPolicies: normalizeTgxCancelPolicy(optionQuote.cancelPolicy),
                     boardCode: optionQuote.boardCode || '',
                     rooms: optionQuote.rooms || [],
+                    ...(roomSubstituted && bookedRoomName && {
+                        roomSubstituted: true,
+                        substitutedRoomName: bookedRoomName,
+                    }),
                 },
             });
         }

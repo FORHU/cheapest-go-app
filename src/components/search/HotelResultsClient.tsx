@@ -4,9 +4,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Property } from '@/types';
 import SearchResults from './SearchResults';
 import { CountryCityPicker } from './CountryCityPicker';
+import { buildSearchCacheKey, getSearchResults } from '@/lib/searchResultsCache';
 
 interface HotelResultsClientProps {
     searchParams: Record<string, string>;
+    onSwitchView?: (v: 'map' | 'list') => void;
 }
 
 function HotelListSkeleton({ destination, elapsed }: { destination: string; elapsed: number }) {
@@ -44,17 +46,22 @@ function HotelListSkeleton({ destination, elapsed }: { destination: string; elap
     );
 }
 
-export function HotelResultsClient({ searchParams }: HotelResultsClientProps) {
-    const [status, setStatus] = useState<'loading' | 'done' | 'error'>('loading');
-    const [properties, setProperties] = useState<Property[]>([]);
-    const [totalCount, setTotalCount] = useState(0);
-    const [queryParams, setQueryParams] = useState<Record<string, any>>(searchParams);
+export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsClientProps) {
+    const cacheKey = buildSearchCacheKey(searchParams);
+    const cached = getSearchResults(cacheKey);
+
+    const [status, setStatus] = useState<'loading' | 'done' | 'error'>(cached ? 'done' : 'loading');
+    const [properties, setProperties] = useState<Property[]>(cached?.properties ?? []);
+    const [totalCount, setTotalCount] = useState(cached?.totalCount ?? 0);
+    const [queryParams, setQueryParams] = useState<Record<string, any>>(cached?.queryParams ?? searchParams);
     const [elapsed, setElapsed] = useState(0);
 
     const destination = searchParams.destination || '';
     const searchKey = JSON.stringify(searchParams);
 
     useEffect(() => {
+        if (cached) return; // cache hit — skip fetch
+
         let cancelled = false;
         setStatus('loading');
         setElapsed(0);
@@ -83,7 +90,7 @@ export function HotelResultsClient({ searchParams }: HotelResultsClientProps) {
             cancelled = true;
             clearInterval(timer);
         };
-    }, [searchKey]);
+    }, [searchKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (status === 'loading') {
         return <HotelListSkeleton destination={destination} elapsed={elapsed} />;
@@ -104,6 +111,7 @@ export function HotelResultsClient({ searchParams }: HotelResultsClientProps) {
                 initialProperties={properties}
                 totalCount={totalCount}
                 rawSearchParams={queryParams}
+                onSwitchToMap={onSwitchView ? () => onSwitchView('map') : undefined}
             />
         </div>
     );

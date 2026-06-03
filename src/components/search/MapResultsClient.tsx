@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import type { Property } from '@/types';
 import LazySearchMapView from './LazySearchMapView';
+import { buildSearchCacheKey, getSearchResults, setSearchResults } from '@/lib/searchResultsCache';
 
 interface MapResultsClientProps {
     searchParams: Record<string, string>;
     destination: string;
+    onSwitchView?: (v: 'map' | 'list') => void;
 }
 
 
@@ -26,17 +28,28 @@ function StreamingBanner({ count, pricingMode }: { count: number; pricingMode?: 
     );
 }
 
-export function MapResultsClient({ searchParams, destination }: MapResultsClientProps) {
+export function MapResultsClient({ searchParams, destination, onSwitchView }: MapResultsClientProps) {
     // 'prices-loading' = catalog hotels shown, TGX prices still in flight
-    const [status, setStatus]         = useState<'loading' | 'prices-loading' | 'completing' | 'streaming' | 'done' | 'error'>('loading');
-    const [properties, setProperties] = useState<Property[]>([]);
-    const [totalCount, setTotalCount] = useState(0);
-    const [allMappable, setAllMappable] = useState<any[]>([]);
-    const [queryParams, setQueryParams] = useState<Record<string, any>>(searchParams);
+    const cacheKey = buildSearchCacheKey(searchParams);
+    const cached = getSearchResults(cacheKey);
+
+    const [status, setStatus]         = useState<'loading' | 'prices-loading' | 'completing' | 'streaming' | 'done' | 'error'>(cached ? 'done' : 'loading');
+    const [properties, setProperties] = useState<Property[]>(cached?.properties ?? []);
+    const [totalCount, setTotalCount] = useState(cached?.totalCount ?? 0);
+    const [allMappable, setAllMappable] = useState<any[]>(cached?.allMappable ?? []);
+    const [queryParams, setQueryParams] = useState<Record<string, any>>(cached?.queryParams ?? searchParams);
 
     const searchKey = JSON.stringify(searchParams);
 
     useEffect(() => {
+        if (status === 'done' && properties.length > 0) {
+            setSearchResults(cacheKey, { properties, totalCount, queryParams, allMappable });
+        }
+    }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (cached) return; // cache hit — skip stream
+
         let cancelled = false;
         setStatus('loading');
         setProperties([]);
@@ -213,6 +226,7 @@ export function MapResultsClient({ searchParams, destination }: MapResultsClient
                 rawSearchParams={queryParams}
                 destination={destination}
                 isStreaming={status === 'streaming'}
+                onSwitchToList={onSwitchView ? () => onSwitchView('list') : undefined}
             />
         </div>
     );

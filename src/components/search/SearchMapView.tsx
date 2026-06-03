@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { MapPropertyCard } from '@/components/map/MapPropertyCard';
@@ -124,6 +124,45 @@ interface SearchMapViewProps {
     allMappable?: any[];
     rawSearchParams?: Record<string, any>;
     isStreaming?: boolean;
+    onSwitchToList?: () => void;
+}
+
+const LOADING_TIPS = [
+    'Comparing room rates across 200+ hotels…',
+    'Checking availability for your dates…',
+    'Finding the best deals in the area…',
+    'Almost there — great results incoming…',
+    'Securing live prices from our suppliers…',
+];
+
+function PriceLoadingSidebar({ destination }: { destination: string }) {
+    const [tipIdx, setTipIdx] = useState(0);
+    useEffect(() => {
+        const id = setInterval(() => setTipIdx(i => (i + 1) % LOADING_TIPS.length), 3000);
+        return () => clearInterval(id);
+    }, []);
+    return (
+        <div className="flex flex-col gap-3 p-3 overflow-y-auto">
+            <div className="px-1 py-3 text-center select-none">
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                    {destination ? `Finding hotels in ${destination}` : 'Finding hotels'}
+                </p>
+                <p className="text-[11px] text-blue-500 dark:text-blue-400 transition-all duration-500 min-h-[16px]">
+                    {LOADING_TIPS[tipIdx]}
+                </p>
+            </div>
+            {[1, 2, 3, 4].map(n => (
+                <div key={n} className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 p-3 flex gap-3 animate-pulse">
+                    <div className="w-16 h-16 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
+                    <div className="flex-1 flex flex-col gap-2 py-1">
+                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+                        <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
+                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mt-auto" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
 }
 
 /**
@@ -139,6 +178,7 @@ function SearchMapView({
     allMappable = [],
     rawSearchParams = {},
     isStreaming = false,
+    onSwitchToList,
 }: SearchMapViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -342,10 +382,14 @@ function SearchMapView({
     // ── Handlers ────────────────────────────────────────────
 
     const handleBackToList = useCallback(() => {
-        const params = new URLSearchParams(searchParams?.toString() || '');
-        params.set('view', 'list');
-        router.push(`/search?${params.toString()}`);
-    }, [router, searchParams]);
+        if (onSwitchToList) {
+            onSwitchToList();
+        } else {
+            const params = new URLSearchParams(searchParams?.toString() || '');
+            params.set('view', 'list');
+            router.push(`/search?${params.toString()}`);
+        }
+    }, [onSwitchToList, router, searchParams]);
 
     const handleViewDetails = useCallback(
         (id: string) => {
@@ -500,13 +544,13 @@ function SearchMapView({
             {/* ── Top bar ── */}
             <div className="shrink-0 bg-white dark:bg-slate-950 z-30 relative border-b border-slate-100 dark:border-slate-800/60 landscape-compact-topbar p-[10px]">
                 <div className="max-w-[1400px] mx-auto px-3 flex items-center gap-2">
-                    <button
-                        onClick={handleBackToList}
+                    <a
+                        href="/"
                         className="flex items-center gap-1 text-[10px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                     >
                         <ArrowLeft size={12} className="sm:w-4 sm:h-4" />
                         <span className="hidden sm:inline">Back</span>
-                    </button>
+                    </a>
 
                     <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
 
@@ -574,6 +618,15 @@ function SearchMapView({
                                 )}>{activeFilterCount}</span>
                             )}
                         </button>
+
+                        {/* List view toggle */}
+                        <button
+                            onClick={handleBackToList}
+                            className="hidden sm:flex items-center gap-1 px-2.5 h-[24px] md:h-8 rounded-full border text-[10px] md:text-[11px] font-bold transition-colors cursor-pointer bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400"
+                        >
+                            <List size={12} />
+                            <span>List</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -624,19 +677,8 @@ function SearchMapView({
                             </div>
                         </>
                     ) : allProperties.some((p: any) => (p as any).priceLoading) ? (
-                        // Catalog hotels exist but prices haven't arrived yet — show skeletons
-                        <div className="flex flex-col gap-3 p-3 overflow-y-auto">
-                            {[1,2,3,4,5,6].map(n => (
-                                <div key={n} className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 p-3 flex gap-3 animate-pulse">
-                                    <div className="w-16 h-16 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
-                                    <div className="flex-1 flex flex-col gap-2 py-1">
-                                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
-                                        <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
-                                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mt-auto" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <PriceLoadingSidebar destination={destination ?? ''} />
+
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
                             <MapPin className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
