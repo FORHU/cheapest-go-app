@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { createNotification } from '@/lib/server/admin/notify';
 import { getAdminSettings } from '@/lib/server/admin/settings';
 
@@ -13,10 +13,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = createAdminClient();
 
     // Load operational thresholds from admin_settings, fall back to env vars.
     const cfg = await getAdminSettings();
@@ -43,7 +40,7 @@ export async function GET(req: NextRequest) {
             console.error('[otv-credit-check] Credit query error:', creditErr.message);
         } else {
             const outstanding = (creditRows ?? []).reduce(
-                (sum, r) => sum + (parseFloat(r.supplier_cost ?? r.total_price) || 0), 0
+                (sum: number, r: any) => sum + (parseFloat(r.supplier_cost ?? r.total_price) || 0), 0
             );
             const utilization = outstanding / CREDIT_LIMIT;
 

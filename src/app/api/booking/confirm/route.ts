@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { confirmAndSaveTgxBooking } from '@/lib/server/bookings';
@@ -20,20 +21,22 @@ export async function POST(req: NextRequest) {
     const csrfError = checkCsrf(req);
     if (csrfError) return csrfError;
 
-    // 5 booking confirmations per minute per IP
-    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-confirm' });
+    // Auth first so rate limit keys on user ID instead of IP (IP is spoofable)
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError || !user) {
+        return Response.json(
+            { success: false, error: 'Authentication required' },
+            { status: 401 }
+        );
+    }
+
+    // 5 booking confirmations per minute per user
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'hotel-confirm', userId: user.id });
     if (!rl.success) {
         return Response.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
 
     try {
-        const { user, error: authError } = await getAuthenticatedUser();
-        if (authError || !user) {
-            return Response.json(
-                { success: false, error: 'Authentication required' },
-                { status: 401 }
-            );
-        }
 
         const body = await req.json();
         const parsed = bookingConfirmSchema.safeParse(body);
@@ -66,8 +69,7 @@ export async function POST(req: NextRequest) {
             // Idempotency: if a booking already exists for this PaymentIntent, return it.
             // This handles the case where confirm succeeded but the client retried (network error,
             // double-click that bypassed the UI guard, etc.).
-            const { createClient: createSvc } = await import('@supabase/supabase-js');
-            const svc = createSvc(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+            const svc = createAdminClient();
             const { data: existingBooking } = await svc
                 .from('bookings')
                 .select('booking_id, status, total_price, currency')
@@ -111,6 +113,7 @@ export async function POST(req: NextRequest) {
             paymentIntentId: body.paymentIntentId,
             voucherCode: body.voucherCode,
             discountAmount: body.discountAmount,
+            cancellationPolicies: body.cancellationPolicies,
         }, user);
 
         if (result.success) {

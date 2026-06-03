@@ -1,0 +1,116 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSqlAdmin } from '@/lib/db/postgres';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 120; // 2 minutes max
+
+function checkAuth(req: NextRequest): boolean {
+    const secret = process.env.FUNCTIONS_SECRET || process.env.INTERNAL_SECRET;
+    if (!secret) {
+        console.warn('[refresh-popular-flights] FUNCTIONS_SECRET/INTERNAL_SECRET not set — allowing request (dev mode)');
+        return true;
+    }
+    const authHeader = req.headers.get('authorization') ?? '';
+    return authHeader === `Bearer ${secret}`;
+}
+
+export async function POST(req: NextRequest) {
+    if (!checkAuth(req)) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const sql = getSqlAdmin();
+    const results: any[] = [];
+
+    try {
+        // Query top 5 most searched routes
+        let routes = await sql`
+            SELECT origin, destination
+            FROM flight_search_stats
+            ORDER BY search_count DESC, last_searched_at DESC
+            LIMIT 5
+        `;
+
+        // Fallback default popular routes if table is empty
+        const defaultRoutes = [
+            { origin: 'GMP', destination: 'CJU' }, // Seoul Gimpo to Jeju Island
+            { origin: 'ICN', destination: 'NRT' }, // Seoul Incheon to Tokyo Narita
+            { origin: 'ICN', destination: 'KIX' }, // Seoul Incheon to Osaka Kansai
+            { origin: 'ICN', destination: 'BKK' }, // Seoul Incheon to Bangkok
+            { origin: 'ICN', destination: 'SFO' }, // Seoul Incheon to San Francisco
+        ];
+
+        const finalRoutes = [...routes];
+        for (const defRoute of defaultRoutes) {
+            if (finalRoutes.length >= 5) break;
+            const alreadyExists = finalRoutes.some(
+                r => r.origin.toUpperCase() === defRoute.origin.toUpperCase() &&
+                     r.destination.toUpperCase() === defRoute.destination.toUpperCase()
+            );
+            if (!alreadyExists) {
+                finalRoutes.push(defRoute);
+            }
+        }
+
+        console.log(`[refresh-popular-flights] Refreshing cache for ${finalRoutes.length} routes.`);
+
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        const internalSecret = process.env.INTERNAL_SECRET;
+
+        // Departure date set to 14 days in the future
+        const departureDateObj = new Date();
+        departureDateObj.setDate(departureDateObj.getDate() + 14);
+        const departureDate = departureDateObj.toISOString().split('T')[0];
+
+        for (const route of finalRoutes) {
+            try {
+                console.log(`[refresh-popular-flights] Triggering refresh for: ${route.origin} -> ${route.destination} on ${departureDate}`);
+                const refreshRes = await fetch(`${baseUrl}/api/internal/refresh-flights`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${internalSecret}`,
+                    },
+                    body: JSON.stringify({
+                        origin: route.origin.toUpperCase(),
+                        destination: route.destination.toUpperCase(),
+                        departureDate,
+                        cabinClass: 'economy',
+                    }),
+                });
+
+                if (refreshRes.ok) {
+                    const data = await refreshRes.json();
+                    results.push({
+                        origin: route.origin,
+                        destination: route.destination,
+                        success: true,
+                        searchId: data?.searchId,
+                    });
+                } else {
+                    const errText = await refreshRes.text().catch(() => '');
+                    console.error(`[refresh-popular-flights] Failed to refresh route ${route.origin} -> ${route.destination}: ${refreshRes.status} ${errText}`);
+                    results.push({
+                        origin: route.origin,
+                        destination: route.destination,
+                        success: false,
+                        error: `HTTP ${refreshRes.status}: ${errText}`,
+                    });
+                }
+            } catch (fetchErr: any) {
+                console.error(`[refresh-popular-flights] Fetch error refreshing route ${route.origin} -> ${route.destination}:`, fetchErr.message);
+                results.push({
+                    origin: route.origin,
+                    destination: route.destination,
+                    success: false,
+                    error: fetchErr.message,
+                });
+            }
+        }
+
+        return NextResponse.json({ success: true, refreshed: results });
+    } catch (err: any) {
+        console.error('[refresh-popular-flights] Cron task failed:', err.message);
+        return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    }
+}

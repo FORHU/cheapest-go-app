@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 import zlib from 'zlib';
 
@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
         );
     }
 
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createAdminClient();
 
     try {
         // 1. Fetch dump from ETG
@@ -247,7 +247,7 @@ export async function GET(req: NextRequest) {
             const chunk = toUpsertAgg.slice(i, i + CHUNK);
             const { error } = await supabase
                 .from('hotel_reviews')
-                .upsert(chunk, { onConflict: 'hotel_id' });
+                .upsert(chunk as any[], { onConflict: 'hotel_id' });
             if (error) {
                 console.error('[etg-reviews-sync] Aggregate upsert error:', error.message);
             } else {
@@ -260,7 +260,7 @@ export async function GET(req: NextRequest) {
             const chunk = toUpsertInd.slice(i, i + CHUNK);
             const { error } = await supabase
                 .from('hotel_review_items')
-                .upsert(chunk, { onConflict: 'hotel_id,source_id' });
+                .upsert(chunk as any[], { onConflict: 'hotel_id,source_id' });
             if (error) {
                 console.error('[etg-reviews-sync] Individual reviews upsert error:', error.message);
             } else {

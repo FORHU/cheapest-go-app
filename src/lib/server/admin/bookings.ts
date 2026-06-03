@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/utils/supabase/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { Booking } from '@/types/admin';
 import { checkRefundability } from './recovery';
 import { enrichBookingFinances } from '@/lib/pricing';
@@ -85,7 +85,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
     ]);
 
     // Fetch passenger names and tickets for legacy flights
-    const flightBookingIds = legacyFlightRes.data?.map(b => b.id) || [];
+    const flightBookingIds = legacyFlightRes.data?.map((b: any) => b.id) || [];
     const { data: passengers } = flightBookingIds.length > 0
         ? await supabase
             .from('passengers')
@@ -93,7 +93,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
             .in('booking_id', flightBookingIds)
         : { data: [] };
 
-    const passengerMap = (passengers || []).reduce((acc: Record<string, { name: string; tickets: string[]; list: { firstName: string; lastName: string; type: string; ticketNumber?: string }[] }>, p) => {
+    const passengerMap = (passengers || []).reduce((acc: Record<string, { name: string; tickets: string[]; list: { firstName: string; lastName: string; type: string; ticketNumber?: string }[] }>, p: any) => {
         if (!acc[p.booking_id]) {
             acc[p.booking_id] = { name: `${p.first_name || ''} ${p.last_name || ''}`.trim(), tickets: [], list: [] };
         }
@@ -111,7 +111,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
 
     // 5. Merge and unify
     let allBookings: Booking[] = [
-        ...(unifiedRes.data || []).map(item => {
+        ...(unifiedRes.data || []).map((item: any) => {
             const meta = item.metadata as any;
             const name = meta?.passengers?.[0]
                 ? `${meta.passengers[0].firstName} ${meta.passengers[0].lastName}`
@@ -148,7 +148,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
                 metadata: meta
             };
         }),
-        ...(legacyHotelRes.data || []).map(item => ({
+        ...(legacyHotelRes.data || []).map((item: any) => ({
             id: item.id,
             bookingRef: item.booking_id,
             type: 'hotel' as const,
@@ -182,7 +182,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
                 },
             }
         })),
-        ...(legacyFlightRes.data || []).map(item => ({
+        ...(legacyFlightRes.data || []).map((item: any) => ({
             id: item.id,
             bookingRef: item.pnr,
             type: 'flight' as const,
@@ -217,7 +217,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
     // 6. Apply Search Filter (Server-side but after merge due to cross-table complexity)
     if (searchTerm) {
         const lowSearch = searchTerm.toLowerCase();
-        allBookings = allBookings.filter(b =>
+        allBookings = allBookings.filter((b: any) =>
             b.customerName.toLowerCase().includes(lowSearch) ||
             b.bookingRef.toLowerCase().includes(lowSearch) ||
             b.pnr.toLowerCase().includes(lowSearch) ||
@@ -229,12 +229,12 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
 
     // 7. Apply Payment Filter
     if (paymentStatus !== 'all') {
-        allBookings = allBookings.filter(b => b.paymentStatus.toLowerCase() === paymentStatus.toLowerCase());
+        allBookings = allBookings.filter((b: any) => b.paymentStatus.toLowerCase() === paymentStatus.toLowerCase());
     }
 
     // 8. Final Sort, Aggregate Stats, and Paginate
     const total = allBookings.length;
-    const sorted = allBookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const sorted = allBookings.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     // ── Revenue stats: use RPC for the total (avoids 1000-row limit) ─────────
     // The JS-side loop below is only used as a fallback if the RPC fails.
@@ -254,7 +254,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
     } else {
         // ⚠️ Fallback: JS-side sum from paginated set (may be incomplete)
         console.warn('[getBookingsList] RPC failed, falling back to JS-side stats:', rpcError?.message);
-        stats = sorted.reduce((acc, b) => {
+        stats = sorted.reduce((acc: any, b: any) => {
             const isSuccessful = ['confirmed', 'ticketed', 'booked', 'awaiting_ticket'].includes(b.status);
             if (isSuccessful) {
                 const rate = b.currency === 'USD' ? phpRate : 1;

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 import { checkCsrf } from '@/lib/server/csrf';
+import { stripe } from '@/lib/stripe/server';
 
 export const maxDuration = 30;
 
@@ -22,9 +22,9 @@ export async function POST(req: NextRequest) {
     const csrfError = checkCsrf(req);
     if (csrfError) return csrfError;
 
-    const supabaseAuth = await createClient();
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
+    const { getSession } = await import('@/lib/auth/session');
+    const { user } = await getSession();
+    if (!user) {
         return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
 
@@ -33,11 +33,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'bookingId is required' }, { status: 400 });
     }
 
-    const supabase = createServiceClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createAdminClient();
 
     const { data: booking, error: fetchErr } = await supabase
         .from('flight_bookings')
-        .select('id, user_id, provider, provider_order_id, session_id, total_price, currency')
+        .select('id, user_id, provider, provider_order_id, session_id, total_price, currency, payment_currency, charged_price, payment_intent_id')
         .eq('id', bookingId)
         .single();
 
@@ -127,14 +127,35 @@ export async function POST(req: NextRequest) {
         }
 
         const quote = quoteData?.data ?? {};
-        const refundAmount = Number(quote.refund_amount) || 0;
-        const refundCurrency: string = quote.refund_currency ?? booking.currency ?? 'USD';
-        const penaltyAmount = Math.max(0, (booking.total_price || 0) - refundAmount);
+        const duffelRefundUsd = Number(quote.refund_amount) || 0;
+        const duffelSupplierPrice = Number(booking.total_price ?? 0);
         const cancellationId: string = quote.id;
 
-        console.log(`[cancel-quote] bookingId=${bookingId} orderId=${orderId} refund=${refundAmount} ${refundCurrency} cancellationId=${cancellationId}`);
+        // Compute refund ratio from Duffel (refund / supplier price).
+        // Apply that ratio to the actual Stripe charge so the shown refund
+        // never exceeds what the customer originally paid, regardless of FX drift.
+        const refundRatio = duffelSupplierPrice > 0
+            ? Math.min(1, duffelRefundUsd / duffelSupplierPrice)
+            : 1;
 
-        return NextResponse.json({ success: true, refundAmount, refundCurrency, penaltyAmount, cancellationId });
+        // Prefer Stripe PI amount (exact cents in the payment currency)
+        let refundAmount: number;
+        let refundCurrency: string = booking.payment_currency ?? booking.currency ?? 'USD';
+        try {
+            if (booking.payment_intent_id) {
+                const pi = await stripe.paymentIntents.retrieve(booking.payment_intent_id);
+                refundAmount = Math.round((pi.amount / 100) * refundRatio * 100) / 100;
+                refundCurrency = pi.currency.toUpperCase();
+            } else {
+                refundAmount = Math.round(Number(booking.charged_price ?? booking.total_price ?? 0) * refundRatio * 100) / 100;
+            }
+        } catch {
+            refundAmount = Math.round(Number(booking.charged_price ?? booking.total_price ?? 0) * refundRatio * 100) / 100;
+        }
+
+        console.log(`[cancel-quote] bookingId=${bookingId} orderId=${orderId} duffelRefund=${duffelRefundUsd} ratio=${refundRatio.toFixed(4)} displayRefund=${refundAmount} ${refundCurrency} cancellationId=${cancellationId}`);
+
+        return NextResponse.json({ success: true, refundAmount, refundCurrency, penaltyAmount: 0, cancellationId });
     } catch (err: any) {
         if (err.name === 'AbortError') {
             return NextResponse.json({ success: false, error: 'Airline system timed out. Try again.' }, { status: 504 });

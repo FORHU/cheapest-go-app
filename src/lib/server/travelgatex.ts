@@ -1,37 +1,53 @@
 /**
- * Centralized TravelgateX gateway.
- * ALL TravelgateX Edge Function calls go through this file.
+ * TravelgateX gateway — server-side only.
+ * All hotel operations are implemented as Next.js API routes under /api/fn/travelgatex-*.
+ * This file provides typed wrappers that call those routes internally.
  */
 
-import { invokeEdgeFunction } from '@/utils/supabase/functions';
+import { tgxGraphQL, getTgxSettings, buildOccupancies, normalizeOption, type TgxOption } from '@/lib/server/stays/travelgatex/client';
+import { runTgxSearch, type TgxSearchParams } from '@/lib/server/stays/travelgatex/search';
 
-// ============================================================================
-// Search
-// ============================================================================
+// ─── Re-export helpers for routes that call TGX directly ─────────────────────
+export { tgxGraphQL, getTgxSettings, buildOccupancies, normalizeOption };
+export type { TgxOption };
 
-export async function searchTravelgateX(params: object) {
-    return invokeEdgeFunction('travelgatex-search', params);
+// ─── Internal route caller ────────────────────────────────────────────────────
+
+async function callInternalRoute(path: string, body: object) {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`${path} returned ${res.status}: ${text.slice(0, 200)}`);
+    }
+    return res.json();
 }
 
-// ============================================================================
-// Destinations (autocomplete)
-// ============================================================================
+// ─── Search ───────────────────────────────────────────────────────────────────
+
+export async function searchTravelgateX(params: TgxSearchParams) {
+    return runTgxSearch(params);
+}
+
+// ─── Destinations ─────────────────────────────────────────────────────────────
 
 export async function searchTravelgateXDestinations(keyword: string) {
-    return invokeEdgeFunction('travelgatex-destinations', { keyword });
+    return callInternalRoute('/api/fn/travelgatex-destinations', { keyword });
 }
 
-// ============================================================================
-// Quote (pre-book price confirmation)
-// ============================================================================
+// ─── Quote ────────────────────────────────────────────────────────────────────
 
 export async function quoteTravelgateX(params: { token: string }) {
-    return invokeEdgeFunction('travelgatex-quote', params);
+    const result = await callInternalRoute('/api/fn/travelgatex-quote', params);
+    if (!result.success) throw new Error(result.error || 'TGX quote failed');
+    return result;
 }
 
-// ============================================================================
-// Book
-// ============================================================================
+// ─── Book ─────────────────────────────────────────────────────────────────────
 
 export async function bookTravelgateX(params: {
     quoteToken: string;
@@ -39,17 +55,16 @@ export async function bookTravelgateX(params: {
     holder: { firstName: string; lastName: string; email: string };
     rooms: Array<{ occupancyRefId: number; paxes: Array<{ name: string; surname: string; age: number }> }>;
 }) {
-    return invokeEdgeFunction('travelgatex-book', params);
+    return callInternalRoute('/api/fn/travelgatex-book', params);
 }
 
-// ============================================================================
-// Cancel
-// ============================================================================
+// ─── Cancel ───────────────────────────────────────────────────────────────────
 
 export async function cancelTravelgateX(params: {
     clientReference: string;
     supplierReference?: string;
     tgxBookingId?: string;
+    hotelCode?: string;
 }) {
-    return invokeEdgeFunction('travelgatex-cancel', params);
+    return callInternalRoute('/api/fn/travelgatex-cancel', params);
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useSession } from '@/stores/authStore';
+import { useUser } from '@/stores/authStore';
 
 interface SaveButtonProps {
     type: 'flight' | 'hotel';
@@ -30,7 +30,7 @@ export default function SaveButton({
     const [checked, setChecked] = useState(false); // has the initial check run?
 
     const router = useRouter();
-    const session = useSession();
+    const user = useUser();
 
     // On mount, check if this item is already saved
     useEffect(() => {
@@ -56,7 +56,7 @@ export default function SaveButton({
         e.preventDefault();
         e.stopPropagation();
 
-        if (!session) {
+        if (!user) {
             router.push('/login');
             return;
         }

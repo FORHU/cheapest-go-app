@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { rateLimit } from '@/lib/server/rate-limit';
@@ -13,7 +14,8 @@ export async function DELETE(
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
     const { id } = await params;
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, error: authError } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { error } = await supabase

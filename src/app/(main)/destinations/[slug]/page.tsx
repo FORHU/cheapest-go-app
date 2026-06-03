@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { buildDestinationSlug } from '@/lib/utils';
 import { env } from '@/utils/env';
 
@@ -17,7 +17,7 @@ interface PopularDestination {
 }
 
 async function getDestination(slug: string): Promise<PopularDestination | null> {
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+    const supabase = createAdminClient();
     const { data } = await supabase.from('popular_destinations').select('*');
     if (!data) return null;
     return (data as PopularDestination[]).find(

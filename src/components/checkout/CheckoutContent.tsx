@@ -340,6 +340,7 @@ export function CheckoutContent() {
                 specialRequests: specialRequests || undefined,
                 voucherCode: appliedVoucher?.code || undefined,
                 discountAmount: appliedVoucher?.discountAmount || 0,
+                cancellationPolicies: priceData?.cancellationPolicies || undefined,
             });
 
             // Show success immediately
@@ -673,6 +674,7 @@ export function CheckoutContent() {
                                         isAuthenticated={!!user}
                                         totalPrice={displayTotalPrice}
                                         prebookError={prebookError}
+                                        priceReady={!!priceData}
                                         onSubmit={handleProceedToPayment}
                                     />
                                 </div>

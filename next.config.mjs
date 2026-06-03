@@ -1,6 +1,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const require = createRequire(import.meta.url);
 
@@ -12,6 +13,9 @@ const isDev = process.env.NODE_ENV === 'development';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  experimental: {
+    nodeMiddleware: true,
+  },
   turbopack: {
     root: __dirname,
     resolveAlias: {
@@ -58,8 +62,8 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://api.mapbox.com",
               "img-src 'self' data: blob: https: http:",
               "font-src 'self' data:",
-              `connect-src 'self' ${isDev ? '*' : ''} https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://api.mapbox.com https://events.mapbox.com`,
-              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+              `connect-src 'self' ${isDev ? '*' : ''} https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://q.stripe.com https://m.stripe.com https://b.stripecdn.com https://r.stripe.com https://api.mapbox.com https://events.mapbox.com`,
+              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://q.stripe.com",
               "worker-src 'self' blob:",
               "child-src 'self' blob:",
               "object-src 'none'",
@@ -74,4 +78,12 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Suppress noisy Sentry CLI output during builds
+  silent: !process.env.CI,
+  // Upload source maps only in CI/production to avoid leaking them locally
+  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  // Automatically tree-shake Sentry logger statements in production
+  hideSourceMaps: true,
+});

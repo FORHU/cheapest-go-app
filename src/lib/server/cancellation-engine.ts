@@ -1,4 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+;
+import type { DbClient } from '@/lib/db/query-builder';
 import { BookingPolicySnapshot, PolicyTier } from '@/types/booking-policy';
 
 // ============================================================================
@@ -44,7 +45,7 @@ interface PolicyData {
  * Fetch booking policy data (snapshot + tiers) from DB
  */
 async function fetchPolicyData(
-    supabase: SupabaseClient,
+    supabase: DbClient,
     bookingId: string
 ): Promise<PolicyData | null> {
     // 1. Get booking details + snapshot ID
@@ -151,7 +152,7 @@ function mapTiers(rows: any[]): PolicyTier[] {
  *  - Percent / Fixed / Nights calculations
  */
 export async function calculateCancellation(
-    supabase: SupabaseClient,
+    supabase: DbClient,
     bookingId: string,
     nowDate: Date = new Date() // Allow mocking time for testing
 ): Promise<CancellationResult> {

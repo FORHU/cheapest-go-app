@@ -1,9 +1,9 @@
 import { type NextRequest } from "next/server";
-import { updateSession } from "@/utils/supabase/middleware";
+import { updateSession } from "@/utils/postgres/middleware";
 
 /**
- * Routes that require a Supabase auth check.
- * All other routes skip the getUser() round-trip entirely — ~150ms saved per request.
+ * Routes that require a session check.
+ * All other routes skip the session validation entirely — saves ~150ms per request.
  */
 const PROTECTED_PATTERNS = [
     /^\/admin/,
@@ -18,7 +18,6 @@ const PROTECTED_PATTERNS = [
 export default async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Skip auth for public routes — no Supabase network call needed
     if (!PROTECTED_PATTERNS.some((p) => p.test(pathname))) {
         return;
     }
@@ -28,13 +27,6 @@ export default async function proxy(request: NextRequest) {
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * Feel free to modify this pattern to include more paths.
-         */
         "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
     ],
 };

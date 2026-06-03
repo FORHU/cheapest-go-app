@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/utils/supabase/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { fetchAirlinesData } from './providers';
 
 export interface SupplierRecord {
@@ -36,7 +36,7 @@ export async function getSuppliersList(): Promise<SupplierRecord[]> {
     }>();
 
     // Process unified bookings
-    (unified.data || []).forEach(b => {
+    (unified.data || []).forEach((b: any) => {
         const meta = b.metadata as any;
         let name: string;
         let location: string;
@@ -73,7 +73,7 @@ export async function getSuppliersList(): Promise<SupplierRecord[]> {
     });
 
     // Process legacy hotel bookings
-    (legacy.data || []).forEach(b => {
+    (legacy.data || []).forEach((b: any) => {
         if (!b.property_name) return;
         const key = `hotel:${b.property_name}`;
         const existing = supplierMap.get(key);

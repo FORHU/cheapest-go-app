@@ -1,5 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-import { env } from "@/utils/env";
+import { createAdminClient } from '@/utils/postgres/admin';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -149,15 +148,10 @@ export interface CreateBookingResult {
     error?: string;
 }
 
-// ─── Supabase Service Client ─────────────────────────────────────────
+// ─── Admin Client ─────────────────────────────────────────────────────
 
 function getServiceClient() {
-    const url = env.SUPABASE_URL;
-    const key = env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) {
-        throw new Error('Missing Supabase service credentials');
-    }
-    return createClient(url, key);
+    return createAdminClient();
 }
 
 // ─── Create Booking ──────────────────────────────────────────────────

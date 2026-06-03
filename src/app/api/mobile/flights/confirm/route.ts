@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { env } from '@/utils/env';
 import { stripe } from '@/lib/stripe/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
@@ -39,20 +38,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'paymentIntentId and sessionId are required' }, { status: 400 });
         }
 
-        // Validate Supabase token if present (used for audit logging)
-        const supabaseToken = req.headers.get('x-supabase-token');
-        if (supabaseToken) {
-            const svc = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-            const { data: { user: tokenUser } } = await svc.auth.getUser(supabaseToken);
-            if (!tokenUser) {
-                return NextResponse.json({ success: false, error: 'Invalid session. Please log in again.' }, { status: 401 });
-            }
-        }
+        // Note: x-supabase-token header is no longer used (migrated to Lucia auth).
+        // Mobile auth is handled exclusively via X-Mobile-Api-Key above.
 
-        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-        const edgeFnHeaders = {
+        const supabase = createAdminClient();
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        const internalHeaders = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
         };
 
         // ── Verify payment server-side ────────────────────────────────────
@@ -106,9 +99,9 @@ export async function POST(req: NextRequest) {
 
         let bookingRes: Response;
         try {
-            bookingRes = await fetch(`${env.SUPABASE_URL}/functions/v1/create-booking`, {
+            bookingRes = await fetch(`${siteUrl}/api/internal/create-booking`, {
                 method: 'POST',
-                headers: edgeFnHeaders,
+                headers: internalHeaders,
                 body: JSON.stringify({ sessionId }),
                 signal: bookingAbort.signal,
             });
@@ -132,9 +125,9 @@ export async function POST(req: NextRequest) {
         if (bookingData.success) {
             // Duffel: auto-ticket if needed
             if (bookingData.bookingId && bookingData.status !== 'ticketed' && !bookingData.alreadyBooked) {
-                const ticketRes = await fetch(`${env.SUPABASE_URL}/functions/v1/issue-ticket`, {
+                const ticketRes = await fetch(`${siteUrl}/api/internal/issue-ticket`, {
                     method: 'POST',
-                    headers: edgeFnHeaders,
+                    headers: internalHeaders,
                     body: JSON.stringify({ bookingId: bookingData.bookingId }),
                 });
                 const ticketData = await ticketRes.json().catch(() => ({}));

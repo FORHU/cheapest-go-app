@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { getPreferences, updatePreferences, syncPreferencesFromHistory, preferencesToPrompt } from '@/lib/server/preferences';
 
@@ -388,7 +389,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const { user, supabase, error: authError } = await getAuthenticatedUser();
+  const { user, error: authError } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
   if (authError || !user) {
     return Response.json({ error: 'Authentication required' }, { status: 401 });
   }

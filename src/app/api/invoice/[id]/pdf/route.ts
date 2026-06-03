@@ -1,6 +1,6 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
-import { createAdminClient } from '@/utils/supabase/admin';
 import { formatCurrency, calculateNights } from '@/lib/utils';
 import { renderToBuffer } from '@react-pdf/renderer';
 import React from 'react';
@@ -22,7 +22,8 @@ export async function GET(
         const { id } = await params;
         const type = req.nextUrl.searchParams.get('type') || 'flight';
 
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, error: authError } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
     if (authError || !user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

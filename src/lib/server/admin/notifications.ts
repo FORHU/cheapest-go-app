@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/utils/supabase/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { Notification } from '@/types/admin';
 
 export async function getNotifications(): Promise<Notification[]> {
@@ -14,7 +14,7 @@ export async function getNotifications(): Promise<Notification[]> {
         return [];
     }
 
-    return (data || []).map(n => ({
+    return (data || []).map((n: any) => ({
         id: n.id,
         title: n.title,
         description: n.description,

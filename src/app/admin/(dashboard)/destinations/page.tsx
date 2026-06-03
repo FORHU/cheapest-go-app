@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/utils/supabase/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { DestinationsClient } from './DestinationsClient';
 
 export const dynamic = 'force-dynamic';

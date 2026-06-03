@@ -6,9 +6,9 @@ import { flightBookingSchema, FlightPassengerForm, FlightContactForm } from '@/l
 import type { FlightOffer } from '@/types/flights';
 import type { SelectedSeat } from '@/types/seatMap';
 import type { SelectedBag } from '@/types/bags';
-import { createClient } from '@/utils/supabase/client';
-import { invokeEdgeFunction } from '@/utils/supabase/functions';
+import { invokeEdgeFunction } from '@/utils/postgres/functions';
 import { useUser } from '@/stores/authStore';
+import { useUserCurrency } from '@/stores/searchStore';
 import { clientFetch } from '@/lib/api/client';
 
 export type BookingStep = 'form' | 'submitting' | 'payment' | 'success' | 'error';
@@ -111,6 +111,7 @@ export function useFlightBooking() {
     });
 
     const user = useUser();
+    const userCurrency = useUserCurrency();
 
     // Autofill from profile when user logs in
     useEffect(() => {
@@ -220,7 +221,7 @@ export function useFlightBooking() {
         // Auto-revalidate the flight
         let isMounted = true;
         const revalidate = async () => {
-            const { data: { user } } = await createClient().auth.getUser();
+            
 
             try {
                 const data = await invokeEdgeFunction('revalidate-flight', {
@@ -302,7 +303,7 @@ export function useFlightBooking() {
             const bundleHotelId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('bundleHotelId') : null;
 
             // Client-side auth check (fast-fail UX; server re-verifies via JWT)
-            const { data: { user } } = await createClient().auth.getUser();
+            
 
             if (!user) {
                 throw new Error("unauthenticated");
@@ -355,6 +356,7 @@ export function useFlightBooking() {
                     ...(bagServiceIds.length > 0 ? { bagServiceIds, bagTotal } : {}),
                     ...((offer as any)._confirmedPrice !== undefined ? { confirmedPrice: (offer as any)._confirmedPrice } : {}),
                     ...(bundleHotelId ? { bundleHotelId } : {}),
+                    displayCurrency: userCurrency || 'USD',
                 }),
             });
 
