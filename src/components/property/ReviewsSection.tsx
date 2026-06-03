@@ -9,7 +9,7 @@ import {
     getRatingColor,
     calculateTravelerBreakdown,
     TravelerBreakdown
-} from '@/lib/property/fetchReviews';
+} from '@/lib/property/reviewsUtils';
 import { useReviewsStore } from '@/stores/reviewsStore';
 
 interface ReviewsSectionProps {
@@ -23,7 +23,8 @@ interface ReviewsSectionProps {
 /**
  * Rating Summary Card - Shows overall score and label
  */
-function RatingSummary({ rating, totalCount }: { rating: number; totalCount: number }) {
+function RatingSummary({ rating: rawRating, totalCount }: { rating: number; totalCount: number }) {
+    const rating = Number(rawRating) || 0;
     return (
         <div className="flex items-center gap-2 lg:gap-3 lg:mb-6">
             <div className={`${getRatingColor(rating)} text-white w-9 h-9 lg:w-12 lg:h-12 rounded-lg flex items-center justify-center font-bold text-sm lg:text-xl`}>

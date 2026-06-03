@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { stripe } from '@/lib/stripe/server';
@@ -8,6 +9,7 @@ import { rateLimit } from '@/lib/server/rate-limit';
 import { checkCsrf } from '@/lib/server/csrf';
 import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
+import { convertCurrency } from '@/lib/currency';
 
 export const maxDuration = 120;
 import { parseDuffelOffer } from '@/lib/server/flights/providers/duffel';
@@ -19,20 +21,22 @@ export async function POST(req: NextRequest) {
     const csrfError = checkCsrf(req);
     if (csrfError) return csrfError;
 
-    // 5 booking attempts per minute per IP
-    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book' });
+    // Auth first so rate limit keys on user ID instead of IP (IP is spoofable)
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError || !user) {
+        return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+
+    // 5 booking attempts per minute per user
+    const rl = await rateLimit(req, { limit: 5, windowMs: 60_000, prefix: 'flights-book', userId: user.id });
     if (!rl.success) {
         return NextResponse.json({ success: false, error: 'Too many requests. Please wait before trying again.' }, { status: 429 });
     }
 
     try {
-        const { user, error: authError } = await getAuthenticatedUser();
-        if (authError || !user) {
-            return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
-        }
 
         const body = await req.json();
-        const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal, confirmedPrice, bundleHotelId } = body as {
+        const { provider, flight, passengers, contact, idempotencyKey, farePolicy, seatServiceIds, seatTotal, bagServiceIds, bagTotal, confirmedPrice, bundleHotelId, displayCurrency } = body as {
             provider: string;
             flight: FlightOffer;
             passengers: any[];
@@ -45,6 +49,7 @@ export async function POST(req: NextRequest) {
             bagTotal?: number;
             confirmedPrice?: number;
             bundleHotelId?: string;
+            displayCurrency?: string;
         };
 
         // Use server-verified user ID
@@ -52,7 +57,13 @@ export async function POST(req: NextRequest) {
 
         // ── Validate ──
         if (provider === 'mystifly_v2' || provider === 'mystifly') {
-            return NextResponse.json({ success: false, error: 'Mystifly bookings are currently disabled' }, { status: 503 });
+            // Mystifly is not active — this offer should never reach checkout because
+            // search-flights.ts filters all Mystifly results from the cache. If it somehow
+            // does, return a user-friendly message asking them to search again.
+            return NextResponse.json({
+                success: false,
+                error: 'This fare is no longer available. Please search again for current prices.',
+            }, { status: 422 });
         }
         if (!provider || provider !== 'duffel') {
             return NextResponse.json({ success: false, error: 'invalid provider string passed' }, { status: 400 });
@@ -69,14 +80,11 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-            console.error('[/book] Missing Supabase env variables');
-            return NextResponse.json({ success: false, error: 'Server misconfiguration' }, { status: 500 });
-        }
-
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        // Headers for ported internal routes (FUNCTIONS_SECRET)
         const edgeFnHeaders = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Authorization': `Bearer ${process.env.FUNCTIONS_SECRET}`,
         };
 
         // Resolve price/currency — client sends flat format (price: number, currency: string)
@@ -101,8 +109,7 @@ export async function POST(req: NextRequest) {
         // ── Duplicate flight booking guard ──
         // Duffel segments use iata_code; Mystifly uses iataCode or plain string — handle all.
         {
-            const { createClient: createSvc } = await import('@supabase/supabase-js');
-            const svc = createSvc(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+            const svc = createAdminClient();
 
             const rawFlight = flight as any;
             // Duffel: slices[0].segments[0]; Mystifly: segments[0]
@@ -157,7 +164,8 @@ export async function POST(req: NextRequest) {
         // V2 UUID FareSources require SearchIdentifier on all Mystifly endpoints (revalidate + book).
         // Mystifly does not return SearchIdentifier in search responses, so these fares are unbookable.
         // Fail here immediately rather than authorizing a charge we can't complete.
-        if (provider === 'mystifly_v2') {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if ((provider as string) === 'mystifly_v2') {
             const traceId: string = (flight as any).traceId ?? '';
             const fareCode = traceId.split('|')[0];
             const searchIdentifier = traceId.split('|')[3]; // tunneled format: FSC|convId||SearchId
@@ -186,7 +194,7 @@ export async function POST(req: NextRequest) {
 
         // ── SERVER-SIDE REVALIDATION & TTL GUARD ──
         const revalStart = Date.now();
-        const revalEndpoint = `${env.SUPABASE_URL}/functions/v1/revalidate-flight`;
+        const revalEndpoint = `${siteUrl}/api/internal/revalidate-flight`;
         const revalRes = await fetch(revalEndpoint, {
             method: 'POST',
             headers: edgeFnHeaders,
@@ -209,7 +217,8 @@ export async function POST(req: NextRequest) {
         if (!revalData.success || !revalData.seatsAvailable) {
             // Mystifly: SearchIdentifier is frequently missing from search responses.
             // Soft-pass these errors and let the booking API validate the fare instead.
-            const isMystiflyProvider = provider === 'mystifly_v2';
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            const isMystiflyProvider = (provider as string) === 'mystifly_v2';
             const isSearchIdError = /searchIdentifier.*empty|cannot revalidate/i.test(revalData.error || '');
             if (isMystiflyProvider && isSearchIdError) {
                 console.warn('[/book] SearchIdentifier revalidation error — soft-passing for Mystifly, proceeding to booking');
@@ -237,44 +246,55 @@ export async function POST(req: NextRequest) {
 
         const serverFarePolicy = revalData.farePolicy || farePolicy;
         const sanitizedFlight = { ...flight };
-        if (provider === 'mystifly_v2') {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if ((provider as string) === 'mystifly_v2') {
             delete (sanitizedFlight as any).rawOffer;
             delete (sanitizedFlight as any)._rawOffer;
         }
 
         // ── Step 1: Create Booking Session ──
+        // ── Step 1: Create Booking Session (direct DB insert) ──
         const sessionStart = Date.now();
-        const sessionEndpoint = `${env.SUPABASE_URL}/functions/v1/create-booking-session`;
-        const sessionRes = await fetch(sessionEndpoint, {
-            method: 'POST',
-            headers: edgeFnHeaders,
-            body: JSON.stringify({
-                userId,
+        const db = createAdminClient();
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+        const { data: sessionRow, error: sessionError } = await db
+            .from('booking_sessions')
+            .insert({
+                user_id: userId,
                 provider,
-                flight: sanitizedFlight,
-                passengers,
-                contact,
-                idempotencyKey,
-                farePolicy: serverFarePolicy,
-                ...(seatServiceIds?.length ? { seatServiceIds, seatTotal: seatTotal ?? 0 } : {}),
-                ...(bagServiceIds?.length ? { bagServiceIds, bagTotal: bagTotal ?? 0 } : {}),
-            }),
-        });
+                flight: sanitizedFlight as any,
+                passengers: passengers as any,
+                contact: contact as any,
+                idempotency_key: idempotencyKey,
+                policy_source: (serverFarePolicy as any)?.policySource ?? null,
+                policy_version: (serverFarePolicy as any)?.policyVersion ?? null,
+                is_refundable: (serverFarePolicy as any)?.isRefundable ?? null,
+                is_changeable: (serverFarePolicy as any)?.isChangeable ?? null,
+                refund_penalty_amount: (serverFarePolicy as any)?.refundPenaltyAmount ?? null,
+                refund_penalty_currency: (serverFarePolicy as any)?.refundPenaltyCurrency ?? null,
+                fare_policy: serverFarePolicy as any,
+                policy_locked: true,
+                status: 'initiated',
+                expires_at: expiresAt,
+                ...(seatServiceIds?.length ? { seat_service_ids: seatServiceIds, seat_total: seatTotal ?? 0 } : {}),
+            })
+            .select('id')
+            .single();
 
-        const sessionData = await sessionRes.json();
         logApiCall({
-            provider, endpoint: sessionEndpoint, durationMs: Date.now() - sessionStart,
+            provider, endpoint: 'create-booking-session (internal)', durationMs: Date.now() - sessionStart,
             requestParams: { origin: flight.segments?.[0]?.origin, destination: flight.segments?.[flight.segments.length - 1]?.destination, passengerCount: passengers.length },
-            responseStatus: sessionRes.status, userId,
-            responseSummary: { sessionId: sessionData.sessionId },
-            errorMessage: !sessionData.success ? (sessionData.error || 'Failed to create booking session') : undefined,
+            responseStatus: sessionError ? 500 : 200, userId,
+            responseSummary: { sessionId: (sessionRow as any)?.id },
+            errorMessage: sessionError?.message,
         });
 
-        if (!sessionData.success) {
-            throw new Error(sessionData.error || 'Failed to create booking session');
+        if (sessionError || !sessionRow) {
+            throw new Error(sessionError?.message || 'Failed to create booking session');
         }
 
-        const sessionId = sessionData.sessionId;
+        const sessionId = (sessionRow as any).id;
 
         // ── Step 1.5 (Duffel only): Create the order NOW, before Stripe ──
         // Duffel offer_requests expire within minutes of the search, making
@@ -811,7 +831,8 @@ export async function POST(req: NextRequest) {
 
         // ── Step 2: Create Stripe PaymentIntent ──
         const stripeStart = Date.now();
-        const isMystifly = provider === 'mystifly_v2' || provider === 'mystifly';
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const isMystifly = (provider as string) === 'mystifly_v2' || (provider as string) === 'mystifly';
 
         // Apply platform markup before charging the customer.
         // For Duffel: use the order's actual locked total (already validated by Duffel, includes services).
@@ -825,15 +846,23 @@ export async function POST(req: NextRequest) {
             : flightTotal + Math.max(0, seatTotal ?? 0) + Math.max(0, bagTotal ?? 0);
         const totalWithSeats = stripeBase;
         const pricing = applyMarkup(totalWithSeats, FLIGHT_MARKUP);
-        const flightStripeAmount = toStripeAmount(pricing.chargedPrice, flightCurrency);
+
+        // Charge the customer in their selected display currency, not Duffel's USD.
+        // This ensures the refund amount exactly matches what they paid — no FX drift.
+        const chargeInCurrency = (displayCurrency || flightCurrency).toLowerCase();
+        const chargePrice = chargeInCurrency !== flightCurrency
+            ? Math.round(convertCurrency(pricing.chargedPrice, flightCurrency, chargeInCurrency.toUpperCase()) * 100) / 100
+            : pricing.chargedPrice;
+        const flightStripeAmount = toStripeAmount(chargePrice, chargeInCurrency);
 
         console.log(`[/book] Pricing: original=${pricing.originalPrice} ${flightCurrency}, charged=${pricing.chargedPrice}, markup=${(pricing.markupRate * 100).toFixed(1)}%, markupAmount=${pricing.markupAmount}`);
+        console.log(`[/book] Stripe charge: ${chargePrice} ${chargeInCurrency} (converted from ${pricing.chargedPrice} ${flightCurrency})`);
 
         // Idempotency key prevents duplicate charges if the client retries on network error.
         const piIdempotencyKey = `flight-pi-${userId}-${sessionId}`;
         const paymentIntent = await stripe.paymentIntents.create({
             amount: flightStripeAmount,
-            currency: flightCurrency,
+            currency: chargeInCurrency,
             capture_method: isMystifly ? 'manual' : 'automatic',
             metadata: {
                 bookingSessionId: sessionId,
@@ -867,8 +896,7 @@ export async function POST(req: NextRequest) {
         // Storing the pre-order data in the session means create-booking can use it
         // directly without a Stripe API round-trip (avoids STRIPE_SECRET_KEY dependency
         // in the edge function and eliminates any race/auth issues).
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const supabase = createAdminClient();
 
         // Step 3a: Critical — PI id + status only. Must not fail.
         const { error: sessionUpdateError } = await supabase
@@ -881,6 +909,61 @@ export async function POST(req: NextRequest) {
 
         if (sessionUpdateError) {
             console.error('[/book] CRITICAL — failed to save payment_intent_id to session:', sessionUpdateError.message);
+
+            // Cancel the Duffel pre-order FIRST — it exists in Duffel's system and holds a
+            // real seat. If we only cancel Stripe and leave the Duffel order open, the seat
+            // remains locked on our Duffel balance until the hold expires (5–30 min).
+            if (duffelPreOrder?.orderId) {
+                try {
+                    const duffelToken = env.DUFFEL_TOKEN;
+                    // Step 1: create order cancellation (get refund quote)
+                    const cancelQuoteRes = await fetch('https://api.duffel.com/air/order_cancellations', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${duffelToken}`,
+                            'Duffel-Version': 'v2',
+                        },
+                        body: JSON.stringify({ data: { order_id: duffelPreOrder.orderId } }),
+                        signal: AbortSignal.timeout(8000),
+                    });
+                    if (cancelQuoteRes.ok) {
+                        const cancelQuote = await cancelQuoteRes.json();
+                        const cancellationId = cancelQuote?.data?.id;
+                        if (cancellationId) {
+                            // Step 2: confirm the cancellation
+                            await fetch(`https://api.duffel.com/air/order_cancellations/${cancellationId}/actions/confirm`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${duffelToken}`,
+                                    'Duffel-Version': 'v2',
+                                },
+                                signal: AbortSignal.timeout(8000),
+                            });
+                            console.log(`[/book] Duffel order ${duffelPreOrder.orderId} cancelled (cancellation: ${cancellationId})`);
+                        }
+                    } else {
+                        const errBody = await cancelQuoteRes.text().catch(() => '');
+                        console.error(`[/book] Duffel cancellation quote failed (${cancelQuoteRes.status}): ${errBody} — order ${duffelPreOrder.orderId} may need manual cancellation`);
+                    }
+                } catch (duffelCancelErr: any) {
+                    // Log loudly — ops must manually cancel this order in the Duffel dashboard
+                    console.error(`[/book] ORPHANED DUFFEL ORDER: ${duffelPreOrder.orderId} — cancel failed: ${duffelCancelErr.message}. Manual cancellation required.`);
+                }
+            }
+
+            // Cancel the Stripe PaymentIntent so the customer is never charged
+            try {
+                await stripe.paymentIntents.cancel(paymentIntent.id);
+                console.log('[/book] PaymentIntent cancelled after session update failure:', paymentIntent.id);
+            } catch (cancelErr: any) {
+                console.error('[/book] Could not cancel PI after session update failure:', cancelErr.message, '— PI:', paymentIntent.id);
+            }
+            return NextResponse.json({
+                success: false,
+                error: 'A session error occurred. Your card was not charged. Please try again.',
+            }, { status: 500 });
         }
 
         // Step 3a-ii: Audit fields (non-critical — columns may not exist yet).
@@ -889,8 +972,9 @@ export async function POST(req: NextRequest) {
             .update({
                 currency: flightCurrency,
                 original_price: pricing.originalPrice,
-                charged_price: pricing.chargedPrice,
+                charged_price: chargePrice,
                 markup_pct: pricing.markupRate,
+                payment_currency: chargeInCurrency.toUpperCase(),
             })
             .eq('id', sessionId)
             .then(({ error }) => {

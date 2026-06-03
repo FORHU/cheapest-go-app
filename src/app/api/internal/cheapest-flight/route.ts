@@ -11,13 +11,13 @@ import { env } from "@/utils/env";
  * server-side search (Duffel + Mystifly).
  *
  * Query params: origin, destination, departureDate, returnDate?
- * Header: Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+ * Header: Authorization: Bearer <FUNCTIONS_SECRET>
  */
 export async function GET(req: Request): Promise<Response> {
     try {
         // Security — same pattern as /api/internal/refresh-flights
         const auth = req.headers.get("authorization") ?? "";
-        if (auth !== `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`) {
+        if (auth !== `Bearer ${process.env.FUNCTIONS_SECRET}`) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

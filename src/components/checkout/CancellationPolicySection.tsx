@@ -55,8 +55,9 @@ export function CancellationPolicySection({
     }
 
     const policies = cancellationPolicies?.cancelPolicyInfos ?? [];
-    const isRefundable = cancellationPolicies?.refundableTag === 'RFN' ||
-        policies.some(p => p.amount === 0);
+    const tag = cancellationPolicies?.refundableTag ?? '';
+    const isRefundable = tag === 'RFN' || tag === 'REFUNDABLE' ||
+        (!tag && policies.some(p => p.amount === 0));
 
     // Filter out special entries (NO_SHOW, EARLY_DEPARTURE) from timeline — they have their own UI cards
     const timelinePolicies = policies.filter((p) => {
@@ -102,6 +103,7 @@ export function CancellationPolicySection({
                     const cancelDate = formatCancelDate(policy.cancelTime);
 
                     // Calculate refund amount (total - fee)
+                    // PERCENT: value is 0-100 percentage; IMPORT/AMOUNT: value is fixed fee
                     const feeAmount = policy.type === 'PERCENT'
                         ? (totalPrice * policy.amount / 100)
                         : policy.amount;

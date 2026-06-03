@@ -92,7 +92,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                 {/* User Info */}
                 <div className="flex items-center gap-3">
                     <div className="size-8 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.65rem,1.5vw,0.75rem)]">
-                        {user.firstName[0]}{user.lastName[0]}
+                        {(user.firstName?.[0] ?? '')}{(user.lastName?.[0] ?? '')}
                     </div>
                     <div className="min-w-0">
                         <p className="font-medium text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-900 dark:text-white truncate">
@@ -256,7 +256,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                 className="flex items-center gap-2 p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
             >
                 <div className="size-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[10px]">
-                    {user.firstName[0]}{user.lastName[0]}
+                    {(user.firstName?.[0] ?? '')}{(user.lastName?.[0] ?? '')}
                 </div>
             </button>
 
@@ -273,7 +273,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                         <div className="p-4 border-b border-slate-100 dark:border-white/5">
                             <div className="flex items-center gap-3">
                                 <div className="size-10 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.875rem,2vw,1rem)]">
-                                    {user.firstName[0]}{user.lastName[0]}
+                                    {(user.firstName?.[0] ?? '')}{(user.lastName?.[0] ?? '')}
                                 </div>
                                 <div className="min-w-0">
                                     <p className="font-medium text-sm text-slate-900 dark:text-white truncate">

@@ -1,3 +1,4 @@
+import { createAdminClient } from '@/utils/postgres/admin';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { getBookingDetails } from '@/lib/server/bookings';
 
@@ -5,7 +6,8 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
     try {
-        const { user, supabase, error: authError } = await getAuthenticatedUser();
+        const { user, error: authError } = await getAuthenticatedUser();
+        const supabase = createAdminClient();
         if (authError || !user) {
             return Response.json(
                 { success: false, error: 'Authentication required' },

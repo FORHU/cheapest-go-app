@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { requireAdmin, isAuthError } from '@/lib/server/admin';
 import { createNotification } from '@/lib/server/admin/notify';
-import { createAdminClient } from '@/utils/supabase/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 
 export async function POST(req: NextRequest) {
     const rl = await rateLimit(req, { limit: 20, windowMs: 60_000, prefix: 'admin-customers' });
@@ -58,8 +58,11 @@ export async function POST(req: NextRequest) {
         }
 
         if (action === 'hard_delete') {
-            // Hard delete: remove from Supabase Auth (cascades to profiles via FK)
-            const { error } = await supabase.auth.admin.deleteUser(userId);
+            // Hard delete: remove from public.users (cascades to sessions and profiles via FK)
+            const { error } = await supabase
+                .from('users')
+                .delete()
+                .eq('id', userId);
 
             if (error) {
                 console.error('[Admin Customers] Hard delete error:', error);

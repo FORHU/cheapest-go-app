@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/auth';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'sessionId is required' }, { status: 400 });
         }
 
-        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const supabase = createAdminClient();
 
         const { data: booking } = await supabase
             .from('flight_bookings')

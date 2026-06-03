@@ -31,7 +31,7 @@ export async function logAdminAction(event: AuditEvent): Promise<void> {
 
     // 2. Best-effort DB write
     try {
-        const { createAdminClient } = await import('@/utils/supabase/admin');
+        const { createAdminClient } = await import('@/utils/postgres/admin');
         const supabase = createAdminClient();
         const { error } = await supabase.from('admin_audit_log').insert({
             action: event.action,

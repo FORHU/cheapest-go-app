@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/utils/supabase/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 
 export interface SearchResult {
     id: string;
@@ -116,7 +116,7 @@ async function searchCustomers(supabase: ReturnType<typeof createAdminClient>, p
         .order('created_at', { ascending: false })
         .limit(5);
 
-    return (data || []).map(p => ({
+    return (data || []).map((p: any) => ({
         id: p.id,
         category: 'customer' as const,
         title: p.full_name || 'Anonymous',
@@ -133,7 +133,7 @@ async function searchUsers(supabase: ReturnType<typeof createAdminClient>, patte
         .order('created_at', { ascending: false })
         .limit(5);
 
-    return (data || []).map(p => ({
+    return (data || []).map((p: any) => ({
         id: p.id,
         category: 'user' as const,
         title: p.full_name || 'Anonymous',

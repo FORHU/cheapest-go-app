@@ -4,21 +4,17 @@
  */
 
 // unstable_cache removed — edge function has its own 10-min in-memory cache
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { type Property } from '@/types';
 import { searchTravelgateX } from '@/lib/server/travelgatex';
 import { COUNTRY_DEFAULT_CITY, COUNTRY_NAME_TO_CODE } from '@/lib/constants/countries';
 import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const adminSupabase = supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey)
-    : null;
+const adminSupabase = createAdminClient();
 
 async function fetchHotelRatings(hotelIds: string[]): Promise<Map<string, { rating: number; reviews_count: number }>> {
     const map = new Map<string, { rating: number; reviews_count: number }>();
-    if (!adminSupabase || hotelIds.length === 0) return map;
+    if (hotelIds.length === 0) return map;
     try {
         const { data } = await adminSupabase
             .from('hotel_reviews')
@@ -332,7 +328,7 @@ function transformHotelToProperty(hotel: any, cityName: string, requestedCurrenc
 async function fetchSearchPropertiesInner(queryParams: SearchQueryParams): Promise<{ properties: Property[]; totalCount: number; allMappable: any[] }> {
     // Run TGX and Duffel in parallel (LiteAPI dropped)
     const [tgxSettled, duffelSettled] = await Promise.allSettled([
-        searchTravelgateX({ ...(queryParams as unknown as Record<string, unknown>), limit: 100, offset: 0 }),
+        searchTravelgateX(queryParams as unknown as import('@/lib/server/stays/travelgatex/search').TgxSearchParams),
         searchDuffelStays(queryParams),
     ]);
 

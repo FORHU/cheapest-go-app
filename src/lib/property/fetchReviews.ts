@@ -13,7 +13,7 @@
  * All review reads go directly to those tables. No live ETG call is made here.
  */
 
-import { createAdminClient } from '@/utils/supabase/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

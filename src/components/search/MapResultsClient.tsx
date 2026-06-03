@@ -204,8 +204,9 @@ export function MapResultsClient({ searchParams, destination }: MapResultsClient
 
             const reader  = res.body.getReader();
             const decoder = new TextDecoder();
-            let buffer           = '';
-            let gotFirstHotels   = false;
+            let buffer        = '';
+            let gotFirstHotels = false;
+            let gotDone        = false;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -220,24 +221,24 @@ export function MapResultsClient({ searchParams, destination }: MapResultsClient
                     try {
                         const chunk = JSON.parse(line);
 
-                        if (chunk.type === 'hotels' && Array.isArray(chunk.data) && chunk.data.length > 0) {
-                            if (!gotFirstHotels) {
-                                setProperties(chunk.data.map(normalize));
-                                setAllMappable(chunk.allMappable || []);
-                                if (chunk.totalCount) setTotalCount(chunk.totalCount);
-                                setQueryParams(searchParams);
-                                // Brief "completing" phase so the progress bar can animate to 100%
-                                // before we switch to the results view.
-                                setStatus('completing');
-                                setTimeout(() => { if (!cancelled) setStatus('streaming'); }, 400);
-                                gotFirstHotels = true;
-                            } else {
-                                setProperties(prev => [...prev, ...chunk.data.map(normalize)]);
-                                setAllMappable(prev => [...prev, ...(chunk.allMappable || [])]);
+                        if (chunk.type === 'hotels') {
+                            if (Array.isArray(chunk.data) && chunk.data.length > 0) {
+                                if (!gotFirstHotels) {
+                                    setProperties(chunk.data.map(normalize));
+                                    setAllMappable(chunk.allMappable || []);
+                                    if (chunk.totalCount) setTotalCount(chunk.totalCount);
+                                    setQueryParams(searchParams);
+                                    setStatus('completing');
+                                    setTimeout(() => { if (!cancelled) setStatus('streaming'); }, 400);
+                                    gotFirstHotels = true;
+                                } else {
+                                    setProperties(prev => [...prev, ...chunk.data.map(normalize)]);
+                                    setAllMappable(prev => [...prev, ...(chunk.allMappable || [])]);
+                                }
                             }
+                            // Mark that we received a valid response even if empty
+                            gotDone = true;
                         } else if (chunk.type === 'done') {
-                            // Replace the streaming list with the server's final image-filtered result.
-                            // This removes any no-image hotels that streamed in before dedup completed.
                             if (Array.isArray(chunk.data) && chunk.data.length > 0) {
                                 setProperties(chunk.data.map(normalize));
                                 setTotalCount(chunk.data.length);
@@ -247,6 +248,7 @@ export function MapResultsClient({ searchParams, destination }: MapResultsClient
                             if (Array.isArray(chunk.allMappable) && chunk.allMappable.length > 0) {
                                 setAllMappable(chunk.allMappable);
                             }
+                            gotDone = true;
                             if (!cancelled) setStatus('done');
                         } else if (chunk.type === 'error') {
                             console.error('[Stream] error chunk:', chunk.message);
@@ -256,7 +258,8 @@ export function MapResultsClient({ searchParams, destination }: MapResultsClient
                 }
             }
 
-            if (!gotFirstHotels && !cancelled) setStatus('error');
+            // Only show error if we never received ANY valid response from the server
+            if (!gotDone && !gotFirstHotels && !cancelled) setStatus('error');
         };
 
         run().catch(() => { if (!cancelled) setStatus('error'); });
@@ -265,6 +268,15 @@ export function MapResultsClient({ searchParams, destination }: MapResultsClient
 
     if (status === 'loading' || status === 'completing') {
         return <SearchProgressState destination={destination} isDone={status === 'completing'} />;
+    }
+
+    if (status === 'done' && properties.length === 0) {
+        return (
+            <div className="flex flex-col h-full w-full items-center justify-center gap-2 select-none">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">No hotels found</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Try different dates or a nearby city.</p>
+            </div>
+        );
     }
 
     if (status === 'error' && properties.length === 0) {

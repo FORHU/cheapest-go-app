@@ -32,16 +32,16 @@ export function checkCsrf(req: NextRequest): NextResponse | null {
     // Only enforce on state-mutating methods
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return null;
 
-    // Skip enforcement in development for easier local testing
-    if (process.env.NODE_ENV !== 'production') return null;
-
     // ── Primary check: custom header (JS-settable, blocks cross-origin attackers) ──
-    // Cross-origin scripts cannot include custom headers without a CORS preflight,
-    // which the browser will block. Our apiFetch always sends this header.
+    // Cross-origin scripts cannot set custom headers without a CORS preflight, which
+    // the browser blocks. Our apiFetch() always sends this header, so local dev,
+    // staging, and production all pass this check without any special casing.
     const requestedBy = req.headers.get('x-requested-by');
     if (requestedBy === 'cheapestgo-client') return null;
 
     // ── Fallback: Origin / Referer header matching ──
+    // ALLOWED_ORIGINS already includes http://localhost:3000 and http://127.0.0.1:3000
+    // so local development continues to work via the origin fallback.
     const origin = req.headers.get('origin');
     const referer = req.headers.get('referer');
     const requestOrigin = origin ?? (referer ? new URL(referer).origin : null);

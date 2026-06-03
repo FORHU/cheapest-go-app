@@ -1,103 +1,169 @@
-import { createClient } from '@/utils/supabase/server';
-import { getUserProfile } from '@/lib/server/auth';
-import { NextResponse } from 'next/server';
-import { type EmailOtpType } from '@supabase/supabase-js';
+/**
+ * GET /auth/callback
+ *
+ * Handles:
+ *   1. Google OAuth callback (code + state params)
+ *   2. Password reset token redirect
+ *   3. Fallback redirect for already-authenticated users
+ */
 
-/** Only allow relative paths — blocks protocol-relative URLs and external redirects. */
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { getSqlAdmin } from '@/lib/db/postgres';
+import { createUserSession } from '@/lib/auth/session';
+
 function validateRedirectUrl(url: string): string {
-    if (!url.startsWith('/') || url.startsWith('//') || url.includes('://')) {
-        return '/';
-    }
+    if (!url.startsWith('/') || url.startsWith('//') || url.includes('://')) return '/';
     return url;
 }
 
-/** Determines the redirect target based on user role and requested 'next' path. */
-async function getRedirectTarget(user: any, next: string): Promise<string> {
-    // 1. Check metadata (fastest)
-    if (user?.user_metadata?.role === 'admin' || user?.app_metadata?.role === 'admin') {
-        return '/admin';
-    }
-
-    // 2. Check database (reliable fallback)
-    const profile = await getUserProfile(user.id);
-    if (profile?.role === 'admin') {
-        return '/admin';
-    }
-
-    return next;
+function getOrigin(request: Request): string {
+    const fwdHost = request.headers.get('x-forwarded-host');
+    const fwdProto = request.headers.get('x-forwarded-proto') || 'https';
+    if (fwdHost) return `${fwdProto}://${fwdHost}`;
+    return process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
 }
 
+// ─── Google token exchange ────────────────────────────────────────────────────
+
+async function exchangeGoogleCode(code: string, redirectUri: string) {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            code,
+            client_id:     process.env.GOOGLE_CLIENT_ID!,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+            redirect_uri:  redirectUri,
+            grant_type:    'authorization_code',
+        }),
+    });
+    if (!res.ok) throw new Error(`Google token exchange failed: ${res.status}`);
+    return res.json() as Promise<{ access_token: string; id_token: string }>;
+}
+
+async function getGoogleUser(accessToken: string) {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) throw new Error(`Google userinfo failed: ${res.status}`);
+    return res.json() as Promise<{
+        sub: string;
+        email: string;
+        name?: string;
+        given_name?: string;
+        family_name?: string;
+        picture?: string;
+        email_verified?: boolean;
+    }>;
+}
+
+// ─── User upsert ──────────────────────────────────────────────────────────────
+
+async function findOrCreateGoogleUser(googleUser: {
+    sub: string;
+    email: string;
+    given_name?: string;
+    family_name?: string;
+    picture?: string;
+}): Promise<string> {
+    const sql = getSqlAdmin();
+
+    // Check by email first (may have signed up with email/password before)
+    const existing = await sql`
+        SELECT id FROM users WHERE email = ${googleUser.email.toLowerCase()} LIMIT 1
+    `;
+
+    if (existing.length > 0) {
+        // Update avatar if we got one from Google
+        if (googleUser.picture) {
+            await sql`
+                UPDATE users SET avatar_url = ${googleUser.picture}, updated_at = NOW()
+                WHERE id = ${existing[0].id} AND (avatar_url IS NULL OR avatar_url = '')
+            `;
+        }
+        return existing[0].id;
+    }
+
+    // Create new user — no password_hash (OAuth users authenticate via Google)
+    const rows = await sql`
+        INSERT INTO users (email, role, first_name, last_name, avatar_url)
+        VALUES (
+            ${googleUser.email.toLowerCase()},
+            'user',
+            ${googleUser.given_name ?? null},
+            ${googleUser.family_name ?? null},
+            ${googleUser.picture ?? null}
+        )
+        RETURNING id
+    `;
+    return rows[0].id;
+}
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export async function GET(request: Request) {
+    const origin = getOrigin(request);
     const { searchParams } = new URL(request.url);
 
-    // Determine the correct origin — inside Docker, request.url uses the
-    // container hostname (0.0.0.0) which is unreachable from the browser.
-    // Prefer forwarded headers from the reverse proxy, then NEXT_PUBLIC_SITE_URL.
-    const origin = (() => {
-        const fwdHost = request.headers.get('x-forwarded-host');
-        const fwdProto = request.headers.get('x-forwarded-proto') || 'https';
-        if (fwdHost) return `${fwdProto}://${fwdHost}`;
-
-        const host = request.headers.get('host');
-        if (host && !host.startsWith('0.0.0.0') && !host.startsWith('127.0.0.1') && !host.startsWith('localhost')) {
-            return `${fwdProto}://${host}`;
-        }
-
-        if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
-
-        return new URL(request.url).origin;
-    })();
-
-    // Handle OAuth code exchange
-    const code = searchParams.get('code');
-
-    // Handle email confirmation (token_hash and type)
-    const token_hash = searchParams.get('token_hash');
-    const type = searchParams.get('type') as EmailOtpType | null;
-
-    // Check for error params (if Supabase sends an error directly)
-    const error = searchParams.get('error');
-    const error_code = searchParams.get('error_code');
-    const error_description = searchParams.get('error_description');
-
-    if (error) {
-        console.error('Auth error:', error_code, error_description);
-        return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${encodeURIComponent(error_description || error)}`);
+    // ── Password reset token ────────────────────────────────────────────────
+    const resetToken = searchParams.get('token');
+    if (resetToken) {
+        return NextResponse.redirect(`${origin}/auth/reset-password?token=${resetToken}`);
     }
 
-    const next = validateRedirectUrl(searchParams.get('next') ?? '/');
+    // ── Google OAuth callback ───────────────────────────────────────────────
+    const code     = searchParams.get('code');
+    const state    = searchParams.get('state');
+    const oauthErr = searchParams.get('error');
 
-    const supabase = await createClient();
+    const cookieStore = await cookies();
+    const storedState    = cookieStore.get('oauth_state')?.value;
+    const storedProvider = cookieStore.get('oauth_provider')?.value;
 
-    // Email confirmation flow (from "Confirm your mail" link)
-    if (token_hash && type) {
-        const { data, error: verifyError } = await supabase.auth.verifyOtp({
-            type,
-            token_hash,
-        });
+    if (code && storedProvider === 'google') {
+        // Clear state cookies
+        cookieStore.delete('oauth_state');
+        cookieStore.delete('oauth_provider');
 
-        if (!verifyError && data.session) {
-            const redirectTarget = await getRedirectTarget(data.session.user, next);
-            return NextResponse.redirect(`${origin}${redirectTarget}`);
+        if (oauthErr) {
+            console.error('[OAuth] Google error:', oauthErr);
+            return NextResponse.redirect(`${origin}/login?error=oauth_denied`);
         }
 
-        console.error('Email verification error:', verifyError?.message);
-        return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${encodeURIComponent(verifyError?.message || 'Verification failed')}`);
-    }
-
-    // OAuth code exchange flow (from Google/social login)
-    if (code) {
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-
-        if (!exchangeError && data.session) {
-            const redirectTarget = await getRedirectTarget(data.session.user, next);
-            return NextResponse.redirect(`${origin}${redirectTarget}`);
+        if (!state || state !== storedState) {
+            console.error('[OAuth] State mismatch — possible CSRF');
+            return NextResponse.redirect(`${origin}/login?error=oauth_state`);
         }
 
-        console.error('Code exchange error:', exchangeError?.message);
-        return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${encodeURIComponent(exchangeError?.message || 'Session exchange failed')}`);
+        try {
+            const redirectUri = `${origin}/auth/callback`;
+            const tokens      = await exchangeGoogleCode(code, redirectUri);
+            const googleUser  = await getGoogleUser(tokens.access_token);
+
+            if (!googleUser.email) {
+                return NextResponse.redirect(`${origin}/login?error=oauth_no_email`);
+            }
+
+            const userId = await findOrCreateGoogleUser(googleUser);
+            await createUserSession(userId);
+
+            return NextResponse.redirect(`${origin}/`);
+        } catch (err: any) {
+            console.error('[OAuth] Google callback error:', err.message);
+            return NextResponse.redirect(`${origin}/login?error=oauth_failed`);
+        }
     }
 
-    // Return the user to an error page with instructions
-    return NextResponse.redirect(`${origin}/auth/auth-code-error`);
+    // ── Fallback: already authenticated ────────────────────────────────────
+    const { getSession } = await import('@/lib/auth/session');
+    const { getUserProfile } = await import('@/lib/server/auth');
+    const { user } = await getSession();
+    if (user) {
+        const profile = await getUserProfile(user.id);
+        const target  = profile?.role === 'admin' ? '/admin' : validateRedirectUrl(searchParams.get('next') || '/');
+        return NextResponse.redirect(`${origin}${target}`);
+    }
+
+    return NextResponse.redirect(`${origin}/login`);
 }

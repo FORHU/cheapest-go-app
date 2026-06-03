@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/utils/supabase/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { Customer } from '@/types/admin';
 
 export async function getCustomersList(): Promise<Customer[]> {
@@ -23,22 +23,22 @@ export async function getCustomersList(): Promise<Customer[]> {
     ]);
 
     // Fetch passengers for these flights to get names
-    const flightIds = (flights.data || []).map(f => f.id);
+    const flightIds = (flights.data || []).map((f: any) => f.id);
     const { data: passengers } = flightIds.length > 0
         ? await supabase.from('passengers').select('booking_id, first_name, last_name').in('booking_id', flightIds)
         : { data: [] };
 
     const allBookings = [
-        ...(unified.data || []).map(b => ({ ...b, type: 'unified' as const })),
-        ...(hotels.data || []).map(b => ({ ...b, type: 'hotel' as const })),
-        ...(flights.data || []).map(b => {
-            const p = (passengers || []).find(pass => pass.booking_id === b.id);
+        ...(unified.data || []).map((b: any) => ({ ...b, type: 'unified' as const })),
+        ...(hotels.data || []).map((b: any) => ({ ...b, type: 'hotel' as const })),
+        ...(flights.data || []).map((b: any) => {
+            const p = (passengers || []).find((pass: any) => pass.booking_id === b.id);
             return { ...b, type: 'flight' as const, passenger_name: p ? `${p.first_name} ${p.last_name}` : null };
         })
     ];
 
     // 3. Map profiles to Customer data
-    return profiles.map(profile => {
+    return profiles.map((profile: any) => {
         const userBookings = allBookings.filter(b => b.user_id === profile.id);
         const totalBookings = userBookings.length;
         const totalSpend = userBookings

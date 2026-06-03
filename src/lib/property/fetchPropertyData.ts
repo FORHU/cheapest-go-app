@@ -4,7 +4,7 @@
  */
 
 import { cache } from 'react';
-import { preBook, getHotelDetails, invokeEdgeFunction } from '@/utils/supabase/functions';
+import { preBook, getHotelDetails, invokeEdgeFunction } from '@/utils/postgres/functions';
 import { type Property } from '@/types';
 export type PropertyData = Property;
 
@@ -284,108 +284,28 @@ export const fetchPropertyData = cache(async (
         return fetchDuffelPropertyData(id, searchParams);
     }
     let preBookResult = null;
-    let fetchedDetails = null;
 
-    // 1. Invoke pre-book if offerId is present
-    let isRateLimited = false;
+    // 1. TGX/ETG hotel — go directly to TGX, skip LiteAPI entirely (LiteAPI is dropped)
+    if (isTGXOrETGId(id)) {
+        return fetchTGXPropertyData(id, searchParams);
+    }
+
+    // 2. Invoke pre-book if offerId is present (non-TGX path)
     if (searchParams.offerId) {
         try {
-            preBookResult = await preBook({ 
+            preBookResult = await preBook({
                 offerId: searchParams.offerId as string,
                 currency: searchParams.currency || 'KRW'
             });
         } catch (error: any) {
             console.error('Pre-book check failed:', error.message || error);
-            if (error.message?.includes('429') || error.message?.toLowerCase().includes('too many requests')) {
-                isRateLimited = true;
-            }
         }
     }
 
-    // 2. Fetch hotel details (Strictly backend)
-    // SKIP if already rate limited by pre-book
-    if (!isRateLimited) {
-        try {
-            const targetHotelId = preBookResult?.data?.hotelId || id;
-            const defaults = getDefaultDates();
-            let checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
-            let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+    // Build property from prebook result if available
+    const property = (preBookResult || searchParams.offerId)
+        ? createFallbackProperty(id, preBookResult, searchParams.currency || 'KRW')
+        : null;
 
-            // Strictly enforce "At least tomorrow" for check-in
-            if (checkIn <= formatDateForApi(new Date())) {
-                checkIn = defaults.checkIn;
-                // Also ensure checkOut is after the new checkIn
-                if (checkOut <= checkIn) {
-                    checkOut = defaults.checkOut;
-                }
-            }
-
-            fetchedDetails = await getHotelDetails(targetHotelId, {
-                checkIn,
-                checkOut,
-                adults: Number(searchParams.adults || 2),
-                children: Number(searchParams.children || 0),
-                rooms: Number(searchParams.rooms || 1),
-                currency: searchParams.currency
-            });
-        } catch (error: any) {
-            console.error('Failed to fetch property details:', error.message);
-            if (error.message?.includes('429') || error.message?.toLowerCase().includes('too many requests')) {
-                isRateLimited = true;
-            }
-        }
-    }
-
-    // Fallback: If no details found for requested currency, try USD for static content
-    // DO NOT try fallback if we are already rate limited to avoid wasting requests
-    if (!fetchedDetails && !isRateLimited && searchParams.currency && searchParams.currency !== 'USD') {
-        try {
-            const targetHotelId = preBookResult?.data?.hotelId || id;
-            const defaults = getDefaultDates();
-            const checkIn = sanitizeDate(searchParams.checkIn as string) || defaults.checkIn;
-            const checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
-
-            const fallbackDetails = await getHotelDetails(targetHotelId, {
-                checkIn,
-                checkOut,
-                adults: Number(searchParams.adults || 2),
-                children: Number(searchParams.children || 0),
-                rooms: Number(searchParams.rooms || 1),
-                currency: 'USD'
-            });
-
-            if (fallbackDetails) {
-                fetchedDetails = {
-                    ...fallbackDetails,
-                    roomTypes: [], // Clear rooms to avoid showing USD prices as the requested currency
-                    isFallback: true
-                };
-            }
-        } catch (err) {
-            console.error('Fallback fetch failed:', err);
-        }
-    }
-
-    // 3. TGX/ETG fallback — LiteAPI doesn't know TGX codes ("KR2094") or ETG numeric IDs
-    if (!fetchedDetails && !isRateLimited && isTGXOrETGId(id)) {
-        const tgxResult = await fetchTGXPropertyData(id, searchParams);
-        if (tgxResult.property) return tgxResult;
-    }
-
-    // 4. Build property data
-    let property: PropertyData | null = null;
-
-    if (fetchedDetails) {
-        const roomImages = collectRoomImages(fetchedDetails.roomTypes);
-        const allImages = combineImages(
-            fetchedDetails.thumbnailUrl,
-            fetchedDetails.images || [],
-            roomImages
-        );
-        property = transformFetchedToProperty(id, fetchedDetails, preBookResult, allImages, searchParams.currency || 'KRW');
-    } else if (preBookResult || searchParams.offerId) {
-        property = createFallbackProperty(id, preBookResult, searchParams.currency || 'KRW');
-    }
-
-    return { property, fetchedDetails, preBookResult };
+    return { property, fetchedDetails: null, preBookResult };
 });

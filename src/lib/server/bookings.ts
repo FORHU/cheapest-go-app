@@ -1,12 +1,13 @@
-import type { SupabaseClient, User } from '@supabase/supabase-js';
-import { createClient } from '@supabase/supabase-js';
-import { env } from "@/utils/env";
+import type { DbClient } from '@/lib/db/query-builder';
+import type { User } from '@/types/auth';
+import { createAdminClient } from '@/utils/postgres/admin';
 import {
   amendBookingSchema,
   saveBookingSchema,
 } from '@/lib/schemas';
 import { bookTravelgateX, cancelTravelgateX } from './travelgatex';
-import { invokeEdgeFunction } from '@/utils/supabase/functions';
+import { getSqlAdmin } from '@/lib/db/postgres';
+import { invokeEdgeFunction } from '@/utils/postgres/functions';
 
 import { stripe } from '@/lib/stripe/server';
 import { sendHotelRefundEmail } from './email';
@@ -40,7 +41,7 @@ export interface ConfirmAndSaveResult {
 // ============================================================================
 
 export async function verifyBookingOwnership(
-  supabase: SupabaseClient,
+  supabase: DbClient,
   bookingId: string,
   userId: string,
 ): Promise<{ isOwner: boolean; error?: string }> {
@@ -140,6 +141,7 @@ export interface TgxConfirmInput {
   paymentIntentId?: string;
   voucherCode?: string;
   discountAmount?: number;
+  cancellationPolicies?: any;
 }
 
 export async function confirmAndSaveTgxBooking(
@@ -198,15 +200,18 @@ export async function confirmAndSaveTgxBooking(
   }
 
   const booking = tgxResult?.data;
-  if (!booking?.reference?.client) {
+  // travelgatex-book route returns flat clientRef/supplierRef/hotelRef fields
+  const clientRef = booking?.clientRef || booking?.reference?.client;
+  if (!clientRef) {
     console.error('[confirmAndSaveTgxBooking] No reference in TGX response:', tgxResult);
     return { success: false, error: 'Booking failed — no reference returned from TravelgateX' };
   }
 
-  const bookingId = booking.reference.client; // our clientReference
-  const supplierRef = booking.reference.supplier;
-  const hotelRef = booking.reference.hotel;
-  const tgxBookingId = booking.tgxBookingId ?? null;
+  const bookingId = clientRef; // our clientReference
+  const supplierRef = booking?.supplierRef || booking?.reference?.supplier;
+  const hotelRef = booking?.hotelRef || booking?.reference?.hotel;
+  const hotelCode = booking?.hotelCode ?? null;
+  const tgxBookingId = booking?.tgxBookingId ?? null;
   const rawStatus = (booking.status || 'confirmed').toLowerCase();
   const bookingStatus = (['confirmed', 'pending'].includes(rawStatus) ? rawStatus : 'confirmed') as 'confirmed' | 'pending';
 
@@ -236,33 +241,49 @@ export async function confirmAndSaveTgxBooking(
     }
   }
 
-  const isRefundable = booking.cancelPolicy?.refundable === true;
+  // Prefer the prebook cancel policy (quote-time, shown to user at checkout) over the
+  // book response — TGX suppliers sometimes return refundable:false at book time even
+  // when the quote showed a free-cancellation window.
+  const prebookPolicy = params.cancellationPolicies;
+  const isRefundable = prebookPolicy
+    ? prebookPolicy.refundableTag === 'RFN'
+    : booking.cancelPolicy?.refundable === true;
   const policyType = isRefundable ? 'free_cancellation' : 'non_refundable';
+  const storedCancelPolicy = prebookPolicy ?? (booking.cancelPolicy ? {
+    refundableTag: isRefundable ? 'RFN' : 'NRFN',
+    cancelPolicyInfos: (booking.cancelPolicy.cancelPenalties || []).map((p: any) => ({
+      cancelTime: p.deadline,
+      amount: p.value ?? 0,
+      currency: p.currency || currency,
+      type: p.penaltyType || 'AMOUNT',
+    })),
+  } : null);
+
+  // Build outside try so the catch block can reference it for emergency recovery
+  const bookingPayload = {
+    booking_id: bookingId,
+    user_id: user.id,
+    property_name: params.propertyName,
+    property_image: params.propertyImage ?? null,
+    room_name: params.roomName,
+    check_in: params.checkIn,
+    check_out: params.checkOut,
+    guests_adults: params.adults,
+    guests_children: params.children ?? 0,
+    total_price: totalPrice,
+    currency,
+    holder_first_name: params.holder.firstName,
+    holder_last_name: params.holder.lastName,
+    holder_email: params.holder.email,
+    status: bookingStatus,
+    special_requests: params.specialRequests ?? null,
+    voucher_code: params.voucherCode ?? null,
+    discount_amount: params.discountAmount ?? 0,
+    policy_type: policyType,
+  };
 
   try {
-    const serviceClient = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-
-    const bookingPayload = {
-      booking_id: bookingId,
-      user_id: user.id,
-      property_name: params.propertyName,
-      property_image: params.propertyImage ?? null,
-      room_name: params.roomName,
-      check_in: params.checkIn,
-      check_out: params.checkOut,
-      guests_adults: params.adults,
-      guests_children: params.children ?? 0,
-      total_price: totalPrice,
-      currency,
-      holder_first_name: params.holder.firstName,
-      holder_last_name: params.holder.lastName,
-      holder_email: params.holder.email,
-      status: bookingStatus,
-      special_requests: params.specialRequests ?? null,
-      voucher_code: params.voucherCode ?? null,
-      discount_amount: params.discountAmount ?? 0,
-      policy_type: policyType,
-    };
+    const serviceClient = createAdminClient();
 
     const snapshotPayload = {
       policy_type: policyType,
@@ -289,8 +310,50 @@ export async function confirmAndSaveTgxBooking(
     });
 
     if (rpcError) {
-      console.error('[confirmAndSaveTgxBooking] DB save failed after TGX confirmed:', rpcError);
-      console.error('CRITICAL: TGX booking', bookingId, 'confirmed but DB save failed. Manual reconciliation required.');
+      console.error('[confirmAndSaveTgxBooking] RPC failed after TGX confirmed — attempting fallback INSERT:', rpcError);
+
+      // Fallback: direct INSERT without policy tiers. The booking is saved with
+      // basic fields so cancellation/refund can still be processed. Cancel policy
+      // will be marked incomplete for manual ops review.
+      const { error: fallbackError } = await serviceClient
+        .from('bookings')
+        .insert({
+          ...bookingPayload,
+          // Tag as incomplete so ops can identify and patch cancel tiers
+          special_requests: [bookingPayload.special_requests, '[POLICY_TIERS_MISSING — see RPC error log]']
+            .filter(Boolean).join(' | '),
+        });
+
+      if (!fallbackError) {
+        // Patch provider/financial columns separately (same as the happy path below)
+        await serviceClient
+          .from('bookings')
+          .update({
+            provider: 'travelgatex',
+            provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference, tgxBookingId },
+            payment_intent_id: params.paymentIntentId ?? null,
+            supplier_cost: price,
+            charged_price: totalPrice,
+            cancellation_policy: storedCancelPolicy ?? null,
+          })
+          .eq('booking_id', bookingId);
+
+        console.warn(
+          '[confirmAndSaveTgxBooking] Fallback INSERT succeeded for', bookingId,
+          '— cancel policy tiers missing, manual review required'
+        );
+        return {
+          success: true,
+          data: { bookingId, status: bookingStatus, policyType, policySummary: snapshotPayload.summary, totalPrice, currency },
+        };
+      }
+
+      // Both RPC and direct INSERT failed — truly orphaned booking
+      console.error(
+        'CRITICAL: TGX booking', bookingId,
+        'confirmed but ALL DB saves failed. Supplier ref:', supplierRef,
+        'PI:', params.paymentIntentId, '— Manual reconciliation required.',
+      );
       return {
         success: false,
         providerConfirmed: true,
@@ -304,7 +367,7 @@ export async function confirmAndSaveTgxBooking(
       .from('bookings')
       .update({
         provider: 'travelgatex',
-        provider_metadata: { supplierRef, hotelRef, clientReference, tgxBookingId },
+        provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference, tgxBookingId },
         payment_intent_id: params.paymentIntentId ?? null,
         supplier_cost: price,       // OTV net price confirmed by TGX at booking time
         charged_price: totalPrice,  // gross amount captured from guest via Stripe
@@ -322,7 +385,27 @@ export async function confirmAndSaveTgxBooking(
       data: { bookingId, status: bookingStatus, policyType, policySummary: snapshotPayload.summary, totalPrice, currency },
     };
   } catch (error) {
-    console.error('[confirmAndSaveTgxBooking] DB error:', error);
+    console.error('[confirmAndSaveTgxBooking] DB error after TGX confirmed — attempting emergency INSERT:', error);
+    // Last-resort: insert a minimal record so the booking is at least traceable
+    try {
+      const serviceClient = createAdminClient();
+      await serviceClient.from('bookings').insert({
+        ...bookingPayload,
+        provider: 'travelgatex',
+        payment_intent_id: params.paymentIntentId ?? null,
+        supplier_cost: price,
+        charged_price: totalPrice,
+        special_requests: [bookingPayload.special_requests, '[EMERGENCY_RECOVERY — exception during save]']
+          .filter(Boolean).join(' | '),
+      });
+      console.warn('[confirmAndSaveTgxBooking] Emergency INSERT succeeded for', bookingId);
+      return {
+        success: true,
+        data: { bookingId, status: bookingStatus, policyType, policySummary: isRefundable ? 'Refundable' : 'Non-refundable', totalPrice, currency },
+      };
+    } catch (emergencyErr) {
+      console.error('CRITICAL: Emergency INSERT also failed for', bookingId, ':', emergencyErr);
+    }
     return {
       success: false,
       providerConfirmed: true,
@@ -343,7 +426,7 @@ import type { LiteApiRefundInfo } from './refunds';
 export async function cancelBooking(
   bookingId: string,
   user: User,
-  supabase: SupabaseClient
+  supabase: DbClient
 ): Promise<CancelBookingResult> {
   if (!bookingId || typeof bookingId !== 'string' || bookingId.trim().length === 0) {
     return { success: false, error: 'Booking ID is required' };
@@ -392,7 +475,7 @@ export async function cancelBooking(
     // 4. Cancel with the appropriate provider
     const { data: bookingRow } = await supabase
       .from('bookings')
-      .select('status, provider, provider_metadata')
+      .select('status, provider, provider_metadata, property_name')
       .eq('booking_id', bookingId)
       .single();
     const isRefundRetry = bookingRow?.status === 'cancelled_refund_failed';
@@ -401,12 +484,50 @@ export async function cancelBooking(
     if (!isRefundRetry) {
       if (isTgx) {
         const meta = bookingRow?.provider_metadata as any;
-        const result = await cancelTravelgateX({
-          clientReference: bookingId,
-          supplierReference: meta?.supplierRef,
-          tgxBookingId: meta?.tgxBookingId,
-        });
-        console.log('[cancelBooking] TGX cancellation result:', result?.data);
+
+        // hotelCode is stored in provider_metadata for bookings made after this fix.
+        // For older bookings: try three fallbacks in order.
+        let cancelHotelCode: string | undefined = meta?.hotelCode;
+        if (!cancelHotelCode && bookingRow?.property_name) {
+          const propName = bookingRow.property_name as string;
+
+          // 1. property_name IS the hotel code when hotel wasn't in hotel_content at booking time
+          //    (the UI falls back to showing the numeric ID as the name).
+          if (/^\d+$/.test(propName) || /^[A-Z]{2}\d+$/.test(propName)) {
+            cancelHotelCode = propName;
+            console.log('[cancelBooking] hotelCode derived from property_name (ID fallback):', cancelHotelCode);
+          } else {
+            // 2. Look up hotel_content by exact hotel_id match (name stored as ID)
+            //    then fall back to ILIKE on the hotel name.
+            const sql = getSqlAdmin();
+            const rows = await sql`
+              SELECT hotel_id FROM hotel_content
+              WHERE hotel_id = ${propName}
+                 OR name ILIKE ${propName}
+              LIMIT 1
+            `;
+            cancelHotelCode = rows[0]?.hotel_id ?? undefined;
+            if (cancelHotelCode) {
+              console.log('[cancelBooking] hotelCode resolved from hotel_content:', cancelHotelCode);
+            } else {
+              console.warn('[cancelBooking] hotelCode not found — cancellation may fail. property_name:', propName);
+            }
+          }
+        }
+
+        // Supplier 207 "Request not accepted by supplier" means non-refundable/past-deadline —
+        // proceed with our internal cancel regardless; log the outcome for ops review.
+        try {
+          const result = await cancelTravelgateX({
+            clientReference: bookingId,
+            supplierReference: meta?.supplierRef,
+            tgxBookingId: meta?.tgxBookingId,
+            hotelCode: cancelHotelCode,
+          });
+          console.log('[cancelBooking] TGX cancellation result:', result?.data);
+        } catch (tgxErr: any) {
+          console.warn('[cancelBooking] TGX cancel failed (proceeding with internal cancel):', tgxErr.message?.slice(0, 200));
+        }
       }
     } else {
       console.log('[cancelBooking] Skipping provider cancel call — retrying Stripe refund for cancelled_refund_failed booking');
@@ -479,6 +600,7 @@ export async function cancelBooking(
 
           stripeRefundId = stripeRefund.id;
           console.log(`[cancelBooking] Stripe refund issued: ${stripeRefundId} — ${refundAmountCents} ${piCurrency} cents`);
+
 
           // Fire refund receipt email (non-blocking)
           supabase
@@ -557,7 +679,7 @@ export async function cancelBooking(
 export async function amendBooking(
   params: AmendBookingParams,
   user: User,
-  supabase: SupabaseClient
+  supabase: DbClient
 ): Promise<AmendBookingResult> {
   const validation = amendBookingSchema.safeParse(params);
   if (!validation.success) {
@@ -601,7 +723,7 @@ export async function amendBooking(
 export async function getBookingDetails(
   bookingId: string,
   user: User,
-  supabase: SupabaseClient
+  supabase: DbClient
 ): Promise<BookingDetailsResult> {
   if (!bookingId || typeof bookingId !== 'string' || bookingId.trim().length === 0) {
     return { success: false, error: 'Booking ID is required' };
@@ -663,7 +785,7 @@ export async function getBookingDetails(
 export async function saveBookingToDatabase(
   params: SaveBookingParams,
   user: User,
-  supabase: SupabaseClient
+  supabase: DbClient
 ): Promise<{ success: boolean; error?: string }> {
   const validation = saveBookingSchema.safeParse(params);
   if (!validation.success) {
@@ -678,7 +800,7 @@ export async function saveBookingToDatabase(
       booking_id: data.bookingId,
       user_id: user.id,
       property_name: data.propertyName,
-      property_image: data.propertyImage,
+      property_image: data.propertyImage ?? null,
       room_name: data.roomName,
       check_in: data.checkIn,
       check_out: data.checkOut,
@@ -690,8 +812,8 @@ export async function saveBookingToDatabase(
       holder_last_name: data.holderLastName,
       holder_email: data.holderEmail,
       status: 'confirmed',
-      special_requests: data.specialRequests,
-      cancellation_policy: data.cancellationPolicy,
+      special_requests: data.specialRequests ?? null,
+      cancellation_policy: data.cancellationPolicy ?? null,
     }, { onConflict: 'booking_id', ignoreDuplicates: true });
 
     if (insertError) {
@@ -715,7 +837,7 @@ export async function saveBookingToDatabase(
 
 export async function getUserBookings(
   user: User,
-  supabase: SupabaseClient
+  supabase: DbClient
 ): Promise<GetUserBookingsResult> {
   try {
     const { data, error } = await supabase

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
 
 // Supabase admin client — reads cache without RLS
-const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createAdminClient();
 
 /**
  * GET /api/flights/price-calendar

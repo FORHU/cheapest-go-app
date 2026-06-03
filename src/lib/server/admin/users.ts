@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/utils/supabase/admin';
+import { createAdminClient } from '@/utils/postgres/admin';
 
 export interface AdminUserRecord {
     id: string;

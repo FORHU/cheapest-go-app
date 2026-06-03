@@ -1,11 +1,25 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cheapestgo
+      POSTGRES_PASSWORD: cheapestgo
+      POSTGRES_DB: cheapestgo
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cheapestgo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   app:
     build:
       context: .
       args:
-        # These are pulled from your .env file and passed to the Dockerfile
-        - NEXT_PUBLIC_SUPABASE_URL
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY
         - NEXT_PUBLIC_MAPBOX_TOKEN
         - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
         - NEXT_PUBLIC_SITE_URL
@@ -13,4 +27,26 @@ services:
       - "3000:3000"
     env_file:
       - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: always
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@cheapestgo.com
+      PGADMIN_DEFAULT_PASSWORD: cheapestgo
+    ports:
+      - "5051:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  pgadmin_data:

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,7 @@ const MAX_AGE_HOURS = 48; // Don't retry emails older than 48h
  * Reads the stored HTML body from email_logs.metadata.htmlBody and
  * re-sends via Resend API. Updates the log entry status on success.
  *
- * Auth: Bearer token must match CRON_SECRET or SUPABASE_SERVICE_ROLE_KEY.
+ * Auth: Bearer token must match CRON_SECRET or FUNCTIONS_SECRET.
  * Set up a cron job in Coolify to call this every 15 minutes:
  *   curl -X POST https://your-domain/api/internal/retry-emails \
  *        -H "Authorization: Bearer $CRON_SECRET"
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     try {
         // ── Auth check ──────────────────────────────────────────────
         const authHeader = req.headers.get('authorization');
-        const cronSecret = process.env.CRON_SECRET || env.SUPABASE_SERVICE_ROLE_KEY;
+        const cronSecret = process.env.CRON_SECRET || process.env.FUNCTIONS_SECRET;
         if (authHeader !== `Bearer ${cronSecret}`) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
             }, { status: 503 });
         }
 
-        const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const supabase = createAdminClient();
 
         // ── Fetch retryable email logs ──────────────────────────────
         const cutoff = new Date(Date.now() - MAX_AGE_HOURS * 60 * 60 * 1000).toISOString();

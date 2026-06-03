@@ -71,11 +71,22 @@
 /** 8% — flights are price-transparent; must stay competitive vs Google Flights */
 export const FLIGHT_MARKUP = parseMarkupEnv('FLIGHT_MARKUP_PERCENTAGE', 0.08);
 
-/** 12% — hotels (Standard) adjusted as per latest financial directive */
-export const HOTEL_MARKUP = parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.12);
+/** 15% — OTA industry standard for hotels (Agoda: 15-20%, Booking.com: 15-25%) */
+export const HOTEL_MARKUP = parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.15);
 
-/** 15% — blended rate for flight+hotel bundles adjusted as per latest financial directive */
-export const BUNDLE_MARKUP = parseMarkupEnv('BUNDLE_MARKUP_PERCENTAGE', 0.15);
+/** 12% — blended rate for flight+hotel bundles */
+export const BUNDLE_MARKUP = parseMarkupEnv('BUNDLE_MARKUP_PERCENTAGE', 0.12);
+
+// Log effective rates once at module load so they appear in Vercel/server startup logs.
+// Makes misconfiguration immediately visible without needing to trace a booking.
+if (typeof process !== 'undefined') {
+    console.log(
+        `[pricing] Effective markup rates — ` +
+        `flights: ${(FLIGHT_MARKUP * 100).toFixed(1)}% ` +
+        `hotels: ${(HOTEL_MARKUP * 100).toFixed(1)}% ` +
+        `bundles: ${(BUNDLE_MARKUP * 100).toFixed(1)}%`
+    );
+}
 
 // ── Stripe fee constants ─────────────────────────────────────────────────────
 
@@ -157,10 +168,10 @@ export function calculateStripeFee(chargedPrice: number): number {
  * Enriches a booking object with financial details (markup, supplier cost, net profit).
  * Uses estimated formulas if data is missing from the database.
  * 
- * Formulas (per latest directive):
+ * Formulas:
  * - Standard (Flight): totalPrice / 1.08 (8% markup)
- * - Standard (Hotel):  totalPrice / 1.12 (12% markup)
- * - Bundle:           totalPrice / 1.15 (15% markup)
+ * - Standard (Hotel):  totalPrice / 1.15 (15% markup)
+ * - Bundle:           totalPrice / 1.12 (12% markup)
  */
 export function enrichBookingFinances<T extends { 
     type: string; 
