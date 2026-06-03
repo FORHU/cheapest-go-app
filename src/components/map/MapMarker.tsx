@@ -73,7 +73,10 @@ const MapMarker = React.memo(function MapMarker({
 
                     {/* Price Label */}
                     <div className="pr-2 text-[11px] font-bold text-slate-800 dark:text-white whitespace-nowrap tracking-tight">
-                        {formatCurrency(displayPrice ?? property.price, displayCurrency ?? property.currency)}
+                        {(property as any).priceLoading
+                            ? <span className="text-slate-400 tracking-widest">···</span>
+                            : formatCurrency(displayPrice ?? property.price, displayCurrency ?? property.currency)
+                        }
                     </div>
                 </div>
 

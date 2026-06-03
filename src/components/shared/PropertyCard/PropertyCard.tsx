@@ -263,18 +263,27 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                         ) : <div />}
 
                         <div className="text-right">
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400">
-                                    {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                </span>
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                    /night
-                                </span>
-                            </div>
-                            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
-                                <div className="text-[10px] text-slate-400 line-through leading-none mt-0.5">
-                                    {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            {property?.priceLoading ? (
+                                <div className="flex flex-col items-end gap-1">
+                                    <div className="h-5 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                                    <div className="h-3 w-10 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
                                 </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400">
+                                            {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                            /night
+                                        </span>
+                                    </div>
+                                    {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                                        <div className="text-[10px] text-slate-400 line-through leading-none mt-0.5">
+                                            {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>
@@ -409,19 +418,28 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
 
                     {/* Price Section */}
                     <div className="text-right">
-                        {displayOriginalPrice && displayOriginalPrice > displayPrice && (
-                            <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
-                                {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {property.priceLoading ? (
+                            <div className="flex flex-col items-end gap-1.5">
+                                <div className="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                                <div className="h-3 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
                             </div>
+                        ) : (
+                            <>
+                                {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                                    <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
+                                        {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </div>
+                                )}
+                                <div className="flex items-baseline gap-1 md:gap-1.5">
+                                    <span className="text-[12px] landscape:text-[11px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
+                                        {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </span>
+                                    <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
+                                        /night
+                                    </span>
+                                </div>
+                            </>
                         )}
-                        <div className="flex items-baseline gap-1 md:gap-1.5">
-                            <span className="text-[12px] landscape:text-[11px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
-                                {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            </span>
-                            <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
-                                /night
-                            </span>
-                        </div>
                     </div>
                 </div>
             </div>

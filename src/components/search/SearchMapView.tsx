@@ -178,20 +178,32 @@ function SearchMapView({
             const incomingMap = new Map(properties.map(p => [p.id, p]));
             let changed = false;
 
-            // Update existing entries that have empty location or image
+            // Update existing entries that have empty location/image OR no price yet.
+            // Drop priceLoading hotels that disappeared from properties (TGX had no availability).
             const updated = prev.map((p: any) => {
                 const id = p.id ?? p.hotelId;
                 const incoming = incomingMap.get(id);
-                if (!incoming) return p;
+                if (!incoming) return (p as any).priceLoading ? null : p;
                 const wantsLocation = !p.location && incoming.location;
                 const wantsImage    = !p.image    && incoming.image;
-                if (!wantsLocation && !wantsImage) return p;
+                // Sync price when catalog sent price:0 and TGX prices have now arrived
+                const wantsPrice    = (p.price === 0 || p.priceLoading) && (incoming as any).price > 0;
+                if (!wantsLocation && !wantsImage && !wantsPrice) return p;
                 changed = true;
                 return {
                     ...p,
-                    location: incoming.location || p.location,
-                    image:    incoming.image    || p.image,
-                    images:   incoming.images?.length ? incoming.images : p.images,
+                    location:      incoming.location  || p.location,
+                    image:         incoming.image     || p.image,
+                    images:        incoming.images?.length ? incoming.images : p.images,
+                    ...(wantsPrice && {
+                        price:        (incoming as any).price,
+                        currency:     (incoming as any).currency     ?? p.currency,
+                        offerId:      (incoming as any).offerId      ?? p.offerId,
+                        refundableTag: (incoming as any).refundableTag ?? p.refundableTag,
+                        boardCode:    (incoming as any).boardCode    ?? p.boardCode,
+                        _tgx:         (incoming as any)._tgx         ?? p._tgx,
+                        priceLoading: false,
+                    }),
                 };
             });
 
@@ -199,8 +211,9 @@ function SearchMapView({
             const existingIds = new Set(prev.map((p: any) => p.id ?? p.hotelId));
             const newOnes = properties.filter(p => !existingIds.has(p.id));
 
-            if (!changed && newOnes.length === 0) return prev;
-            return [...(changed ? updated : prev), ...newOnes];
+            const filtered = updated.filter(Boolean);
+            if (!changed && newOnes.length === 0 && filtered.length === prev.length) return prev;
+            return [...(changed || filtered.length < prev.length ? filtered : prev), ...newOnes];
         });
     }, [properties]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -271,7 +284,7 @@ function SearchMapView({
 
     // Apply client-side filters + sort to ALL loaded properties (includes Load More results)
     const sortedProperties = useMemo(() => {
-        let list = allProperties.filter((p: any) => p.name && p.price > 0);
+        let list = allProperties.filter((p: any) => p.name && p.price > 0 && !(p as any).priceLoading);
 
         if (propertyTypes.length > 0) {
             list = list.filter((p: any) => propertyTypes.includes(p.type));
@@ -519,7 +532,7 @@ function SearchMapView({
                         {/* Property count pill */}
                         <span className="hidden sm:inline px-2.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-semibold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 whitespace-nowrap">
                             {activeFilterCount > 0
-                                ? `${sortedProperties.length} of ${allProperties.filter((p: any) => p.name && p.price > 0).length}`
+                                ? `${sortedProperties.length} of ${allProperties.filter((p: any) => p.name && (p.price > 0 || (p as any).priceLoading)).length}`
                                 : `${sortedProperties.length} hotels`
                             }
                         </span>
@@ -610,6 +623,20 @@ function SearchMapView({
                                 )}
                             </div>
                         </>
+                    ) : allProperties.some((p: any) => (p as any).priceLoading) ? (
+                        // Catalog hotels exist but prices haven't arrived yet — show skeletons
+                        <div className="flex flex-col gap-3 p-3 overflow-y-auto">
+                            {[1,2,3,4,5,6].map(n => (
+                                <div key={n} className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 p-3 flex gap-3 animate-pulse">
+                                    <div className="w-16 h-16 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
+                                    <div className="flex-1 flex flex-col gap-2 py-1">
+                                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+                                        <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
+                                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mt-auto" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
                             <MapPin className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />

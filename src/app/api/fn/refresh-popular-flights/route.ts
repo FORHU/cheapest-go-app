@@ -23,26 +23,32 @@ export async function POST(req: NextRequest) {
     const results: any[] = [];
 
     try {
-        // Query top 5 most searched routes
+        // Query top 10 most searched routes from real user demand
         let routes = await sql`
             SELECT origin, destination
             FROM flight_search_stats
             ORDER BY search_count DESC, last_searched_at DESC
-            LIMIT 5
+            LIMIT 10
         `;
 
-        // Fallback default popular routes if table is empty
+        // Cold-start fallback: globally diverse routes used only when stats table is empty.
+        // Once real searches accumulate in flight_search_stats this list is never used.
         const defaultRoutes = [
-            { origin: 'GMP', destination: 'CJU' }, // Seoul Gimpo to Jeju Island
-            { origin: 'ICN', destination: 'NRT' }, // Seoul Incheon to Tokyo Narita
-            { origin: 'ICN', destination: 'KIX' }, // Seoul Incheon to Osaka Kansai
-            { origin: 'ICN', destination: 'BKK' }, // Seoul Incheon to Bangkok
-            { origin: 'ICN', destination: 'SFO' }, // Seoul Incheon to San Francisco
+            { origin: 'GMP', destination: 'CJU' }, // Seoul → Jeju (top domestic)
+            { origin: 'ICN', destination: 'NRT' }, // Seoul → Tokyo
+            { origin: 'ICN', destination: 'BKK' }, // Seoul → Bangkok
+            { origin: 'MNL', destination: 'SIN' }, // Manila → Singapore
+            { origin: 'BKK', destination: 'KUL' }, // Bangkok → Kuala Lumpur
+            { origin: 'DXB', destination: 'LHR' }, // Dubai → London
+            { origin: 'SIN', destination: 'SYD' }, // Singapore → Sydney
+            { origin: 'JFK', destination: 'LHR' }, // New York → London
+            { origin: 'CDG', destination: 'BKK' }, // Paris → Bangkok
+            { origin: 'MNL', destination: 'HKG' }, // Manila → Hong Kong
         ];
 
         const finalRoutes = [...routes];
         for (const defRoute of defaultRoutes) {
-            if (finalRoutes.length >= 5) break;
+            if (finalRoutes.length >= 10) break;
             const alreadyExists = finalRoutes.some(
                 r => r.origin.toUpperCase() === defRoute.origin.toUpperCase() &&
                      r.destination.toUpperCase() === defRoute.destination.toUpperCase()

@@ -154,10 +154,16 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                     {/* Price + View Deal */}
                     <div className="flex items-center justify-between mt-1 gap-1">
                         <div className="flex items-baseline gap-0.5 min-w-0">
-                            <span className="text-[13px] font-bold text-blue-600 dark:text-blue-400 truncate">
-                                {formatCurrency(displayPrice, targetCurrency)}
-                            </span>
-                            <span className="text-[8px] text-slate-400 flex-shrink-0">/night</span>
+                            {(property as any).priceLoading ? (
+                                <div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                            ) : (
+                                <>
+                                    <span className="text-[13px] font-bold text-blue-600 dark:text-blue-400 truncate">
+                                        {formatCurrency(displayPrice, targetCurrency)}
+                                    </span>
+                                    <span className="text-[8px] text-slate-400 shrink-0">/night</span>
+                                </>
+                            )}
                         </div>
                         {onViewDetails && (
                             <button
@@ -236,16 +242,25 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         </div>
 
                         {/* Price */}
-                        <div className="text-right flex-shrink-0">
-                            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
-                                <span className="text-[10px] text-slate-400 line-through block leading-none">
-                                    {formatCurrency(displayOriginalPrice, targetCurrency)}
-                                </span>
+                        <div className="text-right shrink-0">
+                            {(property as any).priceLoading ? (
+                                <div className="flex flex-col items-end gap-1">
+                                    <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                                    <div className="h-3 w-10 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                                </div>
+                            ) : (
+                                <>
+                                    {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                                        <span className="text-[10px] text-slate-400 line-through block leading-none">
+                                            {formatCurrency(displayOriginalPrice, targetCurrency)}
+                                        </span>
+                                    )}
+                                    <span className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-bold text-blue-600 dark:text-blue-400">
+                                        {formatCurrency(displayPrice, targetCurrency)}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 ml-0.5">/night</span>
+                                </>
                             )}
-                            <span className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-bold text-blue-600 dark:text-blue-400">
-                                {formatCurrency(displayPrice, targetCurrency)}
-                            </span>
-                            <span className="text-[10px] text-slate-400 ml-0.5">/night</span>
                         </div>
                     </div>
                 </div>
