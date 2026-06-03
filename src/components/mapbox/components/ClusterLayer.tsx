@@ -10,19 +10,23 @@ interface ClusterLayerProps {
 }
 
 export const ClusterLayer = React.memo(({ geoJsonData, shouldCluster, targetCurrency, symbol }: ClusterLayerProps) => {
-    // Format for abbreviated prices (e.g., 1200 -> 1.2k)
+    // Format for abbreviated prices (e.g., 1200 -> 1.2k). Sentinel 999_999_999 means all hotels still loading.
     const priceTextField = [
-        'concat',
-        symbol,
-        [
-            'case',
-            ['>=', ['get', 'minPrice'], 1000000],
-            ['concat', ['round', ['/', ['get', 'minPrice'], 1000000]], 'M'],
-            ['>=', ['get', 'minPrice'], 1000],
-            ['concat', ['round', ['/', ['get', 'minPrice'], 1000]], 'k'],
-            ['to-string', ['round', ['get', 'minPrice']]]
-        ],
-        '+'
+        'case',
+        ['>=', ['get', 'minPrice'], 999_999_999],
+        '···',
+        ['concat',
+            symbol,
+            [
+                'case',
+                ['>=', ['get', 'minPrice'], 1000000],
+                ['concat', ['round', ['/', ['get', 'minPrice'], 1000000]], 'M'],
+                ['>=', ['get', 'minPrice'], 1000],
+                ['concat', ['round', ['/', ['get', 'minPrice'], 1000]], 'k'],
+                ['to-string', ['round', ['get', 'minPrice']]]
+            ],
+            '+'
+        ]
     ];
 
     return (

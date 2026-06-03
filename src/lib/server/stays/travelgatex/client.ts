@@ -55,7 +55,7 @@ export async function tgxGraphQL<T = any>(query: string, variables?: Record<stri
             'Accept-Encoding': 'gzip',
         },
         body: payload,
-        signal: AbortSignal.timeout(22_000),
+        signal: AbortSignal.timeout(30_000),
     });
 
     if (!res.ok) {
