@@ -4,4 +4,5 @@ export { StaysForEveryStyle } from "./CuratedSection";
 export { ExploreVacationPackages } from "./ExploreVacationPackages";
 export { ExploreUniqueStays } from "./ExploreUniqueStays";
 export { default as DealsSection } from "./DealsSection";
+export { default as HotelDealsSection } from "./HotelDealsSection";
 export { default as RecentlyViewed } from "./RecentlyViewed";

@@ -31,6 +31,8 @@ export interface WeekendDeal {
     reviews: number;
     originalPrice: number;
     salePrice: number;
+    /** ISO 4217 code the prices are stored in. Landing data is authored in PHP. */
+    currency: string;
     image: string;
     badge?: string;
 }
