@@ -6,7 +6,55 @@
 import { cache } from 'react';
 import { preBook, getHotelDetails, invokeEdgeFunction } from '@/utils/postgres/functions';
 import { type Property } from '@/types';
+import { getSqlAdmin } from '@/lib/db/postgres';
 export type PropertyData = Property;
+
+export interface StaticHotelResult {
+    property: PropertyData;
+    city: string;
+    country: string;
+    address: string;
+}
+
+/** Fast DB-only fetch — returns hotel shell from hotel_content in ~10ms, no TGX call. */
+export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | null> {
+    try {
+        const sql = getSqlAdmin();
+        const rows = await sql`
+            SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
+                   description, amenities, review_rating, review_count
+            FROM hotel_content
+            WHERE hotel_id = ${id}
+            LIMIT 1
+        `;
+        if (!rows[0]) return null;
+        const r = rows[0];
+        const images: string[] = Array.isArray(r.images) ? r.images : [];
+        const city = r.city || '';
+        const country = r.country || '';
+        const address = r.address || '';
+        const property: PropertyData = {
+            id: r.hotel_id,
+            name: r.name || id,
+            location: [address, city, country].filter(Boolean).join(', '),
+            description: r.description || '',
+            rating: Number(r.review_rating ?? 0),
+            reviews: Number(r.review_count ?? 0),
+            price: 0,
+            currency: 'USD',
+            image: images[0] || '',
+            images,
+            amenities: r.amenities ?? [],
+            badges: [],
+            type: 'hotel',
+            coordinates: { lat: Number(r.lat ?? 0), lng: Number(r.lng ?? 0) },
+        };
+        return { property, city, country, address };
+    } catch (e: any) {
+        console.error('[fetchHotelStatic]', e.message);
+        return null;
+    }
+}
 
 // Types
 export interface SearchParamsInput {
@@ -218,7 +266,7 @@ function isTGXOrETGId(id: string): boolean {
  * Fetch a TGX/ETG hotel using the travelgatex-search edge function's
  * single-hotel detail mode (hotelCode param → returns plain JSON, not NDJSON).
  */
-async function fetchTGXPropertyData(
+export async function fetchTGXPropertyData(
     id: string,
     searchParams: SearchParamsInput
 ): Promise<FetchPropertyResult> {

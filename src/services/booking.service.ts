@@ -12,6 +12,7 @@ export interface PrebookParams {
   offerId: string;
   currency: string;
   voucherCode?: string;
+  roomName?: string;
 }
 
 /**
@@ -75,6 +76,10 @@ export interface PrebookResponse {
   secretKey?: string;
   /** Payment SDK transaction ID (when usePaymentSdk: true) */
   transactionId?: string;
+  /** True when prebook could not quote the user's selected room and substituted another */
+  roomSubstituted?: boolean;
+  /** The name of the room that was actually quoted (when roomSubstituted is true) */
+  substitutedRoomName?: string;
 }
 
 /**

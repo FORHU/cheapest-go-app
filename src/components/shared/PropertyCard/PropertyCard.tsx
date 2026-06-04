@@ -407,9 +407,25 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                                 <div className={`px-1.5 py-0.5 lg:px-2 lg:py-1 ${getRatingColor(property.rating)} text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg`}>
                                     {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                                 </div>
-                                <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    {getRatingLabel(property.rating)}
-                                </span>
+                                <div className="flex flex-col gap-0.5">
+                                    <div className="relative inline-flex gap-px">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                            <svg key={i} width="11" height="11" viewBox="0 0 24 24" className="text-slate-200 dark:text-slate-700 shrink-0">
+                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                            </svg>
+                                        ))}
+                                        <div className="absolute inset-0 overflow-hidden flex gap-px" style={{ width: `${Math.min(100, Math.max(0, (property.rating / 10) * 100))}%` }}>
+                                            {Array.from({ length: 5 }).map((_, i) => (
+                                                <svg key={i} width="11" height="11" viewBox="0 0 24 24" className="text-blue-500 shrink-0">
+                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                                </svg>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <span className="text-[9px] landscape:text-[8px] lg:text-xs font-medium text-slate-600 dark:text-slate-400 leading-none">
+                                        {getRatingLabel(property.rating)}
+                                    </span>
+                                </div>
                             </>
                         ) : (
                             <span className="text-[9px] landscape:text-[8px] lg:text-sm text-slate-400 dark:text-slate-500">No rating yet</span>
