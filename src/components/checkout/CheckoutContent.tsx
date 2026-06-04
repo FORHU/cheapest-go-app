@@ -368,25 +368,8 @@ export function CheckoutContent() {
             ];
 
             if (user && confirmedBookingId) {
-                postBookingTasks.push(
-                    apiFetch('/api/booking/save', {
-                        bookingId: confirmedBookingId,
-                        propertyName: property?.name || 'Hotel',
-                        propertyImage: property?.image,
-                        roomName: selectedRoom?.title || 'Room',
-                        checkIn: checkIn?.toISOString().split('T')[0] || '',
-                        checkOut: checkOut?.toISOString().split('T')[0] || '',
-                        adults,
-                        children,
-                        totalPrice: finalBookingPrice,
-                        currency: selectedCurrency,
-                        holderFirstName: formData.firstName,
-                        holderLastName: formData.lastName,
-                        holderEmail: formData.email,
-                        specialRequests: specialRequests || undefined,
-                        cancellationPolicy: priceData?.cancellationPolicies || undefined,
-                    }).catch(err => console.error("Failed to save booking:", err))
-                );
+                // /api/booking/confirm already persists the booking via confirmAndSaveTgxBooking —
+                // no need to call /api/booking/save again here.
 
                 if (appliedVoucher) {
                     postBookingTasks.push(

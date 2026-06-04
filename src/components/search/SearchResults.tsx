@@ -39,9 +39,10 @@ interface SearchResultsProps {
     initialProperties?: Property[];
     totalCount?: number;
     rawSearchParams?: Record<string, any>;
+    onSwitchToMap?: () => void;
 }
 
-const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotalCount = 0, rawSearchParams = {} }: SearchResultsProps) => {
+const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotalCount = 0, rawSearchParams = {}, onSwitchToMap }: SearchResultsProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const destination = searchParams?.get('destination') || '';
@@ -82,10 +83,14 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
 
     // Navigate to map view
     const handleViewOnMap = useCallback(() => {
-        const params = new URLSearchParams(window.location.search);
-        params.set('view', 'map');
-        router.push(`/search?${params.toString()}`);
-    }, [router]);
+        if (onSwitchToMap) {
+            onSwitchToMap();
+        } else {
+            const params = new URLSearchParams(window.location.search);
+            params.set('view', 'map');
+            router.push(`/search?${params.toString()}`);
+        }
+    }, [onSwitchToMap, router]);
 
     const updateRecentSearchPrice = useSearchStore((s) => s.updateRecentSearchPrice);
 
@@ -281,7 +286,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
     );
 };
 
-const SearchResults = ({ initialProperties = [], totalCount = 0, rawSearchParams = {} }: SearchResultsProps) => {
+const SearchResults = ({ initialProperties = [], totalCount = 0, rawSearchParams = {}, onSwitchToMap }: SearchResultsProps) => {
     return (
         <Suspense fallback={
             <div className="flex-1 min-w-0">
@@ -296,7 +301,7 @@ const SearchResults = ({ initialProperties = [], totalCount = 0, rawSearchParams
                 </div>
             </div>
         }>
-            <SearchResultsContent initialProperties={initialProperties} totalCount={totalCount} rawSearchParams={rawSearchParams} />
+            <SearchResultsContent initialProperties={initialProperties} totalCount={totalCount} rawSearchParams={rawSearchParams} onSwitchToMap={onSwitchToMap} />
         </Suspense>
     );
 };

@@ -71,6 +71,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
         initializedRef.current = true;
 
         const params = new URLSearchParams(window.location.search);
+        const refundableParam = params.get('refundable');
         const urlFilters = {
             hotelName: params.get('hotelName') || '',
             starRating: params.get('starRating')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
@@ -78,6 +79,9 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             minReviewsCount: Number(params.get('minReviewsCount')) || 0,
             facilities: params.get('facilities')?.split(',').map(Number).filter(n => !isNaN(n)) || [],
             strictFacilityFiltering: params.get('strictFacilityFiltering') === 'true',
+            propertyTypes: params.get('propertyTypes')?.split(',').filter(Boolean) || [],
+            boardTypes: params.get('boardTypes')?.split(',').filter(Boolean) || [],
+            refundable: refundableParam === 'true' ? true : refundableParam === 'false' ? false : null,
         };
         setFilters(urlFilters);
     }, [setFilters]);
@@ -138,7 +142,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
     const handleResetFilters = useCallback(() => {
         resetFilters();
         const current = new URLSearchParams(window.location.search);
-        ['hotelName', 'starRating', 'minRating', 'minReviewsCount', 'facilities', 'strictFacilityFiltering'].forEach(key => {
+        ['hotelName', 'starRating', 'minRating', 'minReviewsCount', 'facilities', 'strictFacilityFiltering', 'propertyTypes', 'boardTypes', 'refundable'].forEach(key => {
             current.delete(key);
         });
         router.push(`/search?${current.toString()}`);
@@ -146,15 +150,24 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
 
     const handlePropertyTypeToggle = useCallback((type: string) => {
         togglePropertyType(type);
-    }, [togglePropertyType]);
+        const newTypes = propertyTypes.includes(type)
+            ? propertyTypes.filter(t => t !== type)
+            : [...propertyTypes, type];
+        updateURL({ propertyTypes: newTypes.length > 0 ? newTypes.join(',') : null });
+    }, [togglePropertyType, propertyTypes, updateURL]);
 
     const handleBoardTypeToggle = useCallback((code: string) => {
         toggleBoardType(code);
-    }, [toggleBoardType]);
+        const newCodes = boardTypes.includes(code)
+            ? boardTypes.filter(c => c !== code)
+            : [...boardTypes, code];
+        updateURL({ boardTypes: newCodes.length > 0 ? newCodes.join(',') : null });
+    }, [toggleBoardType, boardTypes, updateURL]);
 
     const handleRefundableChange = useCallback((value: boolean | null) => {
         setRefundable(value);
-    }, [setRefundable]);
+        updateURL({ refundable: value === true ? 'true' : value === false ? 'false' : null });
+    }, [setRefundable, updateURL]);
 
     const hasActiveFilters = hotelName || starRating.length > 0 || minRating > 0 ||
         minReviewsCount > 0 || facilities.length > 0 ||
