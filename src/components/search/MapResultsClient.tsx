@@ -51,6 +51,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
         if (cached) return; // cache hit — skip stream
 
         let cancelled = false;
+        const controller = new AbortController();
         setStatus('loading');
         setProperties([]);
         setTotalCount(0);
@@ -73,6 +74,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify(normalizedParams),
+                signal:  controller.signal,
             });
 
             if (!res.ok || !res.body) {
@@ -185,8 +187,8 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
             if (!gotDone && !gotFirstHotels && !cancelled) setStatus('error');
         };
 
-        run().catch(() => { if (!cancelled) setStatus('error'); });
-        return () => { cancelled = true; };
+        run().catch((err) => { if (!cancelled && err?.name !== 'AbortError') setStatus('error'); });
+        return () => { cancelled = true; controller.abort(); };
     }, [searchKey]);
 
     // Only full loading screen when we have no hotels at all yet

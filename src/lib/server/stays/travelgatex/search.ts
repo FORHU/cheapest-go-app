@@ -201,22 +201,153 @@ function hasEmptyHotelsError(errors: any[]): boolean {
 // the same server process lifetime (warm Vercel function).
 const _failedDestCodes = new Set<string>();
 
+// In-flight deduplication: when two requests arrive with the same cache key before
+// either has written a result (cache stampede), the second waits for the first
+// promise instead of firing a second TGX call that OTV will throttle.
+const _inflight = new Map<string, Promise<any>>();
+
+// ─── City search fallback ─────────────────────────────────────────────────────
+// Called for every city-name search (OTV never accepts free-text city names as
+// destination identifiers) and as the fallback when a destination-code search
+// returns empty.
+
+async function runCityFallback(
+    cityName: string,
+    countryCode: string | undefined,
+    baseCriteria: Record<string, unknown>,
+    settings: ReturnType<typeof getTgxSettings>,
+    prefetchDestCode: Promise<string | undefined>,
+    prefetchHotelCodes: Promise<string[]>,
+) {
+    // 1. Try TGX destination code first — gives full city catalog, not just DB snapshot.
+    console.warn(`[tgx-search] OTV destination search empty for "${cityName}" — resolving TGX destination code`);
+    const resolvedCode = await prefetchDestCode;
+    if (resolvedCode) {
+        console.log(`[tgx-search] Got TGX destination code "${resolvedCode}" for "${cityName}" — searching`);
+        if (_failedDestCodes.has(resolvedCode)) {
+            console.log(`[tgx-search] Skipping dest-code "${resolvedCode}" for "${cityName}" — known OTV miss`);
+        } else {
+            const destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
+                criteria: { ...baseCriteria, destinations: [resolvedCode] },
+                settings,
+            });
+            const destOptions: TgxOption[] = destResult?.data?.hotelX?.search?.options || [];
+            const destErrors: any[] = destResult?.data?.hotelX?.search?.errors || [];
+            const destMerchant = destOptions.filter(
+                (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
+            );
+            if (destMerchant.length > 0) {
+                console.log(`[tgx-search] Destination-code search returned ${destMerchant.length} options for "${cityName}"`);
+                return buildCityResults(destMerchant, cityName, countryCode);
+            }
+            if (hasEmptyHotelsError(destErrors)) {
+                _failedDestCodes.add(resolvedCode);
+                console.warn(`[tgx-search] Dest code "${resolvedCode}" returned Empty hotels — recorded as OTV miss`);
+            } else if (destErrors.length) {
+                console.warn('[tgx-search] Destination-code search errors:', destErrors.map((e: any) => e.description || e.code).join(', '));
+            }
+        }
+    }
+
+    // 2. DB hotel codes (prefetch resolves in <1s — typically already done by now)
+    console.warn(`[tgx-search] Destination-code search empty for "${cityName}" — trying hotel-code search`);
+    let otvCodes = await prefetchHotelCodes;
+
+    if (otvCodes.length === 0) {
+        console.log(`[tgx-search] DB empty for "${cityName}" — querying OTV portfolio`);
+        otvCodes = await fetchOtvHotelCodesByCity(cityName);
+    }
+
+    if (otvCodes.length > 0) {
+        console.log(`[tgx-search] Searching TGX with ${otvCodes.length} OTV hotel codes for "${cityName}"`);
+
+        const CHUNK = 100;
+        const CONCURRENCY = 2;
+        const chunks: string[][] = [];
+        for (let i = 0; i < otvCodes.length; i += CHUNK) chunks.push(otvCodes.slice(i, i + CHUNK));
+
+        const runChunks = async (chunkList: string[][]): Promise<{ options: TgxOption[]; errors: any[] }[]> => {
+            const results: { options: TgxOption[]; errors: any[] }[] = [];
+            for (let i = 0; i < chunkList.length; i += CONCURRENCY) {
+                const batch = chunkList.slice(i, i + CONCURRENCY);
+                const batchResults = await Promise.all(batch.map(async (chunk) => {
+                    const r = await tgxGraphQL(CITY_SEARCH_QUERY, {
+                        criteria: { ...baseCriteria, hotels: chunk },
+                        settings,
+                    });
+                    return {
+                        options: (r?.data?.hotelX?.search?.options || []) as TgxOption[],
+                        errors:  (r?.data?.hotelX?.search?.errors  || []) as any[],
+                    };
+                }));
+                results.push(...batchResults);
+            }
+            return results;
+        };
+
+        let chunkResults = await runChunks(chunks);
+        let fallbackOptions: TgxOption[] = chunkResults.flatMap(r => r.options);
+        const fallbackErrors: any[]       = chunkResults.flatMap(r => r.errors);
+
+        const allProcessesFailed = fallbackErrors.some((e) => e.code === 'ALL_PROCESSES_FAILED');
+
+        if ((hasEmptyHotelsError(fallbackErrors) || allProcessesFailed) && fallbackOptions.length === 0) {
+            const waitMs = allProcessesFailed ? 3000 : 1000;
+            console.log(`[tgx-search] Hotel-code search failed (${allProcessesFailed ? 'ALL_PROCESSES_FAILED' : 'Empty hotels'}) — retrying in ${waitMs}ms`);
+            await new Promise(r => setTimeout(r, waitMs));
+            chunkResults = await runChunks(chunks);
+            fallbackOptions = chunkResults.flatMap(r => r.options);
+        }
+
+        const retryErrors = chunkResults.flatMap(r => r.errors);
+        if (retryErrors.length) {
+            console.warn('[tgx-search] Hotel-code search errors:', retryErrors.map((e: any) => e.description || e.code).join(', '));
+        }
+
+        const fallbackMerchant = fallbackOptions.filter(
+            (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
+        );
+        return buildCityResults(fallbackMerchant, cityName, countryCode);
+    }
+
+    console.warn(`[tgx-search] No OTV hotel codes found for "${cityName}" — no results`);
+    return buildCityResults([], cityName, countryCode);
+}
+
 export async function runTgxSearch(params: TgxSearchParams) {
+    const key = buildHotelCacheKey(params);
+
+    // 1. DB cache hit
     if (HOTEL_CACHE_TTL_MINUTES > 0) {
-        const key = buildHotelCacheKey(params);
         const cached = await getHotelSearchCache(key);
         if (cached !== null) {
             console.log(`[hotel-cache] HIT ${key}`);
             return cached;
         }
-        const result = await _runTgxSearch(params);
-        const hotelCount = Array.isArray(result?.data) ? result.data.length : 0;
-        if (hotelCount > 0) {
-            setHotelSearchCache(key, result, HOTEL_CACHE_TTL_MINUTES).catch(() => {});
-        }
-        return result;
     }
-    return _runTgxSearch(params);
+
+    // 2. In-flight dedup: attach to existing search for the same key
+    const existing = _inflight.get(key);
+    if (existing) {
+        console.log(`[hotel-cache] INFLIGHT ${key} — waiting for in-progress search`);
+        return existing;
+    }
+
+    // 3. Start new search, register in-flight promise
+    const promise = _runTgxSearch(params)
+        .then(result => {
+            if (HOTEL_CACHE_TTL_MINUTES > 0) {
+                const hotelCount = Array.isArray(result?.data) ? result.data.length : 0;
+                if (hotelCount > 0) {
+                    setHotelSearchCache(key, result, HOTEL_CACHE_TTL_MINUTES).catch(() => {});
+                }
+            }
+            return result;
+        })
+        .finally(() => { _inflight.delete(key); });
+
+    _inflight.set(key, promise);
+    return promise;
 }
 
 async function _runTgxSearch(params: TgxSearchParams) {
@@ -242,7 +373,14 @@ async function _runTgxSearch(params: TgxSearchParams) {
     } else if (destinationCode) {
         destinations = [String(destinationCode)];
     } else if (cityName) {
-        destinations = [cityName]; // will be overridden by fallback if empty hotels
+        // OTV never accepts raw city names as destination identifiers.
+        // Skip the guaranteed-to-fail initial call and go straight to hotel-code fallback.
+        const baseCriteria = { checkIn: checkin, checkOut: checkout, occupancies, nationality: guest_nationality, currency };
+        return runCityFallback(
+            cityName, countryCode, baseCriteria, settings,
+            resolveTgxDestinationCode(cityName).catch(() => undefined),
+            fetchHotelCodesByCity(cityName, countryCode).catch(() => []),
+        );
     } else {
         throw new Error('destinationCode, hotelCode, or cityName is required');
     }
@@ -257,127 +395,22 @@ async function _runTgxSearch(params: TgxSearchParams) {
     };
 
     const gqlQuery = hotelCode ? HOTEL_SEARCH_QUERY : CITY_SEARCH_QUERY;
-
-    // Fire fallback lookups in parallel with the primary TGX search.
-    // TGX takes 18–22s; these finish in <1s (DB) and ≤8s (dest code) — both ready before TGX returns.
-    // Only needed for city searches that might hit "Empty hotels".
-    const prefetchDestCode: Promise<string | undefined> =
-        !hotelCode && cityName
-            ? resolveTgxDestinationCode(cityName).catch(() => undefined)
-            : Promise.resolve(undefined);
-    const prefetchHotelCodes: Promise<string[]> =
-        !hotelCode && cityName
-            ? fetchHotelCodesByCity(cityName, countryCode).catch(() => [])
-            : Promise.resolve([]);
-
     const result = await tgxGraphQL(gqlQuery, { criteria, settings });
 
     const options: TgxOption[] = result?.data?.hotelX?.search?.options || [];
     const gqlErrors = result?.data?.hotelX?.search?.errors || [];
 
-    // OTV destination codes don't work for city-level search — fall back to hotel codes.
+    // Destination-code search returned empty — fall back to hotel-code search if cityName is available.
     if (hasEmptyHotelsError(gqlErrors) && !hotelCode) {
-        const fallbackCity = cityName ?? '';
-        if (!fallbackCity) {
-            console.warn('[tgx-search] Empty hotels and no cityName to fall back with');
-        } else {
-            // 1. Try TGX destination code first — gives full city catalog, not just DB snapshot.
-            // prefetchDestCode already resolved during the primary search wait above.
-            console.warn(`[tgx-search] OTV destination search empty for "${fallbackCity}" — resolving TGX destination code`);
-            const resolvedCode = await prefetchDestCode;
-            if (resolvedCode) {
-                console.log(`[tgx-search] Got TGX destination code "${resolvedCode}" for "${fallbackCity}" — searching`);
-                if (_failedDestCodes.has(resolvedCode)) {
-                    console.log(`[tgx-search] Skipping dest-code "${resolvedCode}" for "${fallbackCity}" — known OTV miss`);
-                } else {
-                    const destCriteria = { ...criteria, destinations: [resolvedCode] };
-                    delete (destCriteria as any).hotels;
-                    const destResult = await tgxGraphQL(CITY_SEARCH_QUERY, { criteria: destCriteria, settings });
-                    const destOptions: TgxOption[] = destResult?.data?.hotelX?.search?.options || [];
-                    const destErrors: any[] = destResult?.data?.hotelX?.search?.errors || [];
-                    const destMerchant = destOptions.filter(
-                        (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
-                    );
-                    if (destMerchant.length > 0) {
-                        console.log(`[tgx-search] Destination-code search returned ${destMerchant.length} options for "${fallbackCity}"`);
-                        return buildCityResults(destMerchant, fallbackCity, countryCode);
-                    }
-                    if (hasEmptyHotelsError(destErrors)) {
-                        _failedDestCodes.add(resolvedCode);
-                        console.warn(`[tgx-search] Dest code "${resolvedCode}" returned Empty hotels — recorded as OTV miss`);
-                    } else if (destErrors.length) {
-                        console.warn('[tgx-search] Destination-code search errors:', destErrors.map((e: any) => e.description || e.code).join(', '));
-                    }
-                }
-            }
-
-            // 2. DB hotel codes — prefetchHotelCodes already resolved during primary search.
-            console.warn(`[tgx-search] Destination-code search empty for "${fallbackCity}" — trying hotel-code search`);
-            let otvCodes = await prefetchHotelCodes;
-
-            // OTV hotel portfolio query when DB is empty (new city, never seeded)
-            if (otvCodes.length === 0) {
-                console.log(`[tgx-search] DB empty for "${fallbackCity}" — querying OTV portfolio`);
-                otvCodes = await fetchOtvHotelCodesByCity(fallbackCity, destinationCode ?? destinations?.[0]);
-            }
-
-            if (otvCodes.length > 0) {
-                console.log(`[tgx-search] Searching TGX with ${otvCodes.length} OTV hotel codes for "${fallbackCity}"`);
-
-                // Batch into chunks of 100. Run max 2 at a time — OTV rejects more than
-                // ~2 concurrent requests from the same account with ALL_PROCESSES_FAILED.
-                const CHUNK = 100;
-                const CONCURRENCY = 2;
-                const chunks: string[][] = [];
-                for (let i = 0; i < otvCodes.length; i += CHUNK) chunks.push(otvCodes.slice(i, i + CHUNK));
-
-                const runChunks = async (chunkList: string[][]): Promise<{ options: TgxOption[]; errors: any[] }[]> => {
-                    const results: { options: TgxOption[]; errors: any[] }[] = [];
-                    for (let i = 0; i < chunkList.length; i += CONCURRENCY) {
-                        const batch = chunkList.slice(i, i + CONCURRENCY);
-                        const batchResults = await Promise.all(batch.map(async (chunk) => {
-                            const fc = { ...criteria, hotels: chunk };
-                            delete (fc as any).destinations;
-                            const r = await tgxGraphQL(CITY_SEARCH_QUERY, { criteria: fc, settings });
-                            return {
-                                options: (r?.data?.hotelX?.search?.options || []) as TgxOption[],
-                                errors:  (r?.data?.hotelX?.search?.errors  || []) as any[],
-                            };
-                        }));
-                        results.push(...batchResults);
-                    }
-                    return results;
-                };
-
-                let chunkResults = await runChunks(chunks);
-                let fallbackOptions: TgxOption[] = chunkResults.flatMap(r => r.options);
-                const fallbackErrors: any[]       = chunkResults.flatMap(r => r.errors);
-
-                const allProcessesFailed = fallbackErrors.some(
-                    (e) => e.code === 'ALL_PROCESSES_FAILED'
-                );
-
-                // Retry on transient OTV failures (Empty hotels or ALL_PROCESSES_FAILED).
-                if ((hasEmptyHotelsError(fallbackErrors) || allProcessesFailed) && fallbackOptions.length === 0) {
-                    const waitMs = allProcessesFailed ? 3000 : 1500;
-                    console.log(`[tgx-search] Hotel-code search failed (${allProcessesFailed ? 'ALL_PROCESSES_FAILED' : 'Empty hotels'}) — retrying in ${waitMs}ms`);
-                    await new Promise(r => setTimeout(r, waitMs));
-                    chunkResults = await runChunks(chunks);
-                    fallbackOptions = chunkResults.flatMap(r => r.options);
-                }
-
-                const retryErrors = chunkResults.flatMap(r => r.errors);
-                if (retryErrors.length) {
-                    console.warn('[tgx-search] Hotel-code search errors:', retryErrors.map((e: any) => e.description || e.code).join(', '));
-                }
-
-                const fallbackMerchant = fallbackOptions.filter(
-                    (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
-                );
-                return buildCityResults(fallbackMerchant, fallbackCity, countryCode);
-            }
-            console.warn(`[tgx-search] No OTV hotel codes found for "${fallbackCity}" — no results`);
+        if (cityName) {
+            const baseCriteria = { checkIn: checkin, checkOut: checkout, occupancies, nationality: guest_nationality, currency };
+            return runCityFallback(
+                cityName, countryCode, baseCriteria, settings,
+                Promise.resolve(undefined),
+                fetchHotelCodesByCity(cityName, countryCode).catch(() => []),
+            );
         }
+        console.warn('[tgx-search] Empty hotels and no cityName to fall back with');
     }
 
     if (gqlErrors.length) {

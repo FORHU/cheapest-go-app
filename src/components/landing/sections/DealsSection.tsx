@@ -130,7 +130,7 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
       : '');
 
   const imageUrl   = isPlaceholderImage(deal.image)
-    ? `/api/destination-photo?iata=${encodeURIComponent(deal.destination || '')}`
+    ? `https://picsum.photos/seed/${encodeURIComponent(deal.destination || 'travel')}/400/300`
     : deal.image;
 
   const bookingUrl     = buildBookingUrl(deal);

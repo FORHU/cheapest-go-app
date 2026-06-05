@@ -465,7 +465,11 @@ export function useFlightBooking() {
         const sessionId = bookingSessionIdRef.current;
 
         if (!sessionId || !paymentIntentId) {
-            setStep('success');
+            // Should not happen in normal flow — both are set before Stripe renders.
+            // Showing success without confirmation would be a lie; surface an error instead.
+            console.error('[pollForBooking] Missing sessionId or paymentIntentId — cannot confirm booking', { sessionId, paymentIntentId });
+            setErrorMsg('Booking session data is missing. Please contact support with your payment reference.');
+            setStep('error');
             return;
         }
 
@@ -515,7 +519,11 @@ export function useFlightBooking() {
                 try {
                     const statusRes = await fetch(`/api/flights/booking-status?sessionId=${encodeURIComponent(sessionId)}`);
                     const statusData = await statusRes.json();
-                    if (statusData.found) {
+                    // Only resolve when the booking is in a terminal state — not while
+                    // it's still processing. A booking row without PNR or confirmed status
+                    // means the airline hasn't responded yet; keep polling until it's final.
+                    const isTerminal = statusData.failed || statusData.pnr || statusData.status === 'confirmed';
+                    if (statusData.found && isTerminal) {
                         resolve({ type: 'poll', data: statusData });
                         return;
                     }
