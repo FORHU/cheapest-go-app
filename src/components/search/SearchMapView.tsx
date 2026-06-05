@@ -599,7 +599,6 @@ function SearchMapView({
                         <span className="hidden sm:inline px-2.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-semibold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 whitespace-nowrap">
                             {activeFilterCount > 0
                                 ? `${sortedProperties.length} of ${allProperties.filter((p: any) => p.name && (p.price > 0 || (p as any).priceLoading)).length}`
-                                ? `${sortedProperties.length} of ${allProperties.filter((p: any) => p.name && (p.price > 0 || (p as any).priceLoading)).length}`
                                 : `${sortedProperties.length} hotels`
                             }
                         </span>
