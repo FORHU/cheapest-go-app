@@ -8,10 +8,6 @@ import { buildSearchCacheKey, getSearchResults, setSearchResults } from '@/lib/s
 interface MapResultsClientProps {
     searchParams: Record<string, string>;
     destination: string;
-}
-
-
-function StreamingBanner({ count, pricingMode }: { count: number; pricingMode?: boolean }) {
     onSwitchView?: (v: 'map' | 'list') => void;
 }
 
@@ -26,23 +22,12 @@ function StreamingBanner({ count, pricingMode }: { count: number; pricingMode?: 
                         ? <>Checking availability…</>
                         : <>Loading more hotels{count > 0 ? <> &middot; <strong className="text-slate-800 dark:text-slate-100">{count}</strong> found</> : ''}…</>
                     }
-                    {pricingMode
-                        ? <>Checking availability…</>
-                        : <>Loading more hotels{count > 0 ? <> &middot; <strong className="text-slate-800 dark:text-slate-100">{count}</strong> found</> : ''}…</>
-                    }
                 </span>
             </div>
         </div>
     );
 }
 
-export function MapResultsClient({ searchParams, destination }: MapResultsClientProps) {
-    // 'prices-loading' = catalog hotels shown, TGX prices still in flight
-    const [status, setStatus]         = useState<'loading' | 'prices-loading' | 'completing' | 'streaming' | 'done' | 'error'>('loading');
-    const [properties, setProperties] = useState<Property[]>([]);
-    const [totalCount, setTotalCount] = useState(0);
-    const [allMappable, setAllMappable] = useState<any[]>([]);
-    const [queryParams, setQueryParams] = useState<Record<string, any>>(searchParams);
 export function MapResultsClient({ searchParams, destination, onSwitchView }: MapResultsClientProps) {
     // 'prices-loading' = catalog hotels shown, TGX prices still in flight
     const cacheKey = buildSearchCacheKey(searchParams);
@@ -130,15 +115,6 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                         setStatus('completing');
                                         setTimeout(() => { if (!cancelled) setStatus('streaming'); }, 400);
                                     }
-                                    if (chunk.source === 'catalog') {
-                                        // Phase 1: catalog arrived instantly — show map immediately,
-                                        // stay in 'prices-loading' so the banner shows while TGX runs.
-                                        setStatus('streaming');
-                                    } else {
-                                        // Priced results (TGX direct or cache hit) — normal flow.
-                                        setStatus('completing');
-                                        setTimeout(() => { if (!cancelled) setStatus('streaming'); }, 400);
-                                    }
                                     gotFirstHotels = true;
                                 } else {
                                     setProperties(prev => [...prev, ...chunk.data.map(normalize)]);
@@ -147,30 +123,6 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                             }
                             // Mark that we received a valid response even if empty
                             gotDone = true;
-                        } else if (chunk.type === 'prices') {
-                            // Phase 2: TGX prices arrived — overlay onto catalog cards.
-                            // Hotels not matched by TGX have no availability; remove them immediately.
-                            if (Array.isArray(chunk.data) && chunk.data.length > 0) {
-                                const priceMap = new Map(
-                                    (chunk.data as any[]).map((p: any) => [p.hotelId, p])
-                                );
-                                setProperties(prev => prev
-                                    .map(h => {
-                                        const p = priceMap.get((h as any).id ?? (h as any).hotelId);
-                                        if (!p) return h;
-                                        return { ...h, price: p.price, currency: p.currency, offerId: p.offerId, refundableTag: p.refundableTag, boardCode: p.boardCode, _tgx: p._tgx, priceLoading: false } as any;
-                                    })
-                                    .filter((h: any) => !h.priceLoading)
-                                );
-                                setAllMappable(prev => prev
-                                    .map(h => {
-                                        const p = priceMap.get((h as any).id ?? (h as any).hotelId);
-                                        if (!p) return h;
-                                        return { ...h, price: p.price, currency: p.currency };
-                                    })
-                                    .filter((h: any) => !h.priceLoading)
-                                );
-                            }
                         } else if (chunk.type === 'prices') {
                             // Phase 2: TGX prices arrived — overlay onto catalog cards.
                             // Hotels not matched by TGX have no availability; remove them immediately.
@@ -212,25 +164,10 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                 return filtered;
                             });
                             setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
-                            // Remove catalog hotels that TGX had no pricing for (unavailable dates).
-                            setProperties(prev => {
-                                const filtered = prev.filter((h: any) => !h.priceLoading);
-                                if (filtered.length > 0 && chunk.totalCount) setTotalCount(filtered.length);
-                                return filtered;
-                            });
-                            setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
                             gotDone = true;
                             if (!cancelled) setStatus('done');
                         } else if (chunk.type === 'error') {
                             console.error('[Stream] error chunk:', chunk.message);
-                            if (!gotFirstHotels && !cancelled) {
-                                setStatus('error');
-                            } else if (gotFirstHotels && !cancelled) {
-                                // TGX failed after catalog was shown — remove stuck priceLoading cards
-                                setProperties(prev => prev.filter((h: any) => !h.priceLoading));
-                                setAllMappable(prev => prev.filter((h: any) => !h.priceLoading));
-                                setStatus('done');
-                            }
                             if (!gotFirstHotels && !cancelled) {
                                 setStatus('error');
                             } else if (gotFirstHotels && !cancelled) {
@@ -253,9 +190,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
     }, [searchKey]);
 
     // Only full loading screen when we have no hotels at all yet
-    // Only full loading screen when we have no hotels at all yet
     if (status === 'loading' || status === 'completing') {
-        return null;
         return null;
     }
 
@@ -280,13 +215,8 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
     // Catalog hotels shown, TGX prices still loading — show map with pricing banner
     const isPricingLoading = status === 'streaming' && properties.some((h: any) => h.priceLoading);
 
-    // Catalog hotels shown, TGX prices still loading — show map with pricing banner
-    const isPricingLoading = status === 'streaming' && properties.some((h: any) => h.priceLoading);
-
     return (
         <div className="relative h-full w-full">
-            {isPricingLoading && <StreamingBanner count={totalCount} pricingMode />}
-            {!isPricingLoading && status === 'streaming' && <StreamingBanner count={totalCount} />}
             {isPricingLoading && <StreamingBanner count={totalCount} pricingMode />}
             {!isPricingLoading && status === 'streaming' && <StreamingBanner count={totalCount} />}
             <LazySearchMapView

@@ -71,44 +71,8 @@ function getCityLabel(iata: string | undefined): string {
   const upper = iata.toUpperCase();
   const city = AIRPORT_CITIES[upper];
   return city ? `${city} (${upper})` : upper;
-/** "Hong Kong (HKG)" subtitle */
-function getCityLabel(iata: string | undefined): string {
-  if (!iata) return '';
-  const upper = iata.toUpperCase();
-  const city = AIRPORT_CITIES[upper];
-  return city ? `${city} (${upper})` : upper;
 }
 
-function isPlaceholderImage(url: string | null | undefined): boolean {
-  if (!url || url.trim() === '') return true;
-  const u = url.toLowerCase();
-  return (
-    u.includes('picsum.photos') ||
-    u.includes('placeholder') ||
-    u.includes('via.placeholder') ||
-    u.includes('flag') ||
-    u.includes('coat_of_arms') ||
-    u.includes('emblem') ||
-    u.includes('seal_of') ||
-    u.includes('national_symbol') ||
-    u.endsWith('.svg') ||
-    u.includes('.svg?') ||
-    u.includes('.svg/')
-  );
-}
-
-/** Build the pre-filled flight search URL */
-function buildBookingUrl(deal: Deal): string {
-  if (!deal.origin || !deal.destination) return '/flights/search';
-  const p = new URLSearchParams({
-    origin:     deal.origin,
-    destination: deal.destination,
-    adults:     '1',
-    cabinClass: deal.cabinClass || 'economy',
-  });
-  if (deal.departure_date) p.set('departure',  deal.departure_date);
-  if (deal.return_date)    p.set('returnDate', deal.return_date);
-  return `/flights/search?${p.toString()}`;
 function isPlaceholderImage(url: string | null | undefined): boolean {
   if (!url || url.trim() === '') return true;
   const u = url.toLowerCase();
@@ -174,57 +138,7 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
 
   const [isSaved, setIsSaved] = useState(false);
 
-  const router     = useRouter();
-  const currency   = useUserCurrency();
-  const symbol     = getCurrencySymbol(mounted ? currency : 'USD');
-  const fromCur    = deal.currency || 'USD';
-
-  const original = mounted
-    ? Math.round(convertCurrency(deal.originalPrice || 0, fromCur, currency))
-    : Math.round(deal.originalPrice || 0);
-  const sale = mounted
-    ? Math.round(convertCurrency(deal.salePrice || 0, fromCur, currency))
-    : Math.round(deal.salePrice || 0);
-
-  const discountLabel = deal.discount ||
-    (original > 0 && original > sale
-      ? `${Math.round(((original - sale) / original) * 100)}% OFF`
-      : '');
-
-  const imageUrl   = isPlaceholderImage(deal.image)
-    ? `/api/destination-photo?iata=${encodeURIComponent(deal.destination || '')}`
-    : deal.image;
-
-  const bookingUrl     = buildBookingUrl(deal);
-  const cabinLabel     = CABIN_LABELS[deal.cabinClass || 'economy'] ?? 'Economy';
-
-  const [isSaved, setIsSaved] = useState(false);
-
   return (
-    <motion.div
-      initial={index === 0 ? false : { opacity: 0, x: 40 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay: index * 0.07 }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      onClick={() => router.push(bookingUrl)}
-      style={variant === 'carousel' ? { width: 'max(200px, calc((100% - 50px) / 5))' } : undefined}
-      className={variant === 'grid' ? 'cursor-pointer' : 'shrink-0 snap-start cursor-pointer'}
-    >
-      <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-slate-900 group rounded-sm">
-
-        {/* ── Image ───────────────────────────────────────────── */}
-        <div className="relative h-[148px] overflow-hidden shrink-0">
-          {imageUrl
-            ? <Image src={imageUrl} alt={deal.title} fill
-                sizes="(max-width: 640px) 220px, (max-width: 768px) 240px, 260px"
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
-                priority={index === 0} loading={index === 0 ? undefined : 'lazy'} />
-            : <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-slate-900" />
-          }
-
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/75" />
     <motion.div
       initial={index === 0 ? false : { opacity: 0, x: 40 }}
       whileInView={{ opacity: 1, x: 0 }}
@@ -298,12 +212,6 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
           <h3 className="text-[12px] text-slate-900 dark:text-white leading-snug truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {resolveRoute(deal.title)}
           </h3>
-        {/* ── Card body ───────────────────────────────────────── */}
-        <div className="px-3 pt-2.5 pb-3 flex flex-col gap-1 flex-1">
-          {/* Route */}
-          <h3 className="text-[12px] text-slate-900 dark:text-white leading-snug truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-            {resolveRoute(deal.title)}
-          </h3>
 
           {/* Airline */}
           {deal.subtitle && (
@@ -325,8 +233,6 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
             </button>
           </div>
         </div>
-      </div>
-    </motion.div>
       </div>
     </motion.div>
   );
@@ -454,7 +360,6 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
     displayDeals.some(d => d.origin === userOrigin);
 
   return (
-    <section className="w-full py-2 md:py-4 lg:py-5">
     <section className="w-full py-2 md:py-4 lg:py-5">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 

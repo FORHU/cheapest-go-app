@@ -194,29 +194,7 @@ export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ sta
               exit={{ opacity: 0, y: 16 }}
               transition={{ duration: 0.28, ease: 'easeOut' }}
               className="mt-6"
-              ref={gridRef}
-              key="unique-stays-grid"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 16 }}
-              transition={{ duration: 0.28, ease: 'easeOut' }}
-              className="mt-6"
             >
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  All {displayStays.length} stays
-                </p>
-                <button
-                  onClick={() => setShowAll(false)}
-                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-                >
-                  Collapse ↑
-                </button>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {displayStays.map((stay, i) => (
-                  <UniqueStayCard key={stay.id} stay={stay} index={i} variant="grid" />
-                ))}
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                   All {displayStays.length} stays
@@ -234,8 +212,6 @@ export const ExploreUniqueStays: React.FC<{ stays?: SimpleProperty[] }> = ({ sta
                 ))}
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
           )}
         </AnimatePresence>
       </div>

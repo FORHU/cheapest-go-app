@@ -3,7 +3,6 @@ import { cache } from "react";
 import { type Deal, type VacationPackage, type WeekendDeal } from "@/types";
 import { env } from "@/utils/env";
 import { getAirlineName } from "@/types/flights";
-import { getAirlineName } from "@/types/flights";
 import {
     DESTINATION_PRICE_MARKUP,
     DESTINATION_INCLUDES_DEFAULT,
@@ -38,17 +37,6 @@ function dedupeBy<T>(items: T[], key: (item: T) => string): T[] {
     });
 }
 
-/** Keep the first item for each key — drops content-identical duplicate rows. */
-function dedupeBy<T>(items: T[], key: (item: T) => string): T[] {
-    const seen = new Set<string>();
-    return items.filter(item => {
-        const k = key(item).toLowerCase();
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-    });
-}
-
 async function supabaseQuery(table: string, limit: number) {
     try {
         const supabase = getPublicClient();
@@ -57,15 +45,15 @@ async function supabaseQuery(table: string, limit: number) {
                 setTimeout(() => resolve({ data: null, error: new Error(`Query timeout: ${label}`) }), QUERY_TIMEOUT_MS)
             );
 
-        // Only order flight_deals by updated_at. Other tables don't strictly need sorting 
-        // and removing it prevents timeouts on unindexed columns.
+        // Order by updated_at for tables that have it — keeps freshest deals first.
+        // Add 'weekend_flight_deals' here after running db/migrations/20260604000001_hotel_deals_cron.sql
+        const ORDERED_TABLES = new Set(['flight_deals']);
         let query = supabase.from(table).select("*");
-        if (table === 'flight_deals') {
+        if (ORDERED_TABLES.has(table)) {
             query = query.order('updated_at', { ascending: false });
         }
 
         const result = await Promise.race([
-            query.limit(limit ?? 20),
             query.limit(limit ?? 20),
             makeTimeout(table),
         ]);
@@ -87,18 +75,14 @@ async function supabaseQuery(table: string, limit: number) {
 // ─── Per-section cached fetchers ─────────────────────────────────────────────
 export const getFlightDeals = cache(async (): Promise<Deal[]> => {
     const { data, error } = await supabaseQuery("flight_deals", 20);
-    const { data, error } = await supabaseQuery("flight_deals", 20);
     if (error) console.error("[Landing] flight_deals error:", (error as any).message ?? error);
-    const mapped: Deal[] = data?.map((d: any) => ({
     const mapped: Deal[] = data?.map((d: any) => ({
         id: String(d.id),
         title: `${d.origin} → ${d.destination}`,
         subtitle: d.airline ? getAirlineName(d.airline) : "Best flexible fares",
-        subtitle: d.airline ? getAirlineName(d.airline) : "Best flexible fares",
         discount: d.discount_tag || "",
         originalPrice: Number(d.baseline_price || d.original_price || 0),
         salePrice: Number(d.price || 0),
-        currency: d.currency || 'USD',
         currency: d.currency || 'USD',
         image: d.image_url || "https://picsum.photos/seed/travel/400/300",
         endsIn: d.ends_in || "Limited Time",
@@ -107,13 +91,8 @@ export const getFlightDeals = cache(async (): Promise<Deal[]> => {
         departure_date: d.departure_date || undefined,
         return_date: d.return_date || undefined,
         cabinClass: d.cabin_class || 'economy',
-        cabinClass: d.cabin_class || 'economy',
         lastRefreshedAt: d.last_refreshed_at || undefined,
     })) ?? [];
-    // Drop duplicate fares (same route, airline, cabin, dates and price).
-    return dedupeBy(mapped, d =>
-        `${d.origin}|${d.destination}|${d.subtitle}|${d.cabinClass}|${d.departure_date}|${d.return_date}|${d.salePrice}`
-    );
     // Drop duplicate fares (same route, airline, cabin, dates and price).
     return dedupeBy(mapped, d =>
         `${d.origin}|${d.destination}|${d.subtitle}|${d.cabinClass}|${d.departure_date}|${d.return_date}|${d.salePrice}`
@@ -132,12 +111,9 @@ export const getWeekendDeals = cache(async (): Promise<WeekendDeal[]> => {
         originalPrice: Number(d.original_price || 0),
         salePrice: Number(d.sale_price || 0),
         currency: d.currency || 'PHP',
-        currency: d.currency || 'PHP',
         image: d.image_url || "https://picsum.photos/seed/stay/400/300",
         badge: d.badge,
     })) ?? [];
-    // Drop duplicate hotels (same property in the same location).
-    return dedupeBy(mapped, d => `${d.name}|${d.location}`);
     // Drop duplicate hotels (same property in the same location).
     return dedupeBy(mapped, d => `${d.name}|${d.location}`);
 });
@@ -239,11 +215,9 @@ export const getLandingData = cache(async () => {
         id: String(d.id),
         title: `${d.origin} → ${d.destination}`,
         subtitle: d.airline ? getAirlineName(d.airline) : "Best flexible fares",
-        subtitle: d.airline ? getAirlineName(d.airline) : "Best flexible fares",
         discount: d.discount_tag || "",
         originalPrice: Number(d.baseline_price || d.original_price || 0),
         salePrice: Number(d.price || 0),
-        currency: d.currency || 'USD',
         currency: d.currency || 'USD',
         image: d.image_url || "https://picsum.photos/seed/travel/400/300",
         endsIn: d.ends_in || "Limited Time",
@@ -251,7 +225,6 @@ export const getLandingData = cache(async () => {
         destination: d.destination || undefined,
         departure_date: d.departure_date || undefined,
         return_date: d.return_date || undefined,
-        cabinClass: d.cabin_class || 'economy',
         cabinClass: d.cabin_class || 'economy',
         lastRefreshedAt: d.last_refreshed_at || undefined,
     })) ?? [];
@@ -265,7 +238,6 @@ export const getLandingData = cache(async () => {
         reviews: Number(d.reviews || 0),
         originalPrice: Number(d.original_price || 0),
         salePrice: Number(d.sale_price || 0),
-        currency: d.currency || 'PHP',
         currency: d.currency || 'PHP',
         image: d.image_url || "https://picsum.photos/seed/stay/400/300",
         badge: d.badge
