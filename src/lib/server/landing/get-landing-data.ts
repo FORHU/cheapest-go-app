@@ -48,7 +48,7 @@ async function supabaseQuery(table: string, limit: number) {
         // Only order flight_deals by updated_at. Other tables don't strictly need sorting 
         // and removing it prevents timeouts on unindexed columns.
         let query = supabase.from(table).select("*");
-        if (table === 'flight_deals') {
+        if (table === 'flight_deals' || table === 'hotel_deals') {
             query = query.order('updated_at', { ascending: false });
         }
 
@@ -135,16 +135,16 @@ export const getPopularDestinations = cache(async (): Promise<VacationPackage[]>
 });
 
 export const getUniqueStays = cache(async () => {
-    const { data, error } = await supabaseQuery("unique_stays", 10);
-    if (error) console.error("[Landing] unique_stays error:", (error as any).message ?? error);
+    const { data, error } = await supabaseQuery("hotel_deals", 10);
+    if (error) console.error("[Landing] hotel_deals error:", (error as any).message ?? error);
     return data?.map((d: any) => ({
-        id: d.id,
+        id: d.hotel_code ?? String(d.id),
         name: d.name,
         location: d.location,
         rating: Number(d.rating || 0),
         price: Number(d.price || 0),
         image: d.image_url || "https://picsum.photos/seed/unique/400/300",
-        badge: d.badge,
+        badge: d.discount_tag ?? d.badge ?? null,
     })) ?? [];
 });
 
