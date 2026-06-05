@@ -6,9 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import SaveButton from '@/components/common/SaveButton';
-import SaveButton from '@/components/common/SaveButton';
 import { type WeekendDeal } from '@/types';
-import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import { useDragScroll } from '@/hooks/useDragScroll';
@@ -160,7 +158,6 @@ export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ de
 
   return (
     <section className="w-full py-2 md:py-4 lg:py-5">
-    <section className="w-full py-2 md:py-4 lg:py-5">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
         {/* Header */}
@@ -228,14 +225,6 @@ export const LastMinuteWeekendDeals: React.FC<{ deals?: WeekendDeal[] }> = ({ de
                   Collapse ↑
                 </button>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {displayDeals.map((deal, i) => (
-                  <FlashGetawayCard key={deal.id} deal={deal} index={i} variant="grid" />
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {displayDeals.map((deal, i) => (
                   <FlashGetawayCard key={deal.id} deal={deal} index={i} variant="grid" />

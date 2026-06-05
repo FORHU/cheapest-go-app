@@ -43,6 +43,14 @@
     {
       "path": "/api/cron/warm-hotel-cache",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/sync-hotel-deals",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/sync-flight-deals",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

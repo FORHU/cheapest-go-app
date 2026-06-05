@@ -117,8 +117,6 @@ VacationPackageCard.displayName = 'VacationPackageCard';
 export const ExploreVacationPackages: React.FC<{
   destinations?: VacationPackage[];
   tabs?: string[];
-  destinations?: VacationPackage[];
-  tabs?: string[];
 }> = ({ destinations = [], tabs = packageTabs }) => {
   const [activeTab, setActiveTab] = useState(tabs[0]);
   const [mounted, setMounted] = useState(false);
@@ -133,7 +131,6 @@ export const ExploreVacationPackages: React.FC<{
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
 
   return (
-    <section className="w-full py-2 md:py-4 lg:py-5">
     <section className="w-full py-2 md:py-4 lg:py-5">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
@@ -172,7 +169,6 @@ export const ExploreVacationPackages: React.FC<{
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          className="mb-4"
           className="mb-4"
         />
 
