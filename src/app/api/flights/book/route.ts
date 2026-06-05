@@ -278,6 +278,7 @@ export async function POST(req: NextRequest) {
                 status: 'initiated',
                 expires_at: expiresAt,
                 ...(seatServiceIds?.length ? { seat_service_ids: seatServiceIds, seat_total: seatTotal ?? 0 } : {}),
+                ...(bagServiceIds?.length  ? { bag_service_ids:  bagServiceIds,  bag_total:  bagTotal  ?? 0 } : {}),
             })
             .select('id')
             .single();
@@ -1003,7 +1004,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             clientSecret: paymentIntent.client_secret,
-            sessionId: sessionId
+            sessionId: sessionId,
+            paymentIntentId: paymentIntent.id,
         });
 
     } catch (err: any) {

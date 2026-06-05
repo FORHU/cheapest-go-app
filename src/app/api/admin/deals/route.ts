@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { action, tab, id, ids } = body;
     const supabase = createAdminClient();
-    const tableMap: Record<string, string> = { vouchers: 'vouchers', flight_deals: 'flight_deals', weekend_deals: 'weekend_flight_deals', hotel_deals: 'unique_stays' };
+    const tableMap: Record<string, string> = { vouchers: 'vouchers', flight_deals: 'flight_deals', weekend_deals: 'weekend_flight_deals', hotel_deals: 'hotel_deals' };
     const table = tableMap[tab];
     if (!table) return NextResponse.json({ success: false, error: 'Invalid tab' }, { status: 400 });
 

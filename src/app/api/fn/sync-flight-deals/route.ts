@@ -1,160 +1,134 @@
 /**
  * POST /api/fn/sync-flight-deals
  *
- * Searches Duffel for the cheapest one-way fare on each popular route,
- * then upserts the result into flight_deals for the landing page carousel.
+ * Searches Duffel for the cheapest one-way economy offer on each popular route
+ * and upserts the result into flight_deals. Called by the sync-flight-deals cron
+ * every 6 hours, or manually via:
  *
- * Called by /api/cron/sync-flight-deals (every 6 hours).
- * Can also be triggered manually:
- *   curl -X POST https://<host>/api/fn/sync-flight-deals \
+ *   curl -X POST https://<domain>/api/fn/sync-flight-deals \
  *        -H "Authorization: Bearer $FUNCTIONS_SECRET"
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { searchDuffel } from '@/lib/server/flights/providers/duffel';
-import type { CabinClass } from '@/types/flights';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 function checkAuth(req: NextRequest): boolean {
-    const secret = process.env.FUNCTIONS_SECRET || process.env.INTERNAL_SECRET;
-    if (!secret) return true; // dev mode — allow without auth
+    const secret = process.env.FUNCTIONS_SECRET;
+    if (!secret) {
+        console.warn('[sync-flight-deals] FUNCTIONS_SECRET not set — allowing request (dev mode)');
+        return true;
+    }
     return req.headers.get('authorization') === `Bearer ${secret}`;
 }
 
-// Globally diverse routes shown when flight_search_stats is empty.
-// Once real user searches accumulate, the stats table drives the selection.
-const DEFAULT_ROUTES: { origin: string; destination: string }[] = [
-    { origin: 'MNL', destination: 'SIN' },
-    { origin: 'MNL', destination: 'HKG' },
-    { origin: 'MNL', destination: 'NRT' },
-    { origin: 'ICN', destination: 'NRT' },
-    { origin: 'ICN', destination: 'BKK' },
-    { origin: 'BKK', destination: 'KUL' },
-    { origin: 'SIN', destination: 'BKK' },
-    { origin: 'SIN', destination: 'SYD' },
-    { origin: 'DXB', destination: 'LHR' },
-    { origin: 'JFK', destination: 'LHR' },
+// Cold-start fallback used only when flight_search_stats is empty.
+const DEFAULT_ROUTES = [
+    { origin: 'GMP', destination: 'CJU' }, // Seoul → Jeju
+    { origin: 'ICN', destination: 'NRT' }, // Seoul → Tokyo
+    { origin: 'ICN', destination: 'BKK' }, // Seoul → Bangkok
+    { origin: 'MNL', destination: 'SIN' }, // Manila → Singapore
+    { origin: 'BKK', destination: 'KUL' }, // Bangkok → Kuala Lumpur
+    { origin: 'DXB', destination: 'LHR' }, // Dubai → London
+    { origin: 'SIN', destination: 'SYD' }, // Singapore → Sydney
+    { origin: 'JFK', destination: 'LHR' }, // New York → London
+    { origin: 'CDG', destination: 'BKK' }, // Paris → Bangkok
+    { origin: 'MNL', destination: 'HKG' }, // Manila → Hong Kong
 ];
-
-function departureDateStr(daysOut: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() + daysOut);
-    return d.toISOString().slice(0, 10);
-}
 
 export async function POST(req: NextRequest) {
     if (!checkAuth(req)) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const sql = getSqlAdmin();
-    const now = new Date().toISOString();
-    // 21 days out — sweet spot where deals are available but not too far to attract real interest.
-    const depDate = departureDateStr(21);
+    const results: any[] = [];
 
-    // Pull top searched routes; fall back to defaults when stats are thin.
-    let statsRoutes: { origin: string; destination: string }[] = [];
     try {
-        statsRoutes = await sql`
+        const statsRows = await sql`
             SELECT origin, destination
             FROM flight_search_stats
             ORDER BY search_count DESC, last_searched_at DESC
             LIMIT 10
         `;
-    } catch {
-        // flight_search_stats may not exist yet — proceed with defaults
-    }
 
-    const routes = [...statsRoutes];
-    for (const def of DEFAULT_ROUTES) {
-        if (routes.length >= 10) break;
-        const exists = routes.some(
-            r => r.origin.toUpperCase() === def.origin && r.destination.toUpperCase() === def.destination
-        );
-        if (!exists) routes.push(def);
-    }
-
-    const upserted: string[] = [];
-    const skipped: string[] = [];
-    const errors: string[] = [];
-
-    console.log(`[sync-flight-deals] Starting — ${routes.length} routes, departure: ${depDate}`);
-
-    for (const route of routes) {
-        const label = `${route.origin.toUpperCase()}→${route.destination.toUpperCase()}`;
-        try {
-            const results = await searchDuffel({
-                origin:        route.origin.toUpperCase(),
-                destination:   route.destination.toUpperCase(),
-                departureDate: depDate,
-                adults:   1,
-                children: 0,
-                infants:  0,
-                cabinClass: 'economy' as CabinClass,
-            });
-
-            if (!results.length) {
-                console.log(`[sync-flight-deals] No results for ${label} — skipping`);
-                skipped.push(label);
-                continue;
-            }
-
-            // Pick the cheapest offer
-            const cheapest = (results as any[]).reduce((a, b) => (a.price <= b.price ? a : b));
-            const salePrice     = Math.round(cheapest.price * 100) / 100;
-            const baselinePrice = Math.round(salePrice * 1.2 * 100) / 100; // 20% "was" markup
-            const airlineIata   = cheapest.segments?.[0]?.airline ?? null;
-            const discountTag   = `${Math.round(((baselinePrice - salePrice) / baselinePrice) * 100)}% OFF`;
-
-            await sql`
-                INSERT INTO flight_deals
-                    (origin, destination, price, currency, airline, departure_date,
-                     cabin_class, baseline_price, discount_tag, updated_at, last_refreshed_at)
-                VALUES (
-                    ${route.origin.toUpperCase()},
-                    ${route.destination.toUpperCase()},
-                    ${salePrice},
-                    ${cheapest.currency || 'USD'},
-                    ${airlineIata},
-                    ${depDate},
-                    ${'economy'},
-                    ${baselinePrice},
-                    ${discountTag},
-                    ${now},
-                    ${now}
-                )
-                ON CONFLICT (origin, destination, cabin_class) DO UPDATE SET
-                    price             = EXCLUDED.price,
-                    currency          = EXCLUDED.currency,
-                    airline           = EXCLUDED.airline,
-                    departure_date    = EXCLUDED.departure_date,
-                    baseline_price    = EXCLUDED.baseline_price,
-                    discount_tag      = EXCLUDED.discount_tag,
-                    updated_at        = EXCLUDED.updated_at,
-                    last_refreshed_at = EXCLUDED.last_refreshed_at
-            `;
-
-            console.log(`[sync-flight-deals] ✓ ${label} ${cheapest.currency}${salePrice} (${airlineIata ?? 'unknown airline'})`);
-            upserted.push(`${label} @${cheapest.currency}${salePrice}`);
-
-        } catch (err: any) {
-            console.error(`[sync-flight-deals] ✗ ${label}:`, err.message);
-            errors.push(`${label}: ${err.message}`);
+        const finalRoutes: { origin: string; destination: string }[] = [...statsRows];
+        for (const def of DEFAULT_ROUTES) {
+            if (finalRoutes.length >= 10) break;
+            const exists = finalRoutes.some(
+                r => r.origin.toUpperCase() === def.origin && r.destination.toUpperCase() === def.destination
+            );
+            if (!exists) finalRoutes.push(def);
         }
+
+        console.log(`[sync-flight-deals] Syncing ${finalRoutes.length} routes`);
+
+        const departureDateObj = new Date();
+        departureDateObj.setDate(departureDateObj.getDate() + 14);
+        const departureDate = departureDateObj.toISOString().split('T')[0];
+
+        for (const route of finalRoutes) {
+            const origin = route.origin.toUpperCase();
+            const destination = route.destination.toUpperCase();
+            const cabinClass = 'economy';
+
+            try {
+                const offers = await searchDuffel({
+                    origin,
+                    destination,
+                    departureDate,
+                    adults: 1,
+                    children: 0,
+                    infants: 0,
+                    cabinClass,
+                });
+
+                if (offers.length === 0) {
+                    console.log(`[sync-flight-deals] No offers for ${origin}->${destination}`);
+                    results.push({ origin, destination, skipped: true, reason: 'no_offers' });
+                    continue;
+                }
+
+                const cheapest = offers.reduce((a, b) => (a.price < b.price ? a : b));
+
+                await sql`
+                    INSERT INTO public.flight_deals
+                        (origin, destination, cabin_class, price, currency, airline,
+                         departure_date, baseline_price, updated_at, last_refreshed_at)
+                    VALUES (
+                        ${origin}, ${destination}, ${cabinClass},
+                        ${cheapest.price}, ${cheapest.currency ?? 'USD'}, ${cheapest.airline ?? ''},
+                        ${departureDate}::date,
+                        ${cheapest.price}, now(), now()
+                    )
+                    ON CONFLICT (origin, destination, cabin_class) DO UPDATE SET
+                        price             = EXCLUDED.price,
+                        currency          = EXCLUDED.currency,
+                        airline           = EXCLUDED.airline,
+                        departure_date    = EXCLUDED.departure_date,
+                        updated_at        = now(),
+                        last_refreshed_at = now(),
+                        discount_tag      = CASE
+                            WHEN EXCLUDED.price < flight_deals.baseline_price * 0.9
+                            THEN ROUND((1 - EXCLUDED.price / flight_deals.baseline_price) * 100)::text || '% off'
+                            ELSE flight_deals.discount_tag
+                        END
+                `;
+
+                console.log(`[sync-flight-deals] Upserted ${origin}->${destination} @ ${cheapest.price} ${cheapest.currency}`);
+                results.push({ origin, destination, price: cheapest.price, currency: cheapest.currency, airline: cheapest.airline });
+            } catch (err: any) {
+                console.error(`[sync-flight-deals] Error for ${origin}->${destination}:`, err.message);
+                results.push({ origin, destination, success: false, error: err.message });
+            }
+        }
+
+        return NextResponse.json({ success: true, synced: results });
+    } catch (err: any) {
+        console.error('[sync-flight-deals] Fatal error:', err.message);
+        return NextResponse.json({ success: false, error: err.message }, { status: 500 });
     }
-
-    console.log(`[sync-flight-deals] Done — upserted: ${upserted.length}, skipped: ${skipped.length}, errors: ${errors.length}`);
-
-    return NextResponse.json({
-        success: true,
-        departureDate: depDate,
-        upserted: upserted.length,
-        skipped:  skipped.length,
-        errors:   errors.length,
-        deals:    upserted,
-        ...(errors.length ? { error_details: errors } : {}),
-    });
 }

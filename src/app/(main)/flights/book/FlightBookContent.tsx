@@ -1140,30 +1140,29 @@ export default function FlightBookContent() {
                                             {bagsOpen ? '▲' : '▼'}
                                         </span>
                                     </button>
-                                    {bagsOpen && (
-                                        <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
-                                            {refreshingOffer ? (
-                                                <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                    Refreshing offer…
-                                                </div>
-                                            ) : refreshFailed ? (
-                                                <AncillaryExpiredNotice />
-                                            ) : (
-                                                <BagSelectionPanel
-                                                    key={effectiveOfferId}
-                                                    offerId={effectiveOfferId}
-                                                    duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? (offer as any).raw?.passengers ?? []).map((p: any) => p.id)}
-                                                    passengerCount={passengers.length}
-                                                    passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
-                                                    selectedBags={selectedBags}
-                                                    onBagsChange={setSelectedBags}
-                                                    currency={offer.price.currency}
-                                                    onOfferExpired={refreshOffer}
-                                                />
-                                            )}
-                                        </div>
-                                    )}
+                                    {/* Always mounted so the fetch fires at page load, not on first open */}
+                                    <div className={!bagsOpen ? 'hidden' : 'px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800'}>
+                                        {refreshingOffer ? (
+                                            <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Refreshing offer…
+                                            </div>
+                                        ) : refreshFailed ? (
+                                            <AncillaryExpiredNotice />
+                                        ) : (
+                                            <BagSelectionPanel
+                                                key={effectiveOfferId}
+                                                offerId={effectiveOfferId}
+                                                duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? (offer as any).raw?.passengers ?? []).map((p: any) => p.id)}
+                                                passengerCount={passengers.length}
+                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                selectedBags={selectedBags}
+                                                onBagsChange={setSelectedBags}
+                                                currency={offer.price.currency}
+                                                onOfferExpired={refreshOffer}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Seats */}
@@ -1188,31 +1187,30 @@ export default function FlightBookContent() {
                                             {seatsOpen ? '▲' : '▼'}
                                         </span>
                                     </button>
-                                    {seatsOpen && (
-                                        <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
-                                            {refreshingOffer ? (
-                                                <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                    Refreshing offer…
-                                                </div>
-                                            ) : refreshFailed ? (
-                                                <AncillaryExpiredNotice />
-                                            ) : (
-                                                <SeatMapPanel
-                                                    key={effectiveOfferId}
-                                                    offerId={effectiveOfferId}
-                                                    segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
-                                                    passengerCount={passengers.length}
-                                                    passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
-                                                    selectedSeats={selectedSeats}
-                                                    onSeatsChange={setSelectedSeats}
-                                                    currency={offer.price.currency}
-                                                    onDone={() => setSeatsOpen(false)}
-                                                    onOfferExpired={refreshOffer}
-                                                />
-                                            )}
-                                        </div>
-                                    )}
+                                    {/* Always mounted so the fetch fires at page load, not on first open */}
+                                    <div className={!seatsOpen ? 'hidden' : 'px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800'}>
+                                        {refreshingOffer ? (
+                                            <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Refreshing offer…
+                                            </div>
+                                        ) : refreshFailed ? (
+                                            <AncillaryExpiredNotice />
+                                        ) : (
+                                            <SeatMapPanel
+                                                key={effectiveOfferId}
+                                                offerId={effectiveOfferId}
+                                                segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
+                                                passengerCount={passengers.length}
+                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                selectedSeats={selectedSeats}
+                                                onSeatsChange={setSelectedSeats}
+                                                currency={offer.price.currency}
+                                                onDone={() => setSeatsOpen(false)}
+                                                onOfferExpired={refreshOffer}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
