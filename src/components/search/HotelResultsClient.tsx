@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Property } from '@/types';
 import SearchResults from './SearchResults';
+import { CountryCityPicker } from './CountryCityPicker';
+import { buildSearchCacheKey, getSearchResults, setSearchResults } from '@/lib/searchResultsCache';
 
 interface HotelResultsClientProps {
     searchParams: Record<string, string>;
@@ -48,44 +50,130 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
     const cacheKey = buildSearchCacheKey(searchParams);
     const cached = getSearchResults(cacheKey);
 
-    const [status, setStatus] = useState<'loading' | 'done' | 'error'>(cached ? 'done' : 'loading');
+    const [status, setStatus] = useState<'loading' | 'streaming' | 'done' | 'error'>(cached ? 'done' : 'loading');
     const [properties, setProperties] = useState<Property[]>(cached?.properties ?? []);
     const [totalCount, setTotalCount] = useState(cached?.totalCount ?? 0);
-    const [queryParams, setQueryParams] = useState<Record<string, any>>(cached?.queryParams ?? searchParams);
     const [elapsed, setElapsed] = useState(0);
 
     const destination = searchParams.destination || '';
     const searchKey = JSON.stringify(searchParams);
 
     useEffect(() => {
-        if (cached) return; // cache hit — skip fetch
+        if (cached) return;
 
         let cancelled = false;
+        const controller = new AbortController();
         setStatus('loading');
         setElapsed(0);
+        setProperties([]);
 
         const timer = setInterval(() => setElapsed(e => e + 1), 1000);
 
-        fetch('/api/search', {
+        // Accumulated list shared between closures so price patches mutate in-place
+        const accumulated: Property[] = [];
+
+        // Normalize URL param names to match the stream endpoint's expected keys
+        const streamParams: Record<string, string> = { ...searchParams };
+        if (!streamParams.checkin  && streamParams.checkIn)  { streamParams.checkin  = streamParams.checkIn;  delete streamParams.checkIn; }
+        if (!streamParams.checkout && streamParams.checkOut) { streamParams.checkout = streamParams.checkOut; delete streamParams.checkOut; }
+        if (!streamParams.cityName && streamParams.destination) { streamParams.cityName = streamParams.destination; }
+        if (!streamParams.guest_nationality && streamParams.nationality) { streamParams.guest_nationality = streamParams.nationality; }
+
+        fetch('/api/search/stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(searchParams),
+            body: JSON.stringify(streamParams),
+            signal: controller.signal,
         })
-            .then(r => r.json())
-            .then(data => {
-                if (cancelled) return;
-                setProperties(data.properties || []);
-                setTotalCount(data.totalCount || 0);
-                setQueryParams(data.queryParams || searchParams);
-                setStatus('done');
+            .then(async res => {
+                if (cancelled || !res.body) {
+                    if (!cancelled) setStatus('error');
+                    return;
+                }
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buf = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done || cancelled) break;
+
+                    buf += decoder.decode(value, { stream: true });
+                    const lines = buf.split('\n');
+                    buf = lines.pop() ?? '';
+
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        try {
+                            const msg = JSON.parse(line);
+
+                            if (msg.type === 'hotels') {
+                                // Phase 1 (catalog, ~10ms) or new TGX hotels not in catalog.
+                                // Show immediately so the user sees real cards while prices load.
+                                accumulated.push(...(msg.data ?? []));
+                                if (!cancelled) {
+                                    setProperties([...accumulated]);
+                                    setTotalCount(msg.totalCount ?? accumulated.length);
+                                    setStatus('streaming');
+                                }
+                            } else if (msg.type === 'prices') {
+                                // Phase 2 price patch: update price fields in-place, clear priceLoading.
+                                const priceMap = new Map<string, any>(
+                                    (msg.data ?? []).map((p: any) => [p.hotelId, p])
+                                );
+                                let patched = false;
+                                for (let i = 0; i < accumulated.length; i++) {
+                                    const h = accumulated[i] as any;
+                                    const upd = priceMap.get(h.hotelId ?? h.id) ?? priceMap.get(h.id);
+                                    if (upd) {
+                                        accumulated[i] = {
+                                            ...h,
+                                            price:        upd.price        ?? h.price,
+                                            currency:     upd.currency     ?? h.currency,
+                                            offerId:      upd.offerId      ?? h.offerId,
+                                            refundableTag: upd.refundableTag ?? h.refundableTag,
+                                            boardCode:    upd.boardCode    ?? h.boardCode,
+                                            _tgx:         upd._tgx        ?? h._tgx,
+                                            priceLoading: false,
+                                        };
+                                        patched = true;
+                                    }
+                                }
+                                if (patched && !cancelled) setProperties([...accumulated]);
+                            } else if (msg.type === 'done') {
+                                if (!cancelled) {
+                                    setTotalCount(msg.totalCount ?? accumulated.length);
+                                    setStatus('done');
+                                }
+                                // Cache the fully-priced results for 10 minutes
+                                setSearchResults(cacheKey, {
+                                    properties: [...accumulated],
+                                    totalCount: msg.totalCount ?? accumulated.length,
+                                    allMappable: msg.allMappable ?? [],
+                                    queryParams: searchParams,
+                                });
+                            } else if (msg.type === 'error') {
+                                console.error('[HotelResultsClient] stream error:', msg.message);
+                                if (!cancelled) {
+                                    setStatus(accumulated.length > 0 ? 'done' : 'error');
+                                }
+                            }
+                        } catch {
+                            // Malformed line — skip
+                        }
+                    }
+                }
+
+                // Fallback: ensure we exit loading even if done/error events were missed
+                if (!cancelled && (status as string) === 'loading') setStatus('done');
             })
-            .catch(() => {
-                if (!cancelled) setStatus('error');
-            })
+            .catch((err) => { if (!cancelled && err?.name !== 'AbortError') setStatus('error'); })
             .finally(() => clearInterval(timer));
 
         return () => {
             cancelled = true;
+            controller.abort();
             clearInterval(timer);
         };
     }, [searchKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -103,10 +191,17 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
     }
 
     return (
-        <SearchResults
-            initialProperties={properties}
-            totalCount={totalCount}
-            rawSearchParams={queryParams}
-        />
+        <div className="flex-1 min-w-0">
+            <CountryCityPicker searchParams={searchParams} />
+            {/* key={status} forces SearchResults to re-sync allProperties when prices arrive
+                (streaming → done). The single remount is imperceptible after ~18s of price skeletons. */}
+            <SearchResults
+                key={status}
+                initialProperties={properties}
+                totalCount={totalCount}
+                rawSearchParams={searchParams}
+                onSwitchToMap={onSwitchView ? () => onSwitchView('map') : undefined}
+            />
+        </div>
     );
 }

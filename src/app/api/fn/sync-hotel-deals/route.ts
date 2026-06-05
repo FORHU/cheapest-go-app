@@ -1,12 +1,11 @@
 /**
  * POST /api/fn/sync-hotel-deals
  *
- * Searches TGX for the best hotel deal in each of the curated destination
- * cities, then upserts them into weekend_flight_deals for the landing page.
+ * Searches TravelgateX for the best-value hotel in each popular city and
+ * upserts the result into hotel_deals. Called by the sync-hotel-deals cron
+ * every 6 hours, or manually via:
  *
- * Called by /api/cron/sync-hotel-deals (scheduled daily at 05:00 UTC).
- * Can also be triggered manually:
- *   curl -X POST https://<host>/api/fn/sync-hotel-deals \
+ *   curl -X POST https://<domain>/api/fn/sync-hotel-deals \
  *        -H "Authorization: Bearer $FUNCTIONS_SECRET"
  */
 
@@ -15,174 +14,168 @@ import { getSqlAdmin } from '@/lib/db/postgres';
 import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 function checkAuth(req: NextRequest): boolean {
-    const secret = process.env.FUNCTIONS_SECRET || process.env.INTERNAL_SECRET;
-    if (!secret) return true; // dev mode — allow without auth
+    const secret = process.env.FUNCTIONS_SECRET;
+    if (!secret) {
+        console.warn('[sync-hotel-deals] FUNCTIONS_SECRET not set — allowing request (dev mode)');
+        return true;
+    }
     return req.headers.get('authorization') === `Bearer ${secret}`;
 }
 
-// ── Target destinations ───────────────────────────────────────────────────────
-// One deal is picked per city and shown on the landing page carousel.
-// Order matters: the first city whose search returns results becomes row #1.
-const DESTINATIONS = [
-    { city: 'Manila',        countryCode: 'PH' },
-    { city: 'Cebu',          countryCode: 'PH' },
-    { city: 'Boracay',       countryCode: 'PH' },
-    { city: 'Bangkok',       countryCode: 'TH' },
-    { city: 'Phuket',        countryCode: 'TH' },
-    { city: 'Tokyo',         countryCode: 'JP' },
-    { city: 'Osaka',         countryCode: 'JP' },
-    { city: 'Bali',          countryCode: 'ID' },
-    { city: 'Singapore',     countryCode: 'SG' },
-    { city: 'Seoul',         countryCode: 'KR' },
-    { city: 'Kuala Lumpur',  countryCode: 'MY' },
-    { city: 'Dubai',         countryCode: 'AE' },
-    { city: 'Hong Kong',     countryCode: 'HK' },
-    { city: 'Da Nang',       countryCode: 'VN' },
-    { city: 'Taipei',        countryCode: 'TW' },
+// Cold-start fallback used only when hotel_search_stats is empty.
+const DEFAULT_CITIES = [
+    { cityKey: 'bangkok',      countryCode: 'TH' },
+    { cityKey: 'tokyo',        countryCode: 'JP' },
+    { cityKey: 'singapore',    countryCode: 'SG' },
+    { cityKey: 'kuala lumpur', countryCode: 'MY' },
+    { cityKey: 'bali',         countryCode: 'ID' },
+    { cityKey: 'dubai',        countryCode: 'AE' },
+    { cityKey: 'london',       countryCode: 'GB' },
+    { cityKey: 'paris',        countryCode: 'FR' },
+    { cityKey: 'new york',     countryCode: 'US' },
+    { cityKey: 'seoul',        countryCode: 'KR' },
 ];
 
-// ── Date helpers ──────────────────────────────────────────────────────────────
+async function syncCity(
+    cityKey: string,
+    countryCode: string,
+    checkin: string,
+    checkout: string,
+    sql: ReturnType<typeof getSqlAdmin>,
+): Promise<{ city: string; hotel?: string; price?: number; currency?: string; skipped?: boolean; reason?: string; error?: string }> {
+    const result = await runTgxSearch({
+        checkin,
+        checkout,
+        cityName:    cityKey,
+        countryCode: countryCode || '',
+        adults:      2,
+        rooms:       1,
+        currency:    'USD',
+    }) as any;
 
-function nextFriday(): string {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    const daysAway = (5 - d.getDay() + 7) % 7 || 7; // 5 = Friday
-    d.setDate(d.getDate() + daysAway);
-    return d.toISOString().slice(0, 10);
+    const hotels: any[] = Array.isArray(result?.data) ? result.data : [];
+
+    if (hotels.length === 0) {
+        console.log(`[sync-hotel-deals] No results for "${cityKey}"`);
+        return { city: cityKey, skipped: true, reason: 'no_results' };
+    }
+
+    const priced = hotels.filter((h: any) => h.price > 0);
+    if (priced.length === 0) {
+        return { city: cityKey, skipped: true, reason: 'no_priced_results' };
+    }
+
+    // Cheapest 3-star+ hotel; fall back to cheapest overall if none qualify
+    const qualified = priced.filter((h: any) => (h.starRating ?? 0) >= 3);
+    const pool = qualified.length > 0 ? qualified : priced;
+    const best = pool.reduce((a: any, b: any) => (a.price < b.price ? a : b));
+
+    const hotelCode  = best.hotelId ?? best.id ?? '';
+    const imageUrl   = Array.isArray(best.images) ? (best.images[0] ?? '') : (best.image ?? '');
+    const refundable = best.refundableTag === 'REFUNDABLE' || best.refundableTag === 'RFN';
+    const stars      = best.starRating ? Math.round(best.starRating) : null;
+    const rating     = best.reviewRating ?? best.rating ?? null;
+
+    const location = [best.city ?? cityKey, best.country ?? countryCode].filter(Boolean).join(', ');
+
+    await sql`
+        INSERT INTO public.hotel_deals
+            (hotel_code, city_key, name, location, destination, country_code, price, currency,
+             image_url, stars, rating, lat, lng, check_in, check_out,
+             board_code, refundable, baseline_price, updated_at, last_refreshed_at)
+        VALUES (
+            ${hotelCode}, ${cityKey}, ${best.name ?? ''}, ${location}, ${best.city ?? cityKey},
+            ${best.country ?? countryCode ?? ''},
+            ${best.price}, ${best.currency ?? 'USD'},
+            ${imageUrl}, ${stars}, ${rating},
+            ${best.lat ?? null}, ${best.lng ?? null},
+            ${checkin}::date, ${checkout}::date,
+            ${best.boardCode ?? null}, ${refundable},
+            ${best.price}, now(), now()
+        )
+        ON CONFLICT (hotel_code) DO UPDATE SET
+            price             = EXCLUDED.price,
+            currency          = EXCLUDED.currency,
+            image_url         = EXCLUDED.image_url,
+            rating            = EXCLUDED.rating,
+            check_in          = EXCLUDED.check_in,
+            check_out         = EXCLUDED.check_out,
+            board_code        = EXCLUDED.board_code,
+            refundable        = EXCLUDED.refundable,
+            updated_at        = now(),
+            last_refreshed_at = now(),
+            discount_tag      = CASE
+                WHEN EXCLUDED.price < hotel_deals.baseline_price * 0.9
+                THEN ROUND((1 - EXCLUDED.price / hotel_deals.baseline_price) * 100)::text || '% off'
+                ELSE hotel_deals.discount_tag
+            END
+    `;
+
+    console.log(`[sync-hotel-deals] Upserted "${best.name}" in ${cityKey} @ ${best.price} ${best.currency}`);
+    return { city: cityKey, hotel: best.name, price: best.price, currency: best.currency };
 }
-
-function nextSaturday(): string {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    const daysAway = (5 - d.getDay() + 7) % 7 || 7;
-    d.setDate(d.getDate() + daysAway + 1); // Friday + 1
-    return d.toISOString().slice(0, 10);
-}
-
-// ── Deal selection ────────────────────────────────────────────────────────────
-
-/**
- * Score = (reviewRating × log(reviews + 1)) / log(price + 1)
- * Rewards highly-rated, well-reviewed hotels without blindly picking the cheapest.
- */
-function dealScore(hotel: any): number {
-    const rating  = Number(hotel.reviewRating ?? hotel.rating ?? 0);
-    const reviews = Number(hotel.reviews ?? hotel.reviewCount ?? 0);
-    const price   = Number(hotel.price ?? 0);
-    if (price <= 0) return 0;
-    return (rating * Math.log(reviews + 1)) / Math.log(price + 1);
-}
-
-function pickBadge(hotel: any): string {
-    if (hotel.refundableTag === 'REFUNDABLE') return 'Free cancellation';
-    const r = Number(hotel.reviewRating ?? 0);
-    if (r >= 9)   return 'Exceptional';
-    if (r >= 8.5) return 'Guest Favourite';
-    if (r >= 8)   return 'Highly Rated';
-    return 'Great Value';
-}
-
-// ── Main handler ──────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
     if (!checkAuth(req)) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const checkin  = nextFriday();
-    const checkout = nextSaturday();
-    const sql      = getSqlAdmin();
-    const now      = new Date().toISOString();
+    const sql = getSqlAdmin();
 
-    const upserted: string[] = [];
-    const skipped:  string[] = [];
-    const errors:   string[] = [];
+    try {
+        const statsRows = await sql`
+            SELECT city_key, country_code
+            FROM hotel_search_stats
+            ORDER BY search_count DESC, last_searched_at DESC
+            LIMIT 10
+        `;
 
-    console.log(`[sync-hotel-deals] Starting — checkin: ${checkin}, checkout: ${checkout}`);
-
-    for (const dest of DESTINATIONS) {
-        try {
-            const result = await runTgxSearch({
-                cityName:          dest.city,
-                countryCode:       dest.countryCode,
-                checkin,
-                checkout,
-                adults:            2,
-                guest_nationality: 'KR',
-            }) as any;
-
-            const hotels: any[] = Array.isArray(result?.data) ? result.data : [];
-
-            if (!hotels.length) {
-                console.log(`[sync-hotel-deals] No results for ${dest.city} — skipping`);
-                skipped.push(dest.city);
-                continue;
-            }
-
-            // Pick the single best deal for this city
-            const best = hotels
-                .filter((h: any) => h.price > 0 && h.name)
-                .sort((a: any, b: any) => dealScore(b) - dealScore(a))[0];
-
-            if (!best) {
-                skipped.push(dest.city);
-                continue;
-            }
-
-            const salePrice     = Math.round(Number(best.price));
-            const originalPrice = Math.round(salePrice * 1.25); // 25% "was" markup
-            const location      = [best.city || dest.city, best.country || dest.countryCode]
-                .filter(Boolean).join(', ');
-
-            await sql`
-                INSERT INTO weekend_flight_deals
-                    (name, location, rating, reviews, original_price, sale_price,
-                     currency, image_url, badge, updated_at)
-                VALUES (
-                    ${best.name},
-                    ${location},
-                    ${Number((best.reviewRating ?? 0).toFixed(1))},
-                    ${best.reviews ?? 0},
-                    ${originalPrice},
-                    ${salePrice},
-                    ${'USD'},
-                    ${best.image || null},
-                    ${pickBadge(best)},
-                    ${now}
-                )
-                ON CONFLICT (name, location) DO UPDATE SET
-                    rating         = EXCLUDED.rating,
-                    reviews        = EXCLUDED.reviews,
-                    original_price = EXCLUDED.original_price,
-                    sale_price     = EXCLUDED.sale_price,
-                    currency       = EXCLUDED.currency,
-                    image_url      = COALESCE(EXCLUDED.image_url, weekend_flight_deals.image_url),
-                    badge          = EXCLUDED.badge,
-                    updated_at     = EXCLUDED.updated_at
-            `;
-
-            console.log(`[sync-hotel-deals] ✓ ${dest.city}: "${best.name}" $${salePrice}/night (score ${dealScore(best).toFixed(2)})`);
-            upserted.push(`${dest.city}: ${best.name} @ $${salePrice}`);
-
-        } catch (err: any) {
-            console.error(`[sync-hotel-deals] ✗ ${dest.city}:`, err.message);
-            errors.push(`${dest.city}: ${err.message}`);
+        const finalCities: { cityKey: string; countryCode: string }[] = [
+            ...statsRows.map((r: any) => ({ cityKey: r.city_key, countryCode: r.country_code })),
+        ];
+        for (const def of DEFAULT_CITIES) {
+            if (finalCities.length >= 10) break;
+            if (!finalCities.some(c => c.cityKey === def.cityKey)) finalCities.push(def);
         }
+
+        console.log(`[sync-hotel-deals] Syncing ${finalCities.length} cities`);
+
+        // Next Friday checkin, Saturday checkout (weekend snapshot price)
+        const checkinDate = new Date();
+        const daysUntilFriday = (5 - checkinDate.getDay() + 7) % 7 || 7;
+        checkinDate.setDate(checkinDate.getDate() + daysUntilFriday);
+        const checkoutDate = new Date(checkinDate);
+        checkoutDate.setDate(checkoutDate.getDate() + 1);
+        const checkin  = checkinDate.toISOString().split('T')[0];
+        const checkout = checkoutDate.toISOString().split('T')[0];
+
+        // Process 3 cities at a time — OTV throttles beyond ~2-3 concurrent requests
+        const CONCURRENCY = 3;
+        const results: any[] = [];
+
+        for (let i = 0; i < finalCities.length; i += CONCURRENCY) {
+            const batch = finalCities.slice(i, i + CONCURRENCY);
+            const settled = await Promise.allSettled(
+                batch.map(({ cityKey, countryCode }) =>
+                    syncCity(cityKey, countryCode, checkin, checkout, sql)
+                )
+            );
+            for (const item of settled) {
+                if (item.status === 'fulfilled') {
+                    results.push(item.value);
+                } else {
+                    console.error('[sync-hotel-deals] City failed:', item.reason?.message);
+                    results.push({ error: item.reason?.message });
+                }
+            }
+        }
+
+        return NextResponse.json({ success: true, synced: results });
+    } catch (err: any) {
+        console.error('[sync-hotel-deals] Fatal error:', err.message);
+        return NextResponse.json({ success: false, error: err.message }, { status: 500 });
     }
-
-    console.log(`[sync-hotel-deals] Done — upserted: ${upserted.length}, skipped: ${skipped.length}, errors: ${errors.length}`);
-
-    return NextResponse.json({
-        success: true,
-        checkin,
-        checkout,
-        upserted: upserted.length,
-        skipped:  skipped.length,
-        errors:   errors.length,
-        deals:    upserted,
-        ...(errors.length ? { error_details: errors } : {}),
-    });
 }

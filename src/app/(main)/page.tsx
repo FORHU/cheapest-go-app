@@ -92,18 +92,9 @@ export default function Home() {
           <Suspense fallback={<SectionSkeleton />}>
             <HotelDealsSectionStream />
           </Suspense>
-          {/* <Suspense fallback={<SectionSkeleton />}>
-            <StaysForEveryStyleStream />
-          </Suspense>
-          <Suspense fallback={<SectionSkeleton />}>
-            <ExploreVacationPackagesStream />
-          </Suspense>
           <Suspense fallback={<SectionSkeleton />}>
             <ExploreUniqueStaysStream />
           </Suspense>
-          <Suspense fallback={<SectionSkeleton />}>
-            <LastMinuteWeekendDealsStream />
-          </Suspense> */}
         </div>
       </div>
 
