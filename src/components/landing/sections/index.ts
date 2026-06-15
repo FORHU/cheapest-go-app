@@ -6,3 +6,6 @@ export { ExploreUniqueStays } from "./ExploreUniqueStays";
 export { default as DealsSection } from "./DealsSection";
 export { default as HotelDealsSection } from "./HotelDealsSection";
 export { default as RecentlyViewed } from "./RecentlyViewed";
+export { default as PhilippinesCitiesSection } from "./PhilippinesCitiesSection";
+export { default as AsiaPacificAttractionsSection } from "./AsiaPacificAttractionsSection";
+export { default as GuestFavoritesSection } from "./GuestFavoritesSection";

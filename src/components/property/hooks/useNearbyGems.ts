@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { calculateHaversineDistance } from '@/utils/geo';
 import { getPoiImageUrl } from '@/utils/images';
-import { getPoiImageUrl } from '@/utils/images';
 import { mapPoiDetails } from '@/utils/poi-mapper';
 import { env } from '@/utils/env';
-import { POI_ICON_MAP } from '@/config/map-discovery';
 import { POI_ICON_MAP } from '@/config/map-discovery';
 import { Landmark, Trees, Utensils, Pill, ShoppingBasket, Bus } from 'lucide-react';
 
@@ -12,7 +10,6 @@ interface UseNearbyGemsProps {
     isLoaded: boolean;
     coordinates?: { lat: number; lng: number };
     selectedCategory: string;
-    radiusMeters?: number;
     radiusMeters?: number;
     onClearDirections?: () => void;
 }
@@ -34,7 +31,6 @@ export const useNearbyGems = ({
     isLoaded,
     coordinates,
     selectedCategory,
-    radiusMeters = 5000,
     radiusMeters = 5000,
     onClearDirections
 }: UseNearbyGemsProps) => {
@@ -122,7 +118,6 @@ export const useNearbyGems = ({
                     onClearDirections();
                 }
 
-                featuresToProcess = featuresToProcess.slice(0, 30);
                 featuresToProcess = featuresToProcess.slice(0, 30);
                 if (featuresToProcess.length === 0) {
                     setIsFetchingGems(false);
@@ -277,7 +272,6 @@ export const useNearbyGems = ({
 
         fetchTopGems();
         return () => controller.abort();
-    }, [isLoaded, hasCoordinates, coordinates?.lat, coordinates?.lng, selectedCategory, radiusMeters]);
     }, [isLoaded, hasCoordinates, coordinates?.lat, coordinates?.lng, selectedCategory, radiusMeters]);
 
     return { nearbyGems, isFetchingGems, setNearbyGems };

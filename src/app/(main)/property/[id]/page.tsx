@@ -17,6 +17,7 @@ import { fetchHotelStatic, fetchPropertyData } from '@/lib/property';
 import { fetchHotelReviews } from '@/lib/property/fetchReviews';
 import LocationSection from '@/components/property/LocationSectionDynamic';
 import RoomsAvailabilitySection from '@/components/property/RoomsAvailabilitySection';
+import PropertyDatePicker from '@/components/property/PropertyDatePicker';
 
 function RoomsSkeleton() {
     return (
@@ -251,6 +252,18 @@ export default async function PropertyPage({
                         <FadeInUp delay={0.3}>
                             <hr className="border-slate-200 dark:border-white/10" />
                         </FadeInUp>
+
+                        {/* ── Date picker — lets user set/change stay dates ── */}
+                        <PropertyDatePicker
+                            propertySlug={propertySlug}
+                            initialCheckIn={roomSearchParams.checkIn as string | undefined}
+                            initialCheckOut={roomSearchParams.checkOut as string | undefined}
+                            adults={Number(roomSearchParams.adults || 2)}
+                            childrenCount={Number(roomSearchParams.children || 0)}
+                            rooms={Number(roomSearchParams.rooms || 1)}
+                            currency={roomSearchParams.currency as string | undefined}
+                            nationality={roomSearchParams.nationality as string | undefined}
+                        />
 
                         {/* ── Rooms + Policies: streams in after TGX (~18-22s) ── */}
                         <Suspense fallback={<RoomsSkeleton />}>

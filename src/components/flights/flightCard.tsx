@@ -36,6 +36,7 @@ function stopsLabel(stops: number): string {
     return `${stops} stops`;
 }
 
+
 // ─── Airline Logo ────────────────────────────────────────────────────
 
 function AirlineLogo({ code, name }: { code: string | undefined; name?: string }) {

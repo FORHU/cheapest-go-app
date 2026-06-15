@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
     const roundedLat = parseFloat(lat).toFixed(4);
     const roundedLng = parseFloat(lng).toFixed(4);
     const cacheKey = `${name}|${roundedLat}|${roundedLng}|v11`;
-    const cacheKey = `${name}|${roundedLat}|${roundedLng}|v11`;
 
     // Serve from cache
     const cached = await getCached(cacheKey);
@@ -114,7 +113,6 @@ export async function GET(req: NextRequest) {
         let { res: imgRes, contentType, isImage } = await tryFetchImage(finalUrl);
 
         if (!imgRes?.ok || !isImage) {
-        if (!imgRes?.ok || !isImage) {
             const candidates = [
                 resultMetadata.googlePhotoUrl,
                 getPlaceholderUrl(name, category, lat, lng),
@@ -122,7 +120,6 @@ export async function GET(req: NextRequest) {
 
             for (const url of candidates) {
                 const candidate = await tryFetchImage(url);
-                if (candidate.res?.ok && candidate.isImage) {
                 if (candidate.res?.ok && candidate.isImage) {
                     finalUrl = url;
                     imgRes = candidate.res;
@@ -133,7 +130,6 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        if (!imgRes?.ok || !isImage) return NextResponse.redirect(finalUrl);
         if (!imgRes?.ok || !isImage) return NextResponse.redirect(finalUrl);
 
         return new NextResponse(await imgRes.arrayBuffer(), {
@@ -181,10 +177,7 @@ async function buildMetadata(
         Object.assign(meta, googleResult, {
             googlePhotoUrl: googlePhotoOk ? googleResult.photoUrl : null,
             photoUrl: googlePhotoOk ? googleResult.photoUrl : null,
-            googlePhotoUrl: googlePhotoOk ? googleResult.photoUrl : null,
-            photoUrl: googlePhotoOk ? googleResult.photoUrl : null,
             nameEn: googleResult.name,
-            source: googlePhotoOk ? 'google' : 'none',
             source: googlePhotoOk ? 'google' : 'none',
         });
     }

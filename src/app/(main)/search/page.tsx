@@ -25,6 +25,7 @@ export default async function SearchPage(props: {
     ) as Record<string, string>;
 
     const dest = flatParams.destination || '';
+    const viewMode = flatParams.view || 'list';
 
     // ─── MAP VIEW ───────────────────────────────────────────────────
     if (viewMode === 'map') {
@@ -42,15 +43,10 @@ export default async function SearchPage(props: {
         );
     }
 
-    // Facilities are fast (Supabase lookup) — await here so filters render immediately
-    const initialFacilities = await fetchFacilities();
-
+    // ─── LIST VIEW ──────────────────────────────────────────────────
     return (
-        <SearchPageClient
+        <HotelResultsClient
             searchParams={flatParams}
-            destination={dest}
-            initialFacilities={initialFacilities}
-            initialView={initialView}
         />
     );
 }

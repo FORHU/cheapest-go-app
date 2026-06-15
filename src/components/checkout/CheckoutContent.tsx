@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import BackButton from '@/components/common/BackButton';
 import AuthModal from '@/components/auth/AuthModal';
 import { validateCheckoutForm, buildGuestPayload, buildHolderPayload } from '@/lib/server/checkout';
+import { buildPropertySlug } from '@/lib/utils';
 import {
     BookingSuccess,
     UserDetailsForm,
@@ -410,6 +411,19 @@ export function CheckoutContent() {
         }
     }, [prebookId, selectedRoom, formData, bookingFor, specialRequests, completeBooking, setIsSuccess, sendConfirmationEmail, property, checkIn, checkOut, priceData, selectedCurrency, adults, children, user, totalPrice, appliedVoucher, openAuthModal]);
 
+    // When the user modifies check-in/check-out in BookingSummary:
+    // - No room selected (deal flow): just update store dates, user then clicks "Search rooms"
+    // - Room already selected: redirect to property page to re-select for the new dates
+    const handleDatesChange = useCallback((newCheckIn: Date, newCheckOut: Date) => {
+        useBookingStore.getState().setDates(newCheckIn, newCheckOut);
+        if (selectedRoom && property) {
+            const slug = buildPropertySlug(property.name, property.id);
+            const ci = newCheckIn.toISOString().slice(0, 10);
+            const co = newCheckOut.toISOString().slice(0, 10);
+            router.push(`/property/${slug}?checkIn=${ci}&checkOut=${co}&adults=${adults}&children=${children}`);
+        }
+    }, [selectedRoom, property, adults, children, router]);
+
     // Price to show on submit button (server-calculated if voucher applied)
     const displayTotalPrice = appliedVoucher ? appliedVoucher.finalPrice : totalPrice;
 
@@ -420,6 +434,143 @@ export function CheckoutContent() {
             sessionStorage.setItem('hasAlreadyBookedHotel', 'true');
         }
     }, [isSuccess]);
+
+    // Deal flow: property set but no room chosen yet — show date picker + room search CTA
+    if (property && !selectedRoom) {
+        const ci = checkIn ? checkIn.toISOString().slice(0, 10) : '';
+        const co = checkOut ? checkOut.toISOString().slice(0, 10) : '';
+        const propertyUrl = ci && co
+            ? `/property/${buildPropertySlug(property.name, property.id)}?checkIn=${ci}&checkOut=${co}&adults=${adults}&children=${children}`
+            : `/property/${buildPropertySlug(property.name, property.id)}`;
+
+        return (
+            <main className="min-h-screen pt-6 pb-20 px-4">
+                <div className="max-w-lg mx-auto space-y-6">
+                    <button onClick={() => router.back()} className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                        Back
+                    </button>
+
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Complete your booking</h1>
+
+                    {/* Hotel card */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
+                        <div className="flex gap-3 p-4">
+                            {property.image && (
+                                <img src={property.image} alt={property.name} className="w-20 h-20 rounded-lg object-cover shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                                <p className="font-bold text-slate-900 dark:text-white text-sm leading-tight">{property.name}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{property.location}</p>
+                                {property.rating > 0 && (
+                                    <span className="inline-flex items-center gap-1 mt-1.5 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                                        {property.rating.toFixed(1)}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Inline date picker */}
+                        <div className="border-t border-slate-200 dark:border-white/10 p-4 space-y-3">
+                            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Select your dates</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Check-in</label>
+                                    <input
+                                        type="date"
+                                        defaultValue={ci}
+                                        min={new Date().toISOString().slice(0, 10)}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val && checkOut) handleDatesChange(new Date(val), checkOut);
+                                            else if (val) useBookingStore.getState().setDates(new Date(val), checkOut);
+                                        }}
+                                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Check-out</label>
+                                    <input
+                                        type="date"
+                                        defaultValue={co}
+                                        min={ci || new Date().toISOString().slice(0, 10)}
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val && checkIn) handleDatesChange(checkIn, new Date(val));
+                                            else if (val) useBookingStore.getState().setDates(checkIn, new Date(val));
+                                        }}
+                                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => router.push(propertyUrl)}
+                        disabled={!ci || !co}
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold rounded-xl transition-colors"
+                    >
+                        Search available rooms →
+                    </button>
+                </div>
+            </main>
+        );
+    }
+
+    // Guard: missing dates — show inline date picker before the form
+    const [guardCheckIn, setGuardCheckIn] = useState('');
+    const [guardCheckOut, setGuardCheckOut] = useState('');
+    const guardToday = new Date().toISOString().slice(0, 10);
+
+    if (!checkIn || !checkOut) {
+        const canSave = guardCheckIn && guardCheckOut && guardCheckOut > guardCheckIn;
+        return (
+            <main className="min-h-screen flex items-center justify-center px-4">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-lg p-6 w-full max-w-sm space-y-5">
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Choose your dates</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Pick check-in and check-out to continue.</p>
+                    </div>
+                    <div className="space-y-3">
+                        <div>
+                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Check-in</label>
+                            <input
+                                type="date"
+                                value={guardCheckIn}
+                                min={guardToday}
+                                onChange={e => setGuardCheckIn(e.target.value)}
+                                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Check-out</label>
+                            <input
+                                type="date"
+                                value={guardCheckOut}
+                                min={guardCheckIn || guardToday}
+                                onChange={e => setGuardCheckOut(e.target.value)}
+                                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                            />
+                        </div>
+                    </div>
+                    <button
+                        disabled={!canSave}
+                        onClick={() => {
+                            if (!canSave) return;
+                            useBookingStore.getState().setDates(new Date(guardCheckIn), new Date(guardCheckOut));
+                        }}
+                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold rounded-lg transition-colors text-sm"
+                    >
+                        Continue
+                    </button>
+                    <button onClick={() => router.back()} className="w-full text-center text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                        ← Go back
+                    </button>
+                </div>
+            </main>
+        );
+    }
 
     if (isSuccess) {
         // savings = 3% of base price; base = bundlePrice / 1.12, so savings = totalPrice * 3/112
@@ -645,6 +796,7 @@ export function CheckoutContent() {
                                 cancellationPolicies={priceData?.cancellationPolicies}
                                 appliedVoucher={appliedVoucher}
                                 isLoading={prebooking}
+                                onDatesChange={handleDatesChange}
                             />
 
                             {/* Mobile-only Submit Button — only on form step */}

@@ -1,0 +1,145 @@
+"use client";
+
+import React from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { Sparkles } from 'lucide-react';
+import { useDragScroll } from '@/hooks/useDragScroll';
+
+interface Attraction {
+  name: string;
+  location: string;
+  country: string;
+  tagline: string;
+  searchQuery: string;
+}
+
+const ATTRACTIONS: Attraction[] = [
+  { name: 'Bali',             location: 'Indonesia',   country: 'Indonesia',   tagline: 'Island of the Gods',                  searchQuery: 'Bali, Indonesia' },
+  { name: 'Angkor Wat',       location: 'Cambodia',    country: 'Cambodia',    tagline: 'Ancient Khmer Empire',                searchQuery: 'Siem Reap, Cambodia' },
+  { name: 'Ha Long Bay',      location: 'Vietnam',     country: 'Vietnam',     tagline: 'Emerald Waters & Limestone Karsts',   searchQuery: 'Ha Long Bay, Vietnam' },
+  { name: 'Boracay',          location: 'Philippines', country: 'Philippines', tagline: 'World-Famous White Sand Beaches',     searchQuery: 'Boracay, Philippines' },
+  { name: 'Mount Fuji',       location: 'Japan',       country: 'Japan',       tagline: 'Japan\'s Sacred Iconic Peak',         searchQuery: 'Mount Fuji, Japan' },
+  { name: 'Phuket',           location: 'Thailand',    country: 'Thailand',    tagline: 'Thailand\'s Pearl of the Andaman',    searchQuery: 'Phuket, Thailand' },
+  { name: 'Great Barrier Reef',location: 'Australia',  country: 'Australia',   tagline: 'World\'s Largest Coral Reef',         searchQuery: 'Cairns, Australia' },
+  { name: 'Jeju Island',      location: 'South Korea', country: 'South Korea', tagline: 'Island of Wind, Women & Rocks',       searchQuery: 'Jeju Island, South Korea' },
+  { name: 'Palawan',          location: 'Philippines', country: 'Philippines', tagline: 'The Last Frontier',                   searchQuery: 'Palawan, Philippines' },
+  { name: 'Komodo Island',    location: 'Indonesia',   country: 'Indonesia',   tagline: 'Home of the Komodo Dragon',           searchQuery: 'Labuan Bajo, Indonesia' },
+  { name: 'Siargao',          location: 'Philippines', country: 'Philippines', tagline: 'Surfing Capital of the Philippines',  searchQuery: 'Siargao, Philippines' },
+  { name: 'Kyoto',            location: 'Japan',       country: 'Japan',       tagline: 'Temples, Shrines & Cherry Blossoms', searchQuery: 'Kyoto, Japan' },
+];
+
+function attractionImageUrl(name: string, location: string): string {
+  return (
+    `/api/hotel-photo?q=${encodeURIComponent(name + ' ' + location + ' tourist attraction')}` +
+    `&fallback=${encodeURIComponent(`https://picsum.photos/seed/${encodeURIComponent(name)}/600/400`)}`
+  );
+}
+
+interface AttractionCardProps {
+  attraction: Attraction;
+  index: number;
+}
+
+const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) => {
+  const router = useRouter();
+
+  function navigate() {
+    const p = new URLSearchParams({
+      destination: attraction.searchQuery,
+      destinationType: 'city',
+      country: attraction.country,
+    });
+    router.push(`/search?${p.toString()}`);
+  }
+
+  return (
+    <motion.div
+      initial={index === 0 ? false : { opacity: 0, x: 40 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.05 }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      onClick={navigate}
+      className="shrink-0 snap-start cursor-pointer"
+      style={{ width: 'max(160px, calc((100% - 60px) / 5))' }}
+    >
+      <div className="relative h-[160px] overflow-hidden rounded-sm group">
+        <Image
+          src={attractionImageUrl(attraction.name, attraction.location)}
+          alt={attraction.name}
+          fill
+          sizes="(max-width: 640px) 180px, (max-width: 768px) 200px, 240px"
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
+          loading={index < 2 ? 'eager' : 'lazy'}
+        />
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/80" />
+
+        {/* Country badge */}
+        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+          <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+          <span className="text-[10px] text-white leading-none">{attraction.location}</span>
+        </div>
+
+        {/* Info */}
+        <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 pt-8">
+          <h3 className="text-[15px] font-bold text-white leading-tight">
+            {attraction.name}
+          </h3>
+          <p className="text-[10px] text-white/80 leading-snug mt-0.5 truncate">
+            {attraction.tagline}
+          </p>
+        </div>
+
+        {/* Hover overlay */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <span className="bg-white/90 text-slate-900 text-[11px] font-semibold px-4 py-1.5 rounded-full shadow-lg">
+            Find Hotels
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const AsiaPacificAttractionsSection: React.FC = () => {
+  const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
+
+  return (
+    <section className="w-full py-2 md:py-4 lg:py-5">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
+
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900 dark:text-white">
+              Top Attractions in{' '}
+              <span className="text-blue-600 dark:text-blue-400">Asia Pacific</span>
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Must-visit destinations across the region
+            </p>
+          </div>
+        </div>
+
+        {/* Horizontal scroll */}
+        <div
+          ref={rowRef}
+          {...dragProps}
+          className="flex overflow-x-auto snap-x snap-mandatory gap-3 pt-5 pb-3 -mt-5 -mx-4 sm:-mx-6 px-4 sm:px-6 scroll-px-4 sm:scroll-px-6 cursor-grab active:cursor-grabbing select-none"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+        >
+          {ATTRACTIONS.map((attraction, i) => (
+            <AttractionCard key={attraction.name} attraction={attraction} index={i} />
+          ))}
+        </div>
+
+      </div>
+    </section>
+  );
+};
+
+export default AsiaPacificAttractionsSection;
