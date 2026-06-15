@@ -35,6 +35,12 @@ export interface WeekendDeal {
     currency: string;
     image: string;
     badge?: string;
+    /** TravelgateX hotel code — used to build the property page deep-link. */
+    hotelCode?: string;
+    /** ISO date (YYYY-MM-DD) for the cached deal's check-in night. */
+    checkIn?: string;
+    /** ISO date (YYYY-MM-DD) for the cached deal's check-out night. */
+    checkOut?: string;
 }
 
 export interface RecentSearch {

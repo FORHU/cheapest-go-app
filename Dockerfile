@@ -8,7 +8,7 @@ ENV PATH="$PNPM_HOME:$PATH"
 # 2. Dependencies
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # 3. Builder
 FROM base AS builder

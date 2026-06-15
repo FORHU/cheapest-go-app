@@ -10,13 +10,16 @@ import {
     ExploreVacationPackages,
     ExploreUniqueStays,
     LastMinuteWeekendDeals,
+    GuestFavoritesSection,
 } from "@/components/landing/sections";
 import {
     getFlightDeals,
     getWeekendDeals,
+    getHotelDeals,
     getPopularDestinations,
     getUniqueStays,
     getTravelStyles,
+    getGuestFavorites,
 } from "@/lib/server/landing/get-landing-data";
 
 // ─── Section skeleton — generic horizontal-scroll placeholder ────────────────
@@ -46,7 +49,7 @@ export async function DealsSectionStream() {
 }
 
 export async function HotelDealsSectionStream() {
-    const deals = await getWeekendDeals();
+    const deals = await getHotelDeals();
     return <HotelDealsSection deals={deals} />;
 }
 
@@ -68,4 +71,9 @@ export async function ExploreUniqueStaysStream() {
 export async function LastMinuteWeekendDealsStream() {
     const deals = await getWeekendDeals();
     return <LastMinuteWeekendDeals deals={deals} />;
+}
+
+export async function GuestFavoritesSectionStream() {
+    const deals = await getGuestFavorites();
+    return <GuestFavoritesSection deals={deals} />;
 }

@@ -13,21 +13,6 @@ import {
     Banknote,
     Church,
     Library
-import {
-    Search,
-    Utensils,
-    Landmark,
-    ShoppingBasket,
-    Pill,
-    Bus,
-    Trees,
-    Bed,
-    Coffee,
-    GraduationCap,
-    Building2,
-    Banknote,
-    Church,
-    Library
 } from 'lucide-react';
 
 // NOTE: No hardcoded place fallbacks. Discovery is always live via Google Places.

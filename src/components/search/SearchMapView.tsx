@@ -232,24 +232,9 @@ function SearchMapView({
                 // Sync price when catalog sent price:0 and TGX prices have now arrived
                 const wantsPrice    = (p.price === 0 || p.priceLoading) && (incoming as any).price > 0;
                 if (!wantsLocation && !wantsImage && !wantsPrice) return p;
-                // Sync price when catalog sent price:0 and TGX prices have now arrived
-                const wantsPrice    = (p.price === 0 || p.priceLoading) && (incoming as any).price > 0;
-                if (!wantsLocation && !wantsImage && !wantsPrice) return p;
                 changed = true;
                 return {
                     ...p,
-                    location:      incoming.location  || p.location,
-                    image:         incoming.image     || p.image,
-                    images:        incoming.images?.length ? incoming.images : p.images,
-                    ...(wantsPrice && {
-                        price:        (incoming as any).price,
-                        currency:     (incoming as any).currency     ?? p.currency,
-                        offerId:      (incoming as any).offerId      ?? p.offerId,
-                        refundableTag: (incoming as any).refundableTag ?? p.refundableTag,
-                        boardCode:    (incoming as any).boardCode    ?? p.boardCode,
-                        _tgx:         (incoming as any)._tgx         ?? p._tgx,
-                        priceLoading: false,
-                    }),
                     location:      incoming.location  || p.location,
                     image:         incoming.image     || p.image,
                     images:        incoming.images?.length ? incoming.images : p.images,
@@ -269,9 +254,6 @@ function SearchMapView({
             const existingIds = new Set(prev.map((p: any) => p.id ?? p.hotelId));
             const newOnes = properties.filter(p => !existingIds.has(p.id));
 
-            const filtered = updated.filter(Boolean);
-            if (!changed && newOnes.length === 0 && filtered.length === prev.length) return prev;
-            return [...(changed || filtered.length < prev.length ? filtered : prev), ...newOnes];
             const filtered = updated.filter(Boolean);
             if (!changed && newOnes.length === 0 && filtered.length === prev.length) return prev;
             return [...(changed || filtered.length < prev.length ? filtered : prev), ...newOnes];
@@ -345,7 +327,6 @@ function SearchMapView({
 
     // Apply client-side filters + sort to ALL loaded properties (includes Load More results)
     const sortedProperties = useMemo(() => {
-        let list = allProperties.filter((p: any) => p.name && p.price > 0 && !(p as any).priceLoading);
         let list = allProperties.filter((p: any) => p.name && p.price > 0 && !(p as any).priceLoading);
 
         if (propertyTypes.length > 0) {

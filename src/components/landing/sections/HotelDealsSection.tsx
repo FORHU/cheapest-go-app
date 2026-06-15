@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
-import SaveButton from '@/components/common/SaveButton';
-import { type WeekendDeal } from '@/types';
+import { Heart } from 'lucide-react';
+import { type WeekendDeal, type Property } from '@/types';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import { useDragScroll } from '@/hooks/useDragScroll';
+import { useBookingActions } from '@/stores/bookingStore';
 import SectionHeader from './SectionHeader';
 
 // ── Location → country lookup ───────────────────────────────────────────────────
@@ -99,12 +100,30 @@ interface HotelDealCardProps {
   variant?: 'carousel' | 'grid';
 }
 
+function getFutureDates(checkIn?: string | null, checkOut?: string | null): { checkIn: string; checkOut: string } {
+  if (checkIn && checkOut) {
+    const ci = new Date(checkIn);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (ci >= today) return { checkIn, checkOut };
+  }
+  const d = new Date();
+  const daysUntilFriday = (5 - d.getDay() + 7) % 7 || 7;
+  d.setDate(d.getDate() + daysUntilFriday);
+  const friday = d.toISOString().slice(0, 10);
+  d.setDate(d.getDate() + 1);
+  const saturday = d.toISOString().slice(0, 10);
+  return { checkIn: friday, checkOut: saturday };
+}
+
 const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant = 'carousel' }) => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  const router = useRouter();
+  const { setDates, setProperty, setSelectedRoom } = useBookingActions();
   const currency = useUserCurrency();
-  const fromCur = deal.currency || 'PHP';
+  const fromCur = deal.currency || 'USD';
   const symbol = getCurrencySymbol(mounted ? currency : fromCur);
   const price = mounted
     ? Math.round(convertCurrency(deal.salePrice || 0, fromCur, currency))
@@ -113,13 +132,39 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
     ? Math.round(convertCurrency(deal.originalPrice || 0, fromCur, currency))
     : Math.round(deal.originalPrice || 0);
 
-  const deepLink = `/hotels?q=${encodeURIComponent(deal.location)}`;
+  const dates = getFutureDates(deal.checkIn, deal.checkOut);
+  function navigate() {
+    const property: Property = {
+      id: deal.hotelCode ?? String(deal.id),
+      name: deal.name,
+      location: deal.location,
+      description: '',
+      rating: deal.rating,
+      reviews: deal.reviews,
+      price: deal.salePrice,
+      currency: deal.currency,
+      image: imageUrl,
+      images: [imageUrl],
+      amenities: [],
+      badges: [],
+      type: 'hotel',
+      coordinates: { lat: 0, lng: 0 },
+    };
+    setProperty(property);
+    setSelectedRoom(null);
+    setDates(new Date(dates.checkIn), new Date(dates.checkOut));
+    router.push('/checkout');
+  }
 
-  // Pull the real hotel photo from Google Places (by name + location),
-  // falling back to the supplied image when Places has no match.
+  const discountLabel = originalPrice > 0 && originalPrice > price
+    ? `${Math.round(((originalPrice - price) / originalPrice) * 100)}% OFF`
+    : '';
+
   const imageUrl =
     `/api/hotel-photo?q=${encodeURIComponent(`${deal.name} ${deal.location}`)}` +
     `&fallback=${encodeURIComponent(deal.image || '')}`;
+
+  const [isSaved, setIsSaved] = useState(false);
 
   return (
     <motion.div
@@ -128,7 +173,7 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
       viewport={{ once: true }}
       transition={{ delay: index * 0.07 }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      onClick={() => toast.info(deal.name, { description: 'Live hotel search will be available at launch.' })}
+      onClick={() => navigate()}
       style={variant === 'carousel' ? { width: 'max(200px, calc((100% - 50px) / 5))' } : undefined}
       className={variant === 'grid' ? 'cursor-pointer' : 'shrink-0 snap-start cursor-pointer'}
     >
@@ -144,19 +189,25 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/75" />
 
-          {/* Save button — top right */}
-          <div className="absolute top-2.5 right-2.5 z-10" onClick={e => e.stopPropagation()}>
-            <SaveButton
-              type="hotel"
-              title={deal.name}
-              subtitle={deal.location}
-              price={price}
-              currency={currency}
-              imageUrl={imageUrl}
-              deepLink={deepLink}
-              size="sm"
+          {/* Discount badge — top left */}
+          {discountLabel && (
+            <div className="absolute top-1.5 left-2.5 z-10">
+              <span className="px-2 py-1 bg-blue-600 text-white text-[11px] rounded-md leading-none">
+                {discountLabel}
+              </span>
+            </div>
+          )}
+
+          {/* Bookmark button — top right */}
+          <button
+            onClick={e => { e.stopPropagation(); setIsSaved(v => !v); }}
+            className="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer"
+            aria-label="Save deal"
+          >
+            <Heart
+              className={`w-3.5 h-3.5 transition-colors ${isSaved ? 'text-red-400 fill-red-400' : 'text-white'}`}
             />
-          </div>
+          </button>
 
           {/* Price overlay — bottom of image */}
           <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 pt-8">
@@ -164,11 +215,11 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
               <div className="flex flex-col gap-0.5">
                 {originalPrice > 0 && originalPrice > price && (
                   <span className="text-[11px] text-white line-through leading-none">
-                    {symbol}{originalPrice.toLocaleString()}
+                   Starting From {symbol}{originalPrice.toLocaleString()}
                   </span>
                 )}
-                <span className="text-[22px] font-bold text-white leading-none drop-shadow">
-                  {symbol}{price.toLocaleString()}<span className="text-[11px] font-normal">/night</span>
+                <span className="text-[22px] text-white leading-none drop-shadow">
+                  Starting from {symbol}{price.toLocaleString()}<span className="text-[11px] font-normal">/night</span>
                 </span>
               </div>
               {deal.badge && (
@@ -200,7 +251,7 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
               </p>
             ) : <span />}
             <button
-              onClick={e => { e.stopPropagation(); toast.info(deal.name, { description: 'Live hotel search will be available at launch.' }); }}
+              onClick={e => { e.stopPropagation(); navigate(); }}
               className="shrink-0 inline-flex items-center gap-1 text-[11px] text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-sm transition-colors cursor-pointer leading-none"
             >
               Book Now
@@ -226,9 +277,14 @@ const HotelDealsSection: React.FC<HotelDealsSectionProps> = ({ deals }) => {
 
   const userCountry = useUserCountry();
 
-  // Float hotels in the user's detected country to the top. Falls back to the
-  // original order when no deal matches the detected country.
-  const displayDeals = useMemo(() => {
+  const localDeals = useMemo(() => {
+    if (!userCountry) return rawDeals;
+    const local = rawDeals.filter(d => getDealCountry(d.location) === userCountry);
+    return local.length > 0 ? local : rawDeals;
+  }, [rawDeals, userCountry]);
+
+  // "View all" grid: local first, then the rest.
+  const allDeals = useMemo(() => {
     if (!userCountry) return rawDeals;
     const local = rawDeals.filter(d => getDealCountry(d.location) === userCountry);
     const others = rawDeals.filter(d => getDealCountry(d.location) !== userCountry);
@@ -238,7 +294,7 @@ const HotelDealsSection: React.FC<HotelDealsSectionProps> = ({ deals }) => {
   const isPersonalized = userCountry != null &&
     rawDeals.some(d => getDealCountry(d.location) === userCountry);
 
-  if (displayDeals.length === 0) return null;
+  if (localDeals.length === 0) return null;
 
   return (
     <section className="w-full py-2 md:py-4 lg:py-5">
@@ -266,7 +322,7 @@ const HotelDealsSection: React.FC<HotelDealsSectionProps> = ({ deals }) => {
           className="flex overflow-x-auto snap-x snap-mandatory gap-3 pt-5 pb-3 -mt-5 -mx-4 sm:-mx-6 px-4 sm:px-6 scroll-px-4 sm:scroll-px-6 cursor-grab active:cursor-grabbing select-none"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
         >
-          {displayDeals.map((deal, i) => (
+          {localDeals.map((deal, i) => (
             <HotelDealCard key={deal.id} deal={deal} index={i} />
           ))}
         </div>
@@ -285,7 +341,7 @@ const HotelDealsSection: React.FC<HotelDealsSectionProps> = ({ deals }) => {
             >
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  All {displayDeals.length} hotels
+                  All {allDeals.length} hotels
                 </p>
                 <button
                   onClick={() => setShowAll(false)}
@@ -295,7 +351,7 @@ const HotelDealsSection: React.FC<HotelDealsSectionProps> = ({ deals }) => {
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {displayDeals.map((deal, i) => (
+                {allDeals.map((deal, i) => (
                   <HotelDealCard key={deal.id} deal={deal} index={i} variant="grid" />
                 ))}
               </div>

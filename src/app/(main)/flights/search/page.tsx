@@ -56,12 +56,28 @@ export default async function SearchPage({
     //   Landing search: ?origin0=BKK&dest0=SIN&date0=2026-04-10T...
     const origin = (sp.origin as string) || (sp.origin0 as string) || "";
     const destination = (sp.destination as string) || (sp.dest0 as string) || "";
-    const departure = (sp.departure as string)
-        || ((sp.date0 as string)?.slice(0, 10)) // ISO string → YYYY-MM-DD
-        || "";
-    const returnDate = (sp.return as string)
-        || ((sp.date1 as string)?.slice(0, 10))
-        || undefined;
+
+    const DATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
+
+    function normaliseDate(raw: string | undefined): string {
+        if (!raw) return '';
+        if (DATE_FORMAT.test(raw)) return raw;
+        if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
+        // Strip parenthesised timezone name that Node.js cannot parse
+        const stripped = raw.replace(/\s*\([^)]*\)\s*$/, '').trim();
+        const d = new Date(stripped);
+        return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+    }
+
+    const rawDeparture = (sp.departure as string) || ((sp.date0 as string)?.slice(0, 10)) || '';
+    // If date is absent or unparseable, default to one week from today
+    const departure = normaliseDate(rawDeparture) || (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 7);
+        return d.toISOString().slice(0, 10);
+    })();
+
+    const returnDate = normaliseDate((sp.return as string) || ((sp.date1 as string)?.slice(0, 10)) || '') || undefined;
     const adults = Math.max(1, parseInt(sp.adults as string) || 1);
     const children = Math.max(0, parseInt(sp.children as string) || 0);
     const infants = Math.max(0, parseInt(sp.infants as string) || 0);

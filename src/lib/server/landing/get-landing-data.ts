@@ -26,6 +26,20 @@ function getPublicClient() {
 // the landing page. On network errors (fetch failed) we do one retry.
 const QUERY_TIMEOUT_MS = 30000;
 
+/** Normalise any date string to YYYY-MM-DD.
+ *  Node.js rejects Date.toString() output like "Mon Jun 29 2026 08:00:00 GMT+0800 (Philippine Standard Time)"
+ *  because of the parenthesised timezone name — strip it first. */
+function toYMD(raw: string | Date | null | undefined): string | undefined {
+    if (!raw) return undefined;
+    if (raw instanceof Date) return isNaN(raw.getTime()) ? undefined : raw.toISOString().slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
+    // Strip " (Timezone Name)" suffix that Node's V8 cannot parse
+    const stripped = raw.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    const d = new Date(stripped);
+    return isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
+}
+
 /** Keep the first item for each key — drops content-identical duplicate rows. */
 function dedupeBy<T>(items: T[], key: (item: T) => string): T[] {
     const seen = new Set<string>();
@@ -87,8 +101,8 @@ export const getFlightDeals = cache(async (): Promise<Deal[]> => {
         endsIn: d.ends_in || "Limited Time",
         origin: d.origin || undefined,
         destination: d.destination || undefined,
-        departure_date: d.departure_date || undefined,
-        return_date: d.return_date || undefined,
+        departure_date: toYMD(d.departure_date),
+        return_date: toYMD(d.return_date),
         cabinClass: d.cabin_class || 'economy',
         lastRefreshedAt: d.last_refreshed_at || undefined,
     })) ?? [];
@@ -146,6 +160,59 @@ export const getUniqueStays = cache(async () => {
         image: d.image_url || "https://picsum.photos/seed/unique/400/300",
         badge: d.discount_tag ?? d.badge ?? null,
     })) ?? [];
+});
+
+export const getHotelDeals = cache(async (): Promise<WeekendDeal[]> => {
+    const { data, error } = await supabaseQuery("hotel_deals", 20);
+    if (error) console.error("[Landing] hotel_deals error:", (error as any).message ?? error);
+    const mapped: WeekendDeal[] = data?.map((d: any) => ({
+        id: d.hotel_code ?? String(d.id),
+        name: d.name,
+        location: d.location,
+        rating: Number(d.rating || 0),
+        reviews: 0,
+        originalPrice: Number(d.baseline_price || d.price || 0),
+        salePrice: Number(d.price || 0),
+        currency: d.currency || 'USD',
+        image: d.image_url || "https://picsum.photos/seed/hotel/400/300",
+        badge: d.discount_tag ?? null,
+        hotelCode: d.hotel_code ?? null,
+        checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
+        checkOut: d.check_out ? String(d.check_out).slice(0, 10) : null,
+    })) ?? [];
+    return dedupeBy(mapped, d => `${d.name}|${d.location}`);
+});
+
+export const getGuestFavorites = cache(async (): Promise<WeekendDeal[]> => {
+    const supabase = getPublicClient();
+    const { data, error } = await Promise.race([
+        supabase
+            .from('hotel_deals')
+            .select('*')
+            .gt('rating', 7)
+            .order('rating', { ascending: false })
+            .limit(15),
+        new Promise<{ data: null; error: Error }>(resolve =>
+            setTimeout(() => resolve({ data: null, error: new Error('Query timeout: guest_favorites') }), QUERY_TIMEOUT_MS)
+        ),
+    ]);
+    if (error) console.error('[Landing] guest_favorites error:', (error as any).message ?? error);
+    const mapped: WeekendDeal[] = data?.map((d: any) => ({
+        id: d.hotel_code ?? String(d.id),
+        name: d.name,
+        location: d.location,
+        rating: Number(d.rating || 0),
+        reviews: Number(d.reviews || 0),
+        originalPrice: Number(d.baseline_price || d.price || 0),
+        salePrice: Number(d.price || 0),
+        currency: d.currency || 'USD',
+        image: d.image_url || 'https://picsum.photos/seed/fav/400/300',
+        badge: d.discount_tag ?? null,
+        hotelCode: d.hotel_code ?? null,
+        checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
+        checkOut: d.check_out ? String(d.check_out).slice(0, 10) : null,
+    })) ?? [];
+    return dedupeBy(mapped, d => `${d.name}|${d.location}`);
 });
 
 export const getTravelStyles = cache(async () => {
@@ -222,8 +289,8 @@ export const getLandingData = cache(async () => {
         endsIn: d.ends_in || "Limited Time",
         origin: d.origin || undefined,
         destination: d.destination || undefined,
-        departure_date: d.departure_date || undefined,
-        return_date: d.return_date || undefined,
+        departure_date: toYMD(d.departure_date),
+        return_date: toYMD(d.return_date),
         cabinClass: d.cabin_class || 'economy',
         lastRefreshedAt: d.last_refreshed_at || undefined,
     })) ?? [];

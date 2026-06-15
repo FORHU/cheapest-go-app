@@ -91,24 +91,46 @@ function isPlaceholderImage(url: string | null | undefined): boolean {
   );
 }
 
-/** Build the pre-filled flight search URL */
+function toYMD(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
+  const stripped = raw.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  const d = new Date(stripped);
+  return isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
+}
+
+/** Route deal cards directly to the book page. The book page handles passenger config + search. */
 function buildBookingUrl(deal: Deal): string {
   if (!deal.origin || !deal.destination) return '/flights/search';
   const p = new URLSearchParams({
-    origin:     deal.origin,
+    origin:      deal.origin,
     destination: deal.destination,
-    adults:     '1',
-    cabinClass: deal.cabinClass || 'economy',
+    cabinClass:  deal.cabinClass || 'economy',
   });
-  if (deal.departure_date) p.set('departure',  deal.departure_date);
-  if (deal.return_date)    p.set('returnDate', deal.return_date);
-  return `/flights/search?${p.toString()}`;
+  const dep = toYMD(deal.departure_date);
+  const ret = toYMD(deal.return_date);
+  if (dep) p.set('departure', dep);
+  if (ret) p.set('return',    ret);
+  if (deal.salePrice)     p.set('dealPrice',         String(Math.round(deal.salePrice)));
+  if (deal.originalPrice && deal.originalPrice > deal.salePrice)
+                          p.set('dealOriginalPrice', String(Math.round(deal.originalPrice)));
+  if (deal.currency)      p.set('dealCurrency',      deal.currency);
+  if (deal.discount)      p.set('dealDiscount',      deal.discount);
+  if (deal.subtitle)      p.set('dealSubtitle',      deal.subtitle);
+  return `/flights/book?${p.toString()}`;
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
-interface DealCardProps { deal: Deal; index: number; variant?: 'carousel' | 'grid' }
+interface LivePrice { price: number; currency: string }
+interface DealCardProps {
+  deal: Deal;
+  index: number;
+  variant?: 'carousel' | 'grid';
+  livePrice?: LivePrice | 'loading';
+}
 
-const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carousel' }) => {
+const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carousel', livePrice }) => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -123,6 +145,10 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
   const sale = mounted
     ? Math.round(convertCurrency(deal.salePrice || 0, fromCur, currency))
     : Math.round(deal.salePrice || 0);
+
+  const liveConverted = livePrice && livePrice !== 'loading' && mounted
+    ? Math.round(convertCurrency(livePrice.price, livePrice.currency, currency))
+    : null;
 
   const discountLabel = deal.discount ||
     (original > 0 && original > sale
@@ -188,14 +214,32 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
           <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 pt-8">
             <div className="flex items-end justify-between">
               <div className="flex flex-col gap-0.5">
-                {original > 0 && original > sale && (
-                  <span className="text-[11px] text-white line-through leading-none">
+                {original > 0 && original > sale && !livePrice && (
+                  <span className="text-[11px] text-white/70 line-through leading-none">
                     {symbol}{original.toLocaleString()}
                   </span>
                 )}
-                <span className="text-[22px] font-bold text-white leading-none drop-shadow">
-                  {symbol}{sale.toLocaleString()}
-                </span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-[11px] text-white/80 leading-none">from</span>
+                  <span className={`text-[22px] font-bold text-white leading-none drop-shadow transition-opacity ${livePrice === 'loading' ? 'opacity-50' : ''}`}>
+                    {liveConverted !== null
+                      ? `${symbol}${liveConverted.toLocaleString()}`
+                      : `${symbol}${sale.toLocaleString()}`}
+                  </span>
+                  <span className="text-[11px] text-white/80 leading-none">/person</span>
+                </div>
+                {livePrice === 'loading' && (
+                  <span className="flex items-center gap-1 text-[9px] text-blue-200 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse inline-block shrink-0" />
+                    Fetching live price…
+                  </span>
+                )}
+                {liveConverted !== null && (
+                  <span className="flex items-center gap-1 text-[9px] text-emerald-300 leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block shrink-0" />
+                    Live price
+                  </span>
+                )}
               </div>
               {deal.endsIn && (
                 <span className="text-[10px] text-white/90 mb-0.5">
@@ -217,6 +261,16 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
           {deal.subtitle && (
             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
               {deal.subtitle}
+            </p>
+          )}
+
+          {/* Dates */}
+          {deal.departure_date && (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+              {new Date(deal.departure_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {deal.return_date
+                ? ` → ${new Date(deal.return_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                : ''}
             </p>
           )}
 
@@ -337,6 +391,68 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
   const [showAll,    setShowAll]    = useState(false);
   const [tripType,   setTripType]   = useState<'all' | 'oneway' | 'roundtrip'>('all');
 
+  // ── Live price fetching ───────────────────────────────────────────────────
+  const [livePrices, setLivePrices] = useState<Record<string, LivePrice | 'loading'>>({});
+  const hasFetched = useRef(false);
+
+  useEffect(() => {
+    if (hasFetched.current || rawDeals.length === 0) return;
+    hasFetched.current = true;
+
+    const validDeals = rawDeals
+      .filter(d => d.origin && d.destination && d.departure_date)
+      .slice(0, 8);
+    if (validDeals.length === 0) return;
+
+    setLivePrices(Object.fromEntries(validDeals.map(d => [String(d.id), 'loading' as const])));
+
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    let cancelled = false;
+
+    validDeals.forEach((deal, i) => {
+      const t = setTimeout(async () => {
+        if (cancelled) return;
+        const id = String(deal.id);
+        try {
+          const dep = toYMD(deal.departure_date as string);
+          const ret = toYMD(deal.return_date as string | undefined);
+          if (!dep) { setLivePrices(p => { const n = { ...p }; delete n[id]; return n; }); return; }
+
+          const res = await fetch('/api/flights/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              origin: deal.origin,
+              destination: deal.destination,
+              departureDate: dep,
+              ...(ret ? { returnDate: ret } : {}),
+              passengers: { adults: 1, children: 0, infants: 0 },
+              cabinClass: deal.cabinClass || 'economy',
+              tripType: ret ? 'round-trip' : 'one-way',
+            }),
+          });
+          if (cancelled) return;
+          const json = await res.json();
+          if (json.success && json.data?.offers?.length > 0) {
+            const cheapest = json.data.offers.reduce(
+              (min: any, o: any) => o.price.total < min.price.total ? o : min,
+              json.data.offers[0],
+            );
+            if (!cancelled) setLivePrices(p => ({ ...p, [id]: { price: cheapest.price.total, currency: cheapest.price.currency } }));
+          } else if (!cancelled) {
+            setLivePrices(p => { const n = { ...p }; delete n[id]; return n; });
+          }
+        } catch {
+          if (!cancelled) setLivePrices(p => { const n = { ...p }; delete n[id]; return n; });
+        }
+      }, i * 300);
+      timeouts.push(t);
+    });
+
+    return () => { cancelled = true; timeouts.forEach(clearTimeout); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawDeals.length]);
+
   const { iata: userOrigin, city: userCity } = useUserOrigin();
 
   // Sort: deals departing from the user's detected airport float to the top.
@@ -407,7 +523,7 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
         >
           {displayDeals.map((deal, i) => (
-            <DealCard key={deal.id} deal={deal} index={i} />
+            <DealCard key={deal.id} deal={deal} index={i} livePrice={livePrices[String(deal.id)]} />
           ))}
         </div>
 
@@ -436,7 +552,7 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {displayDeals.map((deal, i) => (
-                  <DealCard key={deal.id} deal={deal} index={i} variant="grid" />
+                  <DealCard key={deal.id} deal={deal} index={i} variant="grid" livePrice={livePrices[String(deal.id)]} />
                 ))}
               </div>
             </motion.div>
