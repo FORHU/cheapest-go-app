@@ -5,11 +5,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart } from 'lucide-react';
-import SaveButton from '@/components/common/SaveButton';
 import SectionHeader from './SectionHeader';
 import { type Deal } from '@/types';
-import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
-import { useUserCurrency } from '@/stores/searchStore';
 import { useDragScroll } from '@/hooks/useDragScroll';
 
 // ── IATA lookups ──────────────────────────────────────────────────────────────
@@ -122,45 +119,21 @@ function buildBookingUrl(deal: Deal): string {
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
-interface LivePrice { price: number; currency: string }
 interface DealCardProps {
   deal: Deal;
   index: number;
   variant?: 'carousel' | 'grid';
-  livePrice?: LivePrice | 'loading';
 }
 
-const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carousel', livePrice }) => {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
+const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carousel' }) => {
   const router     = useRouter();
-  const currency   = useUserCurrency();
-  const symbol     = getCurrencySymbol(mounted ? currency : 'USD');
-  const fromCur    = deal.currency || 'USD';
-
-  const original = mounted
-    ? Math.round(convertCurrency(deal.originalPrice || 0, fromCur, currency))
-    : Math.round(deal.originalPrice || 0);
-  const sale = mounted
-    ? Math.round(convertCurrency(deal.salePrice || 0, fromCur, currency))
-    : Math.round(deal.salePrice || 0);
-
-  const liveConverted = livePrice && livePrice !== 'loading' && mounted
-    ? Math.round(convertCurrency(livePrice.price, livePrice.currency, currency))
-    : null;
-
-  const discountLabel = deal.discount ||
-    (original > 0 && original > sale
-      ? `${Math.round(((original - sale) / original) * 100)}% OFF`
-      : '');
 
   const imageUrl   = isPlaceholderImage(deal.image)
     ? `https://picsum.photos/seed/${encodeURIComponent(deal.destination || 'travel')}/400/300`
     : deal.image;
 
-  const bookingUrl     = buildBookingUrl(deal);
-  const cabinLabel     = CABIN_LABELS[deal.cabinClass || 'economy'] ?? 'Economy';
+  const bookingUrl = buildBookingUrl(deal);
+  const cabinLabel = CABIN_LABELS[deal.cabinClass || 'economy'] ?? 'Economy';
 
   const [isSaved, setIsSaved] = useState(false);
 
@@ -190,14 +163,12 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/75" />
 
-          {/* Discount badge — top left */}
-          {discountLabel && (
-            <div className="absolute top-1.5 left-2.5 z-10">
-              <span className="px-2 py-1 bg-blue-600 text-white text-[11px] rounded-md leading-none">
-                {discountLabel}
-              </span>
-            </div>
-          )}
+          {/* Popular Route badge — top left */}
+          <div className="absolute top-1.5 left-2.5 z-10">
+            <span className="px-2 py-1 bg-white/20 backdrop-blur-sm text-white text-[11px] rounded-md leading-none border border-white/30">
+              Popular Route
+            </span>
+          </div>
 
           {/* Bookmark button — top right */}
           <button
@@ -209,45 +180,6 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
               className={`w-3.5 h-3.5 transition-colors ${isSaved ? 'text-red-400 fill-red-400' : 'text-white'}`}
             />
           </button>
-
-          {/* Price overlay — bottom of image */}
-          <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 pt-8">
-            <div className="flex items-end justify-between">
-              <div className="flex flex-col gap-0.5">
-                {original > 0 && original > sale && !livePrice && (
-                  <span className="text-[11px] text-white/70 line-through leading-none">
-                    {symbol}{original.toLocaleString()}
-                  </span>
-                )}
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[11px] text-white/80 leading-none">from</span>
-                  <span className={`text-[22px] font-bold text-white leading-none drop-shadow transition-opacity ${livePrice === 'loading' ? 'opacity-50' : ''}`}>
-                    {liveConverted !== null
-                      ? `${symbol}${liveConverted.toLocaleString()}`
-                      : `${symbol}${sale.toLocaleString()}`}
-                  </span>
-                  <span className="text-[11px] text-white/80 leading-none">/person</span>
-                </div>
-                {livePrice === 'loading' && (
-                  <span className="flex items-center gap-1 text-[9px] text-blue-200 leading-none">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse inline-block shrink-0" />
-                    Fetching live price…
-                  </span>
-                )}
-                {liveConverted !== null && (
-                  <span className="flex items-center gap-1 text-[9px] text-emerald-300 leading-none">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block shrink-0" />
-                    Live price
-                  </span>
-                )}
-              </div>
-              {deal.endsIn && (
-                <span className="text-[10px] text-white/90 mb-0.5">
-                  Ends in {deal.endsIn}
-                </span>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* ── Card body ───────────────────────────────────────── */}
@@ -283,7 +215,7 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
               onClick={e => { e.stopPropagation(); router.push(bookingUrl); }}
               className="shrink-0 inline-flex items-center gap-1 text-[11px] text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-sm transition-colors cursor-pointer leading-none"
             >
-              Book Now
+              Search Flights
             </button>
           </div>
         </div>
@@ -391,67 +323,6 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
   const [showAll,    setShowAll]    = useState(false);
   const [tripType,   setTripType]   = useState<'all' | 'oneway' | 'roundtrip'>('all');
 
-  // ── Live price fetching ───────────────────────────────────────────────────
-  const [livePrices, setLivePrices] = useState<Record<string, LivePrice | 'loading'>>({});
-  const hasFetched = useRef(false);
-
-  useEffect(() => {
-    if (hasFetched.current || rawDeals.length === 0) return;
-    hasFetched.current = true;
-
-    const validDeals = rawDeals
-      .filter(d => d.origin && d.destination && d.departure_date)
-      .slice(0, 8);
-    if (validDeals.length === 0) return;
-
-    setLivePrices(Object.fromEntries(validDeals.map(d => [String(d.id), 'loading' as const])));
-
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-    let cancelled = false;
-
-    validDeals.forEach((deal, i) => {
-      const t = setTimeout(async () => {
-        if (cancelled) return;
-        const id = String(deal.id);
-        try {
-          const dep = toYMD(deal.departure_date as string);
-          const ret = toYMD(deal.return_date as string | undefined);
-          if (!dep) { setLivePrices(p => { const n = { ...p }; delete n[id]; return n; }); return; }
-
-          const res = await fetch('/api/flights/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              origin: deal.origin,
-              destination: deal.destination,
-              departureDate: dep,
-              ...(ret ? { returnDate: ret } : {}),
-              passengers: { adults: 1, children: 0, infants: 0 },
-              cabinClass: deal.cabinClass || 'economy',
-              tripType: ret ? 'round-trip' : 'one-way',
-            }),
-          });
-          if (cancelled) return;
-          const json = await res.json();
-          if (json.success && json.data?.offers?.length > 0) {
-            const cheapest = json.data.offers.reduce(
-              (min: any, o: any) => o.price.total < min.price.total ? o : min,
-              json.data.offers[0],
-            );
-            if (!cancelled) setLivePrices(p => ({ ...p, [id]: { price: cheapest.price.total, currency: cheapest.price.currency } }));
-          } else if (!cancelled) {
-            setLivePrices(p => { const n = { ...p }; delete n[id]; return n; });
-          }
-        } catch {
-          if (!cancelled) setLivePrices(p => { const n = { ...p }; delete n[id]; return n; });
-        }
-      }, i * 300);
-      timeouts.push(t);
-    });
-
-    return () => { cancelled = true; timeouts.forEach(clearTimeout); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawDeals.length]);
 
   const { iata: userOrigin, city: userCity } = useUserOrigin();
 
@@ -523,7 +394,7 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
         >
           {displayDeals.map((deal, i) => (
-            <DealCard key={deal.id} deal={deal} index={i} livePrice={livePrices[String(deal.id)]} />
+            <DealCard key={deal.id} deal={deal} index={i} />
           ))}
         </div>
 
@@ -552,7 +423,7 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {displayDeals.map((deal, i) => (
-                  <DealCard key={deal.id} deal={deal} index={i} variant="grid" livePrice={livePrices[String(deal.id)]} />
+                  <DealCard key={deal.id} deal={deal} index={i} variant="grid" />
                 ))}
               </div>
             </motion.div>

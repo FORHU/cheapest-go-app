@@ -156,9 +156,6 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
     router.push('/checkout');
   }
 
-  const discountLabel = originalPrice > 0 && originalPrice > price
-    ? `${Math.round(((originalPrice - price) / originalPrice) * 100)}% OFF`
-    : '';
 
   const imageUrl =
     `/api/hotel-photo?q=${encodeURIComponent(`${deal.name} ${deal.location}`)}` +
@@ -189,15 +186,6 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/75" />
 
-          {/* Discount badge — top left */}
-          {discountLabel && (
-            <div className="absolute top-1.5 left-2.5 z-10">
-              <span className="px-2 py-1 bg-blue-600 text-white text-[11px] rounded-md leading-none">
-                {discountLabel}
-              </span>
-            </div>
-          )}
-
           {/* Bookmark button — top right */}
           <button
             onClick={e => { e.stopPropagation(); setIsSaved(v => !v); }}
@@ -213,14 +201,10 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
           <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 pt-8">
             <div className="flex items-end justify-between">
               <div className="flex flex-col gap-0.5">
-                {originalPrice > 0 && originalPrice > price && (
-                  <span className="text-[11px] text-white line-through leading-none">
-                   Starting From {symbol}{originalPrice.toLocaleString()}
-                  </span>
-                )}
                 <span className="text-[22px] text-white leading-none drop-shadow">
-                  Starting from {symbol}{price.toLocaleString()}<span className="text-[11px] font-normal">/night</span>
+                  From {symbol}{price.toLocaleString()}<span className="text-[11px] font-normal">/night</span>
                 </span>
+                <span className="text-[10px] text-white/60 leading-none">prices may vary</span>
               </div>
               {deal.badge && (
                 <span className="text-[10px] text-white/90 mb-0.5">

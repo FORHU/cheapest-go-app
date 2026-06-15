@@ -16,23 +16,31 @@ interface Attraction {
 }
 
 const ATTRACTIONS: Attraction[] = [
-  { name: 'Bali',             location: 'Indonesia',   country: 'Indonesia',   tagline: 'Island of the Gods',                  searchQuery: 'Bali, Indonesia' },
-  { name: 'Angkor Wat',       location: 'Cambodia',    country: 'Cambodia',    tagline: 'Ancient Khmer Empire',                searchQuery: 'Siem Reap, Cambodia' },
-  { name: 'Ha Long Bay',      location: 'Vietnam',     country: 'Vietnam',     tagline: 'Emerald Waters & Limestone Karsts',   searchQuery: 'Ha Long Bay, Vietnam' },
-  { name: 'Boracay',          location: 'Philippines', country: 'Philippines', tagline: 'World-Famous White Sand Beaches',     searchQuery: 'Boracay, Philippines' },
-  { name: 'Mount Fuji',       location: 'Japan',       country: 'Japan',       tagline: 'Japan\'s Sacred Iconic Peak',         searchQuery: 'Mount Fuji, Japan' },
-  { name: 'Phuket',           location: 'Thailand',    country: 'Thailand',    tagline: 'Thailand\'s Pearl of the Andaman',    searchQuery: 'Phuket, Thailand' },
-  { name: 'Great Barrier Reef',location: 'Australia',  country: 'Australia',   tagline: 'World\'s Largest Coral Reef',         searchQuery: 'Cairns, Australia' },
-  { name: 'Jeju Island',      location: 'South Korea', country: 'South Korea', tagline: 'Island of Wind, Women & Rocks',       searchQuery: 'Jeju Island, South Korea' },
-  { name: 'Palawan',          location: 'Philippines', country: 'Philippines', tagline: 'The Last Frontier',                   searchQuery: 'Palawan, Philippines' },
-  { name: 'Komodo Island',    location: 'Indonesia',   country: 'Indonesia',   tagline: 'Home of the Komodo Dragon',           searchQuery: 'Labuan Bajo, Indonesia' },
-  { name: 'Siargao',          location: 'Philippines', country: 'Philippines', tagline: 'Surfing Capital of the Philippines',  searchQuery: 'Siargao, Philippines' },
-  { name: 'Kyoto',            location: 'Japan',       country: 'Japan',       tagline: 'Temples, Shrines & Cherry Blossoms', searchQuery: 'Kyoto, Japan' },
+  { name: 'Eiffel Tower',       location: 'Paris',         country: 'France',        tagline: 'Icon of the City of Light',            searchQuery: 'Paris, France' },
+  { name: 'Colosseum',          location: 'Rome',          country: 'Italy',         tagline: 'Arena of the Ancient World',           searchQuery: 'Rome, Italy' },
+  { name: 'Machu Picchu',       location: 'Peru',          country: 'Peru',          tagline: 'Lost City of the Incas',               searchQuery: 'Cusco, Peru' },
+  { name: 'Santorini',          location: 'Greece',        country: 'Greece',        tagline: 'Blue Domes & Aegean Sunsets',          searchQuery: 'Santorini, Greece' },
+  { name: 'Bali',               location: 'Indonesia',     country: 'Indonesia',     tagline: 'Island of the Gods',                   searchQuery: 'Bali, Indonesia' },
+  { name: 'Angkor Wat',         location: 'Cambodia',      country: 'Cambodia',      tagline: 'Ancient Khmer Empire',                 searchQuery: 'Siem Reap, Cambodia' },
+  { name: 'Safari — Serengeti', location: 'Tanzania',      country: 'Tanzania',      tagline: 'Greatest Wildlife Show on Earth',      searchQuery: 'Serengeti, Tanzania' },
+  { name: 'Grand Canyon',       location: 'Arizona',       country: 'USA',           tagline: 'Nature\'s Most Dramatic Masterpiece',  searchQuery: 'Grand Canyon, USA' },
+  { name: 'Boracay',            location: 'Philippines',   country: 'Philippines',   tagline: 'World-Famous White Sand Beaches',      searchQuery: 'Boracay, Philippines' },
+  { name: 'Mount Fuji',         location: 'Japan',         country: 'Japan',         tagline: 'Japan\'s Sacred Iconic Peak',          searchQuery: 'Mount Fuji, Japan' },
+  { name: 'Ha Long Bay',        location: 'Vietnam',       country: 'Vietnam',       tagline: 'Emerald Waters & Limestone Karsts',    searchQuery: 'Ha Long Bay, Vietnam' },
+  { name: 'Taj Mahal',          location: 'Agra',          country: 'India',         tagline: 'Eternal Monument to Love',             searchQuery: 'Agra, India' },
+  { name: 'Phuket',             location: 'Thailand',      country: 'Thailand',      tagline: 'Thailand\'s Pearl of the Andaman',     searchQuery: 'Phuket, Thailand' },
+  { name: 'Northern Lights',    location: 'Iceland',       country: 'Iceland',       tagline: 'Nature\'s Most Magical Light Show',    searchQuery: 'Reykjavik, Iceland' },
+  { name: 'Pyramids of Giza',   location: 'Egypt',         country: 'Egypt',         tagline: 'Wonder of the Ancient World',          searchQuery: 'Cairo, Egypt' },
+  { name: 'Palawan',            location: 'Philippines',   country: 'Philippines',   tagline: 'The Last Frontier',                    searchQuery: 'Palawan, Philippines' },
+  { name: 'Amalfi Coast',       location: 'Italy',         country: 'Italy',         tagline: 'Clifftop Villages & Azure Waters',     searchQuery: 'Amalfi, Italy' },
+  { name: 'Great Barrier Reef', location: 'Australia',     country: 'Australia',     tagline: 'World\'s Largest Coral Reef',          searchQuery: 'Cairns, Australia' },
+  { name: 'Jeju Island',        location: 'South Korea',   country: 'South Korea',   tagline: 'Island of Wind, Women & Rocks',        searchQuery: 'Jeju Island, South Korea' },
+  { name: 'Maldives',           location: 'Maldives',      country: 'Maldives',      tagline: 'Overwater Bungalows & Crystal Lagoons',searchQuery: 'Maldives' },
 ];
 
 function attractionImageUrl(name: string, location: string): string {
   return (
-    `/api/hotel-photo?q=${encodeURIComponent(name + ' ' + location + ' tourist attraction')}` +
+    `/api/hotel-photo?q=${encodeURIComponent(name + ' ' + location + ' landmark tourist')}` +
     `&fallback=${encodeURIComponent(`https://picsum.photos/seed/${encodeURIComponent(name)}/600/400`)}`
   );
 }
@@ -59,7 +67,7 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
       initial={index === 0 ? false : { opacity: 0, x: 40 }}
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true }}
-      transition={{ delay: index * 0.05 }}
+      transition={{ delay: Math.min(index * 0.04, 0.3) }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       onClick={navigate}
       className="shrink-0 snap-start cursor-pointer"
@@ -75,26 +83,18 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
           loading={index < 2 ? 'eager' : 'lazy'}
         />
 
-        {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/80" />
 
-        {/* Country badge */}
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
           <Sparkles className="w-2.5 h-2.5 text-amber-300" />
           <span className="text-[10px] text-white leading-none">{attraction.location}</span>
         </div>
 
-        {/* Info */}
         <div className="absolute bottom-0 left-0 right-0 px-3 pb-3 pt-8">
-          <h3 className="text-[15px] font-bold text-white leading-tight">
-            {attraction.name}
-          </h3>
-          <p className="text-[10px] text-white/80 leading-snug mt-0.5 truncate">
-            {attraction.tagline}
-          </p>
+          <h3 className="text-[15px] font-bold text-white leading-tight">{attraction.name}</h3>
+          <p className="text-[10px] text-white/80 leading-snug mt-0.5 truncate">{attraction.tagline}</p>
         </div>
 
-        {/* Hover overlay */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <span className="bg-white/90 text-slate-900 text-[11px] font-semibold px-4 py-1.5 rounded-full shadow-lg">
             Find Hotels
@@ -105,27 +105,25 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
   );
 };
 
-const AsiaPacificAttractionsSection: React.FC = () => {
+const TopDestinationsSection: React.FC = () => {
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
 
   return (
     <section className="w-full py-2 md:py-4 lg:py-5">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
 
-        {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900 dark:text-white">
-              Top Attractions in{' '}
-              <span className="text-blue-600 dark:text-blue-400">Asia Pacific</span>
+              Top Destinations{' '}
+              <span className="text-blue-600 dark:text-blue-400">Worldwide</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Must-visit destinations across the region
+              Iconic experiences from every corner of the globe
             </p>
           </div>
         </div>
 
-        {/* Horizontal scroll */}
         <div
           ref={rowRef}
           {...dragProps}
@@ -142,4 +140,4 @@ const AsiaPacificAttractionsSection: React.FC = () => {
   );
 };
 
-export default AsiaPacificAttractionsSection;
+export default TopDestinationsSection;

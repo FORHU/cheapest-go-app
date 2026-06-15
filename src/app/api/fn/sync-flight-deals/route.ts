@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
             LIMIT 10
         `;
 
-        const finalRoutes: { origin: string; destination: string }[] = [...statsRows];
+        const finalRoutes: { origin: string; destination: string }[] = [...(statsRows as unknown as { origin: string; destination: string }[])];
         for (const def of DEFAULT_ROUTES) {
             if (finalRoutes.length >= 10) break;
             const exists = finalRoutes.some(
