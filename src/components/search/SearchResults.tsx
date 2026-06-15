@@ -42,6 +42,8 @@ interface SearchResultsProps {
     onSwitchToMap?: () => void;
 }
 
+const PAGE_SIZE = 20;
+
 const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotalCount = 0, rawSearchParams = {}, onSwitchToMap }: SearchResultsProps) => {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -55,8 +57,12 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
     const { filters } = useSearchStore();
     const { propertyTypes, boardTypes, refundable } = filters;
 
+    // Reset to page 1 whenever filters change
+    React.useEffect(() => { setPage(1); }, [propertyTypes, boardTypes, refundable]);
+
     const handleSortChange = useCallback((value: SortValue) => {
         setSortBy(value);
+        setPage(1);
         const params = new URLSearchParams(window.location.search);
         if (value === 'recommended') params.delete('sort');
         else params.set('sort', value);
@@ -65,7 +71,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
 
     const [allProperties, setAllProperties] = React.useState<Property[]>(initialProperties);
     const [totalCount, setTotalCount] = React.useState(initialTotalCount || initialProperties.length);
-    const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+    const [page, setPage] = React.useState(1);
 
     const buildPropertyUrl = useCallback((property: Property) => {
         const params = new URLSearchParams(window.location.search);
@@ -98,6 +104,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
     React.useEffect(() => {
         setAllProperties(initialProperties);
         setTotalCount(initialTotalCount || initialProperties.length);
+        setPage(1);
         if (destination && initialProperties.length > 0) {
             const cheapest = initialProperties.reduce((min, p) => p.price < min.price ? p : min, initialProperties[0]);
             if (cheapest.price > 0) {
@@ -146,30 +153,10 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
         return props;
     }, [allProperties, sortBy, propertyTypes, boardTypes, refundable]);
 
-    const hasMore = allProperties.length < totalCount;
+    const visibleProperties = filteredProperties.slice(0, page * PAGE_SIZE);
+    const hasMore = visibleProperties.length < filteredProperties.length;
 
-    const handleLoadMore = async () => {
-        if (isLoadingMore || !hasMore) return;
-        setIsLoadingMore(true);
-        try {
-            const res = await fetch('/api/search/more', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...rawSearchParams, offset: allProperties.length, limit: 10 }),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data?.data && Array.isArray(data.data)) {
-                    setAllProperties(prev => [...prev, ...data.data]);
-                    if (data.totalCount) setTotalCount(data.totalCount);
-                }
-            }
-        } catch (e) {
-            console.error('[LoadMore] error:', e);
-        } finally {
-            setIsLoadingMore(false);
-        }
-    };
+    const handleLoadMore = () => setPage(p => p + 1);
 
     return (
         <div className="flex-1 min-w-0">
@@ -220,7 +207,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
             {
                 filteredProperties.length > 0 ? (
                     <div className="space-y-4">
-                        {filteredProperties.map((property, index) => (
+                        {visibleProperties.map((property, index) => (
                             <div key={property.id} onMouseEnter={() => handlePropertyPrefetch(property)}>
                                 <PropertyCard
                                     variant="horizontal"
@@ -244,42 +231,23 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
                 )
             }
 
-            {/* Load More skeleton + button */}
-            {
-                filteredProperties.length > 0 && (
-                    <div className="mt-4 md:mt-8">
-                        {isLoadingMore && (
-                            <div className="space-y-4 mb-4">
-                                {Array.from({ length: 3 }).map((_, i) => (
-                                    <div key={i} className="flex gap-4 h-44 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-pulse">
-                                        <div className="w-44 shrink-0 bg-slate-200 dark:bg-slate-700" />
-                                        <div className="flex-1 py-4 pr-4 space-y-3">
-                                            <div className="h-5 w-3/4 bg-slate-200 dark:bg-slate-700 rounded" />
-                                            <div className="h-4 w-1/3 bg-slate-200 dark:bg-slate-700 rounded" />
-                                            <div className="h-4 w-1/2 bg-slate-200 dark:bg-slate-700 rounded" />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        <div className="flex justify-center">
-                            {hasMore ? (
-                                <button
-                                    onClick={handleLoadMore}
-                                    disabled={isLoadingMore}
-                                    className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 shadow-md shadow-blue-600/10"
-                                >
-                                    {isLoadingMore ? 'Loading...' : 'Load More Results'}
-                                </button>
-                            ) : (
-                                <button className="px-4 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-500 text-[11px] font-medium rounded-full cursor-not-allowed opacity-50">
-                                    End of results
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )
-            }
+            {/* Load More */}
+            {filteredProperties.length > 0 && (
+                <div className="mt-4 md:mt-8 flex justify-center">
+                    {hasMore ? (
+                        <button
+                            onClick={handleLoadMore}
+                            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 shadow-md shadow-blue-600/10"
+                        >
+                            Show more ({filteredProperties.length - visibleProperties.length} remaining)
+                        </button>
+                    ) : (
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                            All {filteredProperties.length} results shown
+                        </span>
+                    )}
+                </div>
+            )}
 
             {/* Floating Map Toggle for Mobile - REMOVED */}
         </div >
