@@ -3,7 +3,7 @@ export const revalidate = 300; // regenerate every 5 minutes
 import { Suspense } from "react";
 import Script from "next/script";
 import { Hero } from "@/components/landing/hero";
-import { RecentlyViewed, YourRecentSearches, PhilippinesCitiesSection, AsiaPacificAttractionsSection } from "@/components/landing/sections";
+import { RecentlyViewed, YourRecentSearches, TopCitiesSection, TopDestinationsSection } from "@/components/landing/sections";
 import { AppBanner } from "@/components/landing/layout";
 import {
   SectionSkeleton,
@@ -85,13 +85,13 @@ export default function Home() {
           {/* Client-side sections — render immediately */}
           <YourRecentSearches />
           <RecentlyViewed />
-          <PhilippinesCitiesSection />
-          <AsiaPacificAttractionsSection />
+          <TopCitiesSection />
+          <TopDestinationsSection />
 
           {/* Data sections — each streams independently */}
-          {/* <Suspense fallback={<SectionSkeleton />}>
+          <Suspense fallback={<SectionSkeleton />}>
             <DealsSectionStream />
-          </Suspense> */}
+          </Suspense>
           <Suspense fallback={<SectionSkeleton />}>
             <HotelDealsSectionStream />
           </Suspense>

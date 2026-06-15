@@ -139,9 +139,9 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
           {/* Price overlay */}
           <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 pt-8">
             <span className="text-[20px] text-white leading-none drop-shadow">
-              {symbol}{price.toLocaleString()}
-              <span className="text-[11px] font-normal">/night</span>
+              From {symbol}{price.toLocaleString()}<span className="text-[11px] font-normal">/night</span>
             </span>
+            <p className="text-[10px] text-white/60 leading-none mt-0.5">prices may vary</p>
           </div>
         </div>
 

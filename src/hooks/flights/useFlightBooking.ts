@@ -79,7 +79,7 @@ export function useFlightBooking() {
                 try {
                     const { adults = 1, children = 0, infants = 0 } = JSON.parse(searchCounts);
                     const blank = (type: 'ADT' | 'CHD' | 'INF'): FlightPassengerForm => ({
-                        type, firstName: '', lastName: '', gender: '', birthDate: '',
+                        type, firstName: '', lastName: '', gender: 'M' as 'M' | 'F', birthDate: '',
                         nationality: 'KR', passport: '', passportExpiry: '',
                     });
                     const forms: FlightPassengerForm[] = [
@@ -92,7 +92,7 @@ export function useFlightBooking() {
             }
         }
         return [{
-            type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
+            type: 'ADT', firstName: '', lastName: '', gender: 'M' as 'M' | 'F', birthDate: '',
             nationality: 'KR', passport: '', passportExpiry: '',
         }];
     });
@@ -288,7 +288,7 @@ export function useFlightBooking() {
 
     const addPassenger = () => {
         setPassengers(prev => [...prev, {
-            type: 'ADT', firstName: '', lastName: '', gender: '', birthDate: '',
+            type: 'ADT', firstName: '', lastName: '', gender: 'M' as 'M' | 'F', birthDate: '',
             nationality: 'KR', passport: '', passportExpiry: '',
         }]);
     };
