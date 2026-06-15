@@ -20,8 +20,6 @@ import { useMapDetails } from './hooks/useMapDetails';
 import { MapDetailsPanel } from './components/MapDetailsPanel';
 import { env } from '@/utils/env';
 import { Layers } from 'lucide-react';
-import { useKakaoSearch } from './hooks/useKakaoSearch';
-import { isLocationInKorea } from '@/utils/geo';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { cn, formatCurrency } from '@/lib/utils';
 import { MapGemsPanel } from '../map/MapGemsPanel';
@@ -359,7 +357,6 @@ export const SearchMapContainer = React.memo(({
         mapDetails,
         handleDetailToggle,
         terrainEnabled,
-        exploreEnabled,
         mapStyleUrl,
         standardConfig,
     } = useMapDetails('default-3d');
@@ -375,49 +372,6 @@ export const SearchMapContainer = React.memo(({
         lightPreset: 'day' as const,
     }), [standardConfig]);
 
-    // 7. Kakao Discovery for Korea
-    const { results: recommendedPlaces, fetchRecommendations: fetchKakaoRecommendations } = useKakaoSearch();
-    const lastDiscoveryFetch = React.useRef<{ lat: number, lng: number } | null>(null);
-
-    /** Runs the Kakao discovery check for the current map centre. */
-    const runKakaoDiscovery = useCallback(() => {
-        if (!isMapLoaded || !exploreEnabled) return;
-
-        const center = mapRef.current?.getCenter();
-        if (!center) return;
-
-        const distance = lastDiscoveryFetch.current
-            ? calculateDistance(lastDiscoveryFetch.current, { lat: center.lat, lng: center.lng })
-            : 1000;
-
-        if (Number(distance) > 2 && isLocationInKorea(center.lat, center.lng)) {
-            fetchKakaoRecommendations(center.lat, center.lng);
-            lastDiscoveryFetch.current = { lat: center.lat, lng: center.lng };
-        }
-    }, [isMapLoaded, exploreEnabled, fetchKakaoRecommendations, mapRef]);
-
-    // Trigger on load / toggle
-    React.useEffect(() => {
-        runKakaoDiscovery();
-    }, [runKakaoDiscovery]);
-
-    // Construct GeoJSON for recommended places
-    const recommendedGeoJson = useMemo(() => {
-        if (!exploreEnabled || !recommendedPlaces.length) return undefined;
-        return {
-            type: 'FeatureCollection' as const,
-            features: recommendedPlaces.map(p => ({
-                type: 'Feature' as const,
-                geometry: { type: 'Point' as const, coordinates: [p.lng, p.lat] },
-                properties: {
-                    name: p.name,
-                    category: p.category,
-                    isKakao: true,
-                    id: p.id
-                }
-            }))
-        };
-    }, [exploreEnabled, recommendedPlaces]);
 
     // Reset loading state on style change to prevent "Style not done loading" errors
     React.useEffect(() => {
@@ -444,7 +398,6 @@ export const SearchMapContainer = React.memo(({
                 onStyleReady={handleMapLoad}
                 onClick={handleMapClick}
                 onMouseMove={onMouseMove}
-                onMoveEnd={runKakaoDiscovery}
                 onDragStart={handleDragStart}
                 hideLayersButton={true}
             >
@@ -513,84 +466,6 @@ export const SearchMapContainer = React.memo(({
                             />
                         )}
 
-                        {exploreEnabled && recommendedPlaces.length > 0 && (
-                            <Source id="explore-source" type="geojson" data={recommendedGeoJson}>
-                                {/* Outer glow layer */}
-                                <Layer
-                                    id="explore-poi-glow"
-                                    type="circle"
-                                    minzoom={13}
-                                    paint={{
-                                        'circle-radius': 15,
-                                        'circle-color': [
-                                            'match',
-                                            ['get', 'category'],
-                                            'restaurant', '#f43f5e',
-                                            'cafe', '#f97316',
-                                            'park', '#22c55e',
-                                            'transit', '#3b82f6',
-                                            '#8b5cf6'
-                                        ],
-                                        'circle-opacity': [
-                                            'interpolate',
-                                            ['linear'],
-                                            ['zoom'],
-                                            13, 0,
-                                            14, 0.2
-                                        ],
-                                        'circle-pitch-alignment': 'map',
-                                    }}
-                                />
-                                <Layer
-                                    id="explore-poi-dots"
-                                    type="circle"
-                                    paint={{
-                                        'circle-radius': [
-                                            'interpolate',
-                                            ['linear'],
-                                            ['zoom'],
-                                            10, 4,
-                                            15, 8
-                                        ],
-                                        'circle-color': [
-                                            'match',
-                                            ['get', 'category'],
-                                            'restaurant', '#f43f5e',
-                                            'cafe', '#f97316',
-                                            'park', '#22c55e',
-                                            'transit', '#3b82f6',
-                                            '#8b5cf6'
-                                        ],
-                                        'circle-stroke-width': 1.5,
-                                        'circle-stroke-color': '#fff',
-                                        'circle-pitch-alignment': 'map',
-                                    }}
-                                />
-                                <Layer
-                                    id="discovery-poi-labels"
-                                    type="symbol"
-                                    layout={{
-                                        'text-field': ['get', 'name'],
-                                        'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
-                                        'text-radial-offset': 1.2,
-                                        'text-justify': 'auto',
-                                        'text-size': [
-                                            'interpolate',
-                                            ['linear'],
-                                            ['zoom'],
-                                            12, 0,
-                                            15, 12
-                                        ],
-                                        'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
-                                    }}
-                                    paint={{
-                                        'text-color': '#334155',
-                                        'text-halo-color': '#ffffff',
-                                        'text-halo-width': 2,
-                                    }}
-                                />
-                            </Source>
-                        )}
                     </>
                 )}
 
