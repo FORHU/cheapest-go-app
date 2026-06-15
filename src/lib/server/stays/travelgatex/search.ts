@@ -10,7 +10,7 @@ import { resolveTgxDestinationCode } from '@/lib/server/search';
 // ─── Hotel search cache ───────────────────────────────────────────────────────
 
 const HOTEL_CACHE_TTL_MINUTES = parseInt(
-    process.env.HOTEL_SEARCH_CACHE_TTL_MINUTES ?? '5',
+    process.env.HOTEL_SEARCH_CACHE_TTL_MINUTES ?? '30',
     10,
 );
 
@@ -478,9 +478,10 @@ async function buildCityResults(
         }
     }
 
-    // Sort cheapest-first — no cap, Coolify/Cloudflare has no serverless timeout
+    // Sort cheapest-first, cap at 300 to protect client memory and render budget
     const hotelCodes = Array.from(byHotel.entries())
         .sort(([, a], [, b]) => (a.price.gross || a.price.net) - (b.price.gross || b.price.net))
+        .slice(0, 300)
         .map(([code]) => code);
     const [contentMap, reviewMap] = await Promise.all([
         fetchHotelContent(hotelCodes),
