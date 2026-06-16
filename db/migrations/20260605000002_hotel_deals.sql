@@ -1,3 +1,4 @@
+-- migrate:up
 -- hotel_search_stats: tracks which cities users search so the sync cron
 -- knows which destinations to keep fresh.
 CREATE TABLE IF NOT EXISTS public.hotel_search_stats (
@@ -20,3 +21,6 @@ ALTER TABLE public.hotel_deals
 
 ALTER TABLE public.hotel_deals
     ADD CONSTRAINT hotel_deals_hotel_code_key UNIQUE (hotel_code);
+
+-- migrate:down
+-- No automated rollback; revert manually if needed.

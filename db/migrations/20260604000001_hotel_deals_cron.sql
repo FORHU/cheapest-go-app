@@ -1,8 +1,6 @@
+-- migrate:up
 -- Migration: add currency + updated_at to weekend_flight_deals,
 -- plus a unique constraint so the cron job can upsert by name+location.
---
--- Run this in PgAdmin (or psql) against your DATABASE_URL before deploying
--- the sync-hotel-deals cron job.
 
 -- 1. New columns
 ALTER TABLE weekend_flight_deals
@@ -26,3 +24,6 @@ ALTER TABLE weekend_flight_deals
 -- 4. Index to speed up the landing page query (ordered by updated_at DESC)
 CREATE INDEX IF NOT EXISTS idx_weekend_flight_deals_updated_at
     ON weekend_flight_deals (updated_at DESC);
+
+-- migrate:down
+-- No automated rollback; revert manually if needed.

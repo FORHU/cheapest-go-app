@@ -1,3 +1,4 @@
+-- migrate:up
 -- Flight schema fixes: add missing columns and update status constraint
 
 -- flight_segments: add cabin_class and segment_index
@@ -31,3 +32,6 @@ ALTER TABLE public.flight_bookings
         'refunded'::text,
         'refund_failed'::text
     ])));
+
+-- migrate:down
+-- No automated rollback; revert manually if needed.
