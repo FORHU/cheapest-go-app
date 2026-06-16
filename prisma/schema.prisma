@@ -13,14 +13,12 @@ model admin_audit_log {
   created_at  DateTime @default(now()) @db.Timestamptz(6)
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model admin_settings {
   key        String    @id
   value      Json      @default("\"\"")
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model api_keys {
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id      String    @db.Uuid
@@ -35,7 +33,6 @@ model api_keys {
   @@index([user_id])
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model api_logs {
   id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   provider         String
@@ -54,7 +51,6 @@ model api_logs {
   @@index([provider], map: "idx_api_logs_provider")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model booking_emails {
   id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   booking_id      String
@@ -76,7 +72,6 @@ model booking_emails {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model booking_financial_events {
   id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   booking_id      String          @db.Uuid
@@ -93,7 +88,6 @@ model booking_financial_events {
   @@index([transaction_id], map: "idx_booking_financial_events_transaction_id")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model booking_policy_snapshots {
   id                                                             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   booking_id                                                     String              @unique(map: "uq_policy_per_booking")
@@ -118,7 +112,6 @@ model booking_policy_snapshots {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model booking_sessions {
   id                        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                   String            @db.Uuid
@@ -163,7 +156,6 @@ model booking_sessions {
   @@index([user_id], map: "idx_booking_sessions_user_id")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model bookings {
   id                                                                             String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   booking_id                                                                     String                    @unique
@@ -204,7 +196,6 @@ model bookings {
   @@index([user_id], map: "idx_bookings_user_id")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model dest_code_cache {
   city_key    String   @id
   dest_codes  String[] @default([])
@@ -215,7 +206,6 @@ model dest_code_cache {
   @@index([expires_at])
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model device_push_tokens {
   id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id         String?        @db.Uuid
@@ -230,7 +220,6 @@ model device_push_tokens {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model email_logs {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   booking_id    String?
@@ -248,7 +237,6 @@ model email_logs {
   @@index([status], map: "idx_email_logs_status")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model etg_hotel_index {
   hid             BigInt    @id
   name            String
@@ -264,7 +252,6 @@ model etg_hotel_index {
   @@index([name_normalized(ops: raw("gin_trgm_ops"))], map: "etg_hotel_index_name_trgm", type: Gin)
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model etg_index_status {
   country_code   String    @id @db.Char(2)
   status         String    @default("pending")
@@ -273,7 +260,6 @@ model etg_index_status {
   last_error     String?
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model flight_booking_notes {
   id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   booking_id      String          @db.Uuid
@@ -288,7 +274,6 @@ model flight_booking_notes {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model flight_bookings {
   id                        String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id                   String                     @db.Uuid
@@ -335,7 +320,6 @@ model flight_bookings {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model flight_deals {
   id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   origin            String
@@ -357,7 +341,6 @@ model flight_deals {
   @@unique([origin, destination, cabin_class])
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model flight_results_cache {
   id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   search_id       String          @db.Uuid
@@ -381,7 +364,6 @@ model flight_results_cache {
   @@index([search_id], map: "idx_flight_results_search_id")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model flight_search_stats {
   id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   origin           String
@@ -396,7 +378,6 @@ model flight_search_stats {
   @@index([origin, destination], map: "idx_flight_search_stats_route")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model flight_searches {
   id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id              String?                @db.Uuid
@@ -417,7 +398,6 @@ model flight_searches {
   @@index([user_id], map: "idx_flight_searches_user_id")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model flight_segments {
   id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   booking_id      String          @db.Uuid
@@ -435,7 +415,6 @@ model flight_segments {
   @@index([booking_id], map: "idx_flight_segments_booking_id")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model hotel_content {
   hotel_id              String    @id
   name                  String?
@@ -493,7 +472,6 @@ model hotel_deals {
   last_refreshed_at DateTime? @db.Timestamptz(6)
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model hotel_review_items {
   id            BigInt   @id @default(autoincrement())
   hotel_id      String
@@ -514,7 +492,6 @@ model hotel_review_items {
   @@index([hotel_id, score(sort: Desc)], map: "hotel_review_items_score_idx")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model hotel_reviews {
   hotel_id      String   @id
   rating        Decimal? @db.Decimal(4, 2)
@@ -543,7 +520,6 @@ model hotel_search_stats {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model notifications {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id     String?  @db.Uuid
@@ -557,7 +533,6 @@ model notifications {
   users       users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model onda_properties {
   id             String    @id
   name           String
@@ -573,7 +548,6 @@ model onda_properties {
   last_synced_at DateTime? @default(now()) @db.Timestamptz(6)
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model passengers {
   id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   booking_id      String          @db.Uuid
@@ -596,7 +570,6 @@ model password_reset_tokens {
   users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model place_cache {
   place_id  String   @id
   data      Json
@@ -604,7 +577,6 @@ model place_cache {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model policy_tiers {
   id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   snapshot_id              String                   @db.Uuid
@@ -620,7 +592,6 @@ model policy_tiers {
   @@index([snapshot_id, tier_order], map: "idx_policy_tiers_snapshot")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model popular_destinations {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   city          String
@@ -631,7 +602,6 @@ model popular_destinations {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model price_alerts {
   id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id         String    @db.Uuid
@@ -652,7 +622,6 @@ model price_alerts {
   @@index([user_id], map: "idx_price_alerts_user")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model profiles {
   id          String    @id @db.Uuid
   email       String?
@@ -670,7 +639,6 @@ model profiles {
   @@index([email], map: "idx_profiles_email")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model rate_limit_counters {
   key      String   @id
   count    Int      @default(0)
@@ -680,7 +648,6 @@ model rate_limit_counters {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model refund_logs {
   id                       String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   booking_id               String
@@ -706,7 +673,6 @@ model refund_logs {
   @@index([user_id], map: "idx_refund_logs_user")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model saved_trips {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id    String    @db.Uuid
@@ -729,7 +695,6 @@ model schema_migrations {
   version String @id @db.VarChar
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model search_results_cache {
   cache_key   String   @id
   city_name   String
@@ -774,7 +739,6 @@ model tgx_destination_cache {
   created_at       DateTime? @default(now()) @db.Timestamptz(6)
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model travel_styles {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title      String
@@ -786,7 +750,6 @@ model travel_styles {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model unified_bookings {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id       String    @db.Uuid
@@ -811,7 +774,6 @@ model unified_bookings {
   @@index([user_id], map: "idx_unified_bookings_user_id")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model unique_stays {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name       String
@@ -850,7 +812,6 @@ model users {
   @@index([email], map: "idx_users_email")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model voucher_usage {
   id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   voucher_id       String    @db.Uuid
@@ -868,7 +829,6 @@ model voucher_usage {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model vouchers {
   id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   code                String                @unique
@@ -893,7 +853,6 @@ model vouchers {
   @@index([code], map: "idx_vouchers_code")
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model weekend_flight_deals {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name           String
