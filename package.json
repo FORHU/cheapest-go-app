@@ -11,7 +11,9 @@
     "lint": "next lint",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "prisma:pull": "prisma db pull",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -45,7 +47,12 @@
     "zustand": "^5.0.10"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@sentry/cli", "sharp"]
+    "onlyBuiltDependencies": [
+      "@sentry/cli",
+      "sharp",
+      "@prisma/engines",
+      "prisma"
+    ]
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
@@ -59,6 +66,7 @@
     "autoprefixer": "^10.4.23",
     "happy-dom": "^20.8.4",
     "postcss": "^8.5.6",
+    "prisma": "^6.19.3",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.8.2",
     "vitest": "^4.1.0"

@@ -2,8 +2,8 @@
  * Server-side PostgreSQL client.
  *
  * Returns a DbClient that implements the query-builder interface.
- * Queries run under the current user's RLS context (app.current_user_id
- * is set by the request middleware or withUserContext()).
+ * There is no RLS — access control is enforced by the caller validating
+ * the session before querying, not by the database connection itself.
  */
 
 import { getSql } from '@/lib/db/postgres';

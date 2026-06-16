@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CheapestGo — Technical Documentation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.75;
+    color: #1a1a2e;
+    background: #fff;
+    padding: 48px 56px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #0052cc;
+    padding-bottom: 20px;
+    margin-bottom: 36px;
+  }
+  .brand { font-size: 22px; font-weight: 700; color: #0052cc; letter-spacing: -0.5px; }
+  .brand span { color: #ff5f1f; }
+  .doc-meta { text-align: right; color: #666; font-size: 11.5px; line-height: 1.6; }
+  .doc-meta strong { color: #333; display: block; font-size: 13px; }
+
+  /* ── Title ── */
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #0d0d1a;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    color: #555;
+    font-size: 13.5px;
+    margin-bottom: 36px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e8eaf0;
+  }
+
+  /* ── TOC ── */
+  .toc {
+    background: #f5f7ff;
+    border: 1px solid #d0d9f0;
+    border-radius: 10px;
+    padding: 22px 28px;
+    margin-bottom: 40px;
+  }
+  .toc-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #0052cc;
+    margin-bottom: 14px;
+  }
+  .toc ol {
+    padding-left: 18px;
+    column-count: 2;
+    column-gap: 32px;
+  }
+  .toc li { color: #334; font-size: 12.5px; margin-bottom: 5px; }
+  .toc li::marker { color: #0052cc; font-weight: 600; }
+
+  /* ── Sections ── */
+  h2 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0052cc;
+    margin: 36px 0 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #d0d9f0;
+  }
+  h3 {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 22px 0 9px;
+  }
+  h4 {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #334;
+    margin: 16px 0 6px;
+  }
+
+  p { margin-bottom: 12px; color: #333; }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0 22px;
+    font-size: 12px;
+  }
+  thead tr { background: #0052cc; color: #fff; }
+  thead th {
+    padding: 9px 13px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11.5px;
+    letter-spacing: 0.3px;
+  }
+  tbody tr:nth-child(even) { background: #f5f7ff; }
+  tbody td { padding: 8px 13px; color: #333; border-bottom: 1px solid #e8eaf0; }
+  .badge-active { color: #1a7f37; font-weight: 600; }
+  .badge-pending { color: #9a6700; font-weight: 600; }
+  .badge-inactive { color: #999; }
+
+  /* ── Pills ── */
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .pill-blue { background: #e8f0ff; color: #0052cc; }
+  .pill-orange { background: #fff0e8; color: #cc5200; }
+  .pill-green { background: #e8f8ee; color: #1a7f37; }
+  .pill-gray { background: #f0f0f5; color: #555; }
+
+  /* ── Info boxes ── */
+  .info-box {
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 14px 0 20px;
+    border-left: 3px solid;
+    font-size: 12.5px;
+  }
+  .info-box.blue { background: #f0f7ff; border-color: #0052cc; }
+  .info-box.orange { background: #fff7f0; border-color: #ff5f1f; }
+  .info-box.green { background: #f0faf4; border-color: #1a7f37; }
+  .info-box.yellow { background: #fffbf0; border-color: #d4a017; }
+  .info-box strong { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .info-box.blue strong { color: #0052cc; }
+  .info-box.orange strong { color: #cc5200; }
+  .info-box.green strong { color: #1a7f37; }
+  .info-box.yellow strong { color: #9a6700; }
+
+  /* ── Feature grid ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 16px 0 24px;
+  }
+  .feature-card {
+    border: 1px solid #e0e6f5;
+    border-radius: 10px;
+    padding: 16px 18px;
+    background: #fafbff;
+  }
+  .feature-card .fc-icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  .feature-card .fc-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 5px;
+  }
+  .feature-card .fc-desc {
+    font-size: 11.5px;
+    color: #555;
+    line-height: 1.5;
+  }
+
+  /* ── Architecture flow ── */
+  .arch-flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 22px;
+    flex-wrap: wrap;
+  }
+  .arch-node {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .arch-node.client { background: #e8f0ff; color: #0052cc; }
+  .arch-node.server { background: #1a1a2e; color: #fff; }
+  .arch-node.db { background: #fff0e8; color: #cc5200; }
+  .arch-node.ext { background: #e8f8ee; color: #1a7f37; }
+  .arch-arrow { color: #aaa; font-size: 16px; }
+
+  /* ── Code ── */
+  .code-block {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.65;
+    margin: 12px 0 18px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .code-block .comment { color: #6c7086; }
+  .code-block .key { color: #89b4fa; }
+  .code-block .str { color: #a6e3a1; }
+
+  /* ── Route list ── */
+  .route-list { margin: 12px 0 20px; padding: 0; list-style: none; }
+  .route-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f0f2f8;
+    font-size: 12px;
+  }
+  .route-method {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    min-width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .method-get { background: #e8f8ee; color: #1a7f37; }
+  .method-post { background: #e8f0ff; color: #0052cc; }
+  .route-path {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: #0052cc;
+    min-width: 240px;
+    flex-shrink: 0;
+  }
+  .route-desc { color: #555; }
+
+  /* ── State machine ── */
+  .state-machine {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 14px 0 20px;
+    flex-wrap: wrap;
+  }
+  .state-node {
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .state-node.init { background: #f0f2f8; color: #444; }
+  .state-node.auth { background: #fff0e8; color: #cc5200; }
+  .state-node.proc { background: #e8f0ff; color: #0052cc; }
+  .state-node.done { background: #e8f8ee; color: #1a7f37; }
+  .state-node.fail { background: #fce8e8; color: #cc0000; }
+  .state-arrow { color: #aaa; font-size: 14px; }
+
+  /* ── Schema block ── */
+  .schema-table { margin: 10px 0 20px; }
+  .schema-table table { font-size: 11.5px; }
+  .col-name { font-family: 'JetBrains Mono', monospace; color: #0052cc; font-weight: 500; }
+  .col-type { font-family: 'JetBrains Mono', monospace; color: #9a6700; }
+  .col-pk { color: #cc5200; font-weight: 700; font-size: 10px; }
+
+  /* ── Cron table ── */
+  .cron-freq { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #555; }
+
+  /* ── Page break ── */
+  @media print {
+    body { padding: 32px 40px; font-size: 12px; }
+    .page-break { page-break-before: always; }
+    h2 { page-break-after: avoid; }
+    table, .feature-grid { page-break-inside: avoid; }
+    .toc { page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════ HEADER -->
+<div class="header">
+  <div class="brand">Cheapest<span>Go</span></div>
+  <div class="doc-meta">
+    <strong>Technical Documentation</strong>
+    Version 1.0 &nbsp;·&nbsp; June 2025<br>
+    Confidential — Internal Use Only
+  </div>
+</div>
+
+<h1>CheapestGo Platform — Technical Documentation</h1>
+<p class="subtitle">
+  A comprehensive reference covering architecture, features, API integrations,
+  database schema, deployment, and operational patterns for the CheapestGo
+  travel booking platform.
+</p>
+
+<!-- ════════════════════════════════════════════ TOC -->
+<div class="toc">
+  <div class="toc-title">Table of Contents</div>
+  <ol>
+    <li>Product Overview</li>
+    <li>Technology Stack</li>
+    <li>Application Architecture</li>
+    <li>Pages &amp; Routes</li>
+    <li>Flight Module</li>
+    <li>Hotel Module</li>
+    <li>Authentication &amp; Sessions</li>
+    <li>Payments (Stripe)</li>
+    <li>Database Schema</li>
+    <li>API Reference</li>
+    <li>Cron Jobs &amp; Automation</li>
+    <li>Maps &amp; Geolocation</li>
+    <li>Admin Dashboard</li>
+    <li>Infrastructure &amp; Deployment</li>
+    <li>Security</li>
+    <li>Error Handling &amp; Observability</li>
+  </ol>
+</div>
+
+<!-- ════════════════════════════════════════════ 1. OVERVIEW -->
+<h2>1 &nbsp; Product Overview</h2>
+<p>
+  CheapestGo is a full-stack travel booking platform that enables users to search,
+  compare, and book flights and hotels from multiple suppliers through a single,
+  unified interface. The platform aggregates inventory from industry APIs (Duffel,
+  Mystifly, TravelgateX) and presents them with consistent pricing, cancellation
+  policies, and booking flows.
+</p>
+
+<div class="feature-grid">
+  <div class="feature-card">
+    <div class="fc-icon">✈️</div>
+    <div class="fc-title">Multi-Provider Flight Search</div>
+    <div class="fc-desc">Parallel search across Duffel Airways and Mystifly with normalized fare data, seat selection, and baggage add-ons.</div>
+  </div>
+  <div class="feature-card">
+    <div class="fc-icon">🏨</div>
+    <div class="fc-title">Global Hotel Inventory</div>
+    <div class="fc-desc">TravelgateX OTV powers hotel search with real-time availability, dynamic pricing, and free-cancellation filtering.</div>
+  </div>
+  <div class="feature-card">
+    <div class="fc-icon">🗺️</div>
+    <div class="fc-title">Interactive Map Search</div>
+    <div class="fc-desc">Mapbox GL map with property clustering, nearby POIs via Google Places, and side-panel comparison.</div>
+  </div>
+  <div class="feature-card">
+    <div class="fc-icon">💳</div>
+    <div class="fc-title">Unified Checkout (Stripe)</div>
+    <div class="fc-desc">Stripe Embedded Checkout with manual-capture for Mystifly and automatic-capture for Duffel bookings.</div>
+  </div>
+  <div class="feature-card">
+    <div class="fc-icon">🤖</div>
+    <div class="fc-title">AI-Powered Search</div>
+    <div class="fc-desc">Natural language search bar and AI itinerary generator for destination discovery and trip planning.</div>
+  </div>
+  <div class="feature-card">
+    <div class="fc-icon">🌍</div>
+    <div class="fc-title">Multi-Currency Support</div>
+    <div class="fc-desc">Real-time exchange rates with client-side conversion. Currency preference persisted per user.</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ 2. STACK -->
+<div class="page-break"></div>
+<h2>2 &nbsp; Technology Stack</h2>
+
+<table>
+  <thead><tr><th>Layer</th><th>Technology</th><th>Version / Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Framework</td><td>Next.js (App Router)</td><td>15.x · Turbopack dev builds</td></tr>
+    <tr><td>Language</td><td>TypeScript</td><td>5.8</td></tr>
+    <tr><td>Runtime</td><td>Node.js + React</td><td>Node 24 · React 19</td></tr>
+    <tr><td>Styling</td><td>Tailwind CSS</td><td>v4 · PostCSS</td></tr>
+    <tr><td>Animation</td><td>Framer Motion</td><td>Latest</td></tr>
+    <tr><td>Client State</td><td>Zustand</td><td>Stores: auth, search, booking, checkout</td></tr>
+    <tr><td>Server State</td><td>TanStack Query v5</td><td>React Query — bookings, trips</td></tr>
+    <tr><td>Database</td><td>PostgreSQL</td><td>AWS RDS (prod) · Docker port 5433 (dev)</td></tr>
+    <tr><td>DB Driver</td><td>postgres.js</td><td>Typed queries, shared connection pool</td></tr>
+    <tr><td>Migrations</td><td>dbmate</td><td>SQL migration files in <code>db/migrations/</code></td></tr>
+    <tr><td>Auth</td><td>Lucia v3</td><td>Session-based · argon2id password hashing</td></tr>
+    <tr><td>Maps</td><td>Mapbox GL + react-map-gl</td><td>Clustering via supercluster</td></tr>
+    <tr><td>UI Primitives</td><td>Radix UI</td><td>Dialog, Select, Popover, etc.</td></tr>
+    <tr><td>Icons</td><td>Lucide React</td><td></td></tr>
+    <tr><td>Validation</td><td>Zod</td><td>API input + form schemas</td></tr>
+    <tr><td>PDF</td><td>@react-pdf/renderer</td><td>Booking invoices</td></tr>
+    <tr><td>Email</td><td>Resend</td><td>Transactional email delivery</td></tr>
+    <tr><td>Payments</td><td>Stripe</td><td>Embedded Checkout · webhooks</td></tr>
+    <tr><td>Error Tracking</td><td>Sentry</td><td>Client + server + edge</td></tr>
+    <tr><td>Package Manager</td><td>pnpm</td><td>Workspace-based monorepo</td></tr>
+    <tr><td>Testing</td><td>Vitest + Testing Library</td><td></td></tr>
+    <tr><td>Deployment</td><td>Coolify (Docker)</td><td>Node 24 Alpine container</td></tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════════════════════ 3. ARCHITECTURE -->
+<h2>3 &nbsp; Application Architecture</h2>
+
+<h3>Request Flow</h3>
+<div class="arch-flow">
+  <div class="arch-node client">Browser / PWA</div>
+  <div class="arch-arrow">→</div>
+  <div class="arch-node server">Next.js Middleware<br><small>Session validation</small></div>
+  <div class="arch-arrow">→</div>
+  <div class="arch-node server">App Router<br><small>Server Components</small></div>
+  <div class="arch-arrow">→</div>
+  <div class="arch-node server">API Routes<br><small>/api/*</small></div>
+  <div class="arch-arrow">→</div>
+  <div class="arch-node db">PostgreSQL<br><small>AWS RDS</small></div>
+</div>
+<div class="arch-flow">
+  <div class="arch-node server">API Routes</div>
+  <div class="arch-arrow">→</div>
+  <div class="arch-node ext">Duffel API</div>
+  <div class="arch-arrow">&nbsp;|&nbsp;</div>
+  <div class="arch-node ext">Mystifly API</div>
+  <div class="arch-arrow">&nbsp;|&nbsp;</div>
+  <div class="arch-node ext">TravelgateX<br><small>GraphQL</small></div>
+  <div class="arch-arrow">&nbsp;|&nbsp;</div>
+  <div class="arch-node ext">Stripe</div>
+</div>
+
+<h3>State Management Strategy</h3>
+<p>The app uses a layered state approach:</p>
+<ul style="padding-left:20px;margin-bottom:14px;font-size:12.5px;color:#333;line-height:2;">
+  <li><strong>Zustand stores</strong> — ephemeral UI state (auth, search params, booking flow, checkout)</li>
+  <li><strong>TanStack Query</strong> — server cache for bookings list, trip details, profile data</li>
+  <li><strong>PostgreSQL</strong> — source of truth for all business data</li>
+  <li><strong>Lucia sessions</strong> — auth state, refreshed per-request in middleware</li>
+</ul>
+
+<h3>Provider Aggregation Pattern</h3>
+<p>
+  Flight search runs <strong>Duffel + Mystifly in parallel</strong> using
+  <code>Promise.allSettled()</code> with a 12-second timeout per provider.
+  Results are normalized to a shared <code>FlightOffer</code> type before being
+  cached and returned to the client. One provider failing does not block the
+  response from the other.
+</p>
+<div class="code-block"><span class="comment">// src/lib/server/flights/search-flights.ts (simplified)</span>
+<span class="key">const [duffelResult, mystiflyResult]</span> = await Promise.allSettled([
+  searchDuffel(params, { timeout: 12_000 }),
+  searchMystifly(params, { timeout: 12_000 }),
+]);
+
+<span class="key">const offers</span> = [
+  ...(duffelResult.status === <span class="str">'fulfilled'</span> ? duffelResult.value : []),
+  ...(mystiflyResult.status === <span class="str">'fulfilled'</span> ? mystiflyResult.value : []),
+].map(normalizeToFlightOffer);</div>
+
+<!-- ════════════════════════════════════════════ 4. PAGES -->
+<div class="page-break"></div>
+<h2>4 &nbsp; Pages &amp; Routes</h2>
+
+<h3>Main Application Routes</h3>
+<table>
+  <thead><tr><th>Route</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/</code></td><td>Landing page — hero search, featured deals, destination cards</td></tr>
+    <tr><td><code>/flights/search</code></td><td>Flight search results with filters, sorting, price calendar</td></tr>
+    <tr><td><code>/flights/[slug]</code></td><td>Single flight offer detail view</td></tr>
+    <tr><td><code>/flights/book</code></td><td>Booking flow — passenger details → seat selection → checkout</td></tr>
+    <tr><td><code>/search</code></td><td>Hotel search results with map and list view</td></tr>
+    <tr><td><code>/property/[id]</code></td><td>Hotel detail — photos, facilities, reviews, map</td></tr>
+    <tr><td><code>/checkout</code></td><td>Unified checkout (Stripe Embedded) for flights and hotels</td></tr>
+    <tr><td><code>/trips</code></td><td>User booking history — upcoming, past, cancelled tabs</td></tr>
+    <tr><td><code>/account</code></td><td>User profile management</td></tr>
+    <tr><td><code>/deals</code></td><td>Featured travel deals aggregation</td></tr>
+    <tr><td><code>/destinations/[slug]</code></td><td>Destination content pages</td></tr>
+  </tbody>
+</table>
+
+<h3>Admin Dashboard Routes</h3>
+<table>
+  <thead><tr><th>Route</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/admin/overview</code></td><td>KPI dashboard — revenue, bookings, active users</td></tr>
+    <tr><td><code>/admin/bookings</code></td><td>Full booking management with search and filters</td></tr>
+    <tr><td><code>/admin/customers</code></td><td>User management and profile views</td></tr>
+    <tr><td><code>/admin/deals</code></td><td>Deal creation, editing, and scheduling</td></tr>
+    <tr><td><code>/admin/analytics</code></td><td>Traffic and conversion analytics</td></tr>
+    <tr><td><code>/admin/revenue</code></td><td>Revenue tracking and Stripe balance</td></tr>
+    <tr><td><code>/admin/price-alerts</code></td><td>Price alert management and triggers</td></tr>
+    <tr><td><code>/admin/suppliers</code></td><td>Supplier config (Duffel, TravelgateX)</td></tr>
+    <tr><td><code>/admin/stripe</code></td><td>Stripe payment dashboard</td></tr>
+    <tr><td><code>/admin/travelgatex</code></td><td>TravelgateX credit and settings</td></tr>
+  </tbody>
+</table>
+
+<h3>Auth Routes</h3>
+<table>
+  <thead><tr><th>Route</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/auth/callback</code></td><td>OAuth callback handler</td></tr>
+    <tr><td><code>/auth/reset-password</code></td><td>Password reset form (token-based)</td></tr>
+    <tr><td><code>/auth/auth-code-error</code></td><td>OAuth error display</td></tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════════════════════ 5. FLIGHTS -->
+<div class="page-break"></div>
+<h2>5 &nbsp; Flight Module</h2>
+
+<h3>Provider Integrations</h3>
+<table>
+  <thead><tr><th>Provider</th><th>Role</th><th>Status</th><th>API Type</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Duffel Airways</strong></td>
+      <td>Primary flight search &amp; booking, e-ticket issuance</td>
+      <td class="badge-active">Active</td>
+      <td>REST</td>
+    </tr>
+    <tr>
+      <td><strong>Mystifly V1</strong></td>
+      <td>Lowest-fare NDC results</td>
+      <td class="badge-pending">Onboarding</td>
+      <td>SOAP / REST</td>
+    </tr>
+    <tr>
+      <td><strong>Mystifly V2</strong></td>
+      <td>Branded fare results with rich policy data</td>
+      <td class="badge-pending">Onboarding</td>
+      <td>REST</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Search Flow</h3>
+<ol style="padding-left:20px;margin-bottom:18px;font-size:12.5px;color:#333;line-height:2.2;">
+  <li>Client submits search params → <code>POST /api/flights/search</code></li>
+  <li>Server checks <code>flight_results_cache</code> (10-minute TTL)</li>
+  <li>Cache miss: parallel provider calls with 12-second timeout</li>
+  <li>Results normalized to <code>FlightOffer[]</code>, merged and sorted</li>
+  <li>Cache populated in background (fire-and-forget)</li>
+  <li>Normalized offers returned to client</li>
+</ol>
+
+<h3>Booking State Machine</h3>
+<div class="state-machine">
+  <div class="state-node init">initiated</div>
+  <div class="state-arrow">→</div>
+  <div class="state-node auth">payment_authorized</div>
+  <div class="state-arrow">→</div>
+  <div class="state-node proc">processing</div>
+  <div class="state-arrow">→</div>
+  <div class="state-node done">booked</div>
+  <div class="state-arrow">&nbsp;/&nbsp;</div>
+  <div class="state-node fail">failed</div>
+</div>
+
+<h3>Mystifly Ticketing Loop</h3>
+<p>
+  After a Mystifly booking is placed, the PNR may take minutes to confirm.
+  The <code>poll-pending-tickets</code> cron job (every 5 minutes) checks pending
+  PNRs via <code>GetTicketStatus</code>. On failure, Stripe is automatically
+  refunded and the booking is marked <code>failed</code>.
+</p>
+
+<h3>Flight UI Components</h3>
+<table>
+  <thead><tr><th>Component</th><th>File</th><th>Role</th></tr></thead>
+  <tbody>
+    <tr><td>FlightCard</td><td><code>flightCard.tsx</code></td><td>Offer card — price, stops, airline, duration</td></tr>
+    <tr><td>FlightResultsList</td><td><code>flightResultsList.tsx</code></td><td>Paginated results with sorting</td></tr>
+    <tr><td>Filters</td><td><code>filters.tsx</code></td><td>Price range, stops, airline, time-of-day filters</td></tr>
+    <tr><td>PriceCalendar</td><td><code>PriceCalendar.tsx</code></td><td>7-day price heatmap</td></tr>
+    <tr><td>SeatMapPanel</td><td><code>SeatMapPanel.tsx</code></td><td>Seat selection UI</td></tr>
+    <tr><td>BagSelectionPanel</td><td><code>BagSelectionPanel.tsx</code></td><td>Baggage add-ons</td></tr>
+    <tr><td>DuffelFareConditions</td><td><code>DuffelFareConditions.tsx</code></td><td>Fare rules display</td></tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════════════════════ 6. HOTELS -->
+<div class="page-break"></div>
+<h2>6 &nbsp; Hotel Module</h2>
+
+<h3>Provider: TravelgateX OTV</h3>
+<p>
+  All hotel inventory is sourced from <strong>TravelgateX OTV</strong> via
+  GraphQL. The integration follows a four-step lifecycle:
+</p>
+<ol style="padding-left:20px;margin-bottom:18px;font-size:12.5px;color:#333;line-height:2.2;">
+  <li><strong>Search</strong> — <code>HotelX_Search</code> query with occupancy, dates, destination</li>
+  <li><strong>Quote</strong> — <code>HotelX_Quote</code> to lock the rate and receive a quote token</li>
+  <li><strong>Book</strong> — <code>HotelX_Book</code> using the quote token with guest details</li>
+  <li><strong>Cancel</strong> — <code>HotelX_Cancel</code> using the booking reference</li>
+</ol>
+
+<div class="info-box blue">
+  <strong>Quote Token Lifecycle</strong>
+  A quote token is short-lived (typically 10–15 minutes). The front end starts a
+  countdown timer once a quote is obtained. Expiry requires the user to re-search.
+</div>
+
+<h3>Hotel Search Features</h3>
+<ul style="padding-left:20px;margin-bottom:14px;font-size:12.5px;color:#333;line-height:2;">
+  <li>Multi-currency pricing (base currency normalized, client-side conversion)</li>
+  <li>Free-cancellation badge from policy data</li>
+  <li>Interactive Mapbox map with property clustering</li>
+  <li>Nearby POIs overlay (restaurants, attractions) via Google Places</li>
+  <li>Voucher / discount code validation at checkout</li>
+  <li>Prebook price lock before final payment</li>
+</ul>
+
+<h3>Hotel UI Components</h3>
+<table>
+  <thead><tr><th>Component</th><th>Role</th></tr></thead>
+  <tbody>
+    <tr><td><code>PropertyMapView.tsx</code></td><td>Main map view — markers, clustering, side panel</td></tr>
+    <tr><td><code>MapPropertyCard.tsx</code></td><td>Property popup card on map</td></tr>
+    <tr><td><code>MapMarker.tsx / ClusterMarker.tsx</code></td><td>Individual and clustered property pins</td></tr>
+    <tr><td><code>NearbyPlaceMarker.tsx</code></td><td>POI markers (restaurants, attractions)</td></tr>
+    <tr><td><code>MapGemsPanel.tsx</code></td><td>Right-side property list panel</td></tr>
+    <tr><td><code>VoucherInput.tsx</code></td><td>Discount code entry and validation</td></tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════════════════════ 7. AUTH -->
+<div class="page-break"></div>
+<h2>7 &nbsp; Authentication &amp; Sessions</h2>
+
+<h3>Overview</h3>
+<p>
+  Authentication is handled by <strong>Lucia v3</strong> with a custom PostgreSQL
+  adapter. There is no Supabase Auth dependency — all user and session data lives
+  in the application's own Postgres database.
+</p>
+
+<div class="info-box green">
+  <strong>Password Hashing</strong>
+  Passwords are hashed with <strong>argon2id</strong> via <code>@node-rs/argon2</code>
+  (native binding). Salt and parameters are stored as part of the hash string.
+</div>
+
+<h3>Session Cookie</h3>
+<p>
+  Cookie name: <code>cg-session</code>. Flags: <code>HttpOnly</code>,
+  <code>Secure</code> (in production), <code>SameSite=Lax</code>. Session tokens are
+  long random strings stored in the <code>sessions</code> table.
+</p>
+
+<h3>Auth Flow</h3>
+<ol style="padding-left:20px;margin-bottom:18px;font-size:12.5px;color:#333;line-height:2.2;">
+  <li>User submits email/password → <code>POST /api/auth/register</code> or <code>/api/auth/login</code></li>
+  <li>Server verifies credentials, creates <code>sessions</code> row</li>
+  <li>Session cookie set on response</li>
+  <li>Next.js middleware validates/refreshes cookie on every request</li>
+  <li><code>useAuthStore</code> syncs user object to client state</li>
+</ol>
+
+<h3>Password Reset Flow</h3>
+<ol style="padding-left:20px;margin-bottom:18px;font-size:12.5px;color:#333;line-height:2.2;">
+  <li>User requests reset → <code>POST /api/auth/forgot-password</code></li>
+  <li>Secure token generated, stored in <code>password_reset_tokens</code></li>
+  <li>Reset link emailed via Resend</li>
+  <li>User submits new password → <code>POST /api/auth/reset-password?token=…</code></li>
+  <li>Token validated (expiry + single-use), password updated, session created</li>
+</ol>
+
+<h3>Route Protection</h3>
+<table>
+  <thead><tr><th>Route Pattern</th><th>Requirement</th></tr></thead>
+  <tbody>
+    <tr><td><code>/trips</code>, <code>/account</code>, <code>/checkout</code></td><td>Authenticated user session</td></tr>
+    <tr><td><code>/admin/*</code></td><td>Authenticated user with <code>role === 'admin'</code></td></tr>
+    <tr><td>All booking API routes</td><td>Authenticated session (user ID extracted server-side)</td></tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════════════════════ 8. PAYMENTS -->
+<div class="page-break"></div>
+<h2>8 &nbsp; Payments (Stripe)</h2>
+
+<h3>Integration Model</h3>
+<p>
+  Payments use <strong>Stripe Embedded Checkout</strong> rendered in an iframe.
+  Two capture modes are used depending on the flight provider:
+</p>
+
+<table>
+  <thead><tr><th>Provider</th><th>Capture Mode</th><th>Reason</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Duffel Airways</td>
+      <td><span class="pill pill-green">Automatic</span></td>
+      <td>Duffel confirms booking synchronously; immediate charge is safe</td>
+    </tr>
+    <tr>
+      <td>Mystifly</td>
+      <td><span class="pill pill-orange">Manual</span></td>
+      <td>PNR confirmation is asynchronous; card held until ticket is confirmed</td>
+    </tr>
+    <tr>
+      <td>Hotels (TravelgateX)</td>
+      <td><span class="pill pill-blue">Automatic</span></td>
+      <td>Booking confirmed synchronously via prebook → book flow</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Checkout Flow</h3>
+<ol style="padding-left:20px;margin-bottom:18px;font-size:12.5px;color:#333;line-height:2.2;">
+  <li>User reviews order → <code>POST /api/flights/book</code> or <code>/api/booking/prebook</code></li>
+  <li>Server creates Stripe PaymentIntent (manual or auto capture)</li>
+  <li>Client renders <code>&lt;StripeEmbeddedCheckout /&gt;</code> with client secret</li>
+  <li>User completes payment in Stripe iframe</li>
+  <li>Stripe webhook → <code>POST /api/webhooks/stripe</code> triggers booking creation</li>
+  <li>Booking record written, confirmation email sent via Resend</li>
+</ol>
+
+<h3>Idempotency &amp; Double-Booking Prevention</h3>
+<p>
+  An in-memory <code>Set</code> of active booking session IDs prevents concurrent
+  requests for the same session from creating duplicate bookings. Stripe idempotency
+  keys are also passed to prevent duplicate PaymentIntents.
+</p>
+
+<div class="info-box yellow">
+  <strong>Future Enhancement</strong>
+  The in-memory session lock does not survive across container restarts or multiple
+  instances. Migrating to Redis-backed locking is planned for multi-instance
+  production scaling.
+</div>
+
+<!-- ════════════════════════════════════════════ 9. DATABASE -->
+<div class="page-break"></div>
+<h2>9 &nbsp; Database Schema</h2>
+
+<p>
+  There is <strong>no ORM</strong> in this project — no Prisma schema exists.
+  The schema below is transcribed directly from the raw SQL migration files
+  managed by <strong>dbmate</strong> in <code>db/migrations/</code>
+  (<code>20260601000001_schema.sql</code>, <code>…_auth.sql</code>, and five
+  follow-up patch migrations). The connection uses <strong>postgres.js</strong>
+  with a shared pool. Development runs Postgres 17 in Docker on port 5433;
+  production uses AWS RDS.
+</p>
+
+<div class="info-box blue">
+  <strong>Naming note</strong>
+  Several tables carry names from an earlier Supabase-based version of the schema
+  (e.g. <code>profiles</code>, <code>weekend_flight_deals</code> used for hotel
+  deals, <code>onda_properties</code>/<code>etg_hotel_index</code> from earlier
+  provider integrations). They remain in production and are documented as-is
+  rather than renamed.
+</div>
+
+<h3>Custom Types</h3>
+<table>
+  <thead><tr><th>Type</th><th>Values</th></tr></thead>
+  <tbody>
+    <tr><td><code>booking_policy_type</code> (enum)</td><td>free_cancellation · non_refundable · partial_refund · tiered</td></tr>
+    <tr><td><code>refund_status</code> (enum)</td><td>pending · approved · processed · rejected · failed</td></tr>
+  </tbody>
+</table>
+
+<h3>Auth &amp; Users</h3>
+<div class="schema-table">
+<table>
+  <thead><tr><th>Table</th><th>Key Columns</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>users</code></td><td>id <span class="col-pk">PK</span>, email <em>unique</em>, password_hash, role (user/admin)</td><td>Account record. Replaces Supabase <code>auth.users</code>; passwords hashed with argon2id</td></tr>
+    <tr><td><code>sessions</code></td><td>id <span class="col-pk">PK</span> (text), user_id → users, expires_at</td><td>Lucia v3 session store</td></tr>
+    <tr><td><code>password_reset_tokens</code></td><td>user_id <span class="col-pk">PK</span> → users, token, expires_at</td><td>Single-use reset tokens</td></tr>
+    <tr><td><code>profiles</code></td><td>id <span class="col-pk">PK</span> → users.id, role, preferences (jsonb), banned_at</td><td>1:1 extension of <code>users</code>, auto-created by <code>on_user_created</code> trigger</td></tr>
+    <tr><td><code>api_keys</code></td><td>id <span class="col-pk">PK</span>, user_id → users, key_hash <em>unique</em></td><td>Issued API keys for programmatic access</td></tr>
+    <tr><td><code>device_push_tokens</code></td><td>id <span class="col-pk">PK</span>, user_id → users, expo_push_token <em>unique</em></td><td>Mobile push notification tokens (Expo)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Flight Booking</h3>
+<div class="schema-table">
+<table>
+  <thead><tr><th>Table</th><th>Key Columns</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>booking_sessions</code></td><td>id <span class="col-pk">PK</span>, user_id, provider, status, idempotency_key</td><td>Pre-payment flight state machine: pending → initiated → payment_initiated → payment_authorized → processing → booked / failed / expired</td></tr>
+    <tr><td><code>flight_bookings</code></td><td>id <span class="col-pk">PK</span>, user_id, pnr, provider, status, session_id → booking_sessions</td><td>Confirmed flight bookings. Status: booked → pnr_created → awaiting_ticket → ticketing → ticketed (or failed/cancelled/refund chain)</td></tr>
+    <tr><td><code>flight_booking_notes</code></td><td>id <span class="col-pk">PK</span>, booking_id → flight_bookings, created_by → users</td><td>Internal admin notes on a flight booking</td></tr>
+    <tr><td><code>flight_segments</code></td><td>id <span class="col-pk">PK</span>, booking_id → flight_bookings, flight_number, cabin_class</td><td>Per-leg itinerary detail</td></tr>
+    <tr><td><code>passengers</code></td><td>id <span class="col-pk">PK</span>, booking_id → flight_bookings, type (ADT/CHD/INF)</td><td>Passenger records with ticket/seat numbers</td></tr>
+    <tr><td><code>flight_searches</code></td><td>id <span class="col-pk">PK</span>, user_id → users, origin, destination, departure_date</td><td>Logged search queries for analytics</td></tr>
+    <tr><td><code>flight_results_cache</code></td><td>id <span class="col-pk">PK</span>, search_id → flight_searches, offer_id, price</td><td>Cached normalized offers per search</td></tr>
+    <tr><td><code>flight_search_stats</code></td><td>id <span class="col-pk">PK</span>, (origin, destination) <em>unique</em>, search_count</td><td>Route popularity, fed by <code>increment_search_stats()</code></td></tr>
+    <tr><td><code>flight_deals</code></td><td>id <span class="col-pk">PK</span>, (origin, destination, cabin_class) <em>unique</em></td><td>Featured flight deals, upserted by <code>sync-flight-deals</code> cron</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Hotel Booking</h3>
+<div class="schema-table">
+<table>
+  <thead><tr><th>Table</th><th>Key Columns</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>bookings</code></td><td>id <span class="col-pk">PK</span>, booking_id <em>unique</em>, user_id, hotel_id, status</td><td>Hotel bookings — guest info, pricing, voucher, cancellation policy</td></tr>
+    <tr><td><code>hotel_deals</code></td><td>hotel_code <em>unique</em>, city_key, lat/lng, baseline_price</td><td>Featured hotel deals, upserted by <code>sync-hotel-deals</code> cron (pre-existing table, extended by migration 6)</td></tr>
+    <tr><td><code>hotel_content</code></td><td>hotel_id <span class="col-pk">PK</span>, name, amenities (jsonb), ratehawk_hid</td><td>Cached hotel descriptive content from supplier</td></tr>
+    <tr><td><code>hotel_reviews</code></td><td>hotel_id <span class="col-pk">PK</span>, rating, reviews_count</td><td>Aggregate review score per hotel</td></tr>
+    <tr><td><code>hotel_review_items</code></td><td>id <span class="col-pk">PK</span> (identity), (hotel_id, source_id) <em>unique</em></td><td>Individual synced review records</td></tr>
+    <tr><td><code>hotel_search_stats</code></td><td>city_key <span class="col-pk">PK</span>, search_count</td><td>Tracks which cities are searched so the deals cron prioritizes freshness</td></tr>
+    <tr><td><code>search_results_cache</code></td><td>cache_key <span class="col-pk">PK</span>, city_name, checkin/checkout, hotels (jsonb)</td><td>Cached hotel search results</td></tr>
+    <tr><td><code>dest_code_cache</code></td><td>city_key <span class="col-pk">PK</span>, dest_codes[], hotel_codes[]</td><td>City → supplier destination/hotel code lookup cache</td></tr>
+    <tr><td><code>etg_hotel_index</code> / <code>etg_index_status</code></td><td>hid <span class="col-pk">PK</span> / country_code <span class="col-pk">PK</span></td><td>RateHawk/ETG hotel name index for fuzzy search (pg_trgm) and per-country seeding status</td></tr>
+    <tr><td><code>onda_properties</code></td><td>id <span class="col-pk">PK</span> (text), name, status</td><td>Cached property data from the ONDA provider</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Shared Financial &amp; Policy</h3>
+<div class="schema-table">
+<table>
+  <thead><tr><th>Table</th><th>Key Columns</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>booking_policy_snapshots</code></td><td>id <span class="col-pk">PK</span>, booking_id <em>unique</em>, policy_type (enum)</td><td>Cancellation policy captured at booking time, FK'd from hotel <code>bookings</code></td></tr>
+    <tr><td><code>policy_tiers</code></td><td>id <span class="col-pk">PK</span>, snapshot_id → booking_policy_snapshots, (snapshot_id, tier_order) <em>unique</em></td><td>Tiered cancellation penalty schedule</td></tr>
+    <tr><td><code>booking_financial_events</code></td><td>id <span class="col-pk">PK</span>, booking_id → flight_bookings, event_type (payment/refund/supplier_reconciliation)</td><td>Payment/refund audit trail</td></tr>
+    <tr><td><code>refund_logs</code></td><td>id <span class="col-pk">PK</span>, status (enum refund_status), applied_tier_id → policy_tiers</td><td>Refund request lifecycle and approved amounts</td></tr>
+    <tr><td><code>unified_bookings</code></td><td>id <span class="col-pk">PK</span>, type (flight/hotel), status, profit</td><td>Cross-type revenue ledger used by <code>get_revenue_stats()</code></td></tr>
+    <tr><td><code>vouchers</code> / <code>voucher_usage</code></td><td>code <em>unique</em> / voucher_id → vouchers</td><td>Discount code definitions and redemption log</td></tr>
+    <tr><td><code>stripe_processed_events</code></td><td>event_id <em>unique</em></td><td>Stripe webhook idempotency guard</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Marketing / Landing Content</h3>
+<div class="schema-table">
+<table>
+  <thead><tr><th>Table</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>popular_destinations</code></td><td>Curated destination cards (city, country, average price)</td></tr>
+    <tr><td><code>travel_styles</code></td><td>Landing page "travel style" category cards</td></tr>
+    <tr><td><code>unique_stays</code></td><td>Curated unique-stay property cards</td></tr>
+    <tr><td><code>weekend_flight_deals</code></td><td>Despite the name, also used to back hotel weekend-deal cards (name/location/sale_price), upserted by name+location</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Notifications &amp; Alerts</h3>
+<div class="schema-table">
+<table>
+  <thead><tr><th>Table</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>notifications</code></td><td>In-app notifications (booking/system/alert types)</td></tr>
+    <tr><td><code>price_alerts</code></td><td>User-defined route + target price watches, checked by <code>check-price-alerts</code> cron</td></tr>
+    <tr><td><code>booking_emails</code></td><td>Outgoing hotel confirmation email payloads and send status</td></tr>
+    <tr><td><code>email_logs</code></td><td>General transactional email log (confirmation/ticketed/refund/cancellation/price_alert)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Ops &amp; Infrastructure</h3>
+<div class="schema-table">
+<table>
+  <thead><tr><th>Table</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>admin_settings</code></td><td>Key/value app configuration (jsonb value)</td></tr>
+    <tr><td><code>admin_audit_log</code></td><td>Admin action audit trail</td></tr>
+    <tr><td><code>api_logs</code></td><td>Per-call provider API log (endpoint, duration, status, error)</td></tr>
+    <tr><td><code>rate_limit_counters</code></td><td>Sliding-window counters backing <code>increment_rate_limit()</code></td></tr>
+    <tr><td><code>place_cache</code></td><td>Cached Google Places API responses by place_id</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Database Functions</h3>
+<table>
+  <thead><tr><th>Function</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>create_booking_with_policy()</code></td><td>Atomically inserts a hotel booking + policy snapshot + tiers in one transaction</td></tr>
+    <tr><td><code>save_booking_transaction()</code></td><td>Variant used by the current booking flow; returns booking_id + snapshot_id</td></tr>
+    <tr><td><code>get_revenue_stats(php_rate)</code></td><td>Aggregates revenue/markup/profit across <code>unified_bookings</code>, <code>bookings</code>, and <code>flight_bookings</code> for the admin dashboard</td></tr>
+    <tr><td><code>increment_rate_limit(key, window_ms)</code></td><td>Upserts and returns the current count for a rate-limit key</td></tr>
+    <tr><td><code>increment_search_stats(...)</code></td><td>Upserts route popularity into <code>flight_search_stats</code></td></tr>
+  </tbody>
+</table>
+
+<h3>Cache Key Pattern (Flight Results)</h3>
+<div class="code-block"><span class="comment">// flight_results_cache rows are linked via search_id → flight_searches</span>
+<span class="comment">// Cache freshness is evaluated against flight_searches.created_at</span>
+SELECT frc.* FROM flight_results_cache frc
+JOIN flight_searches fs ON fs.id = frc.search_id
+WHERE fs.origin = $1 AND fs.destination = $2
+  AND fs.departure_date = $3
+  AND fs.created_at > NOW() - INTERVAL <span class="str">'10 minutes'</span>;</div>
+
+<!-- ════════════════════════════════════════════ 10. API -->
+<div class="page-break"></div>
+<h2>10 &nbsp; API Reference</h2>
+
+<h3>Flight Endpoints</h3>
+<ul class="route-list">
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/flights/search</span>
+    <span class="route-desc">Parallel search across Duffel + Mystifly. Returns normalized <code>FlightOffer[]</code>. Rate-limited to 20 req/min per IP.</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/flights/book</span>
+    <span class="route-desc">Creates a booking session and Stripe PaymentIntent. Returns client secret for Embedded Checkout.</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/flights/confirm</span>
+    <span class="route-desc">Fallback endpoint — checks DB for existing booking, creates if missing. Used when webhook fires before redirect.</span>
+  </li>
+</ul>
+
+<h3>Hotel / Booking Endpoints</h3>
+<ul class="route-list">
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/booking/prebook</span>
+    <span class="route-desc">Obtains a quote token from TravelgateX and locks the hotel rate.</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/booking/confirm</span>
+    <span class="route-desc">Final booking with guest details using the prebook quote token.</span>
+  </li>
+  <li>
+    <span class="route-method method-get">GET</span>
+    <span class="route-path">/api/booking/[id]</span>
+    <span class="route-desc">Retrieve full booking details for the authenticated user.</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/booking/cancel</span>
+    <span class="route-desc">Initiates cancellation via TravelgateX and triggers refund if applicable.</span>
+  </li>
+</ul>
+
+<h3>Auth Endpoints</h3>
+<ul class="route-list">
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/auth/register</span>
+    <span class="route-desc">Create account with email/password. Returns session cookie.</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/auth/login</span>
+    <span class="route-desc">Authenticate with email/password. Returns session cookie.</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/auth/logout</span>
+    <span class="route-desc">Invalidates the current session and clears the cookie.</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/auth/forgot-password</span>
+    <span class="route-desc">Sends a password reset email with a signed token link.</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/auth/reset-password</span>
+    <span class="route-desc">Validates reset token and updates the user's password.</span>
+  </li>
+  <li>
+    <span class="route-method method-get">GET</span>
+    <span class="route-path">/api/auth/me</span>
+    <span class="route-desc">Returns the current authenticated user's profile.</span>
+  </li>
+</ul>
+
+<h3>Utility Endpoints</h3>
+<ul class="route-list">
+  <li>
+    <span class="route-method method-get">GET</span>
+    <span class="route-path">/api/airports</span>
+    <span class="route-desc">Airport search by name or IATA code for autocomplete.</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/places</span>
+    <span class="route-desc">Google Places autocomplete and place detail lookups.</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/exchange-rates</span>
+    <span class="route-desc">Returns current exchange rates (1-hour cache).</span>
+  </li>
+  <li>
+    <span class="route-method method-post">POST</span>
+    <span class="route-path">/api/webhooks/stripe</span>
+    <span class="route-desc">Stripe event receiver — triggers booking creation on payment success.</span>
+  </li>
+</ul>
+
+<!-- ════════════════════════════════════════════ 11. CRON -->
+<div class="page-break"></div>
+<h2>11 &nbsp; Cron Jobs &amp; Automation</h2>
+
+<p>
+  Cron jobs are implemented as Next.js API routes under <code>/api/cron/</code>,
+  secured by a <code>CRON_SECRET</code> header. An external scheduler (Coolify
+  system cron or AWS EventBridge) calls these routes on schedule.
+</p>
+
+<table>
+  <thead><tr><th>Job</th><th>Route</th><th>Schedule</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>poll-pending-tickets</strong></td>
+      <td><code>/api/cron/poll-pending-tickets</code></td>
+      <td class="cron-freq">*/5 * * * *</td>
+      <td>Check Mystifly PNR status; auto-refund on failure</td>
+    </tr>
+    <tr>
+      <td><strong>sync-flight-deals</strong></td>
+      <td><code>/api/cron/sync-flight-deals</code></td>
+      <td class="cron-freq">0 * * * *</td>
+      <td>Refresh featured flight deals cache</td>
+    </tr>
+    <tr>
+      <td><strong>sync-hotel-deals</strong></td>
+      <td><code>/api/cron/sync-hotel-deals</code></td>
+      <td class="cron-freq">0 * * * *</td>
+      <td>Refresh featured hotel deals cache</td>
+    </tr>
+    <tr>
+      <td><strong>refresh-popular-flights</strong></td>
+      <td><code>/api/cron/refresh-popular-flights</code></td>
+      <td class="cron-freq">*/30 * * * *</td>
+      <td>Pre-warm flight search cache for high-demand routes</td>
+    </tr>
+    <tr>
+      <td><strong>check-price-alerts</strong></td>
+      <td><code>/api/cron/check-price-alerts</code></td>
+      <td class="cron-freq">*/15 * * * *</td>
+      <td>Scan user price alerts and send triggered notifications</td>
+    </tr>
+    <tr>
+      <td><strong>cleanup-sessions</strong></td>
+      <td><code>/api/cron/cleanup-sessions</code></td>
+      <td class="cron-freq">0 3 * * *</td>
+      <td>Delete expired Lucia sessions from the database</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="info-box blue">
+  <strong>Security</strong>
+  All cron routes validate <code>Authorization: Bearer &lt;CRON_SECRET&gt;</code>.
+  Requests missing this header receive <code>401 Unauthorized</code>. The secret is
+  set as an environment variable and never logged.
+</div>
+
+<!-- ════════════════════════════════════════════ 12. MAPS -->
+<h2>12 &nbsp; Maps &amp; Geolocation</h2>
+
+<h3>Mapbox GL Integration</h3>
+<p>
+  The hotel search map uses <strong>Mapbox GL JS</strong> via
+  <code>react-map-gl</code>. Properties are rendered as custom markers and
+  automatically cluster when zoom &lt; 15 using
+  <strong>supercluster</strong> + <strong>use-supercluster</strong>.
+</p>
+<ul style="padding-left:20px;margin-bottom:14px;font-size:12.5px;color:#333;line-height:2;">
+  <li>Click cluster → zoom to cluster bounds</li>
+  <li>Click property marker → show side-panel detail or navigate to <code>/property/[id]</code></li>
+  <li>Nearby POI layer (restaurants, attractions) via Google Places API</li>
+  <li>Map bounds change triggers filtered results update in side panel</li>
+</ul>
+
+<h3>Google Places Integration</h3>
+<p>
+  <code>POST /api/places</code> wraps the Google Places API for:
+</p>
+<ul style="padding-left:20px;margin-bottom:14px;font-size:12.5px;color:#333;line-height:2;">
+  <li>Location autocomplete (hotel destination search)</li>
+  <li>Place details (coordinates, address, photos)</li>
+  <li>Nearby search (POI overlay on hotel map)</li>
+</ul>
+
+<!-- ════════════════════════════════════════════ 13. ADMIN -->
+<div class="page-break"></div>
+<h2>13 &nbsp; Admin Dashboard</h2>
+
+<p>
+  The admin dashboard is accessible at <code>/admin/*</code> and requires
+  <code>role === 'admin'</code> in the user record. It is a full-featured
+  back-office panel for operations, finance, and content management.
+</p>
+
+<h3>Dashboard Sections</h3>
+<table>
+  <thead><tr><th>Section</th><th>Key Data Shown</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Overview</strong></td><td>Total bookings, revenue, active users, conversion rate — all with period comparison</td></tr>
+    <tr><td><strong>Bookings</strong></td><td>Full booking list with search, filter by status/date/provider, detail modal</td></tr>
+    <tr><td><strong>Customers</strong></td><td>User list, profile details, booking history per user</td></tr>
+    <tr><td><strong>Deals</strong></td><td>Create, edit, schedule featured flight/hotel deals displayed on the landing page</td></tr>
+    <tr><td><strong>Analytics</strong></td><td>Traffic sources, search-to-book funnel, top routes and destinations</td></tr>
+    <tr><td><strong>Revenue</strong></td><td>Daily/monthly revenue charts, Stripe balance, payout schedule</td></tr>
+    <tr><td><strong>Price Alerts</strong></td><td>Active alert list, trigger history, manual alert management</td></tr>
+    <tr><td><strong>Suppliers</strong></td><td>Duffel and TravelgateX config, API health checks</td></tr>
+    <tr><td><strong>Stripe</strong></td><td>Live Stripe balance, recent transactions, dispute tracking</td></tr>
+    <tr><td><strong>TravelgateX</strong></td><td>Credit balance, quota usage, connection settings</td></tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════════════════════ 14. INFRA -->
+<h2>14 &nbsp; Infrastructure &amp; Deployment</h2>
+
+<h3>Environments</h3>
+<table>
+  <thead><tr><th>Environment</th><th>Database</th><th>Platform</th></tr></thead>
+  <tbody>
+    <tr><td>Development</td><td>PostgreSQL 17 in Docker (port 5433) + pgAdmin 4</td><td>Local / <code>pnpm dev</code></td></tr>
+    <tr><td>Production</td><td>AWS RDS PostgreSQL</td><td>Coolify (self-hosted Docker)</td></tr>
+  </tbody>
+</table>
+
+<h3>Docker Build (Production)</h3>
+<div class="code-block"><span class="comment"># Multi-stage Dockerfile</span>
+<span class="key">Stage 1 — deps</span>: Install pnpm dependencies
+<span class="key">Stage 2 — builder</span>: next build (standalone output)
+<span class="key">Stage 3 — runner</span>: node:24-alpine, copy .next/standalone
+
+EXPOSE 3000
+CMD [<span class="str">"node"</span>, <span class="str">"server.js"</span>]</div>
+
+<h3>Environment Variables (Key)</h3>
+<table>
+  <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>DATABASE_URL</code></td><td>PostgreSQL connection string (AWS RDS in prod)</td></tr>
+    <tr><td><code>LUCIA_SECRET</code></td><td>Session token signing secret</td></tr>
+    <tr><td><code>DUFFEL_TOKEN</code></td><td>Duffel API bearer token</td></tr>
+    <tr><td><code>MYSTIFLY_USERNAME / PASSWORD</code></td><td>Mystifly credentials</td></tr>
+    <tr><td><code>TRAVELGATEX_API_KEY</code></td><td>TravelgateX GraphQL API key</td></tr>
+    <tr><td><code>STRIPE_SECRET_KEY</code></td><td>Stripe server-side secret key</td></tr>
+    <tr><td><code>STRIPE_WEBHOOK_SECRET</code></td><td>Stripe webhook signature verification</td></tr>
+    <tr><td><code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code></td><td>Stripe public key (client-side)</td></tr>
+    <tr><td><code>NEXT_PUBLIC_MAPBOX_TOKEN</code></td><td>Mapbox GL access token (client-side)</td></tr>
+    <tr><td><code>GOOGLE_PLACES_API_KEY</code></td><td>Google Places API key (server-side)</td></tr>
+    <tr><td><code>RESEND_API_KEY</code></td><td>Resend transactional email key</td></tr>
+    <tr><td><code>CRON_SECRET</code></td><td>Bearer token for cron route authorization</td></tr>
+    <tr><td><code>SENTRY_DSN</code></td><td>Sentry error tracking DSN</td></tr>
+    <tr><td><code>NEXT_PUBLIC_APP_URL</code></td><td>Base URL for links in emails and redirects</td></tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════════════════════ 15. SECURITY -->
+<div class="page-break"></div>
+<h2>15 &nbsp; Security</h2>
+
+<table>
+  <thead><tr><th>Area</th><th>Control</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Session cookies</strong></td>
+      <td><code>HttpOnly</code> + <code>Secure</code> + <code>SameSite=Lax</code> — not accessible from JavaScript</td>
+    </tr>
+    <tr>
+      <td><strong>Password storage</strong></td>
+      <td>argon2id with automatic salt — not reversible</td>
+    </tr>
+    <tr>
+      <td><strong>Server-side user ID</strong></td>
+      <td>User ID always extracted from validated session, never trusted from request body</td>
+    </tr>
+    <tr>
+      <td><strong>API rate limiting</strong></td>
+      <td>20 flight searches / min per IP; enforced in route middleware</td>
+    </tr>
+    <tr>
+      <td><strong>Secret isolation</strong></td>
+      <td>Provider API keys are server-only env vars — never sent to client or logged</td>
+    </tr>
+    <tr>
+      <td><strong>Payment security</strong></td>
+      <td>Stripe handles all card data (PCI-DSS scope shifted to Stripe)</td>
+    </tr>
+    <tr>
+      <td><strong>Webhook validation</strong></td>
+      <td>Stripe webhooks verified with <code>stripe.webhooks.constructEvent()</code> + secret</td>
+    </tr>
+    <tr>
+      <td><strong>Cron security</strong></td>
+      <td>All <code>/api/cron/*</code> routes require <code>Authorization: Bearer &lt;CRON_SECRET&gt;</code></td>
+    </tr>
+    <tr>
+      <td><strong>Input validation</strong></td>
+      <td>All API inputs validated with Zod schemas before processing</td>
+    </tr>
+    <tr>
+      <td><strong>Admin access</strong></td>
+      <td>Admin routes server-side check <code>role === 'admin'</code>; no client-side gate only</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ════════════════════════════════════════════ 16. OBSERVABILITY -->
+<h2>16 &nbsp; Error Handling &amp; Observability</h2>
+
+<h3>Sentry Integration</h3>
+<p>
+  Sentry is configured in three entry points:
+  <code>sentry.client.config.ts</code>, <code>sentry.server.config.ts</code>,
+  and <code>sentry.edge.config.ts</code> — covering client exceptions, server
+  errors, and edge middleware failures respectively.
+</p>
+
+<h3>Structured Logging</h3>
+<p>
+  Provider-specific console logs use consistent prefixes for log filtering:
+  <code>[Duffel]</code>, <code>[Mystifly]</code>, <code>[TravelgateX]</code>,
+  <code>[Stripe]</code>. API call logs are persisted in the <code>api_logs</code>
+  database table for audit and debugging.
+</p>
+
+<h3>Graceful Degradation</h3>
+<ul style="padding-left:20px;margin-bottom:14px;font-size:12.5px;color:#333;line-height:2;">
+  <li>Flight provider timeout → return results from the other provider, not an error</li>
+  <li>Cache miss → live provider call with spinner; background cache write on response</li>
+  <li>Quote token expiry → user shown a re-search prompt, no silent failure</li>
+  <li>Mystifly ticket failure → automatic Stripe refund + booking marked <code>failed</code></li>
+</ul>
+
+<h3>Cron Failure Handling</h3>
+<p>
+  Cron routes return structured JSON (<code>{ ok: true | false, message }</code>).
+  Failures are captured by Sentry and can be monitored via Coolify logs or
+  connected alerting.
+</p>
+
+<!-- ════════════════════════════════════════════ FOOTER -->
+<div style="margin-top:56px;padding-top:20px;border-top:1px solid #e0e6f5;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#888;">
+  <div>CheapestGo — Technical Documentation v1.0</div>
+  <div>Confidential &nbsp;·&nbsp; Internal Use Only &nbsp;·&nbsp; June 2025</div>
+</div>
+
+</body>
+</html>
