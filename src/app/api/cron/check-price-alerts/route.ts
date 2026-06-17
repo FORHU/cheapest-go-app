@@ -7,8 +7,6 @@ import { env } from '@/utils/env';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min — Vercel Pro/Enterprise
 
-const supabase = createAdminClient();
-
 /**
  * GET /api/cron/check-price-alerts
  *
@@ -24,6 +22,8 @@ export async function GET(req: NextRequest) {
     if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const supabase = createAdminClient();
 
     // Fetch all active alerts
     const { data: alerts, error } = await supabase
