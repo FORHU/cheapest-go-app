@@ -2,10 +2,8 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 
-// Use service role to bypass RLS since we only interact with the cache server-side
-const supabaseAdmin = createAdminClient();
-
 export async function GET(request: Request) {
+    const supabaseAdmin = createAdminClient();
     try {
         const { searchParams } = new URL(request.url);
         const placeId = searchParams.get('place_id');
