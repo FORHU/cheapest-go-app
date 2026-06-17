@@ -259,7 +259,7 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
 
 // Extract price — TravelgateX: top-level number; LiteAPI: nested in roomTypes
 function extractPrice(hotel: any): { price: number; originalPrice?: number; currency?: string } {
-    let result: { price: number; originalPrice?: number; currency?: string } = { price: 0 };
+    const result: { price: number; originalPrice?: number; currency?: string } = { price: 0 };
 
     if (typeof hotel.price === 'number' && hotel.price > 0) {
         result.price = hotel.price;

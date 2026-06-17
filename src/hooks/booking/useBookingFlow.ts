@@ -255,7 +255,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
    */
   const completeBooking = useCallback(
     async (params: Omit<BookingParams, 'prebookId'>): Promise<void> => {
-      let currentPrebookId = prebookId;
+      const currentPrebookId = prebookId;
       if (!currentPrebookId) throw new Error('No prebook ID available.');
 
       const bookingParams = { ...params, prebookId: currentPrebookId };

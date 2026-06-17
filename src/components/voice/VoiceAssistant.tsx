@@ -107,10 +107,10 @@ export function VoiceAssistant() {
     if (!supported) return;
     window.speechSynthesis.cancel();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const recognition: any = new SR();
     recognition.lang = 'en-US';
     recognition.continuous = false;

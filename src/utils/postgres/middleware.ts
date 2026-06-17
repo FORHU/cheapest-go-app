@@ -17,7 +17,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     const lucia = getLucia();
     const sessionId = request.cookies.get(lucia.sessionCookieName)?.value ?? null;
 
-    let response = NextResponse.next({ request });
+    const response = NextResponse.next({ request });
     let isAuthenticated = false;
 
     if (sessionId) {

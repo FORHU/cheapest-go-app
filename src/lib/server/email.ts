@@ -29,7 +29,7 @@ export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' 
  * for this booking — used to suppress duplicates before calling Resend.
  */
 async function isEmailAlreadySent(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     supabase: any,
     bookingId: string,
     emailType: EmailType,
