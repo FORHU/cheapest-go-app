@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
         // V2 UUID FareSources require SearchIdentifier on all Mystifly endpoints (revalidate + book).
         // Mystifly does not return SearchIdentifier in search responses, so these fares are unbookable.
         // Fail here immediately rather than authorizing a charge we can't complete.
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+         
         if ((provider as string) === 'mystifly_v2') {
             const traceId: string = (flight as any).traceId ?? '';
             const fareCode = traceId.split('|')[0];
@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
         if (!revalData.success || !revalData.seatsAvailable) {
             // Mystifly: SearchIdentifier is frequently missing from search responses.
             // Soft-pass these errors and let the booking API validate the fare instead.
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+             
             const isMystiflyProvider = (provider as string) === 'mystifly_v2';
             const isSearchIdError = /searchIdentifier.*empty|cannot revalidate/i.test(revalData.error || '');
             if (isMystiflyProvider && isSearchIdError) {
@@ -246,7 +246,7 @@ export async function POST(req: NextRequest) {
 
         const serverFarePolicy = revalData.farePolicy || farePolicy;
         const sanitizedFlight = { ...flight };
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+         
         if ((provider as string) === 'mystifly_v2') {
             delete (sanitizedFlight as any).rawOffer;
             delete (sanitizedFlight as any)._rawOffer;
@@ -410,7 +410,7 @@ export async function POST(req: NextRequest) {
                 'Idempotency-Key': currKey,
             });
 
-            let currentIdempotencyKey = idempotencyKey ?? crypto.randomUUID();
+            const currentIdempotencyKey = idempotencyKey ?? crypto.randomUUID();
 
             // includeServices: true only on the first attempt with the original offer.
             // On auto-refresh all service IDs (seats + bags) are invalid for the new offer — omit them.
@@ -447,7 +447,7 @@ export async function POST(req: NextRequest) {
             }> => {
                 let currentTotal = total;
                 let currentCurrency = currency;
-                let activeHeaders = getDuffelHeaders(key);
+                const activeHeaders = getDuffelHeaders(key);
 
                 // 12-second timeout: Duffel sometimes hangs before returning a 500.
                 // AbortController lets us bail out instead of waiting 20+ seconds.
@@ -832,7 +832,7 @@ export async function POST(req: NextRequest) {
 
         // ── Step 2: Create Stripe PaymentIntent ──
         const stripeStart = Date.now();
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+         
         const isMystifly = (provider as string) === 'mystifly_v2' || (provider as string) === 'mystifly';
 
         // Apply platform markup before charging the customer.

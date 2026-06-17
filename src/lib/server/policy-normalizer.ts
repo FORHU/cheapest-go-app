@@ -29,7 +29,7 @@ import type {
  *   {} or null
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type RawPolicy = Record<string, any> | null | undefined;
 
 // ============================================================================

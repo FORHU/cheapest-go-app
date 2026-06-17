@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     try {
         // Query top 10 most searched routes from real user demand
-        let routes = await sql`
+        const routes = await sql`
             SELECT origin, destination
             FROM flight_search_stats
             ORDER BY search_count DESC, last_searched_at DESC
