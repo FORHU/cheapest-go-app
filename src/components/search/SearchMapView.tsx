@@ -258,13 +258,13 @@ function SearchMapView({
             if (!changed && newOnes.length === 0 && filtered.length === prev.length) return prev;
             return [...(changed || filtered.length < prev.length ? filtered : prev), ...newOnes];
         });
-    }, [properties]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [properties]);  
 
     // ── Client-side display pagination ───────────────────────────
     const LIST_PAGE_SIZE = 15;
     const [displayCount, setDisplayCount] = useState(LIST_PAGE_SIZE);
     const searchKey = JSON.stringify(rawSearchParams);
-    React.useEffect(() => { setDisplayCount(LIST_PAGE_SIZE); }, [searchKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    React.useEffect(() => { setDisplayCount(LIST_PAGE_SIZE); }, [searchKey]);  
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const cardRefs = React.useRef<Map<string, HTMLDivElement>>(new Map());
