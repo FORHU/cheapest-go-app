@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         // Falls back to MOBILE_GUEST_USER_ID only if no session is present.
         const { getSession } = await import('@/lib/auth/session');
         const { user: sessionUser } = await getSession();
-        let userId = sessionUser?.id ?? env.MOBILE_GUEST_USER_ID ?? '00000000-0000-0000-0000-000000000001';
+        const userId = sessionUser?.id ?? env.MOBILE_GUEST_USER_ID ?? '00000000-0000-0000-0000-000000000001';
         if (!sessionUser?.id && !env.MOBILE_GUEST_USER_ID) {
             return NextResponse.json({ success: false, error: 'Invalid session. Please log in again.' }, { status: 401 });
         }

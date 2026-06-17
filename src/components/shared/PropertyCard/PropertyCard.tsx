@@ -263,18 +263,27 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                         ) : <div />}
 
                         <div className="text-right">
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400">
-                                    {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                                </span>
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                    /night
-                                </span>
-                            </div>
-                            {displayOriginalPrice && displayOriginalPrice > displayPrice && (
-                                <div className="text-[10px] text-slate-400 line-through leading-none mt-0.5">
-                                    {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            {property?.priceLoading ? (
+                                <div className="flex flex-col items-end gap-1">
+                                    <div className="h-5 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                                    <div className="h-3 w-10 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
                                 </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-sm sm:text-lg font-bold text-blue-600 dark:text-blue-400">
+                                            {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                            /night
+                                        </span>
+                                    </div>
+                                    {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                                        <div className="text-[10px] text-slate-400 line-through leading-none mt-0.5">
+                                            {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>
@@ -398,9 +407,25 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                                 <div className={`px-1.5 py-0.5 lg:px-2 lg:py-1 ${getRatingColor(property.rating)} text-white text-[9px] landscape:text-[8px] lg:text-sm font-bold rounded-md md:rounded-lg`}>
                                     {property.rating.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
                                 </div>
-                                <span className="text-[9px] landscape:text-[8px] lg:text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    {getRatingLabel(property.rating)}
-                                </span>
+                                <div className="flex flex-col gap-0.5">
+                                    <div className="relative inline-flex gap-px">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                            <svg key={i} width="11" height="11" viewBox="0 0 24 24" className="text-slate-200 dark:text-slate-700 shrink-0">
+                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                            </svg>
+                                        ))}
+                                        <div className="absolute inset-0 overflow-hidden flex gap-px" style={{ width: `${Math.min(100, Math.max(0, (property.rating / 10) * 100))}%` }}>
+                                            {Array.from({ length: 5 }).map((_, i) => (
+                                                <svg key={i} width="11" height="11" viewBox="0 0 24 24" className="text-blue-500 shrink-0">
+                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                                </svg>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <span className="text-[9px] landscape:text-[8px] lg:text-xs font-medium text-slate-600 dark:text-slate-400 leading-none">
+                                        {getRatingLabel(property.rating)}
+                                    </span>
+                                </div>
                             </>
                         ) : (
                             <span className="text-[9px] landscape:text-[8px] lg:text-sm text-slate-400 dark:text-slate-500">No rating yet</span>
@@ -409,19 +434,28 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
 
                     {/* Price Section */}
                     <div className="text-right">
-                        {displayOriginalPrice && displayOriginalPrice > displayPrice && (
-                            <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
-                                {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {property.priceLoading ? (
+                            <div className="flex flex-col items-end gap-1.5">
+                                <div className="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                                <div className="h-3 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
                             </div>
+                        ) : (
+                            <>
+                                {displayOriginalPrice && displayOriginalPrice > displayPrice && (
+                                    <div className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-400 line-through leading-none mb-0.5 md:mb-1">
+                                        {symbol}{displayOriginalPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </div>
+                                )}
+                                <div className="flex items-baseline gap-1 md:gap-1.5">
+                                    <span className="text-[12px] landscape:text-[11px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
+                                        {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                    </span>
+                                    <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
+                                        /night
+                                    </span>
+                                </div>
+                            </>
                         )}
-                        <div className="flex items-baseline gap-1 md:gap-1.5">
-                            <span className="text-[12px] landscape:text-[11px] lg:text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">
-                                {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            </span>
-                            <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
-                                /night
-                            </span>
-                        </div>
                     </div>
                 </div>
             </div>

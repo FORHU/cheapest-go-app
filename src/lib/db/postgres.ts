@@ -1,9 +1,11 @@
 /**
  * Core PostgreSQL connection pool using postgres.js.
  *
- * Two connection modes:
- *   sql        — anon-equivalent, respects RLS via app.current_user_id session var
- *   sqlAdmin   — service-role equivalent, sets app.bypass_rls=true (server-only)
+ * There is no Row Level Security — the database has no RLS policies and is
+ * not publicly reachable. Access control is enforced at the API layer: every
+ * route validates the session before querying. sql and sqlAdmin are both
+ * full-access connections; sqlAdmin exists only as a separate pool for
+ * admin/service-style operations, not as a privilege boundary.
  *
  * DATABASE_URL format:
  *   postgresql://user:password@host:5432/database?sslmode=require
@@ -31,7 +33,7 @@ function getConnectionString(pooled = true): string {
     return url;
 }
 
-/** Standard connection — honours RLS via set_config('app.current_user_id', ...) */
+/** Standard connection pool used by API routes and server components. */
 export function getSql(): postgres.Sql {
     if (!_sql) {
         _sql = postgres(getConnectionString(), {
@@ -57,22 +59,6 @@ export function getSqlAdmin(): postgres.Sql {
         });
     }
     return _sqlAdmin;
-}
-
-/**
- * Execute a query within a user-scoped transaction.
- * Sets app.current_user_id so RLS policies using our custom auth.uid() work.
- */
-export async function withUserContext<T>(
-    userId: string,
-    fn: (sql: postgres.TransactionSql) => Promise<T>,
-): Promise<T> {
-    const sql = getSql();
-    return sql.begin(async (tx) => {
-        // Set the session variable that our custom auth.uid() reads
-        await tx`SELECT set_config('app.current_user_id', ${userId}, true)`;
-        return fn(tx);
-    }) as Promise<T>;
 }
 
 /**

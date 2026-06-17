@@ -130,7 +130,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
         const childrenPerRoom = Math.ceil(childrenAges.length / rooms);
 
         let remainingAdults = adults;
-        let remainingChildren = [...childrenAges];
+        const remainingChildren = [...childrenAges];
 
         for (let i = 0; i < rooms; i++) {
             const roomAdults = Math.min(adultsPerRoom, remainingAdults);

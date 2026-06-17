@@ -5,11 +5,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart } from 'lucide-react';
-import SaveButton from '@/components/common/SaveButton';
 import SectionHeader from './SectionHeader';
 import { type Deal } from '@/types';
-import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
-import { useUserCurrency } from '@/stores/searchStore';
 import { useDragScroll } from '@/hooks/useDragScroll';
 
 // ── IATA lookups ──────────────────────────────────────────────────────────────
@@ -91,50 +88,52 @@ function isPlaceholderImage(url: string | null | undefined): boolean {
   );
 }
 
-/** Build the pre-filled flight search URL */
+function toYMD(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
+  const stripped = raw.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  const d = new Date(stripped);
+  return isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
+}
+
+/** Route deal cards directly to the book page. The book page handles passenger config + search. */
 function buildBookingUrl(deal: Deal): string {
   if (!deal.origin || !deal.destination) return '/flights/search';
   const p = new URLSearchParams({
-    origin:     deal.origin,
+    origin:      deal.origin,
     destination: deal.destination,
-    adults:     '1',
-    cabinClass: deal.cabinClass || 'economy',
+    cabinClass:  deal.cabinClass || 'economy',
   });
-  if (deal.departure_date) p.set('departure',  deal.departure_date);
-  if (deal.return_date)    p.set('returnDate', deal.return_date);
-  return `/flights/search?${p.toString()}`;
+  const dep = toYMD(deal.departure_date);
+  const ret = toYMD(deal.return_date);
+  if (dep) p.set('departure', dep);
+  if (ret) p.set('return',    ret);
+  if (deal.salePrice)     p.set('dealPrice',         String(Math.round(deal.salePrice)));
+  if (deal.originalPrice && deal.originalPrice > deal.salePrice)
+                          p.set('dealOriginalPrice', String(Math.round(deal.originalPrice)));
+  if (deal.currency)      p.set('dealCurrency',      deal.currency);
+  if (deal.discount)      p.set('dealDiscount',      deal.discount);
+  if (deal.subtitle)      p.set('dealSubtitle',      deal.subtitle);
+  return `/flights/book?${p.toString()}`;
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
-interface DealCardProps { deal: Deal; index: number; variant?: 'carousel' | 'grid' }
+interface DealCardProps {
+  deal: Deal;
+  index: number;
+  variant?: 'carousel' | 'grid';
+}
 
 const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carousel' }) => {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
   const router     = useRouter();
-  const currency   = useUserCurrency();
-  const symbol     = getCurrencySymbol(mounted ? currency : 'USD');
-  const fromCur    = deal.currency || 'USD';
-
-  const original = mounted
-    ? Math.round(convertCurrency(deal.originalPrice || 0, fromCur, currency))
-    : Math.round(deal.originalPrice || 0);
-  const sale = mounted
-    ? Math.round(convertCurrency(deal.salePrice || 0, fromCur, currency))
-    : Math.round(deal.salePrice || 0);
-
-  const discountLabel = deal.discount ||
-    (original > 0 && original > sale
-      ? `${Math.round(((original - sale) / original) * 100)}% OFF`
-      : '');
 
   const imageUrl   = isPlaceholderImage(deal.image)
-    ? `/api/destination-photo?iata=${encodeURIComponent(deal.destination || '')}`
+    ? `https://picsum.photos/seed/${encodeURIComponent(deal.destination || 'travel')}/400/300`
     : deal.image;
 
-  const bookingUrl     = buildBookingUrl(deal);
-  const cabinLabel     = CABIN_LABELS[deal.cabinClass || 'economy'] ?? 'Economy';
+  const bookingUrl = buildBookingUrl(deal);
+  const cabinLabel = CABIN_LABELS[deal.cabinClass || 'economy'] ?? 'Economy';
 
   const [isSaved, setIsSaved] = useState(false);
 
@@ -164,14 +163,12 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/75" />
 
-          {/* Discount badge — top left */}
-          {discountLabel && (
-            <div className="absolute top-1.5 left-2.5 z-10">
-              <span className="px-2 py-1 bg-blue-600 text-white text-[11px] rounded-md leading-none">
-                {discountLabel}
-              </span>
-            </div>
-          )}
+          {/* Popular Route badge — top left */}
+          <div className="absolute top-1.5 left-2.5 z-10">
+            <span className="px-2 py-1 bg-white/20 backdrop-blur-sm text-white text-[11px] rounded-md leading-none border border-white/30">
+              Popular Route
+            </span>
+          </div>
 
           {/* Bookmark button — top right */}
           <button
@@ -183,27 +180,6 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
               className={`w-3.5 h-3.5 transition-colors ${isSaved ? 'text-red-400 fill-red-400' : 'text-white'}`}
             />
           </button>
-
-          {/* Price overlay — bottom of image */}
-          <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 pt-8">
-            <div className="flex items-end justify-between">
-              <div className="flex flex-col gap-0.5">
-                {original > 0 && original > sale && (
-                  <span className="text-[11px] text-white line-through leading-none">
-                    {symbol}{original.toLocaleString()}
-                  </span>
-                )}
-                <span className="text-[22px] font-bold text-white leading-none drop-shadow">
-                  {symbol}{sale.toLocaleString()}
-                </span>
-              </div>
-              {deal.endsIn && (
-                <span className="text-[10px] text-white/90 mb-0.5">
-                  Ends in {deal.endsIn}
-                </span>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* ── Card body ───────────────────────────────────────── */}
@@ -220,6 +196,16 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
             </p>
           )}
 
+          {/* Dates */}
+          {deal.departure_date && (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+              {new Date(deal.departure_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {deal.return_date
+                ? ` → ${new Date(deal.return_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                : ''}
+            </p>
+          )}
+
           {/* Cabin · Trip type + Book button */}
           <div className="flex items-center justify-between gap-2 mt-auto pt-2">
             <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
@@ -229,7 +215,7 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
               onClick={e => { e.stopPropagation(); router.push(bookingUrl); }}
               className="shrink-0 inline-flex items-center gap-1 text-[11px] text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-sm transition-colors cursor-pointer leading-none"
             >
-              Book Now
+              Search Flights
             </button>
           </div>
         </div>
@@ -336,6 +322,7 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
   const [showAll,    setShowAll]    = useState(false);
   const [tripType,   setTripType]   = useState<'all' | 'oneway' | 'roundtrip'>('all');
+
 
   const { iata: userOrigin, city: userCity } = useUserOrigin();
 

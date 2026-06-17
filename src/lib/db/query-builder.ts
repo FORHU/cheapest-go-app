@@ -330,7 +330,7 @@ export class QueryBuilder<T = any> implements PromiseLike<DbResult<T>> {
             })
             .join(', ');
 
-        let q = `UPDATE "${this.table}" SET ${setClause} ${clause} ${returning}`;
+        const q = `UPDATE "${this.table}" SET ${setClause} ${clause} ${returning}`;
         return this.sql.unsafe(q, values as any[]);
     }
 
@@ -340,7 +340,7 @@ export class QueryBuilder<T = any> implements PromiseLike<DbResult<T>> {
         const returning = this._deleteCount
             ? 'RETURNING 1'
             : (this._returning ? `RETURNING ${this._returning}` : '');
-        let q = `DELETE FROM "${this.table}" ${clause} ${returning}`;
+        const q = `DELETE FROM "${this.table}" ${clause} ${returning}`;
         return this.sql.unsafe(q, values as any[]);
     }
 

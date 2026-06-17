@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { Suspense, useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { Moon, Sun, Download } from 'lucide-react';
@@ -14,7 +14,7 @@ import CurrencySelector, { CURRENCIES } from '@/components/common/CurrencySelect
 import { cn } from '@/utils/cn';
 
 
-const Header = () => {
+const HeaderContent = () => {
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
@@ -82,5 +82,11 @@ const Header = () => {
     </>
   );
 };
+
+const Header = () => (
+  <Suspense fallback={null}>
+    <HeaderContent />
+  </Suspense>
+);
 
 export default Header;

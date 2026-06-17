@@ -3,7 +3,7 @@ export const revalidate = 300; // regenerate every 5 minutes
 import { Suspense } from "react";
 import Script from "next/script";
 import { Hero } from "@/components/landing/hero";
-import { RecentlyViewed, YourRecentSearches } from "@/components/landing/sections";
+import { RecentlyViewed, YourRecentSearches, TopCitiesSection, TopDestinationsSection } from "@/components/landing/sections";
 import { AppBanner } from "@/components/landing/layout";
 import {
   SectionSkeleton,
@@ -13,6 +13,7 @@ import {
   ExploreVacationPackagesStream,
   ExploreUniqueStaysStream,
   LastMinuteWeekendDealsStream,
+  GuestFavoritesSectionStream,
 } from "./_sections";
 
 const organizationJsonLd = {
@@ -84,6 +85,8 @@ export default function Home() {
           {/* Client-side sections — render immediately */}
           <YourRecentSearches />
           <RecentlyViewed />
+          <TopCitiesSection />
+          <TopDestinationsSection />
 
           {/* Data sections — each streams independently */}
           <Suspense fallback={<SectionSkeleton />}>
@@ -92,17 +95,11 @@ export default function Home() {
           <Suspense fallback={<SectionSkeleton />}>
             <HotelDealsSectionStream />
           </Suspense>
+          <Suspense fallback={<SectionSkeleton />}>
+            <GuestFavoritesSectionStream />
+          </Suspense>
           {/* <Suspense fallback={<SectionSkeleton />}>
-            <StaysForEveryStyleStream />
-          </Suspense>
-          <Suspense fallback={<SectionSkeleton />}>
-            <ExploreVacationPackagesStream />
-          </Suspense>
-          <Suspense fallback={<SectionSkeleton />}>
             <ExploreUniqueStaysStream />
-          </Suspense>
-          <Suspense fallback={<SectionSkeleton />}>
-            <LastMinuteWeekendDealsStream />
           </Suspense> */}
         </div>
       </div>

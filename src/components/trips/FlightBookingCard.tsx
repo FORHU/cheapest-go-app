@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight, ChevronRight } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
@@ -1477,6 +1477,13 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 </button>
                             )}
                         </>)}
+                        <a
+                            href={`/trips/${booking.id}`}
+                            className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
+                        >
+                            <ChevronRight className="w-3 h-3" />
+                            Details
+                        </a>
                         <a
                             href={`/trips/invoice/${booking.id}?type=flight`}
                             className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"

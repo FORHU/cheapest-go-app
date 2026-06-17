@@ -15,7 +15,7 @@
 export function createClient() {
     if (typeof window === 'undefined') {
         // Server-side: return the real postgres client
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+         
         const { createClient: serverCreate } = require('@/utils/postgres/server');
         return serverCreate();
     }

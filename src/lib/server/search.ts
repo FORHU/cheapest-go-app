@@ -134,7 +134,7 @@ export async function resolveTgxDestinationCode(cityName: string): Promise<strin
         const { tgxGraphQL, getTgxConfig } = await import('@/lib/server/stays/travelgatex/client');
         const cfg = getTgxConfig();
         const timeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('resolve timeout')), 8000)
+            setTimeout(() => reject(new Error('resolve timeout')), 18000)
         );
         const result = await Promise.race([
             tgxGraphQL(

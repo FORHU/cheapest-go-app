@@ -21,8 +21,10 @@ export async function GET(req: NextRequest) {
     try {
         const sql = getSqlAdmin();
 
-        const [sessionRows] = await sql`SELECT cleanup_expired_sessions() AS deleted`;
-        const sessionsDeleted = sessionRows?.deleted ?? 0;
+        const sessionResult = await sql`
+            DELETE FROM sessions WHERE expires_at < NOW()
+        `;
+        const sessionsDeleted = (sessionResult as any).count ?? 0;
 
         const tokenResult = await sql`
             DELETE FROM password_reset_tokens WHERE expires_at < NOW()

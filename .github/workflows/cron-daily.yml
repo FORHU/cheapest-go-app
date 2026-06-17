@@ -1,0 +1,77 @@
+name: Cron — Daily Jobs
+
+on:
+  schedule:
+    - cron: '0 1 * * *'     # 1am UTC — all daily maintenance
+  workflow_dispatch:
+
+jobs:
+  warm-hotel-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call warm-hotel-cache
+        run: |
+          curl -f -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.PRODUCTION_URL }}/api/cron/warm-hotel-cache" \
+          | grep -qE '^2' || exit 1
+
+  cleanup-sessions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cleanup-sessions
+        run: |
+          curl -f -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.PRODUCTION_URL }}/api/cron/cleanup-sessions" \
+          | grep -qE '^2' || exit 1
+
+  cache-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cache-cleanup
+        run: |
+          curl -f -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.PRODUCTION_URL }}/api/cron/cache-cleanup" \
+          | grep -qE '^2' || exit 1
+
+  duffel-balance-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call duffel-balance-check
+        run: |
+          curl -f -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.PRODUCTION_URL }}/api/cron/duffel-balance-check" \
+          | grep -qE '^2' || exit 1
+
+  otv-credit-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call otv-credit-check
+        run: |
+          curl -f -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.PRODUCTION_URL }}/api/cron/otv-credit-check" \
+          | grep -qE '^2' || exit 1
+
+  check-price-alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call check-price-alerts
+        run: |
+          curl -f -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.PRODUCTION_URL }}/api/cron/check-price-alerts" \
+          | grep -qE '^2' || exit 1
+
+  etg-reviews-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call etg-reviews-sync
+        run: |
+          curl -f -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.PRODUCTION_URL }}/api/cron/etg-reviews-sync" \
+          | grep -qE '^2' || exit 1

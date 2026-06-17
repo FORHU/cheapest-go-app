@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { CabinClass, FlightSearchParams } from '@/types/flights';
 import { searchFlights } from '@/lib/server/flights/search-flights';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { flightSearchSchema } from '@/lib/schemas/flight';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,8 +50,6 @@ function badRequest(error: string) {
     return NextResponse.json({ success: false, error }, { status: 400 });
 }
 
-const VALID_CABIN = new Set(['economy', 'premium_economy', 'business', 'first']);
-const VALID_TRIP = new Set(['one-way', 'round-trip', 'multi-city']);
 const IATA_RE = /^[A-Z]{3}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -97,19 +96,22 @@ export async function POST(req: NextRequest) {
                 return badRequest('departureDate required (YYYY-MM-DD)');
         }
 
-        // ── Passengers ──────────────────────────────────────────────────────
-        const { passengers } = body;
-        const adults = Math.max(1, Number(passengers?.adults) || 1);
-        const children = Math.max(0, Number(passengers?.children) || 0);
-        const infants = Math.max(0, Number(passengers?.infants) || 0);
-        if (infants > adults) return badRequest('infants cannot exceed adults');
-        if (adults + children + infants > 9) return badRequest('max 9 passengers');
-
-        // ── Cabin / trip ────────────────────────────────────────────────────
-        const cabin = (body.cabinClass ?? 'economy') as CabinClass;
-        if (!VALID_CABIN.has(cabin)) return badRequest(`invalid cabinClass: ${cabin}`);
-        const tripType = (body.tripType ?? (segments.length > 1 ? 'round-trip' : 'one-way')) as string;
-        if (!VALID_TRIP.has(tripType)) return badRequest(`invalid tripType: ${tripType}`);
+        // ── Passengers / cabin / trip — validated via Zod ───────────────────
+        const parsed = flightSearchSchema.safeParse({
+            passengers: {
+                adults: Number(body.passengers?.adults) || 1,
+                children: Number(body.passengers?.children) || 0,
+                infants: Number(body.passengers?.infants) || 0,
+            },
+            cabinClass: body.cabinClass ?? 'economy',
+            tripType: body.tripType ?? (segments.length > 1 ? 'round-trip' : 'one-way'),
+        });
+        if (!parsed.success) {
+            return badRequest(parsed.error.issues[0]?.message ?? 'Invalid search parameters');
+        }
+        const { adults, children, infants } = parsed.data.passengers;
+        const cabin = parsed.data.cabinClass as CabinClass;
+        const tripType = parsed.data.tripType ?? (segments.length > 1 ? 'round-trip' : 'one-way');
 
         // ── Build FlightSearchParams from first segment ──────────────────────
         const first = segments[0];

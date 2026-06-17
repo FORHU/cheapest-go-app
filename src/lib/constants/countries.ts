@@ -468,6 +468,48 @@ export const COUNTRY_TO_CURRENCY: Record<string, string> = {
 };
 
 /**
+ * Popular tourist cities per country, used by the CountryCityPicker banner.
+ * First entry is always the default city (matches COUNTRY_DEFAULT_CITY).
+ * Max 6 cities per country — keeps the pill row from overflowing.
+ */
+export const COUNTRY_POPULAR_CITIES: Record<string, string[]> = {
+    'PH': ['Manila', 'Cebu', 'Boracay', 'Palawan', 'Davao', 'Baguio'],
+    'KR': ['Seoul', 'Busan', 'Jeju', 'Incheon', 'Gyeongju', 'Jeonju'],
+    'JP': ['Tokyo', 'Osaka', 'Kyoto', 'Sapporo', 'Fukuoka', 'Hiroshima'],
+    'CN': ['Beijing', 'Shanghai', 'Guangzhou', 'Shenzhen', 'Chengdu', 'Xi\'an'],
+    'TW': ['Taipei', 'Taichung', 'Tainan', 'Kaohsiung', 'Hualien'],
+    'TH': ['Bangkok', 'Phuket', 'Chiang Mai', 'Pattaya', 'Koh Samui', 'Krabi'],
+    'VN': ['Hanoi', 'Ho Chi Minh City', 'Da Nang', 'Hoi An', 'Nha Trang', 'Phu Quoc'],
+    'ID': ['Bali', 'Jakarta', 'Yogyakarta', 'Lombok', 'Surabaya', 'Bandung'],
+    'MY': ['Kuala Lumpur', 'Penang', 'Langkawi', 'Kota Kinabalu', 'Johor Bahru'],
+    'SG': ['Singapore'],
+    'IN': ['New Delhi', 'Mumbai', 'Goa', 'Jaipur', 'Agra', 'Bengaluru'],
+    'AU': ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Gold Coast', 'Cairns'],
+    'AE': ['Dubai', 'Abu Dhabi', 'Sharjah'],
+    'TR': ['Istanbul', 'Antalya', 'Ankara', 'Cappadocia', 'Bodrum'],
+    'GB': ['London', 'Edinburgh', 'Manchester', 'Liverpool', 'Oxford'],
+    'FR': ['Paris', 'Nice', 'Lyon', 'Marseille', 'Bordeaux'],
+    'IT': ['Rome', 'Milan', 'Florence', 'Venice', 'Naples', 'Amalfi'],
+    'ES': ['Madrid', 'Barcelona', 'Seville', 'Valencia', 'Granada', 'Malaga'],
+    'DE': ['Berlin', 'Munich', 'Hamburg', 'Frankfurt', 'Cologne'],
+    'GR': ['Athens', 'Santorini', 'Mykonos', 'Crete', 'Rhodes'],
+    'PT': ['Lisbon', 'Porto', 'Algarve', 'Madeira'],
+    'US': ['New York', 'Los Angeles', 'Miami', 'Las Vegas', 'San Francisco', 'Chicago'],
+    'MX': ['Mexico City', 'Cancun', 'Playa del Carmen', 'Tulum', 'Guadalajara'],
+    'EG': ['Cairo', 'Luxor', 'Hurghada', 'Sharm El Sheikh', 'Aswan'],
+    'NP': ['Kathmandu', 'Pokhara'],
+    'LK': ['Colombo', 'Kandy', 'Sigiriya', 'Galle'],
+    'QA': ['Doha'],
+    'SA': ['Riyadh', 'Jeddah', 'Mecca', 'Medina'],
+    'NZ': ['Auckland', 'Queenstown', 'Wellington', 'Christchurch'],
+    'HR': ['Dubrovnik', 'Split', 'Zagreb', 'Hvar'],
+    'HU': ['Budapest'],
+    'CZ': ['Prague', 'Brno'],
+    'AT': ['Vienna', 'Salzburg', 'Innsbruck'],
+    'CH': ['Zurich', 'Geneva', 'Interlaken', 'Lucerne'],
+};
+
+/**
  * Get currency code for a given user country code.
  * Defaults to USD if the country is unknown.
  */

@@ -27,6 +27,7 @@ export function usePrebook(options?: UsePrebookOptions) {
       voucherCode?: string;
       adults?: number;
       children?: number;
+      roomName?: string;
     }) => {
       const result = await apiFetch<PrebookResponse>('/api/booking/prebook', params);
 

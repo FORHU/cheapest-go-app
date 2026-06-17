@@ -1,5 +1,7 @@
-import React from 'react';
-import { Calendar, Star, MapPin, Tag } from 'lucide-react';
+"use client";
+
+import React, { useState } from 'react';
+import { Calendar, Star, MapPin, Tag, Pencil, Check, X } from 'lucide-react';
 import { CancellationPolicySection } from './CancellationPolicySection';
 import { CancellationPolicy } from '@/services/booking.service';
 import type { AppliedVoucher } from '@/types/voucher';
@@ -27,6 +29,7 @@ interface BookingSummaryProps {
     /** Server-validated applied voucher (display only) */
     appliedVoucher?: AppliedVoucher | null;
     isLoading?: boolean;
+    onDatesChange?: (checkIn: Date, checkOut: Date) => void;
 }
 
 function formatDate(date: Date): string {
@@ -66,10 +69,35 @@ export function BookingSummary({
     cancellationPolicies,
     appliedVoucher,
     isLoading,
+    onDatesChange,
 }: BookingSummaryProps) {
     const currency = useCheckoutStore((state) => state.selectedCurrency);
     const symbol = getCurrencySymbol(currency);
     const perNightPrice = totalNights > 0 ? Math.round(roomPrice / totalNights) : roomPrice;
+
+    const toInputValue = (d: Date | null | undefined) =>
+        d ? d.toISOString().slice(0, 10) : '';
+
+    const [editingDates, setEditingDates] = useState(false);
+    const [draftCheckIn, setDraftCheckIn] = useState('');
+    const [draftCheckOut, setDraftCheckOut] = useState('');
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    function openDateEditor() {
+        setDraftCheckIn(toInputValue(checkIn));
+        setDraftCheckOut(toInputValue(checkOut));
+        setEditingDates(true);
+    }
+
+    function saveDates() {
+        if (!draftCheckIn || !draftCheckOut || !onDatesChange) return;
+        const ci = new Date(draftCheckIn);
+        const co = new Date(draftCheckOut);
+        if (isNaN(ci.getTime()) || isNaN(co.getTime()) || co <= ci) return;
+        onDatesChange(ci, co);
+        setEditingDates(false);
+    }
 
     return (
         <div className="lg:col-span-1">
@@ -123,16 +151,69 @@ export function BookingSummary({
                     {/* Check-in & Check-out */}
                     {checkIn && checkOut && (
                         <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-3 lg:pt-4">
-                            <div className="flex items-center gap-1.5 lg:gap-2 text-[10px] lg:text-xs text-slate-500 dark:text-slate-400 mb-1">
-                                <Calendar size={12} className="lg:w-3.5 lg:h-3.5 w-3 h-3" />
-                                <span>Check-in & Check-out</span>
+                            <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-1.5 lg:gap-2 text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
+                                    <Calendar size={12} className="lg:w-3.5 lg:h-3.5 w-3 h-3" />
+                                    <span>Check-in & Check-out</span>
+                                </div>
+                                {onDatesChange && !editingDates && (
+                                    <button
+                                        onClick={openDateEditor}
+                                        className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
+                                    >
+                                        <Pencil size={10} /> Edit
+                                    </button>
+                                )}
                             </div>
-                            <div className="text-[11px] lg:text-sm font-medium text-slate-900 dark:text-white">
-                                {formatDate(checkIn)} – {formatDate(checkOut)}
-                                <span className="text-slate-500 dark:text-slate-400 font-normal ml-1">
-                                    ({totalNights} {totalNights === 1 ? 'night' : 'nights'})
-                                </span>
-                            </div>
+
+                            {editingDates ? (
+                                <div className="space-y-2 mt-1">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">Check-in</p>
+                                            <input
+                                                type="date"
+                                                value={draftCheckIn}
+                                                min={today}
+                                                onChange={e => setDraftCheckIn(e.target.value)}
+                                                className="w-full text-[11px] border border-slate-300 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                            />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">Check-out</p>
+                                            <input
+                                                type="date"
+                                                value={draftCheckOut}
+                                                min={draftCheckIn || today}
+                                                onChange={e => setDraftCheckOut(e.target.value)}
+                                                className="w-full text-[11px] border border-slate-300 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={saveDates}
+                                            disabled={!draftCheckIn || !draftCheckOut || draftCheckOut <= draftCheckIn}
+                                            className="flex-1 flex items-center justify-center gap-1 text-[11px] bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white px-3 py-1.5 rounded transition-colors"
+                                        >
+                                            <Check size={11} /> Update dates
+                                        </button>
+                                        <button
+                                            onClick={() => setEditingDates(false)}
+                                            className="flex items-center justify-center gap-1 text-[11px] border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 px-3 py-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                        >
+                                            <X size={11} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-[11px] lg:text-sm font-medium text-slate-900 dark:text-white">
+                                    {formatDate(checkIn)} – {formatDate(checkOut)}
+                                    <span className="text-slate-500 dark:text-slate-400 font-normal ml-1">
+                                        ({totalNights} {totalNights === 1 ? 'night' : 'nights'})
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     )}
 
