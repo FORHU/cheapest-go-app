@@ -1,6 +1,6 @@
 /**
  * Cron: /api/cron/sync-flight-deals
- * Schedule: 0 */6 * * *  (every 6 hours)
+ * Schedule: every 6 hours  (cron: 0 *-slash-6 * * *)
  *
  * Calls /api/fn/sync-flight-deals which searches Duffel for cheapest fares
  * on popular routes and upserts results into flight_deals.
