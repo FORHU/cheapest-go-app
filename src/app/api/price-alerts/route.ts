@@ -7,8 +7,6 @@ import { sendPriceAlertConfirmationEmail } from '@/lib/server/email';
 
 export const dynamic = 'force-dynamic';
 
-const supabaseAdmin = createAdminClient();
-
 const VALID_CABINS = new Set(['economy', 'premium_economy', 'business', 'first']);
 
 /** GET /api/price-alerts — list the signed-in user's alerts */
