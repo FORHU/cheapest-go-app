@@ -1,12 +1,11 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
 
-const supabaseAdmin = createAdminClient();
-
 const CACHE_TTL_DAYS = 30;
 
 export async function getCached(key: string): Promise<string | null> {
     try {
+        const supabaseAdmin = createAdminClient();
         const { data: cached, error } = await supabaseAdmin
             .from('place_cache')
             .select('data, cached_at')
@@ -26,6 +25,7 @@ export async function getCached(key: string): Promise<string | null> {
 
 export async function setCache(key: string, dataStr: string): Promise<void> {
     try {
+        const supabaseAdmin = createAdminClient();
         await supabaseAdmin
             .from('place_cache')
             .upsert({

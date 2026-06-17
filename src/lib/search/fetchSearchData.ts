@@ -10,12 +10,11 @@ import { searchTravelgateX } from '@/lib/server/travelgatex';
 import { COUNTRY_DEFAULT_CITY, COUNTRY_NAME_TO_CODE } from '@/lib/constants/countries';
 import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
 
-const adminSupabase = createAdminClient();
-
 async function fetchHotelRatings(hotelIds: string[]): Promise<Map<string, { rating: number; reviews_count: number }>> {
     const map = new Map<string, { rating: number; reviews_count: number }>();
     if (hotelIds.length === 0) return map;
     try {
+        const adminSupabase = createAdminClient();
         const { data } = await adminSupabase
             .from('hotel_reviews')
             .select('hotel_id, rating, reviews_count')
