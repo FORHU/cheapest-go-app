@@ -5,9 +5,22 @@ on:
     branches: [main, staging]
   pull_request:
     branches: [main, staging]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options: [staging, production]
+      skip_checks:
+        description: 'Skip lint and tests (deploy immediately)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   check:
+    if: github.event_name != 'workflow_dispatch' || inputs.skip_checks == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,8 +44,14 @@ jobs:
         run: pnpm test --run
 
   deploy-staging:
-    needs: check
-    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
+    needs: [check]
+    if: |
+      always() &&
+      (needs.check.result == 'success' || needs.check.result == 'skipped') &&
+      (
+        (github.ref == 'refs/heads/staging' && github.event_name == 'push') ||
+        (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
+      )
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -41,8 +60,14 @@ jobs:
           curl -fsSL -X GET "${{ secrets.COOLIFY_STAGING_WEBHOOK }}"
 
   deploy-production:
-    needs: check
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [check]
+    if: |
+      always() &&
+      (needs.check.result == 'success' || needs.check.result == 'skipped') &&
+      (
+        (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+        (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+      )
     runs-on: ubuntu-latest
     environment: production
     steps:
