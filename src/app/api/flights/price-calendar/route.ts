@@ -5,8 +5,6 @@ import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
 
-// Supabase admin client — reads cache without RLS
-const supabase = createAdminClient();
 
 /**
  * GET /api/flights/price-calendar
@@ -24,6 +22,7 @@ const supabase = createAdminClient();
  *   cabin        economy | premium_economy | business | first
  */
 export async function GET(req: NextRequest) {
+    const supabase = createAdminClient();
     const rl = await rateLimit(req, { limit: 30, windowMs: 60_000, prefix: 'price-cal' });
     if (!rl.success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
