@@ -2,7 +2,7 @@ name: Cron — Sync Deals
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours — hotel + flight deals
+    - cron: '0 0,6,12,18 * * *'   # every 6 hours — hotel + flight deals
   workflow_dispatch:
 
 jobs:
