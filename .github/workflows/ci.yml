@@ -32,3 +32,23 @@ jobs:
 
       - name: Test
         run: pnpm test --run
+
+  deploy-staging:
+    needs: check
+    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Trigger Coolify staging deploy
+        run: |
+          curl -fsSL -X GET "${{ secrets.COOLIFY_STAGING_WEBHOOK }}"
+
+  deploy-production:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Trigger Coolify production deploy
+        run: |
+          curl -fsSL -X GET "${{ secrets.COOLIFY_PRODUCTION_WEBHOOK }}"
