@@ -1,3 +1,20 @@
+// Flight schemas
+export {
+  flightPassengerSchema,
+  flightContactSchema,
+  flightBookingSchema,
+  flightSearchSchema,
+  flightSearchPassengersSchema,
+  flightSegmentSchema,
+} from './flight';
+export type {
+  FlightPassengerForm,
+  FlightContactForm,
+  FlightBookingForm,
+  FlightSearchInput,
+  FlightSearchPassengers,
+} from './flight';
+
 // Auth schemas
 export {
   emailSchema,

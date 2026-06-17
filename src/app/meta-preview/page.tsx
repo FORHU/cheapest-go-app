@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+
 const options = [
   {
     key: 'a',
@@ -26,6 +28,7 @@ const options = [
 ];
 
 export default function MetaPreview() {
+  if (process.env.NODE_ENV !== 'development') redirect('/');
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-950 p-8 font-sans">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">OG Image Options</h1>

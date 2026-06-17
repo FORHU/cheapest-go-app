@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage, Sparkles, ChevronDown } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import BackButton from '@/components/common/BackButton';
 import StripeEmbeddedCheckout from '@/components/checkout/StripeEmbeddedCheckout';
 import { Confetti, Balloons } from '@/components/ui/Animations';
@@ -27,6 +27,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FormDatePicker } from '@/components/common/FormDatePicker';
+import {  } from 'zod';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
@@ -203,7 +204,7 @@ const PHONE_CODES = [
     { code: '60', country: 'MY', label: '+60 (MY)' },
 ];
 
-export default function FlightBookContent() {
+function BookingContent() {
     const [bookingStepIdx, setBookingStepIdx] = React.useState(0);
     const bookingStepTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -800,6 +801,47 @@ export default function FlightBookContent() {
                         </div>
                     )}
                 </div>
+                {/* Deal context banner — shown when booking came from a deal card */}
+                {searchParams.get('dealDiscount') || searchParams.get('dealPrice') ? (() => {
+                    const dealDiscount = searchParams.get('dealDiscount');
+                    const dealPrice = searchParams.get('dealPrice');
+                    const dealOriginalPrice = searchParams.get('dealOriginalPrice');
+                    const dealCurrency = searchParams.get('dealCurrency') || 'USD';
+                    const dep = searchParams.get('departure');
+                    const ret = searchParams.get('return');
+                    const fmt = (iso: string) =>
+                        new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    const fmtPrice = (n: number) =>
+                        new Intl.NumberFormat('en-US', { style: 'currency', currency: dealCurrency, maximumFractionDigits: 0 }).format(n);
+                    return (
+                        <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 mb-3 lg:mb-6">
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                            <div className="flex flex-col gap-0.5">
+                                {dealDiscount && (
+                                    <span className="text-[10px] lg:text-[11px] font-normal text-emerald-700 dark:text-emerald-400">
+                                        {dealDiscount} deal applied
+                                    </span>
+                                )}
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                    {dealPrice && (
+                                        <span className="text-[10px] lg:text-[11px] text-slate-700 dark:text-slate-300">
+                                            {fmtPrice(Number(dealPrice))} / person
+                                            {dealOriginalPrice && Number(dealOriginalPrice) > Number(dealPrice) && (
+                                                <span className="ml-1.5 line-through text-slate-400">{fmtPrice(Number(dealOriginalPrice))}</span>
+                                            )}
+                                        </span>
+                                    )}
+                                    {dep && (
+                                        <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">
+                                            · Departs {fmt(dep)}{ret ? ` · Returns ${fmt(ret)}` : ''}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })() : null}
+
                 {/* Price Calendar — moved from search page to booking page */}
                 {calendarProps && (
                     <div className="mb-3 lg:mb-6">
@@ -1140,30 +1182,29 @@ export default function FlightBookContent() {
                                             {bagsOpen ? '▲' : '▼'}
                                         </span>
                                     </button>
-                                    {bagsOpen && (
-                                        <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
-                                            {refreshingOffer ? (
-                                                <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                    Refreshing offer…
-                                                </div>
-                                            ) : refreshFailed ? (
-                                                <AncillaryExpiredNotice />
-                                            ) : (
-                                                <BagSelectionPanel
-                                                    key={effectiveOfferId}
-                                                    offerId={effectiveOfferId}
-                                                    duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? (offer as any).raw?.passengers ?? []).map((p: any) => p.id)}
-                                                    passengerCount={passengers.length}
-                                                    passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
-                                                    selectedBags={selectedBags}
-                                                    onBagsChange={setSelectedBags}
-                                                    currency={offer.price.currency}
-                                                    onOfferExpired={refreshOffer}
-                                                />
-                                            )}
-                                        </div>
-                                    )}
+                                    {/* Always mounted so the fetch fires at page load, not on first open */}
+                                    <div className={!bagsOpen ? 'hidden' : 'px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800'}>
+                                        {refreshingOffer ? (
+                                            <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Refreshing offer…
+                                            </div>
+                                        ) : refreshFailed ? (
+                                            <AncillaryExpiredNotice />
+                                        ) : (
+                                            <BagSelectionPanel
+                                                key={effectiveOfferId}
+                                                offerId={effectiveOfferId}
+                                                duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? (offer as any).raw?.passengers ?? []).map((p: any) => p.id)}
+                                                passengerCount={passengers.length}
+                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                selectedBags={selectedBags}
+                                                onBagsChange={setSelectedBags}
+                                                currency={offer.price.currency}
+                                                onOfferExpired={refreshOffer}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Seats */}
@@ -1188,31 +1229,30 @@ export default function FlightBookContent() {
                                             {seatsOpen ? '▲' : '▼'}
                                         </span>
                                     </button>
-                                    {seatsOpen && (
-                                        <div className="px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800">
-                                            {refreshingOffer ? (
-                                                <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                    Refreshing offer…
-                                                </div>
-                                            ) : refreshFailed ? (
-                                                <AncillaryExpiredNotice />
-                                            ) : (
-                                                <SeatMapPanel
-                                                    key={effectiveOfferId}
-                                                    offerId={effectiveOfferId}
-                                                    segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
-                                                    passengerCount={passengers.length}
-                                                    passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
-                                                    selectedSeats={selectedSeats}
-                                                    onSeatsChange={setSelectedSeats}
-                                                    currency={offer.price.currency}
-                                                    onDone={() => setSeatsOpen(false)}
-                                                    onOfferExpired={refreshOffer}
-                                                />
-                                            )}
-                                        </div>
-                                    )}
+                                    {/* Always mounted so the fetch fires at page load, not on first open */}
+                                    <div className={!seatsOpen ? 'hidden' : 'px-3 lg:px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800'}>
+                                        {refreshingOffer ? (
+                                            <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Refreshing offer…
+                                            </div>
+                                        ) : refreshFailed ? (
+                                            <AncillaryExpiredNotice />
+                                        ) : (
+                                            <SeatMapPanel
+                                                key={effectiveOfferId}
+                                                offerId={effectiveOfferId}
+                                                segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
+                                                passengerCount={passengers.length}
+                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                selectedSeats={selectedSeats}
+                                                onSeatsChange={setSelectedSeats}
+                                                currency={offer.price.currency}
+                                                onDone={() => setSeatsOpen(false)}
+                                                onOfferExpired={refreshOffer}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -1314,6 +1354,71 @@ export default function FlightBookContent() {
                             );
                         })()}
 
+                        {/* Booking summary */}
+                        <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5 shadow-sm">
+                            <h3 className="text-[10px] lg:text-xs font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Order Summary</h3>
+
+                            {/* Flight itinerary */}
+                            <div className="flex items-center gap-2 lg:gap-4 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                                <div className="text-center">
+                                    <div className="text-[11px] lg:text-sm font-normal text-slate-900 dark:text-white">{formatTime(primary.departure.time)}</div>
+                                    <div className="text-[9px] lg:text-[11px] text-slate-500">{primary.departure.airport}</div>
+                                    <div className="text-[9px] text-slate-400">{primary.departure.time?.slice(0, 10)}</div>
+                                </div>
+                                <div className="flex-1 flex flex-col items-center gap-0.5">
+                                    <span className="text-[9px] lg:text-[11px] text-slate-400">{formatDuration(offer.totalDuration)}</span>
+                                    <div className="w-full h-px bg-slate-200 dark:bg-slate-700 relative">
+                                        <Plane className="w-3 h-3 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
+                                    </div>
+                                    <span className="text-[9px] lg:text-[11px] text-slate-400">
+                                        {offer.totalStops === 0 ? 'Nonstop' : `${offer.totalStops} stop(s)`}
+                                    </span>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-[11px] lg:text-sm font-normal text-slate-900 dark:text-white">{formatTime(last.arrival.time)}</div>
+                                    <div className="text-[9px] lg:text-[11px] text-slate-500">{last.arrival.airport}</div>
+                                    <div className="text-[9px] text-slate-400">{last.arrival.time?.slice(0, 10)}</div>
+                                </div>
+                            </div>
+
+                            {/* Meta row */}
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                                <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{primary.airline.name} · {primary.flightNumber}</span>
+                                <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{primary.cabinClass?.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Economy'}</span>
+                                <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{passengers.length} passenger{passengers.length > 1 ? 's' : ''}</span>
+                            </div>
+
+                            {/* Price breakdown */}
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between">
+                                    <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">Base fare</span>
+                                    <span className="text-[10px] lg:text-[11px] text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</span>
+                                </div>
+                                {selectedSeats.length > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">Seat selection</span>
+                                        <span className="text-[10px] lg:text-[11px] text-slate-900 dark:text-white">+{formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency)}</span>
+                                    </div>
+                                )}
+                                {selectedBags.length > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">Extra bags</span>
+                                        <span className="text-[10px] lg:text-[11px] text-slate-900 dark:text-white">+{formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                                    <span className="text-[11px] lg:text-[13px] font-normal text-slate-900 dark:text-white">Total</span>
+                                    <span className="text-[11px] lg:text-[13px] font-normal text-slate-900 dark:text-white">
+                                        {formatPrice(
+                                            offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0),
+                                            offer.price.currency,
+                                            targetCurrency,
+                                        )}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Submit */}
                         <button
                             type="submit"
@@ -1342,4 +1447,164 @@ export default function FlightBookContent() {
             </div>
         </div>
     );
+}
+
+// ─── Deal Gate ───────────────────────────────────────────────────────────────
+// Shown when a deal card is clicked. Collects passenger count, fires a search,
+// seeds sessionStorage, then hands off to BookingContent.
+
+interface DealGateProps {
+    origin: string;
+    destination: string;
+    departure: string;
+    returnDate?: string;
+    cabinClass: string;
+    onReady: () => void;
+}
+
+const DEAL_SEARCH_MESSAGES = [
+    'Searching for available flights…',
+    'Checking seat availability…',
+    'Locking in the best price…',
+    'Almost there…',
+] as const;
+
+function DealGate({
+    origin, destination, departure, returnDate, cabinClass,
+    onReady,
+}: DealGateProps) {
+    const router = useRouter();
+    const [hasError, setHasError] = React.useState(false);
+    const [errorMsg, setErrorMsg] = React.useState('');
+    const [msgIdx, setMsgIdx] = React.useState(0);
+    const searchFired = React.useRef(false);
+
+    const originInfo = getAirportByCode(origin);
+    const destInfo = getAirportByCode(destination);
+    const originLabel = originInfo ? `${originInfo.city} (${origin})` : origin;
+    const destLabel = destInfo ? `${destInfo.city} (${destination})` : destination;
+    const isRoundTrip = !!returnDate;
+
+    const formatDealDate = (iso: string) =>
+        new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    const runSearch = React.useCallback(async () => {
+        setHasError(false);
+        setMsgIdx(0);
+        try {
+            const res = await fetch('/api/flights/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    origin,
+                    destination,
+                    departureDate: departure,
+                    returnDate: returnDate || undefined,
+                    passengers: { adults: 1, children: 0, infants: 0 },
+                    cabinClass,
+                    tripType: isRoundTrip ? 'round-trip' : 'one-way',
+                }),
+            });
+            const json = await res.json();
+            if (!json.success || !json.data?.offers?.length) {
+                setHasError(true);
+                setErrorMsg(json.error || 'No flights found for this deal on the selected date. The deal may have expired.');
+                return;
+            }
+            const offers: import('@/types/flights').FlightOffer[] = json.data.offers;
+            const cheapest = offers.reduce((min: any, o: any) => o.price.total < min.price.total ? o : min, offers[0]);
+            sessionStorage.setItem('selectedFlight', JSON.stringify(cheapest));
+            sessionStorage.setItem('flightSearchPassengers', JSON.stringify({ adults: 1, children: 0, infants: 0 }));
+            onReady();
+        } catch (err: any) {
+            setHasError(true);
+            setErrorMsg(err.message || 'Something went wrong. Please try again.');
+        }
+    }, [origin, destination, departure, returnDate, cabinClass, isRoundTrip, onReady]);
+
+    React.useEffect(() => {
+        if (searchFired.current) return;
+        searchFired.current = true;
+        runSearch();
+    }, [runSearch]);
+
+    React.useEffect(() => {
+        if (hasError) return;
+        const id = setInterval(() => setMsgIdx(i => Math.min(i + 1, DEAL_SEARCH_MESSAGES.length - 1)), 4000);
+        return () => clearInterval(id);
+    }, [hasError]);
+
+    if (hasError) {
+        return (
+            <div className="min-h-screen bg-linear-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 flex items-center justify-center px-4">
+                <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-6 max-w-sm w-full text-center shadow-sm space-y-4">
+                    <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
+                    <div>
+                        <h2 className="text-sm font-normal text-slate-900 dark:text-white mb-1">Deal no longer available</h2>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">{errorMsg}</p>
+                    </div>
+                    <div className="space-y-2">
+                        <button
+                            onClick={() => { searchFired.current = false; runSearch(); }}
+                            className="w-full py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-normal transition-colors">
+                            Try Again
+                        </button>
+                        <button
+                            onClick={() => router.push(`/flights/search?origin=${origin}&destination=${destination}&departure=${departure}${returnDate ? `&return=${returnDate}` : ''}&cabin=${cabinClass}`)}
+                            className="w-full py-2.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-[11px] font-normal hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                            Search All Flights
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-linear-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 flex items-center justify-center px-4">
+            <div className="flex flex-col items-center gap-6 text-center max-w-xs">
+                <div className="w-16 h-16 rounded-full border-4 border-indigo-100 dark:border-indigo-900 border-t-indigo-600 animate-spin" />
+                <div>
+                    <h2 className="text-base font-normal text-slate-900 dark:text-white mb-1">Securing your deal</h2>
+                    <p className="text-[11px] text-indigo-600 dark:text-indigo-400 animate-pulse">
+                        {DEAL_SEARCH_MESSAGES[msgIdx]}
+                    </p>
+                </div>
+                <p className="text-[10px] text-slate-400">{originLabel} → {destLabel} · {formatDealDate(departure)}</p>
+            </div>
+        </div>
+    );
+}
+
+// ─── Wrapper ─────────────────────────────────────────────────────────────────
+// Detects deal mode (origin/destination in URL, no offer in sessionStorage)
+// and shows DealGate before mounting BookingContent.
+
+export default function FlightBookContent() {
+    const searchParams = useSearchParams();
+    const [offerSeeded, setOfferSeeded] = React.useState(() => {
+        if (typeof window === 'undefined') return false;
+        return !!sessionStorage.getItem('selectedFlight');
+    });
+
+    const origin = searchParams.get('origin');
+    const destination = searchParams.get('destination');
+    const departure = searchParams.get('departure');
+
+    const isDealMode = !!(origin && destination && departure && !offerSeeded);
+
+    if (isDealMode) {
+        return (
+            <DealGate
+                origin={origin}
+                destination={destination}
+                departure={departure}
+                returnDate={searchParams.get('return') ?? undefined}
+                cabinClass={searchParams.get('cabinClass') || 'economy'}
+                onReady={() => setOfferSeeded(true)}
+            />
+        );
+    }
+
+    return <BookingContent />;
 }

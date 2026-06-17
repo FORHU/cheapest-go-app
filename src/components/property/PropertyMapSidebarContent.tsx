@@ -15,7 +15,7 @@ import { MapDetailsPanel } from '@/components/mapbox/components/MapDetailsPanel'
 import Image from 'next/image';
 import { useWeather } from '@/hooks/useWeather';
 import { WeatherWidget } from './WeatherWidget';
-import { isLocationInKorea, normalizeKakaoPoi, calculateHaversineDistance } from '@/utils/geo';
+import { calculateHaversineDistance } from '@/utils/geo';
 import { formatDuration } from '@/utils/format';
 import { 
     GOOGLE_MAPS_SEARCH_URL,

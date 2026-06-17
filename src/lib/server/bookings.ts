@@ -211,7 +211,6 @@ export async function confirmAndSaveTgxBooking(
   const supplierRef = booking?.supplierRef || booking?.reference?.supplier;
   const hotelRef = booking?.hotelRef || booking?.reference?.hotel;
   const hotelCode = booking?.hotelCode ?? null;
-  const tgxBookingId = booking?.tgxBookingId ?? null;
   const rawStatus = (booking.status || 'confirmed').toLowerCase();
   const bookingStatus = (['confirmed', 'pending'].includes(rawStatus) ? rawStatus : 'confirmed') as 'confirmed' | 'pending';
 
@@ -330,7 +329,7 @@ export async function confirmAndSaveTgxBooking(
           .from('bookings')
           .update({
             provider: 'travelgatex',
-            provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference, tgxBookingId },
+            provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference },
             payment_intent_id: params.paymentIntentId ?? null,
             supplier_cost: price,
             charged_price: totalPrice,
@@ -362,17 +361,29 @@ export async function confirmAndSaveTgxBooking(
       };
     }
 
-    // Update provider columns and financial audit fields (RPC INSERT uses defaults; patch here)
-    await serviceClient
+    // Update provider columns and financial audit fields (RPC INSERT uses defaults; patch here).
+    // Also set cancellation_policy to the normalized format — the RPC stores raw_liteapi_response
+    // in that column, but the trips page expects { refundableTag, cancelPolicyInfos }.
+    const { error: updateError } = await serviceClient
       .from('bookings')
       .update({
         provider: 'travelgatex',
-        provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference, tgxBookingId },
+        provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference },
         payment_intent_id: params.paymentIntentId ?? null,
-        supplier_cost: price,       // OTV net price confirmed by TGX at booking time
-        charged_price: totalPrice,  // gross amount captured from guest via Stripe
+        supplier_cost: price,
+        charged_price: totalPrice,
+        cancellation_policy: storedCancelPolicy ?? null,
       })
       .eq('booking_id', bookingId);
+
+    if (updateError) {
+      // Non-fatal: booking is confirmed and RPC-saved. Log for ops but don't fail the response.
+      console.error(
+        '[confirmAndSaveTgxBooking] Post-RPC update failed for', bookingId,
+        '— provider_metadata and cancellation_policy may be missing. Error:', updateError.message || updateError.code,
+        '| supplierRef:', supplierRef, '| PI:', params.paymentIntentId,
+      );
+    }
 
     if (params.paymentIntentId) {
       stripe.paymentIntents.update(params.paymentIntentId, {
@@ -392,9 +403,11 @@ export async function confirmAndSaveTgxBooking(
       await serviceClient.from('bookings').insert({
         ...bookingPayload,
         provider: 'travelgatex',
+        provider_metadata: { supplierRef, hotelRef, hotelCode, clientReference },
         payment_intent_id: params.paymentIntentId ?? null,
         supplier_cost: price,
         charged_price: totalPrice,
+        cancellation_policy: storedCancelPolicy ?? null,
         special_requests: [bookingPayload.special_requests, '[EMERGENCY_RECOVERY — exception during save]']
           .filter(Boolean).join(' | '),
       });
@@ -521,7 +534,6 @@ export async function cancelBooking(
           const result = await cancelTravelgateX({
             clientReference: bookingId,
             supplierReference: meta?.supplierRef,
-            tgxBookingId: meta?.tgxBookingId,
             hotelCode: cancelHotelCode,
           });
           console.log('[cancelBooking] TGX cancellation result:', result?.data);

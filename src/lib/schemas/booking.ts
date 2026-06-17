@@ -12,6 +12,8 @@ export const prebookSchema = z.object({
   // TGX: needed to re-search with fresh options on checkout
   adults: z.number().int().min(1).optional(),
   children: z.number().int().min(0).optional(),
+  // Used to match the user's original room selection after token refresh
+  roomName: z.string().optional(),
 });
 
 export type PrebookInput = z.infer<typeof prebookSchema>;

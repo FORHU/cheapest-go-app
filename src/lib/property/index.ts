@@ -1,5 +1,6 @@
 // Property page server utilities
 export {
+    fetchHotelStatic,
     fetchPropertyData,
     formatDateForApi,
     sanitizeDate,
@@ -12,6 +13,7 @@ export {
 
 export type {
     PropertyData,
+    StaticHotelResult,
     SearchParamsInput,
     FetchPropertyResult,
 } from './fetchPropertyData';

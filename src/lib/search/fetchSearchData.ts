@@ -120,8 +120,18 @@ export function parseFilterParams(params: SearchParams) {
 export function buildSearchQueryParams(params: SearchParams): SearchQueryParams {
     const rawCheckin = parseCheckInDate(params);
     const rawCheckout = parseCheckOutDate(params);
-    const destination = typeof params.destination === 'string' ? params.destination : "";
+    const rawDestination = typeof params.destination === 'string' ? params.destination : "";
     const filters = parseFilterParams(params);
+
+    // Destination autocomplete labels are often "City, Country" (e.g. "Tokyo, Japan"),
+    // but every downstream cache (tgx_destination_cache, dest_code_cache,
+    // hotel_content.city) is keyed by the bare city name. Strip the country suffix
+    // once here so cityName/countryCode resolution and all later cache lookups agree
+    // — otherwise "Tokyo, Japan" silently misses every cache that "Tokyo" would hit
+    // and falls through to "supplier may not cover this destination" even when it does.
+    const [destinationCityRaw, ...destinationRest] = rawDestination.split(',');
+    const destination = (destinationCityRaw ?? '').trim();
+    const destinationCountryHint = destinationRest.join(',').trim(); // e.g. "Japan"
 
     // Parse children ages from comma-separated string
     const childrenAges = typeof params.childrenAges === 'string' && params.childrenAges
@@ -132,7 +142,12 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
     let countryCode = typeof params.countryCode === 'string' && params.countryCode
         ? params.countryCode : '';
 
-    // ── Fallback: derive countryCode from known city names when it's missing ──
+    // ── Fallback #1: derive countryCode from the country name in "City, Country" ──
+    if (!countryCode && destinationCountryHint) {
+        countryCode = COUNTRY_NAME_TO_CODE[destinationCountryHint.toLowerCase().trim()] ?? '';
+    }
+
+    // ── Fallback #2: derive countryCode from known city names when it's missing ──
     // This ensures LiteAPI always gets at least (cityName + countryCode) instead of
     // cityName alone, which causes a 400 "bad request" error for smaller cities.
     if (!countryCode && destination) {
@@ -244,7 +259,7 @@ export function buildSearchQueryParams(params: SearchParams): SearchQueryParams 
 
 // Extract price — TravelgateX: top-level number; LiteAPI: nested in roomTypes
 function extractPrice(hotel: any): { price: number; originalPrice?: number; currency?: string } {
-    let result: { price: number; originalPrice?: number; currency?: string } = { price: 0 };
+    const result: { price: number; originalPrice?: number; currency?: string } = { price: 0 };
 
     if (typeof hotel.price === 'number' && hotel.price > 0) {
         result.price = hotel.price;

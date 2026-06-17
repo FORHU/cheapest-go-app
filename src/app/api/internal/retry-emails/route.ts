@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from '@/utils/env';
+import { FROM_NOREPLY } from '@/lib/server/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                        from: FROM_NOREPLY,
                         to: [log.recipient],
                         subject: log.subject,
                         html: htmlBody,

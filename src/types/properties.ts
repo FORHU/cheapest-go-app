@@ -52,6 +52,8 @@ export interface Property {
     city?: string;
     /** Source provider */
     provider?: 'travelgatex' | 'duffel';
+    /** True while TGX pricing is still loading — card shows skeleton instead of ₩0 */
+    priceLoading?: boolean;
     /** Duffel rate ID — required to create a quote/booking for Duffel-sourced hotels */
     rateId?: string;
     /** TravelgateX booking metadata — required for quote/book flow */

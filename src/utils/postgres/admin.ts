@@ -1,8 +1,9 @@
 /**
  * Admin / service-role database client.
  *
- * Uses the same connection pool as the standard client but bypasses
- * RLS by connecting without setting app.current_user_id.
+ * Uses a separate connection pool from the standard client. There is no
+ * RLS to bypass — this exists to isolate admin/service-style operations
+ * onto their own pool, not as a privilege boundary.
  * SERVER ONLY — never import in client code.
  */
 

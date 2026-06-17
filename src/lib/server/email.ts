@@ -1,6 +1,12 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { env } from "@/utils/env";
 
+// ─── Sending addresses ────────────────────────────────────────────────
+// Verified domain: mail.cheapestgo.com (Resend, ap-northeast-1)
+// Change these two constants if the sending domain ever changes.
+export const FROM_NOREPLY = 'CheapestGo <no-reply@mail.cheapestgo.com>';
+export const FROM_ALERTS  = 'CheapestGo Alerts <alerts@mail.cheapestgo.com>';
+
 // ─── HTML Escaping (prevent XSS in email templates) ─────────────────
 
 function escapeHtml(str: string | null | undefined): string {
@@ -23,7 +29,7 @@ export type EmailType = 'confirmation' | 'ticketed' | 'refund' | 'cancellation' 
  * for this booking — used to suppress duplicates before calling Resend.
  */
 async function isEmailAlreadySent(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     supabase: any,
     bookingId: string,
     emailType: EmailType,
@@ -280,7 +286,7 @@ export async function sendBookingConfirmationEmail(
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                        from: FROM_NOREPLY,
                         to: [email],
                         subject: subject,
                         html: emailHtml,
@@ -436,7 +442,7 @@ export async function sendHotelCancellationEmail(
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                        from: FROM_NOREPLY,
                         to: [email],
                         subject,
                         html: emailHtml,
@@ -530,7 +536,7 @@ export async function sendHotelAmendmentEmail(
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                        from: FROM_NOREPLY,
                         to: [email],
                         subject,
                         html: emailHtml,
@@ -733,7 +739,7 @@ export async function sendFlightBookingConfirmationEmail(
 
         if (resendApiKey) {
             const payload = {
-                from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                from: FROM_NOREPLY,
                 to: [email],
                 subject: subject,
                 html: emailHtml,
@@ -878,7 +884,7 @@ export async function sendFlightAwaitingTicketEmail(
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    from: FROM_NOREPLY,
                     to: [email],
                     subject,
                     html: emailHtml,
@@ -997,7 +1003,7 @@ export async function sendFlightRefundEmail(
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    from: FROM_NOREPLY,
                     to: [email],
                     subject,
                     html: emailHtml,
@@ -1143,7 +1149,7 @@ export async function sendFlightCancellationEmail(
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    from: FROM_NOREPLY,
                     to: [email],
                     subject,
                     html: emailHtml,
@@ -1257,7 +1263,7 @@ export async function sendFlightCancellationRefundEmail(
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    from: 'CheapestGo <no-reply@mail.cheapestgo.com>',
+                    from: FROM_NOREPLY,
                     to: [email],
                     subject,
                     html: emailHtml,
@@ -1388,7 +1394,7 @@ export async function sendHotelRefundEmail(params: SendHotelRefundEmailParams): 
             const res = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ from: 'CheapestGo <no-reply@mail.cheapestgo.com>', to: [email], subject, html: emailHtml }),
+                body: JSON.stringify({ from: FROM_NOREPLY, to: [email], subject, html: emailHtml }),
             });
             const text = await res.text();
             if (res.ok) {
@@ -1470,7 +1476,7 @@ export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirma
             method: 'POST',
             headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                from: 'CheapestGo Alerts <no-reply@mail.cheapestgo.com>',
+                from: FROM_NOREPLY,
                 to: [email],
                 subject,
                 html: emailHtml,
@@ -1545,7 +1551,7 @@ export async function sendPriceAlertEmail(params: SendPriceAlertEmailParams): Pr
             method: 'POST',
             headers: { 'Authorization': `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                from: 'CheapestGo Alerts <alerts@mail.cheapestgo.com>',
+                from: FROM_ALERTS,
                 to: [email],
                 subject,
                 html: emailHtml,

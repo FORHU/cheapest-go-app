@@ -31,7 +31,7 @@ export async function invokeEdgeFunction<T = any>(
     const method = options?.method || 'POST';
 
     const maxRetries = 1;
-    let fallbackRetryDelay = 2000;
+    const fallbackRetryDelay = 2000;
 
     for (let i = 0; i <= maxRetries; i++) {
         const response = await fetch(internalUrl, {

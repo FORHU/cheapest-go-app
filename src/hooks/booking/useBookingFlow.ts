@@ -42,7 +42,7 @@ export interface UseBookingFlowReturn {
   transactionId: string | null;
 
   // Actions
-  startPrebook: (offerId: string, currency: string, voucherCode?: string, adults?: number, children?: number) => Promise<PrebookResponse>;
+  startPrebook: (offerId: string, currency: string, voucherCode?: string, adults?: number, children?: number, roomName?: string) => Promise<PrebookResponse>;
   completeBooking: (params: Omit<BookingParams, 'prebookId'>) => Promise<void>;
   refreshPrebook: (offerId: string, currency: string, voucherCode?: string) => Promise<PrebookResponse>;
   /** Re-prebook with a voucher code (triggers new secretKey/transactionId) */
@@ -86,6 +86,12 @@ export function useBookingFlow(): UseBookingFlowReturn {
         });
       }
 
+      if (data.roomSubstituted && data.substitutedRoomName) {
+        toast(`Room availability changed — you've been assigned "${data.substitutedRoomName}" at the updated price.`, {
+          duration: 8000,
+        });
+      }
+
       // Store Payment SDK credentials
       if (data.secretKey) {
         setSecretKey(data.secretKey);
@@ -107,13 +113,14 @@ export function useBookingFlow(): UseBookingFlowReturn {
    * Start the prebook process
    */
   const startPrebook = useCallback(
-    async (offerId: string, currency: string, voucherCode?: string, adults?: number, children?: number): Promise<PrebookResponse> => {
-      console.log('[useBookingFlow] Starting Prebook:', { offerId, currency, voucherCode, adults, children });
+    async (offerId: string, currency: string, voucherCode?: string, adults?: number, children?: number, roomName?: string): Promise<PrebookResponse> => {
+      console.log('[useBookingFlow] Starting Prebook:', { offerId, currency, voucherCode, adults, children, roomName });
       setPriceData(null);
-      const params: { offerId: string; currency: string; voucherCode?: string; adults?: number; children?: number } = { offerId, currency };
+      const params: { offerId: string; currency: string; voucherCode?: string; adults?: number; children?: number; roomName?: string } = { offerId, currency };
       if (voucherCode) params.voucherCode = voucherCode;
       if (adults != null) params.adults = adults;
       if (children != null) params.children = children;
+      if (roomName) params.roomName = roomName;
       return prebookMutation.mutateAsync(params);
     },
     [prebookMutation.mutateAsync]
@@ -248,7 +255,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
    */
   const completeBooking = useCallback(
     async (params: Omit<BookingParams, 'prebookId'>): Promise<void> => {
-      let currentPrebookId = prebookId;
+      const currentPrebookId = prebookId;
       if (!currentPrebookId) throw new Error('No prebook ID available.');
 
       const bookingParams = { ...params, prebookId: currentPrebookId };
