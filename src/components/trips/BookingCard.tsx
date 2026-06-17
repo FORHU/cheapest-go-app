@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
-import { MapPin, XCircle, Pencil, Receipt, CheckCircle, RotateCcw, Ban, AlertTriangle, Map } from 'lucide-react';
+import { MapPin, XCircle, Pencil, Receipt, CheckCircle, RotateCcw, Ban, AlertTriangle, Map, ChevronRight } from 'lucide-react';
 
 const TripMapView = dynamic(() => import('./TripMapView'), { ssr: false });
 import { cn } from '@/lib/utils';
@@ -150,6 +150,12 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                 >
                                     <Map className="w-3 h-3" /> Map
                                 </button>
+                                <a
+                                    href={`/trips/${booking.id}`}
+                                    className="text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-0.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center gap-1"
+                                >
+                                    <ChevronRight className="w-3 h-3" /> Details
+                                </a>
                             {isUpcoming && normalizedStatus === 'confirmed' && (
                                 <div className="flex items-center gap-1.5 shrink-0">
                                     <button
@@ -315,6 +321,13 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                 <Map className="w-3 h-3" />
                                 Map
                             </button>
+                            <a
+                                href={`/trips/${booking.id}`}
+                                className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
+                            >
+                                <ChevronRight className="w-3 h-3" />
+                                Details
+                            </a>
                             <a
                                 href={`/trips/invoice/${booking.id}?type=hotel`}
                                 target="_blank"
