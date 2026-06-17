@@ -15,9 +15,12 @@ export type { TgxOption };
 
 async function callInternalRoute(path: string, body: object) {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const secret = process.env.FUNCTIONS_SECRET || process.env.INTERNAL_SECRET;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (secret) headers['Authorization'] = `Bearer ${secret}`;
     const res = await fetch(`${baseUrl}${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
     });
     if (!res.ok) {

@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { mystiflyRequest } from '@/lib/server/flights/mystifly-client';
-import { env } from '@/utils/env';
+import { getAuthenticatedUser } from '@/lib/server/auth';
 
-// Temporary debug endpoint — DELETE after finding SearchIdentifier field location
-// Usage: GET /api/internal/mystifly-debug
+// Temporary debug endpoint — DELETE after Mystifly onboarding is complete
+// Usage: GET /api/internal/mystifly-debug (admin only)
 export async function GET() {
+    const { user, error } = await getAuthenticatedUser();
+    if (error || !user || (user as any).role !== 'admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     // Search CRK→CJU (the route that was returning fares)
     const departDate = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000)
         .toISOString().split('T')[0];

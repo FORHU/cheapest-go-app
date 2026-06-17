@@ -227,10 +227,12 @@ async function runCityFallback(
         if (_failedDestCodes.has(resolvedCode)) {
             console.log(`[tgx-search] Skipping dest-code "${resolvedCode}" for "${cityName}" — known OTV miss`);
         } else {
+            const __t0 = Date.now();
             const destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
                 criteria: { ...baseCriteria, destinations: [resolvedCode] },
                 settings,
             });
+            console.log(`[tgx-search][TIMING] dest-code round-trip for "${resolvedCode}" took ${Date.now() - __t0}ms`);
             const destOptions: TgxOption[] = destResult?.data?.hotelX?.search?.options || [];
             const destErrors: any[] = destResult?.data?.hotelX?.search?.errors || [];
             const destMerchant = destOptions.filter(
@@ -240,11 +242,19 @@ async function runCityFallback(
                 console.log(`[tgx-search] Destination-code search returned ${destMerchant.length} options for "${cityName}"`);
                 return buildCityResults(destMerchant, cityName, countryCode);
             }
+            // No usable MERCHANT options — whether TGX sent an explicit "Empty hotels"
+            // error or just a clean empty array (observed for some destination codes,
+            // e.g. Tokyo's 504948), this code isn't yielding results either way.
+            // Memoize regardless of error presence so we don't repeat an 18-22s
+            // round-trip on every single search for this city within this process.
+            _failedDestCodes.add(resolvedCode);
             if (hasEmptyHotelsError(destErrors)) {
-                _failedDestCodes.add(resolvedCode);
                 console.warn(`[tgx-search] Dest code "${resolvedCode}" returned Empty hotels — recorded as OTV miss`);
             } else if (destErrors.length) {
                 console.warn('[tgx-search] Destination-code search errors:', destErrors.map((e: any) => e.description || e.code).join(', '));
+                console.warn(`[tgx-search] Dest code "${resolvedCode}" had errors and 0 merchant options — recorded as OTV miss`);
+            } else {
+                console.warn(`[tgx-search] Dest code "${resolvedCode}" returned 0 options with no errors — recorded as OTV miss`);
             }
         }
     }

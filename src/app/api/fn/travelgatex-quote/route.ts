@@ -32,7 +32,14 @@ query TgxQuote($criteria: HotelCriteriaQuoteInput!, $settings: HotelSettingsInpu
   }
 }`;
 
+function checkAuth(req: NextRequest): boolean {
+    const secret = process.env.FUNCTIONS_SECRET || process.env.INTERNAL_SECRET;
+    if (!secret) return true;
+    return req.headers.get('authorization') === `Bearer ${secret}`;
+}
+
 export async function POST(req: NextRequest) {
+    if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     try {
         const { token } = await req.json();
         if (!token) return NextResponse.json({ success: false, error: 'token is required' }, { status: 400 });
