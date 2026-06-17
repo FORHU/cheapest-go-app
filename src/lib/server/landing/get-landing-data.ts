@@ -184,7 +184,13 @@ export const getHotelDeals = cache(async (): Promise<WeekendDeal[]> => {
 });
 
 export const getGuestFavorites = cache(async (): Promise<WeekendDeal[]> => {
-    const supabase = getPublicClient();
+    let supabase: any;
+    try {
+        supabase = getPublicClient();
+    } catch (err) {
+        console.error('[Landing] guest_favorites error:', (err as Error).message ?? err);
+        return [];
+    }
     const { data, error } = await Promise.race([
         supabase
             .from('hotel_deals')
@@ -236,7 +242,13 @@ const EMPTY_RESULT = {
 };
 
 export const getLandingData = cache(async () => {
-    const supabase = getPublicClient();
+    let supabase: any;
+    try {
+        supabase = getPublicClient();
+    } catch (err) {
+        console.error('[Landing] getLandingData: DB unavailable:', (err as Error).message ?? err);
+        return EMPTY_RESULT;
+    }
 
     // Helper: query with one retry on network errors (TypeError: fetch failed)
     async function query(table: string, limit: number): Promise<{ data: any[] | null; error: any }> {

@@ -102,7 +102,7 @@ const MapPopup = React.memo(function MapPopup({
                 map.off('wheel', handleMapClose);
             }
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     }, [mapRef])
     const content = (
         <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl w-[240px]">

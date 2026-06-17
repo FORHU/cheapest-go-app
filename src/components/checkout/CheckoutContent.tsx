@@ -146,7 +146,7 @@ export function CheckoutContent() {
         return () => {
             if (bookingStepTimer.current) clearInterval(bookingStepTimer.current);
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     }, [loading, step]);
 
     // Global currency sync
