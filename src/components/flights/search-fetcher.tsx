@@ -267,7 +267,7 @@ export function SearchFetcher({
             clearTimeout(timeoutId);
             controller.abort();
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [origin, destination, departureDate, returnDate, adults, children, infants, cabinClass, retryKey]);
 
     // ─── Derived data ─────────────────────────────────────────────────────────
