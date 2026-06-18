@@ -321,10 +321,9 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
 
     return (
         <motion.div
-            initial={{ opacity: index < 6 ? 0 : 1, y: index < 6 ? 30 : 0 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.1 }}
-            transition={{ delay: index * 0.03, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index < 8 ? index * 0.04 : 0, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
             className={`flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all group cursor-pointer ${className}`}
             onClick={onClick}
         >
