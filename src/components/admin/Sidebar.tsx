@@ -14,6 +14,7 @@ import {
     Plane,
     Globe,
     ChevronRight,
+    ChevronLeft,
     Mail,
     Shield,
     Banknote,
@@ -27,6 +28,8 @@ import {
     Smartphone,
     CreditCard,
 } from 'lucide-react';
+
+const INTEGRATIONS_PAGE_SIZE = 3;
 import { Button } from '@/components/ui/Button';
 
 // ─── Nav item type ─────────────────────────────────────────
@@ -41,6 +44,7 @@ interface NavItem {
 interface NavGroup {
     title: string;
     items: NavItem[];
+    paginated?: boolean;
 }
 
 // ─── Route definitions ─────────────────────────────────────
@@ -77,6 +81,7 @@ const navGroups: NavGroup[] = [
     },
     {
         title: 'Integrations',
+        paginated: true,
         items: [
             { label: 'Stripe',        href: '/admin/stripe',       icon: CreditCard,  badge: 'Live' },
             { label: 'Duffel',        href: '/admin/duffel',       icon: Plane,       badge: 'Live' },
@@ -171,8 +176,14 @@ function NavGroupSection({
     onClose?: () => void;
     onNavigate?: (href: string) => void;
 }) {
-    const hasActive = group.items.some(item => pathname === item.href);
-    const [open, setOpen] = useState(true); // groups start expanded
+    const [open, setOpen] = useState(true);
+    const [page, setPage] = useState(0);
+
+    const isPaginated = !!group.paginated && !isCollapsed;
+    const totalPages = isPaginated ? Math.ceil(group.items.length / INTEGRATIONS_PAGE_SIZE) : 1;
+    const visibleItems = isPaginated
+        ? group.items.slice(page * INTEGRATIONS_PAGE_SIZE, (page + 1) * INTEGRATIONS_PAGE_SIZE)
+        : group.items;
 
     return (
         <div className="space-y-1">
@@ -202,7 +213,7 @@ function NavGroupSection({
                         className="overflow-hidden"
                     >
                         <div className="space-y-0.5 pt-1">
-                            {group.items.map(item => (
+                            {visibleItems.map(item => (
                                 <NavLink
                                     key={item.href}
                                     item={item}
@@ -215,6 +226,44 @@ function NavGroupSection({
                                 />
                             ))}
                         </div>
+
+                        {/* Pagination controls — only shown for paginated groups with >1 page */}
+                        {isPaginated && totalPages > 1 && (
+                            <div className="flex items-center justify-between px-4 pt-2 pb-1">
+                                <button
+                                    onClick={() => setPage(p => Math.max(0, p - 1))}
+                                    disabled={page === 0}
+                                    className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-600/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    aria-label="Previous integrations"
+                                >
+                                    <ChevronLeft size={12} />
+                                </button>
+
+                                <div className="flex items-center gap-1">
+                                    {Array.from({ length: totalPages }).map((_, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => setPage(i)}
+                                            className={`w-1.5 h-1.5 rounded-full transition-all ${
+                                                i === page
+                                                    ? 'bg-blue-500 w-3'
+                                                    : 'bg-slate-300 dark:bg-white/20 hover:bg-slate-400'
+                                            }`}
+                                            aria-label={`Page ${i + 1}`}
+                                        />
+                                    ))}
+                                </div>
+
+                                <button
+                                    onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                                    disabled={page === totalPages - 1}
+                                    className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-600/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    aria-label="Next integrations"
+                                >
+                                    <ChevronRight size={12} />
+                                </button>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>

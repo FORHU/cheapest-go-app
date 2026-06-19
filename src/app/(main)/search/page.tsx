@@ -1,10 +1,6 @@
-import SearchFilters from '@/components/search/SearchFilters';
-import { ResponsiveSearchHeader } from '@/components/search/ResponsiveSearchHeader';
 import { HotelResultsClient } from '@/components/search/HotelResultsClient';
 import { MapResultsClient } from '@/components/search/MapResultsClient';
 import { CountryCityPicker } from '@/components/search/CountryCityPicker';
-import BackButton from '@/components/common/BackButton';
-import { fetchFacilities } from '@/lib/search';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +21,7 @@ export default async function SearchPage(props: {
     ) as Record<string, string>;
 
     const dest = flatParams.destination || '';
-    const viewMode = flatParams.view || 'list';
+    const viewMode = flatParams.view || 'map';
 
     // ─── MAP VIEW ───────────────────────────────────────────────────
     if (viewMode === 'map') {
@@ -45,8 +41,10 @@ export default async function SearchPage(props: {
 
     // ─── LIST VIEW ──────────────────────────────────────────────────
     return (
-        <HotelResultsClient
-            searchParams={flatParams}
-        />
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+            <HotelResultsClient
+                searchParams={flatParams}
+            />
+        </div>
     );
 }
