@@ -157,11 +157,9 @@ export async function GET(request: Request) {
 
     // ── Fallback: already authenticated ────────────────────────────────────
     const { getSession } = await import('@/lib/auth/session');
-    const { getUserProfile } = await import('@/lib/server/auth');
     const { user } = await getSession();
     if (user) {
-        const profile = await getUserProfile(user.id);
-        const target  = profile?.role === 'admin' ? '/admin' : validateRedirectUrl(searchParams.get('next') || '/');
+        const target = user.role === 'admin' ? '/admin' : validateRedirectUrl(searchParams.get('next') || '/');
         return NextResponse.redirect(`${origin}${target}`);
     }
 
