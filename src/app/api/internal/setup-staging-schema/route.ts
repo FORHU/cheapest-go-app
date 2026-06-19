@@ -131,6 +131,41 @@ export async function POST(req: NextRequest) {
         $$ LANGUAGE plpgsql
     `);
 
+    // flight_deals unique constraint for upsert by route
+    await run('flight_deals unique constraint', `
+        ALTER TABLE public.flight_deals
+        ADD CONSTRAINT flight_deals_origin_destination_cabin_class_key
+        UNIQUE (origin, destination, cabin_class)
+    `);
+
+    // hotel_deals missing columns
+    await run('hotel_deals extra columns', `
+        ALTER TABLE public.hotel_deals
+        ADD COLUMN IF NOT EXISTS city_key          text,
+        ADD COLUMN IF NOT EXISTS lat               numeric(9,6),
+        ADD COLUMN IF NOT EXISTS lng               numeric(9,6),
+        ADD COLUMN IF NOT EXISTS board_code        text,
+        ADD COLUMN IF NOT EXISTS refundable        boolean,
+        ADD COLUMN IF NOT EXISTS last_refreshed_at timestamp with time zone
+    `);
+
+    // hotel_deals unique constraint for upsert by hotel_code
+    await run('hotel_deals unique constraint', `
+        ALTER TABLE public.hotel_deals
+        ADD CONSTRAINT hotel_deals_hotel_code_key UNIQUE (hotel_code)
+    `);
+
+    // Recreate hotel_search_stats with the correct schema (city_key PK)
+    await run('drop old hotel_search_stats', `DROP TABLE IF EXISTS hotel_search_stats`);
+    await run('hotel_search_stats (correct schema)', `
+        CREATE TABLE public.hotel_search_stats (
+            city_key          text PRIMARY KEY,
+            country_code      text NOT NULL DEFAULT '',
+            search_count      integer NOT NULL DEFAULT 1,
+            last_searched_at  timestamp with time zone NOT NULL DEFAULT now()
+        )
+    `);
+
     return NextResponse.json({
         ok: true,
         results,
