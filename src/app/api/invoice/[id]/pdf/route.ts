@@ -23,18 +23,12 @@ export async function GET(
         const type = req.nextUrl.searchParams.get('type') || 'flight';
 
     const { user, error: authError } = await getAuthenticatedUser();
-        const supabase = createAdminClient();
     if (authError || !user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-    const isAdmin = profile?.role === 'admin';
-    const db = isAdmin ? createAdminClient() : supabase;
+    const isAdmin = user.role === 'admin';
+    const db = createAdminClient();
 
     const isHotel = type === 'hotel';
     let booking: any = null;

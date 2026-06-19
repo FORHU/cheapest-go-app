@@ -14,19 +14,10 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     const { type } = await searchParams;
 
     const { user, error: authError } = await getAuthenticatedUser();
-        const supabase = createAdminClient();
     if (authError || !user) redirect('/login');
 
-    // Check if viewer is an admin — admins can view any customer's receipt
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-    const isAdmin = profile?.role === 'admin';
-
-    // Use admin client (bypasses RLS) for admin users, regular client for customers
-    const db = isAdmin ? createAdminClient() : supabase;
+    const isAdmin = user.role === 'admin';
+    const db = createAdminClient();
 
     const isHotel = type === 'hotel';
 
