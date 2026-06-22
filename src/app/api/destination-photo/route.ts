@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
   if (!query) {
     // Unknown IATA — return a generic travel placeholder
     return NextResponse.redirect(
-      `https://picsum.photos/seed/${encodeURIComponent(iata || 'travel')}/800/600`,
+      `https://fastly.picsum.photos/seed/${encodeURIComponent(iata || 'travel')}/800/600`,
     );
   }
 
@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
   }
 
   const photoUrl = await fetchGooglePlacesPhoto(query)
-    ?? `https://picsum.photos/seed/${encodeURIComponent(iata)}/800/600`;
+    ?? `https://fastly.picsum.photos/seed/${encodeURIComponent(iata)}/800/600`;
 
   photoCache.set(iata, { url: photoUrl, expires: Date.now() + 86_400_000 });
 

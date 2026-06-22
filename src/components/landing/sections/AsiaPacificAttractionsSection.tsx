@@ -41,7 +41,7 @@ const ATTRACTIONS: Attraction[] = [
 function attractionImageUrl(name: string, location: string): string {
   return (
     `/api/hotel-photo?q=${encodeURIComponent(name + ' ' + location + ' landmark tourist')}` +
-    `&fallback=${encodeURIComponent(`https://picsum.photos/seed/${encodeURIComponent(name)}/600/400`)}`
+    `&fallback=${encodeURIComponent(`https://fastly.picsum.photos/seed/${encodeURIComponent(name)}/600/400`)}`
   );
 }
 
