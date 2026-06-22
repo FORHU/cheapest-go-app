@@ -128,8 +128,9 @@ interface DealCardProps {
 const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carousel' }) => {
   const router     = useRouter();
 
+  const destCity   = getCity(deal.destination);
   const imageUrl   = isPlaceholderImage(deal.image)
-    ? `https://fastly.picsum.photos/seed/${encodeURIComponent(deal.destination || 'travel')}/400/300`
+    ? `/api/hotel-photo?q=${encodeURIComponent(`${destCity} city travel`)}&fallback=${encodeURIComponent(`https://fastly.picsum.photos/seed/${encodeURIComponent(deal.destination || 'travel')}/400/300`)}`
     : deal.image;
 
   const bookingUrl = buildBookingUrl(deal);
@@ -153,7 +154,7 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
         {/* ── Image ───────────────────────────────────────────── */}
         <div className="relative h-[148px] overflow-hidden shrink-0">
           {imageUrl
-            ? <Image src={imageUrl} alt={deal.title} fill
+            ? <Image src={imageUrl} alt={deal.title} fill unoptimized
                 sizes="(max-width: 640px) 220px, (max-width: 768px) 240px, 260px"
                 className="object-cover transition-transform duration-700 group-hover:scale-105"
                 priority={index === 0} loading={index === 0 ? undefined : 'lazy'} />
