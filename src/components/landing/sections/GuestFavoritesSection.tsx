@@ -113,6 +113,7 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
             src={imageUrl}
             alt={deal.name}
             fill
+            unoptimized
             sizes="(max-width: 640px) 220px, (max-width: 768px) 240px, 260px"
             className="object-cover transition-transform duration-700 group-hover:scale-105"
             priority={index === 0}
