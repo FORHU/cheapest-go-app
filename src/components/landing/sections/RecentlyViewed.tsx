@@ -114,7 +114,7 @@ const RecentlyViewed = () => {
       destination: search.title,
       dates: 'Recently searched',
       type: search.type === 'airport' ? 'Flight' : 'Stay',
-      image: `https://picsum.photos/seed/${search.title.toLowerCase().replace(/\s/g, '')}/200/150`,
+      image: `https://fastly.picsum.photos/seed/${search.title.toLowerCase().replace(/\s/g, '')}/200/150`,
       price: search.lowestPrice ?? 0,
     } as RecentItem,
     destination: search,

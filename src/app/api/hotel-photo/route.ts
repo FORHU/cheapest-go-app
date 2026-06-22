@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 
   if (!query) {
     return NextResponse.redirect(
-      fallback || `https://picsum.photos/seed/hotel/800/600`,
+      fallback || `https://fastly.picsum.photos/seed/hotel/800/600`,
     );
   }
 
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
   // Prefer the actual hotel photo; fall back to the supplied image, then picsum.
   const photoUrl = await fetchGooglePlacesPhoto(query)
     ?? fallback
-    ?? `https://picsum.photos/seed/${encodeURIComponent(query)}/800/600`;
+    ?? `https://fastly.picsum.photos/seed/${encodeURIComponent(query)}/800/600`;
 
   photoCache.set(query, { url: photoUrl, expires: Date.now() + 86_400_000 });
 

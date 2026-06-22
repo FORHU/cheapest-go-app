@@ -38,7 +38,7 @@ const TOP_CITIES: City[] = [
 function cityImageUrl(name: string, country: string): string {
   return (
     `/api/hotel-photo?q=${encodeURIComponent(name + ' ' + country + ' city skyline landmark')}` +
-    `&fallback=${encodeURIComponent(`https://picsum.photos/seed/${encodeURIComponent(name)}/600/400`)}`
+    `&fallback=${encodeURIComponent(`https://fastly.picsum.photos/seed/${encodeURIComponent(name)}/600/400`)}`
   );
 }
 

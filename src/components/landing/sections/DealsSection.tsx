@@ -74,7 +74,7 @@ function isPlaceholderImage(url: string | null | undefined): boolean {
   if (!url || url.trim() === '') return true;
   const u = url.toLowerCase();
   return (
-    u.includes('picsum.photos') ||
+    u.includes('fastly.picsum.photos') ||
     u.includes('placeholder') ||
     u.includes('via.placeholder') ||
     u.includes('flag') ||
@@ -129,7 +129,7 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
   const router     = useRouter();
 
   const imageUrl   = isPlaceholderImage(deal.image)
-    ? `https://picsum.photos/seed/${encodeURIComponent(deal.destination || 'travel')}/400/300`
+    ? `https://fastly.picsum.photos/seed/${encodeURIComponent(deal.destination || 'travel')}/400/300`
     : deal.image;
 
   const bookingUrl = buildBookingUrl(deal);
