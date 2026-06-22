@@ -9,10 +9,20 @@ import { resolveTgxDestinationCode } from '@/lib/server/search';
 
 // ─── Hotel search cache ───────────────────────────────────────────────────────
 
-const HOTEL_CACHE_TTL_MINUTES = parseInt(
-    process.env.HOTEL_SEARCH_CACHE_TTL_MINUTES ?? '30',
-    10,
-);
+export const POPULAR_CITIES = new Set([
+    'tokyo', 'bangkok', 'seoul', 'singapore', 'paris',
+    'london', 'new york', 'dubai', 'barcelona', 'bali',
+]);
+
+export function isPopularCity(cityName: string): boolean {
+    return POPULAR_CITIES.has(cityName.toLowerCase().trim());
+}
+
+export function getEffectiveTtl(cityName?: string): number {
+    const standardTtl = parseInt(process.env.HOTEL_SEARCH_CACHE_TTL_MINUTES          ?? '120', 10);
+    const popularTtl  = parseInt(process.env.HOTEL_SEARCH_CACHE_TTL_POPULAR_MINUTES   ?? '360', 10);
+    return cityName && isPopularCity(cityName) ? popularTtl : standardTtl;
+}
 
 function buildHotelCacheKey(p: TgxSearchParams): string {
     const location = p.hotelCode
@@ -30,15 +40,18 @@ function buildHotelCacheKey(p: TgxSearchParams): string {
     ].join('|');
 }
 
-async function getHotelSearchCache(key: string): Promise<any | null> {
+async function getHotelSearchCache(key: string, ttlMinutes: number): Promise<{ result: any; stale: boolean } | null> {
     try {
         const sql = getSqlAdmin();
         const rows = await sql`
-            SELECT result FROM hotel_search_cache
-            WHERE cache_key = ${key} AND expires_at > now()
+            SELECT result, (expires_at <= now()) AS stale
+            FROM hotel_search_cache
+            WHERE cache_key = ${key}
+              AND expires_at > now() - (${ttlMinutes} * interval '1 minute')
             LIMIT 1
         `;
-        return rows[0]?.result ?? null;
+        if (!rows[0]) return null;
+        return { result: rows[0].result, stale: Boolean(rows[0].stale) };
     } catch {
         return null;
     }
@@ -230,6 +243,10 @@ function persistFailedDestCode(destCode: string, cityName = ''): void {
 // promise instead of firing a second TGX call that OTV will throttle.
 const _inflight = new Map<string, Promise<any>>();
 
+// Tracks keys currently being refreshed in the background (stale-while-revalidate).
+// Prevents duplicate background refreshes when multiple requests hit a stale entry.
+const _backgroundRefreshing = new Set<string>();
+
 // ─── City search fallback ─────────────────────────────────────────────────────
 // Called for every city-name search (OTV never accepts free-text city names as
 // destination identifiers) and as the fallback when a destination-code search
@@ -352,13 +369,30 @@ async function runCityFallback(
 
 export async function runTgxSearch(params: TgxSearchParams) {
     const key = buildHotelCacheKey(params);
+    const ttl = getEffectiveTtl(params.cityName);
 
-    // 1. DB cache hit
-    if (HOTEL_CACHE_TTL_MINUTES > 0) {
-        const cached = await getHotelSearchCache(key);
+    // 1. DB cache hit (fresh or stale-within-grace)
+    if (ttl > 0) {
+        const cached = await getHotelSearchCache(key, ttl);
         if (cached !== null) {
-            console.log(`[hotel-cache] HIT ${key}`);
-            return cached;
+            if (!cached.stale) {
+                console.log(`[hotel-cache] HIT ${key}`);
+                return cached.result;
+            }
+            // Stale hit: return immediately, kick off background refresh
+            console.log(`[hotel-cache] STALE ${key} — serving stale result, refreshing in background`);
+            if (!_inflight.has(key) && !_backgroundRefreshing.has(key)) {
+                _backgroundRefreshing.add(key);
+                _runTgxSearch(params)
+                    .then(result => {
+                        if (Array.isArray(result?.data) && result.data.length > 0) {
+                            setHotelSearchCache(key, result, ttl).catch(() => {});
+                        }
+                    })
+                    .catch((e: any) => console.error('[hotel-cache] Background refresh failed:', e.message))
+                    .finally(() => _backgroundRefreshing.delete(key));
+            }
+            return cached.result;
         }
     }
 
@@ -372,10 +406,10 @@ export async function runTgxSearch(params: TgxSearchParams) {
     // 3. Start new search, register in-flight promise
     const promise = _runTgxSearch(params)
         .then(result => {
-            if (HOTEL_CACHE_TTL_MINUTES > 0) {
+            if (ttl > 0) {
                 const hotelCount = Array.isArray(result?.data) ? result.data.length : 0;
                 if (hotelCount > 0) {
-                    setHotelSearchCache(key, result, HOTEL_CACHE_TTL_MINUTES).catch(() => {});
+                    setHotelSearchCache(key, result, ttl).catch(() => {});
                 }
             }
             return result;
