@@ -139,6 +139,12 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         <h3 className="text-[11.5px] font-bold text-slate-900 dark:text-white leading-tight line-clamp-2">
                             {property.name}
                         </h3>
+                        {property.location && (
+                            <p className="text-[9.5px] text-slate-400 dark:text-slate-500 leading-tight mt-0.5 truncate flex items-center gap-0.5">
+                                <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                {property.location}
+                            </p>
+                        )}
                     </div>
 
                     {/* Rating badge */}
@@ -211,9 +217,17 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                                     <span className={cn('text-white font-bold leading-none', index > 99 ? 'text-[7px]' : index > 9 ? 'text-[9px]' : 'text-[10px]')}>{index}</span>
                                 </span>
                             )}
-                            <h3 className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-semibold text-slate-900 dark:text-white line-clamp-2 leading-tight">
-                                {property.name}
-                            </h3>
+                            <div className="min-w-0">
+                                <h3 className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-semibold text-slate-900 dark:text-white line-clamp-2 leading-tight">
+                                    {property.name}
+                                </h3>
+                                {property.location && (
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight mt-0.5 truncate flex items-center gap-0.5">
+                                        <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                        {property.location}
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     </div>
 
