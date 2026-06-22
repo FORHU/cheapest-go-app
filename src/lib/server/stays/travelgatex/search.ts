@@ -197,9 +197,33 @@ function hasEmptyHotelsError(errors: any[]): boolean {
 }
 
 // In-process set of TGX destination codes that returned "Empty hotels" for OTV.
-// Avoids a wasted 18-22s TGX round-trip when the same code is tried again within
-// the same server process lifetime (warm Vercel function).
+// Seeded from DB on first use so cold starts also skip known-bad codes.
 const _failedDestCodes = new Set<string>();
+let _failedDestCodesPromise: Promise<void> | null = null;
+
+function loadFailedDestCodes(): Promise<void> {
+    if (_failedDestCodesPromise) return _failedDestCodesPromise;
+    _failedDestCodesPromise = (async () => {
+        try {
+            const sql = getSqlAdmin();
+            const rows = await sql`SELECT dest_code FROM tgx_failed_dest_codes`;
+            for (const r of rows) _failedDestCodes.add(r.dest_code as string);
+            if (rows.length) console.log(`[tgx-search] Loaded ${rows.length} known-bad dest codes from DB`);
+        } catch (e: any) {
+            console.warn('[tgx-search] Could not load tgx_failed_dest_codes:', e.message);
+        }
+    })();
+    return _failedDestCodesPromise;
+}
+
+function persistFailedDestCode(destCode: string, cityName = ''): void {
+    _failedDestCodes.add(destCode);
+    getSqlAdmin()`
+        INSERT INTO tgx_failed_dest_codes (dest_code, city_key)
+        VALUES (${destCode}, ${cityName})
+        ON CONFLICT (dest_code) DO NOTHING
+    `.catch((e: any) => console.warn('[tgx-search] Could not persist failed dest code:', e.message));
+}
 
 // In-flight deduplication: when two requests arrive with the same cache key before
 // either has written a result (cache stampede), the second waits for the first
@@ -219,6 +243,9 @@ async function runCityFallback(
     prefetchDestCode: Promise<string | undefined>,
     prefetchHotelCodes: Promise<string[]>,
 ) {
+    // Ensure the DB-persisted failed codes are loaded before we check the set.
+    await loadFailedDestCodes();
+
     // 1. Try TGX destination code first — gives full city catalog, not just DB snapshot.
     console.warn(`[tgx-search] OTV destination search empty for "${cityName}" — resolving TGX destination code`);
     const resolvedCode = await prefetchDestCode;
@@ -245,9 +272,8 @@ async function runCityFallback(
             // No usable MERCHANT options — whether TGX sent an explicit "Empty hotels"
             // error or just a clean empty array (observed for some destination codes,
             // e.g. Tokyo's 504948), this code isn't yielding results either way.
-            // Memoize regardless of error presence so we don't repeat an 18-22s
-            // round-trip on every single search for this city within this process.
-            _failedDestCodes.add(resolvedCode);
+            // Persist so subsequent cold starts also skip this 18-22s round-trip.
+            persistFailedDestCode(resolvedCode, cityName);
             if (hasEmptyHotelsError(destErrors)) {
                 console.warn(`[tgx-search] Dest code "${resolvedCode}" returned Empty hotels — recorded as OTV miss`);
             } else if (destErrors.length) {
@@ -272,7 +298,7 @@ async function runCityFallback(
         console.log(`[tgx-search] Searching TGX with ${otvCodes.length} OTV hotel codes for "${cityName}"`);
 
         const CHUNK = 100;
-        const CONCURRENCY = 2;
+        const CONCURRENCY = 4;
         const chunks: string[][] = [];
         for (let i = 0; i < otvCodes.length; i += CHUNK) chunks.push(otvCodes.slice(i, i + CHUNK));
 
