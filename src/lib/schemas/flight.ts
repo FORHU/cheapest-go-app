@@ -41,10 +41,10 @@ export const flightContactSchema = z.object({
     email: z.string().min(1, 'Email is required').email('Valid email is required').max(254),
     phone: z.string().min(5, 'Phone number is required').max(20),
     countryCode: z.string().min(1, 'Country code is required').max(5),
-    addressLine: z.string().min(1, 'Billing address is required').max(200),
-    city: z.string().min(1, 'City is required').max(100),
-    postalCode: z.string().min(1, 'Postal code is required').max(20),
-    country: z.string().length(2, 'Must be a 2-letter country code (e.g. PH)'),
+    addressLine: z.string().min(1).max(200).optional(),
+    city: z.string().min(1).max(100).optional(),
+    postalCode: z.string().min(1).max(20).optional(),
+    country: z.string().length(2).optional(),
 });
 
 // ─── Booking form (used by /api/flights/book) ─────────────────────────────────
