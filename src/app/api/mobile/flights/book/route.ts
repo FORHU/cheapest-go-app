@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
+        console.log('[mobile/book] incoming body:', JSON.stringify(body, null, 2));
         const {
             provider,
             flight,
@@ -56,14 +57,17 @@ export async function POST(req: NextRequest) {
 
         // ── Validate ──────────────────────────────────────────────────────
         if (provider !== 'duffel') {
+            console.error('[mobile/book] 400 — unsupported provider:', provider);
             return NextResponse.json({ success: false, error: 'Only Duffel bookings are supported on mobile at this time.' }, { status: 400 });
         }
         if (!flight || typeof flight !== 'object') {
+            console.error('[mobile/book] 400 — missing or invalid flight object:', flight);
             return NextResponse.json({ success: false, error: 'flight object is required' }, { status: 400 });
         }
 
         const passengerParsed = flightBookingSchema.safeParse({ passengers, contact });
         if (!passengerParsed.success) {
+            console.error('[mobile/book] 400 — passenger/contact validation failed:', passengerParsed.error.issues);
             return NextResponse.json(
                 { success: false, error: passengerParsed.error.issues[0]?.message ?? 'Invalid passenger or contact data' },
                 { status: 400 }
@@ -86,6 +90,7 @@ export async function POST(req: NextRequest) {
         ).toLowerCase();
 
         if (flightTotal <= 0) {
+            console.error('[mobile/book] 400 — invalid flight price:', flightTotal, 'raw flight.price:', flight.price);
             return NextResponse.json({ success: false, error: 'Invalid flight price' }, { status: 400 });
         }
 
@@ -170,6 +175,7 @@ export async function POST(req: NextRequest) {
         const e164Phone = `+${rawCountryCode}${rawPhone}`;
         const totalDigits = rawCountryCode.length + rawPhone.length;
         if (rawPhone.length < 4 || totalDigits < 7 || !/^\+\d{7,15}$/.test(e164Phone)) {
+            console.error('[mobile/book] 400 — phone validation failed:', { e164Phone, rawCountryCode, rawPhone, totalDigits });
             return NextResponse.json({
                 success: false,
                 error: 'Invalid phone number. Please enter a valid phone number with country code.',
@@ -263,6 +269,7 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ success: false, error: 'Flight price changed. Please go back and reselect the flight.', priceChanged: true }, { status: 409 });
             }
             if (isPhoneErr) {
+                console.error('[mobile/book] 400 — Duffel phone error:', { errCode, errMsg, e164Phone });
                 return NextResponse.json({ success: false, error: 'Invalid phone number format. Please check your country code and phone number.' }, { status: 400 });
             }
             if (isExpired) {
