@@ -913,7 +913,7 @@ function BookingContent() {
                                                     <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                                 </button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="rounded-xl min-w-[100px] z-[1001]">
+                                            <DropdownMenuContent align="end" className="rounded-xl min-w-[100px] z-1001">
                                                 {PASSENGER_TYPES.map((t) => (
                                                     <DropdownMenuItem
                                                         key={t.code}
@@ -967,7 +967,7 @@ function BookingContent() {
                                                 <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                             </button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="rounded-xl min-w-[140px] z-[1001]">
+                                        <DropdownMenuContent align="start" className="rounded-xl min-w-[140px] z-1001">
                                             {GENDERS.map((g) => (
                                                 <DropdownMenuItem
                                                     key={g.value}
@@ -1003,7 +1003,7 @@ function BookingContent() {
                                                 <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                             </button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="rounded-xl min-w-[200px] max-h-[300px] overflow-y-auto z-[1001]">
+                                        <DropdownMenuContent align="start" className="rounded-xl min-w-[200px] max-h-[300px] overflow-y-auto z-1001">
                                             {NATIONALITIES.map((n) => (
                                                 <DropdownMenuItem
                                                     key={n.code}
@@ -1072,7 +1072,7 @@ function BookingContent() {
                                                 <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                             </button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="start" className="rounded-xl min-w-[120px] max-h-[300px] overflow-y-auto z-[1001]">
+                                        <DropdownMenuContent align="start" className="rounded-xl min-w-[120px] max-h-[300px] overflow-y-auto z-1001">
                                             {PHONE_CODES.map((p) => (
                                                 <DropdownMenuItem
                                                     key={p.code}
@@ -1136,7 +1136,7 @@ function BookingContent() {
                                             <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                         </button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" className="rounded-xl min-w-[200px] max-h-[300px] overflow-y-auto z-[1001]">
+                                    <DropdownMenuContent align="start" className="rounded-xl min-w-[200px] max-h-[300px] overflow-y-auto z-1001">
                                         {NATIONALITIES.map((n) => (
                                             <DropdownMenuItem
                                                 key={n.code}
