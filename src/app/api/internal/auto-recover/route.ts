@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/postgres/admin';
+import { stripe } from '@/lib/stripe/server';
+import { shouldRecoverSession } from '@/lib/server/flights/auto-recover-filter';
 import { env } from '@/utils/env';
 
 export const dynamic = 'force-dynamic';
@@ -73,6 +75,17 @@ export async function POST(req: Request) {
 
         for (const session of mismatches) {
             try {
+                // For Duffel: the order was pre-created before payment. Only recover
+                // if the Stripe PI actually succeeded — a non-succeeded PI means the
+                // user abandoned checkout and there is no payment to match the order.
+                if (session.payment_intent_id) {
+                    const pi = await stripe.paymentIntents.retrieve(session.payment_intent_id);
+                    if (!shouldRecoverSession(session, pi.status)) {
+                        console.log(`[auto-recover] Skipping session ${session.id} (provider=${session.provider}, pi.status=${pi.status})`);
+                        continue;
+                    }
+                }
+
                 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
                 const res = await fetch(`${siteUrl}/api/internal/create-booking`, {
                     method: 'POST',
