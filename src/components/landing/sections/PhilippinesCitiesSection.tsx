@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { MapPin } from 'lucide-react';
 import { useDragScroll } from '@/hooks/useDragScroll';
+import { cityImagePath } from '@/lib/destination-images';
 
 interface City {
   name: string;
@@ -35,12 +36,6 @@ const TOP_CITIES: City[] = [
   { name: 'Los Angeles',   country: 'USA',             tagline: 'Hollywood, Beaches & Sun',             searchQuery: 'Los Angeles, USA' },
 ];
 
-function cityImageUrl(name: string, country: string): string {
-  return (
-    `/api/hotel-photo?q=${encodeURIComponent(name + ' ' + country + ' city skyline landmark')}` +
-    `&fallback=${encodeURIComponent(`https://fastly.picsum.photos/seed/${encodeURIComponent(name)}/600/400`)}`
-  );
-}
 
 interface CityCardProps {
   city: City;
@@ -72,7 +67,7 @@ const CityCard: React.FC<CityCardProps> = ({ city, index }) => {
     >
       <div className="relative h-[160px] overflow-hidden rounded-sm group">
         <Image
-          src={cityImageUrl(city.name, city.country)}
+          src={cityImagePath(city.name)}
           alt={city.name}
           fill
           unoptimized
