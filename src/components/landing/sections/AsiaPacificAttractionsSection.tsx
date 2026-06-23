@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { useDragScroll } from '@/hooks/useDragScroll';
+import { attractionImagePath } from '@/lib/destination-images';
 
 interface Attraction {
   name: string;
@@ -38,12 +39,6 @@ const ATTRACTIONS: Attraction[] = [
   { name: 'Maldives',           location: 'Maldives',      country: 'Maldives',      tagline: 'Overwater Bungalows & Crystal Lagoons',searchQuery: 'Maldives' },
 ];
 
-function attractionImageUrl(name: string, location: string): string {
-  return (
-    `/api/hotel-photo?q=${encodeURIComponent(name + ' ' + location + ' landmark tourist')}` +
-    `&fallback=${encodeURIComponent(`https://fastly.picsum.photos/seed/${encodeURIComponent(name)}/600/400`)}`
-  );
-}
 
 interface AttractionCardProps {
   attraction: Attraction;
@@ -75,7 +70,7 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
     >
       <div className="relative h-[160px] overflow-hidden rounded-sm group">
         <Image
-          src={attractionImageUrl(attraction.name, attraction.location)}
+          src={attractionImagePath(attraction.name)}
           alt={attraction.name}
           fill
           unoptimized

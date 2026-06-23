@@ -97,7 +97,7 @@ export const getFlightDeals = cache(async (): Promise<Deal[]> => {
         originalPrice: Number(d.baseline_price || d.original_price || 0),
         salePrice: Number(d.price || 0),
         currency: d.currency || 'USD',
-        image: d.image_url || "https://fastly.picsum.photos/seed/travel/400/300",
+        image: d.image_url || (d.destination ? `/api/destination-photo?iata=${encodeURIComponent(d.destination)}` : '/api/destination-photo'),
         endsIn: d.ends_in || "Limited Time",
         origin: d.origin || undefined,
         destination: d.destination || undefined,
@@ -124,7 +124,7 @@ export const getWeekendDeals = cache(async (): Promise<WeekendDeal[]> => {
         originalPrice: Number(d.original_price || 0),
         salePrice: Number(d.sale_price || 0),
         currency: d.currency || 'PHP',
-        image: d.image_url || "https://fastly.picsum.photos/seed/stay/400/300",
+        image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
         badge: d.badge,
     })) ?? [];
     // Drop duplicate hotels (same property in the same location).
@@ -138,7 +138,11 @@ export const getPopularDestinations = cache(async (): Promise<VacationPackage[]>
         id: d.id,
         name: d.city,
         location: d.country,
-        image: d.image_url || "https://fastly.picsum.photos/seed/dest/400/300",
+        image: d.image_url || (
+            (d.destination_code || d.iata_code)
+                ? `/api/destination-photo?iata=${encodeURIComponent(d.destination_code || d.iata_code)}`
+                : `/api/hotel-photo?q=${encodeURIComponent(`${d.city} ${d.country} tourism`)}`
+        ),
         originalPrice: Number(d.average_price || 0) * DESTINATION_PRICE_MARKUP,
         salePrice: Number(d.average_price || 0),
         includes: DESTINATION_INCLUDES_DEFAULT,
@@ -157,7 +161,7 @@ export const getUniqueStays = cache(async () => {
         location: d.location,
         rating: Number(d.rating || 0),
         price: Number(d.price || 0),
-        image: d.image_url || "https://fastly.picsum.photos/seed/unique/400/300",
+        image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
         badge: d.discount_tag ?? d.badge ?? null,
     })) ?? [];
 });
@@ -174,7 +178,7 @@ export const getHotelDeals = cache(async (): Promise<WeekendDeal[]> => {
         originalPrice: Number(d.baseline_price || d.price || 0),
         salePrice: Number(d.price || 0),
         currency: d.currency || 'USD',
-        image: d.image_url || "https://fastly.picsum.photos/seed/hotel/400/300",
+        image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
         badge: d.discount_tag ?? null,
         hotelCode: d.hotel_code ?? null,
         checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
@@ -212,7 +216,7 @@ export const getGuestFavorites = cache(async (): Promise<WeekendDeal[]> => {
         originalPrice: Number(d.baseline_price || d.price || 0),
         salePrice: Number(d.price || 0),
         currency: d.currency || 'USD',
-        image: d.image_url || 'https://fastly.picsum.photos/seed/fav/400/300',
+        image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
         badge: d.discount_tag ?? null,
         hotelCode: d.hotel_code ?? null,
         checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
@@ -229,7 +233,7 @@ export const getTravelStyles = cache(async () => {
         title: d.title,
         location: d.location,
         price: Number(d.price || 0),
-        image: d.image_url || "https://fastly.picsum.photos/seed/style/400/300",
+        image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.title} ${d.location} travel`)}`,
     })) ?? [];
 });
 
@@ -297,7 +301,7 @@ export const getLandingData = cache(async () => {
         originalPrice: Number(d.baseline_price || d.original_price || 0),
         salePrice: Number(d.price || 0),
         currency: d.currency || 'USD',
-        image: d.image_url || "https://fastly.picsum.photos/seed/travel/400/300",
+        image: d.image_url || (d.destination ? `/api/destination-photo?iata=${encodeURIComponent(d.destination)}` : '/api/destination-photo'),
         endsIn: d.ends_in || "Limited Time",
         origin: d.origin || undefined,
         destination: d.destination || undefined,
@@ -317,7 +321,7 @@ export const getLandingData = cache(async () => {
         originalPrice: Number(d.original_price || 0),
         salePrice: Number(d.sale_price || 0),
         currency: d.currency || 'PHP',
-        image: d.image_url || "https://fastly.picsum.photos/seed/stay/400/300",
+        image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
         badge: d.badge
     })) ?? [];
 
@@ -325,7 +329,11 @@ export const getLandingData = cache(async () => {
         id: d.id,
         name: d.city,
         location: d.country,
-        image: d.image_url || "https://fastly.picsum.photos/seed/dest/400/300",
+        image: d.image_url || (
+            (d.destination_code || d.iata_code)
+                ? `/api/destination-photo?iata=${encodeURIComponent(d.destination_code || d.iata_code)}`
+                : `/api/hotel-photo?q=${encodeURIComponent(`${d.city} ${d.country} tourism`)}`
+        ),
         originalPrice: Number(d.average_price || 0) * DESTINATION_PRICE_MARKUP,
         salePrice: Number(d.average_price || 0),
         includes: DESTINATION_INCLUDES_DEFAULT,
@@ -340,7 +348,7 @@ export const getLandingData = cache(async () => {
         location: d.location,
         rating: Number(d.rating || 0),
         price: Number(d.price || 0),
-        image: d.image_url || "https://fastly.picsum.photos/seed/unique/400/300",
+        image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
         badge: d.badge
     })) ?? [];
 
@@ -349,7 +357,7 @@ export const getLandingData = cache(async () => {
         title: d.title,
         location: d.location,
         price: Number(d.price || 0),
-        image: d.image_url || "https://fastly.picsum.photos/seed/style/400/300"
+        image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.title} ${d.location} travel`)}`,
     })) ?? [];
 
     return {

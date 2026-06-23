@@ -130,7 +130,7 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
 
   const destCity   = getCity(deal.destination);
   const imageUrl   = isPlaceholderImage(deal.image)
-    ? `/api/hotel-photo?q=${encodeURIComponent(`${destCity} city travel`)}&fallback=${encodeURIComponent(`https://fastly.picsum.photos/seed/${encodeURIComponent(deal.destination || 'travel')}/400/300`)}`
+    ? `/api/hotel-photo?q=${encodeURIComponent(`${destCity} city travel`)}`
     : deal.image;
 
   const bookingUrl = buildBookingUrl(deal);

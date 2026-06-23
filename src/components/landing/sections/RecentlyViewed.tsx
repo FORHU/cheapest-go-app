@@ -10,6 +10,7 @@ import { type RecentItem } from '@/types';
 import { convertCurrency } from '@/lib/currency';
 import { formatCurrency } from '@/lib/utils';
 import { useUserCurrency, type Destination } from '@/stores/searchStore';
+import { IATA_TO_SLUG, findLocalDestinationImage } from '@/lib/destination-images';
 
 interface RecentCardProps {
   item: RecentItem;
@@ -114,7 +115,16 @@ const RecentlyViewed = () => {
       destination: search.title,
       dates: 'Recently searched',
       type: search.type === 'airport' ? 'Flight' : 'Stay',
-      image: `https://fastly.picsum.photos/seed/${search.title.toLowerCase().replace(/\s/g, '')}/200/150`,
+      image: (() => {
+        if (search.type === 'airport' && search.code) {
+          const slug = IATA_TO_SLUG[search.code.toUpperCase()];
+          return slug
+            ? `/images/destinations/${slug}.jpg`
+            : `/api/destination-photo?iata=${encodeURIComponent(search.code)}`;
+        }
+        return findLocalDestinationImage(search.title)
+          ?? `/api/hotel-photo?q=${encodeURIComponent(`${search.title} travel destination`)}`;
+      })(),
       price: search.lowestPrice ?? 0,
     } as RecentItem,
     destination: search,
