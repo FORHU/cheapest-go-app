@@ -8,6 +8,13 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 
+function getInitials(firstName?: string | null, lastName?: string | null, email?: string | null): string {
+    const first = firstName?.[0] ?? '';
+    const last = lastName?.[0] ?? '';
+    if (first || last) return (first + last).toUpperCase();
+    return (email?.[0] ?? '?').toUpperCase();
+}
+
 interface SignInDropdownProps {
     /** 'dropdown' (default) = desktop popup; 'inline' = renders directly for mobile drawer */
     variant?: 'dropdown' | 'inline';
@@ -91,8 +98,8 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
             <>
                 {/* User Info */}
                 <div className="flex items-center gap-3">
-                    <div className="size-8 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.65rem,1.5vw,0.75rem)]">
-                        {(user.firstName?.[0] ?? '')}{(user.lastName?.[0] ?? '')}
+                    <div className="size-8 shrink-0 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.65rem,1.5vw,0.75rem)]">
+                        {getInitials(user.firstName, user.lastName, user.email)}
                     </div>
                     <div className="min-w-0">
                         <p className="font-medium text-[clamp(0.8125rem,1.5vw,0.875rem)] text-slate-900 dark:text-white truncate">
@@ -162,7 +169,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                         className="flex items-center justify-between w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-left text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 transition-all shadow-sm"
                     >
                         <span>{(mounted && user) ? 'Account' : 'Sign in'}</span>
-                        <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform ${isInlineOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isInlineOpen ? 'rotate-180' : ''}`} />
                     </button>
                     <AnimatePresence>
                         {isInlineOpen && (
@@ -208,7 +215,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                             className="absolute right-0 top-full mt-2 w-full min-w-[280px] bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden z-50"
                         >
                             {/* Promo Banner */}
-                            <div className="p-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+                            <div className="p-4 bg-linear-to-r from-blue-600 to-blue-700 text-white">
                                 <p className="font-medium text-[clamp(0.875rem,2vw,1rem)]">Members save 10% or more</p>
                                 <p className="text-[clamp(0.8125rem,1.5vw,0.875rem)] text-blue-100 mt-1">
                                     on select stays when signed in
@@ -255,8 +262,8 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
             >
-                <div className="size-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[10px]">
-                    {(user.firstName?.[0] ?? '')}{(user.lastName?.[0] ?? '')}
+                <div className="size-7 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[10px]">
+                    {getInitials(user.firstName, user.lastName, user.email)}
                 </div>
             </button>
 
@@ -272,8 +279,8 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                         {/* User Info */}
                         <div className="p-4 border-b border-slate-100 dark:border-white/5">
                             <div className="flex items-center gap-3">
-                                <div className="size-10 shrink-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.875rem,2vw,1rem)]">
-                                    {(user.firstName?.[0] ?? '')}{(user.lastName?.[0] ?? '')}
+                                <div className="size-10 shrink-0 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-[clamp(0.875rem,2vw,1rem)]">
+                                    {getInitials(user.firstName, user.lastName, user.email)}
                                 </div>
                                 <div className="min-w-0">
                                     <p className="font-medium text-sm text-slate-900 dark:text-white truncate">

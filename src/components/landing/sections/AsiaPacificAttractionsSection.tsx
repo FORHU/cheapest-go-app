@@ -79,7 +79,7 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
           loading={index < 2 ? 'eager' : 'lazy'}
         />
 
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/80" />
+        <div className="absolute inset-0 bg-linear-to-b from-black/10 via-black/20 to-black/80" />
 
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
           <Sparkles className="w-2.5 h-2.5 text-amber-300" />

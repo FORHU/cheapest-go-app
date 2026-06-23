@@ -54,7 +54,7 @@ const AuthModal: React.FC = () => {
     return (
         <AnimatePresence>
             {isAuthModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -83,7 +83,7 @@ const AuthModal: React.FC = () => {
                         </button>
 
                         {/* Logo Header */}
-                        <div className="pt-6 pb-3 px-6 flex justify-center flex-shrink-0">
+                        <div className="pt-6 pb-3 px-6 flex justify-center shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="size-10 flex items-center justify-center bg-slate-900 dark:bg-white/5 rounded-lg shadow-sm border border-transparent dark:border-white/10">
                                     <PlaneTakeoff className="text-white dark:text-obsidian-accent w-6 h-6" />
@@ -110,7 +110,7 @@ const AuthModal: React.FC = () => {
                         </div>
 
                         {/* Partner Logos Footer */}
-                        <div className="border-t border-slate-100 dark:border-white/5 py-3 px-6 flex-shrink-0">
+                        <div className="border-t border-slate-100 dark:border-white/5 py-3 px-6 shrink-0">
                             <p className="text-xs text-center text-slate-400 dark:text-slate-500">
                                 Your account works across all our partner sites
                             </p>

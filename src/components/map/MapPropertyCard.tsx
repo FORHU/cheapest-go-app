@@ -43,13 +43,13 @@ function StarRating({ rating, size = 11 }: { rating: number; size?: number }) {
     return (
         <div className="relative inline-flex gap-px">
             {Array.from({ length: 5 }).map((_, i) => (
-                <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-slate-200 dark:text-slate-700 flex-shrink-0">
+                <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-slate-200 dark:text-slate-700 shrink-0">
                     <path d={STAR_PATH} fill="currentColor" />
                 </svg>
             ))}
             <div className="absolute inset-0 overflow-hidden flex gap-px" style={{ width: `${pct}%` }}>
                 {Array.from({ length: 5 }).map((_, i) => (
-                    <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-blue-500 flex-shrink-0">
+                    <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-blue-500 shrink-0">
                         <path d={STAR_PATH} fill="currentColor" />
                     </svg>
                 ))}
@@ -107,7 +107,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             {/* ── MOBILE layout: Agoda-style card (image left, details right) ── */}
             <div className="flex flex-row gap-2 md:hidden">
                 {/* Image with index badge overlay */}
-                <div className="relative w-[76px] h-[76px] flex-shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                <div className="relative w-[76px] h-[76px] shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
                     {property.image ? (
                         <Image
                             src={property.image}
@@ -117,7 +117,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                             sizes="100px"
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+                        <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
                             <MapPin className="w-4 h-4 text-slate-300 dark:text-slate-600" />
                         </div>
                     )}
@@ -187,7 +187,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             {/* ── DESKTOP layout: horizontal row (unchanged) ── */}
             <div className="hidden md:flex gap-3">
                 {/* Thumbnail */}
-                <div className="relative w-20 h-16 lg:w-24 lg:h-20 flex-shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                <div className="relative w-20 h-16 lg:w-24 lg:h-20 shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
                     {property.image ? (
                         <Image
                             src={property.image}
@@ -197,7 +197,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                             sizes="(max-width: 1024px) 80px, 96px"
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+                        <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
                             <MapPin className="w-6 h-6 text-slate-300 dark:text-slate-600" />
                         </div>
                     )}

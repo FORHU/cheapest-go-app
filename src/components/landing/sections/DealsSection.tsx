@@ -158,11 +158,11 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
                 sizes="(max-width: 640px) 220px, (max-width: 768px) 240px, 260px"
                 className="object-cover transition-transform duration-700 group-hover:scale-105"
                 priority={index === 0} loading={index === 0 ? undefined : 'lazy'} />
-            : <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-slate-900" />
+            : <div className="absolute inset-0 bg-linear-to-br from-blue-900 to-slate-900" />
           }
 
           {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/75" />
+          <div className="absolute inset-0 bg-linear-to-b from-black/5 via-transparent to-black/75" />
 
           {/* Popular Route badge — top left */}
           <div className="absolute top-1.5 left-2.5 z-10">

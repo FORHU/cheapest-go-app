@@ -67,6 +67,8 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
             if (!normalizedParams.checkout && normalizedParams.checkOut) { normalizedParams.checkout = normalizedParams.checkOut; delete normalizedParams.checkOut; }
             // cityName (edge function) vs destination (URL param)
             if (!normalizedParams.cityName && normalizedParams.destination) { normalizedParams.cityName = normalizedParams.destination; }
+            // countryCode vs country (landing cards pass "country")
+            if (!normalizedParams.countryCode && normalizedParams.country) { normalizedParams.countryCode = normalizedParams.country; }
             // guest_nationality (edge function) vs nationality (URL param)
             if (!normalizedParams.guest_nationality && normalizedParams.nationality) { normalizedParams.guest_nationality = normalizedParams.nationality; }
 

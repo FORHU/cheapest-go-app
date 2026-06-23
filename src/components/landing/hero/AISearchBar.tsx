@@ -221,7 +221,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                 {/* Main Search Container - Hidden on mobile, visible on desktop */}
                 <div className="hidden sm:block">
                     <motion.div
-                        className={`absolute -inset-[1px] pointer-events-none z-0 ${searchMode !== 'ai' ? 'rounded-xl' : 'rounded-2xl'}`}
+                        className={`absolute -inset-px pointer-events-none z-0 ${searchMode !== 'ai' ? 'rounded-xl' : 'rounded-2xl'}`}
                         style={{
                             background: 'linear-gradient(135deg, rgba(37,99,235,0.5), rgba(34,211,238,0.5), rgba(139,92,246,0.3), rgba(34,211,238,0.5), rgba(37,99,235,0.5))',
                             backgroundSize: '300% 300%',
@@ -276,14 +276,14 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                     <MagneticButton
                                         onClick={handleMainSearchClick}
                                         isLoading={isSearching}
-                                        className={`h-12 w-full sm:w-auto px-6 rounded-lg ${searchMode === 'flights' ? '!bg-blue-600 hover:!bg-blue-700' : ''}`}
+                                        className={`h-12 w-full sm:w-auto px-6 rounded-lg ${searchMode === 'flights' ? 'bg-blue-600! hover:bg-blue-700!' : ''}`}
                                     />
                                 </div>
                             </div>
                         ) : (
                             /* AI Mode */
                             <div className="flex flex-col lg:flex-row gap-2">
-                                <div className="flex-[4] min-w-0">
+                                <div className="flex-4 min-w-0">
                                     <motion.div
                                         key="ai"
                                         initial={{ opacity: 0, scale: 0.95 }}
@@ -392,7 +392,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                         setIsMobileModalOpen(false);
                                     }}
                                     isLoading={isSearching}
-                                    className="w-full h-10 rounded-xl !bg-blue-600 hover:!bg-blue-700 !text-white font-medium text-sm shadow-lg shadow-blue-500/25"
+                                    className="w-full h-10 rounded-xl bg-blue-600! hover:bg-blue-700! text-white! font-medium text-sm shadow-lg shadow-blue-500/25"
                                     label="Search"
                                 />
                             </div>

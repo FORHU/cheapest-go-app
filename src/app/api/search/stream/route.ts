@@ -33,15 +33,20 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
 
     try {
         const sql = getSqlAdmin();
-        const normalized = cityName.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
+        // Strip country suffix (e.g. "Tokyo, Japan" → "Tokyo") so ILIKE matches DB city column
+        const cityOnly = cityName.split(',')[0].trim();
+        const normalized = cityOnly.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
         const pattern = `%${normalized}%`;
 
-        const rows = countryCode
+        // Only filter by country when it's a 2-letter ISO code (DB stores "JP" not "Japan")
+        const isoCode = /^[A-Za-z]{2}$/.test(countryCode) ? countryCode : null;
+
+        const rows = isoCode
             ? await sql`
                 SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
                        description, amenities, review_rating, review_count
                 FROM hotel_content
-                WHERE city ILIKE ${pattern} AND LOWER(country) = LOWER(${countryCode})
+                WHERE city ILIKE ${pattern} AND LOWER(country) = LOWER(${isoCode})
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
               `
@@ -120,7 +125,17 @@ function ndjsonLine(obj: unknown): Uint8Array {
  */
 export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
-    const city = body.cityName ?? body.destination ?? '(unknown)';
+
+    // Normalize city name: strip country suffix (e.g. "Tokyo, Japan" → "Tokyo")
+    // Landing cards pass "Tokyo, Japan" but DB and TGX both expect just the city name.
+    const rawCity: string = body.cityName ?? body.destination ?? '';
+    const normalizedCity = rawCity.split(',')[0].trim();
+    if (normalizedCity && normalizedCity !== rawCity) {
+        body.cityName = normalizedCity;
+        if (body.destination) body.destination = normalizedCity;
+    }
+
+    const city = rawCity || '(unknown)';
 
     const stream = new ReadableStream({
         async start(controller) {
