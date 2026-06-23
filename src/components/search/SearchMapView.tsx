@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { MapPropertyCard } from '@/components/map/MapPropertyCard';
 import type { MappableProperty } from '@/components/map/types';
 import { type Property } from '@/types';
-import { ArrowLeft, MapPin, List, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, MapPin, List, SlidersHorizontal, Calendar, Users, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, cn, buildPropertySlug } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
@@ -161,6 +161,108 @@ function PriceLoadingSidebar({ destination }: { destination: string }) {
                     </div>
                 </div>
             ))}
+        </div>
+    );
+}
+
+// ── Search Refinement Bar ───────────────────────────────────────────────────
+function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<string, any> }) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const today = new Date().toISOString().slice(0, 10);
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+
+    const [checkin,  setCheckin]  = useState<string>(rawSearchParams.checkin  || rawSearchParams.checkIn  || today);
+    const [checkout, setCheckout] = useState<string>(rawSearchParams.checkout || rawSearchParams.checkOut || tomorrow);
+    const [adults,   setAdults]   = useState<number>(Number(rawSearchParams.adults)   || 2);
+    const [children, setChildren] = useState<number>(Number(rawSearchParams.children) || 0);
+
+    const nights = useMemo(() => {
+        const d1 = new Date(checkin), d2 = new Date(checkout);
+        const n = Math.round((d2.getTime() - d1.getTime()) / 86_400_000);
+        return n > 0 ? n : 1;
+    }, [checkin, checkout]);
+
+    function handleSearch() {
+        const params = new URLSearchParams(searchParams?.toString() || '');
+        params.set('checkin',  checkin);
+        params.set('checkout', checkout);
+        params.set('adults',   String(adults));
+        params.set('children', String(children));
+        router.push(`/search?${params.toString()}`);
+    }
+
+    const fmt = (s: string) => {
+        const d = new Date(s + 'T00:00:00');
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    const fmtDay = (s: string) => {
+        const d = new Date(s + 'T00:00:00');
+        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    };
+
+    return (
+        <div className="shrink-0 bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 px-4 py-2">
+            <div className="max-w-2xl mx-auto">
+                <div className="flex items-center w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden h-14">
+
+                    {/* Check-in */}
+                    <label className="relative flex flex-col justify-center px-5 flex-1 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 group">
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Check-in</span>
+                        <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(checkin)}</span>
+                        <input
+                            type="date" value={checkin} min={today}
+                            onChange={e => {
+                                setCheckin(e.target.value);
+                                if (e.target.value >= checkout) {
+                                    const d = new Date(e.target.value + 'T00:00:00');
+                                    d.setDate(d.getDate() + 1);
+                                    setCheckout(d.toISOString().slice(0, 10));
+                                }
+                            }}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                        />
+                    </label>
+
+                    {/* Nights divider */}
+                    <div className="flex flex-col items-center justify-center px-2.5 h-full bg-slate-50 dark:bg-slate-800/40 border-r border-slate-100 dark:border-slate-800 shrink-0">
+                        <span className="text-[11px] font-bold text-blue-500">{nights}</span>
+                        <span className="text-[9px] text-slate-400 leading-none">nights</span>
+                    </div>
+
+                    {/* Check-out */}
+                    <label className="relative flex flex-col justify-center px-5 flex-1 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 group">
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Check-out</span>
+                        <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(checkout)}</span>
+                        <input
+                            type="date" value={checkout} min={checkin}
+                            onChange={e => setCheckout(e.target.value)}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                        />
+                    </label>
+
+                    {/* Guests */}
+                    <div className="flex flex-col justify-center px-5 border-r border-slate-100 dark:border-slate-800 shrink-0 h-full">
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Guests</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <button onClick={() => setAdults(a => Math.max(1, a - 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">−</button>
+                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 w-4 text-center tabular-nums">{adults + children}</span>
+                            <button onClick={() => setAdults(a => Math.min(16, a + 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">+</button>
+                        </div>
+                    </div>
+
+                    {/* Search */}
+                    <button
+                        onClick={handleSearch}
+                        className="flex items-center gap-2 px-6 h-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition-colors cursor-pointer shrink-0"
+                    >
+                        <Search size={15} />
+                        <span>Search</span>
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
@@ -544,6 +646,9 @@ function SearchMapView({
 
     return (
         <div className="flex flex-col h-full w-full">
+            {/* ── Search refinement bar ── */}
+            <SearchRefinementBar rawSearchParams={rawSearchParams} />
+
             {/* ── Top bar ── */}
             <div className="shrink-0 bg-white dark:bg-slate-950 z-30 relative border-b border-slate-100 dark:border-slate-800/60 landscape-compact-topbar p-[10px]">
                 <div className="max-w-[1400px] mx-auto px-3 flex items-center gap-2">
