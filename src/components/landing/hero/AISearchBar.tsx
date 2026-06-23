@@ -9,6 +9,7 @@ import AIPromptInput from './AIPromptInput';
 import AITypingIndicator from './AITypingIndicator';
 import AIResultsPreview from './AIResultsPreview';
 import { useSearchStore, useSearchMode, useSearchActions, useDestination, useDestinationQuery, useDates, useTravelers } from '@/stores/searchStore';
+import { toast } from 'sonner';
 import { MobileSearchModal } from '@/components/search/MobileSearchModal';
 import { useSearchModule } from '@/hooks';
 import { useFlightSearch } from '@/hooks/search/useFlightSearch';
@@ -102,11 +103,16 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
 
     // Handlers
     const handleModeChange = useCallback((newMode: 'hotels' | 'flights' | 'ai') => {
-        setSearchMode(newMode);
-        if (newMode !== 'ai') {
-            setShowResults(false);
-            setIsAIThinking(false);
+        if (newMode === 'ai') {
+            toast('Coming Soon', {
+                description: 'AI Search is under development. Stay tuned!',
+                icon: '✨',
+            });
+            return;
         }
+        setSearchMode(newMode);
+        setShowResults(false);
+        setIsAIThinking(false);
     }, [setSearchMode]);
 
     const triggerAI = useCallback((query: string) => {
