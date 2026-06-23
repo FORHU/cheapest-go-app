@@ -140,12 +140,15 @@ async function fetchHotelReviews(hotelCodes: string[]) {
 async function fetchHotelCodesByCity(cityName: string, countryCode?: string): Promise<string[]> {
     const sql = getSqlAdmin();
     // Normalize: strip suffixes like "-si", "-do", "-gu" common in Korean city names
-    const normalized = cityName.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
+    const cityOnly = cityName.split(',')[0].trim();
+    const normalized = cityOnly.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
     const pattern = `%${normalized}%`;
-    const rows = countryCode
+    // Only filter by country when it's a 2-letter ISO code (DB stores "JP" not "Japan")
+    const isoCode = countryCode && /^[A-Za-z]{2}$/.test(countryCode) ? countryCode : null;
+    const rows = isoCode
         ? await sql`
             SELECT hotel_id FROM hotel_content
-            WHERE city ILIKE ${pattern} AND LOWER(country) = LOWER(${countryCode})
+            WHERE city ILIKE ${pattern} AND LOWER(country) = LOWER(${isoCode})
             LIMIT 1000
           `
         : await sql`
