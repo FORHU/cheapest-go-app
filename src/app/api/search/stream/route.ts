@@ -137,6 +137,16 @@ export async function POST(req: NextRequest) {
 
     const city = rawCity || '(unknown)';
 
+    // Default dates to tonight + tomorrow when not provided (e.g. landing card clicks)
+    if (!body.checkin && !body.checkIn) {
+        const tonight = new Date();
+        const tomorrow = new Date(tonight);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const fmt = (d: Date) => d.toISOString().slice(0, 10);
+        body.checkin  = fmt(tonight);
+        body.checkout = fmt(tomorrow);
+    }
+
     const stream = new ReadableStream({
         async start(controller) {
             const send = (obj: unknown) => controller.enqueue(ndjsonLine(obj));
@@ -243,7 +253,14 @@ export async function POST(req: NextRequest) {
                 // ── Phase 2: TGX availability + pricing (18-22s) ─────────────
                 const p2Start = Date.now();
                 console.log(`[stream] phase2 TGX starting for "${city}" at ${elapsed()}`);
-                const tgxResult = await runTgxSearch(body) as any;
+                let tgxResult: any;
+                try {
+                    tgxResult = await runTgxSearch(body);
+                } catch (tgxErr: any) {
+                    const isTimeout = tgxErr?.name === 'TimeoutError' || tgxErr?.message?.includes('timeout') || tgxErr?.message?.includes('aborted');
+                    console.warn(`[stream] phase2 TGX ${isTimeout ? 'timed out' : 'failed'} for "${city}": ${tgxErr.message}`);
+                    tgxResult = { data: [], allMappable: [] };
+                }
                 const tgxHotels: any[] = Array.isArray(tgxResult.data) ? tgxResult.data : [];
                 const tgxMappable: any[] = tgxResult.allMappable ?? [];
                 console.log(`[stream] phase2 TGX done: ${tgxHotels.length} hotels in ${Date.now() - p2Start}ms (total ${elapsed()})`);
@@ -285,14 +302,17 @@ export async function POST(req: NextRequest) {
                 // ── END two-phase mode ────────────────────────────────────────
 
             } catch (e: any) {
-                console.error(`[stream] fatal error for "${city}" at ${elapsed()}:`, e.message);
-                // If catalog hotels were already sent (priceLoading: true), send a done
-                // with totalCount:0 so the client's done handler removes them instead of
-                // leaving price-skeleton cards stuck on screen forever.
+                const isTimeout = e?.name === 'TimeoutError' || e?.message?.includes('timeout') || e?.message?.includes('aborted');
+                console.error(`[stream] ${isTimeout ? 'timeout' : 'fatal error'} for "${city}" at ${elapsed()}:`, e.message);
                 if (catalogHotels.length > 0) {
+                    // Catalog already sent — just close cleanly; don't flash an error over real results
+                    send({ type: 'done', totalCount: catalogHotels.length, allMappable: catalogHotels.filter((h: any) => h.lat && h.lng) });
+                } else if (!isTimeout) {
+                    // Only surface non-timeout errors to the client
+                    send({ type: 'error', message: e.message });
+                } else {
                     send({ type: 'done', totalCount: 0, allMappable: [] });
                 }
-                send({ type: 'error', message: e.message });
             } finally {
                 controller.close();
             }

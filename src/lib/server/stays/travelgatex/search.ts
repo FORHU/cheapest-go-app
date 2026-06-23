@@ -189,15 +189,15 @@ async function fetchOtvHotelCodesByCity(cityName: string, destinationCode?: stri
             `query OtvHotelPortfolio($criteria: HotelXHotelListInput!) {
                hotelX {
                  hotels(criteria: $criteria) {
-                   hotels { hotelCode }
+                   edges { node { hotelCode } }
                  }
                }
              }`,
             { criteria }
         );
 
-        const hotels: any[] = result?.data?.hotelX?.hotels?.hotels ?? [];
-        const codes = hotels.map((h: any) => String(h.hotelCode)).filter(Boolean);
+        const edges: any[] = result?.data?.hotelX?.hotels?.edges ?? [];
+        const codes = edges.map((e: any) => String(e?.node?.hotelCode)).filter(Boolean);
         console.log(`[tgx-search] OTV portfolio returned ${codes.length} hotel codes for "${cityName}"`);
         return codes;
     } catch (e: any) {
