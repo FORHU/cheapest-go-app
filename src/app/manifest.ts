@@ -13,13 +13,13 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ['travel', 'shopping'],
     icons: [
       {
-        src: '/icon-192.png',
+        src: '/cheapestgo-favico.png',
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icon-512.png',
+        src: '/cheapestgo-favico.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
