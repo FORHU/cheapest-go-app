@@ -4,6 +4,20 @@ import { getCached, setCache } from '@/lib/server/poi-cache';
 import { tryGooglePlaces } from '@/lib/server/poi-google';
 import { getPlaceholderUrl } from '@/lib/server/poi-placeholder';
 
+function makePlaceholderSvg(name: string, category: string): string {
+    const lowerCat = category.toLowerCase();
+    const lowerName = name.toLowerCase();
+    let bg = '#1e293b';
+    if (lowerCat.includes('park') || lowerCat.includes('nature') || lowerName.includes('park') || lowerName.includes('garden')) bg = '#064e3b';
+    else if (lowerCat.includes('restaurant') || lowerCat.includes('food') || lowerCat.includes('cafe')) bg = '#7c2d12';
+    else if (lowerCat.includes('museum') || lowerCat.includes('landmark') || lowerCat.includes('attraction') || lowerCat.includes('tourism') || lowerCat.includes('tourist')) bg = '#3730a3';
+    else if (lowerCat.includes('shop') || lowerCat.includes('market')) bg = '#831843';
+    else if (lowerCat.includes('transit') || lowerCat.includes('station')) bg = '#334155';
+    const label = name.length > 24 ? name.slice(0, 22) + '…' : name;
+    const escaped = label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="${bg}"/><text x="300" y="185" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="600" fill="rgba(255,255,255,0.9)">${escaped}</text><text x="300" y="220" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="rgba(255,255,255,0.5)">${lowerCat || 'point of interest'}</text></svg>`;
+}
+
 const inFlightRequests = new Map<string, Promise<any>>();
 
 export async function GET(req: NextRequest) {
@@ -24,9 +38,27 @@ export async function GET(req: NextRequest) {
     const lng = searchParams.get('lng') || '0';
     const placeId = searchParams.get('placeId') || '';
     const category = searchParams.get('category') || '';
+    const photoRef = searchParams.get('photoRef') || '';
     const full = searchParams.get('full') === 'true';
 
     if (!name) return new Response('Missing name parameter', { status: 400 });
+
+    // Fast path: photo_reference already known — skip all discovery API calls
+    if (photoRef && !full) {
+        const key = process.env.GOOGLE_PLACES_API_KEY;
+        if (key) {
+            const googlePhotoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${photoRef}&key=${key}`;
+            try {
+                const res = await fetch(googlePhotoUrl, { cache: 'no-store' });
+                const ct = res.headers.get('content-type') || '';
+                if (res.ok && ct.startsWith('image/')) {
+                    return new NextResponse(await res.arrayBuffer(), {
+                        headers: { 'Content-Type': ct, 'Cache-Control': 'public, max-age=86400, s-maxage=86400' },
+                    });
+                }
+            } catch { /* fall through to normal flow */ }
+        }
+    }
 
     const roundedLat = parseFloat(lat).toFixed(4);
     const roundedLng = parseFloat(lng).toFixed(4);
@@ -86,62 +118,39 @@ export async function GET(req: NextRequest) {
 
         if (full) return NextResponse.json(resultMetadata);
 
-        const isStaticMapUrl = (u: string) =>
-            u.includes('/maps/api/staticmap') ||
-            u.includes('maps.googleapis.com/maps/vt') ||
-            u.includes('maps.google.com/maps/vt') ||
-            u.includes('khms') ||
-            u.includes('mts') ||
-            u.includes('lh3.googleusercontent.com/p/') === false && u.includes('googleusercontent.com') && !u.includes('photo_reference');
+        const isGooglePhotoUrl = (u: string) =>
+            u.includes('maps.googleapis.com/maps/api/place/photo') ||
+            u.includes('lh3.googleusercontent.com');
 
-        const tryFetchImage = async (url: string) => {
-            if (isStaticMapUrl(url)) {
-                return { res: null as any, contentType: '', isImage: false };
-            }
-            const res = await fetch(url, { next: { revalidate: 3600 } });
-            const contentType = res.headers.get('content-type') || '';
-            const finalUrl = res.url || url;
-            const resolvedToMap = isStaticMapUrl(finalUrl);
-            return {
-                res,
-                contentType,
-                isImage: contentType.toLowerCase().startsWith('image/') && !resolvedToMap,
-            };
-        };
+        const svgResponse = () => new NextResponse(makePlaceholderSvg(name, category), {
+            headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' },
+        });
 
-        let finalUrl = resultMetadata.photoUrl;
-        let { res: imgRes, contentType, isImage } = await tryFetchImage(finalUrl);
-
-        if (!imgRes?.ok || !isImage) {
-            const candidates = [
-                resultMetadata.googlePhotoUrl,
-                getPlaceholderUrl(name, category, lat, lng),
-            ].filter((u, i, arr): u is string => !!u && arr.indexOf(u) === i);
-
-            for (const url of candidates) {
-                const candidate = await tryFetchImage(url);
-                if (candidate.res?.ok && candidate.isImage) {
-                    finalUrl = url;
-                    imgRes = candidate.res;
-                    contentType = candidate.contentType;
-                    isImage = true;
-                    break;
-                }
-            }
+        const photoUrl: string = resultMetadata.photoUrl || '';
+        if (!photoUrl || !isGooglePhotoUrl(photoUrl)) {
+            return svgResponse();
         }
 
-        if (!imgRes?.ok || !isImage) return NextResponse.redirect(finalUrl);
+        // For Google photo URLs: stream through to hide the API key
+        try {
+            const res = await fetch(photoUrl, { cache: 'no-store' });
+            const contentType = res.headers.get('content-type') || '';
+            if (res.ok && contentType.startsWith('image/')) {
+                return new NextResponse(await res.arrayBuffer(), {
+                    headers: {
+                        'Content-Type': contentType,
+                        'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=43200',
+                    },
+                });
+            }
+        } catch { /* fall through to SVG */ }
 
-        return new NextResponse(await imgRes.arrayBuffer(), {
-            headers: {
-                'Content-Type': contentType || 'image/jpeg',
-                'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=43200',
-            },
-        });
+        return svgResponse();
     } catch (err) {
-        const fallbackUrl = getPlaceholderUrl(name, category, lat, lng);
-        if (full) return NextResponse.json({ photoUrl: fallbackUrl, source: 'error-fallback' });
-        return NextResponse.redirect(fallbackUrl);
+        if (full) return NextResponse.json({ photoUrl: '', source: 'error-fallback' });
+        return new NextResponse(makePlaceholderSvg(name, category), {
+            headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' },
+        });
     }
 }
 

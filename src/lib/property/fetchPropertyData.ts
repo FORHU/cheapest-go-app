@@ -5,6 +5,7 @@
 
 import { cache } from 'react';
 import { preBook, getHotelDetails, invokeEdgeFunction } from '@/utils/postgres/functions';
+import { otvCodeToLabel } from '@/lib/server/stays/travelgatex/amenityCodes';
 import { type Property } from '@/types';
 import { getSqlAdmin } from '@/lib/db/postgres';
 export type PropertyData = Property;
@@ -33,6 +34,11 @@ export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | 
         const city = r.city || '';
         const country = r.country || '';
         const address = r.address || '';
+        // amenities in hotel_content is jsonb — may be string[] (new) or [{code}] objects (old OTV rows).
+        const rawAmenities = Array.isArray(r.amenities) ? r.amenities : [];
+        const amenities: string[] = rawAmenities.flatMap((a: any) =>
+            typeof a === 'string' ? [a] : a?.code ? [otvCodeToLabel(a.code)] : []
+        ).filter(Boolean);
         const property: PropertyData = {
             id: r.hotel_id,
             name: r.name || id,
@@ -44,7 +50,7 @@ export async function fetchHotelStatic(id: string): Promise<StaticHotelResult | 
             currency: 'USD',
             image: images[0] || '',
             images,
-            amenities: r.amenities ?? [],
+            amenities,
             badges: [],
             type: 'hotel',
             coordinates: { lat: Number(r.lat ?? 0), lng: Number(r.lng ?? 0) },
@@ -305,7 +311,13 @@ export async function fetchTGXPropertyData(
             currency:    hotel.currency  || searchParams.currency || 'KRW',
             image:       images[0] || '',
             images,
-            amenities:   hotel.hotelFacilities || hotel.amenities || [],
+            amenities:   (() => {
+                const raw = hotel.hotelFacilities || hotel.amenities || [];
+                if (!Array.isArray(raw)) return [];
+                return raw.flatMap((a: any) =>
+                    typeof a === 'string' ? [a] : a?.code ? [otvCodeToLabel(a.code)] : []
+                ).filter(Boolean);
+            })(),
             badges:      [],
             type:        'hotel',
             coordinates: hotel.coordinates || { lat: hotel.latitude || 0, lng: hotel.longitude || 0 },

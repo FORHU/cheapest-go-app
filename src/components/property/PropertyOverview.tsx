@@ -115,7 +115,7 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                 <div id="amenities-section" className="w-full scroll-mt-24 lg:scroll-mt-36">
                     <h3 className="text-[11px] lg:text-sm font-bold text-slate-900 dark:text-white mb-1 lg:mb-4">Popular amenities</h3>
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 lg:gap-4">
-                        {(isAmenitiesExpanded ? property.amenities : property.amenities.slice(0, 6)).map((amenity, i) => (
+                        {(Array.isArray(property.amenities) ? (isAmenitiesExpanded ? property.amenities : property.amenities.slice(0, 6)) : []).map((amenity, i) => (
                             <div key={i} className="flex items-center text-[10px] lg:text-sm text-slate-700 dark:text-slate-300">
                                 {amenity === 'Free WiFi' && <Wifi size={11} className="mr-1 lg:mr-3 shrink-0" />}
                                 {amenity === 'Parking' && <Car size={11} className="mr-1 lg:mr-3 shrink-0" />}
@@ -126,7 +126,7 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                             </div>
                         ))}
                     </div>
-                    {property.amenities.length > 6 && (
+                    {Array.isArray(property.amenities) && property.amenities.length > 6 && (
                         <button
                             onClick={() => setIsAmenitiesExpanded(!isAmenitiesExpanded)}
                             className="text-blue-600 text-[10px] lg:text-sm font-medium hover:underline mt-1.5 lg:mt-4 focus:outline-none"

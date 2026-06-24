@@ -40,7 +40,7 @@ export const useNearbyGems = ({
     const [isFetchingGems, setIsFetchingGems] = useState(() => !!(isLoaded && coordinates));
     const hasCoordinates = coordinates && coordinates.lat !== 0 && coordinates.lng !== 0;
 
-    const buildPoiProxyImageUrl = (name: string, lat: number, lng: number, placeId?: string, category?: string) => {
+    const buildPoiProxyImageUrl = (name: string, lat: number, lng: number, placeId?: string, category?: string, photoRef?: string) => {
         const params = new URLSearchParams({
             name,
             lat: String(lat),
@@ -48,6 +48,7 @@ export const useNearbyGems = ({
         });
         if (placeId) params.set('placeId', placeId);
         if (category) params.set('category', category);
+        if (photoRef) params.set('photoRef', photoRef);
         return `/api/poi-photo?${params.toString()}`;
     };
 
@@ -129,6 +130,7 @@ export const useNearbyGems = ({
                     const lng = f.geometry.coordinates[0];
                     const lat = f.geometry.coordinates[1];
                     const placeId = f.properties?.place_id || '';
+                    const photoRef = f.properties?.photoReference || '';
                     const source = f.properties?.source;
                     const isFsqSource = source === 'foursquare' || source === 'fsq-google';
 
@@ -147,8 +149,7 @@ export const useNearbyGems = ({
                             name,
                             category: f.properties.category || 'Point of Interest',
                             icon,
-                            // Always route through our proxy so content-type validation + fallback logic is applied.
-                            imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, cat),
+                            imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, cat, photoRef),
                             rating: f.properties.rating,
                             userRatingsTotal: f.properties.userRatingsTotal || 0,
                             reviews: f.properties.reviews || [],
@@ -181,6 +182,7 @@ export const useNearbyGems = ({
                         const lat = featureStub.geometry.coordinates[1];
                         const placeId = featureStub.properties.place_id || '';
                         const fsqId = featureStub.properties.fsq_id || '';
+                        const photoRef = featureStub.properties.photoReference || '';
 
                         // Fast-path: If it's already a rich feature from advanced discovery, skip background enrichment
                         if (!featureStub.properties.isStub) {
@@ -210,7 +212,7 @@ export const useNearbyGems = ({
                                     ...featureStub.properties,
                                     translatedName: proxyData.nameEn || proxyData.name || featureStub.properties.name,
                                     icon: enrichmentIcon,
-                                    imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, lowerCat),
+                                    imageUrl: buildPoiProxyImageUrl(name, lat, lng, placeId, lowerCat, photoRef),
                                     displayCategory: proxyData.category || featureStub.properties.category, // Use proxy's category for display if available
                                     vicinity: proxyData.vicinity || featureStub.properties.vicinity,
                                     rating: proxyData.rating,

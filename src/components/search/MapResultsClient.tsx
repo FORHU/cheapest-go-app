@@ -14,7 +14,7 @@ interface MapResultsClientProps {
 
 function StreamingBanner({ count, pricingMode }: { count: number; pricingMode?: boolean }) {
     return (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
             <div className="flex items-center gap-2 bg-white dark:bg-slate-800 shadow-lg rounded-full px-3.5 py-1.5 border border-slate-100 dark:border-slate-700 text-xs whitespace-nowrap">
                 <span className="w-3 h-3 rounded-full border-[1.5px] border-blue-500 border-t-transparent animate-spin shrink-0" />
                 <span className="text-slate-600 dark:text-slate-300">
@@ -193,9 +193,16 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
         return () => { cancelled = true; controller.abort(); };
     }, [searchKey]);
 
-    // Only full loading screen when we have no hotels at all yet
+    // Show a skeleton while the first hotels haven't arrived yet
     if (status === 'loading' || status === 'completing') {
-        return null;
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <div className="flex flex-col items-center gap-3 select-none">
+                    <span className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Searching hotels…</p>
+                </div>
+            </div>
+        );
     }
 
     if (status === 'done' && properties.length === 0) {

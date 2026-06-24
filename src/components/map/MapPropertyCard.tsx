@@ -82,6 +82,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
         [property.originalPrice, sourceCurrency, targetCurrency]
     );
     const rating = property.rating ?? 0;
+    const starRating = property.starRating ?? 0;
     const ratingLabel = React.useMemo(() => getRatingLabel(rating), [rating]);
 
     return (
@@ -148,14 +149,18 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                     </div>
 
                     {/* Rating badge */}
-                    {rating > 0 && (
+                    {rating > 0 ? (
                         <div className="flex items-center gap-1 mt-1">
                             <span className={cn('text-[9px] font-bold text-white px-1.5 py-0.5 rounded-md', getRatingBadgeClass(rating))}>
                                 {rating.toFixed(1)} {ratingLabel}
                             </span>
                             <StarRating rating={rating} size={9} />
                         </div>
-                    )}
+                    ) : starRating > 0 ? (
+                        <div className="mt-1">
+                            <StarRating rating={starRating * 2} size={9} />
+                        </div>
+                    ) : null}
 
                     {/* Price + View Deal */}
                     <div className="flex items-center justify-between mt-1 gap-1">
@@ -235,24 +240,22 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         {/* Rating */}
                         <div className="flex items-center gap-1.5">
                             {rating > 0 ? (
-                                <>
-                                    <div className="flex flex-col gap-0.5">
-                                        <StarRating rating={rating} size={12} />
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 leading-none">
-                                                {rating.toFixed(1)} · {ratingLabel}
-                                            </span>
-                                        </div>
-                                        {property.reviews > 0 && (
-                                            <span className="text-[10px] text-slate-400 leading-none landscape-compact:hidden">
-                                                {property.reviews.toLocaleString()} reviews
-                                            </span>
-                                        )}
+                                <div className="flex flex-col gap-0.5">
+                                    <StarRating rating={rating} size={12} />
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 leading-none">
+                                            {rating.toFixed(1)} · {ratingLabel}
+                                        </span>
                                     </div>
-                                </>
-                            ) : (
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500">No rating yet</span>
-                            )}
+                                    {property.reviews > 0 && (
+                                        <span className="text-[10px] text-slate-400 leading-none landscape-compact:hidden">
+                                            {property.reviews.toLocaleString()} reviews
+                                        </span>
+                                    )}
+                                </div>
+                            ) : starRating > 0 ? (
+                                <StarRating rating={starRating * 2} size={12} />
+                            ) : null}
                         </div>
 
                         {/* Price */}
