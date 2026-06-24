@@ -6,6 +6,7 @@
 import { tgxGraphQL, getTgxSettings, getTgxConfig, buildOccupancies, normalizeOption, type TgxOption } from './client';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { resolveTgxDestinationCode } from '@/lib/server/search';
+import { otvCodeToLabel } from './amenityCodes';
 
 // ─── Hotel search cache ───────────────────────────────────────────────────────
 
@@ -178,8 +179,52 @@ export interface TgxSearchParams {
 
 // ─── Core search function ─────────────────────────────────────────────────────
 
-/** Query TGX's OTV hotel portfolio to discover hotel codes for a city not yet in our DB. */
-async function fetchOtvHotelCodesByCity(cityName: string, destinationCode?: string): Promise<string[]> {
+/** Parse raw TGX portfolio edges into a content map keyed by hotel code. */
+function parseOtvEdges(edges: any[], cityName: string): Map<string, any> {
+    const map = new Map<string, any>();
+    for (const e of edges) {
+        const d = e?.node?.hotelData;
+        if (!d?.code) continue;
+
+        // OTV uses type "GENERAL" for all photos — accept any URL regardless of type
+        const images: string[] = (d.medias ?? [])
+            .map((m: any) => m.url as string)
+            .filter(Boolean)
+            .slice(0, 10);
+
+        let description: string | null = null;
+        for (const desc of (d.descriptions ?? [])) {
+            const en = (desc.texts ?? []).find((t: any) => t.language?.toLowerCase().startsWith('en'));
+            if (en?.text) { description = en.text; break; }
+        }
+        if (!description) description = d.descriptions?.[0]?.texts?.[0]?.text ?? null;
+
+        const catCode: string = d.categoryCode ?? '';
+        const starMatch = catCode.match(/(\d)/);
+
+        map.set(String(d.code), {
+            hotel_id:    String(d.code),
+            name:        (d.hotelName as string | null) ?? null,
+            images,
+            lat:         Number(d.location?.coordinates?.latitude  ?? 0),
+            lng:         Number(d.location?.coordinates?.longitude ?? 0),
+            address:     (d.location?.address as string | null) ?? null,
+            city:        cityName,
+            country:     null,
+            description,
+            star_rating: starMatch ? parseInt(starMatch[1], 10) : 0,
+            amenities:   (d.amenities ?? []).map((a: any) => otvCodeToLabel(a.code)).filter(Boolean),
+        });
+    }
+    return map;
+}
+
+/** Query TGX's OTV hotel portfolio to discover hotel codes for a city not yet in our DB.
+ *  Returns both codes and the full content map so the caller can use names/images immediately. */
+async function fetchOtvHotelCodesByCity(
+    cityName: string,
+    destinationCode?: string,
+): Promise<{ codes: string[]; contentMap: Map<string, any> }> {
     try {
         const cfg = getTgxConfig();
         const criteria: Record<string, unknown> = { access: cfg.accessCode, maxSize: 200 };
@@ -189,7 +234,22 @@ async function fetchOtvHotelCodesByCity(cityName: string, destinationCode?: stri
             `query OtvHotelPortfolio($criteria: HotelXHotelListInput!) {
                hotelX {
                  hotels(criteria: $criteria) {
-                   edges { node { hotelCode } }
+                   edges {
+                     node {
+                       hotelData {
+                         code
+                         hotelName
+                         categoryCode
+                         descriptions { type texts { language text } }
+                         medias { url type }
+                         location {
+                           coordinates { latitude longitude }
+                           address
+                         }
+                         amenities { code }
+                       }
+                     }
+                   }
                  }
                }
              }`,
@@ -197,13 +257,76 @@ async function fetchOtvHotelCodesByCity(cityName: string, destinationCode?: stri
         );
 
         const edges: any[] = result?.data?.hotelX?.hotels?.edges ?? [];
-        const codes = edges.map((e: any) => String(e?.node?.hotelCode)).filter(Boolean);
+        const contentMap = parseOtvEdges(edges, cityName);
+        const codes = [...contentMap.keys()];
         console.log(`[tgx-search] OTV portfolio returned ${codes.length} hotel codes for "${cityName}"`);
-        return codes;
+
+        if (codes.length > 0) {
+            backfillHotelContent(contentMap).catch((err: any) =>
+                console.warn('[tgx-search] hotel_content backfill failed:', err.message)
+            );
+        }
+
+        return { codes, contentMap };
     } catch (e: any) {
         console.warn('[tgx-search] OTV portfolio query failed:', e.message);
-        return [];
+        return { codes: [], contentMap: new Map() };
     }
+}
+
+/** Upsert hotel content from a parsed OTV map into hotel_content.
+ *  Runs fire-and-forget — never overwrites richer existing data. */
+async function backfillHotelContent(contentMap: Map<string, any>): Promise<void> {
+    const sql = getSqlAdmin();
+    let saved = 0;
+    for (const r of contentMap.values()) {
+        try {
+            await sql`
+                INSERT INTO hotel_content
+                    (hotel_id, name, images, lat, lng, address, city, country,
+                     description, star_rating, amenities, content_source, fetched_at)
+                VALUES (
+                    ${r.hotel_id}, ${r.name}, ${sql.array(r.images)},
+                    ${r.lat}, ${r.lng}, ${r.address}, ${r.city}, ${r.country},
+                    ${r.description}, ${r.star_rating}, ${JSON.stringify(r.amenities)}::jsonb,
+                    'tgx', now()
+                )
+                ON CONFLICT (hotel_id) DO UPDATE SET
+                    name        = CASE WHEN hotel_content.name IS NULL
+                                       OR hotel_content.name = hotel_content.hotel_id
+                                  THEN EXCLUDED.name ELSE hotel_content.name END,
+                    images      = CASE WHEN array_length(hotel_content.images, 1) > 0
+                                  THEN hotel_content.images ELSE EXCLUDED.images END,
+                    lat         = CASE WHEN hotel_content.lat  != 0 THEN hotel_content.lat  ELSE EXCLUDED.lat  END,
+                    lng         = CASE WHEN hotel_content.lng  != 0 THEN hotel_content.lng  ELSE EXCLUDED.lng  END,
+                    address     = COALESCE(hotel_content.address,     EXCLUDED.address),
+                    city        = COALESCE(hotel_content.city,        EXCLUDED.city),
+                    country     = COALESCE(hotel_content.country,     EXCLUDED.country),
+                    description = COALESCE(hotel_content.description, EXCLUDED.description),
+                    star_rating = CASE WHEN hotel_content.star_rating != 0
+                                  THEN hotel_content.star_rating ELSE EXCLUDED.star_rating END,
+                    amenities   = CASE WHEN jsonb_array_length(hotel_content.amenities) > 0
+                                  THEN hotel_content.amenities ELSE EXCLUDED.amenities END,
+                    content_source = COALESCE(hotel_content.content_source, 'tgx'),
+                    fetched_at  = now()
+            `;
+            saved++;
+        } catch {
+            // Skip individual failures — don't abort the batch
+        }
+    }
+    console.log(`[tgx-search] hotel_content backfilled ${saved} hotels`);
+}
+
+/** Collapse punctuation/stopwords so near-identical hotel names (OTV dupes) merge. */
+function normalizeHotelName(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/'/g, '')           // possessives: paul's → pauls (not "paul s")
+        .replace(/[^\w\s]/g, ' ')   // other punctuation → space
+        .replace(/\b(hotel|the|a|an|london|paris|tokyo|city|of|in|at|by|for|uk|england)\b/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 function hasEmptyHotelsError(errors: any[]): boolean {
@@ -272,7 +395,9 @@ async function runCityFallback(
     if (resolvedCode) {
         console.log(`[tgx-search] Got TGX destination code "${resolvedCode}" for "${cityName}" — searching`);
         if (_failedDestCodes.has(resolvedCode)) {
-            console.log(`[tgx-search] Skipping dest-code "${resolvedCode}" for "${cityName}" — known OTV miss`);
+            // OTV has no availability for this dest code — skip the 18-22s dest-code
+            // round-trip and fall through to the hotel-code path below.
+            console.log(`[tgx-search] Dest code "${resolvedCode}" is a known OTV miss — skipping dest-code search for "${cityName}"`);
         } else {
             const __t0 = Date.now();
             const destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
@@ -308,10 +433,13 @@ async function runCityFallback(
     // 2. DB hotel codes (prefetch resolves in <1s — typically already done by now)
     console.warn(`[tgx-search] Destination-code search empty for "${cityName}" — trying hotel-code search`);
     let otvCodes = await prefetchHotelCodes;
+    let otvContentMap = new Map<string, any>();
 
     if (otvCodes.length === 0) {
         console.log(`[tgx-search] DB empty for "${cityName}" — querying OTV portfolio`);
-        otvCodes = await fetchOtvHotelCodesByCity(cityName);
+        const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined);
+        otvCodes = otv.codes;
+        otvContentMap = otv.contentMap;
     }
 
     if (otvCodes.length > 0) {
@@ -363,7 +491,7 @@ async function runCityFallback(
         const fallbackMerchant = fallbackOptions.filter(
             (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
         );
-        return buildCityResults(fallbackMerchant, cityName, countryCode);
+        return buildCityResults(fallbackMerchant, cityName, countryCode, otvContentMap);
     }
 
     console.warn(`[tgx-search] No OTV hotel codes found for "${cityName}" — no results`);
@@ -539,6 +667,7 @@ async function buildCityResults(
     merchantOptions: TgxOption[],
     cityName?: string,
     countryCode?: string,
+    preloadedContent: Map<string, any> = new Map(),
 ) {
     // ── City search mode ───────────────────────────────────────────────────────
     // Keep cheapest option per hotel, cap at 300 before DB enrichment to avoid timeouts.
@@ -563,7 +692,7 @@ async function buildCityResults(
 
     const hotels_result = hotelCodes.map((code) => {
         const opt     = byHotel.get(code)!;
-        const content = contentMap.get(code);
+        const content = contentMap.get(code) ?? preloadedContent.get(code);
         const reviews = reviewMap.get(code);
         const tokenId = opt.token || opt.id;
         const reviewRating = Number(reviews?.rating ?? content?.review_rating ?? 0);
@@ -600,6 +729,17 @@ async function buildCityResults(
         };
     });
 
-    const allMappable = hotels_result.filter((h) => h.lat && h.lng);
-    return { data: hotels_result, allMappable, totalCount: hotels_result.length };
+    // Deduplicate: OTV sometimes lists the same property under multiple codes.
+    // Hotels are already sorted cheapest-first, so the first occurrence wins.
+    const seenNames = new Set<string>();
+    const deduped = hotels_result.filter((h) => {
+        if (!h.name || h.name === h.hotelId) return true;
+        const key = normalizeHotelName(h.name);
+        if (seenNames.has(key)) return false;
+        seenNames.add(key);
+        return true;
+    });
+
+    const allMappable = deduped.filter((h) => h.lat && h.lng);
+    return { data: deduped, allMappable, totalCount: deduped.length };
 }
