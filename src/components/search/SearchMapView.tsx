@@ -171,10 +171,16 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
     const searchParams = useSearchParams();
 
     const today = new Date().toISOString().slice(0, 10);
-    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    // Default to next Friday–Sunday (matches stream API + prewarm cache; OTV has near-zero same-day inventory)
+    const _now = new Date();
+    const _daysUntilFriday = ((5 - _now.getDay() + 7) % 7) || 7;
+    const _fri = new Date(_now); _fri.setDate(_now.getDate() + _daysUntilFriday);
+    const _sun = new Date(_fri); _sun.setDate(_fri.getDate() + 2);
+    const defaultCheckin  = _fri.toISOString().slice(0, 10);
+    const defaultCheckout = _sun.toISOString().slice(0, 10);
 
-    const [checkin,  setCheckin]  = useState<string>(rawSearchParams.checkin  || rawSearchParams.checkIn  || today);
-    const [checkout, setCheckout] = useState<string>(rawSearchParams.checkout || rawSearchParams.checkOut || tomorrow);
+    const [checkin,  setCheckin]  = useState<string>(rawSearchParams.checkin  || rawSearchParams.checkIn  || defaultCheckin);
+    const [checkout, setCheckout] = useState<string>(rawSearchParams.checkout || rawSearchParams.checkOut || defaultCheckout);
     const [adults,   setAdults]   = useState<number>(Number(rawSearchParams.adults)   || 2);
     const [children, setChildren] = useState<number>(Number(rawSearchParams.children) || 0);
 
@@ -209,7 +215,13 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                 <div className="flex items-center w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden h-14">
 
                     {/* Check-in */}
-                    <label className="relative flex flex-col justify-center px-5 flex-1 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 group">
+                    <label
+                        className="relative flex flex-col justify-center px-5 flex-1 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 group"
+                        onClick={e => {
+                            const input = (e.currentTarget as HTMLElement).querySelector('input');
+                            (input as any)?.showPicker?.();
+                        }}
+                    >
                         <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Check-in</span>
                         <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(checkin)}</span>
                         <input
@@ -222,7 +234,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                                     setCheckout(d.toISOString().slice(0, 10));
                                 }
                             }}
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                         />
                     </label>
 
@@ -233,13 +245,19 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                     </div>
 
                     {/* Check-out */}
-                    <label className="relative flex flex-col justify-center px-5 flex-1 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 group">
+                    <label
+                        className="relative flex flex-col justify-center px-5 flex-1 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 group"
+                        onClick={e => {
+                            const input = (e.currentTarget as HTMLElement).querySelector('input');
+                            (input as any)?.showPicker?.();
+                        }}
+                    >
                         <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Check-out</span>
                         <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(checkout)}</span>
                         <input
                             type="date" value={checkout} min={checkin}
                             onChange={e => setCheckout(e.target.value)}
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                         />
                     </label>
 
@@ -450,6 +468,10 @@ function SearchMapView({
         else if (sortBy === 'rating') list.sort((a: any, b: any) => b.rating - a.rating);
         else if (sortBy === 'most-reviewed') list.sort((a: any, b: any) => (b.reviews ?? 0) - (a.reviews ?? 0));
 
+        // Always push hotels with no image to the bottom regardless of sort order
+        const hasImg = (p: any) => (p.image || (p.images && p.images.length > 0)) ? 0 : 1;
+        list.sort((a: any, b: any) => hasImg(a) - hasImg(b));
+
         return list;
     }, [allProperties, sortBy, propertyTypes, boardTypes, refundable]);
 
@@ -502,10 +524,21 @@ function SearchMapView({
             params.delete('view');
             const prop = properties.find(p => p.id === id);
             if (prop?.rateId) params.set('rateId', prop.rateId);
+
+            // Ensure dates are always forwarded. Landing-page clicks don't put dates in the URL,
+            // so the property page would fall back to same-day defaults (near-zero OTV inventory).
+            // Use rawSearchParams (the actual dates the search ran with) when the URL has none.
+            if (!params.has('checkIn') && !params.has('checkin')) {
+                const ci = rawSearchParams.checkin  || rawSearchParams.checkIn;
+                const co = rawSearchParams.checkout || rawSearchParams.checkOut;
+                if (ci) params.set('checkIn',  ci);
+                if (co) params.set('checkOut', co);
+            }
+
             const slug = prop ? buildPropertySlug(prop.name, id) : id;
             router.push(`/property/${slug}?${params.toString()}`);
         },
-        [router, searchParams, properties]
+        [router, searchParams, rawSearchParams, properties]
     );
 
     const handleCardSelect = useCallback(
