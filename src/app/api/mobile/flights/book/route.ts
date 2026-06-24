@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
         };
 
         const orderAbort = new AbortController();
-        const orderTimeout = setTimeout(() => orderAbort.abort(), 12_000);
+        const orderTimeout = setTimeout(() => orderAbort.abort(), 30_000);
 
         let duffelRes: Response;
         let duffelData: any;
