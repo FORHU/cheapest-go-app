@@ -51,7 +51,6 @@ export async function POST(req: NextRequest) {
             seatServiceIds,
             seatTotal,
             bagServiceIds,
-            bagTotal,
             confirmedPrice,
         } = body;
 
