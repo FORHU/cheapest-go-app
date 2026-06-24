@@ -63,8 +63,8 @@ export interface RoomCardProps {
     photoCount?: number;
     /** Handler for reserve/book action - receives offerId */
     onReserve: (offerId?: string) => void;
-    /** Handler for viewing room details */
-    onViewDetails: () => void;
+    /** Handler for viewing room details (optional — hidden when absent) */
+    onViewDetails?: () => void;
     /** Multiple rate options for this room (optional) */
     rateOptions?: RateOption[];
 }
@@ -102,7 +102,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     amenities,
     photoCount,
     onReserve,
-    onViewDetails,
+    onViewDetails = undefined,
     rateOptions = []
 }) => {
     const [selectedRateIdx, setSelectedRateIdx] = useState(0);
@@ -128,7 +128,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
         <div className="flex flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all group">
             {/* Left: Image (Horizontal layout on mobile, like search results) */}
             <div
-                className="w-[110px] lg:w-[240px] relative h-auto cursor-pointer p-2 lg:p-3 pr-0 lg:pr-0 flex-shrink-0"
+                className={`w-[110px] lg:w-[240px] relative h-auto p-2 lg:p-3 pr-0 lg:pr-0 shrink-0 ${onViewDetails ? 'cursor-pointer' : ''}`}
                 onClick={onViewDetails}
             >
                 {roomImage ? (
@@ -233,12 +233,6 @@ export const RoomCard: React.FC<RoomCardProps> = ({
 
                 <div className="flex items-center justify-between mt-2 lg:mt-3 gap-2">
                     <div className="flex flex-col min-w-0">
-                        <button
-                            onClick={onViewDetails}
-                            className="text-[10px] lg:text-xs text-blue-600 font-bold hover:underline self-start mb-0.5 lg:mb-0"
-                        >
-                            Room details
-                        </button>
                         {/* Hide price on mobile if multiple rates since it's already shown on the radio button */}
                         {!hasMultipleRates && (
                             <div className="lg:hidden mt-0.5">

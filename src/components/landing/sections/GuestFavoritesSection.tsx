@@ -10,7 +10,7 @@ import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { useBookingActions } from '@/stores/bookingStore';
-import { type Property } from '@/types';
+import { buildPropertySlug } from '@/lib/utils';
 import SectionHeader from './SectionHeader';
 
 function getRatingLabel(r: number): string {
@@ -56,7 +56,7 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
   useEffect(() => setMounted(true), []);
 
   const router = useRouter();
-  const { setDates, setProperty, setSelectedRoom } = useBookingActions();
+  const { setDates } = useBookingActions();
   const currency = useUserCurrency();
   const fromCur = deal.currency || 'USD';
   const symbol = getCurrencySymbol(mounted ? currency : fromCur);
@@ -72,26 +72,15 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
     `&fallback=${encodeURIComponent(deal.image || '')}`;
 
   function navigate() {
-    const property: Property = {
-      id: deal.hotelCode ?? String(deal.id),
-      name: deal.name,
-      location: deal.location,
-      description: '',
-      rating: deal.rating,
-      reviews: deal.reviews,
-      price: deal.salePrice,
-      currency: deal.currency,
-      image: imageUrl,
-      images: [imageUrl],
-      amenities: [],
-      badges: [],
-      type: 'hotel',
-      coordinates: { lat: 0, lng: 0 },
-    };
-    setProperty(property);
-    setSelectedRoom(null);
+    const hotelId = deal.hotelCode ?? String(deal.id);
     setDates(new Date(dates.checkIn), new Date(dates.checkOut));
-    router.push('/checkout');
+    const slug = buildPropertySlug(deal.name, hotelId);
+    const params = new URLSearchParams({
+      checkIn:  dates.checkIn,
+      checkOut: dates.checkOut,
+      adults:   '2',
+    });
+    router.push(`/property/${slug}?${params.toString()}`);
   }
 
   return (

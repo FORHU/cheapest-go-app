@@ -3,10 +3,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type Property } from '@/types';
-import { useViewingRoom, useBookingActions } from '@/stores/bookingStore';
+import { useBookingActions } from '@/stores/bookingStore';
 import { useRoomGrouping } from '@/hooks';
 import { RoomType } from '@/lib/room';
-import RoomDetailsView from './RoomDetailsView';
 import { RoomCard } from './RoomCard';
 import { useUserCurrency } from '@/stores/searchStore';
 import { convertCurrency } from '@/lib/currency';
@@ -22,13 +21,11 @@ interface RoomListProps {
 
 const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, hotelImages = [] }) => {
     const router = useRouter();
-    const viewingRoom = useViewingRoom();
     const {
         setProperty,
         setSelectedRoom,
         setDates,
         setGuests,
-        setViewingRoom,
     } = useBookingActions();
 
     // Use the room grouping hook for data transformation
@@ -76,20 +73,6 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
         params.set('currency', targetCurrency);
         router.push(`/checkout?${params.toString()}`);
     };
-
-    // Full Page Room Details Overlay
-    if (viewingRoom) {
-        return (
-            <div className="fixed inset-0 z-100 bg-alabaster dark:bg-slate-950 bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px overflow-y-auto animate-in fade-in duration-200">
-                <RoomDetailsView
-                    property={property}
-                    room={viewingRoom}
-                    onBack={() => setViewingRoom(null)}
-                    searchParams={searchParams}
-                />
-            </div>
-        );
-    }
 
     return (
         <div id="room-list-section" className="mt-6 lg:mt-8 scroll-mt-24">
@@ -152,10 +135,6 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                         selectedRate?.currency || groupedRoom.currency,
                                         offerId || lowestRate?.offerId
                                     );
-                                }}
-                                onViewDetails={() => {
-                                    setViewingRoom(groupedRoom.roomTypes[0]);
-                                    window.scrollTo(0, 0);
                                 }}
                             />
                         );

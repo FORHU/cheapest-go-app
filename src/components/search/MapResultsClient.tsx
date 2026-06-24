@@ -146,7 +146,8 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                     .map(h => {
                                         const p = priceMap.get((h as any).id ?? (h as any).hotelId);
                                         if (!p) return h;
-                                        return { ...h, price: p.price, currency: p.currency };
+                                        // priceLoading: false so the hotel survives the filter below
+                                        return { ...h, price: p.price, currency: p.currency, priceLoading: false };
                                     })
                                     .filter((h: any) => !h.priceLoading)
                                 );
@@ -159,7 +160,10 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                 setTotalCount(chunk.totalCount);
                             }
                             if (Array.isArray(chunk.allMappable) && chunk.allMappable.length > 0) {
-                                setAllMappable(chunk.allMappable);
+                                // Only use done.allMappable (TGX IDs) as a fallback when the prices
+                                // event didn't populate allMappable with catalog-ID hotels.
+                                // Overwriting here would cause card IDs (catalog) to mismatch pin IDs (TGX).
+                                setAllMappable(prev => prev.length > 0 ? prev : chunk.allMappable);
                             }
                             // Remove catalog hotels that TGX had no pricing for (unavailable dates).
                             setProperties(prev => {
