@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type Property } from '@/types';
 import { useBookingActions } from '@/stores/bookingStore';
 import { useRoomGrouping } from '@/hooks';
@@ -9,6 +10,8 @@ import { RoomType } from '@/lib/room';
 import { RoomCard } from './RoomCard';
 import { useUserCurrency } from '@/stores/searchStore';
 import { convertCurrency } from '@/lib/currency';
+
+const ROOMS_PER_PAGE = 5;
 
 type RateFilter = 'all' | 'rfn' | 'nrfn';
 
@@ -35,6 +38,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
     });
 
     const [rateFilter, setRateFilter] = useState<RateFilter>('all');
+    const [currentPage, setCurrentPage] = useState(1);
 
     const filteredRooms = rateFilter === 'all'
         ? groupedRooms
@@ -46,6 +50,14 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
 
     const rfnCount  = groupedRooms.filter(g => g.rateOptions.some(r => r.refundable === true)).length;
     const nrfnCount = groupedRooms.filter(g => g.rateOptions.some(r => r.refundable === false)).length;
+
+    const totalPages = Math.ceil(filteredRooms.length / ROOMS_PER_PAGE);
+    const paginatedRooms = filteredRooms.slice((currentPage - 1) * ROOMS_PER_PAGE, currentPage * ROOMS_PER_PAGE);
+
+    const handleFilterChange = (key: RateFilter) => {
+        setRateFilter(key);
+        setCurrentPage(1);
+    };
 
     const targetCurrency = useUserCurrency();
 
@@ -89,7 +101,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                     ] as { key: RateFilter; label: string; count: number }[]).map(({ key, label, count }) => (
                         <button
                             key={key}
-                            onClick={() => setRateFilter(key)}
+                            onClick={() => handleFilterChange(key)}
                             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                                 rateFilter === key
                                     ? 'bg-blue-600 text-white border-blue-600'
@@ -106,8 +118,13 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
             )}
 
             <div className="flex flex-col gap-4">
+                {hasRooms && filteredRooms.length > 0 && (
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                        Showing {(currentPage - 1) * ROOMS_PER_PAGE + 1}–{Math.min(currentPage * ROOMS_PER_PAGE, filteredRooms.length)} of {filteredRooms.length} rooms
+                    </p>
+                )}
                 {hasRooms ? (
-                    filteredRooms.length > 0 ? filteredRooms.map((groupedRoom, index) => {
+                    filteredRooms.length > 0 ? paginatedRooms.map((groupedRoom, index) => {
                         const roomImage = getImage(groupedRoom, index);
                         const hasMultipleRates = groupedRoom.rateOptions.length > 1;
                         const lowestRate = groupedRoom.rateOptions[0];
@@ -184,6 +201,43 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                     </div>
                 )}
             </div>
+
+            {hasRooms && totalPages > 1 && (
+                <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                        Page {currentPage} of {totalPages}
+                    </p>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                            <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-medium border transition-colors ${
+                                    page === currentPage
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -131,12 +131,22 @@ export function CheckoutContent() {
     // Booking confirmation progress overlay
     const [bookingStepIdx, setBookingStepIdx] = useState(0);
     const bookingStepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [showSuccess, setShowSuccess] = useState(false);
+
     useEffect(() => {
         if (loading && step === 'payment') {
             setBookingStepIdx(0);
+            setShowSuccess(false);
             bookingStepTimer.current = setInterval(() => {
                 setBookingStepIdx((i) => Math.min(i + 1, BOOKING_STEPS.length - 1));
             }, 4000);
+        } else if (isSuccess && !loading) {
+            // API done — fast-forward animation to final step
+            if (bookingStepTimer.current) {
+                clearInterval(bookingStepTimer.current);
+                bookingStepTimer.current = null;
+            }
+            setBookingStepIdx(BOOKING_STEPS.length - 1);
         } else {
             if (bookingStepTimer.current) {
                 clearInterval(bookingStepTimer.current);
@@ -146,8 +156,15 @@ export function CheckoutContent() {
         return () => {
             if (bookingStepTimer.current) clearInterval(bookingStepTimer.current);
         };
-     
-    }, [loading, step]);
+    }, [loading, step, isSuccess]);
+
+    // Reveal success screen once animation reaches the last step
+    useEffect(() => {
+        if (isSuccess && bookingStepIdx === BOOKING_STEPS.length - 1) {
+            const t = setTimeout(() => setShowSuccess(true), 800);
+            return () => clearTimeout(t);
+        }
+    }, [isSuccess, bookingStepIdx]);
 
     // Global currency sync
     const globalCurrency = useUserCurrency();
@@ -429,11 +446,11 @@ export function CheckoutContent() {
 
     // Success screen
     useEffect(() => {
-        if (isSuccess && typeof window !== 'undefined') {
+        if (showSuccess && typeof window !== 'undefined') {
             sessionStorage.removeItem('bundleFlightId');
             sessionStorage.setItem('hasAlreadyBookedHotel', 'true');
         }
-    }, [isSuccess]);
+    }, [showSuccess]);
 
     // Deal flow: property set but no room chosen yet — show date picker + room search CTA
     if (property && !selectedRoom) {
@@ -572,7 +589,7 @@ export function CheckoutContent() {
         );
     }
 
-    if (isSuccess) {
+    if (showSuccess) {
         // savings = 3% of base price; base = bundlePrice / 1.12, so savings = totalPrice * 3/112
         const bundleSavings = bundleFlightId && totalPrice ? Math.round(totalPrice * 3 / 112 * 100) / 100 : undefined;
         return (
@@ -819,7 +836,7 @@ export function CheckoutContent() {
                 </div>
 
                 {/* Booking confirmation overlay — covers form after Stripe payment succeeds */}
-                {loading && step === 'payment' && (
+                {(loading || (isSuccess && !showSuccess)) && step === 'payment' && (
                     <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-lg">
                         <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
                             <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />

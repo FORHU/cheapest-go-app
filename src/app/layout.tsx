@@ -32,8 +32,8 @@ export const metadata: Metadata = {
   title: 'CheapestGo | Discover and Book Your Next Global Journey',
   description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
   icons: {
-    icon: '/cheapestgo-favico.png',
-    apple: '/cheapestgo-favico.png',
+    icon: '/Fav_Icon_Light.png',
+    apple: '/Fav_Icon_Light.png',
   },
   appleWebApp: {
     capable: true,
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     siteName: 'CheapestGo',
     images: [
       {
-        url: `${SITE_URL}/og-image.png`,
+        url: `${SITE_URL}/Web_Logo_Light.png`,
         width: 1200,
         height: 630,
         alt: 'CheapestGo - Ultimate Travel Booking Platform',
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'CheapestGo | Discover and Book Your Next Global Journey',
     description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
-    images: [`${SITE_URL}/og-image.png`],
+    images: [`${SITE_URL}/Web_Logo_Light.png`],
   },
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && {
     verification: {
