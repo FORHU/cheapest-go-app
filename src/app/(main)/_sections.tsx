@@ -33,7 +33,7 @@ export function SectionSkeleton() {
                     {[1, 2, 3, 4].map(i => (
                         <div
                             key={i}
-                            className="flex-shrink-0 w-[220px] sm:w-[260px] md:w-[320px] aspect-[3/2] bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"
+                            className="shrink-0 w-[220px] sm:w-[260px] md:w-[320px] aspect-3/2 bg-slate-200 dark:bg-slate-700 rounded-xl animate-pulse"
                         />
                     ))}
                 </div>

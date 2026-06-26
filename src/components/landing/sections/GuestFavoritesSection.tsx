@@ -29,13 +29,7 @@ function getRatingColor(r: number): string {
   return 'bg-slate-400';
 }
 
-function getFutureDates(checkIn?: string | null, checkOut?: string | null) {
-  if (checkIn && checkOut) {
-    const ci = new Date(checkIn);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (ci >= today) return { checkIn, checkOut };
-  }
+function getNextWeekend(): { checkIn: string; checkOut: string } {
   const d = new Date();
   const daysUntilFriday = (5 - d.getDay() + 7) % 7 || 7;
   d.setDate(d.getDate() + daysUntilFriday);
@@ -64,12 +58,10 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
     ? Math.round(convertCurrency(deal.salePrice || 0, fromCur, currency))
     : Math.round(deal.salePrice || 0);
 
-  const dates = getFutureDates(deal.checkIn, deal.checkOut);
+  const dates = getNextWeekend();
   const [isSaved, setIsSaved] = useState(false);
 
-  const imageUrl =
-    `/api/hotel-photo?q=${encodeURIComponent(`${deal.name} ${deal.location}`)}` +
-    `&fallback=${encodeURIComponent(deal.image || '')}`;
+  const imageUrl = deal.image || (deal.hotelCode ? `/api/hotel-photo?hotelCode=${encodeURIComponent(deal.hotelCode)}` : '');
 
   function navigate() {
     const hotelId = deal.hotelCode ?? String(deal.id);
