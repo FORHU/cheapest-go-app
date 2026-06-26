@@ -101,13 +101,7 @@ interface HotelDealCardProps {
   variant?: 'carousel' | 'grid';
 }
 
-function getFutureDates(checkIn?: string | null, checkOut?: string | null): { checkIn: string; checkOut: string } {
-  if (checkIn && checkOut) {
-    const ci = new Date(checkIn);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (ci >= today) return { checkIn, checkOut };
-  }
+function getNextWeekend(): { checkIn: string; checkOut: string } {
   const d = new Date();
   const daysUntilFriday = (5 - d.getDay() + 7) % 7 || 7;
   d.setDate(d.getDate() + daysUntilFriday);
@@ -133,7 +127,7 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
     ? Math.round(convertCurrency(deal.originalPrice || 0, fromCur, currency))
     : Math.round(deal.originalPrice || 0);
 
-  const dates = getFutureDates(deal.checkIn, deal.checkOut);
+  const dates = getNextWeekend();
   function navigate() {
     const hotelId = deal.hotelCode ?? String(deal.id);
     setDates(new Date(dates.checkIn), new Date(dates.checkOut));
@@ -147,9 +141,7 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
   }
 
 
-  const imageUrl =
-    `/api/hotel-photo?q=${encodeURIComponent(`${deal.name} ${deal.location}`)}` +
-    `&fallback=${encodeURIComponent(deal.image || '')}`;
+  const imageUrl = deal.image || (deal.hotelCode ? `/api/hotel-photo?hotelCode=${encodeURIComponent(deal.hotelCode)}` : '');
 
   const [isSaved, setIsSaved] = useState(false);
 

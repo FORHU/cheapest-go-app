@@ -143,7 +143,7 @@ async function fetchWikimediaPhoto(query: string): Promise<string | null> {
     const url: string | undefined = page?.thumbnail?.source;
     if (!url) return null;
 
-    return url.replace(/\/\d+px-/, '/800px-');
+    return url;
   } catch {
     return null;
   }
