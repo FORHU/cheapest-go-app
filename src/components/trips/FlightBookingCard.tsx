@@ -118,13 +118,27 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
             }
             if (quoteData) {
                 const hasRefund = quoteData.refundAmount > 0;
-                return hasRefund ? (
+                const isFareNonRefundable = booking.fare_policy?.isRefundable === false;
+                if (!hasRefund) {
+                    return (
+                        <li className="font-semibold text-red-600 dark:text-red-400">
+                            No refund — this fare is non-refundable per airline policy.
+                        </li>
+                    );
+                }
+                if (isFareNonRefundable) {
+                    return (
+                        <>
+                            <li className="font-semibold text-emerald-700 dark:text-emerald-400">
+                                Taxes &amp; fees refund: {fmtAmount(quoteData.refundAmount, quoteData.refundCurrency)}
+                            </li>
+                            <li>The base fare is non-refundable — only taxes and fees are returned.</li>
+                        </>
+                    );
+                }
+                return (
                     <li className="font-semibold text-emerald-700 dark:text-emerald-400">
                         You will receive {fmtAmount(quoteData.refundAmount, quoteData.refundCurrency)} back.
-                    </li>
-                ) : (
-                    <li className="font-semibold text-red-600 dark:text-red-400">
-                        No refund — this fare is non-refundable per airline policy.
                     </li>
                 );
             }

@@ -1,8 +1,7 @@
 import React from 'react';
-import Image from 'next/image';
 import { ChevronRight, ChevronLeft, Search, Star, Maximize, Minimize, Navigation, MapPin } from 'lucide-react';
 import { POI_FILTERS } from '@/config/map-discovery';
-import { getPoiImageUrl } from '@/utils/images';
+
 import { cn } from '@/lib/utils';
 
 const DISTANCE_OPTIONS = [
@@ -190,15 +189,31 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                         
                         const name = poi.properties?.name || poi.name;
                         const isActive = activePoiId === name;
-                        const lng = poi.geometry?.coordinates[0] || poi.coordinates.lng;
-                        const lat = poi.geometry?.coordinates[1] || poi.coordinates.lat;
-                        const category = poi.properties?.category || poi.category;
-                        const imageUrl = poi.properties?.imageUrl || poi.imageUrl || getPoiImageUrl(name, lat, lng, { category });
-                        
+                        const lng = poi.geometry?.coordinates[0] || poi.coordinates?.lng;
+                        const lat = poi.geometry?.coordinates[1] || poi.coordinates?.lat;
+                        const category = (poi.properties?.category || poi.category || '').toLowerCase();
+                        const PoiIcon = poi.properties?.icon || poi.icon || Search;
+
                         const ratingValue = Number(poi.properties?.rating);
-                        const ratingDisplay = Number.isFinite(ratingValue) 
-                            ? (Number.isInteger(ratingValue) ? ratingValue.toString() : ratingValue.toFixed(1)) 
+                        const ratingDisplay = Number.isFinite(ratingValue) && ratingValue > 0
+                            ? (Number.isInteger(ratingValue) ? ratingValue.toString() : ratingValue.toFixed(1))
                             : null;
+
+                        // Category → background gradient (no images needed)
+                        const cardBg =
+                            category.includes('park') || category.includes('garden') || category.includes('nature')
+                                ? 'from-emerald-800 to-emerald-950'
+                            : category.includes('restaurant') || category.includes('cafe') || category.includes('food') || category.includes('bar')
+                                ? 'from-orange-700 to-orange-950'
+                            : category.includes('museum') || category.includes('tourist') || category.includes('landmark') || category.includes('attraction') || category.includes('art')
+                                ? 'from-indigo-700 to-indigo-950'
+                            : category.includes('shop') || category.includes('market') || category.includes('supermarket')
+                                ? 'from-pink-700 to-pink-950'
+                            : category.includes('transit') || category.includes('station') || category.includes('bus') || category.includes('train')
+                                ? 'from-slate-600 to-slate-900'
+                            : category.includes('hospital') || category.includes('pharmacy') || category.includes('medical')
+                                ? 'from-blue-700 to-blue-950'
+                            : 'from-slate-700 to-slate-950';
 
                         return (
                             <div
@@ -213,68 +228,70 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                                         mapRef.current?.flyTo({ center: [lng, lat], zoom: 17, pitch: 45, duration: 800 });
                                     }
                                 }}
-                                className={`group relative flex-shrink-0 transition-all duration-500 ease-out transform cursor-pointer
+                                className={`group relative shrink-0 transition-all duration-300 ease-out cursor-pointer
                                 w-36 h-24 sm:w-48 sm:h-32
-                                ${isActive 
-                                    ? 'ring-[3px] ring-blue-500 ring-offset-2 dark:ring-offset-slate-900 shadow-2xl z-10 scale-[1.02]' 
+                                bg-linear-to-br ${cardBg}
+                                ${isActive
+                                    ? 'ring-[3px] ring-blue-500 ring-offset-2 dark:ring-offset-slate-900 shadow-2xl z-10 scale-[1.02]'
                                     : 'shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95'
                                 }
                                 rounded-2xl overflow-hidden
                                 ${isFetchingGems ? 'animate-pulse opacity-80' : ''}
                             `}
                             >
-                                <Image
-                                    src={imageUrl}
+                                {/* Photo — falls back gracefully to the gradient bg */}
+                                <img
+                                    src={poi.properties?.imageUrl || poi.imageUrl}
                                     alt={name}
-                                    fill
-                                    sizes="(max-width: 640px) 144px, 192px"
-                                    className={`object-cover transition-transform duration-700 group-hover:scale-110 ${isActive ? 'scale-110' : ''}`}
+                                    className="absolute inset-0 w-full h-full object-cover"
                                     loading="lazy"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                 />
-                                <div className={`absolute inset-0 bg-gradient-to-t transition-opacity duration-500
-                                    ${isActive 
-                                        ? 'from-blue-900/80 via-black/20 to-transparent opacity-100' 
-                                        : 'from-black/80 via-black/10 to-transparent opacity-90 group-hover:opacity-100'
-                                    }
-                                `} />
-                                
+                                {/* Gradient overlay so text is always readable */}
+                                <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/10 to-transparent" />
+                                {/* Large centred icon — shows through when no photo */}
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <PoiIcon size={36} className="text-white/20" />
+                                </div>
+
+                                {/* Rating badge */}
                                 {ratingDisplay !== null && (
-                                    <div className="absolute top-2.5 left-2.5 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md rounded-full px-2 py-0.5 flex items-center gap-1 border border-slate-200/50 dark:border-white/10 shadow-sm transition-transform duration-300 group-hover:scale-110">
-                                        <Star size={10} className="text-blue-500 fill-blue-500" />
+                                    <div className="absolute top-2 left-2 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md rounded-full px-1.5 py-0.5 flex items-center gap-1 shadow-sm">
+                                        <Star size={9} className="text-blue-500 fill-blue-500" />
                                         <span className="text-[10px] font-extrabold text-slate-800 dark:text-white tracking-tight">{ratingDisplay}</span>
                                     </div>
                                 )}
 
-                                <div className="absolute inset-0 p-3 sm:p-4 flex flex-col justify-end items-start text-white text-left">
-                                    <div className="flex items-center gap-1.5 mb-1 opacity-90 drop-shadow-sm transition-transform duration-300 group-hover:translate-x-1">
-                                        {React.createElement(poi.properties?.icon || poi.icon || Search, { size: 11, className: 'shrink-0 text-blue-400' })}
-                                        <span className="text-[9px] font-bold uppercase tracking-widest truncate max-w-[80px]">
+                                {/* Name + category */}
+                                <div className="absolute inset-x-0 bottom-0 p-2.5 sm:p-3">
+                                    <div className="flex items-center gap-1 mb-0.5 opacity-70">
+                                        <PoiIcon size={9} className="shrink-0 text-white" />
+                                        <span className="text-[8px] font-bold uppercase tracking-widest text-white truncate">
                                             {poi.properties?.displayCategory || poi.properties?.category || poi.category}
                                         </span>
                                     </div>
-                                    <h4 className="text-[11px] sm:text-sm font-black leading-tight line-clamp-2 drop-shadow-lg transition-transform duration-300 group-hover:translate-x-1">
+                                    <h4 className="text-[11px] sm:text-[13px] font-black leading-tight line-clamp-2 text-white drop-shadow">
                                         {poi.properties?.translatedName || poi.properties?.name || name}
                                     </h4>
                                 </div>
 
+                                {/* Details button on hover */}
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setSelectedNativePoi(poi);
                                         setModalPoiId(name);
                                     }}
-                                    className="absolute bottom-2 right-2 px-2 py-1 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-lg text-[8px] font-bold uppercase tracking-wider text-white border border-white/20 transition-all opacity-0 group-hover:opacity-100 z-20"
+                                    className="absolute bottom-2 right-2 px-2 py-0.5 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-lg text-[8px] font-bold uppercase tracking-wider text-white border border-white/20 transition-all opacity-0 group-hover:opacity-100 z-20"
                                 >
                                     Details
                                 </button>
 
                                 {isActive && (
-                                    <div className={`absolute top-2.5 right-2.5 flex items-center justify-center w-6 h-6 rounded-full border-2 border-white shadow-lg animate-in zoom-in duration-300 bg-blue-500`}>
-                                        <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+                                    <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 border-2 border-white shadow-lg">
+                                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                                     </div>
                                 )}
-
-                                <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-2xl pointer-events-none" />
                             </div>
                         );
                     })}

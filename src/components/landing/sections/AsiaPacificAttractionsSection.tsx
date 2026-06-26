@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { useDragScroll } from '@/hooks/useDragScroll';
+import { attractionImagePath } from '@/lib/destination-images';
 
 interface Attraction {
   name: string;
@@ -38,12 +39,6 @@ const ATTRACTIONS: Attraction[] = [
   { name: 'Maldives',           location: 'Maldives',      country: 'Maldives',      tagline: 'Overwater Bungalows & Crystal Lagoons',searchQuery: 'Maldives' },
 ];
 
-function attractionImageUrl(name: string, location: string): string {
-  return (
-    `/api/hotel-photo?q=${encodeURIComponent(name + ' ' + location + ' landmark tourist')}` +
-    `&fallback=${encodeURIComponent(`https://picsum.photos/seed/${encodeURIComponent(name)}/600/400`)}`
-  );
-}
 
 interface AttractionCardProps {
   attraction: Attraction;
@@ -75,15 +70,16 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
     >
       <div className="relative h-[160px] overflow-hidden rounded-sm group">
         <Image
-          src={attractionImageUrl(attraction.name, attraction.location)}
+          src={attractionImagePath(attraction.name)}
           alt={attraction.name}
           fill
+          unoptimized
           sizes="(max-width: 640px) 180px, (max-width: 768px) 200px, 240px"
           className="object-cover transition-transform duration-700 group-hover:scale-105"
           loading={index < 2 ? 'eager' : 'lazy'}
         />
 
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/80" />
+        <div className="absolute inset-0 bg-linear-to-b from-black/10 via-black/20 to-black/80" />
 
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
           <Sparkles className="w-2.5 h-2.5 text-amber-300" />

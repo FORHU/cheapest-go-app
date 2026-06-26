@@ -106,7 +106,7 @@ async function logEmail(params: {
             subject: params.subject,
             email_type: params.emailType,
             status: params.status,
-            error_message: params.errorMessage,
+            error_message: params.errorMessage ?? null,
             metadata,
             sent_at: params.status === 'sent' ? new Date().toISOString() : null
         }]);

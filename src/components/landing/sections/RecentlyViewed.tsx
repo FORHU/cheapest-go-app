@@ -10,6 +10,7 @@ import { type RecentItem } from '@/types';
 import { convertCurrency } from '@/lib/currency';
 import { formatCurrency } from '@/lib/utils';
 import { useUserCurrency, type Destination } from '@/stores/searchStore';
+import { IATA_TO_SLUG, findLocalDestinationImage } from '@/lib/destination-images';
 
 interface RecentCardProps {
   item: RecentItem;
@@ -69,7 +70,7 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => 
       )}
 
       {/* Thumbnail — responsive */}
-      <div className="relative w-14 h-14 min-[380px]:w-[4.5rem] min-[380px]:h-[4.5rem] sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0">
+      <div className="relative w-14 h-14 min-[380px]:w-18 min-[380px]:h-18 sm:w-20 sm:h-20 rounded-lg overflow-hidden shrink-0">
         <div
           className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
           style={{ backgroundImage: `url(${item.image})` }}
@@ -82,7 +83,7 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => 
           {item.destination}
         </h3>
         <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 sm:mt-1 text-[clamp(0.625rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400">
-          <Clock className="w-3 h-3 sm:w-[11px] sm:h-[11px] flex-shrink-0" />
+          <Clock className="w-3 h-3 sm:w-[11px] sm:h-[11px] shrink-0" />
           <span>{item.dates}</span>
         </div>
         <div className="flex items-center justify-between mt-1.5 sm:mt-2 gap-1">
@@ -114,7 +115,16 @@ const RecentlyViewed = () => {
       destination: search.title,
       dates: 'Recently searched',
       type: search.type === 'airport' ? 'Flight' : 'Stay',
-      image: `https://picsum.photos/seed/${search.title.toLowerCase().replace(/\s/g, '')}/200/150`,
+      image: (() => {
+        if (search.type === 'airport' && search.code) {
+          const slug = IATA_TO_SLUG[search.code.toUpperCase()];
+          return slug
+            ? `/images/destinations/${slug}.jpg`
+            : `/api/destination-photo?iata=${encodeURIComponent(search.code)}`;
+        }
+        return findLocalDestinationImage(search.title)
+          ?? `/api/hotel-photo?q=${encodeURIComponent(`${search.title} travel destination`)}`;
+      })(),
       price: search.lowestPrice ?? 0,
     } as RecentItem,
     destination: search,

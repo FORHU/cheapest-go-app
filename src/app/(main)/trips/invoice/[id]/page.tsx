@@ -111,8 +111,8 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     const issuedDate = new Date(booking.created_at).toLocaleDateString('en-US', {
         year: 'numeric', month: 'long', day: 'numeric',
     });
-    const currency = booking.currency || 'PHP';
-    const totalPrice = booking.total_price;
+    const currency = booking.payment_currency || booking.currency || 'PHP';
+    const totalPrice = booking.charged_price ?? booking.total_price;
 
     // Resolve customer email for the "Billed to" section
     // For hotels it comes from the booking record; for flights we need the booking owner's email
