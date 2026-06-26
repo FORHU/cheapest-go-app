@@ -65,6 +65,8 @@ export interface RoomCardProps {
     photoCount?: number;
     /** All room photo URLs for lightbox */
     roomImages?: string[];
+    /** Hotel-level photos — used as lightbox fallback when no room-specific images */
+    galleryImages?: string[];
     /** Handler for reserve/book action - receives offerId */
     onReserve: (offerId?: string) => void;
     /** Handler for viewing room details (optional — hidden when absent) */
@@ -182,6 +184,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     amenities,
     photoCount,
     roomImages,
+    galleryImages,
     onReserve,
     onViewDetails = undefined,
     rateOptions = []
@@ -192,19 +195,22 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     const [carouselIndex, setCarouselIndex] = useState(0);
     useEffect(() => setMounted(true), []);
 
-    const lightboxImages = roomImages?.filter(Boolean) ?? (roomImage ? [roomImage] : []);
-    const displayImage = lightboxImages[carouselIndex] ?? roomImage;
-    const hasMultipleImages = lightboxImages.length > 1;
+    // Room-specific photos take priority; hotel gallery is lightbox-only fallback
+    const roomPhotos = roomImages?.filter(Boolean) ?? [];
+    const hasRoomPhotos = roomPhotos.length > 0;
+    const lightboxImages = hasRoomPhotos ? roomPhotos : (galleryImages?.filter(Boolean) ?? (roomImage ? [roomImage] : []));
+    const displayImage = hasRoomPhotos ? (roomPhotos[carouselIndex] ?? roomImage) : roomImage;
+    const hasMultipleImages = roomPhotos.length > 1;
 
     const carouselPrev = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        setCarouselIndex(i => (i === 0 ? lightboxImages.length - 1 : i - 1));
-    }, [lightboxImages.length]);
+        setCarouselIndex(i => (i === 0 ? roomPhotos.length - 1 : i - 1));
+    }, [roomPhotos.length]);
 
     const carouselNext = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        setCarouselIndex(i => (i === lightboxImages.length - 1 ? 0 : i + 1));
-    }, [lightboxImages.length]);
+        setCarouselIndex(i => (i === roomPhotos.length - 1 ? 0 : i + 1));
+    }, [roomPhotos.length]);
 
     const openLightbox = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -255,15 +261,17 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         </div>
                     )}
 
-                    {/* Zoom hint on single image */}
-                    {lightboxImages.length === 1 && (
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-xl">
-                            <Images size={20} className="text-white drop-shadow" />
+                    {/* Hover hint */}
+                    {lightboxImages.length > 0 && (
+                        <div className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-xl pointer-events-none">
+                            <span className="text-white text-[9px] font-medium bg-black/50 px-1.5 py-0.5 rounded backdrop-blur-sm">
+                                {hasRoomPhotos ? 'View room photos' : 'View hotel photos'}
+                            </span>
                         </div>
                     )}
                 </div>
 
-                {/* Carousel prev/next — only when multiple images */}
+                {/* Carousel prev/next — only when room-specific photos */}
                 {hasMultipleImages && (
                     <>
                         <button
@@ -281,7 +289,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
 
                         {/* Dots */}
                         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-                            {lightboxImages.slice(0, 5).map((_, i) => (
+                            {roomPhotos.slice(0, 5).map((_, i) => (
                                 <button
                                     key={i}
                                     onClick={e => { e.stopPropagation(); setCarouselIndex(i); }}
