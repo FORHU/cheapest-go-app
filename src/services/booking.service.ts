@@ -122,6 +122,8 @@ export interface BookingRecord {
   user_id: string;
   property_name: string;
   property_image?: string;
+  property_lat?: number;
+  property_lng?: number;
   room_name: string;
   check_in: string;
   check_out: string;

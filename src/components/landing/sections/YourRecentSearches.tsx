@@ -32,7 +32,7 @@ export const YourRecentSearches: React.FC<{ searches?: RecentSearch[] }> = ({ se
               <div className="min-w-0">
                 <p className="font-semibold text-slate-900 dark:text-white text-xs truncate">{search.destination}</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{search.dates}</p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{search.travelers} • {search.rooms}</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{search.travelers}</p>
               </div>
             </motion.div>
           ))}
