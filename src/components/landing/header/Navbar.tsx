@@ -2,6 +2,7 @@
 
 import React, { Suspense, useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Moon, Sun, Download, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -65,10 +66,15 @@ const HeaderContent = () => {
         <div className="w-full sm:w-[95%] mx-auto p-1 px-4 sm:px-6 h-11 md:h-16 flex items-center justify-between bg-slate/20 backdrop-blur rounded-full">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
-            <h1 className="text-base sm:text-lg md:text-xl text-black dark:text-white font-display font-bold tracking-tight truncate max-w-[120px] sm:max-w-none font-nunito">
-              Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span>
-            </h1>
+          <Link href="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
+            <Image
+              src="/Web_Logo_Transparent.png"
+              alt="CheapestGo"
+              width={140}
+              height={36}
+              className="h-7 md:h-9 w-auto object-contain dark:brightness-[1.15]"
+              priority
+            />
           </Link>
 
 
@@ -83,7 +89,7 @@ const HeaderContent = () => {
             {showInstallButton && (
               <button
                 onClick={triggerInstall}
-                className="flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[10px] sm:text-xs font-normal text-blue-600 dark:text-blue-400 border border-blue-600/20 dark:border-blue-400/20 rounded-full hover:bg-white/5 dark:border-blue-400/20 dark:hover:bg-blue-500/10 transition-colors shrink-0"
+                className="flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[10px] sm:text-xs font-normal text-blue-600 dark:text-blue-400 border border-blue-600/20 dark:border-blue-400/20 rounded-full hover:bg-white/5 dark:hover:bg-blue-500/10 transition-colors shrink-0"
               >
                 <Download size={12} />
                 <span className="hidden sm:inline">Open app</span>

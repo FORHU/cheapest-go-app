@@ -404,8 +404,12 @@ export const SearchMapContainer = React.memo(({
 
                 {isMapLoaded && (
                     <>
-                        {/* Individual hotel markers — hidden when a hotel is selected (SelectedPropertyPopup shows the active one) */}
-                        {!selectedId && mappableProperties.map((p) => (
+                        {/* All hotel markers — always visible.
+                            The selected hotel's marker is skipped here; SelectedPropertyPopup re-renders
+                            it with isSelected=true and attaches the popup card. Other markers stay visible
+                            so the user can see all hotels while a selection is active. */}
+                        {mappableProperties.map((p) => (
+                            selectedId === p.id && selectedProperty ? null :
                             <MapMarker
                                 key={`marker-${p.id}`}
                                 property={p}

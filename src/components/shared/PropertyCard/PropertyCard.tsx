@@ -426,9 +426,22 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                                     </span>
                                 </div>
                             </>
-                        ) : (
-                            <span className="text-[9px] landscape:text-[8px] lg:text-sm text-slate-400 dark:text-slate-500">No rating yet</span>
-                        )}
+                        ) : (property as any).starRating > 0 ? (
+                            <div className="relative inline-flex gap-px">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                    <svg key={i} width="11" height="11" viewBox="0 0 24 24" className="text-slate-200 dark:text-slate-700 shrink-0">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                    </svg>
+                                ))}
+                                <div className="absolute inset-0 overflow-hidden flex gap-px" style={{ width: `${(property as any).starRating * 20}%` }}>
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                        <svg key={i} width="11" height="11" viewBox="0 0 24 24" className="text-blue-500 shrink-0">
+                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                                        </svg>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
 
                     {/* Price Section */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Building2 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -43,13 +43,13 @@ function StarRating({ rating, size = 11 }: { rating: number; size?: number }) {
     return (
         <div className="relative inline-flex gap-px">
             {Array.from({ length: 5 }).map((_, i) => (
-                <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-slate-200 dark:text-slate-700 flex-shrink-0">
+                <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-slate-200 dark:text-slate-700 shrink-0">
                     <path d={STAR_PATH} fill="currentColor" />
                 </svg>
             ))}
             <div className="absolute inset-0 overflow-hidden flex gap-px" style={{ width: `${pct}%` }}>
                 {Array.from({ length: 5 }).map((_, i) => (
-                    <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-blue-500 flex-shrink-0">
+                    <svg key={i} width={size} height={size} viewBox="0 0 24 24" className="text-blue-500 shrink-0">
                         <path d={STAR_PATH} fill="currentColor" />
                     </svg>
                 ))}
@@ -82,6 +82,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
         [property.originalPrice, sourceCurrency, targetCurrency]
     );
     const rating = property.rating ?? 0;
+    const starRating = property.starRating ?? 0;
     const ratingLabel = React.useMemo(() => getRatingLabel(rating), [rating]);
 
     return (
@@ -107,7 +108,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             {/* ── MOBILE layout: Agoda-style card (image left, details right) ── */}
             <div className="flex flex-row gap-2 md:hidden">
                 {/* Image with index badge overlay */}
-                <div className="relative w-[76px] h-[76px] flex-shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                <div className="relative w-[76px] h-[76px] shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
                     {property.image ? (
                         <Image
                             src={property.image}
@@ -117,8 +118,8 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                             sizes="100px"
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
-                            <MapPin className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+                        <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+                            <Building2 className="w-4 h-4 text-slate-300 dark:text-slate-600" />
                         </div>
                     )}
                     {index !== undefined && (
@@ -139,17 +140,27 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         <h3 className="text-[11.5px] font-bold text-slate-900 dark:text-white leading-tight line-clamp-2">
                             {property.name}
                         </h3>
+                        {property.location && (
+                            <p className="text-[9.5px] text-slate-400 dark:text-slate-500 leading-tight mt-0.5 truncate flex items-center gap-0.5">
+                                <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                {property.location}
+                            </p>
+                        )}
                     </div>
 
                     {/* Rating badge */}
-                    {rating > 0 && (
+                    {rating > 0 ? (
                         <div className="flex items-center gap-1 mt-1">
                             <span className={cn('text-[9px] font-bold text-white px-1.5 py-0.5 rounded-md', getRatingBadgeClass(rating))}>
                                 {rating.toFixed(1)} {ratingLabel}
                             </span>
                             <StarRating rating={rating} size={9} />
                         </div>
-                    )}
+                    ) : starRating > 0 ? (
+                        <div className="mt-1">
+                            <StarRating rating={starRating * 2} size={9} />
+                        </div>
+                    ) : null}
 
                     {/* Price + View Deal */}
                     <div className="flex items-center justify-between mt-1 gap-1">
@@ -181,7 +192,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
             {/* ── DESKTOP layout: horizontal row (unchanged) ── */}
             <div className="hidden md:flex gap-3">
                 {/* Thumbnail */}
-                <div className="relative w-20 h-16 lg:w-24 lg:h-20 flex-shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                <div className="relative w-20 h-16 lg:w-24 lg:h-20 shrink-0 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
                     {property.image ? (
                         <Image
                             src={property.image}
@@ -191,8 +202,8 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                             sizes="(max-width: 1024px) 80px, 96px"
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
-                            <MapPin className="w-6 h-6 text-slate-300 dark:text-slate-600" />
+                        <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+                            <Building2 className="w-6 h-6 text-slate-300 dark:text-slate-600" />
                         </div>
                     )}
                     {property.refundableTag === 'RFN' && (
@@ -211,9 +222,17 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                                     <span className={cn('text-white font-bold leading-none', index > 99 ? 'text-[7px]' : index > 9 ? 'text-[9px]' : 'text-[10px]')}>{index}</span>
                                 </span>
                             )}
-                            <h3 className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-semibold text-slate-900 dark:text-white line-clamp-2 leading-tight">
-                                {property.name}
-                            </h3>
+                            <div className="min-w-0">
+                                <h3 className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-semibold text-slate-900 dark:text-white line-clamp-2 leading-tight">
+                                    {property.name}
+                                </h3>
+                                {property.location && (
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight mt-0.5 truncate flex items-center gap-0.5">
+                                        <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                        {property.location}
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -221,24 +240,22 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         {/* Rating */}
                         <div className="flex items-center gap-1.5">
                             {rating > 0 ? (
-                                <>
-                                    <div className="flex flex-col gap-0.5">
-                                        <StarRating rating={rating} size={12} />
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 leading-none">
-                                                {rating.toFixed(1)} · {ratingLabel}
-                                            </span>
-                                        </div>
-                                        {property.reviews > 0 && (
-                                            <span className="text-[10px] text-slate-400 leading-none landscape-compact:hidden">
-                                                {property.reviews.toLocaleString()} reviews
-                                            </span>
-                                        )}
+                                <div className="flex flex-col gap-0.5">
+                                    <StarRating rating={rating} size={12} />
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 leading-none">
+                                            {rating.toFixed(1)} · {ratingLabel}
+                                        </span>
                                     </div>
-                                </>
-                            ) : (
-                                <span className="text-[10px] text-slate-400 dark:text-slate-500">No rating yet</span>
-                            )}
+                                    {property.reviews > 0 && (
+                                        <span className="text-[10px] text-slate-400 leading-none landscape-compact:hidden">
+                                            {property.reviews.toLocaleString()} reviews
+                                        </span>
+                                    )}
+                                </div>
+                            ) : starRating > 0 ? (
+                                <StarRating rating={starRating * 2} size={12} />
+                            ) : null}
                         </div>
 
                         {/* Price */}

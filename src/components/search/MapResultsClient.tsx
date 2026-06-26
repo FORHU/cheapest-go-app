@@ -14,7 +14,7 @@ interface MapResultsClientProps {
 
 function StreamingBanner({ count, pricingMode }: { count: number; pricingMode?: boolean }) {
     return (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
             <div className="flex items-center gap-2 bg-white dark:bg-slate-800 shadow-lg rounded-full px-3.5 py-1.5 border border-slate-100 dark:border-slate-700 text-xs whitespace-nowrap">
                 <span className="w-3 h-3 rounded-full border-[1.5px] border-blue-500 border-t-transparent animate-spin shrink-0" />
                 <span className="text-slate-600 dark:text-slate-300">
@@ -67,6 +67,8 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
             if (!normalizedParams.checkout && normalizedParams.checkOut) { normalizedParams.checkout = normalizedParams.checkOut; delete normalizedParams.checkOut; }
             // cityName (edge function) vs destination (URL param)
             if (!normalizedParams.cityName && normalizedParams.destination) { normalizedParams.cityName = normalizedParams.destination; }
+            // countryCode vs country (landing cards pass "country")
+            if (!normalizedParams.countryCode && normalizedParams.country) { normalizedParams.countryCode = normalizedParams.country; }
             // guest_nationality (edge function) vs nationality (URL param)
             if (!normalizedParams.guest_nationality && normalizedParams.nationality) { normalizedParams.guest_nationality = normalizedParams.nationality; }
 
@@ -144,7 +146,8 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                     .map(h => {
                                         const p = priceMap.get((h as any).id ?? (h as any).hotelId);
                                         if (!p) return h;
-                                        return { ...h, price: p.price, currency: p.currency };
+                                        // priceLoading: false so the hotel survives the filter below
+                                        return { ...h, price: p.price, currency: p.currency, priceLoading: false };
                                     })
                                     .filter((h: any) => !h.priceLoading)
                                 );
@@ -157,7 +160,10 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
                                 setTotalCount(chunk.totalCount);
                             }
                             if (Array.isArray(chunk.allMappable) && chunk.allMappable.length > 0) {
-                                setAllMappable(chunk.allMappable);
+                                // Only use done.allMappable (TGX IDs) as a fallback when the prices
+                                // event didn't populate allMappable with catalog-ID hotels.
+                                // Overwriting here would cause card IDs (catalog) to mismatch pin IDs (TGX).
+                                setAllMappable(prev => prev.length > 0 ? prev : chunk.allMappable);
                             }
                             // Remove catalog hotels that TGX had no pricing for (unavailable dates).
                             setProperties(prev => {
@@ -191,9 +197,16 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
         return () => { cancelled = true; controller.abort(); };
     }, [searchKey]);
 
-    // Only full loading screen when we have no hotels at all yet
+    // Show a skeleton while the first hotels haven't arrived yet
     if (status === 'loading' || status === 'completing') {
-        return null;
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <div className="flex flex-col items-center gap-3 select-none">
+                    <span className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Searching hotels…</p>
+                </div>
+            </div>
+        );
     }
 
     if (status === 'done' && properties.length === 0) {

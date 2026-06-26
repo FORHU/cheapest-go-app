@@ -3,6 +3,27 @@ import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
 import { getSqlAdmin } from '@/lib/db/postgres';
 
+const COUNTRY_NAME_TO_ISO: Record<string, string> = {
+    'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
+    'japan': 'JP', 'thailand': 'TH', 'greece': 'GR', 'united states': 'US', 'usa': 'US',
+    'australia': 'AU', 'philippines': 'PH', 'south korea': 'KR', 'korea': 'KR',
+    'vietnam': 'VN', 'cambodia': 'KH', 'singapore': 'SG', 'malaysia': 'MY',
+    'india': 'IN', 'china': 'CN', 'hong kong': 'HK', 'taiwan': 'TW',
+    'peru': 'PE', 'mexico': 'MX', 'brazil': 'BR', 'argentina': 'AR',
+    'egypt': 'EG', 'tanzania': 'TZ', 'south africa': 'ZA', 'kenya': 'KE',
+    'iceland': 'IS', 'norway': 'NO', 'sweden': 'SE', 'denmark': 'DK',
+    'portugal': 'PT', 'netherlands': 'NL', 'switzerland': 'CH', 'austria': 'AT',
+    'united kingdom': 'GB', 'uk': 'GB', 'maldives': 'MV', 'sri lanka': 'LK',
+    'nepal': 'NP', 'uae': 'AE', 'united arab emirates': 'AE', 'turkey': 'TR',
+    'morocco': 'MA', 'jordan': 'JO', 'new zealand': 'NZ', 'canada': 'CA',
+};
+
+function resolveIsoCode(raw: string): string | null {
+    if (!raw) return null;
+    if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+    return COUNTRY_NAME_TO_ISO[raw.toLowerCase()] ?? null;
+}
+
 async function recordHotelSearchDemand(cityName: string, countryCode: string) {
     if (!cityName) return;
     try {
@@ -33,15 +54,24 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
 
     try {
         const sql = getSqlAdmin();
-        const normalized = cityName.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
+        // Strip country suffix (e.g. "Tokyo, Japan" → "Tokyo") so ILIKE matches DB city column
+        const cityOnly = cityName.split(',')[0].trim();
+        const normalized = cityOnly.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
         const pattern = `%${normalized}%`;
 
-        const rows = countryCode
+        // Resolve full country name ("Indonesia") or ISO-2 ("ID") to a 2-letter code for DB filtering
+        const isoCode = resolveIsoCode(countryCode);
+
+        // Require at least one image — hotels without images are either unseeded or wrong-location
+        // false positives (e.g. the village of Bali in Crete showing up in a Bali, Indonesia search).
+        const rows = isoCode
             ? await sql`
                 SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
                        description, amenities, review_rating, review_count
                 FROM hotel_content
-                WHERE city ILIKE ${pattern} AND LOWER(country) = LOWER(${countryCode})
+                WHERE city ILIKE ${pattern}
+                  AND LOWER(country) = LOWER(${isoCode})
+                  AND images IS NOT NULL AND array_length(images, 1) > 0
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
               `
@@ -50,6 +80,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                        description, amenities, review_rating, review_count
                 FROM hotel_content
                 WHERE city ILIKE ${pattern}
+                  AND images IS NOT NULL AND array_length(images, 1) > 0
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
               `;
@@ -64,11 +95,14 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
             image:        (r.images as string[] | null)?.[0] ?? '',
             starRating:   r.star_rating ?? 0,
             reviewRating: Number(r.review_rating ?? 0),
+            rating:       Number(r.review_rating ?? 0),
             reviewCount:  Number(r.review_count ?? 0),
+            reviews:      Number(r.review_count ?? 0),
             lat:          Number(r.lat ?? 0),
             lng:          Number(r.lng ?? 0),
             coordinates:  { lat: Number(r.lat ?? 0), lng: Number(r.lng ?? 0) },
             address:      r.address ?? '',
+            location:     r.address ?? '',
             city:         r.city ?? cityName,
             country:      r.country ?? '',
             description:  r.description ?? '',
@@ -117,7 +151,33 @@ function ndjsonLine(obj: unknown): Uint8Array {
  */
 export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
-    const city = body.cityName ?? body.destination ?? '(unknown)';
+
+    // Normalize city name: strip country suffix (e.g. "Tokyo, Japan" → "Tokyo")
+    // Landing cards pass "Tokyo, Japan" but DB and TGX both expect just the city name.
+    const rawCity: string = body.cityName ?? body.destination ?? '';
+    const normalizedCity = rawCity.split(',')[0].trim();
+    if (normalizedCity && normalizedCity !== rawCity) {
+        body.cityName = normalizedCity;
+        if (body.destination) body.destination = normalizedCity;
+    }
+
+    const city = rawCity || '(unknown)';
+
+    // Default dates when not provided (e.g. landing card clicks).
+    // Use next Friday → Sunday so results match the prewarm cache and OTV has inventory.
+    // Same-day / next-day defaults have near-zero OTV coverage.
+    if (!body.checkin && !body.checkIn) {
+        const now = new Date();
+        const dayOfWeek = now.getDay(); // 0=Sun … 6=Sat
+        const daysUntilFriday = ((5 - dayOfWeek + 7) % 7) || 7; // at least 1 day ahead
+        const checkin  = new Date(now);
+        checkin.setDate(now.getDate() + daysUntilFriday);
+        const checkout = new Date(checkin);
+        checkout.setDate(checkin.getDate() + 2); // Fri → Sun
+        const fmt = (d: Date) => d.toISOString().slice(0, 10);
+        body.checkin  = fmt(checkin);
+        body.checkout = fmt(checkout);
+    }
 
     const stream = new ReadableStream({
         async start(controller) {
@@ -225,7 +285,14 @@ export async function POST(req: NextRequest) {
                 // ── Phase 2: TGX availability + pricing (18-22s) ─────────────
                 const p2Start = Date.now();
                 console.log(`[stream] phase2 TGX starting for "${city}" at ${elapsed()}`);
-                const tgxResult = await runTgxSearch(body) as any;
+                let tgxResult: any;
+                try {
+                    tgxResult = await runTgxSearch(body);
+                } catch (tgxErr: any) {
+                    const isTimeout = tgxErr?.name === 'TimeoutError' || tgxErr?.message?.includes('timeout') || tgxErr?.message?.includes('aborted');
+                    console.warn(`[stream] phase2 TGX ${isTimeout ? 'timed out' : 'failed'} for "${city}": ${tgxErr.message}`);
+                    tgxResult = { data: [], allMappable: [] };
+                }
                 const tgxHotels: any[] = Array.isArray(tgxResult.data) ? tgxResult.data : [];
                 const tgxMappable: any[] = tgxResult.allMappable ?? [];
                 console.log(`[stream] phase2 TGX done: ${tgxHotels.length} hotels in ${Date.now() - p2Start}ms (total ${elapsed()})`);
@@ -267,14 +334,17 @@ export async function POST(req: NextRequest) {
                 // ── END two-phase mode ────────────────────────────────────────
 
             } catch (e: any) {
-                console.error(`[stream] fatal error for "${city}" at ${elapsed()}:`, e.message);
-                // If catalog hotels were already sent (priceLoading: true), send a done
-                // with totalCount:0 so the client's done handler removes them instead of
-                // leaving price-skeleton cards stuck on screen forever.
+                const isTimeout = e?.name === 'TimeoutError' || e?.message?.includes('timeout') || e?.message?.includes('aborted');
+                console.error(`[stream] ${isTimeout ? 'timeout' : 'fatal error'} for "${city}" at ${elapsed()}:`, e.message);
                 if (catalogHotels.length > 0) {
+                    // Catalog already sent — just close cleanly; don't flash an error over real results
+                    send({ type: 'done', totalCount: catalogHotels.length, allMappable: catalogHotels.filter((h: any) => h.lat && h.lng) });
+                } else if (!isTimeout) {
+                    // Only surface non-timeout errors to the client
+                    send({ type: 'error', message: e.message });
+                } else {
                     send({ type: 'done', totalCount: 0, allMappable: [] });
                 }
-                send({ type: 'error', message: e.message });
             } finally {
                 controller.close();
             }

@@ -32,6 +32,16 @@ services:
         condition: service_healthy
     restart: always
 
+  cron:
+    build:
+      context: ./docker/cron
+    restart: unless-stopped
+    environment:
+      APP_URL: http://app:3000
+      CRON_SECRET: ${CRON_SECRET}
+    depends_on:
+      - app
+
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: unless-stopped

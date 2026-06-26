@@ -50,6 +50,8 @@ export interface Property {
     boardTypes?: string[];
     /** City name from the search query — used for flight bundle upsell destination */
     city?: string;
+    /** Hotel category star rating (1–5, from supplier static content) */
+    starRating?: number;
     /** Source provider */
     provider?: 'travelgatex' | 'duffel';
     /** True while TGX pricing is still loading — card shows skeleton instead of ₩0 */

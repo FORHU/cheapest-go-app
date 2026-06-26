@@ -14,17 +14,15 @@ function checkAuth(req: NextRequest): boolean {
     return req.headers.get('authorization') === `Bearer ${secret}`;
 }
 
-/** Next N upcoming Friday check-in dates (most popular hotel check-in day). */
-function upcomingFridays(count: number): string[] {
+/** Next N days starting tomorrow — covers weekday and weekend travel. */
+function upcomingCheckIns(count: number): string[] {
     const dates: string[] = [];
     const d = new Date();
     d.setHours(0, 0, 0, 0);
-    // Advance to next Friday (5 = Friday)
-    const daysUntilFri = (5 - d.getDay() + 7) % 7 || 7;
-    d.setDate(d.getDate() + daysUntilFri);
+    d.setDate(d.getDate() + 1); // start tomorrow
     for (let i = 0; i < count; i++) {
         dates.push(d.toISOString().slice(0, 10));
-        d.setDate(d.getDate() + 7);
+        d.setDate(d.getDate() + 1);
     }
     return dates;
 }
@@ -63,9 +61,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: true, warmed: 0, message: 'No demand data yet' });
         }
 
-        console.log(`[warm-hotel-cache] Warming ${topCities.length} cities for next 2 Fridays`);
+        console.log(`[warm-hotel-cache] Warming ${topCities.length} cities for next 7 days`);
 
-        const checkIns = upcomingFridays(2); // next 2 Fridays
+        const checkIns = upcomingCheckIns(7); // next 7 days
 
         // Build all (city, checkin, checkout) combinations
         type WarmJob = { cityKey: string; countryCode: string; checkin: string; checkout: string };
@@ -97,14 +95,20 @@ export async function POST(req: NextRequest) {
             !cachedSet.has(`city:${j.cityKey}|${j.checkin}|${j.checkout}|2|0|KR`)
         );
 
-        console.log(`[warm-hotel-cache] ${cachedSet.size} already cached, ${toWarm.length} need warming`);
+        // Cap per-run to stay within maxDuration=300s (16 jobs × ~18s/batch-of-4 ≈ 72s).
+        // On cold start with 140 jobs, subsequent 4-hourly runs cover the rest.
+        const MAX_PER_RUN = 16;
+        const toWarmCapped = toWarm.slice(0, MAX_PER_RUN);
+        const deferred = toWarm.length - toWarmCapped.length;
 
-        if (toWarm.length === 0) {
+        console.log(`[warm-hotel-cache] ${cachedSet.size} cached, ${toWarm.length} need warming (this run: ${toWarmCapped.length}${deferred > 0 ? `, deferred: ${deferred}` : ''})`);
+
+        if (toWarmCapped.length === 0) {
             return NextResponse.json({ success: true, warmed: 0, skipped: cachedSet.size, message: 'All already cached' });
         }
 
         // ── Warm in parallel batches of 4 (TGX rate-limit safe) ──────────────
-        await runInBatches(toWarm, 4, async (job) => {
+        await runInBatches(toWarmCapped, 4, async (job) => {
             const label = `${job.cityKey} ${job.checkin}`;
             try {
                 const result = await runTgxSearch({
@@ -151,7 +155,8 @@ export async function POST(req: NextRequest) {
             warmed,
             empty,
             errors,
-            skipped: cachedSet.size,
+            skipped:  cachedSet.size,
+            deferred,
             results,
         });
 
