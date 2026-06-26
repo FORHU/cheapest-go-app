@@ -142,6 +142,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                 freeCancellation={lowestRate?.refundable}
                                 roomImage={roomImage}
                                 roomImages={groupedRoom.roomPhotos}
+                                galleryImages={hotelImages}
                                 amenities={groupedRoom.amenities}
                                 photoCount={groupedRoom.roomPhotos?.length}
                                 rateOptions={hasMultipleRates ? groupedRoom.rateOptions : undefined}
