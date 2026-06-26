@@ -102,7 +102,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
 
     // Store
     const activeDropdown = useActiveDropdown();
-    const { adults, children, rooms, occupancies } = useTravelers();
+    const { adults, children, occupancies } = useTravelers();
     const { setTravelers, setActiveDropdown } = useSearchStore();
 
     // Local state for children ages (default to age 10 for new children)
@@ -121,32 +121,13 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
         }
     }, [children, childrenAges.length]);
 
-    // Update store when ages change
+    // Update store when ages change — always 1 room
     useEffect(() => {
-        const newOccupancies: RoomOccupancy[] = [];
-
-        // Distribute adults and children across rooms
-        const adultsPerRoom = Math.ceil(adults / rooms);
-        const childrenPerRoom = Math.ceil(childrenAges.length / rooms);
-
-        let remainingAdults = adults;
-        const remainingChildren = [...childrenAges];
-
-        for (let i = 0; i < rooms; i++) {
-            const roomAdults = Math.min(adultsPerRoom, remainingAdults);
-            remainingAdults -= roomAdults;
-
-            const roomChildrenCount = Math.min(childrenPerRoom, remainingChildren.length);
-            const roomChildrenAges = remainingChildren.splice(0, roomChildrenCount);
-
-            newOccupancies.push({
-                adults: roomAdults || 1,
-                childrenAges: roomChildrenAges
-            });
-        }
-
-        setTravelers({ occupancies: newOccupancies });
-    }, [adults, rooms, childrenAges, setTravelers]);
+        setTravelers({
+            rooms: 1,
+            occupancies: [{ adults, childrenAges }],
+        });
+    }, [adults, childrenAges, setTravelers]);
 
     const isOpen = forceOpen || activeDropdown === 'travelers';
     const onClose = () => {
@@ -191,9 +172,9 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
         if (children > 0) {
             parts.push(`${children} child${children !== 1 ? 'ren' : ''}`);
         }
-        parts.push(`${rooms} room${rooms !== 1 ? 's' : ''}`);
+        parts.push('1 room');
         return parts.join(', ');
-    }, [adults, children, rooms]);
+    }, [adults, children]);
 
     return (
         <AnimatePresence>
@@ -264,13 +245,13 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                                         ))}
                                     </div>
                                 )}
-                            <Counter
-                                label="Rooms"
-                                value={rooms}
-                                min={1}
-                                max={8}
-                                onChange={(val) => setTravelers({ rooms: val })}
-                            />
+                            <div className="flex justify-between items-center py-2">
+                                <div className="flex-1">
+                                    <span className="text-[10px] font-normal text-slate-900 dark:text-white block">Rooms</span>
+                                    <span className="text-[8.5px] font-normal text-slate-400">1 room per booking. Book separately for more.</span>
+                                </div>
+                                <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400 pr-1">1</span>
+                            </div>
                         </div>
 
                         {/* Summary */}

@@ -258,12 +258,29 @@ export async function confirmAndSaveTgxBooking(
     })),
   } : null);
 
+  // Look up stored coordinates from hotel_content — avoids client-side geocoding on /trips
+  let property_lat = 0;
+  let property_lng = 0;
+  if (hotelCode) {
+    try {
+      const sql = getSqlAdmin();
+      const rows = await sql`
+        SELECT lat, lng FROM hotel_content
+        WHERE hotel_id = ${hotelCode} AND lat != 0 AND lng != 0
+        LIMIT 1
+      `;
+      if (rows[0]) { property_lat = rows[0].lat; property_lng = rows[0].lng; }
+    } catch { /* non-fatal — map will fall back to geocoding */ }
+  }
+
   // Build outside try so the catch block can reference it for emergency recovery
   const bookingPayload = {
     booking_id: bookingId,
     user_id: user.id,
     property_name: params.propertyName,
     property_image: params.propertyImage ?? null,
+    property_lat,
+    property_lng,
     room_name: params.roomName,
     check_in: params.checkIn,
     check_out: params.checkOut,
