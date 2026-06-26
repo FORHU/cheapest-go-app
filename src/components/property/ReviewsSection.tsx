@@ -141,9 +141,9 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
                 </div>
 
                 {/* Right: Score badge */}
-                {review.averageScore > 0 && (
-                    <div className={`${getRatingColor(review.averageScore)} text-white w-6 h-6 lg:w-9 lg:h-9 rounded-full flex items-center justify-center font-bold text-[10px] lg:text-sm flex-shrink-0`}>
-                        {review.averageScore.toFixed(0)}
+                {Number(review.averageScore) > 0 && (
+                    <div className={`${getRatingColor(Number(review.averageScore))} text-white w-6 h-6 lg:w-9 lg:h-9 rounded-full flex items-center justify-center font-bold text-[10px] lg:text-sm shrink-0`}>
+                        {Number(review.averageScore).toFixed(0)}
                     </div>
                 )}
             </div>
