@@ -36,8 +36,6 @@ import {
     SpecialRequestsSection,
     BookingSummary,
     SubmitBookingButton,
-    VoucherInput,
-    AvailablePromos,
 } from '@/components/checkout';
 import dynamic from 'next/dynamic';
 
@@ -739,19 +737,6 @@ export function CheckoutContent() {
                                         onChange={setSpecialRequests}
                                     />
 
-                                    {/* Voucher/Promo Section */}
-                                    <VoucherInput
-                                        bookingPrice={totalPrice}
-                                        currency={selectedCurrency}
-                                        onVoucherApplied={reprebookWithVoucher}
-                                        onVoucherRemoved={reprebookWithoutVoucher}
-                                    />
-
-                                    <AvailablePromos
-                                        bookingPrice={totalPrice}
-                                        currency={selectedCurrency}
-                                        onVoucherApplied={reprebookWithVoucher}
-                                    />
 
                                     <div className="hidden lg:block">
                                         <SubmitBookingButton
