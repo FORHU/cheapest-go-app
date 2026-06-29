@@ -236,6 +236,7 @@ export async function POST(req: Request) {
                         taxes: (optionQuote.price?.gross || 0) - (optionQuote.price?.net || 0),
                         total: optionQuote.price?.gross || optionQuote.price?.net || 0,
                     },
+                    surcharges: optionQuote.surcharges || [],
                     currency: optionQuote.price?.currency || currency,
                     cancellationPolicies: normalizeTgxCancelPolicy(optionQuote.cancelPolicy),
                     boardCode: optionQuote.boardCode || '',
