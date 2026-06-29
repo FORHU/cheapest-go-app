@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { User, Bed, Square, X, Check } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { User, Bed, Square, X, Check, ChevronLeft, ChevronRight, Images } from 'lucide-react';
+import Image from 'next/image';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 
@@ -61,35 +63,115 @@ export interface RoomCardProps {
     amenities?: (string | { name: string })[];
     /** Number of photos available */
     photoCount?: number;
+    /** All room photo URLs for lightbox */
+    roomImages?: string[];
+    /** Hotel-level photos — used as lightbox fallback when no room-specific images */
+    galleryImages?: string[];
     /** Handler for reserve/book action - receives offerId */
     onReserve: (offerId?: string) => void;
-    /** Handler for viewing room details */
-    onViewDetails: () => void;
+    /** Handler for viewing room details (optional — hidden when absent) */
+    onViewDetails?: () => void;
     /** Multiple rate options for this room (optional) */
     rateOptions?: RateOption[];
 }
 
-/**
- * RoomCard component
- * Displays room information with pricing and booking actions
- * Used in property detail pages and room selection flows
- *
- * @example
- * <RoomCard
- *   title="Deluxe King Room"
- *   price={5200}
- *   currency="PHP"
- *   maxOccupancy={2}
- *   bedType="King Bed"
- *   roomSize="32 m²"
- *   freeCancellation={true}
- *   roomImage="/room.jpg"
- *   amenities={['Free WiFi', 'Air Conditioning', 'Minibar']}
- *   photoCount={5}
- *   onReserve={() => handleReserve()}
- *   onViewDetails={() => handleViewDetails()}
- * />
- */
+function RoomLightbox({ images, startIndex, roomName, onClose }: {
+    images: string[];
+    startIndex: number;
+    roomName: string;
+    onClose: () => void;
+}) {
+    const [idx, setIdx] = useState(startIndex);
+    const total = images.length;
+
+    const prev = useCallback((e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        setIdx(i => (i === 0 ? total - 1 : i - 1));
+    }, [total]);
+
+    const next = useCallback((e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        setIdx(i => (i === total - 1 ? 0 : i + 1));
+    }, [total]);
+
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+            if (e.key === 'ArrowLeft') prev();
+            if (e.key === 'ArrowRight') next();
+        };
+        document.addEventListener('keydown', onKey);
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.body.style.overflow = '';
+        };
+    }, [onClose, prev, next]);
+
+    return createPortal(
+        <div
+            className="fixed inset-0 z-200 bg-black/95 flex flex-col items-center justify-center"
+            onClick={onClose}
+        >
+            {/* Header */}
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 bg-linear-to-b from-black/60 to-transparent z-10" onClick={e => e.stopPropagation()}>
+                <p className="text-white font-semibold text-sm truncate max-w-[70%]">{roomName}</p>
+                <div className="flex items-center gap-3">
+                    <span className="text-white/70 text-sm">{idx + 1} / {total}</span>
+                    <button onClick={onClose} className="text-white/80 hover:text-white transition-colors p-1">
+                        <X size={22} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Main image */}
+            <div className="relative w-full h-full flex items-center justify-center px-14" onClick={e => e.stopPropagation()}>
+                <Image
+                    src={images[idx]}
+                    alt={`${roomName} photo ${idx + 1}`}
+                    fill
+                    className="object-contain"
+                    sizes="100vw"
+                    unoptimized
+                />
+            </div>
+
+            {/* Prev / Next */}
+            {total > 1 && (
+                <>
+                    <button
+                        onClick={prev}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full p-2 transition-colors z-10"
+                    >
+                        <ChevronLeft size={22} />
+                    </button>
+                    <button
+                        onClick={next}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full p-2 transition-colors z-10"
+                    >
+                        <ChevronRight size={22} />
+                    </button>
+                </>
+            )}
+
+            {/* Thumbnail strip */}
+            {total > 1 && (
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 px-4 z-10 overflow-x-auto" onClick={e => e.stopPropagation()}>
+                    {images.map((src, i) => (
+                        <button
+                            key={i}
+                            onClick={() => setIdx(i)}
+                            className={`shrink-0 w-12 h-10 rounded-md overflow-hidden border-2 transition-all ${i === idx ? 'border-white' : 'border-transparent opacity-60 hover:opacity-90'}`}
+                        >
+                            <Image src={src} alt="" width={48} height={40} className="w-full h-full object-cover" unoptimized />
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>,
+        document.body
+    );
+}
 export const RoomCard: React.FC<RoomCardProps> = ({
     title,
     price,
@@ -101,13 +183,39 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     roomImage,
     amenities,
     photoCount,
+    roomImages,
+    galleryImages,
     onReserve,
-    onViewDetails,
+    onViewDetails = undefined,
     rateOptions = []
 }) => {
     const [selectedRateIdx, setSelectedRateIdx] = useState(0);
     const [mounted, setMounted] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const [carouselIndex, setCarouselIndex] = useState(0);
     useEffect(() => setMounted(true), []);
+
+    // Room-specific photos take priority; hotel gallery is lightbox-only fallback
+    const roomPhotos = roomImages?.filter(Boolean) ?? [];
+    const hasRoomPhotos = roomPhotos.length > 0;
+    const lightboxImages = hasRoomPhotos ? roomPhotos : (galleryImages?.filter(Boolean) ?? (roomImage ? [roomImage] : []));
+    const displayImage = hasRoomPhotos ? (roomPhotos[carouselIndex] ?? roomImage) : roomImage;
+    const hasMultipleImages = roomPhotos.length > 1;
+
+    const carouselPrev = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCarouselIndex(i => (i === 0 ? roomPhotos.length - 1 : i - 1));
+    }, [roomPhotos.length]);
+
+    const carouselNext = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCarouselIndex(i => (i === roomPhotos.length - 1 ? 0 : i + 1));
+    }, [roomPhotos.length]);
+
+    const openLightbox = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (lightboxImages.length > 0) setLightboxIndex(carouselIndex);
+    };
     const targetCurrency = useUserCurrency();
     const sourceCurrency = currency || 'KRW';
 
@@ -125,30 +233,78 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     const displayOfferId = selectedRate?.offerId;
 
     return (
+        <>
+        {lightboxIndex !== null && lightboxImages.length > 0 && (
+            <RoomLightbox
+                images={lightboxImages}
+                startIndex={lightboxIndex}
+                roomName={title}
+                onClose={() => setLightboxIndex(null)}
+            />
+        )}
         <div className="flex flex-row bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all group">
-            {/* Left: Image (Horizontal layout on mobile, like search results) */}
-            <div
-                className="w-[110px] lg:w-[240px] relative h-auto cursor-pointer p-2 lg:p-3 pr-0 lg:pr-0 flex-shrink-0"
-                onClick={onViewDetails}
-            >
-                {roomImage ? (
-                    <div
-                        className="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-105 rounded-xl overflow-hidden shadow-sm"
-                        style={{ backgroundImage: `url(${roomImage})` }}
-                    />
-                ) : (
-                    <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-600 rounded-xl">
-                        <Bed size={32} />
-                    </div>
-                )}
-                {/* Image Counter Badge */}
-                {photoCount && photoCount > 1 && (
-                    <div className="hidden lg:flex absolute bottom-3 lg:bottom-5 right-1 lg:right-3 bg-black/60 text-white text-[9px] lg:text-xs px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-md items-center gap-1 backdrop-blur-sm z-10">
-                        <span>1/{photoCount}</span>
-                        <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-white rounded-full ml-1 lg:ml-1" />
-                    </div>
-                )}
+            {/* Left: Image carousel */}
+            <div className="w-[110px] lg:w-[240px] relative h-auto p-2 lg:p-3 pr-0 lg:pr-0 shrink-0">
+                {/* Image */}
+                <div
+                    className={`w-full h-full rounded-xl overflow-hidden shadow-sm relative ${lightboxImages.length > 0 ? 'cursor-zoom-in' : ''}`}
+                    onClick={lightboxImages.length > 0 ? openLightbox : onViewDetails}
+                >
+                    {displayImage ? (
+                        <div
+                            className="w-full h-full bg-cover bg-center transition-all duration-300 group-hover:scale-105 rounded-xl"
+                            style={{ backgroundImage: `url(${displayImage})` }}
+                        />
+                    ) : (
+                        <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-600">
+                            <Bed size={32} />
+                        </div>
+                    )}
 
+                    {/* Hover hint */}
+                    {lightboxImages.length > 0 && (
+                        <div className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-xl pointer-events-none">
+                            <span className="text-white text-[9px] font-medium bg-black/50 px-1.5 py-0.5 rounded backdrop-blur-sm">
+                                {hasRoomPhotos ? 'View room photos' : 'View hotel photos'}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Carousel prev/next — only when room-specific photos */}
+                {hasMultipleImages && (
+                    <>
+                        <button
+                            onClick={carouselPrev}
+                            className="absolute left-3 lg:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full p-0.5 lg:p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        >
+                            <ChevronLeft size={14} />
+                        </button>
+                        <button
+                            onClick={carouselNext}
+                            className="absolute right-1 lg:right-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white rounded-full p-0.5 lg:p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        >
+                            <ChevronRight size={14} />
+                        </button>
+
+                        {/* Dots */}
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                            {roomPhotos.slice(0, 5).map((_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={e => { e.stopPropagation(); setCarouselIndex(i); }}
+                                    className={`rounded-full transition-all ${i === carouselIndex ? 'bg-white w-3 h-1.5' : 'bg-white/60 w-1.5 h-1.5'}`}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Count badge */}
+                        <div className="absolute top-3 right-1 lg:right-3 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-md flex items-center gap-1 backdrop-blur-sm z-10">
+                            <Images size={9} />
+                            <span>{lightboxImages.length}</span>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Middle: Info & Rate Options */}
@@ -233,12 +389,6 @@ export const RoomCard: React.FC<RoomCardProps> = ({
 
                 <div className="flex items-center justify-between mt-2 lg:mt-3 gap-2">
                     <div className="flex flex-col min-w-0">
-                        <button
-                            onClick={onViewDetails}
-                            className="text-[10px] lg:text-xs text-blue-600 font-bold hover:underline self-start mb-0.5 lg:mb-0"
-                        >
-                            Room details
-                        </button>
                         {/* Hide price on mobile if multiple rates since it's already shown on the radio button */}
                         {!hasMultipleRates && (
                             <div className="lg:hidden mt-0.5">
@@ -286,6 +436,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                 </div>
             </div>
         </div>
+        </>
     );
 };
 

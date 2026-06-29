@@ -207,6 +207,7 @@ const PHONE_CODES = [
 function BookingContent() {
     const [bookingStepIdx, setBookingStepIdx] = React.useState(0);
     const bookingStepTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
+    const [showSuccess, setShowSuccess] = React.useState(false);
 
     const {
         offer,
@@ -318,9 +319,17 @@ function BookingContent() {
     useEffect(() => {
         if (step === 'submitting') {
             setBookingStepIdx(0);
+            setShowSuccess(false);
             bookingStepTimer.current = setInterval(() => {
                 setBookingStepIdx(i => Math.min(i + 1, FLIGHT_BOOKING_STEPS.length - 1));
             }, 4000);
+        } else if (step === 'success') {
+            // API resolved — fast-forward the animation to the final step
+            if (bookingStepTimer.current) {
+                clearInterval(bookingStepTimer.current);
+                bookingStepTimer.current = null;
+            }
+            setBookingStepIdx(FLIGHT_BOOKING_STEPS.length - 1);
         } else {
             if (bookingStepTimer.current) {
                 clearInterval(bookingStepTimer.current);
@@ -329,6 +338,14 @@ function BookingContent() {
         }
         return () => { if (bookingStepTimer.current) clearInterval(bookingStepTimer.current); };
     }, [step]);
+
+    // Once animation reaches the last step AND booking is confirmed, reveal success after a brief pause
+    useEffect(() => {
+        if (step === 'success' && bookingStepIdx === FLIGHT_BOOKING_STEPS.length - 1) {
+            const t = setTimeout(() => setShowSuccess(true), 800);
+            return () => clearTimeout(t);
+        }
+    }, [step, bookingStepIdx]);
     const targetCurrency = useUserCurrency();
     const searchParams = useSearchParams();
     const isBundledWithHotel = searchParams.has('bundleHotelId');
@@ -341,16 +358,16 @@ function BookingContent() {
     }, []);
 
     useEffect(() => {
-        if (step === 'success' && typeof window !== 'undefined') {
+        if (showSuccess && typeof window !== 'undefined') {
             sessionStorage.setItem('hasAlreadyBookedFlight', 'true');
         }
-    }, [step]);
+    }, [showSuccess]);
 
     // ─── Loading ─────────────────────────────────────────────────────
 
     if (!offer) {
         return (
-            <div className="min-h-screen bg-linear-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center">
                 <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
             </div>
         );
@@ -359,7 +376,7 @@ function BookingContent() {
     // ─── Post-Payment PNR Loading ─────────────────────────────────────
     // Shown after Stripe payment succeeds while we poll for the PNR from the webhook.
     // We stay in 'submitting' until the PNR arrives, then flip to 'success'.
-    if (step === 'submitting' && clientSecret) {
+    if ((step === 'submitting' || (step === 'success' && !showSuccess)) && clientSecret) {
         return (
             <main className="min-h-screen flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
@@ -447,7 +464,7 @@ function BookingContent() {
 
     // ─── Success State ───────────────────────────────────────────────
 
-    if (step === 'success' && bookingResult) {
+    if (showSuccess && bookingResult) {
 
         return (
             <main className="min-h-screen pt-6 lg:pt-24 pb-20 px-3 lg:px-4 flex items-center justify-center relative overflow-hidden bg-linear-to-br from-emerald-50/60 via-white/40 to-indigo-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-emerald-950/60">
@@ -724,7 +741,7 @@ function BookingContent() {
     // ─── Booking Form ────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen bg-linear-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 bg-grid-alabaster dark:bg-grid-obsidian pt-3 lg:pt-6 pb-20 px-3 lg:px-6">
+        <div className="min-h-screen pt-3 lg:pt-6 pb-20 px-3 lg:px-6">
             <div className="max-w-3xl mx-auto">
                 {/* Header */}
                 <div className="mb-3 lg:mb-6">

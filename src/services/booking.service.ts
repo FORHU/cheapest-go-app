@@ -61,6 +61,12 @@ export interface BookingParams {
 /**
  * Prebook response from LiteAPI
  */
+export interface TgxSurcharge {
+  chargeType: string;
+  mandatory: boolean;
+  price: { net: number; gross: number; currency: string };
+}
+
 export interface PrebookResponse {
   prebookId: string;
   price?: {
@@ -68,6 +74,7 @@ export interface PrebookResponse {
     taxes?: number;
     total: number;
   };
+  surcharges?: TgxSurcharge[];
   currency?: string;
   status?: string;
   /** Cancellation policies from prebook response */
@@ -122,6 +129,8 @@ export interface BookingRecord {
   user_id: string;
   property_name: string;
   property_image?: string;
+  property_lat?: number;
+  property_lng?: number;
   room_name: string;
   check_in: string;
   check_out: string;

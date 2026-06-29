@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Building2 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -119,7 +119,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
-                            <MapPin className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+                            <Building2 className="w-4 h-4 text-slate-300 dark:text-slate-600" />
                         </div>
                     )}
                     {index !== undefined && (
@@ -203,7 +203,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
-                            <MapPin className="w-6 h-6 text-slate-300 dark:text-slate-600" />
+                            <Building2 className="w-6 h-6 text-slate-300 dark:text-slate-600" />
                         </div>
                     )}
                     {property.refundableTag === 'RFN' && (

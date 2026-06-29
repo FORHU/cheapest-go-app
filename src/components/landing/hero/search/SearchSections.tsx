@@ -98,7 +98,7 @@ export const CheckOutSection: React.FC = () => {
 
 export const TravelersSection: React.FC = () => {
     const { setActiveDropdown } = useSearchStore();
-    const { adults, children, rooms } = useTravelers();
+    const { adults, children } = useTravelers();
     const activeDropdown = useActiveDropdown();
 
     const totalTravelers = adults + children;
@@ -107,7 +107,6 @@ export const TravelersSection: React.FC = () => {
     const formatTravelers = () => {
         const parts = [];
         parts.push(`${totalTravelers} ${totalTravelers === 1 ? 'Guest' : 'Guests'}`);
-        if (rooms > 1) parts.push(`${rooms} Rooms`);
         return parts.join(', ');
     };
 

@@ -8,6 +8,12 @@ import type { AppliedVoucher } from '@/types/voucher';
 import { getCurrencySymbol } from '@/lib/currency';
 import { useCheckoutStore } from '@/stores/checkoutStore';
 
+interface Surcharge {
+    chargeType: string;
+    mandatory: boolean;
+    amount: number;
+}
+
 interface BookingSummaryProps {
     propertyName: string;
     propertyImage?: string;
@@ -21,6 +27,7 @@ interface BookingSummaryProps {
     adults: number;
     children: number;
     taxes: number;
+    surcharges?: Surcharge[];
     totalPrice: number;
     checkIn?: Date | null;
     checkOut?: Date | null;
@@ -49,6 +56,13 @@ function getRatingLabel(score: number): string {
     return 'Pleasant';
 }
 
+function formatChargeType(chargeType: string): string {
+    return chargeType
+        .replace(/_/g, ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export function BookingSummary({
     propertyName,
     propertyImage,
@@ -62,6 +76,7 @@ export function BookingSummary({
     adults,
     children,
     taxes,
+    surcharges,
     totalPrice,
     checkIn,
     checkOut,
@@ -264,16 +279,31 @@ export function BookingSummary({
                                 )}
                             </span>
                         </div>
-                        <div className="flex justify-between text-[11px] lg:text-sm">
-                            <span className="text-slate-600 dark:text-slate-400">Included taxes and fees</span>
-                            <span className="font-medium text-slate-900 dark:text-white">
-                                {isLoading ? (
-                                    <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
-                                ) : (
-                                    <>{symbol}{taxes.toLocaleString()}</>
-                                )}
-                            </span>
-                        </div>
+                        {surcharges && surcharges.length > 0 ? (
+                            surcharges.map((s, i) => (
+                                <div key={i} className="flex justify-between text-[11px] lg:text-sm">
+                                    <span className="text-slate-600 dark:text-slate-400">{formatChargeType(s.chargeType)}</span>
+                                    <span className="font-medium text-slate-900 dark:text-white">
+                                        {isLoading ? (
+                                            <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
+                                        ) : (
+                                            <>{symbol}{s.amount.toLocaleString()}</>
+                                        )}
+                                    </span>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="flex justify-between text-[11px] lg:text-sm">
+                                <span className="text-slate-600 dark:text-slate-400">Taxes and fees</span>
+                                <span className="font-medium text-slate-900 dark:text-white">
+                                    {isLoading ? (
+                                        <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
+                                    ) : (
+                                        <>{symbol}{taxes.toLocaleString()}</>
+                                    )}
+                                </span>
+                            </div>
+                        )}
 
                         {/* Voucher discount line (server-calculated amount) */}
                         {appliedVoucher && (
