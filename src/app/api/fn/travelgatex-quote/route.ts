@@ -21,6 +21,7 @@ query TgxQuote($criteria: HotelCriteriaQuoteInput!, $settings: HotelSettingsInpu
         paymentType
         status
         price { currency net gross }
+        surcharges { chargeType mandatory price { net gross currency } }
         rooms { code description occupancyRefId }
         cancelPolicy {
           refundable
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
                 gross:    quote.price?.gross ?? 0,
                 currency: quote.price?.currency ?? 'USD',
             },
+            surcharges:   quote.surcharges ?? [],
             rooms:        quote.rooms ?? [],
             cancelPolicy: quote.cancelPolicy,
         };

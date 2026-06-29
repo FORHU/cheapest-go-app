@@ -218,7 +218,7 @@ export function CheckoutContent() {
     });
 
     // Pricing calculation hook
-    const { displayProperty, displayRoom, totalNights, roomPrice, taxes, totalPrice } = usePricingCalculation({
+    const { displayProperty, displayRoom, totalNights, roomPrice, taxes, totalPrice, surcharges } = usePricingCalculation({
         priceData,
     });
 
@@ -791,6 +791,7 @@ export function CheckoutContent() {
                                 adults={adults}
                                 children={children}
                                 taxes={taxes}
+                                surcharges={surcharges}
                                 totalPrice={totalPrice}
                                 checkIn={checkIn}
                                 checkOut={checkOut}
