@@ -122,5 +122,43 @@
             "install": "설치",
             "dismiss": "나중에"
         }
+    },
+    "footer": {
+        "tagline": "안목 있는 여행자를 위해 정밀하게 설계되었습니다.",
+        "taglinePrecision": "정밀한 데이터. 타협 없는 서비스.",
+        "poweredBy": "Powered by Duffel, Mystifly, TravelgateX, ONDA & Rakuten.",
+        "module": "모듈",
+        "flights": "항공편",
+        "hotels": "호텔",
+        "cars": "렌터카",
+        "company": "회사",
+        "aboutUs": "회사 소개",
+        "enterprise": "기업 제휴",
+        "support": "고객지원",
+        "network": "네트워크",
+        "flightsApi": "항공편 API",
+        "paymentGateway": "결제 게이트웨이",
+        "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "terms": "이용약관",
+        "privacy": "개인정보",
+        "cookies": "쿠키",
+        "contact": "문의",
+        "copyrightMinimal": "CheapestGo © 2026",
+        "termsMinimal": "이용약관 및 조건",
+        "privacyMinimal": "개인정보처리방침",
+        "cookiesMinimal": "쿠키 설정",
+        "contactMinimal": "문의하기",
+        "reportBug": "버그 신고"
+    },
+    "appBanner": {
+        "badge": "모바일 앱",
+        "title": "앱으로 더 스마트하게 여행하세요",
+        "subtitle": "앱 전용 특가 혜택, 실시간 알림을 받고 이동 중에도 간편하게 여행을 관리하세요.",
+        "downloads": "다운로드 수",
+        "rating": "앱 평점",
+        "savings": "추가 할인",
+        "installBtn": "앱 설치하기",
+        "downloadBtn": "앱 다운로드",
+        "learnMore": "더 알아보기"
     }
 }
