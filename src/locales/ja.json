@@ -1,0 +1,104 @@
+{
+    "nav": {
+        "support": "サポート",
+        "openApp": "アプリを開く",
+        "signIn": "ログイン",
+        "signOut": "ログアウト",
+        "myTrips": "マイトリップ",
+        "account": "アカウント"
+    },
+    "languagePicker": {
+        "label": "言語を選択",
+        "en": "English",
+        "ko": "한국어",
+        "cn": "中文",
+        "ja": "日本語"
+    },
+    "currencyPicker": {
+        "label": "通貨を選択"
+    },
+    "theme": {
+        "switchToDark": "ダークモードに切り替え",
+        "switchToLight": "ライトモードに切り替え"
+    },
+    "landing": {
+        "hero": {
+            "title": "最安値の航空券",
+            "subtitle": "数百の航空会社を比較して、手数料なしで予約。",
+            "cta": "フライトを検索"
+        },
+        "search": {
+            "from": "出発地",
+            "to": "目的地",
+            "depart": "出発日",
+            "return": "帰国日",
+            "passengers": "乗客",
+            "placeholder": {
+                "airport": "都市または空港",
+                "date": "日付を選択"
+            },
+            "tripType": {
+                "roundTrip": "往復",
+                "oneWay": "片道",
+                "multiCity": "マルチシティ"
+            },
+            "cabinClass": {
+                "economy": "エコノミー",
+                "premiumEconomy": "プレミアムエコノミー",
+                "business": "ビジネス",
+                "first": "ファースト"
+            },
+            "submit": "検索"
+        }
+    },
+    "flights": {
+        "results": {
+            "loading": "最安値を探しています…",
+            "empty": "この日程のフライトは見つかりませんでした。",
+            "sortBy": "並び替え",
+            "filters": "絞り込み",
+            "price": "料金",
+            "duration": "所要時間",
+            "stops": {
+                "any": "すべて",
+                "direct": "直行便",
+                "oneStop": "乗り継ぎ1回",
+                "twoPlus": "乗り継ぎ2回以上"
+            }
+        },
+        "card": {
+            "direct": "直行便",
+            "stop": "回乗り継ぎ",
+            "stops": "回乗り継ぎ",
+            "viewDeal": "料金を見る",
+            "perPerson": "1人あたり"
+        }
+    },
+    "auth": {
+        "signIn": {
+            "title": "CheapestGo にログイン",
+            "emailLabel": "メールアドレス",
+            "emailPlaceholder": "your@email.com",
+            "continueWithEmail": "メールで続ける",
+            "continueWithGoogle": "Google で続ける",
+            "continueWithApple": "Apple で続ける",
+            "orDivider": "または",
+            "terms": "ログインすることで{terms}と{privacy}に同意したものとみなされます。",
+            "termsLink": "利用規約",
+            "privacyLink": "プライバシーポリシー"
+        }
+    },
+    "errors": {
+        "generic": "エラーが発生しました。もう一度お試しください。",
+        "notFound": "ページが見つかりません。",
+        "searchFailed": "検索に失敗しました。接続を確認してもう一度お試しください。"
+    },
+    "pwa": {
+        "installPrompt": {
+            "title": "CheapestGo アプリを入手",
+            "body": "ホーム画面に追加すると、より素早くアクセスできます。",
+            "install": "インストール",
+            "dismiss": "後で"
+        }
+    }
+}

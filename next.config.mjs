@@ -2,8 +2,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { withSentryConfig } from "@sentry/nextjs";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const require = createRequire(import.meta.url);
+
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,7 +85,7 @@ const nextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withNextIntl(nextConfig), {
   // Suppress noisy Sentry CLI output during builds
   silent: !process.env.CI,
   // Upload source maps only in CI/production to avoid leaking them locally

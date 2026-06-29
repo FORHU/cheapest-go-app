@@ -3,7 +3,7 @@
 import React, { Suspense, useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Moon, Sun, Download } from 'lucide-react';
+import { Moon, Sun, Download, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserCurrency, useUserCountry, useSearchActions } from '@/stores/searchStore';
@@ -12,6 +12,49 @@ import { useAuthStore } from '@/stores/authStore';
 import SignInDropdown from '../../auth/SignInDropdown';
 import CurrencySelector, { CURRENCIES } from '@/components/common/CurrencySelector';
 import { cn } from '@/utils/cn';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+const LOCALE_COUNTRIES: Record<string, string> = {
+  en: 'US',
+  ko: 'KR',
+  cn: 'CN',
+  ja: 'JP',
+};
+
+const LOCALE_FLAGS: Record<string, string> = {
+  en: '🇺🇸',
+  ko: '🇰🇷',
+  cn: '🇨🇳',
+  ja: '🇯🇵',
+};
+
+const LOCALE_NAMES: Record<string, string> = {
+  en: 'EN',
+  ko: '한국어',
+  cn: '中文',
+  ja: '日本語',
+};
+
+const LOCALES = ['en', 'ko', 'cn', 'ja'] as const;
+type Locale = (typeof LOCALES)[number];
+
+const LOCALE_COOKIE = 'locale';
+
+function getLocaleCookie(): Locale | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${LOCALE_COOKIE}=([^;]*)`));
+  const value = match ? decodeURIComponent(match[1]) : undefined;
+  return (LOCALES as readonly string[]).includes(value ?? '') ? (value as Locale) : undefined;
+}
+
+function setLocaleCookie(locale: Locale) {
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
+}
 
 
 const HeaderContent = () => {
@@ -19,7 +62,15 @@ const HeaderContent = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [locale, setLocale] = useState<Locale>('en');
+
+  useEffect(() => {
+    setMounted(true);
+    const cookieLocale = getLocaleCookie();
+    if (cookieLocale) {
+      setLocale(cookieLocale);
+    }
+  }, []);
 
   const userCurrency = useUserCurrency();
   const userCountry = useUserCountry();
@@ -27,6 +78,13 @@ const HeaderContent = () => {
   const { user } = useAuthStore();
 
   const { triggerInstall } = usePWAInstall();
+
+  const handleLocaleSelect = (next: Locale) => {
+    if (next === locale) return;
+    setLocale(next);
+    setLocaleCookie(next);
+    router.refresh();
+  };
 
   return (
     <>
@@ -50,6 +108,36 @@ const HeaderContent = () => {
               <Download size={12} />
               <span className="hidden sm:inline">Open app</span>
             </button>
+
+            {/* Language selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center gap-1 px-1 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors group cursor-pointer"
+                >
+                  <span className="text-[9px] text-slate-400 font-bold uppercase">{LOCALE_COUNTRIES[locale]}</span>
+                  <span className="text-[11px] font-semibold">{locale.toUpperCase()}</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-xl min-w-[110px] z-[1001]">
+                {LOCALES.map((loc) => (
+                  <DropdownMenuItem
+                    key={loc}
+                    onClick={() => handleLocaleSelect(loc)}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 text-[11px] font-bold transition-colors cursor-pointer",
+                      locale === loc
+                        ? 'bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                        : 'text-slate-700 dark:text-slate-300'
+                    )}
+                  >
+                    <span className="text-[9px] text-slate-400 font-bold w-4">{LOCALE_COUNTRIES[loc]}</span>
+                    <span>{LOCALE_NAMES[loc]}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Currency selector */}
             <CurrencySelector variant="header" className="shrink-0" />

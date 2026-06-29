@@ -1,0 +1,104 @@
+{
+    "nav": {
+        "support": "Support",
+        "openApp": "Open app",
+        "signIn": "Sign in",
+        "signOut": "Sign out",
+        "myTrips": "My trips",
+        "account": "Account"
+    },
+    "languagePicker": {
+        "label": "Select language",
+        "en": "English",
+        "ko": "한국어",
+        "cn": "中文",
+        "ja": "日本語"
+    },
+    "currencyPicker": {
+        "label": "Select currency"
+    },
+    "theme": {
+        "switchToDark": "Switch to dark mode",
+        "switchToLight": "Switch to light mode"
+    },
+    "landing": {
+        "hero": {
+            "title": "Flights at the lowest price",
+            "subtitle": "Search hundreds of airlines. Book without the markup.",
+            "cta": "Search flights"
+        },
+        "search": {
+            "from": "From",
+            "to": "To",
+            "depart": "Depart",
+            "return": "Return",
+            "passengers": "Passengers",
+            "placeholder": {
+                "airport": "City or airport",
+                "date": "Add date"
+            },
+            "tripType": {
+                "roundTrip": "Round trip",
+                "oneWay": "One way",
+                "multiCity": "Multi-city"
+            },
+            "cabinClass": {
+                "economy": "Economy",
+                "premiumEconomy": "Premium economy",
+                "business": "Business",
+                "first": "First"
+            },
+            "submit": "Search"
+        }
+    },
+    "flights": {
+        "results": {
+            "loading": "Finding the best fares…",
+            "empty": "No flights found for these dates.",
+            "sortBy": "Sort by",
+            "filters": "Filters",
+            "price": "Price",
+            "duration": "Duration",
+            "stops": {
+                "any": "Any",
+                "direct": "Direct",
+                "oneStop": "1 stop",
+                "twoPlus": "2+ stops"
+            }
+        },
+        "card": {
+            "direct": "Direct",
+            "stop": "stop",
+            "stops": "stops",
+            "viewDeal": "View deal",
+            "perPerson": "per person"
+        }
+    },
+    "auth": {
+        "signIn": {
+            "title": "Sign in to CheapestGo",
+            "emailLabel": "Email address",
+            "emailPlaceholder": "you@example.com",
+            "continueWithEmail": "Continue with email",
+            "continueWithGoogle": "Continue with Google",
+            "continueWithApple": "Continue with Apple",
+            "orDivider": "or",
+            "terms": "By signing in you agree to our {terms} and {privacy}.",
+            "termsLink": "Terms",
+            "privacyLink": "Privacy"
+        }
+    },
+    "errors": {
+        "generic": "Something went wrong. Please try again.",
+        "notFound": "Page not found.",
+        "searchFailed": "Search failed. Check your connection and try again."
+    },
+    "pwa": {
+        "installPrompt": {
+            "title": "Get the CheapestGo app",
+            "body": "Add to your home screen for faster access.",
+            "install": "Install",
+            "dismiss": "Not now"
+        }
+    }
+}

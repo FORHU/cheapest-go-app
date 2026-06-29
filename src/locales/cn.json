@@ -1,0 +1,104 @@
+{
+    "nav": {
+        "support": "客服支持",
+        "openApp": "打开应用",
+        "signIn": "登录",
+        "signOut": "退出登录",
+        "myTrips": "我的行程",
+        "account": "账户"
+    },
+    "languagePicker": {
+        "label": "选择语言",
+        "en": "English",
+        "ko": "한국어",
+        "cn": "中文",
+        "ja": "日本語"
+    },
+    "currencyPicker": {
+        "label": "选择货币"
+    },
+    "theme": {
+        "switchToDark": "切换深色模式",
+        "switchToLight": "切换浅色模式"
+    },
+    "landing": {
+        "hero": {
+            "title": "全网最低价机票",
+            "subtitle": "比较数百家航空公司，零手续费预订。",
+            "cta": "搜索航班"
+        },
+        "search": {
+            "from": "出发地",
+            "to": "目的地",
+            "depart": "出发日期",
+            "return": "返程日期",
+            "passengers": "乘客",
+            "placeholder": {
+                "airport": "城市或机场",
+                "date": "选择日期"
+            },
+            "tripType": {
+                "roundTrip": "往返",
+                "oneWay": "单程",
+                "multiCity": "多城市"
+            },
+            "cabinClass": {
+                "economy": "经济舱",
+                "premiumEconomy": "超级经济舱",
+                "business": "商务舱",
+                "first": "头等舱"
+            },
+            "submit": "搜索"
+        }
+    },
+    "flights": {
+        "results": {
+            "loading": "正在寻找最优价格…",
+            "empty": "该日期暂无可用航班。",
+            "sortBy": "排序方式",
+            "filters": "筛选",
+            "price": "价格",
+            "duration": "飞行时长",
+            "stops": {
+                "any": "全部",
+                "direct": "直飞",
+                "oneStop": "经停1次",
+                "twoPlus": "经停2次以上"
+            }
+        },
+        "card": {
+            "direct": "直飞",
+            "stop": "次经停",
+            "stops": "次经停",
+            "viewDeal": "查看票价",
+            "perPerson": "每人"
+        }
+    },
+    "auth": {
+        "signIn": {
+            "title": "登录 CheapestGo",
+            "emailLabel": "电子邮箱",
+            "emailPlaceholder": "your@email.com",
+            "continueWithEmail": "使用邮箱继续",
+            "continueWithGoogle": "使用 Google 继续",
+            "continueWithApple": "使用 Apple 继续",
+            "orDivider": "或",
+            "terms": "登录即表示您同意我们的{terms}和{privacy}。",
+            "termsLink": "服务条款",
+            "privacyLink": "隐私政策"
+        }
+    },
+    "errors": {
+        "generic": "出现错误，请重试。",
+        "notFound": "页面未找到。",
+        "searchFailed": "搜索失败，请检查网络连接后重试。"
+    },
+    "pwa": {
+        "installPrompt": {
+            "title": "获取 CheapestGo 应用",
+            "body": "添加到主屏幕，访问更快捷。",
+            "install": "安装",
+            "dismiss": "暂不"
+        }
+    }
+}
