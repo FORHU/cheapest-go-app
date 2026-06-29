@@ -122,5 +122,43 @@
             "install": "Install",
             "dismiss": "Not now"
         }
+    },
+    "footer": {
+        "tagline": "Engineered for the discerning traveler.",
+        "taglinePrecision": "Precision data. Zero compromise.",
+        "poweredBy": "Powered by Duffel, Mystifly, TravelgateX, ONDA & Rakuten.",
+        "module": "Module",
+        "flights": "Flights",
+        "hotels": "Hotels",
+        "cars": "Cars",
+        "company": "Company",
+        "aboutUs": "About Us",
+        "enterprise": "Enterprise",
+        "support": "Support",
+        "network": "Network",
+        "flightsApi": "Flights API",
+        "paymentGateway": "Payment Gateway",
+        "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "terms": "Terms",
+        "privacy": "Privacy",
+        "cookies": "Cookies",
+        "contact": "Contact",
+        "copyrightMinimal": "CheapestGo © 2026",
+        "termsMinimal": "Terms & Conditions",
+        "privacyMinimal": "Privacy Policy",
+        "cookiesMinimal": "Cookie preferences",
+        "contactMinimal": "Contact us",
+        "reportBug": "Report a Bug"
+    },
+    "appBanner": {
+        "badge": "Mobile App",
+        "title": "Travel smarter with our app",
+        "subtitle": "Get exclusive app-only deals, instant notifications, and manage your trips on the go.",
+        "downloads": "Downloads",
+        "rating": "App Rating",
+        "savings": "Extra Savings",
+        "installBtn": "Install App",
+        "downloadBtn": "Download App",
+        "learnMore": "Learn More"
     }
 }

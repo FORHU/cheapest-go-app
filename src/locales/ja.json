@@ -122,5 +122,43 @@
             "install": "インストール",
             "dismiss": "後で"
         }
+    },
+    "footer": {
+        "tagline": "目の肥えた旅行者のために設計。",
+        "taglinePrecision": "正確なデータ。妥協なし。",
+        "poweredBy": "Powered by Duffel, Mystifly, TravelgateX, ONDA & Rakuten.",
+        "module": "サービス",
+        "flights": "フライト",
+        "hotels": "ホテル",
+        "cars": "レンタカー",
+        "company": "会社情報",
+        "aboutUs": "会社概要",
+        "enterprise": "法人向け",
+        "support": "サポート",
+        "network": "接続状況",
+        "flightsApi": "フライト API",
+        "paymentGateway": "決済ゲートウェイ",
+        "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "terms": "利用規約",
+        "privacy": "プライバシー",
+        "cookies": "クッキー",
+        "contact": "お問い合わせ",
+        "copyrightMinimal": "CheapestGo © 2026",
+        "termsMinimal": "利用規約と条件",
+        "privacyMinimal": "プライバシーポリシー",
+        "cookiesMinimal": "Cookie 設定",
+        "contactMinimal": "お問い合わせ",
+        "reportBug": "バグを報告"
+    },
+    "appBanner": {
+        "badge": "モバイルアプリ",
+        "title": "アプリでもっとスマートに旅行",
+        "subtitle": "アプリ限定セール、インスタント通知、外出先での旅行管理機能をご利用ください。",
+        "downloads": "ダウンロード",
+        "rating": "アプリ評価",
+        "savings": "特別割引",
+        "installBtn": "アプリをインストール",
+        "downloadBtn": "アプリをダウンロード",
+        "learnMore": "詳細はこちら"
     }
 }
