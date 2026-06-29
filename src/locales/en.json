@@ -33,6 +33,7 @@
         "search": {
             "from": "From",
             "to": "To",
+            "whereTo": "Where to?",
             "depart": "Depart",
             "return": "Return",
             "passengers": "Passengers",
@@ -51,7 +52,25 @@
                 "business": "Business",
                 "first": "First"
             },
-            "submit": "Search"
+            "submit": "Search",
+            "anywhere": "Anywhere",
+            "anyWeek": "Any week",
+            "addGuests": "Add guests",
+            "guests": "{count} guest",
+            "guestsPlural": "{count} guests",
+            "clearAll": "Clear all",
+            "findDeals": "Find the best deals",
+            "comingSoon": "Coming Soon",
+            "aiDevelopment": "AI Search is under development. Stay tuned!",
+            "askAi": "Ask AI",
+            "aiGreeting": "How can I help you this morning?",
+            "results": "Results",
+            "findingFlights": "Finding flights…",
+            "searchFlightsHeader": "Search Flights",
+            "bundle": {
+                "hotelBooked": "Hotel booked!",
+                "instructions": "Enter your {from} and {to} airports, pick your dates, then hit Search to bundle and save up to 8%."
+            }
         }
     },
     "flights": {
