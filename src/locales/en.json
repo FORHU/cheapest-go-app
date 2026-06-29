@@ -24,7 +24,10 @@
     "landing": {
         "hero": {
             "title": "Flights at the lowest price",
-            "subtitle": "Search hundreds of airlines. Book without the markup.",
+            "titleLine1": "Precision Travel.",
+            "titleLine2": "Machined for You.",
+            "subtitle": "The operating system for the modern voyager.",
+            "monoSubtext": "Ask anything. Book everything.",
             "cta": "Search flights"
         },
         "search": {

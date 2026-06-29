@@ -24,7 +24,10 @@
     "landing": {
         "hero": {
             "title": "全网最低价机票",
-            "subtitle": "比较数百家航空公司，零手续费预订。",
+            "titleLine1": "精准旅行。",
+            "titleLine2": "为您精雕细琢。",
+            "subtitle": "现代旅客的出行操作系统。",
+            "monoSubtext": "随意提问，一键预订。",
             "cta": "搜索航班"
         },
         "search": {
