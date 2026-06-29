@@ -33,6 +33,7 @@
         "search": {
             "from": "출발지",
             "to": "목적지",
+            "whereTo": "어디로?",
             "depart": "출발일",
             "return": "귀국일",
             "passengers": "승객",
@@ -51,7 +52,25 @@
                 "business": "비즈니스석",
                 "first": "일등석"
             },
-            "submit": "검색"
+            "submit": "검색",
+            "anywhere": "어디든지",
+            "anyWeek": "아무 주나",
+            "addGuests": "인원 추가",
+            "guests": "{count}명",
+            "guestsPlural": "{count}명",
+            "clearAll": "모두 지우기",
+            "findDeals": "최저가 찾기",
+            "comingSoon": "출시 예정",
+            "aiDevelopment": "AI 검색 개발 중입니다. 기대해 주세요!",
+            "askAi": "AI에게 물어보기",
+            "aiGreeting": "오늘 아침 무엇을 도와드릴까요?",
+            "results": "검색 결과",
+            "findingFlights": "항공편 검색 중…",
+            "searchFlightsHeader": "항공편 검색",
+            "bundle": {
+                "hotelBooked": "호텔 예약 완료!",
+                "instructions": "{from}과 {to} 공항을 입력하고 날짜를 선택한 후 검색을 누르면 최대 8% 절약됩니다."
+            }
         }
     },
     "flights": {

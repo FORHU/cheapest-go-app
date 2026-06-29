@@ -33,6 +33,7 @@
         "search": {
             "from": "出发地",
             "to": "目的地",
+            "whereTo": "去哪里？",
             "depart": "出发日期",
             "return": "返程日期",
             "passengers": "乘客",
@@ -51,7 +52,25 @@
                 "business": "商务舱",
                 "first": "头等舱"
             },
-            "submit": "搜索"
+            "submit": "搜索",
+            "anywhere": "任意地点",
+            "anyWeek": "任意周",
+            "addGuests": "添加人数",
+            "guests": "{count} 位出行者",
+            "guestsPlural": "{count} 位出行者",
+            "clearAll": "清除全部",
+            "findDeals": "寻找最优价格",
+            "comingSoon": "敬请期待",
+            "aiDevelopment": "AI 搜索正在开发中，敬请期待！",
+            "askAi": "向 AI 提问",
+            "aiGreeting": "今天早上我能为您做些什么？",
+            "results": "结果",
+            "findingFlights": "正在寻找航班…",
+            "searchFlightsHeader": "搜索航班",
+            "bundle": {
+                "hotelBooked": "酒店已预订！",
+                "instructions": "输入您的 {from} 和 {to} 机场，选择日期，然后点击“搜索”即可打包并节省高达 8% 的费用。"
+            }
         }
     },
     "flights": {

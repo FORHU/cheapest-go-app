@@ -33,6 +33,7 @@
         "search": {
             "from": "出発地",
             "to": "目的地",
+            "whereTo": "どこへ？",
             "depart": "出発日",
             "return": "帰国日",
             "passengers": "乗客",
@@ -51,7 +52,25 @@
                 "business": "ビジネス",
                 "first": "ファースト"
             },
-            "submit": "検索"
+            "submit": "検索",
+            "anywhere": "どこでも",
+            "anyWeek": "いつでも",
+            "addGuests": "人数を追加",
+            "guests": "{count}名",
+            "guestsPlural": "{count}名",
+            "clearAll": "すべてクリア",
+            "findDeals": "最安値を探す",
+            "comingSoon": "近日公開",
+            "aiDevelopment": "AI検索は現在開発中です。お楽しみに！",
+            "askAi": "AIに聞く",
+            "aiGreeting": "今朝は何をお手伝いしますか？",
+            "results": "検索結果",
+            "findingFlights": "航空便を検索中…",
+            "searchFlightsHeader": "フライト検索",
+            "bundle": {
+                "hotelBooked": "ホテル予約済み！",
+                "instructions": "{from}と{to}の空港を入力し、日程を選んで検索すると最大8%お得になります。"
+            }
         }
     },
     "flights": {
