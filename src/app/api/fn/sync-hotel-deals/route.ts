@@ -95,7 +95,22 @@ async function syncCity(
     for (const best of top) {
         const hotelCode  = best.hotelId ?? best.id ?? '';
         if (!hotelCode) continue;
-        const imageUrl   = Array.isArray(best.images) ? (best.images[0] ?? '') : (best.image ?? '');
+        let imageUrl = Array.isArray(best.images) ? (best.images[0] ?? '') : (best.image ?? '');
+
+        // If the search result carries no image, check the content cache directly —
+        // a previous run may have populated it even if the current search window didn't.
+        if (!imageUrl && hotelCode) {
+            const rows = await sql`
+                SELECT images[1] AS first_image
+                FROM hotel_content
+                WHERE hotel_id = ${hotelCode}
+                  AND array_length(images, 1) > 0
+                LIMIT 1
+            `;
+            if (rows[0]?.first_image) {
+                imageUrl = String(rows[0].first_image).replace('{size}', '640x400');
+            }
+        }
         const refundable = best.refundableTag === 'REFUNDABLE' || best.refundableTag === 'RFN';
         const stars      = best.starRating ? Math.round(best.starRating) : null;
         const rating     = best.reviewRating ?? best.rating ?? null;
@@ -119,7 +134,7 @@ async function syncCity(
             ON CONFLICT (hotel_code) DO UPDATE SET
                 price             = EXCLUDED.price,
                 currency          = EXCLUDED.currency,
-                image_url         = EXCLUDED.image_url,
+                image_url         = CASE WHEN EXCLUDED.image_url != '' THEN EXCLUDED.image_url ELSE hotel_deals.image_url END,
                 rating            = EXCLUDED.rating,
                 check_in          = EXCLUDED.check_in,
                 check_out         = EXCLUDED.check_out,

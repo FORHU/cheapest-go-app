@@ -45,3 +45,16 @@ _Avoid_: assuming every enum-like column uses the same mechanism, or converting 
 **Flight Provider** — Duffel (primary, active) or Mystifly (onboarding). Mystifly bookings currently disabled in the booking endpoint.
 
 **Hotel Provider** — TravelGateX OTV (active). LiteAPI deprecated.
+
+## Landing Page
+
+**Flight Deal** — an evergreen route + "from" price card shown in the "Exclusive Deals & Offers" section. No departure date is pinned to the card. The cron finds the lowest available price across a rolling window and stores it. The stored price is what's displayed; users pick their own dates when they search.
+_Avoid_: pinning a specific departure date to a Flight Deal card. Date-specific deals are only appropriate for genuine flash sales with a seat-count limit and countdown timer.
+
+**Hotel Deal** — an evergreen hotel + "from" price card shown in the "Top Hotel Deals" section. Price is the lowest nightly rate found across a 30-day rolling window. No check-in or check-out date is pinned to the card. Selection is price-driven: cheapest available hotels surface first.
+_Avoid_: snapshotting a specific weekend's pricing (e.g. "next Friday–Saturday") — those dates go stale immediately.
+
+**Guest Favorite** — a hotel card shown in the "Guest Favorites" section. Selection is rating-driven: only hotels with `rating > 7`, ordered by rating descending. A hotel that already appears in "Top Hotel Deals" must be excluded — the two sections are mutually exclusive.
+
+**Refresh cadence** — all three landing sections (Flight Deals, Hotel Deals, Guest Favorites) share a single unified daily refresh. Guest Favorites has no dedicated cron; it re-queries `hotel_deals` whenever the hotel cron runs.
+_Avoid_: different refresh schedules per section, or UI copy claiming hourly updates.

@@ -8,6 +8,329 @@ import { getSqlAdmin } from '@/lib/db/postgres';
 import { resolveTgxDestinationCode } from '@/lib/server/search';
 import { otvCodeToLabel } from './amenityCodes';
 
+// ─── ETG (RateHawk/WorldOTA) hotel name lookup ───────────────────────────────
+
+/** Fetch hotel names from the ETG B2B API for IDs where OTV returned null hotelName.
+ *  ETG and OTV share the same underlying RateHawk data; this endpoint reliably returns names. */
+async function fetchEtgHotelNames(hotelIds: string[]): Promise<Map<string, string>> {
+    const nameMap = new Map<string, string>();
+    if (!hotelIds.length) return nameMap;
+    const keyId  = process.env.ETG_KEY_ID;
+    const apiKey = process.env.ETG_API_KEY;
+    if (!keyId || !apiKey) return nameMap;
+    const token = Buffer.from(`${keyId}:${apiKey}`).toString('base64');
+    const BATCH = 500;
+    for (let i = 0; i < hotelIds.length; i += BATCH) {
+        const batch = hotelIds.slice(i, i + BATCH);
+        try {
+            const abort = new AbortController();
+            const timeout = setTimeout(() => abort.abort(), 5_000);
+            const res = await fetch('https://api.worldota.net/api/b2b/v3/hotel/info/', {
+                method: 'POST',
+                headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: batch, language: 'en' }),
+                signal: abort.signal,
+            });
+            clearTimeout(timeout);
+            if (!res.ok) { console.warn(`[tgx-search] ETG hotel/info ${res.status}`); continue; }
+            const json = await res.json();
+            const hotels: any[] = json?.data?.hotels ?? json?.hotels ?? [];
+            for (const h of hotels) {
+                const id   = String(h.id ?? h.hotel_id ?? '');
+                const name = (h.name ?? h.title ?? '') as string;
+                if (id && name) nameMap.set(id, name);
+            }
+        } catch (e: any) {
+            if ((e as any)?.name !== 'AbortError') console.warn('[tgx-search] ETG hotel/info batch failed:', e.message);
+        }
+    }
+    console.log(`[tgx-search] ETG hotel/info returned ${nameMap.size}/${hotelIds.length} names`);
+    return nameMap;
+}
+
+/** Persist ETG-sourced names into hotel_content.
+ *  Uses UPSERT so it works whether backfillHotelContent has run yet or not. */
+async function updateHotelNamesInDb(nameMap: Map<string, string>): Promise<void> {
+    if (!nameMap.size) return;
+    const sql = getSqlAdmin();
+    let saved = 0;
+    for (const [hotelId, name] of nameMap) {
+        try {
+            await sql`
+                INSERT INTO hotel_content (hotel_id, name, images, content_source, fetched_at)
+                VALUES (${hotelId}, ${name}, '{}', 'etg', now())
+                ON CONFLICT (hotel_id) DO UPDATE SET
+                    name       = CASE WHEN hotel_content.name IS NULL OR hotel_content.name = hotel_content.hotel_id
+                                      THEN EXCLUDED.name ELSE hotel_content.name END,
+                    fetched_at = now()
+            `;
+            saved++;
+        } catch { /* skip individual failures */ }
+    }
+    if (saved) console.log(`[tgx-search] Upserted ${saved} ETG hotel names into hotel_content`);
+}
+
+// ─── ETG B2B direct search (fallback for cities OTV/TGX doesn't serve) ──────
+
+const COUNTRY_NAME_TO_ISO: Record<string, string> = {
+    'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
+    'japan': 'JP', 'thailand': 'TH', 'greece': 'GR', 'united states': 'US', 'usa': 'US',
+    'australia': 'AU', 'philippines': 'PH', 'south korea': 'KR', 'korea': 'KR',
+    'vietnam': 'VN', 'cambodia': 'KH', 'singapore': 'SG', 'malaysia': 'MY',
+    'india': 'IN', 'china': 'CN', 'hong kong': 'HK', 'taiwan': 'TW',
+    'peru': 'PE', 'mexico': 'MX', 'brazil': 'BR', 'argentina': 'AR',
+    'egypt': 'EG', 'tanzania': 'TZ', 'south africa': 'ZA', 'kenya': 'KE',
+    'iceland': 'IS', 'maldives': 'MV', 'uae': 'AE', 'united arab emirates': 'AE',
+    'turkey': 'TR', 'morocco': 'MA', 'jordan': 'JO', 'new zealand': 'NZ', 'canada': 'CA',
+};
+
+function resolveIsoCodeEtg(raw?: string): string | null {
+    if (!raw) return null;
+    if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+    return COUNTRY_NAME_TO_ISO[raw.toLowerCase()] ?? null;
+}
+
+function getEtgToken(): string {
+    const keyId  = process.env.ETG_KEY_ID  ?? '';
+    const apiKey = process.env.ETG_API_KEY ?? '';
+    return Buffer.from(`${keyId}:${apiKey}`).toString('base64');
+}
+
+/** Resolve a city name to an ETG region_id via the multicomplete endpoint. */
+async function getEtgRegionId(cityName: string, countryCode?: string): Promise<number | null> {
+    try {
+        const token = getEtgToken();
+        const query = cityName.split(',')[0].trim();
+        const abort = new AbortController();
+        const t = setTimeout(() => abort.abort(), 5_000);
+        const res = await fetch('https://api.worldota.net/api/b2b/v3/search/multicomplete/', {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, language: 'en' }),
+            signal: abort.signal,
+        });
+        clearTimeout(t);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const regions: any[] = data?.data?.regions ?? [];
+        const iso = resolveIsoCodeEtg(countryCode);
+        return (
+            regions.find((r: any) =>
+                r.type === 'City' &&
+                r.name.toLowerCase().startsWith(query.toLowerCase()) &&
+                (!iso || r.country_code === iso)
+            ) ??
+            regions.find((r: any) =>
+                r.type === 'City' &&
+                r.name.toLowerCase().startsWith(query.toLowerCase())
+            )
+        )?.id ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/** Fetch full hotel details from ETG B2B for a single hotel id slug. */
+async function fetchEtgHotelInfo(id: string): Promise<any | null> {
+    try {
+        const token = getEtgToken();
+        const abort = new AbortController();
+        const t = setTimeout(() => abort.abort(), 4_000);
+        const res = await fetch('https://api.worldota.net/api/b2b/v3/hotel/info/', {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, language: 'en' }),
+            signal: abort.signal,
+        });
+        clearTimeout(t);
+        if (!res.ok) return null;
+        const json = await res.json();
+        return json?.data ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/** Background: seed hotel_content with ETG hotel data for a city (fire-and-forget). */
+async function seedEtgHotelContent(hotels: any[], cityName: string, countryCode?: string): Promise<void> {
+    const sql = getSqlAdmin();
+    const PARALLEL = 10;
+    const MAX = Math.min(150, hotels.length);
+    let saved = 0;
+    for (let i = 0; i < MAX; i += PARALLEL) {
+        const batch = hotels.slice(i, i + PARALLEL);
+        const infos = await Promise.allSettled(batch.map((h: any) => fetchEtgHotelInfo(h.id)));
+        for (let j = 0; j < batch.length; j++) {
+            const r = infos[j];
+            if (r.status !== 'fulfilled' || !r.value) continue;
+            const info = r.value;
+            const images: string[] = (info.images ?? [])
+                .map((url: string) => (typeof url === 'string' ? url.replace('{size}', '640x400') : ''))
+                .filter(Boolean)
+                .slice(0, 10);
+            try {
+                await sql`
+                    INSERT INTO hotel_content
+                        (hotel_id, name, images, lat, lng, address, city, country,
+                         description, star_rating, amenities, content_source, fetched_at)
+                    VALUES (
+                        ${info.id}, ${info.name ?? null}, ${sql.array(images)},
+                        ${info.latitude ?? 0}, ${info.longitude ?? 0},
+                        ${info.address ?? null}, ${cityName}, ${countryCode ?? null},
+                        ${null}, ${info.star_rating ?? 0}, ${'[]'}::jsonb,
+                        'etg', now()
+                    )
+                    ON CONFLICT (hotel_id) DO UPDATE SET
+                        name        = CASE WHEN hotel_content.name IS NULL OR hotel_content.name = hotel_content.hotel_id
+                                          THEN EXCLUDED.name ELSE hotel_content.name END,
+                        images      = CASE WHEN array_length(hotel_content.images, 1) > 0
+                                     THEN hotel_content.images ELSE EXCLUDED.images END,
+                        lat         = CASE WHEN hotel_content.lat  != 0 THEN hotel_content.lat  ELSE EXCLUDED.lat  END,
+                        lng         = CASE WHEN hotel_content.lng  != 0 THEN hotel_content.lng  ELSE EXCLUDED.lng  END,
+                        address     = COALESCE(hotel_content.address, EXCLUDED.address),
+                        city        = COALESCE(hotel_content.city, EXCLUDED.city),
+                        star_rating = CASE WHEN hotel_content.star_rating != 0
+                                     THEN hotel_content.star_rating ELSE EXCLUDED.star_rating END,
+                        content_source = COALESCE(hotel_content.content_source, 'etg'),
+                        fetched_at  = now()
+                `;
+                saved++;
+            } catch { /* skip */ }
+        }
+        if (i + PARALLEL < MAX) await new Promise(r => setTimeout(r, 3_000));
+    }
+    console.log(`[tgx-search] ETG seeded ${saved}/${MAX} hotels for "${cityName}" into hotel_content`);
+}
+
+/** Search ETG B2B directly by city when OTV/TGX yields no results. */
+async function searchEtgCity(
+    cityName: string,
+    params: TgxSearchParams,
+): Promise<{ data: any[]; allMappable: any[]; totalCount: number }> {
+    const empty = { data: [], allMappable: [], totalCount: 0 };
+    try {
+        if (!process.env.ETG_KEY_ID || !process.env.ETG_API_KEY) return empty;
+        const token = getEtgToken();
+
+        const regionId = await getEtgRegionId(cityName, params.countryCode);
+        if (!regionId) {
+            console.warn(`[tgx-search] ETG: no region_id for "${cityName}"`);
+            return empty;
+        }
+        console.log(`[tgx-search] ETG fallback: region ${regionId} for "${cityName}" (${params.checkin}→${params.checkout})`);
+
+        const serpAbort = new AbortController();
+        const serpTimeout = setTimeout(() => serpAbort.abort(), 20_000);
+        const serpRes = await fetch('https://api.worldota.net/api/b2b/v3/search/serp/region/', {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                region_id: regionId,
+                checkin:   params.checkin,
+                checkout:  params.checkout,
+                guests:    [{ adults: Number(params.adults ?? 2) }],
+                currency:  'USD',
+                language:  'en',
+                residency: 'us',
+            }),
+            signal: serpAbort.signal,
+        });
+        clearTimeout(serpTimeout);
+
+        if (!serpRes.ok) { console.warn(`[tgx-search] ETG SERP ${serpRes.status}`); return empty; }
+
+        const serpData = await serpRes.json();
+        const hotels: any[] = serpData?.data?.hotels ?? [];
+        console.log(`[tgx-search] ETG SERP: ${hotels.length} hotels for "${cityName}"`);
+        if (!hotels.length) return empty;
+
+        // Sort cheapest-first
+        hotels.sort((a: any, b: any) => {
+            const pa = parseFloat(a.rates?.[0]?.payment_options?.payment_types?.[0]?.show_amount ?? '999999');
+            const pb = parseFloat(b.rates?.[0]?.payment_options?.payment_types?.[0]?.show_amount ?? '999999');
+            return pa - pb;
+        });
+
+        const TOP_N = 20;
+        const topHotels = hotels.slice(0, TOP_N);
+        const topIds = topHotels.map((h: any) => h.id as string);
+
+        // Use any pre-existing hotel_content data
+        const existingContent = await fetchHotelContent(topIds);
+        const needInfo = topHotels.filter((h: any) => !existingContent.get(h.id)?.name);
+
+        // Parallel info fetch for the unknown hotels (cap at 15 to stay within rate limit)
+        const toFetch = needInfo.slice(0, 15);
+        const infoResults = toFetch.length > 0
+            ? await Promise.allSettled(toFetch.map((h: any) => fetchEtgHotelInfo(h.id as string)))
+            : [];
+
+        const infoMap = new Map<string, any>();
+        for (let i = 0; i < toFetch.length; i++) {
+            const r = infoResults[i];
+            if (r.status === 'fulfilled' && r.value) infoMap.set(toFetch[i].id as string, r.value);
+        }
+
+        // Background-seed hotel_content for all results (Phase 1 catalog for future searches)
+        seedEtgHotelContent(hotels, cityName, params.countryCode).catch(() => {});
+
+        const results = topHotels.map((h: any) => {
+            const rate = h.rates?.[0];
+            const pt   = rate?.payment_options?.payment_types?.[0];
+            const price    = parseFloat(pt?.show_amount    ?? '0');
+            const currency = (pt?.show_currency_code ?? 'USD') as string;
+
+            const dbContent = existingContent.get(h.id as string);
+            const etgInfo   = infoMap.get(h.id as string);
+            const src       = (dbContent?.name ? dbContent : null) ?? etgInfo;
+
+            const rawImages: string[] = src?.images ?? [];
+            const images = rawImages
+                .map((url: string) => (typeof url === 'string' ? url.replace('{size}', '640x400') : ''))
+                .filter(Boolean)
+                .slice(0, 10);
+
+            const lat = Number(src?.latitude ?? src?.lat ?? 0);
+            const lng = Number(src?.longitude ?? src?.lng ?? 0);
+
+            return {
+                hotelId:      h.id,
+                id:           h.id,
+                name:         dbContent?.name ?? etgInfo?.name ?? h.id,
+                price,
+                currency,
+                offerId:      `ETG:${h.id}:${rate?.match_hash ?? ''}`,
+                refundableTag: 'UNKNOWN',
+                starRating:   Number(src?.star_rating ?? 0),
+                images,
+                image:        images[0] ?? '',
+                lat,
+                lng,
+                coordinates:  { lat, lng },
+                address:      src?.address ?? '',
+                location:     src?.address ?? '',
+                city:         cityName,
+                country:      params.countryCode ?? '',
+                description:  '',
+                amenities:    [],
+                reviewRating: Number(dbContent?.review_rating ?? 0),
+                rating:       Number(dbContent?.review_rating ?? 0),
+                reviews:      Number(dbContent?.review_count ?? 0),
+                reviewCount:  Number(dbContent?.review_count ?? 0),
+                boardCode:    rate?.meal ?? 'RO',
+                roomTypes:    [],
+                provider:     'etg',
+            };
+        });
+
+        const allMappable = results.filter(h => h.lat && h.lng);
+        return { data: results, allMappable, totalCount: results.length };
+    } catch (e: any) {
+        console.warn('[tgx-search] ETG city search failed:', e.message);
+        return empty;
+    }
+}
+
 // ─── Hotel search cache ───────────────────────────────────────────────────────
 
 export const POPULAR_CITIES = new Set([
@@ -116,7 +439,8 @@ async function fetchHotelContent(hotelCodes: string[]) {
     const sql = getSqlAdmin();
     const rows = await sql`
         SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
-               description, amenities, review_rating, review_count, check_in_time, check_out_time
+               description, amenities, review_rating, review_count, check_in_time, check_out_time,
+               ratehawk_hid
         FROM hotel_content
         WHERE hotel_id = ANY(${hotelCodes})
     `;
@@ -137,6 +461,7 @@ async function fetchHotelReviews(hotelCodes: string[]) {
     for (const row of rows) map.set(row.hotel_id, row);
     return map;
 }
+
 
 async function fetchHotelCodesByCity(cityName: string, countryCode?: string): Promise<string[]> {
     const sql = getSqlAdmin();
@@ -265,6 +590,24 @@ async function fetchOtvHotelCodesByCity(
             backfillHotelContent(contentMap).catch((err: any) =>
                 console.warn('[tgx-search] hotel_content backfill failed:', err.message)
             );
+            // OTV often has null hotelName for European/global cities.
+            // Enrich null-name rows from ETG now so hotel_content (Phase 1 catalog)
+            // always shows real names — even when TGX availability returns 0 options.
+            const nullNameCodes = codes.filter(c => !contentMap.get(c)?.name);
+            if (nullNameCodes.length > 0) {
+                fetchEtgHotelNames(nullNameCodes)
+                    .then(etgNames => {
+                        if (etgNames.size > 0) {
+                            // Patch contentMap so the current request can use names too
+                            for (const [id, name] of etgNames) {
+                                const row = contentMap.get(id);
+                                if (row) row.name = name;
+                            }
+                            updateHotelNamesInDb(etgNames).catch(() => {});
+                        }
+                    })
+                    .catch(() => {});
+            }
         }
 
         return { codes, contentMap };
@@ -385,6 +728,7 @@ async function runCityFallback(
     settings: ReturnType<typeof getTgxSettings>,
     prefetchDestCode: Promise<string | undefined>,
     prefetchHotelCodes: Promise<string[]>,
+    searchParams: TgxSearchParams,
 ) {
     // Ensure the DB-persisted failed codes are loaded before we check the set.
     await loadFailedDestCodes();
@@ -412,6 +756,22 @@ async function runCityFallback(
             );
             if (destMerchant.length > 0) {
                 console.log(`[tgx-search] Destination-code search returned ${destMerchant.length} options for "${cityName}"`);
+                // Dest-code path never calls fetchOtvHotelCodesByCity, so hotel_content stays empty.
+                // Seed it now (background) so the instant catalog shows up on the next request.
+                if (cityName) {
+                    fetchOtvHotelCodesByCity(cityName, resolvedCode)
+                        .then(otv => {
+                            if (otv.codes.length > 0) {
+                                const nullNames = otv.codes.filter(c => !otv.contentMap.get(c)?.name);
+                                if (nullNames.length > 0) {
+                                    fetchEtgHotelNames(nullNames)
+                                        .then(etgNames => updateHotelNamesInDb(etgNames))
+                                        .catch(() => {});
+                                }
+                            }
+                        })
+                        .catch(() => {});
+                }
                 return buildCityResults(destMerchant, cityName, countryCode);
             }
             // No usable MERCHANT options — whether TGX sent an explicit "Empty hotels"
@@ -440,6 +800,19 @@ async function runCityFallback(
         const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined);
         otvCodes = otv.codes;
         otvContentMap = otv.contentMap;
+    } else {
+        // Codes exist in DB — sample up to 20 to detect null-name rows (OTV data quality gap).
+        // If >40% are nameless, refresh from OTV portfolio so this response can show real names
+        // and backfillHotelContent updates the DB for future requests.
+        const sample = otvCodes.slice(0, 20);
+        const sampleContent = await fetchHotelContent(sample);
+        const missingNames = sample.filter(c => !sampleContent.get(c)?.name).length;
+        if (missingNames > sample.length * 0.4) {
+            console.log(`[tgx-search] ${missingNames}/${sample.length} sampled hotels have no name for "${cityName}" — refreshing OTV portfolio`);
+            const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined);
+            otvContentMap = otv.contentMap;
+            if (otv.codes.length > 0) otvCodes = otv.codes;
+        }
     }
 
     if (otvCodes.length > 0) {
@@ -491,10 +864,20 @@ async function runCityFallback(
         const fallbackMerchant = fallbackOptions.filter(
             (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
         );
-        return buildCityResults(fallbackMerchant, cityName, countryCode, otvContentMap);
+        if (fallbackMerchant.length > 0) {
+            return buildCityResults(fallbackMerchant, cityName, countryCode, otvContentMap);
+        }
+        // OTV codes exist but no availability — fall through to ETG
     }
 
-    console.warn(`[tgx-search] No OTV hotel codes found for "${cityName}" — no results`);
+    // ── ETG B2B fallback: direct region search for cities OTV doesn't serve ──
+    console.warn(`[tgx-search] OTV yielded no results for "${cityName}" — trying ETG direct search`);
+    const etgResult = await searchEtgCity(cityName, searchParams);
+    if (etgResult.data.length > 0) {
+        console.log(`[tgx-search] ETG fallback: ${etgResult.data.length} hotels for "${cityName}"`);
+        return etgResult;
+    }
+
     return buildCityResults([], cityName, countryCode);
 }
 
@@ -581,6 +964,7 @@ async function _runTgxSearch(params: TgxSearchParams) {
             cityName, countryCode, baseCriteria, settings,
             resolveTgxDestinationCode(cityName).catch(() => undefined),
             fetchHotelCodesByCity(cityName, countryCode).catch(() => []),
+            params,
         );
     } else {
         throw new Error('destinationCode, hotelCode, or cityName is required');
@@ -609,6 +993,7 @@ async function _runTgxSearch(params: TgxSearchParams) {
                 cityName, countryCode, baseCriteria, settings,
                 Promise.resolve(undefined),
                 fetchHotelCodesByCity(cityName, countryCode).catch(() => []),
+                params,
             );
         }
         console.warn('[tgx-search] Empty hotels and no cityName to fall back with');
@@ -637,6 +1022,7 @@ async function _runTgxSearch(params: TgxSearchParams) {
         const reviews = reviewMap.get(String(hotelCode));
         const imageList: string[] = content?.images ?? [];
         const reviewRating = Number(reviews?.rating ?? content?.review_rating ?? 0);
+
 
         return {
             data: {
@@ -690,6 +1076,28 @@ async function buildCityResults(
         fetchHotelReviews(hotelCodes),
     ]);
 
+    // When OTV returns null hotelName (data quality gap for some regions),
+    // fall back to ETG hotel/info which uses the same RateHawk data but reliably has names.
+    // Wrapped in try/catch — enrichment must never prevent results from rendering.
+    if (hotelCodes.length > 0) {
+        const noNameCodes = hotelCodes.filter(c => !contentMap.get(c)?.name && !preloadedContent.get(c)?.name);
+        if (noNameCodes.length >= hotelCodes.length * 0.3) {
+            try {
+                const etgNames = await fetchEtgHotelNames(noNameCodes);
+                if (etgNames.size > 0) {
+                    for (const [code, name] of etgNames) {
+                        const row = contentMap.get(code);
+                        if (row) { row.name = row.name || name; }
+                        else { preloadedContent.set(code, { ...(preloadedContent.get(code) ?? {}), name }); }
+                    }
+                    updateHotelNamesInDb(etgNames).catch(() => {});
+                }
+            } catch (e: any) {
+                console.warn('[tgx-search] ETG name enrichment skipped:', e.message);
+            }
+        }
+    }
+
     const hotels_result = hotelCodes.map((code) => {
         const opt     = byHotel.get(code)!;
         const content = contentMap.get(code) ?? preloadedContent.get(code);
@@ -700,7 +1108,7 @@ async function buildCityResults(
         return {
             hotelId:      code,
             id:           code,
-            name:         content?.name || code,
+            name:         content?.name || preloadedContent.get(code)?.name || code,
             price:        opt.price.gross || opt.price.net,
             currency:     opt.price.currency,
             offerId:      `TGX:${tokenId}`,

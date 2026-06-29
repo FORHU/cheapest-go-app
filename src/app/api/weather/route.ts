@@ -91,14 +91,18 @@ export async function GET(request: NextRequest) {
 
         if (!currentRes.ok) {
             const errBody = await currentRes.text();
-            console.error('Google Weather current conditions error:', currentRes.status, errBody);
-            
-            // If location is not supported (404), fallback to mock data instead of erroring
+
+            if (currentRes.status === 403) {
+                console.warn('Weather API: Google Weather API key does not have weather.googleapis.com enabled. Enable it in GCP Console → APIs & Services. Returning mock data.');
+                return NextResponse.json(MOCK_WEATHER);
+            }
+
             if (currentRes.status === 404) {
                 console.warn(`Weather API: Location (${lat}, ${lng}) not supported. Returning mock data.`);
                 return NextResponse.json(MOCK_WEATHER);
             }
-            
+
+            console.error('Google Weather current conditions error:', currentRes.status, errBody);
             throw new Error(`Google Weather API error: ${currentRes.status}`);
         }
 

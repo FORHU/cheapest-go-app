@@ -4,7 +4,7 @@
  */
 
 import { cache } from 'react';
-import { preBook, getHotelDetails, invokeEdgeFunction } from '@/utils/postgres/functions';
+import { preBook, invokeEdgeFunction } from '@/utils/postgres/functions';
 import { otvCodeToLabel } from '@/lib/server/stays/travelgatex/amenityCodes';
 import { type Property } from '@/types';
 import { getSqlAdmin } from '@/lib/db/postgres';
@@ -110,14 +110,17 @@ export function sanitizeDate(dateStr: string | undefined): string | undefined {
     }
 }
 
-// Get default check-in/out dates (tomorrow + 2 days)
+// Get default check-in/out dates — next Friday → Sunday (mirrors stream/route.ts logic).
+// Same-day / next-day dates have near-zero OTV inventory.
 export function getDefaultDates() {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const dayAfter = new Date(tomorrow);
-    dayAfter.setDate(tomorrow.getDate() + 2);
-    return { checkIn: formatDateForApi(tomorrow), checkOut: formatDateForApi(dayAfter) };
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=Sun … 6=Sat
+    const daysUntilFriday = ((5 - dayOfWeek + 7) % 7) || 7; // at least 1 day ahead
+    const checkin = new Date(now);
+    checkin.setDate(now.getDate() + daysUntilFriday);
+    const checkout = new Date(checkin);
+    checkout.setDate(checkin.getDate() + 2); // Fri → Sun
+    return { checkIn: formatDateForApi(checkin), checkOut: formatDateForApi(checkout) };
 }
 
 // Collect room images from room types

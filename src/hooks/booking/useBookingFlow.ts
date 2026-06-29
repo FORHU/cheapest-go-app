@@ -7,7 +7,7 @@ import {
   useBookingActions,
 } from '@/stores/bookingStore';
 import { useCheckoutStore } from '@/stores/checkoutStore';
-import type { BookingParams, PrebookResponse, CancellationPolicy } from '@/services';
+import type { BookingParams, PrebookResponse, CancellationPolicy, TgxSurcharge } from '@/services';
 import { apiFetch } from '@/lib/api/client';
 import { toast } from 'sonner';
 
@@ -19,6 +19,7 @@ export interface PriceData {
   tax: number;
   total: number;
   currency: string;
+  surcharges?: TgxSurcharge[];
   /** Cancellation policies from prebook */
   cancellationPolicies?: CancellationPolicy;
 }
@@ -82,6 +83,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
           tax: data.price.taxes || 0,
           total: data.price.total,
           currency: data.currency || variables.currency,
+          surcharges: data.surcharges,
           cancellationPolicies: data.cancellationPolicies,
         });
       }
@@ -156,10 +158,11 @@ export function useBookingFlow(): UseBookingFlowReturn {
           tax: data.price.taxes || 0,
           total: data.price.total,
           currency: data.currency || currency,
+          surcharges: data.surcharges,
           cancellationPolicies: data.cancellationPolicies,
         });
       }
-      
+
       return data;
     },
     [setPrebookId, prebookMutation]
@@ -199,6 +202,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
           tax: data.price.taxes || 0,
           total: data.price.total,
           currency: data.currency || currentCurrency,
+          surcharges: data.surcharges,
           cancellationPolicies: data.cancellationPolicies,
         });
       }
@@ -241,6 +245,7 @@ export function useBookingFlow(): UseBookingFlowReturn {
           tax: data.price.taxes || 0,
           total: data.price.total,
           currency: data.currency || currentCurrency,
+          surcharges: data.surcharges,
           cancellationPolicies: data.cancellationPolicies,
         });
       }

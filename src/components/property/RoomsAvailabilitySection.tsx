@@ -27,14 +27,12 @@ export default async function RoomsAvailabilitySection({ hotelId, property, sear
                     rooms:    Number(searchParams.rooms    || 1),
                 }}
             />
-            <hr className="border-slate-200 dark:border-white/10 my-4 md:my-8" />
             <PoliciesSection
                 checkInTime={fetchedDetails?.checkInTime}
                 checkOutTime={fetchedDetails?.checkOutTime}
                 hotelImportantInformation={fetchedDetails?.hotelImportantInformation}
                 cancellationPolicies={fetchedDetails?.cancellationPolicies}
             />
-            <hr className="border-slate-200 dark:border-white/10 my-4 md:my-8" />
             <FAQSection
                 propertyName={property.name}
                 checkInTime={fetchedDetails?.checkInTime}

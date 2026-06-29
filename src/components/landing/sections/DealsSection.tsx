@@ -62,14 +62,6 @@ function resolveRoute(title: string): string {
   return `${AIRPORT_CITIES[o] ?? o} (${o}) ✈ ${AIRPORT_CITIES[d] ?? d} (${d})`;
 }
 
-/** "Hong Kong (HKG)" subtitle */
-function getCityLabel(iata: string | undefined): string {
-  if (!iata) return '';
-  const upper = iata.toUpperCase();
-  const city = AIRPORT_CITIES[upper];
-  return city ? `${city} (${upper})` : upper;
-}
-
 function isPlaceholderImage(url: string | null | undefined): boolean {
   if (!url || url.trim() === '') return true;
   const u = url.toLowerCase();
@@ -88,14 +80,6 @@ function isPlaceholderImage(url: string | null | undefined): boolean {
   );
 }
 
-function toYMD(raw: string | undefined): string | undefined {
-  if (!raw) return undefined;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
-  const stripped = raw.replace(/\s*\([^)]*\)\s*$/, '').trim();
-  const d = new Date(stripped);
-  return isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
-}
 
 /** Route deal cards directly to the book page. The book page handles passenger config + search. */
 function buildBookingUrl(deal: Deal): string {
@@ -105,10 +89,6 @@ function buildBookingUrl(deal: Deal): string {
     destination: deal.destination,
     cabinClass:  deal.cabinClass || 'economy',
   });
-  const dep = toYMD(deal.departure_date);
-  const ret = toYMD(deal.return_date);
-  if (dep) p.set('departure', dep);
-  if (ret) p.set('return',    ret);
   if (deal.salePrice)     p.set('dealPrice',         String(Math.round(deal.salePrice)));
   if (deal.originalPrice && deal.originalPrice > deal.salePrice)
                           p.set('dealOriginalPrice', String(Math.round(deal.originalPrice)));
@@ -194,16 +174,6 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
           {deal.subtitle && (
             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
               {deal.subtitle}
-            </p>
-          )}
-
-          {/* Dates */}
-          {deal.departure_date && (
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
-              {new Date(deal.departure_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              {deal.return_date
-                ? ` → ${new Date(deal.return_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                : ''}
             </p>
           )}
 
@@ -362,8 +332,8 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
             ? <>Flight Deals from <span className="text-blue-600 dark:text-blue-400">{userCity ?? userOrigin}</span></>
             : 'Exclusive Deals & Offers'}
           subtitle={isPersonalized
-            ? `Departing from ${userCity ?? userOrigin} · updated every hour`
-            : 'Flash prices — updated every hour'}
+            ? `Low fares departing from ${userCity ?? userOrigin}`
+            : 'Low fares on popular routes'}
         >
           {/* Trip-type filter pills */}
           <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>

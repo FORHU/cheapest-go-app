@@ -3,6 +3,27 @@ import { runTgxSearch } from '@/lib/server/stays/travelgatex/search';
 import { searchDuffelStays } from '@/lib/server/stays/providers/duffel';
 import { getSqlAdmin } from '@/lib/db/postgres';
 
+const COUNTRY_NAME_TO_ISO: Record<string, string> = {
+    'indonesia': 'ID', 'france': 'FR', 'italy': 'IT', 'spain': 'ES', 'germany': 'DE',
+    'japan': 'JP', 'thailand': 'TH', 'greece': 'GR', 'united states': 'US', 'usa': 'US',
+    'australia': 'AU', 'philippines': 'PH', 'south korea': 'KR', 'korea': 'KR',
+    'vietnam': 'VN', 'cambodia': 'KH', 'singapore': 'SG', 'malaysia': 'MY',
+    'india': 'IN', 'china': 'CN', 'hong kong': 'HK', 'taiwan': 'TW',
+    'peru': 'PE', 'mexico': 'MX', 'brazil': 'BR', 'argentina': 'AR',
+    'egypt': 'EG', 'tanzania': 'TZ', 'south africa': 'ZA', 'kenya': 'KE',
+    'iceland': 'IS', 'norway': 'NO', 'sweden': 'SE', 'denmark': 'DK',
+    'portugal': 'PT', 'netherlands': 'NL', 'switzerland': 'CH', 'austria': 'AT',
+    'united kingdom': 'GB', 'uk': 'GB', 'maldives': 'MV', 'sri lanka': 'LK',
+    'nepal': 'NP', 'uae': 'AE', 'united arab emirates': 'AE', 'turkey': 'TR',
+    'morocco': 'MA', 'jordan': 'JO', 'new zealand': 'NZ', 'canada': 'CA',
+};
+
+function resolveIsoCode(raw: string): string | null {
+    if (!raw) return null;
+    if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+    return COUNTRY_NAME_TO_ISO[raw.toLowerCase()] ?? null;
+}
+
 async function recordHotelSearchDemand(cityName: string, countryCode: string) {
     if (!cityName) return;
     try {
@@ -38,15 +59,19 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
         const normalized = cityOnly.replace(/-(si|do|gu|gun|eup)$/i, '').trim();
         const pattern = `%${normalized}%`;
 
-        // Only filter by country when it's a 2-letter ISO code (DB stores "JP" not "Japan")
-        const isoCode = /^[A-Za-z]{2}$/.test(countryCode) ? countryCode : null;
+        // Resolve full country name ("Indonesia") or ISO-2 ("ID") to a 2-letter code for DB filtering
+        const isoCode = resolveIsoCode(countryCode);
 
+        // Require at least one image — hotels without images are either unseeded or wrong-location
+        // false positives (e.g. the village of Bali in Crete showing up in a Bali, Indonesia search).
         const rows = isoCode
             ? await sql`
                 SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
                        description, amenities, review_rating, review_count
                 FROM hotel_content
-                WHERE city ILIKE ${pattern} AND LOWER(country) = LOWER(${isoCode})
+                WHERE city ILIKE ${pattern}
+                  AND LOWER(country) = LOWER(${isoCode})
+                  AND images IS NOT NULL AND array_length(images, 1) > 0
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
               `
@@ -55,6 +80,7 @@ async function getInstantHotelCatalog(body: any): Promise<any[]> {
                        description, amenities, review_rating, review_count
                 FROM hotel_content
                 WHERE city ILIKE ${pattern}
+                  AND images IS NOT NULL AND array_length(images, 1) > 0
                 ORDER BY review_count DESC NULLS LAST
                 LIMIT 300
               `;
@@ -137,14 +163,20 @@ export async function POST(req: NextRequest) {
 
     const city = rawCity || '(unknown)';
 
-    // Default dates to tonight + tomorrow when not provided (e.g. landing card clicks)
+    // Default dates when not provided (e.g. landing card clicks).
+    // Use next Friday → Sunday so results match the prewarm cache and OTV has inventory.
+    // Same-day / next-day defaults have near-zero OTV coverage.
     if (!body.checkin && !body.checkIn) {
-        const tonight = new Date();
-        const tomorrow = new Date(tonight);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        const now = new Date();
+        const dayOfWeek = now.getDay(); // 0=Sun … 6=Sat
+        const daysUntilFriday = ((5 - dayOfWeek + 7) % 7) || 7; // at least 1 day ahead
+        const checkin  = new Date(now);
+        checkin.setDate(now.getDate() + daysUntilFriday);
+        const checkout = new Date(checkin);
+        checkout.setDate(checkin.getDate() + 2); // Fri → Sun
         const fmt = (d: Date) => d.toISOString().slice(0, 10);
-        body.checkin  = fmt(tonight);
-        body.checkout = fmt(tomorrow);
+        body.checkin  = fmt(checkin);
+        body.checkout = fmt(checkout);
     }
 
     const stream = new ReadableStream({

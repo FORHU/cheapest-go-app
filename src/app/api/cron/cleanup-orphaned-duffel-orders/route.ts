@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
         .select('session_id')
         .in('session_id', sessionIds);
 
-    const bookedIds = new Set((existingBookings ?? []).map((b: any) => b.session_id));
+    const bookedIds = new Set<string>((existingBookings ?? []).map((b: any) => String(b.session_id)));
     const unbooked = filterOrphanedSessions(candidates as OrphanCandidate[], bookedIds);
 
     let cancelled = 0;
