@@ -6,6 +6,7 @@ import { flightBookingSchema } from '@/lib/schemas/flight';
 import { applyMarkup, toStripeAmount, FLIGHT_MARKUP } from '@/lib/pricing';
 import { rateLimit } from '@/lib/server/rate-limit';
 import { getMobileApiKey } from '@/lib/server/mobile-auth';
+import { placeDuffelOrder } from '@/lib/server/flights/place-duffel-order';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
