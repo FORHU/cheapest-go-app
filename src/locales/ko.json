@@ -33,10 +33,10 @@
         "search": {
             "from": "출발지",
             "to": "목적지",
-            "whereTo": "어디로?",
             "depart": "출발일",
             "return": "귀국일",
             "passengers": "승객",
+            "rooms": "객실",
             "placeholder": {
                 "airport": "도시 또는 공항",
                 "date": "날짜 선택"
@@ -70,7 +70,34 @@
             "bundle": {
                 "hotelBooked": "호텔 예약 완료!",
                 "instructions": "{from}과 {to} 공항을 입력하고 날짜를 선택한 후 검색을 누르면 최대 8% 절약됩니다."
-            }
+            },
+            "whereTo": "어디로?",
+            "searchDestination": "목적지 검색",
+            "checkIn": "체크인",
+            "checkOut": "체크아웃",
+            "travelers": "여행자",
+            "selectDate": "날짜 선택",
+            "guest": "{count}명",
+            "guestPlural": "{count}명",
+            "guestsRooms": "게스트 및 객실",
+            "adults": "성인",
+            "children": "어린이",
+            "childrenAges": "만 0~17세",
+            "roomsNote": "예약당 1개 객실. 추가 객실은 별도 예약하세요.",
+            "done": "완료",
+            "calendar": "달력",
+            "flexibleDates": "유연한 날짜",
+            "whenTravel": "여행 날짜를 언제로 하시겠어요?",
+            "childLabel": "어린이 {index}: {age}세",
+            "yearsOld": "{age}세",
+            "month": "월",
+            "year": "연도",
+            "searchDestinationsPlaceholder": "목적지 검색...",
+            "recentSearches": "최근 검색",
+            "searching": "검색 중...",
+            "noResults": "검색 결과가 없습니다",
+            "countries": "국가",
+            "cities": "도시"
         }
     },
     "flights": {

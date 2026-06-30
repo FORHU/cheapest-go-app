@@ -14,12 +14,12 @@ import { buildPropertySlug } from '@/lib/utils';
 import SectionHeader from './SectionHeader';
 import { useTranslations } from 'next-intl';
 function getRatingKey(r: number): string {
-  if (r >= 9.5) return 'exceptional';
-  if (r >= 9) return 'superb';
-  if (r >= 8.5) return 'excellent';
-  if (r >= 8) return 'veryGood';
-  if (r >= 7) return 'good';
-  return 'average';
+  if (r >= 9.5) return 'Exceptional';
+  if (r >= 9) return 'Superb';
+  if (r >= 8.5) return 'Excellent';
+  if (r >= 8) return 'Very Good';
+  if (r >= 7) return 'Good';
+  return 'Average';
 }
 
 function getRatingColor(r: number): string {
@@ -171,7 +171,6 @@ FavoriteCard.displayName = 'FavoriteCard';
 interface GuestFavoritesSectionProps { deals?: WeekendDeal[] }
 
 const GuestFavoritesSection: React.FC<GuestFavoritesSectionProps> = ({ deals }) => {
-  const t = useTranslations('guestFavorites');
   const rawDeals = deals || [];
   const gridRef = useRef<HTMLDivElement>(null);
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
@@ -189,8 +188,8 @@ const GuestFavoritesSection: React.FC<GuestFavoritesSectionProps> = ({ deals }) 
             setShowAll(v => !v);
             if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
           }}
-          title={<>{t('headerMain')} <span className="text-amber-500">{t('headerHighlight')}</span></>}
-          subtitle={t('subtitle')}
+          title={<>Guest <span className="text-amber-500">Favorites</span></>}
+          subtitle="Top-rated hotels loved by travellers · updated daily"
         />
 
         {/* Carousel */}
@@ -219,13 +218,13 @@ const GuestFavoritesSection: React.FC<GuestFavoritesSectionProps> = ({ deals }) 
             >
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  {t('allFavoritesCount', { count: rawDeals.length })}
+                  All {rawDeals.length} favorites
                 </p>
                 <button
                   onClick={() => setShowAll(false)}
                   className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                 >
-                  {t('collapse')}
+                  Collapse ↑
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
