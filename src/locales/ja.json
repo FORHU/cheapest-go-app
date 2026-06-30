@@ -6,7 +6,12 @@
         "signOut": "ログアウト",
         "myTrips": "マイトリップ",
         "account": "アカウント",
-        "trips": "旅行"
+        "trips": "旅行",
+        "createAccount": "アカウントを作成",
+        "accountSettings": "アカウント設定",
+        "membersSave": "会員は10%以上割引",
+        "membersSaveSubtitle": "ログイン中の対象宿泊が対象",
+        "accountWorks": "アカウントはCheapestGoおよびすべてのパートナーサイトで利用できます"
     },
     "languagePicker": {
         "label": "言語を選択",
