@@ -33,7 +33,6 @@
         "search": {
             "from": "From",
             "to": "To",
-            "whereTo": "Where to?",
             "depart": "Depart",
             "return": "Return",
             "passengers": "Passengers",
@@ -70,7 +69,35 @@
             "bundle": {
                 "hotelBooked": "Hotel booked!",
                 "instructions": "Enter your {from} and {to} airports, pick your dates, then hit Search to bundle and save up to 8%."
-            }
+            },
+            "whereTo": "Where to?",
+            "searchDestination": "Search destination",
+            "checkIn": "Check-in",
+            "checkOut": "Check-out",
+            "travelers": "Travelers",
+            "selectDate": "Select date",
+            "guest": "{count} Guest",
+            "guestPlural": "{count} Guests",
+            "guestsRooms": "Guests & Rooms",
+            "adults": "Adults",
+            "children": "Children",
+            "childrenAges": "Ages 0 to 17",
+            "rooms": "Rooms",
+            "roomsNote": "1 room per booking. Book separately for more.",
+            "done": "Done",
+            "calendar": "Calendar",
+            "flexibleDates": "Flexible dates",
+            "whenTravel": "When do you want to travel?",
+            "childLabel": "Child {index}: {age} yrs",
+            "yearsOld": "{age} years old",
+            "month": "Month",
+            "year": "Year",
+            "searchDestinationsPlaceholder": "Search destinations...",
+            "recentSearches": "Recent Searches",
+            "searching": "Searching...",
+            "noResults": "No results found",
+            "countries": "Countries",
+            "cities": "Cities"
         }
     },
     "flights": {

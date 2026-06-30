@@ -33,10 +33,10 @@
         "search": {
             "from": "出发地",
             "to": "目的地",
-            "whereTo": "去哪里？",
             "depart": "出发日期",
             "return": "返程日期",
             "passengers": "乘客",
+            "rooms": "房间",
             "placeholder": {
                 "airport": "城市或机场",
                 "date": "选择日期"
@@ -70,7 +70,34 @@
             "bundle": {
                 "hotelBooked": "酒店已预订！",
                 "instructions": "输入您的 {from} 和 {to} 机场，选择日期，然后点击“搜索”即可打包并节省高达 8% 的费用。"
-            }
+            },
+            "whereTo": "去哪里？",
+            "searchDestination": "搜索目的地",
+            "checkIn": "入住",
+            "checkOut": "退房",
+            "travelers": "出行人数",
+            "selectDate": "选择日期",
+            "guest": "{count}人",
+            "guestPlural": "{count}人",
+            "guestsRooms": "客人与房间",
+            "adults": "成人",
+            "children": "儿童",
+            "childrenAges": "0至17岁",
+            "roomsNote": "每次预订限1间客房，如需更多请分开预订。",
+            "done": "完成",
+            "calendar": "日历",
+            "flexibleDates": "灵活日期",
+            "whenTravel": "您打算何时出行？",
+            "childLabel": "儿童{index}：{age}岁",
+            "yearsOld": "{age}岁",
+            "month": "月份",
+            "year": "年份",
+            "searchDestinationsPlaceholder": "搜索目的地...",
+            "recentSearches": "最近搜索",
+            "searching": "搜索中...",
+            "noResults": "未找到结果",
+            "countries": "国家",
+            "cities": "城市"
         }
     },
     "flights": {
@@ -213,5 +240,18 @@
         "subtitle": "深受旅客喜爱的高分酒店 · 每日更新",
         "allFavoritesCount": "共 {count} 个最爱",
         "collapse": "收起 ↑"
+    },
+    "seo": {
+        "orgDescription": "CheapestGo 是一个现代旅行预订平台，帮助旅行者在全球范围内找到最便宜的机票和酒店。",
+        "faq": {
+            "q1": "CheapestGo 如何找到便宜机票？",
+            "a1": "CheapestGo 搜索多家航空公司和全球分销系统，实时找出最低票价，让您在一个地方比较和预订。",
+            "q2": "我可以在 CheapestGo 上同时预订机票和酒店吗？",
+            "a2": "可以。CheapestGo 支持预订机票、酒店、公寓和特色住宿，全部在一个平台完成。",
+            "q3": "CheapestGo 免费使用吗？",
+            "a3": "是的，在 CheapestGo 上搜索和比较价格完全免费，只有在预订时才需要付款。",
+            "q4": "CheapestGo 支持哪些货币？",
+            "a4": "CheapestGo 支持多种货币，并根据您的偏好自动换算价格，让您随时以本地货币查看费用。"
+        }
     }
 }

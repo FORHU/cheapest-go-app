@@ -33,10 +33,10 @@
         "search": {
             "from": "出発地",
             "to": "目的地",
-            "whereTo": "どこへ？",
             "depart": "出発日",
             "return": "帰国日",
             "passengers": "乗客",
+            "rooms": "部屋",
             "placeholder": {
                 "airport": "都市または空港",
                 "date": "日付を選択"
@@ -70,7 +70,34 @@
             "bundle": {
                 "hotelBooked": "ホテル予約済み！",
                 "instructions": "{from}と{to}の空港を入力し、日程を選んで検索すると最大8%お得になります。"
-            }
+            },
+            "whereTo": "どこへ？",
+            "searchDestination": "目的地を検索",
+            "checkIn": "チェックイン",
+            "checkOut": "チェックアウト",
+            "travelers": "旅行者",
+            "selectDate": "日付を選択",
+            "guest": "{count}名",
+            "guestPlural": "{count}名",
+            "guestsRooms": "ゲストと部屋",
+            "adults": "大人",
+            "children": "子ども",
+            "childrenAges": "0〜17歳",
+            "roomsNote": "1予約につき1室。追加の部屋は別途予約してください。",
+            "done": "完了",
+            "calendar": "カレンダー",
+            "flexibleDates": "柔軟な日程",
+            "whenTravel": "いつ旅行しますか？",
+            "childLabel": "子ども{index}：{age}歳",
+            "yearsOld": "{age}歳",
+            "month": "月",
+            "year": "年",
+            "searchDestinationsPlaceholder": "目的地を検索...",
+            "recentSearches": "最近の検索",
+            "searching": "検索中...",
+            "noResults": "結果が見つかりません",
+            "countries": "国",
+            "cities": "都市"
         }
     },
     "flights": {
