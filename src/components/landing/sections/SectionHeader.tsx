@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 interface SectionHeaderProps {
   /** Main heading — accepts rich content (e.g. a highlighted city span). */
@@ -23,7 +24,9 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   onToggleShowAll,
   children,
   className = 'mb-4',
-}) => (
+}) => {
+  const t = useTranslations('landing.recentlyViewed');
+  return (
   <div className={`flex items-start justify-between ${className}`}>
     <div>
       <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900 dark:text-white">
@@ -42,10 +45,11 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
         onClick={onToggleShowAll}
         className="text-sm text-blue-500 hover:text-blue-600 font-medium hidden sm:flex items-center gap-0.5 transition-colors"
       >
-        {showAll ? 'Show less ↑' : 'View all →'}
+        {showAll ? t('showLess') : t('viewAll') + ' →'}
       </button>
     </div>
   </div>
-);
+  );
+};
 
 export default SectionHeader;

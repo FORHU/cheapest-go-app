@@ -93,8 +93,8 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
 
     const { adults, children } = useTravelers();
     const totalTravelers = adults + children;
-    const guestsStr = totalTravelers 
-        ? (totalTravelers === 1 ? t('guests', { count: totalTravelers }) : t('guestsPlural', { count: totalTravelers })) 
+    const guestsStr = totalTravelers
+        ? (totalTravelers === 1 ? t('guests', { count: totalTravelers }) : t('guestsPlural', { count: totalTravelers }))
         : t('addGuests');
 
     // Hooks for search actions
@@ -116,7 +116,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
         setSearchMode(newMode);
         setShowResults(false);
         setIsAIThinking(false);
-    }, [setSearchMode]);
+    }, [setSearchMode, t]);
 
     const triggerAI = useCallback((query: string) => {
         setIsAIThinking(true);
