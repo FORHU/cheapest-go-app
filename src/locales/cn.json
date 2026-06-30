@@ -6,7 +6,12 @@
         "signOut": "退出登录",
         "myTrips": "我的行程",
         "account": "账户",
-        "trips": "行程"
+        "trips": "行程",
+        "createAccount": "创建账户",
+        "accountSettings": "账户设置",
+        "membersSave": "会员可省夐10%或更多",
+        "membersSaveSubtitle": "登录后可享选定住宿折扣",
+        "accountWorks": "您的账户可在CheapestGo及所有合作站点使用"
     },
     "languagePicker": {
         "label": "选择语言",
