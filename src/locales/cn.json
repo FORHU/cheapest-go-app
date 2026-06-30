@@ -97,7 +97,15 @@
             "searching": "搜索中...",
             "noResults": "未找到结果",
             "countries": "国家",
-            "cities": "城市"
+            "cities": "城市",
+            "typeToSearch": "输入城市名称或机场代码...",
+            "noAirportsFound": "未找到 \"{query}\" 的相关机场",
+            "typeToSearchPrompt": "输入城市名称或机场代码进行搜索",
+            "infants": "婴儿",
+            "adultAge": "12岁以上",
+            "childAge": "2至11岁",
+            "infantAge": "2岁以下（抱坐）",
+            "cabinClassLabel": "舱位等级"
         }
     },
     "flights": {

@@ -97,7 +97,16 @@
             "searching": "検索中...",
             "noResults": "結果が見つかりません",
             "countries": "国",
-            "cities": "都市"
+            "cities": "都市",
+            "typeToSearch": "都市名または空港コードを入力...",
+            "noAirportsFound": "「{query}」の空港が見つかりません",
+            "typeToSearchPrompt": "都市名または空港コードを入力して検索",
+            "cabinClassLabel": "座席クラス",
+            "passengers": "乗客",
+            "infants": "幼児",
+            "adultAge": "12歳以上",
+            "childAge": "2〜11歳",
+            "infantAge": "2歳未満（膝上）"
         }
     },
     "flights": {
