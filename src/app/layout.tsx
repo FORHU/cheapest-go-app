@@ -1,6 +1,8 @@
 import React from 'react';
 import type { Metadata, Viewport } from 'next';
 import { Inter, Inter_Tight, JetBrains_Mono } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages, getLocale } from 'next-intl/server';
 import Script from 'next/script';
 import './globals.css';
 import { ThemeProvider } from '@/components/context/ThemeContext';
@@ -69,36 +71,41 @@ export const metadata: Metadata = {
   }),
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       {/* {process.env.NODE_ENV === 'development' && (
         <Script src="https://cdn.jsdelivr.net/npm/react-scan/dist/auto.global.js" />
       )} */}
       <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} font-sans`}>
-        <QueryProvider>
-          <ThemeProvider>
-            <PWAInstallProvider>
-              <AuthListener />
-              <ExchangeRateListener />
-              <PWAServiceWorkerRegistrar />
-              <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px">
-                <GlobalSparkle />
-                <div className="relative flex flex-col flex-1 pb-24 lg:pb-0">
-                  {children}
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <QueryProvider>
+            <ThemeProvider>
+              <PWAInstallProvider>
+                <AuthListener />
+                <ExchangeRateListener />
+                <PWAServiceWorkerRegistrar />
+                <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px">
+                  <GlobalSparkle />
+                  <div className="relative flex flex-col flex-1 pb-24 lg:pb-0">
+                    {children}
+                  </div>
+                  <ScrollToTop />
+                  <MobileBottomNav />
                 </div>
-                <ScrollToTop />
-                <MobileBottomNav />
-              </div>
-              <AuthModal />
-              <InstallPWAPrompt />
-            </PWAInstallProvider>
-          </ThemeProvider>
-        </QueryProvider>
+                <AuthModal />
+                <InstallPWAPrompt />
+              </PWAInstallProvider>
+            </ThemeProvider>
+          </QueryProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

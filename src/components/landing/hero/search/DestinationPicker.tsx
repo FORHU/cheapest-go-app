@@ -13,8 +13,7 @@ import {
     useRecentSearches,
     useActiveDropdown,
 } from '@/stores/searchStore';
-
-
+import { useTranslations } from 'next-intl';
 
 interface DestinationPickerProps {
     hideIcon?: boolean;
@@ -23,6 +22,7 @@ interface DestinationPickerProps {
 }
 
 export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, forceOpen, onSelect }) => {
+    const t = useTranslations('landing.search');
     const ref = useRef<HTMLDivElement>(null);
 
     // Store
@@ -93,7 +93,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                         addRecentSearch(enriched);
                     }
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
     };
 
@@ -126,7 +126,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                     <div className={`${forceOpen ? 'p-3' : 'p-4 border-b border-slate-100 dark:border-white/5'}`}>
                         {!forceOpen && (
                             <span className="text-[9px] text-slate-500 font-mono font-medium uppercase tracking-wider block mb-1 text-left">
-                                Where to?
+                                {t('whereTo')}
                             </span>
                         )}
                         <div className="flex items-center gap-2">
@@ -137,7 +137,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                 value={query}
                                 onChange={(e) => setDestinationQuery(e.target.value)}
                                 onFocus={(e) => e.target.select()}
-                                placeholder="Search destinations..."
+                                placeholder={t('searchDestinationsPlaceholder')}
                                 className={`bg-transparent border-none p-0 font-bold focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder:font-normal placeholder-slate-400 font-sans ${forceOpen ? 'text-[10px]' : 'text-[13px]'}`}
                             />
                             {loading && (
@@ -170,7 +170,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                     transition={{ duration: 0.15 }}
                                 >
                                     <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[8px] font-mono font-medium uppercase text-slate-500 tracking-wider text-left`}>
-                                        Recent Searches
+                                        {t('recentSearches')}
                                     </div>
                                     {recentSearches.map((item, i) => (
                                         <motion.div
@@ -219,7 +219,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                             animate={{ opacity: 1 }}
                                             className="px-6 py-4 text-center text-slate-400 text-sm"
                                         >
-                                            {loading ? 'Searching...' : 'No results found'}
+                                            {loading ? t('searching') : t('noResults')}
                                         </motion.div>
                                     );
                                 }
@@ -258,7 +258,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                         {countries.length > 0 && (
                                             <>
                                                 <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[8px] font-mono font-medium uppercase text-slate-500 tracking-wider`}>
-                                                    Countries
+                                                    {t('countries')}
                                                 </div>
                                                 {countries.map(renderItem)}
                                             </>
@@ -266,7 +266,7 @@ export const DestinationPicker: React.FC<DestinationPickerProps> = ({ hideIcon, 
                                         {cities.length > 0 && (
                                             <>
                                                 <div className={`${forceOpen ? 'px-2' : 'px-6'} py-1.5 text-[8px] font-mono font-medium uppercase text-slate-500 tracking-wider ${countries.length > 0 ? 'mt-1' : ''}`}>
-                                                    Cities
+                                                    {t('cities')}
                                                 </div>
                                                 {cities.map(renderItem)}
                                             </>

@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState, useCallback, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plane, Loader2, MapPin } from 'lucide-react';
 import type { Airport } from '@/lib/airports';
+import { useTranslations } from 'next-intl';
 
 // ─── Props ───────────────────────────────────────────────────────────
 
@@ -39,6 +40,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     onToggle,
     excludeIata,
 }) => {
+    const t = useTranslations('landing.search');
     const uid = useId();
     const listboxId = `airport-listbox-${uid}`;
     const containerRef = useRef<HTMLDivElement>(null);
@@ -175,7 +177,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     return (
         <div className={`flex-1 min-w-0 relative group ${isOpen ? 'z-50' : 'z-auto h-16'}`}>
             {/* ─── Trigger (Hidden on mobile when open to show input instead) ─── */}
-            <div 
+            <div
                 className={`flex-1 min-w-0 relative flex items-center px-4 h-16 group cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${isOpen ? 'hidden sm:flex' : 'flex'}`}
                 onClick={() => onToggle(!isOpen)}
             >
@@ -220,7 +222,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                         setActiveIndex(-1);
                                     }}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Type city name or airport code..."
+                                    placeholder={t('typeToSearch')}
                                     className="bg-transparent border-none p-0 text-xs font-medium focus:ring-0 outline-none w-full text-slate-900 dark:text-white placeholder-slate-400"
                                     role="combobox"
                                     aria-expanded={results.length > 0}
@@ -284,12 +286,12 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
                                 ))
                             ) : query.length > 0 && !loading ? (
                                 <div className="px-6 py-6 text-center text-slate-400 text-xs">
-                                    No airports found for &ldquo;{query}&rdquo;
+                                    {t('noAirportsFound', { query })}
                                 </div>
                             ) : (
                                 <div className="px-6 py-6 text-center text-slate-400 text-xs">
                                     <Plane className="mx-auto mb-2 text-slate-300 dark:text-slate-600" size={24} />
-                                    Type a city or airport code to search
+                                    {t('typeToSearchPrompt')}
                                 </div>
                             )}
                         </div>

@@ -12,6 +12,7 @@ import { useDragScroll } from '@/hooks/useDragScroll';
 import { useBookingActions } from '@/stores/bookingStore';
 import { buildPropertySlug } from '@/lib/utils';
 import SectionHeader from './SectionHeader';
+import { useTranslations } from 'next-intl';
 
 // ── Location → country lookup ───────────────────────────────────────────────────
 // Hotel deals only carry a free-text `location` (a city). We map well-known
@@ -86,12 +87,12 @@ function useUserCountry(): string | null {
 }
 
 // ── Rating helpers ──────────────────────────────────────────────────────────────
-function getRatingLabel(r: number): string {
-  if (r >= 9) return 'Exceptional';
-  if (r >= 8) return 'Excellent';
-  if (r >= 7) return 'Very Good';
-  if (r >= 6) return 'Good';
-  return 'Average';
+function getRatingLabelKey(r: number): string {
+  if (r >= 9) return 'hotels.ratings.exceptional';
+  if (r >= 8) return 'hotels.ratings.excellent';
+  if (r >= 7) return 'hotels.ratings.veryGood';
+  if (r >= 6) return 'hotels.ratings.good';
+  return 'hotels.ratings.average';
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
@@ -116,6 +117,7 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
   useEffect(() => setMounted(true), []);
 
   const router = useRouter();
+  const t = useTranslations();
   const { setDates } = useBookingActions();
   const currency = useUserCurrency();
   const fromCur = deal.currency || 'USD';
@@ -184,9 +186,9 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
             <div className="flex items-end justify-between">
               <div className="flex flex-col gap-0.5">
                 <span className="text-[22px] text-white leading-none drop-shadow">
-                  From {symbol}{price.toLocaleString()}<span className="text-[11px] font-normal">/night</span>
+                  {t('hotels.fromPrice', { price: `${symbol}${price.toLocaleString()}` })}{t('hotels.perNight')}
                 </span>
-                <span className="text-[10px] text-white/60 leading-none">prices may vary</span>
+                <span className="text-[10px] text-white/60 leading-none">{t('hotels.pricesMayVary')}</span>
               </div>
               {deal.badge && (
                 <span className="text-[10px] text-white/90 mb-0.5">
@@ -213,14 +215,14 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
           <div className="flex items-center justify-between gap-2 mt-auto pt-2">
             {deal.rating > 0 ? (
               <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
-               • {deal.rating.toFixed(1)} • {getRatingLabel(deal.rating)}
+               • {deal.rating.toFixed(1)} • {t(getRatingLabelKey(deal.rating))}
               </p>
             ) : <span />}
             <button
               onClick={e => { e.stopPropagation(); navigate(); }}
               className="shrink-0 inline-flex items-center gap-1 text-[11px] text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-sm transition-colors cursor-pointer leading-none"
             >
-              Book Now
+              {t('hotels.bookNow')}
             </button>
           </div>
         </div>
@@ -236,6 +238,7 @@ HotelDealCard.displayName = 'HotelDealCard';
 interface HotelDealsSectionProps { deals?: WeekendDeal[] }
 
 const HotelDealsSection: React.FC<HotelDealsSectionProps> = ({ deals }) => {
+  const t = useTranslations();
   const rawDeals = deals || [];
   const gridRef = useRef<HTMLDivElement>(null);
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
@@ -274,11 +277,11 @@ const HotelDealsSection: React.FC<HotelDealsSectionProps> = ({ deals }) => {
             if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
           }}
           title={isPersonalized
-            ? <>Hotel Deals in <span className="text-blue-600 dark:text-blue-400">{userCountry}</span></>
-            : 'Top Hotel Deals'}
+            ? t.rich('hotels.headerPersonalized', { country: () => <span className="text-blue-600 dark:text-blue-400">{userCountry}</span> })
+            : t('hotels.headerDefault')}
           subtitle={isPersonalized
-            ? `Top-rated stays in ${userCountry} · updated daily`
-            : 'Handpicked stays at unbeatable prices'}
+            ? t('hotels.subtitlePersonalized', { country: userCountry })
+            : t('hotels.subtitleDefault')}
         />
 
         {/* Horizontal scroll row */}
@@ -307,13 +310,13 @@ const HotelDealsSection: React.FC<HotelDealsSectionProps> = ({ deals }) => {
             >
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  All {allDeals.length} hotels
+                  {t('hotels.allHotelsCount', { count: allDeals.length })}
                 </p>
                 <button
                   onClick={() => setShowAll(false)}
                   className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                 >
-                  Collapse ↑
+                  {t('hotels.collapse')}
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">

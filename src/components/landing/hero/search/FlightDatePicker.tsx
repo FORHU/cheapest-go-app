@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 interface FlightDatePickerProps {
     date: Date | null;
@@ -27,6 +28,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     onToggle,
     minDate
 }) => {
+    const t = useTranslations('landing.search');
     const ref = useRef<HTMLDivElement>(null);
     const [currentMonth, setCurrentMonth] = useState(date || new Date());
     const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
@@ -244,7 +246,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                                 {/* Month Picker Overlay */}
                                 {view === 'month' && (
                                     <div className="absolute inset-0 bg-white dark:bg-obsidian z-20 overflow-y-auto custom-scrollbar pr-1 animate-in fade-in zoom-in-95 duration-200">
-                                        <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">Month</div>
+                                        <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">{t('month')}</div>
                                         <div className="grid grid-cols-1 gap-1">
                                             {MONTHS.map((m, i) => (
                                                 <button
@@ -318,7 +320,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
                                     }}
                                     className="px-6 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg"
                                 >
-                                    Done
+                                    {t('done')}
                                 </button>
                             </div>
                         </div>
