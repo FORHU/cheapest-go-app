@@ -160,5 +160,71 @@
         "installBtn": "앱 설치하기",
         "downloadBtn": "앱 다운로드",
         "learnMore": "더 알아보기"
+    },
+    "deals": {
+        "popularRoute": "인기 노선",
+        "searchFlights": "항공편 검색",
+        "all": "전체",
+        "oneWay": "편도",
+        "roundTrip": "왕복",
+        "headerDefault": "독점 특가 및 혜택",
+        "headerPersonalized": "{city} 출발 항공권 특가",
+        "subtitleDefault": "인기 노선 최저가 항공권",
+        "subtitlePersonalized": "{city} 출발 최저가 항공권",
+        "allDealsCount": "전체 {count}개 특가",
+        "collapse": "접기 ↑"
+    },
+    "hotels": {
+        "ratings": {
+            "exceptional": "최고",
+            "excellent": "매우 훌륭함",
+            "superb": "최상급",
+            "veryGood": "훌륭함",
+            "good": "좋음",
+            "average": "보통"
+        },
+        "fromPrice": "{price}부터",
+        "perNight": "/박",
+        "pricesMayVary": "가격은 변동될 수 있습니다",
+        "bookNow": "지금 예약",
+        "guestFavorite": "게스트 최애",
+        "headerDefault": "인기 호텔 특가",
+        "headerPersonalized": "{country} 호텔 특가",
+        "subtitleDefault": "엄선된 호텔을 최저가에 제공",
+        "subtitlePersonalized": "{country} 인기 호텔 · 매일 업데이트",
+        "allHotelsCount": "전체 {count}개 호텔",
+        "collapse": "접기 ↑"
+    },
+    "topCities": {
+        "headerMain": "인기 도시",
+        "headerHighlight": "전 세계",
+        "subtitle": "가장 인기 있는 여행지 · 즉시 호텔 검색",
+        "exploreHotels": "호텔 찾아보기"
+    },
+    "topDestinations": {
+        "headerMain": "인기 여행지",
+        "headerHighlight": "전 세계",
+        "subtitle": "세계 구석구석에서 선사하는 상징적인 경험",
+        "findHotels": "호텔 찾기"
+    },
+    "guestFavorites": {
+        "headerMain": "고객",
+        "headerHighlight": "인기 호텔",
+        "subtitle": "여행자들이 사랑하는 최고 평점 호텔 · 매일 업데이트",
+        "allFavoritesCount": "전체 {count}개 인기 호텔",
+        "collapse": "접기 ↑"
+    },
+    "seo": {
+        "orgDescription": "CheapestGo는 전 세계 최저가 항공권과 호텔을 찾는 현대적인 여행 예약 플랫폼입니다.",
+        "faq": {
+            "q1": "CheapestGo는 어떻게 저렴한 항공권을 찾나요?",
+            "a1": "CheapestGo는 여러 항공사와 글로벌 유통 시스템을 검색해 실시간으로 최저가를 찾아 한 곳에서 비교하고 예약할 수 있게 합니다.",
+            "q2": "CheapestGo에서 항공권과 호텔을 모두 예약할 수 있나요?",
+            "a2": "네. CheapestGo는 항공권, 호텔, 아파트, 독특한 숙소까지 하나의 플랫폼에서 예약할 수 있습니다.",
+            "q3": "CheapestGo는 무료로 사용할 수 있나요?",
+            "a3": "네, 가격 검색과 비교는 완전히 무료입니다. 예약할 때만 비용이 발생합니다.",
+            "q4": "CheapestGo는 어떤 통화를 지원하나요?",
+            "a4": "CheapestGo는 다양한 통화를 지원하며 설정에 따라 자동으로 가격을 변환해 현지 통화로 확인할 수 있습니다."
+        }
     }
 }

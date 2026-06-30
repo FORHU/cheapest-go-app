@@ -160,5 +160,58 @@
         "installBtn": "安装应用",
         "downloadBtn": "下载应用",
         "learnMore": "了解更多"
+    },
+    "deals": {
+        "popularRoute": "热门路线",
+        "searchFlights": "搜索航班",
+        "all": "全部",
+        "oneWay": "单程",
+        "roundTrip": "往返",
+        "headerDefault": "独家特惠",
+        "headerPersonalized": "从 {city} 出发的航班特惠",
+        "subtitleDefault": "热门路线的超低票价",
+        "subtitlePersonalized": "从 {city} 出发的超低票价",
+        "allDealsCount": "共 {count} 个特惠",
+        "collapse": "收起 ↑"
+    },
+    "hotels": {
+        "ratings": {
+            "exceptional": "超棒",
+            "excellent": "极好",
+            "superb": "极好",
+            "veryGood": "非常好",
+            "good": "好",
+            "average": "一般"
+        },
+        "fromPrice": "{price} 起",
+        "perNight": "/晚",
+        "pricesMayVary": "价格可能会有所变动",
+        "bookNow": "立即预订",
+        "headerDefault": "热门酒店特惠",
+        "guestFavorite": "房客最爱",
+        "headerPersonalized": "在 {country} 的酒店特惠",
+        "subtitleDefault": "精心挑选，价格无可比拟",
+        "subtitlePersonalized": "{country} 的高分住宿 · 每日更新",
+        "allHotelsCount": "共 {count} 家酒店",
+        "collapse": "收起 ↑"
+    },
+    "topCities": {
+        "headerMain": "热门城市",
+        "headerHighlight": "全球首选",
+        "subtitle": "最受欢迎的目的地 · 立即查找酒店",
+        "exploreHotels": "探索酒店"
+    },
+    "topDestinations": {
+        "headerMain": "热门目的地",
+        "headerHighlight": "全球首选",
+        "subtitle": "来自世界每个角落的标志性体验",
+        "findHotels": "查找酒店"
+    },
+    "guestFavorites": {
+        "headerMain": "旅客",
+        "headerHighlight": "最爱",
+        "subtitle": "深受旅客喜爱的高分酒店 · 每日更新",
+        "allFavoritesCount": "共 {count} 个最爱",
+        "collapse": "收起 ↑"
     }
 }

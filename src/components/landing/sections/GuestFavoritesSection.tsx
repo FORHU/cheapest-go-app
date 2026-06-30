@@ -12,20 +12,20 @@ import { useDragScroll } from '@/hooks/useDragScroll';
 import { useBookingActions } from '@/stores/bookingStore';
 import { buildPropertySlug } from '@/lib/utils';
 import SectionHeader from './SectionHeader';
-
-function getRatingLabel(r: number): string {
-  if (r >= 9.5) return 'Exceptional';
-  if (r >= 9)   return 'Superb';
-  if (r >= 8.5) return 'Excellent';
-  if (r >= 8)   return 'Very Good';
-  if (r >= 7)   return 'Good';
-  return 'Average';
+import { useTranslations } from 'next-intl';
+function getRatingKey(r: number): string {
+  if (r >= 9.5) return 'exceptional';
+  if (r >= 9) return 'superb';
+  if (r >= 8.5) return 'excellent';
+  if (r >= 8) return 'veryGood';
+  if (r >= 7) return 'good';
+  return 'average';
 }
 
 function getRatingColor(r: number): string {
-  if (r >= 9)  return 'bg-emerald-500';
-  if (r >= 8)  return 'bg-green-500';
-  if (r >= 7)  return 'bg-amber-500';
+  if (r >= 9) return 'bg-emerald-500';
+  if (r >= 8) return 'bg-green-500';
+  if (r >= 7) return 'bg-amber-500';
   return 'bg-slate-400';
 }
 
@@ -46,6 +46,8 @@ interface FavoriteCardProps {
 }
 
 const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 'carousel' }) => {
+  const t = useTranslations('hotels.ratings');
+  const tc = useTranslations('hotels');
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -68,9 +70,9 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
     setDates(new Date(dates.checkIn), new Date(dates.checkOut));
     const slug = buildPropertySlug(deal.name, hotelId);
     const params = new URLSearchParams({
-      checkIn:  dates.checkIn,
+      checkIn: dates.checkIn,
       checkOut: dates.checkOut,
-      adults:   '2',
+      adults: '2',
     });
     router.push(`/property/${slug}?${params.toString()}`);
   }
@@ -106,7 +108,7 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
           {/* Guest Favorite badge */}
           <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-400 text-amber-900 px-2 py-0.5 rounded-md">
             <Star className="w-2.5 h-2.5 fill-amber-900" />
-            <span className="text-[10px] font-semibold leading-none">Guest Favorite</span>
+            <span className="text-[10px] font-semibold leading-none">{tc('guestFavorite')}</span>
           </div>
 
           {/* Bookmark */}
@@ -121,9 +123,9 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
           {/* Price overlay */}
           <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 pt-8">
             <span className="text-[20px] text-white leading-none drop-shadow">
-              From {symbol}{price.toLocaleString()}<span className="text-[11px] font-normal">/night</span>
+              {tc('fromPrice', { price: `${symbol}${price.toLocaleString()}` })}<span className="text-[11px] font-normal">{tc('perNight')}</span>
             </span>
-            <p className="text-[10px] text-white/60 leading-none mt-0.5">prices may vary</p>
+            <p className="text-[10px] text-white/60 leading-none mt-0.5">{tc('pricesMayVary')}</p>
           </div>
         </div>
 
@@ -144,7 +146,7 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
                   {deal.rating.toFixed(1)}
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  {getRatingLabel(deal.rating)}
+                  {t(getRatingKey(deal.rating))}
                 </span>
               </div>
             ) : <span />}
@@ -152,7 +154,7 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
               onClick={e => { e.stopPropagation(); navigate(); }}
               className="shrink-0 inline-flex items-center gap-1 text-[11px] text-white bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-sm transition-colors cursor-pointer leading-none"
             >
-              Book Now
+              {tc('bookNow')}
             </button>
           </div>
         </div>
@@ -169,6 +171,7 @@ FavoriteCard.displayName = 'FavoriteCard';
 interface GuestFavoritesSectionProps { deals?: WeekendDeal[] }
 
 const GuestFavoritesSection: React.FC<GuestFavoritesSectionProps> = ({ deals }) => {
+  const t = useTranslations('guestFavorites');
   const rawDeals = deals || [];
   const gridRef = useRef<HTMLDivElement>(null);
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
@@ -186,8 +189,8 @@ const GuestFavoritesSection: React.FC<GuestFavoritesSectionProps> = ({ deals }) 
             setShowAll(v => !v);
             if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
           }}
-          title={<>Guest <span className="text-amber-500">Favorites</span></>}
-          subtitle="Top-rated hotels loved by travellers · updated daily"
+          title={<>{t('headerMain')} <span className="text-amber-500">{t('headerHighlight')}</span></>}
+          subtitle={t('subtitle')}
         />
 
         {/* Carousel */}
@@ -216,13 +219,13 @@ const GuestFavoritesSection: React.FC<GuestFavoritesSectionProps> = ({ deals }) 
             >
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  All {rawDeals.length} favorites
+                  {t('allFavoritesCount', { count: rawDeals.length })}
                 </p>
                 <button
                   onClick={() => setShowAll(false)}
                   className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                 >
-                  Collapse ↑
+                  {t('collapse')}
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">

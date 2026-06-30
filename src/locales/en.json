@@ -160,5 +160,71 @@
         "installBtn": "Install App",
         "downloadBtn": "Download App",
         "learnMore": "Learn More"
+    },
+    "deals": {
+        "popularRoute": "Popular Route",
+        "searchFlights": "Search Flights",
+        "all": "All",
+        "oneWay": "One Way",
+        "roundTrip": "Round Trip",
+        "headerDefault": "Exclusive Deals & Offers",
+        "headerPersonalized": "Flight Deals from {city}",
+        "subtitleDefault": "Low fares on popular routes",
+        "subtitlePersonalized": "Low fares departing from {city}",
+        "allDealsCount": "All {count} deals",
+        "collapse": "Collapse ↑"
+    },
+    "hotels": {
+        "ratings": {
+            "exceptional": "Exceptional",
+            "superb": "Superb",
+            "excellent": "Excellent",
+            "veryGood": "Very Good",
+            "good": "Good",
+            "average": "Average"
+        },
+        "fromPrice": "From {price}",
+        "perNight": "/night",
+        "pricesMayVary": "prices may vary",
+        "bookNow": "Book Now",
+        "guestFavorite": "Guest Favorite",
+        "headerDefault": "Top Hotel Deals",
+        "headerPersonalized": "Hotel Deals in {country}",
+        "subtitleDefault": "Handpicked stays at unbeatable prices",
+        "subtitlePersonalized": "Top-rated stays in {country} · updated daily",
+        "allHotelsCount": "All {count} hotels",
+        "collapse": "Collapse ↑"
+    },
+    "topCities": {
+        "headerMain": "Top Cities",
+        "headerHighlight": "Worldwide",
+        "subtitle": "Most visited destinations · find hotels instantly",
+        "exploreHotels": "Explore Hotels"
+    },
+    "topDestinations": {
+        "headerMain": "Top Destinations",
+        "headerHighlight": "Worldwide",
+        "subtitle": "Iconic experiences from every corner of the globe",
+        "findHotels": "Find Hotels"
+    },
+    "guestFavorites": {
+        "headerMain": "Guest",
+        "headerHighlight": "Favorites",
+        "subtitle": "Top-rated hotels loved by travellers · updated daily",
+        "allFavoritesCount": "All {count} favorites",
+        "collapse": "Collapse ↑"
+    },
+    "seo": {
+        "orgDescription": "CheapestGo is a modern travel booking platform helping travelers find the cheapest flights and hotels worldwide.",
+        "faq": {
+            "q1": "How does CheapestGo find cheap flights?",
+            "a1": "CheapestGo searches across multiple airlines and global distribution systems to surface the lowest available fares in real time, letting you compare and book in one place.",
+            "q2": "Can I book both flights and hotels on CheapestGo?",
+            "a2": "Yes. CheapestGo supports booking flights, hotels, apartments, and unique stays — all from a single platform.",
+            "q3": "Is CheapestGo free to use?",
+            "a3": "Yes, searching and comparing prices on CheapestGo is completely free. You only pay when you book.",
+            "q4": "What currencies does CheapestGo support?",
+            "a4": "CheapestGo supports multiple currencies and automatically converts prices based on your preference so you can always see costs in your local currency."
+        }
     }
 }

@@ -160,5 +160,71 @@
         "installBtn": "アプリをインストール",
         "downloadBtn": "アプリをダウンロード",
         "learnMore": "詳細はこちら"
+    },
+    "deals": {
+        "popularRoute": "人気路線",
+        "searchFlights": "フライトを検索",
+        "all": "すべて",
+        "oneWay": "片道",
+        "roundTrip": "往復",
+        "headerDefault": "特別セール＆オファー",
+        "headerPersonalized": "{city} 出発の格安航空券",
+        "subtitleDefault": "人気路線の最安値",
+        "subtitlePersonalized": "{city} 出発の最安値フライト",
+        "allDealsCount": "すべてのオファー（{count}件）",
+        "collapse": "折りたたむ ↑"
+    },
+    "hotels": {
+        "ratings": {
+            "exceptional": "素晴らしい",
+            "excellent": "大変良い",
+            "superb": "素晴らしい",
+            "veryGood": "とても良い",
+            "good": "良い",
+            "average": "普通"
+        },
+        "fromPrice": "{price}〜",
+        "perNight": "/泊",
+        "pricesMayVary": "価格は変動する場合があります",
+        "guestFavorite": "ゲストのお気に入り",
+        "bookNow": "今すぐ予約",
+        "headerDefault": "人気のホテルセール",
+        "headerPersonalized": "{country} のホテルセール",
+        "subtitleDefault": "厳選されたホテルをお得な価格で",
+        "subtitlePersonalized": "{country} の高評価ホテル · 毎日更新",
+        "allHotelsCount": "すべてのホテル（{count}軒）",
+        "collapse": "折りたたむ ↑"
+    },
+    "topCities": {
+        "headerMain": "人気の都市",
+        "headerHighlight": "世界中",
+        "subtitle": "最も人気の目的地 · すぐにホテルを検索",
+        "exploreHotels": "ホテルを検索"
+    },
+    "topDestinations": {
+        "headerMain": "人気の目的地",
+        "headerHighlight": "世界中",
+        "subtitle": "世界中から集めたアイコニックな体験",
+        "findHotels": "ホテルを検索"
+    },
+    "guestFavorites": {
+        "headerMain": "お気に入り",
+        "headerHighlight": "ホテル",
+        "subtitle": "旅行者に愛される高評価ホテル · 毎日更新",
+        "allFavoritesCount": "すべてのお気に入り（{count}件）",
+        "collapse": "折りたたむ ↑"
+    },
+    "seo": {
+        "orgDescription": "CheapestGo は、世界中で最安値の航空券とホテルを見つける現代的な旅行予約プラットフォームです。",
+        "faq": {
+            "q1": "CheapestGo はどうやって安い航空券を見つけますか？",
+            "a1": "CheapestGo は複数の航空会社とグローバル流通システムを検索し、リアルタイムで最安値を探して一か所で比較・予約できます。",
+            "q2": "CheapestGo で航空券とホテルの両方を予約できますか？",
+            "a2": "はい。CheapestGo では航空券、ホテル、アパート、ユニークな宿泊施設をすべて一つのプラットフォームで予約できます。",
+            "q3": "CheapestGo は無料で使えますか？",
+            "a3": "はい、価格の検索と比較は完全無料です。費用が発生するのは予約時のみです。",
+            "q4": "CheapestGo はどの通貨に対応していますか？",
+            "a4": "CheapestGo は複数の通貨に対応しており、設定に基づいて自動的に価格を換算し、いつでも現地通貨で確認できます。"
+        }
     }
 }

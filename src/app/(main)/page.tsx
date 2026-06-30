@@ -15,57 +15,30 @@ import {
   LastMinuteWeekendDealsStream,
   GuestFavoritesSectionStream,
 } from "./_sections";
+import { getTranslations } from 'next-intl/server';
 
-const organizationJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Organization',
-  name: 'CheapestGo',
-  url: 'https://cheapestgo.com',
-  logo: 'https://cheapestgo.com/icon-192.png',
-  sameAs: [],
-  description: 'CheapestGo is a modern travel booking platform helping travelers find the cheapest flights and hotels worldwide.',
-};
+export default async function Home() {
+  const t = await getTranslations('seo');
+  const organizationJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'CheapestGo',
+    url: 'https://cheapestgo.com',
+    logo: 'https://cheapestgo.com/icon-192.png',
+    sameAs: [],
+    description: t('orgDescription'),
+  };
 
-const faqJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: [
-    {
-      '@type': 'Question',
-      name: 'How does CheapestGo find cheap flights?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'CheapestGo searches across multiple airlines and global distribution systems to surface the lowest available fares in real time, letting you compare and book in one place.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Can I book both flights and hotels on CheapestGo?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Yes. CheapestGo supports booking flights, hotels, apartments, and unique stays — all from a single platform.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Is CheapestGo free to use?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Yes, searching and comparing prices on CheapestGo is completely free. You only pay when you book.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'What currencies does CheapestGo support?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'CheapestGo supports multiple currencies and automatically converts prices based on your preference so you can always see costs in your local currency.',
-      },
-    },
-  ],
-};
-
-export default function Home() {
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      { '@type': 'Question', name: t('faq.q1'), acceptedAnswer: { '@type': 'Answer', text: t('faq.a1') } },
+      { '@type': 'Question', name: t('faq.q2'), acceptedAnswer: { '@type': 'Answer', text: t('faq.a2') } },
+      { '@type': 'Question', name: t('faq.q3'), acceptedAnswer: { '@type': 'Answer', text: t('faq.a3') } },
+      { '@type': 'Question', name: t('faq.q4'), acceptedAnswer: { '@type': 'Answer', text: t('faq.a4') } },
+    ],
+  };
   return (
     <main className="flex min-h-screen flex-col items-center justify-between pb-20">
       <Script
