@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { attractionImagePath } from '@/lib/destination-images';
+import { useTranslations } from 'next-intl';
 
 interface Attraction {
   name: string;
@@ -47,6 +48,7 @@ interface AttractionCardProps {
 
 const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) => {
   const router = useRouter();
+  const t = useTranslations('topDestinations');
 
   function navigate() {
     const p = new URLSearchParams({
@@ -93,7 +95,7 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
 
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <span className="bg-white/90 text-slate-900 text-[11px] font-semibold px-4 py-1.5 rounded-full shadow-lg">
-            Find Hotels
+            {t('findHotels')}
           </span>
         </div>
       </div>
@@ -102,6 +104,7 @@ const AttractionCard: React.FC<AttractionCardProps> = ({ attraction, index }) =>
 };
 
 const TopDestinationsSection: React.FC = () => {
+  const t = useTranslations('topDestinations');
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
 
   return (
@@ -111,11 +114,11 @@ const TopDestinationsSection: React.FC = () => {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900 dark:text-white">
-              Top Destinations{' '}
-              <span className="text-blue-600 dark:text-blue-400">Worldwide</span>
+              {t('headerMain')}{' '}
+              <span className="text-blue-600 dark:text-blue-400">{t('headerHighlight')}</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Iconic experiences from every corner of the globe
+              {t('subtitle')}
             </p>
           </div>
         </div>

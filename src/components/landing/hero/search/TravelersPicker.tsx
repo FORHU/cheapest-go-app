@@ -11,6 +11,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useTranslations } from 'next-intl';
 
 interface CounterProps {
     label: string;
@@ -21,33 +22,36 @@ interface CounterProps {
     onChange: (value: number) => void;
 }
 
-const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onChange }) => (
-    <div className="flex justify-between items-center py-2">
-        <div className="flex-1">
-            <span className="text-[10px] font-normal text-slate-900 dark:text-white block">{label}</span>
-            {sublabel && <span className="text-[8.5px] font-normal text-slate-400">{sublabel}</span>}
+const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onChange }) => {
+    const t = useTranslations('landing.search');
+    return (
+        <div className="flex justify-between items-center py-2">
+            <div className="flex-1">
+                <span className="text-[10px] font-normal text-slate-900 dark:text-white block">{label}</span>
+                {sublabel && <span className="text-[8.5px] font-normal text-slate-400">{sublabel}</span>}
+            </div>
+            <div className="flex items-center gap-3">
+                <button
+                    disabled={value <= min}
+                    onClick={() => onChange(value - 1)}
+                    className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                >
+                    <Minus size={12} />
+                </button>
+                <span className="w-6 text-center font-normal text-[10.5px] text-slate-900 dark:text-white">
+                    {value}
+                </span>
+                <button
+                    disabled={value >= max}
+                    onClick={() => onChange(value + 1)}
+                    className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                >
+                    <Plus size={12} />
+                </button>
+            </div>
         </div>
-        <div className="flex items-center gap-3">
-            <button
-                disabled={value <= min}
-                onClick={() => onChange(value - 1)}
-                className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-            >
-                <Minus size={12} />
-            </button>
-            <span className="w-6 text-center font-normal text-[10.5px] text-slate-900 dark:text-white">
-                {value}
-            </span>
-            <button
-                disabled={value >= max}
-                onClick={() => onChange(value + 1)}
-                className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-            >
-                <Plus size={12} />
-            </button>
-        </div>
-    </div>
-);
+    );
+}
 
 /** Age selector dropdown for a child */
 const ChildAgeSelector: React.FC<{
@@ -56,6 +60,7 @@ const ChildAgeSelector: React.FC<{
     onAgeChange: (index: number, age: number) => void;
     onRemove: (index: number) => void;
 }> = ({ age, index, onAgeChange, onRemove }) => {
+    const t = useTranslations('landing.search');
     return (
         <div className="flex items-center gap-1.5">
             <DropdownMenu>
@@ -63,7 +68,7 @@ const ChildAgeSelector: React.FC<{
                     <button
                         className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                     >
-                        <span>Child {index + 1}: {age} yrs</span>
+                        <span>{t('childLabel', { index: index + 1, age })}</span>
                         <ChevronDown size={10} className="text-slate-400" />
                     </button>
                 </DropdownMenuTrigger>
@@ -77,7 +82,7 @@ const ChildAgeSelector: React.FC<{
                                 age === i ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" : "text-slate-700 dark:text-slate-300"
                             )}
                         >
-                            {i} years old
+                            {t('yearsOld', { age: i })}
                         </DropdownMenuItem>
                     ))}
                 </DropdownMenuContent>
@@ -102,7 +107,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
 
     // Store
     const activeDropdown = useActiveDropdown();
-    const { adults, children, rooms, occupancies } = useTravelers();
+    const { adults, children, occupancies } = useTravelers();
     const { setTravelers, setActiveDropdown } = useSearchStore();
 
     // Local state for children ages (default to age 10 for new children)
@@ -121,32 +126,13 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
         }
     }, [children, childrenAges.length]);
 
-    // Update store when ages change
+    // Update store when ages change — always 1 room
     useEffect(() => {
-        const newOccupancies: RoomOccupancy[] = [];
-
-        // Distribute adults and children across rooms
-        const adultsPerRoom = Math.ceil(adults / rooms);
-        const childrenPerRoom = Math.ceil(childrenAges.length / rooms);
-
-        let remainingAdults = adults;
-        const remainingChildren = [...childrenAges];
-
-        for (let i = 0; i < rooms; i++) {
-            const roomAdults = Math.min(adultsPerRoom, remainingAdults);
-            remainingAdults -= roomAdults;
-
-            const roomChildrenCount = Math.min(childrenPerRoom, remainingChildren.length);
-            const roomChildrenAges = remainingChildren.splice(0, roomChildrenCount);
-
-            newOccupancies.push({
-                adults: roomAdults || 1,
-                childrenAges: roomChildrenAges
-            });
-        }
-
-        setTravelers({ occupancies: newOccupancies });
-    }, [adults, rooms, childrenAges, setTravelers]);
+        setTravelers({
+            rooms: 1,
+            occupancies: [{ adults, childrenAges }],
+        });
+    }, [adults, childrenAges, setTravelers]);
 
     const isOpen = forceOpen || activeDropdown === 'travelers';
     const onClose = () => {
@@ -184,16 +170,18 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
         }
     };
 
+    const t = useTranslations('landing.search');
+
     // Summary text for display
     const summaryText = useMemo(() => {
         const parts = [];
-        parts.push(`${adults} adult${adults !== 1 ? 's' : ''}`);
+        parts.push(adults !== 1 ? t('guestsPlural', { count: adults }) : t('guests', { count: adults }));
         if (children > 0) {
-            parts.push(`${children} child${children !== 1 ? 'ren' : ''}`);
+            parts.push(children !== 1 ? t('guestsPlural', { count: children }) : t('guests', { count: children }));
         }
-        parts.push(`${rooms} room${rooms !== 1 ? 's' : ''}`);
+        parts.push(t('rooms'));
         return parts.join(', ');
-    }, [adults, children, rooms]);
+    }, [adults, children, t]);
 
     return (
         <AnimatePresence>
@@ -212,65 +200,65 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                     <div className={inline ? "p-2" : "p-6"}>
                         {!forceOpen && (
                             <h4 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2">
-                                Guests & Rooms
+                                {t('guestsRooms')}
                             </h4>
                         )}
 
                         <div className="space-y-1">
                             <Counter
-                                label="Adults"
+                                label={t('adults')}
                                 value={adults}
                                 min={1}
                                 max={10}
                                 onChange={(val) => setTravelers({ adults: val })}
                             />
-                                <div className="flex justify-between items-center py-2">
-                                    <div className="flex-1">
-                                        <span className="text-[10px] font-normal text-slate-900 dark:text-white block">Children</span>
-                                        <span className="text-[8.5px] font-normal text-slate-400">Ages 0 to 17</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            disabled={children <= 0}
-                                            onClick={() => setTravelers({ children: children - 1 })}
-                                            className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                                        >
-                                            <Minus size={12} />
-                                        </button>
-                                        <span className="w-6 text-center font-normal text-[10.5px] text-slate-900 dark:text-white">
-                                            {children}
-                                        </span>
-                                        <button
-                                            disabled={children >= 6}
-                                            onClick={handleAddChild}
-                                            className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                                        >
-                                            <Plus size={12} />
-                                        </button>
-                                    </div>
+                            <div className="flex justify-between items-center py-2">
+                                <div className="flex-1">
+                                    <span className="text-[10px] font-normal text-slate-900 dark:text-white block">{t('children')}</span>
+                                    <span className="text-[8.5px] font-normal text-slate-400">{t('childrenAges')}</span>
                                 </div>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        disabled={children <= 0}
+                                        onClick={() => setTravelers({ children: children - 1 })}
+                                        className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                    >
+                                        <Minus size={12} />
+                                    </button>
+                                    <span className="w-6 text-center font-normal text-[10.5px] text-slate-900 dark:text-white">
+                                        {children}
+                                    </span>
+                                    <button
+                                        disabled={children >= 6}
+                                        onClick={handleAddChild}
+                                        className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                    >
+                                        <Plus size={12} />
+                                    </button>
+                                </div>
+                            </div>
 
-                                {/* Children age selectors */}
-                                {childrenAges.length > 0 && (
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        {childrenAges.map((age, index) => (
-                                            <ChildAgeSelector
-                                                key={index}
-                                                age={age}
-                                                index={index}
-                                                onAgeChange={handleChildAgeChange}
-                                                onRemove={handleRemoveChild}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            <Counter
-                                label="Rooms"
-                                value={rooms}
-                                min={1}
-                                max={8}
-                                onChange={(val) => setTravelers({ rooms: val })}
-                            />
+                            {/* Children age selectors */}
+                            {childrenAges.length > 0 && (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {childrenAges.map((age, index) => (
+                                        <ChildAgeSelector
+                                            key={index}
+                                            age={age}
+                                            index={index}
+                                            onAgeChange={handleChildAgeChange}
+                                            onRemove={handleRemoveChild}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center py-2">
+                                <div className="flex-1">
+                                    <span className="text-[10px] font-normal text-slate-900 dark:text-white block">{t('rooms')}</span>
+                                    <span className="text-[8.5px] font-normal text-slate-400">{t('roomsNote')}</span>
+                                </div>
+                                <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400 pr-1">1</span>
+                            </div>
                         </div>
 
                         {/* Summary */}
@@ -288,7 +276,7 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                                 onClick={onClose}
                                 className="w-full py-3 bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian rounded-xl font-bold text-sm hover:opacity-90 transition-all"
                             >
-                                Done
+                                {t('done')}
                             </button>
                         </div>
                     )}

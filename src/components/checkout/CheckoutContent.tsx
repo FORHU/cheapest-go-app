@@ -36,8 +36,6 @@ import {
     SpecialRequestsSection,
     BookingSummary,
     SubmitBookingButton,
-    VoucherInput,
-    AvailablePromos,
 } from '@/components/checkout';
 import dynamic from 'next/dynamic';
 
@@ -220,7 +218,7 @@ export function CheckoutContent() {
     });
 
     // Pricing calculation hook
-    const { displayProperty, displayRoom, totalNights, roomPrice, taxes, totalPrice } = usePricingCalculation({
+    const { displayProperty, displayRoom, totalNights, roomPrice, taxes, totalPrice, surcharges } = usePricingCalculation({
         priceData,
     });
 
@@ -739,19 +737,6 @@ export function CheckoutContent() {
                                         onChange={setSpecialRequests}
                                     />
 
-                                    {/* Voucher/Promo Section */}
-                                    <VoucherInput
-                                        bookingPrice={totalPrice}
-                                        currency={selectedCurrency}
-                                        onVoucherApplied={reprebookWithVoucher}
-                                        onVoucherRemoved={reprebookWithoutVoucher}
-                                    />
-
-                                    <AvailablePromos
-                                        bookingPrice={totalPrice}
-                                        currency={selectedCurrency}
-                                        onVoucherApplied={reprebookWithVoucher}
-                                    />
 
                                     <div className="hidden lg:block">
                                         <SubmitBookingButton
@@ -806,6 +791,7 @@ export function CheckoutContent() {
                                 adults={adults}
                                 children={children}
                                 taxes={taxes}
+                                surcharges={surcharges}
                                 totalPrice={totalPrice}
                                 checkIn={checkIn}
                                 checkOut={checkOut}

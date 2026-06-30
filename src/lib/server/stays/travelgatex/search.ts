@@ -439,7 +439,8 @@ async function fetchHotelContent(hotelCodes: string[]) {
     const sql = getSqlAdmin();
     const rows = await sql`
         SELECT hotel_id, name, images, star_rating, lat, lng, address, city, country,
-               description, amenities, review_rating, review_count, check_in_time, check_out_time
+               description, amenities, review_rating, review_count, check_in_time, check_out_time,
+               ratehawk_hid
         FROM hotel_content
         WHERE hotel_id = ANY(${hotelCodes})
     `;
@@ -460,6 +461,7 @@ async function fetchHotelReviews(hotelCodes: string[]) {
     for (const row of rows) map.set(row.hotel_id, row);
     return map;
 }
+
 
 async function fetchHotelCodesByCity(cityName: string, countryCode?: string): Promise<string[]> {
     const sql = getSqlAdmin();
@@ -1020,6 +1022,7 @@ async function _runTgxSearch(params: TgxSearchParams) {
         const reviews = reviewMap.get(String(hotelCode));
         const imageList: string[] = content?.images ?? [];
         const reviewRating = Number(reviews?.rating ?? content?.review_rating ?? 0);
+
 
         return {
             data: {

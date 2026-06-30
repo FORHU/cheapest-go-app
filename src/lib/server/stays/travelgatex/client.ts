@@ -103,7 +103,7 @@ export interface TgxOption {
     status: string;
     price: { currency: string; net: number; gross: number };
     token: string;
-    rooms?: Array<{ occupancyRefId: number; code: string; description: string }>;
+    rooms?: Array<{ occupancyRefId: number; code: string; description: string; medias?: Array<{ url: string; type?: string }> }>;
     cancelPolicy?: {
         refundable: boolean;
         cancelPenalties?: Array<{
@@ -122,6 +122,7 @@ export function normalizeOption(opt: TgxOption) {
     return {
         offerId: `TGX:${tokenId}`,
         roomName: opt.rooms?.[0]?.description || opt.boardCode || 'Room',
+        roomCode: opt.rooms?.[0]?.code,
         boardCode: opt.boardCode,
         price: opt.price.gross || opt.price.net,
         net: opt.price.net,

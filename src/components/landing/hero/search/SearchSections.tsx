@@ -6,8 +6,10 @@ import { useSearchStore, useDestination, useDestinationQuery, useDates, useTrave
 import { DestinationPicker } from './DestinationPicker';
 import { DatePicker } from './DatePicker';
 import { TravelersPicker } from './TravelersPicker';
+import { useTranslations } from 'next-intl';
 
 export const DestinationSection: React.FC = () => {
+    const t = useTranslations('landing.search');
     const { setActiveDropdown } = useSearchStore();
     const destination = useDestination();
     const query = useDestinationQuery();
@@ -21,10 +23,10 @@ export const DestinationSection: React.FC = () => {
                 <MapPin className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
                     <label className="text-ui-label">
-                        Where to?
+                        {t('whereTo')}
                     </label>
                     <div className="text-ui-value truncate max-w-[150px]">
-                        {destination?.title || query || 'Search destination'}
+                        {destination?.title || query || t('searchDestination')}
                     </div>
                 </div>
             </div>
@@ -35,11 +37,12 @@ export const DestinationSection: React.FC = () => {
 };
 
 export const CheckInSection: React.FC = () => {
+    const t = useTranslations('landing.search');
     const { setActiveDropdown } = useSearchStore();
     const { checkIn } = useDates();
 
     const formatDate = (date: Date | null) => {
-        if (!date) return 'Select date';
+        if (!date) return t('selectDate');
         return new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
@@ -53,7 +56,7 @@ export const CheckInSection: React.FC = () => {
                 <Calendar className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
                     <label className="text-ui-label">
-                        Check-in
+                        {t('checkIn')}
                     </label>
                     <div className="text-ui-value truncate">
                         {formatDate(checkIn)}
@@ -66,11 +69,12 @@ export const CheckInSection: React.FC = () => {
 };
 
 export const CheckOutSection: React.FC = () => {
+    const t = useTranslations('landing.search');
     const { setActiveDropdown } = useSearchStore();
     const { checkOut } = useDates();
 
     const formatDate = (date: Date | null) => {
-        if (!date) return 'Select date';
+        if (!date) return t('selectDate');
         return new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
@@ -84,7 +88,7 @@ export const CheckOutSection: React.FC = () => {
                 <Calendar className="text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
                     <label className="text-ui-label">
-                        Check-out
+                        {t('checkOut')}
                     </label>
                     <div className="text-ui-value truncate">
                         {formatDate(checkOut)}
@@ -97,8 +101,9 @@ export const CheckOutSection: React.FC = () => {
 };
 
 export const TravelersSection: React.FC = () => {
+    const t = useTranslations('landing.search');
     const { setActiveDropdown } = useSearchStore();
-    const { adults, children, rooms } = useTravelers();
+    const { adults, children } = useTravelers();
     const activeDropdown = useActiveDropdown();
 
     const totalTravelers = adults + children;
@@ -106,8 +111,7 @@ export const TravelersSection: React.FC = () => {
 
     const formatTravelers = () => {
         const parts = [];
-        parts.push(`${totalTravelers} ${totalTravelers === 1 ? 'Guest' : 'Guests'}`);
-        if (rooms > 1) parts.push(`${rooms} Rooms`);
+        parts.push(`${totalTravelers} ${totalTravelers === 1 ? t('guest', { count: totalTravelers }) : t('guestPlural', { count: totalTravelers })}`);
         return parts.join(', ');
     };
 
@@ -120,7 +124,7 @@ export const TravelersSection: React.FC = () => {
                 <User className="text-slate-400 group-hover:text-alabaster-accent dark:group-hover:text-obsidian-accent transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
                     <label className="text-ui-label">
-                        Travelers
+                        {t('travelers')}
                     </label>
                     <div className="text-ui-value truncate pr-6">
                         {formatTravelers()}

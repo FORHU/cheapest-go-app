@@ -6,8 +6,10 @@ import { useFlightSearch } from '@/hooks/search/useFlightSearch';
 import { FlightLocationPicker } from './FlightLocationPicker';
 import { FlightTravelersPicker } from './FlightTravelersPicker';
 import { FlightDatePicker } from './FlightDatePicker';
+import { useTranslations } from 'next-intl';
 
 export const FlightSearchForm: React.FC = () => {
+    const t = useTranslations('landing.search');
     const {
         flightState,
         activeDropdown,
@@ -43,7 +45,7 @@ export const FlightSearchForm: React.FC = () => {
             {/* 1. Origins & Destinations */}
             <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 sm:bg-transparent rounded-2xl sm:rounded-none border border-slate-200 dark:border-slate-800 sm:border-0 shadow-sm sm:shadow-none">
                 <FlightLocationPicker
-                    label="From"
+                    label={t('from')}
                     value={firstSegment.origin}
                     onChange={(val) => updateFirstSegment({ origin: val })}
                     isOpen={activeDropdown === 'flight-origin'}
@@ -54,7 +56,7 @@ export const FlightSearchForm: React.FC = () => {
 
             <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 sm:bg-transparent rounded-2xl sm:rounded-none border border-slate-200 dark:border-slate-800 sm:border-0 shadow-sm sm:shadow-none">
                 <FlightLocationPicker
-                    label="To"
+                    label={t('to')}
                     value={firstSegment.destination}
                     onChange={(val) => updateFirstSegment({ destination: val })}
                     isOpen={activeDropdown === 'flight-destination'}
@@ -66,7 +68,7 @@ export const FlightSearchForm: React.FC = () => {
             {/* 2. Dates */}
             <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 sm:bg-transparent rounded-2xl sm:rounded-none border border-slate-200 dark:border-slate-800 sm:border-0 shadow-sm sm:shadow-none">
                 <FlightDatePicker
-                    label="Departure"
+                    label={t('depart')}
                     date={ensureDate(firstSegment.date)}
                     onChange={(d) => updateFirstSegment({ date: d || null })}
                     isOpen={activeDropdown === 'flight-dates-depart'}
@@ -77,7 +79,7 @@ export const FlightSearchForm: React.FC = () => {
             {tripType === 'round-trip' && (
                 <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 sm:bg-transparent rounded-2xl sm:rounded-none border border-slate-200 dark:border-slate-800 sm:border-0 shadow-sm sm:shadow-none">
                     <FlightDatePicker
-                        label="Return"
+                        label={t('return')}
                         date={ensureDate(flights[1]?.date)}
                         onChange={(d) => setFlightSegment(1, { date: d || null })}
                         minDate={ensureDate(firstSegment.date)}

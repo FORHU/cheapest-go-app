@@ -4,6 +4,7 @@ import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, Users, Crown, ChevronDown } from 'lucide-react';
 import { FlightState } from '@/stores/searchStore';
+import { useTranslations } from 'next-intl';
 
 interface FlightTravelersPickerProps {
     passengers: FlightState['passengers'];
@@ -25,7 +26,7 @@ interface CounterProps {
 
 const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onChange }) => (
     <div className="flex justify-between items-center py-2.5">
-        <div>
+        <div className='text-left'>
             <span className="text-xs font-bold text-slate-900 dark:text-white block">{label}</span>
             {sublabel && <span className="text-[9px] font-mono text-slate-400">{sublabel}</span>}
         </div>
@@ -64,6 +65,7 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
     onToggle,
 }) => {
     const ref = useRef<HTMLDivElement>(null);
+    const t = useTranslations('landing.search');
 
     // Close logic
     useEffect(() => {
@@ -72,9 +74,9 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
             // Ensure the target is not part of the trigger element to avoid double-toggling
             const trigger = ref.current?.parentElement?.querySelector('[data-travelers-trigger]');
             const isInsideTrigger = trigger?.contains(target);
-            
+
             const isOutside = ref.current && !ref.current.contains(target) && !isInsideTrigger;
-            
+
             if (isOutside && document.contains(target)) {
                 onToggle(false);
             }
@@ -91,10 +93,10 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
     }, [isOpen, onToggle]);
 
     const cabinClasses = [
-        { value: 'economy', label: 'Economy' },
-        { value: 'premium_economy', label: 'Premium Economy' },
-        { value: 'business', label: 'Business' },
-        { value: 'first', label: 'First Class' },
+        { value: 'economy', label: t('cabinClass.economy') },
+        { value: 'premium_economy', label: t('cabinClass.premiumEconomy') },
+        { value: 'business', label: t('cabinClass.business') },
+        { value: 'first', label: t('cabinClass.first') },
     ];
 
     const totalPassengers = passengers.adults + passengers.children + passengers.infants;
@@ -109,7 +111,7 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
                 <Users className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" size={20} />
                 <div className="ml-3 flex flex-col justify-center w-full text-left min-w-0">
                     <label className="text-ui-label">
-                        Travelers
+                        {t('travelers')}
                     </label>
                     <div className="text-ui-value truncate pr-6">
                         {totalPassengers} {totalPassengers === 1 ? 'Guest' : 'Guests'}
@@ -140,7 +142,7 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
                             {/* Cabin Class Selection */}
                             <div className="mb-4">
                                 <h4 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
-                                    <Crown size={12} /> Cabin Class
+                                    <Crown size={12} /> {t('cabinClassLabel')}
                                 </h4>
                                 <div className="grid grid-cols-2 gap-2">
                                     {cabinClasses.map((c) => (
@@ -163,28 +165,28 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
                             <div className="h-px bg-slate-100 dark:bg-white/5 my-3" />
 
                             <h4 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2">
-                                Passengers
+                                {t('passengers')}
                             </h4>
                             <div className="divide-y divide-slate-100 dark:divide-white/5">
                                 <Counter
-                                    label="Adults"
-                                    sublabel="Age 12+"
+                                    label={t('adults')}
+                                    sublabel={t('adultAge')}
                                     value={passengers.adults}
                                     min={1}
                                     max={9}
                                     onChange={(val) => onChangePassengers({ adults: val })}
                                 />
                                 <Counter
-                                    label="Children"
-                                    sublabel="Age 2-11"
+                                    label={t('children')}
+                                    sublabel={t('childAge')}
                                     value={passengers.children}
                                     min={0}
                                     max={9}
                                     onChange={(val) => onChangePassengers({ children: val })}
                                 />
                                 <Counter
-                                    label="Infants"
-                                    sublabel="Under 2 (lap)"
+                                    label={t('infants')}
+                                    sublabel={t('infantAge')}
                                     value={passengers.infants}
                                     min={0}
                                     max={passengers.adults} // Usually 1 infant per adult allowed on lap
@@ -200,7 +202,7 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
                                 onTouchStart={(e) => { e.stopPropagation(); onToggle(false); }}
                                 className="w-full py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/25"
                             >
-                                Done
+                                {t('done')}
                             </button>
                         </div>
                     </motion.div>

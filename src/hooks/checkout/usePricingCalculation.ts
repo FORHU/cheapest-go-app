@@ -5,15 +5,28 @@ import { useProperty, useSelectedRoom, useBookingDates } from '@/stores/bookingS
 import { useCheckoutStore } from '@/stores/checkoutStore';
 import { convertCurrency } from '@/lib/currency';
 
+interface Surcharge {
+    chargeType: string;
+    mandatory: boolean;
+    price: { net: number; gross: number; currency: string };
+}
+
 interface PriceData {
     price?: number;
     tax?: number;
     total?: number;
     currency?: string;
+    surcharges?: Surcharge[];
 }
 
 interface UsePricingCalculationOptions {
     priceData: PriceData | null;
+}
+
+interface ConvertedSurcharge {
+    chargeType: string;
+    mandatory: boolean;
+    amount: number;
 }
 
 interface UsePricingCalculationReturn {
@@ -23,6 +36,7 @@ interface UsePricingCalculationReturn {
     roomPrice: number;
     taxes: number;
     totalPrice: number;
+    surcharges: ConvertedSurcharge[];
 }
 
 /**
@@ -63,6 +77,12 @@ export function usePricingCalculation({
         const taxes = convertCurrency(rawTaxes, sourceCurrency, selectedCurrency);
         const totalPrice = convertCurrency(rawTotal, sourceCurrency, selectedCurrency);
 
+        const surcharges: ConvertedSurcharge[] = (priceData?.surcharges ?? []).map(s => ({
+            chargeType: s.chargeType,
+            mandatory: s.mandatory,
+            amount: Math.round(convertCurrency(s.price.gross, s.price.currency || sourceCurrency, selectedCurrency) * 100) / 100,
+        }));
+
         return {
             displayProperty,
             displayRoom,
@@ -70,6 +90,7 @@ export function usePricingCalculation({
             roomPrice: Math.round(roomPrice * 100) / 100,
             taxes: Math.round(taxes * 100) / 100,
             totalPrice: Math.round(totalPrice * 100) / 100,
+            surcharges,
         };
     }, [property, selectedRoom, checkIn, checkOut, priceData, selectedCurrency]);
 }

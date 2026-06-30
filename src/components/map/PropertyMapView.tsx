@@ -57,7 +57,7 @@ function formatDistance(km: number): string {
         : `${km.toFixed(2)} km from property`;
 }
 
-function createCircleGeoJSON(center: [number, number], radiusMeters: number): GeoJSON.Feature {
+function createCircleGeoJSON(center: [number, number], radiusMeters: number): object {
     const points = 64;
     const coords: [number, number][] = [];
     const R = 6371000;
