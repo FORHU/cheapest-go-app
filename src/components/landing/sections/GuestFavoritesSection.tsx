@@ -14,12 +14,12 @@ import { buildPropertySlug } from '@/lib/utils';
 import SectionHeader from './SectionHeader';
 import { useTranslations } from 'next-intl';
 function getRatingKey(r: number): string {
-  if (r >= 9.5) return 'Exceptional';
-  if (r >= 9) return 'Superb';
-  if (r >= 8.5) return 'Excellent';
-  if (r >= 8) return 'Very Good';
-  if (r >= 7) return 'Good';
-  return 'Average';
+  if (r >= 9.5) return 'exceptional';
+  if (r >= 9) return 'superb';
+  if (r >= 8.5) return 'excellent';
+  if (r >= 8) return 'veryGood';
+  if (r >= 7) return 'good';
+  return 'average';
 }
 
 function getRatingColor(r: number): string {
