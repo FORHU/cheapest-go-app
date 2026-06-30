@@ -97,7 +97,15 @@
             "searching": "검색 중...",
             "noResults": "검색 결과가 없습니다",
             "countries": "국가",
-            "cities": "도시"
+            "cities": "도시",
+            "typeToSearch": "도시 이름 또는 공항 코드를 입력하세요...",
+            "noAirportsFound": "\"{query}\"에 대한 공항을 찾을 수 없습니다",
+            "typeToSearchPrompt": "도시 또는 공항 코드를 입력하여 검색하세요",
+            "cabinClassLabel": "좌석 등급",
+            "infants": "유아",
+            "adultAge": "만 12세 이상",
+            "childAge": "만 2~11세",
+            "infantAge": "만 2세 미만 (무릎 착석)"
         }
     },
     "flights": {

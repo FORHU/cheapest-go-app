@@ -97,7 +97,15 @@
             "searching": "Searching...",
             "noResults": "No results found",
             "countries": "Countries",
-            "cities": "Cities"
+            "cities": "Cities",
+            "typeToSearch": "Type city name or airport code...",
+            "noAirportsFound": "No airports found for \"{query}\"",
+            "typeToSearchPrompt": "Type a city or airport code to search",
+            "cabinClassLabel": "Cabin Class",
+            "infants": "Infants",
+            "adultAge": "Age 12+",
+            "childAge": "Age 2-11",
+            "infantAge": "Under 2 (lap)"
         }
     },
     "flights": {
