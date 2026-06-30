@@ -5,7 +5,8 @@
         "signIn": "登录",
         "signOut": "退出登录",
         "myTrips": "我的行程",
-        "account": "账户"
+        "account": "账户",
+        "trips": "行程"
     },
     "languagePicker": {
         "label": "选择语言",
@@ -105,7 +106,52 @@
             "adultAge": "12岁以上",
             "childAge": "2至11岁",
             "infantAge": "2岁以下（抱坐）",
-            "cabinClassLabel": "舱位等级"
+            "cabinClassLabel": "舱位等级",
+            "months": [
+                "一月",
+                "二月",
+                "三月",
+                "四月",
+                "五月",
+                "六月",
+                "七月",
+                "八月",
+                "九月",
+                "十月",
+                "十一月",
+                "十二月"
+            ],
+            "days": [
+                "日",
+                "一",
+                "二",
+                "三",
+                "四",
+                "五",
+                "六"
+            ],
+            "flexOptions": [
+                "精确日期",
+                "±1天",
+                "±2天",
+                "±3天",
+                "±7天"
+            ],
+            "searchMode": {
+                "stays": "住宿",
+                "flights": "航班",
+                "aiSearch": "AI 搜索"
+            }
+        },
+        "recentlyViewed": {
+            "title": "继续搜索",
+            "subtitle": "继续上次的搜索",
+            "viewAll": "查看全部",
+            "recentlySearched": "最近搜索",
+            "from": "起价",
+            "stay": "住宿",
+            "flight": "航班",
+            "showLess": "收起"
         }
     },
     "flights": {
@@ -260,6 +306,14 @@
             "a3": "是的，在 CheapestGo 上搜索和比较价格完全免费，只有在预订时才需要付款。",
             "q4": "CheapestGo 支持哪些货币？",
             "a4": "CheapestGo 支持多种货币，并根据您的偏好自动换算价格，让您随时以本地货币查看费用。"
+        }
+    },
+    "ai": {
+        "prompts": {
+            "bali": "巴厘岛海滨度假村，2位成人，2月14-21日...",
+            "tokyo": "东京豪华酒店，每晚200美元以内，含泳池...",
+            "cebu": "下个月宿务情侣周末游...",
+            "manila": "马尼拉附近家庭度假村，2大2小..."
         }
     }
 }

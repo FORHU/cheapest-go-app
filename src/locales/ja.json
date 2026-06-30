@@ -5,7 +5,8 @@
         "signIn": "ログイン",
         "signOut": "ログアウト",
         "myTrips": "マイトリップ",
-        "account": "アカウント"
+        "account": "アカウント",
+        "trips": "旅行"
     },
     "languagePicker": {
         "label": "言語を選択",
@@ -35,7 +36,6 @@
             "to": "目的地",
             "depart": "出発日",
             "return": "帰国日",
-            "passengers": "乗客",
             "rooms": "部屋",
             "placeholder": {
                 "airport": "都市または空港",
@@ -76,7 +76,6 @@
             "checkIn": "チェックイン",
             "checkOut": "チェックアウト",
             "travelers": "旅行者",
-            "selectDate": "日付を選択",
             "guest": "{count}名",
             "guestPlural": "{count}名",
             "guestsRooms": "ゲストと部屋",
@@ -106,7 +105,53 @@
             "infants": "幼児",
             "adultAge": "12歳以上",
             "childAge": "2〜11歳",
-            "infantAge": "2歳未満（膝上）"
+            "infantAge": "2歳未満（膝上）",
+            "selectDate": "選択",
+            "months": [
+                "１月",
+                "２月",
+                "３月",
+                "４月",
+                "５月",
+                "６月",
+                "７月",
+                "８月",
+                "９月",
+                "１０月",
+                "１１月",
+                "１２月"
+            ],
+            "days": [
+                "日",
+                "月",
+                "火",
+                "水",
+                "木",
+                "金",
+                "土"
+            ],
+            "flexOptions": [
+                "正確な日付",
+                "±1日",
+                "±2日",
+                "±3日",
+                "±7日"
+            ],
+            "searchMode": {
+                "stays": "宿泊",
+                "flights": "フライト",
+                "aiSearch": "AI 検索"
+            }
+        },
+        "recentlyViewed": {
+            "title": "検索を再開",
+            "subtitle": "前回の続きから",
+            "viewAll": "すべて見る",
+            "recentlySearched": "最近の検索",
+            "from": "から",
+            "stay": "宿泊",
+            "flight": "フライト",
+            "showLess": "折りたたむ"
         }
     },
     "flights": {
@@ -261,6 +306,14 @@
             "a3": "はい、価格の検索と比較は完全無料です。費用が発生するのは予約時のみです。",
             "q4": "CheapestGo はどの通貨に対応していますか？",
             "a4": "CheapestGo は複数の通貨に対応しており、設定に基づいて自動的に価格を換算し、いつでも現地通貨で確認できます。"
+        }
+    },
+    "ai": {
+        "prompts": {
+            "bali": "バリ島のビーチフロントリゾート、大人2名、2月14〜21日...",
+            "tokyo": "東京の高級ホテル、1泊200ドル以下、プール付き...",
+            "cebu": "来月、セブでカップルの週末旅行...",
+            "manila": "マニラ近郊のファミリーリゾート、大人2名・子ども2名..."
         }
     }
 }
