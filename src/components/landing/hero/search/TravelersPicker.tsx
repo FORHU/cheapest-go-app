@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Minus, Plus, ChevronDown, X } from 'lucide-react';
+import { Minus, Plus, ChevronDown, X, Users } from 'lucide-react';
 import { useSearchStore, useTravelers, useActiveDropdown, RoomOccupancy } from '@/stores/searchStore';
 import { cn } from '@/lib/utils';
 import {
@@ -22,36 +22,35 @@ interface CounterProps {
     onChange: (value: number) => void;
 }
 
-const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onChange }) => {
-    const t = useTranslations('landing.search');
-    return (
-        <div className="flex justify-between items-center py-2">
-            <div className="flex-1">
-                <span className="text-[10px] font-normal text-slate-900 dark:text-white block">{label}</span>
-                {sublabel && <span className="text-[8.5px] font-normal text-slate-400">{sublabel}</span>}
-            </div>
-            <div className="flex items-center gap-3">
-                <button
-                    disabled={value <= min}
-                    onClick={() => onChange(value - 1)}
-                    className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                >
-                    <Minus size={12} />
-                </button>
-                <span className="w-6 text-center font-normal text-[10.5px] text-slate-900 dark:text-white">
-                    {value}
-                </span>
-                <button
-                    disabled={value >= max}
-                    onClick={() => onChange(value + 1)}
-                    className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                >
-                    <Plus size={12} />
-                </button>
-            </div>
+const Counter: React.FC<CounterProps> = ({ label, sublabel, value, min, max, onChange }) => (
+    <div className="flex justify-between items-center py-2.5">
+        <div className="text-left">
+            <span className="text-xs font-bold text-slate-900 dark:text-white block">{label}</span>
+            {sublabel && <span className="text-[9px] font-mono text-slate-400">{sublabel}</span>}
         </div>
-    );
-}
+        <div className="flex items-center gap-3">
+            <button
+                disabled={value <= min}
+                onClick={(e) => { e.stopPropagation(); onChange(value - 1); }}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+            >
+                <Minus size={14} />
+            </button>
+            <span className="w-4 text-center font-mono font-bold text-xs text-slate-900 dark:text-white">
+                {value}
+            </span>
+            <button
+                disabled={value >= max}
+                onClick={(e) => { e.stopPropagation(); onChange(value + 1); }}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+            >
+                <Plus size={14} />
+            </button>
+        </div>
+    </div>
+);
 
 /** Age selector dropdown for a child */
 const ChildAgeSelector: React.FC<{
@@ -118,10 +117,8 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
     // Sync children count with ages array
     useEffect(() => {
         if (children > childrenAges.length) {
-            // Add new children with default age 10
             setChildrenAges(prev => [...prev, ...Array(children - prev.length).fill(10)]);
         } else if (children < childrenAges.length) {
-            // Remove extra children
             setChildrenAges(prev => prev.slice(0, children));
         }
     }, [children, childrenAges.length]);
@@ -140,15 +137,19 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
     };
 
     useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
+        const handleClickOutside = (e: MouseEvent | TouchEvent) => {
             if (ref.current && !ref.current.contains(e.target as Node)) {
                 onClose();
             }
         };
         if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
         }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
     }, [isOpen]);
 
     const handleChildAgeChange = (index: number, age: number) => {
@@ -172,39 +173,30 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
 
     const t = useTranslations('landing.search');
 
-    // Summary text for display
-    const summaryText = useMemo(() => {
-        const parts = [];
-        parts.push(adults !== 1 ? t('guestsPlural', { count: adults }) : t('guests', { count: adults }));
-        if (children > 0) {
-            parts.push(children !== 1 ? t('guestsPlural', { count: children }) : t('guests', { count: children }));
-        }
-        parts.push(t('rooms'));
-        return parts.join(', ');
-    }, [adults, children, t]);
-
     return (
         <AnimatePresence>
             {isOpen && (
                 <motion.div
                     ref={ref}
-                    initial={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={forceOpen ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 10, scale: 0.95 }}
+                    initial={forceOpen ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={forceOpen ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
                     transition={{ duration: 0.2 }}
                     className={inline
                         ? "w-full z-10"
-                        : "absolute top-full right-0 mt-4 w-[500px] min-w-[500px] max-w-[500px] bg-white dark:bg-[#0f172a] shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[100]"}
+                        : "relative sm:absolute top-0 sm:top-full left-0 sm:left-auto sm:right-0 sm:mt-4 w-full sm:w-[500px] bg-white dark:bg-obsidian shadow-2xl rounded-2xl border border-slate-200 dark:border-white/10 z-[100]"}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                 >
                     <div className={inline ? "p-2" : "p-6"}>
                         {!forceOpen && (
-                            <h4 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2">
-                                {t('guestsRooms')}
+                            <h4 className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
+                                <Users size={12} /> {t('guestsRooms')}
                             </h4>
                         )}
 
-                        <div className="space-y-1">
+                        <div className="divide-y divide-slate-100 dark:divide-white/5">
                             <Counter
                                 label={t('adults')}
                                 value={adults}
@@ -212,35 +204,39 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                                 max={10}
                                 onChange={(val) => setTravelers({ adults: val })}
                             />
-                            <div className="flex justify-between items-center py-2">
-                                <div className="flex-1">
-                                    <span className="text-[10px] font-normal text-slate-900 dark:text-white block">{t('children')}</span>
-                                    <span className="text-[8.5px] font-normal text-slate-400">{t('childrenAges')}</span>
+
+                            {/* Children row */}
+                            <div className="flex justify-between items-center py-2.5">
+                                <div className="text-left">
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white block">{t('children')}</span>
+                                    <span className="text-[9px] font-mono text-slate-400">{t('childrenAges')}</span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <button
                                         disabled={children <= 0}
-                                        onClick={() => setTravelers({ children: children - 1 })}
-                                        className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                        onClick={(e) => { e.stopPropagation(); setTravelers({ children: children - 1 }); }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                                     >
-                                        <Minus size={12} />
+                                        <Minus size={14} />
                                     </button>
-                                    <span className="w-6 text-center font-normal text-[10.5px] text-slate-900 dark:text-white">
+                                    <span className="w-4 text-center font-mono font-bold text-xs text-slate-900 dark:text-white">
                                         {children}
                                     </span>
                                     <button
                                         disabled={children >= 6}
-                                        onClick={handleAddChild}
-                                        className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-alabaster-accent dark:hover:border-obsidian-accent hover:text-alabaster-accent dark:hover:text-obsidian-accent transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                                        onClick={(e) => { e.stopPropagation(); handleAddChild(); }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        className="size-7 rounded-full border border-slate-200 dark:border-white/20 flex items-center justify-center text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                                     >
-                                        <Plus size={12} />
+                                        <Plus size={14} />
                                     </button>
                                 </div>
                             </div>
 
                             {/* Children age selectors */}
                             {childrenAges.length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-2">
+                                <div className="py-2.5 flex flex-wrap gap-2">
                                     {childrenAges.map((age, index) => (
                                         <ChildAgeSelector
                                             key={index}
@@ -252,29 +248,25 @@ export const TravelersPicker: React.FC<TravelersPickerProps> = ({ inline, forceO
                                     ))}
                                 </div>
                             )}
-                            <div className="flex justify-between items-center py-2">
-                                <div className="flex-1">
-                                    <span className="text-[10px] font-normal text-slate-900 dark:text-white block">{t('rooms')}</span>
-                                    <span className="text-[8.5px] font-normal text-slate-400">{t('roomsNote')}</span>
-                                </div>
-                                <span className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400 pr-1">1</span>
-                            </div>
-                        </div>
 
-                        {/* Summary */}
-                        <div className="mt-3 p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                            <p className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
-                                {summaryText}
-                            </p>
+                            {/* Rooms — locked to 1 */}
+                            <div className="flex justify-between items-center py-2.5">
+                                <div className="text-left">
+                                    <span className="text-xs font-bold text-slate-900 dark:text-white block">{t('rooms')}</span>
+                                    <span className="text-[9px] font-mono text-slate-400">{t('roomsNote')}</span>
+                                </div>
+                                <span className="font-mono font-bold text-xs text-slate-900 dark:text-white pr-1">1</span>
+                            </div>
                         </div>
                     </div>
 
                     {/* Footer */}
                     {!inline && (
-                        <div className="flex flex-col gap-3 p-6">
+                        <div className="flex flex-col gap-3 p-6 border-t border-slate-100 dark:border-white/5">
                             <button
-                                onClick={onClose}
-                                className="w-full py-3 bg-alabaster-accent dark:bg-obsidian-accent text-white dark:text-obsidian rounded-xl font-bold text-sm hover:opacity-90 transition-all"
+                                onMouseDown={(e) => { e.stopPropagation(); onClose(); }}
+                                onTouchStart={(e) => { e.stopPropagation(); onClose(); }}
+                                className="w-full py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/25"
                             >
                                 {t('done')}
                             </button>
