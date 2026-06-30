@@ -110,9 +110,8 @@ export const TravelersSection: React.FC = () => {
     const isTravelersOpen = activeDropdown === 'travelers';
 
     const formatTravelers = () => {
-        const parts = [];
-        parts.push(`${totalTravelers} ${totalTravelers === 1 ? t('guest', { count: totalTravelers }) : t('guestPlural', { count: totalTravelers })}`);
-        return parts.join(', ');
+        const total = totalTravelers;
+        return total === 1 ? t('guest', { count: total }) : t('guestPlural', { count: total });
     };
 
     return (
