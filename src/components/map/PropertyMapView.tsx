@@ -13,7 +13,6 @@ import { MapPOIPopup } from './MapPOIPopup';
 import { NearbyPlaceMarker } from './NearbyPlaceMarker';
 import { NearbyPlacePopup } from './NearbyPlacePopup';
 import { MapGemsPanel } from './MapGemsPanel';
-import type { Feature } from 'geojson';
 import { useNearbyGems } from '@/components/property/hooks/useNearbyGems';
 import type { NearbyPlace } from './useMapNearbyPlaces';
 import { computeBounds } from './types';
@@ -58,7 +57,7 @@ function formatDistance(km: number): string {
         : `${km.toFixed(2)} km from property`;
 }
 
-function createCircleGeoJSON(center: [number, number], radiusMeters: number): Feature {
+function createCircleGeoJSON(center: [number, number], radiusMeters: number): object {
     const points = 64;
     const coords: [number, number][] = [];
     const R = 6371000;
