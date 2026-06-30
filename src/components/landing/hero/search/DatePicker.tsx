@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar, ChevronDown } from 'lucide-react';
 import { useSearchStore, useDates, useActiveDropdown } from '@/stores/searchStore';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -19,10 +20,11 @@ interface DatePickerProps {
 }
 
 export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDone, initialCheckOutMode, triggerDropdown }) => {
+    const t = useTranslations('landing.search');
     const ref = useRef<HTMLDivElement>(null);
     const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
     const [activeTab, setActiveTab] = useState<'calendar' | 'flexible'>('calendar');
-    
+
     // Store
     const activeDropdown = useActiveDropdown();
     const { checkIn: rawCheckIn, checkOut: rawCheckOut, flexibility } = useDates();
@@ -44,7 +46,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
             ? activeDropdown === triggerDropdown
             : (activeDropdown === 'dates-in' || activeDropdown === 'dates-out')
     );
-    
+
     // Reset selecting mode when picker opens based on which card triggered it
     useEffect(() => {
         if (isOpen) {
@@ -195,7 +197,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
                                     : "text-slate-400 hover:text-slate-600"
                             )}
                         >
-                            Calendar
+                            {t('calendar')}
                         </button>
                         <button
                             onClick={() => setActiveTab('flexible')}
@@ -206,7 +208,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
                                     : "text-slate-400 hover:text-slate-600"
                             )}
                         >
-                            Flexible dates
+                            {t('flexibleDates')}
                         </button>
                     </div>
 
@@ -277,7 +279,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
                                 <div className="relative min-h-[220px]">
                                     {view === 'month' && (
                                         <div className="absolute inset-0 bg-white dark:bg-obsidian z-20 overflow-y-auto custom-scrollbar pr-1 animate-in fade-in zoom-in-95 duration-200">
-                                            <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">Month</div>
+                                            <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">{t('month')}</div>
                                             <div className="grid grid-cols-1 gap-1">
                                                 {MONTHS.map((m, i) => (
                                                     <button
@@ -303,7 +305,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
 
                                     {view === 'year' && (
                                         <div className="absolute inset-0 bg-white dark:bg-obsidian z-20 overflow-y-auto custom-scrollbar pr-1 animate-in fade-in zoom-in-95 duration-200">
-                                            <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">Year</div>
+                                            <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">{t('year')}</div>
                                             <div className="grid grid-cols-3 gap-2">
                                                 {years.map((y) => (
                                                     <button
@@ -341,7 +343,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
                             </>
                         ) : (
                             <div className="py-4 space-y-6">
-                                <h4 className="text-sm font-bold text-slate-900 dark:text-white text-center">When do you want to travel?</h4>
+                                <h4 className="text-sm font-bold text-slate-900 dark:text-white text-center">{t('whenTravel')}</h4>
                                 <div className="grid grid-cols-3 gap-2">
                                     {MONTHS.slice(0, 6).map(m => (
                                         <div key={m} className="p-3 rounded-xl border border-slate-200 dark:border-white/10 flex flex-col items-center gap-1 hover:border-blue-500 cursor-pointer group transition-all">
@@ -359,7 +361,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
                                 onClick={onClose}
                                 className="px-6 py-1.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
                             >
-                                Done
+                                {t('done')}
                             </button>
                         </div>
                     </div>
