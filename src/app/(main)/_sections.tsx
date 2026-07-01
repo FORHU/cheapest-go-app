@@ -5,21 +5,9 @@
  */
 import {
     DealsSection,
-    HotelDealsSection,
-    StaysForEveryStyle,
-    ExploreVacationPackages,
-    ExploreUniqueStays,
-    LastMinuteWeekendDeals,
-    GuestFavoritesSection,
 } from "@/components/landing/sections";
 import {
     getFlightDeals,
-    getWeekendDeals,
-    getHotelDeals,
-    getPopularDestinations,
-    getUniqueStays,
-    getTravelStyles,
-    getGuestFavorites,
 } from "@/lib/server/landing/get-landing-data";
 
 // ─── Section skeleton — generic horizontal-scroll placeholder ────────────────
@@ -48,32 +36,3 @@ export async function DealsSectionStream() {
     return <DealsSection deals={deals} />;
 }
 
-export async function HotelDealsSectionStream() {
-    const deals = await getHotelDeals();
-    return <HotelDealsSection deals={deals} />;
-}
-
-export async function StaysForEveryStyleStream() {
-    const styles = await getTravelStyles();
-    return <StaysForEveryStyle styles={styles} />;
-}
-
-export async function ExploreVacationPackagesStream() {
-    const destinations = await getPopularDestinations();
-    return <ExploreVacationPackages destinations={destinations} />;
-}
-
-export async function ExploreUniqueStaysStream() {
-    const stays = await getUniqueStays();
-    return <ExploreUniqueStays stays={stays} />;
-}
-
-export async function LastMinuteWeekendDealsStream() {
-    const deals = await getWeekendDeals();
-    return <LastMinuteWeekendDeals deals={deals} />;
-}
-
-export async function GuestFavoritesSectionStream() {
-    const deals = await getGuestFavorites();
-    return <GuestFavoritesSection deals={deals} />;
-}
