@@ -27,6 +27,10 @@
         "switchToDark": "ダークモードに切り替え",
         "switchToLight": "ライトモードに切り替え"
     },
+    "popularDestinations": {
+        "title": "人気の目的地",
+        "subtitle": "アジア太平洋の人気スポットを探索 — 数秒でフライトとホテルを検索。"
+    },
     "landing": {
         "hero": {
             "title": "最安値の航空券",
@@ -157,6 +161,23 @@
             "stay": "宿泊",
             "flight": "フライト",
             "showLess": "折りたたむ"
+        },
+        "howItWorksSteps": {
+            "howItWorks": "ご利用方法",
+            "book": "旅の予約は",
+            "bookNext": "簡単3ステップで。",
+            "search": {
+                "title": "検索",
+                "description": "目的地、日程、旅行者数を入力して、最適なフライトとホテルを見つけましょう。"
+            },
+            "compareStep": {
+                "title": "比較",
+                "description": "航空会社やホテルのリアルタイム料金を比較。価格、評価、設備で絞り込みできます。"
+            },
+            "bookStep": {
+                "title": "予約",
+                "description": "安全に暗号化されたチェックアウトで数分以内に旅行を確定。毎回即時確認されます。"
+            }
         }
     },
     "flights": {

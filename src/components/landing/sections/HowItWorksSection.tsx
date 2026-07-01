@@ -1,30 +1,22 @@
-const STEPS = [
-    {
-        number: '01',
-        title: 'Search',
-        description: 'Enter your destination, dates, and traveler count to find the best flights and hotels.',
-    },
-    {
-        number: '02',
-        title: 'Compare',
-        description: 'Browse real-time prices across airlines and hotels. Filter by price, rating, or amenities.',
-    },
-    {
-        number: '03',
-        title: 'Book',
-        description: 'Secure your trip in minutes with safe, encrypted checkout. Instant confirmation every time.',
-    },
-];
+import { useTranslations } from 'next-intl';
 
 export function HowItWorksSection() {
+    const t = useTranslations('landing.howItWorksSteps');
+
+    const STEPS = [
+        { number: '01', key: 'search' },
+        { number: '02', key: 'compareStep' },
+        { number: '03', key: 'bookStep' },
+    ];
+
     return (
         <section className="w-full py-10 md:py-16 px-4 sm:px-6 bg-slate-50 dark:bg-slate-900/50">
             <div className="max-w-[1400px] mx-auto">
                 <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2 text-center">
-                    How It Works
+                    {t('howItWorks')}
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400 mb-10 text-center max-w-xl mx-auto">
-                    Book your next trip in three simple steps.
+                    {t('book')} {t('bookNext')}
                 </p>
 
                 <ol className="grid grid-cols-1 sm:grid-cols-3 gap-8">
@@ -34,10 +26,11 @@ export function HowItWorksSection() {
                                 {step.number}
                             </span>
                             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                                {step.title}
+                                {t(`${step.key}.title`)}
+
                             </h3>
                             <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-                                {step.description}
+                                {t(`${step.key}.description`)}
                             </p>
                         </li>
                     ))}
