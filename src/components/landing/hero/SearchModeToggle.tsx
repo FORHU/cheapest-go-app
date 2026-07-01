@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { BedDouble, Plane, Sparkles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 type SearchMode = 'hotels' | 'flights' | 'ai';
 
@@ -11,13 +12,13 @@ interface SearchModeToggleProps {
     onModeChange: (mode: SearchMode) => void;
 }
 
-const modes: { id: SearchMode; label: string; icon: React.ReactNode; mobileIcon: React.ReactNode }[] = [
-    { id: 'hotels', label: 'Stays', icon: <BedDouble size={14} />, mobileIcon: <BedDouble size={12} /> },
-    { id: 'flights', label: 'Flights', icon: <Plane size={14} />, mobileIcon: <Plane size={12} /> },
-    { id: 'ai', label: 'AI Search', icon: <Sparkles size={14} />, mobileIcon: <Sparkles size={12} /> },
-];
-
 const SearchModeToggle: React.FC<SearchModeToggleProps> = ({ mode, onModeChange }) => {
+    const t = useTranslations('landing.search.searchMode');
+    const modes = [
+        { id: 'hotels' as SearchMode, label: t('stays'),    icon: <BedDouble size={14} />, mobileIcon: <BedDouble size={12} /> },
+        { id: 'flights' as SearchMode, label: t('flights'),  icon: <Plane size={14} />,    mobileIcon: <Plane size={12} /> },
+        { id: 'ai' as SearchMode,      label: t('aiSearch'), icon: <Sparkles size={14} />, mobileIcon: <Sparkles size={12} /> },
+    ];
     return (
         <div className="flex justify-center mb-3 md:mb-6 landscape-compact:mb-1">
             <div className="inline-flex bg-white/5 dark:bg-obsidian-surface backdrop-blur-xl rounded-full p-1 border border-alabaster-border dark:border-obsidian-border shadow-sm">

@@ -3,13 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
-
-const PLACEHOLDER_PROMPTS = [
-    "Find me a beachfront resort in Bali for 2 adults, Feb 14-21...",
-    "Luxury hotel in Tokyo under $200/night with pool...",
-    "Weekend getaway in Cebu for a couple, next month...",
-    "Family resort near Manila, 2 adults 2 kids...",
-];
+import { useTranslations } from 'next-intl';
 
 const TYPE_SPEED = 40;
 const DELETE_SPEED = 20;
@@ -23,6 +17,13 @@ interface AIPromptInputProps {
 }
 
 const AIPromptInput: React.FC<AIPromptInputProps> = ({ value, onChange, onSubmit, disabled }) => {
+    const t = useTranslations('ai.prompts');
+    const PLACEHOLDER_PROMPTS = [
+        t('bali'),
+        t('tokyo'),
+        t('cebu'),
+        t('manila'),
+    ];
     const [displayPlaceholder, setDisplayPlaceholder] = useState('');
     const [promptIndex, setPromptIndex] = useState(0);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
