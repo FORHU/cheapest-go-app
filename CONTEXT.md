@@ -1,5 +1,19 @@
 # CheapestGo — Domain Glossary
 
+## Architecture
+
+**v1 (Monolith)** — the active, deployable system. Next.js app in `cheapest-go-app`. Owns both the frontend and all API routes. This is what is live and being deployed to EC2 + RDS.
+
+**v2 (Separate FE/BE)** — in active development in parallel. Express API in `cheapestgo-api-v2`, Next.js 15 frontend in `cheapestgo-app-v2`. Code-complete but not yet deployed. v1 stays live until v2 is deployed and traffic is cut over.
+
+**API base URL (v2)** — `NEXT_PUBLIC_API_URL` must include the `/api/v2` suffix (e.g. `http://localhost:4000/api/v2`). All `http.*` calls in app-v2 use paths relative to this base with no `/api/` prefix (e.g. `/auth/me`, `/flights/book`).
+_Avoid_: adding `/api/` prefix to paths in app-v2 — it creates a double-prefix (`/api/v2/api/...`) that 404s.
+
+**Google OAuth flow (v2)** — server-side. `GET /api/auth/google` redirects to Google with `redirect_uri = API_URL/api/auth/google/callback`. Google calls the API directly. The API exchanges the code, sets a JWT cookie, and redirects the browser to `SITE_URL`. No frontend callback page needed.
+_Avoid_: setting `redirect_uri` to the frontend URL — Google would land on a page with no handler.
+
+**Cutover** — the moment traffic switches from v1 to v2. Has not happened yet.
+
 ## Deployment
 
 **Coolify** — self-hosted deployment platform running the Next.js app as a persistent Docker container. Not serverless. Connection pools are shared across requests within one process.
@@ -51,10 +65,10 @@ _Avoid_: assuming every enum-like column uses the same mechanism, or converting 
 **Flight Deal** — an evergreen route + "from" price card shown in the "Exclusive Deals & Offers" section. No departure date is pinned to the card. The cron finds the lowest available price across a rolling window and stores it. The stored price is what's displayed; users pick their own dates when they search.
 _Avoid_: pinning a specific departure date to a Flight Deal card. Date-specific deals are only appropriate for genuine flash sales with a seat-count limit and countdown timer.
 
-**Hotel Deal** — an evergreen hotel + "from" price card shown in the "Top Hotel Deals" section. Price is the lowest nightly rate found across a 30-day rolling window. No check-in or check-out date is pinned to the card. Selection is price-driven: cheapest available hotels surface first.
-_Avoid_: snapshotting a specific weekend's pricing (e.g. "next Friday–Saturday") — those dates go stale immediately.
+**Popular Destination** — a static, editorially curated destination card shown in the "Popular Destinations" section on the landing page. Contains a destination photo, city/country name, and a CTA that pre-fills the search bar with the destination (user still picks dates). No live API call triggered by the card or the click. Global mix of destinations, not Philippines-first. Content is a hardcoded static list in the component — no DB table.
+_Avoid_: showing a "from" price on these cards (requires a live availability call, which violates supplier pre-fetch prohibitions). _Avoid_: auto-filling dates on click and navigating directly to search results — dates must be chosen by the user, not synthesised.
 
-**Guest Favorite** — a hotel card shown in the "Guest Favorites" section. Selection is rating-driven: only hotels with `rating > 7`, ordered by rating descending. A hotel that already appears in "Top Hotel Deals" must be excluded — the two sections are mutually exclusive.
+**How It Works** — a 3-step explainer strip on the landing page (Search → Compare → Book). Static content, no data dependency. Replaces social proof that a new brand doesn't yet have.
 
-**Refresh cadence** — all three landing sections (Flight Deals, Hotel Deals, Guest Favorites) share a single unified daily refresh. Guest Favorites has no dedicated cron; it re-queries `hotel_deals` whenever the hotel cron runs.
-_Avoid_: different refresh schedules per section, or UI copy claiming hourly updates.
+**Refresh cadence** — only Flight Deals have a cron refresh (`sync-flight-deals` via Duffel). Hotel sections (Top Hotel Deals, Guest Favorites) were dropped in v1 because populating them required synthetic availability calls, which violate TravelGateX and RTX supplier terms (pre-fetch prohibition, clause 3.5 in the RTX agreement).
+_Avoid_: re-introducing any cron that calls a hotel availability API without a real user request behind it.

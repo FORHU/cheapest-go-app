@@ -34,6 +34,7 @@ const nextConfig = {
     localPatterns: [
       { pathname: '/api/**' },
       { pathname: '/_next/**' },
+      { pathname: '/images/**' },
     ],
     remotePatterns: [
       {
