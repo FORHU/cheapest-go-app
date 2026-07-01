@@ -16,8 +16,6 @@ interface FlightDatePickerProps {
     minDate?: Date | null;
 }
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     date,
@@ -29,6 +27,8 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     minDate
 }) => {
     const t = useTranslations('landing.search');
+    const MONTHS = t.raw('months') as string[];
+    const DAYS = t.raw('days') as string[];
     const ref = useRef<HTMLDivElement>(null);
     const [currentMonth, setCurrentMonth] = useState(date || new Date());
     const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
