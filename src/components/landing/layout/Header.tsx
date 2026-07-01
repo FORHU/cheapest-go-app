@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import SignInDropdown from '../../auth/SignInDropdown';
 import CurrencySelector, { CURRENCIES } from '@/components/common/CurrencySelector';
 import { cn } from '@/utils/cn';
+import { useTranslations } from 'next-intl';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +64,7 @@ const HeaderContent = () => {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [locale, setLocale] = useState<Locale>('en');
+  const t = useTranslations('nav');
 
   useEffect(() => {
     setMounted(true);
@@ -106,7 +108,7 @@ const HeaderContent = () => {
             {/* Open App Button (Compact on mobile) */}
             <button onClick={triggerInstall} className="flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[10px] sm:text-xs font-normal text-blue-600 dark:text-blue-400 border border-blue-600/20 dark:border-blue-400/20 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors shrink-0">
               <Download size={12} />
-              <span className="hidden sm:inline">Open app</span>
+              <span className="hidden sm:inline">{t('openApp')}</span>
             </button>
 
             {/* Language selector */}
@@ -144,12 +146,12 @@ const HeaderContent = () => {
 
             {/* Trips */}
             <Link href="/trips" className="flex items-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-normal text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0">
-              Trips
+              {t('trips')}
             </Link>
 
             {/* Support (Hidden on very small mobile) */}
             <a href="#" className="hidden xs:flex items-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-normal text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0">
-              Support
+              {t('support')}
             </a>
 
             {/* Theme Toggle */}

@@ -7,8 +7,6 @@ import { useSearchStore, useDates, useActiveDropdown } from '@/stores/searchStor
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 interface DatePickerProps {
     inline?: boolean;
@@ -21,6 +19,9 @@ interface DatePickerProps {
 
 export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDone, initialCheckOutMode, triggerDropdown }) => {
     const t = useTranslations('landing.search');
+    const MONTHS = t.raw('months') as string[];
+    const DAYS = t.raw('days') as string[];
+    const flexOptions = t.raw('flexOptions') as string[];
     const ref = useRef<HTMLDivElement>(null);
     const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
     const [activeTab, setActiveTab] = useState<'calendar' | 'flexible'>('calendar');
@@ -118,7 +119,6 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
         }
     };
 
-    const flexOptions = ['Exact dates', '± 1 day', '± 2 days', '± 3 days', '± 7 days'];
 
     const renderCalendar = () => {
         const year = currentMonth.getFullYear();
@@ -168,7 +168,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
     };
 
     const formatDate = (date: Date | null) => {
-        if (!date) return 'Select';
+        if (!date) return t('selectDate');
         return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 

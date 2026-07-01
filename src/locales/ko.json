@@ -5,7 +5,13 @@
         "signIn": "로그인",
         "signOut": "로그아웃",
         "myTrips": "내 여행",
-        "account": "계정"
+        "account": "계정",
+        "trips": "여행",
+        "createAccount": "계정 만들기",
+        "accountSettings": "계정 설정",
+        "membersSave": "회원은 10% 이상 절약",
+        "membersSaveSubtitle": "로그인 시 선정 숙소 할인 적용",
+        "accountWorks": "계정은 CheapestGo 및 모든 파트너 사이트에서 사용 가능합니다"
     },
     "languagePicker": {
         "label": "언어 선택",
@@ -105,7 +111,52 @@
             "infants": "유아",
             "adultAge": "만 12세 이상",
             "childAge": "만 2~11세",
-            "infantAge": "만 2세 미만 (무릎 착석)"
+            "infantAge": "만 2세 미만 (무릎 착석)",
+            "months": [
+                "일월",
+                "이월",
+                "삼월",
+                "사월",
+                "오월",
+                "유월",
+                "칠월",
+                "팔월",
+                "구월",
+                "십월",
+                "십일월",
+                "십이월"
+            ],
+            "days": [
+                "일",
+                "월",
+                "화",
+                "수",
+                "목",
+                "금",
+                "토"
+            ],
+            "flexOptions": [
+                "정확한 날짜",
+                "±1일",
+                "±2일",
+                "±3일",
+                "±7일"
+            ],
+            "searchMode": {
+                "stays": "숙소",
+                "flights": "항공편",
+                "aiSearch": "AI 검색"
+            }
+        },
+        "recentlyViewed": {
+            "title": "검색 이어보기",
+            "subtitle": "이전 검색을 이어보세요",
+            "viewAll": "전체 보기",
+            "recentlySearched": "최근 검색",
+            "from": "부터",
+            "stay": "숙소",
+            "flight": "항공편",
+            "showLess": "접기"
         }
     },
     "flights": {
@@ -260,6 +311,14 @@
             "a3": "네, 가격 검색과 비교는 완전히 무료입니다. 예약할 때만 비용이 발생합니다.",
             "q4": "CheapestGo는 어떤 통화를 지원하나요?",
             "a4": "CheapestGo는 다양한 통화를 지원하며 설정에 따라 자동으로 가격을 변환해 현지 통화로 확인할 수 있습니다."
+        }
+    },
+    "ai": {
+        "prompts": {
+            "bali": "발리 해변 리조트, 성인 2명, 2월 14-21일...",
+            "tokyo": "도쿄 럭셔리 호텔, 1박 $200 이하, 수영장 있는 곳...",
+            "cebu": "다음 달 세부 커플 주말 여행...",
+            "manila": "마닐라 근처 패밀리 리조트, 성인 2명 어린이 2명..."
         }
     }
 }

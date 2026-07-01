@@ -6,6 +6,7 @@ import { LogOut, Briefcase, Settings, Star, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 
 function getInitials(firstName?: string | null, lastName?: string | null, email?: string | null): string {
@@ -28,6 +29,7 @@ interface SignInDropdownProps {
 
 const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', collapsible = false, onNavigate, onToggleOpen }) => {
     const { user, logout } = useAuthStore();
+    const t = useTranslations('nav');
     const [isOpen, setIsOpen] = useState(false);
     const [isInlineOpen, setIsInlineOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -89,7 +91,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
 
     // Helper for "Sign in" button to ensure consistency
     const renderSignInButton = (className: string) => (
-        <button className={className}>Sign in</button>
+        <button className={className}>{t('signIn')}</button>
     );
 
     /* ─── INLINE VARIANT (for mobile drawer) ─── */
@@ -117,7 +119,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                         className="flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
                     >
                         <Settings className="h-5 w-5 text-slate-400" />
-                        Account Settings
+                        {t('accountSettings')}
                     </Link>
                 </div>
 
@@ -138,7 +140,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
                 >
                     <LogOut className="h-5 w-5" />
-                    Sign out
+                    {t('signOut')}
                 </button>
             </>
         ) : (
@@ -148,14 +150,14 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                     onClick={handleNav}
                     className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-full transition-colors text-center shadow-lg shadow-blue-500/20"
                 >
-                    Sign in
+                    {t('signIn')}
                 </Link>
                 <Link
                     href={getRedirectLink('/login', 'signup')}
                     onClick={handleNav}
                     className="block w-full py-3 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-sm font-semibold rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
                 >
-                    Create an account
+                    {t('createAccount')}
                 </Link>
             </div>
         );
@@ -168,7 +170,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                         onClick={() => setInlineOpen(!isInlineOpen)}
                         className="flex items-center justify-between w-full min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-left text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 transition-all shadow-sm"
                     >
-                        <span>{(mounted && user) ? 'Account' : 'Sign in'}</span>
+                        <span>{(mounted && user) ? t('account') : t('signIn')}</span>
                         <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isInlineOpen ? 'rotate-180' : ''}`} />
                     </button>
                     <AnimatePresence>
@@ -216,9 +218,9 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                         >
                             {/* Promo Banner */}
                             <div className="p-4 bg-linear-to-r from-blue-600 to-blue-700 text-white">
-                                <p className="font-medium text-[clamp(0.875rem,2vw,1rem)]">Members save 10% or more</p>
+                                <p className="font-medium text-[clamp(0.875rem,2vw,1rem)]">{t('membersSave')}</p>
                                 <p className="text-[clamp(0.8125rem,1.5vw,0.875rem)] text-blue-100 mt-1">
-                                    on select stays when signed in
+                                    {t('membersSaveSubtitle')}
                                 </p>
                             </div>
 
@@ -229,14 +231,14 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                                     onClick={handleNav}
                                     className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium rounded-full transition-colors text-center"
                                 >
-                                    Sign in
+                                    {t('signIn')}
                                 </Link>
                                 <Link
                                     href={getRedirectLink('/login', 'signup')}
                                     onClick={handleNav}
                                     className="block w-full py-3 px-4 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white text-[clamp(0.8125rem,1.5vw,0.875rem)] font-medium rounded-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-center"
                                 >
-                                    Create an account
+                                    {t('createAccount')}
                                 </Link>
                             </div>
 
@@ -245,7 +247,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                             {/* Info */}
                             <div className="border-t border-slate-100 dark:border-white/5 p-4">
                                 <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 text-center">
-                                    Your account works across CheapestGo and all partner sites
+                                    {t('accountWorks')}
                                 </p>
                             </div>
                         </motion.div>
@@ -299,7 +301,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                                 onClick={handleNav}
                             >
                                 <Settings className="h-5 w-5 text-slate-400" />
-                                Account Settings
+                                {t('accountSettings')}
                             </Link>
                         </div>
 
@@ -313,7 +315,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                                 className="w-full flex items-center gap-3 px-3 py-2.5 text-[clamp(0.8125rem,1.5vw,0.875rem)] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
                             >
                                 <LogOut className="h-5 w-5" />
-                                Sign out
+                                {t('signOut')}
                             </button>
                         </div>
                     </motion.div>
