@@ -2,7 +2,7 @@ import React from 'react';
 import { Source, Layer } from 'react-map-gl/mapbox';
 
 interface TripRouteLayerProps {
-    routeGeometry: GeoJSON.Geometry | null;
+    routeGeometry: any;
 }
 
 /**
@@ -12,7 +12,7 @@ interface TripRouteLayerProps {
 export const TripRouteLayer = ({ routeGeometry }: TripRouteLayerProps) => {
     if (!routeGeometry) return null;
 
-    const geojson: GeoJSON.Feature = {
+    const geojson: any = {
         type: 'Feature',
         properties: {},
         geometry: routeGeometry,

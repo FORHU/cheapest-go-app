@@ -90,7 +90,7 @@ function detectPOI(
 ): POIState | null {
     const features = map.queryRenderedFeatures(point, {
         layers: layers && layers.length > 0 ? layers : undefined,
-    });
+    }) as any[];
     const poi = features.find((f) => {
         const p = f.properties;
         if (!p?.name) return false;
