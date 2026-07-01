@@ -3,10 +3,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useFlightSearch } from '@/hooks/search/useFlightSearch';
+import { useTranslations } from 'next-intl';
 
 export const TripTypeSelector = () => {
     const { flightState, setFlightType } = useFlightSearch();
     const { tripType } = flightState;
+    const t = useTranslations('landing.search.tripType');
+
+    const labels: Record<string, string> = {
+        'round-trip': t('roundTrip'),
+        'one-way': t('oneWay'),
+    };
 
     return (
         <div className="flex gap-2 sm:p-1 sm:bg-slate-100 sm:dark:bg-white/5 sm:rounded-full sm:border sm:border-slate-200 sm:dark:border-white/5 mb-3 sm:mb-4 w-fit mx-auto">
@@ -28,7 +35,7 @@ export const TripTypeSelector = () => {
                         />
                     )}
                     <span className="relative z-10">
-                        {type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        {labels[type]}
                     </span>
                 </button>
             ))}

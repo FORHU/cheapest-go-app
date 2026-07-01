@@ -11,6 +11,7 @@ import { convertCurrency } from '@/lib/currency';
 import { formatCurrency } from '@/lib/utils';
 import { useUserCurrency, type Destination } from '@/stores/searchStore';
 import { IATA_TO_SLUG, findLocalDestinationImage } from '@/lib/destination-images';
+import { useTranslations } from 'next-intl';
 
 interface RecentCardProps {
   item: RecentItem;
@@ -19,6 +20,7 @@ interface RecentCardProps {
 }
 
 const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => {
+  const t = useTranslations('landing.recentlyViewed');
   const [mounted, setMounted] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -90,7 +92,7 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => 
           <Badge variant="default" size="sm">{item.type}</Badge>
           {displayPrice ? (
             <div className="text-right">
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 block leading-none">from</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 block leading-none">{t('from')}</span>
               <span className="text-xs font-bold text-slate-900 dark:text-white">{displayPrice}</span>
             </div>
           ) : (
@@ -104,6 +106,7 @@ const RecentCard: React.FC<RecentCardProps> = ({ item, destination, index }) => 
 };
 
 const RecentlyViewed = () => {
+  const t = useTranslations('landing.recentlyViewed');
   // Get recent searches from Zustand store
   const recentSearches = useRecentSearches();
 
@@ -113,8 +116,8 @@ const RecentlyViewed = () => {
     item: {
       id: String(index),
       destination: search.title,
-      dates: 'Recently searched',
-      type: search.type === 'airport' ? 'Flight' : 'Stay',
+      dates: t('recentlySearched'),
+      type: search.type === 'airport' ? t('flight') : t('stay'),
       image: (() => {
         if (search.type === 'airport' && search.code) {
           const slug = IATA_TO_SLUG[search.code.toUpperCase()];
@@ -134,10 +137,10 @@ const RecentlyViewed = () => {
     <section className="w-full pt-6 sm:pt-10 pb-2">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <SectionHeader
-          title="Continue Your Search"
-          subtitle="Pick up where you left off"
+          title={t('title')}
+          subtitle={t('subtitle')}
           icon={History}
-          actionLabel="View all"
+          actionLabel={t('viewAll')}
           actionHref="/history"
         />
 
