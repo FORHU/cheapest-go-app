@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Bell, BellOff, Loader2, Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface PriceAlertButtonProps {
     origin: string;
@@ -18,6 +19,7 @@ export default function PriceAlertButton({
     adults = 1,
     cabin = 'economy',
 }: PriceAlertButtonProps) {
+    const t = useTranslations('flights.priceAlert');
     const [state, setState] = useState<AlertState>('loading');
     const [alertId, setAlertId] = useState<string | null>(null);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -63,7 +65,7 @@ export default function PriceAlertButton({
                 body: JSON.stringify({ origin, destination, cabin_class: cabin, adults }),
             });
             if (res.status === 401) {
-                setFeedback('Sign in to set price alerts');
+                setFeedback(t('signInRequired'));
                 setState('idle');
                 setTimeout(() => setFeedback(''), 3000);
                 return;
@@ -72,10 +74,10 @@ export default function PriceAlertButton({
             if (json.success) {
                 setAlertId(json.data.id);
                 setState('active');
-                setFeedback("Alert on! We'll email you when prices drop.");
+                setFeedback(t('enabled'));
                 setTimeout(() => setFeedback(''), 4000);
             } else {
-                setFeedback(json.error ?? 'Failed to set alert');
+                setFeedback(json.error ?? t('failed'));
                 setState('idle');
                 setTimeout(() => setFeedback(''), 3000);
             }
@@ -92,7 +94,7 @@ export default function PriceAlertButton({
             await fetch(`/api/price-alerts/${alertId}`, { method: 'DELETE' });
             setAlertId(null);
             setState('idle');
-            setFeedback('Alert removed');
+            setFeedback(t('removed'));
             setTimeout(() => setFeedback(''), 2000);
         } catch {
             setState('active');
@@ -103,12 +105,12 @@ export default function PriceAlertButton({
     if (isLoggedIn === false) {
         return (
             <button
-                onClick={() => { setFeedback('Sign in to set price alerts'); setTimeout(() => setFeedback(''), 3000); }}
+                onClick={() => { setFeedback(t('signInRequired')); setTimeout(() => setFeedback(''), 3000); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors"
-                title="Sign in to set price alerts"
+                title={t('signInRequired')}
             >
                 <Bell size={13} />
-                Track price
+                {t('trackPrice')}
                 {feedback && <span className="ml-1 text-amber-600 dark:text-amber-400">{feedback}</span>}
             </button>
         );
@@ -118,7 +120,7 @@ export default function PriceAlertButton({
         return (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-400">
                 <Loader2 size={13} className="animate-spin" />
-                <span>Loading...</span>
+                <span>{t('loading')}</span>
             </div>
         );
     }
@@ -129,10 +131,10 @@ export default function PriceAlertButton({
                 <button
                     onClick={removeAlert}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
-                    title="Remove price alert"
+                    title={t('remove')}
                 >
                     <BellOff size={13} />
-                    Alert active
+                    {t('active')}
                 </button>
                 {feedback && <span className="text-xs text-emerald-600 dark:text-emerald-400">{feedback}</span>}
             </div>
@@ -144,14 +146,14 @@ export default function PriceAlertButton({
             <button
                 onClick={createAlert}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 transition-colors"
-                title="Get email when price drops"
+                title={t('emailWhenDrops')}
             >
                 <Bell size={13} />
-                Track price
+                {t('trackPrice')}
             </button>
             {feedback && (
-                <span className={`text-xs flex items-center gap-1 ${feedback.startsWith('Alert on') ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
-                    {feedback.startsWith('Alert on') && <Check size={11} />}
+                <span className={`text-xs flex items-center gap-1 ${feedback === t('enabled') ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
+                    {feedback === t('enabled') && <Check size={11} />}
                     {feedback}
                 </span>
             )}
