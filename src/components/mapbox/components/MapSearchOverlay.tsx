@@ -4,6 +4,7 @@ import React from 'react';
 import { Search, X, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMapboxSearch, type SearchResult } from '../hooks/useMapboxSearch';
+import { useTranslations } from 'next-intl';
 
 interface MapSearchOverlayProps {
     onSelect: (result: SearchResult) => void;
@@ -11,6 +12,7 @@ interface MapSearchOverlayProps {
 }
 
 export const MapSearchOverlay = ({ onSelect, className = 'absolute top-3 left-3 z-10 w-[72%]' }: MapSearchOverlayProps) => {
+    const t = useTranslations('hotels.mapSearch');
     const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | undefined>();
 
     React.useEffect(() => {
@@ -61,7 +63,7 @@ export const MapSearchOverlay = ({ onSelect, className = 'absolute top-3 left-3 
                         onChange={(e) => handleOriginSearch(e.target.value)}
                         onBlur={() => setTimeout(() => setShowOriginResults(false), 150)}
                         onFocus={() => originResults.length > 0 && setShowOriginResults(true)}
-                        placeholder="Search location on map..."
+                        placeholder={t('placeholder')}
                         className="flex-1 text-[11px] text-slate-800 dark:text-slate-200 bg-transparent placeholder:text-[10.5px] placeholder-slate-400 focus:outline-none"
                     />
                     {originQuery && (

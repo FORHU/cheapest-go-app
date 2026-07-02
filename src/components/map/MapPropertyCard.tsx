@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { MapPin, Building2 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
@@ -17,14 +19,16 @@ interface MapPropertyCardProps {
     index?: number;
 }
 
-function getRatingLabel(rating: number): string {
+type Translator = ReturnType<typeof useTranslations>;
+
+function getRatingLabel(rating: number, t: Translator): string {
     if (rating === 0) return '';
-    if (rating >= 9)  return 'Exceptional';
-    if (rating >= 8)  return 'Excellent';
-    if (rating >= 7)  return 'Very Good';
-    if (rating >= 6)  return 'Good';
-    if (rating >= 5)  return 'Fair';
-    return 'Poor';
+    if (rating >= 9)  return t('exceptional');
+    if (rating >= 8)  return t('excellent');
+    if (rating >= 7)  return t('veryGood');
+    if (rating >= 6)  return t('good');
+    if (rating >= 5)  return t('fair');
+    return t('poor');
 }
 
 function getRatingBadgeClass(rating: number): string {
@@ -58,8 +62,6 @@ function StarRating({ rating, size = 11 }: { rating: number; size?: number }) {
     );
 }
 
-import Image from 'next/image';
-
 const MapPropertyCard = React.memo(function MapPropertyCard({
     property,
     isSelected,
@@ -69,6 +71,8 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
     onViewDetails,
     index,
 }: MapPropertyCardProps) {
+    const tRatings = useTranslations('hotels.ratings');
+    const tCard = useTranslations('hotels.card');
     const targetCurrency = useUserCurrency();
     const sourceCurrency = property.currency || 'USD';
     const displayPrice = React.useMemo(
@@ -83,7 +87,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
     );
     const rating = property.rating ?? 0;
     const starRating = property.starRating ?? 0;
-    const ratingLabel = React.useMemo(() => getRatingLabel(rating), [rating]);
+    const ratingLabel = React.useMemo(() => getRatingLabel(rating, tRatings), [rating, tRatings]);
 
     return (
         <div
@@ -129,7 +133,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                     )}
                     {property.refundableTag === 'RFN' && (
                         <span className="absolute bottom-1 left-1 text-[7px] font-semibold bg-emerald-500 text-white px-1 py-px rounded-full shadow z-10">
-                            Free cancel
+                            {tCard('freeCancelShort')}
                         </span>
                     )}
                 </div>
@@ -172,7 +176,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                                     <span className="text-[13px] font-bold text-blue-600 dark:text-blue-400 truncate">
                                         {formatCurrency(displayPrice, targetCurrency)}
                                     </span>
-                                    <span className="text-[8px] text-slate-400 shrink-0">/night</span>
+                                    <span className="text-[8px] text-slate-400 shrink-0">{tCard('perNight')}</span>
                                 </>
                             )}
                         </div>
@@ -182,7 +186,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                                 onClick={(e) => { e.stopPropagation(); onViewDetails(property.id); }}
                                 className="shrink-0 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-[9px] font-bold px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap"
                             >
-                                View Deal
+                                {tCard('viewDeal')}
                             </button>
                         )}
                     </div>
@@ -208,7 +212,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                     )}
                     {property.refundableTag === 'RFN' && (
                         <span className="absolute top-1 left-1 text-[9px] font-semibold bg-emerald-500 text-white px-1.5 py-0.5 rounded z-10">
-                            Free cancellation
+                            {tCard('freeCancellation')}
                         </span>
                     )}
                 </div>
@@ -249,7 +253,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                                     </div>
                                     {property.reviews > 0 && (
                                         <span className="text-[10px] text-slate-400 leading-none landscape-compact:hidden">
-                                            {property.reviews.toLocaleString()} reviews
+                                            {tCard('reviews', { count: property.reviews.toLocaleString() })}
                                         </span>
                                     )}
                                 </div>
@@ -275,7 +279,7 @@ const MapPropertyCard = React.memo(function MapPropertyCard({
                                     <span className="text-[clamp(0.6875rem,1.5vw,0.875rem)] font-bold text-blue-600 dark:text-blue-400">
                                         {formatCurrency(displayPrice, targetCurrency)}
                                     </span>
-                                    <span className="text-[10px] text-slate-400 ml-0.5">/night</span>
+                                    <span className="text-[10px] text-slate-400 ml-0.5">{tCard('perNight')}</span>
                                 </>
                             )}
                         </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { MapPin, Star, Wifi, Car, Utensils, Coffee } from 'lucide-react';
 import { type Property } from '@/types';
@@ -74,14 +75,16 @@ const AmenityIcon: React.FC<{ amenity: string }> = ({ amenity }) => {
 /**
  * Rating label based on score
  */
-const getRatingLabel = (rating: number): string => {
+type Translator = ReturnType<typeof useTranslations>;
+
+const getRatingLabel = (rating: number, t: Translator): string => {
     if (rating === 0) return '';
-    if (rating >= 9) return 'Exceptional';
-    if (rating >= 8) return 'Excellent';
-    if (rating >= 7) return 'Very Good';
-    if (rating >= 6) return 'Good';
-    if (rating >= 5) return 'Average';
-    return 'Poor';
+    if (rating >= 9) return t('exceptional');
+    if (rating >= 8) return t('excellent');
+    if (rating >= 7) return t('veryGood');
+    if (rating >= 6) return t('good');
+    if (rating >= 5) return t('average');
+    return t('poor');
 };
 
 /**
@@ -135,6 +138,8 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
     onClick,
     className = '',
 }) => {
+    const tRatings = useTranslations('hotels.ratings');
+    const tCard = useTranslations('hotels.card');
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const targetCurrency = useUserCurrency();
@@ -257,7 +262,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                                     {displayRating.toFixed(1)}
                                 </span>
                                 <span className="text-[10px] sm:text-xs font-medium text-slate-700 dark:text-slate-300">
-                                    {getRatingLabel(displayRating)}
+                                    {getRatingLabel(displayRating, tRatings)}
                                 </span>
                             </div>
                         ) : <div />}
@@ -275,7 +280,7 @@ const VerticalCard: React.FC<PropertyCardProps> = ({
                                             {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                         </span>
                                         <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                            /night
+                                            {tCard('perNight')}
                                         </span>
                                     </div>
                                     {displayOriginalPrice && displayOriginalPrice > displayPrice && (
@@ -302,6 +307,8 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
     onClick,
     className = '',
 }) => {
+    const tRatings = useTranslations('hotels.ratings');
+    const tCard = useTranslations('hotels.card');
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const targetCurrency = useUserCurrency();
@@ -378,7 +385,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                     {property.refundableTag === 'RFN' && (
                         <span className="inline-flex items-center gap-1 text-[9px] lg:text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded-full mb-1">
                             <svg className="w-2.5 h-2.5 lg:w-3 lg:h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                            Free cancellation
+                            {tCard('freeCancellation')}
                         </span>
                     )}
                     {/* Hotel Name with rank number */}
@@ -422,7 +429,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                                         </div>
                                     </div>
                                     <span className="text-[9px] landscape:text-[8px] lg:text-xs font-medium text-slate-600 dark:text-slate-400 leading-none">
-                                        {getRatingLabel(property.rating)}
+                                        {getRatingLabel(property.rating, tRatings)}
                                     </span>
                                 </div>
                             </>
@@ -463,7 +470,7 @@ const HorizontalCard: React.FC<PropertyCardProps> = ({
                                         {symbol}{displayPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                     </span>
                                     <span className="text-[8px] landscape:text-[7px] lg:text-sm text-slate-500 dark:text-slate-400">
-                                        /night
+                                        {tCard('perNight')}
                                     </span>
                                 </div>
                             </>
