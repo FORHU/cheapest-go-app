@@ -25,7 +25,8 @@
     },
     "theme": {
         "switchToDark": "切换深色模式",
-        "switchToLight": "切换浅色模式"
+        "switchToLight": "切换浅色模式",
+        "contextError": "useTheme 必须在 ThemeProvider 内使用"
     },
     "landing": {
         "hero": {
@@ -160,6 +161,18 @@
         }
     },
     "flights": {
+        "validation": {
+            "missingInformation": "缺少信息",
+            "selectField": "请选择{field}",
+            "fields": {
+                "segmentOriginAirport": "第 {index} 段出发机场",
+                "segmentDestinationAirport": "第 {index} 段到达机场",
+                "segmentDate": "第 {index} 段日期",
+                "returnOriginAirport": "返程出发机场",
+                "returnDestinationAirport": "返程到达机场",
+                "returnDate": "返程日期"
+            }
+        },
         "results": {
             "loading": "正在寻找最优价格…",
             "empty": "该日期暂无可用航班。",
@@ -176,10 +189,62 @@
         },
         "card": {
             "direct": "直飞",
-            "stop": "次经停",
-            "stops": "次经停",
-            "viewDeal": "查看票价",
-            "perPerson": "每人"
+            "stop": "次中转",
+            "stops": "次中转",
+            "viewDeal": "查看优惠",
+            "perPerson": "每人",
+            "nonstop": "直飞",
+            "stopCount": "{count}次中转",
+            "stopsCount": "{count}次中转",
+            "stopCountShort": "{count}次中转",
+            "nonRefundable": "不可退款",
+            "hideDetails": "隐藏详情",
+            "showAllSegments": "显示所有航段",
+            "compareOptions": "比较 {count} 个选项",
+            "currentlySelected": "当前已选",
+            "select": "选择",
+            "selectFare": "选择 {fare}",
+            "thisFare": "此票价",
+      "outbound": "去程",
+      "return": "返程",
+      "includesTaxesFees": "含税费",
+      "freeCancellation": "免费取消",
+      "refundableFee": "可退款（预计费用：{fee}）",
+      "refundableFeesMayApply": "可退款（可能收取费用）",
+      "noBag": "无行李",
+      "bagsCount": "{count} 件行李",
+      "brandsAvailable": "{count} 个品牌可选",
+      "onlySeatsLeft": "仅剩 {count} 个座位！",
+      "seatsLeft": "剩余 {count} 个座位",
+      "seatsAvailable": "{count} 个座位可用"
+        },
+        "filtersPanel": {
+            "sortBy": "排序方式",
+            "cheapestFirst": "价格最低优先",
+            "fastestFirst": "用时最短优先",
+            "earliestDeparture": "最早出发优先",
+            "stops": "中转",
+            "anyStops": "不限中转",
+            "nonStopOnly": "仅直飞",
+            "upToOneStop": "最多 1 次中转",
+            "fareType": "票价类型",
+            "refundableFares": "可退款票价",
+            "refundableFaresDescription": "允许取消并退款的票价",
+            "provider": "供应商",
+            "airlines": "航空公司",
+            "branded": "品牌票价",
+            "ndc": "NDC"
+        },
+        "priceAlert": {
+            "trackPrice": "追踪价格",
+            "signInRequired": "请登录以设置价格提醒",
+            "enabled": "提醒已开启！价格下降时我们会发邮件通知您。",
+            "remove": "移除价格提醒",
+            "emailWhenDrops": "价格下降时邮件通知",
+            "loading": "加载中...",
+            "active": "提醒已启用",
+            "removed": "提醒已移除",
+            "failed": "设置提醒失败"
         }
     },
     "auth": {
@@ -247,6 +312,19 @@
         "downloadBtn": "下载应用",
         "learnMore": "了解更多"
     },
+    "search": {
+        "validation": {
+            "selectField": "请选择{field}",
+            "allHotelFieldsRequired": "搜索酒店需要填写所有字段",
+            "fieldList": "{fields}和{last}",
+            "listSeparator": "、",
+            "fields": {
+                "destination": "目的地",
+                "checkInDate": "入住日期",
+                "checkOutDate": "退房日期"
+            }
+        }
+    },
     "deals": {
         "popularRoute": "热门路线",
         "searchFlights": "搜索航班",
@@ -265,9 +343,11 @@
             "exceptional": "超棒",
             "excellent": "极好",
             "superb": "极好",
-            "veryGood": "非常好",
-            "good": "好",
-            "average": "一般"
+      "veryGood": "非常好",
+      "good": "好",
+      "average": "一般",
+      "fair": "一般",
+      "poor": "较差"
         },
         "fromPrice": "{price} 起",
         "perNight": "/晚",
@@ -279,7 +359,81 @@
         "subtitleDefault": "精心挑选，价格无可比拟",
         "subtitlePersonalized": "{country} 的高分住宿 · 每日更新",
         "allHotelsCount": "共 {count} 家酒店",
-        "collapse": "收起 ↑"
+        "collapse": "收起 ↑",
+        "searchPage": {
+            "title": "搜索酒店与住宿 | CheapestGo",
+            "description": "在全球范围内查找并预订最便宜的酒店、公寓和特色住宿。在 CheapestGo 比较价格，发现理想住处。"
+        },
+        "searchResults": {
+            "sort": {
+                "recommended": "推荐",
+                "cheapest": "最便宜",
+                "topRated": "评分最高",
+                "mostReviewed": "评论最多",
+                "priceHighToLow": "价格：从高到低"
+            },
+            "loadingMore": "正在加载更多酒店",
+            "foundCount": "找到 {count} 个",
+            "searching": "正在搜索酒店…",
+            "searchingInDestination": "正在搜索 {destination} 的酒店",
+            "searchFailed": "搜索失败，请重试。",
+            "noHotelsFound": "未找到酒店",
+            "noHotelsFoundIn": "未找到 {destination} 的酒店",
+            "noPropertiesFound": "未找到住宿",
+            "supplierUnavailable": "当前供应商可能暂不覆盖此目的地。请尝试其他日期、调整筛选条件，或搜索附近城市。",
+            "supplierUnavailableShort": "当前供应商可能暂不覆盖此目的地。请尝试其他日期或附近城市。",
+            "allResultsLoaded": "已加载全部 {count} 个结果",
+            "loadMoreShowing": "加载更多 · 正在显示 {shown}/{total}",
+            "hotelsFound": "找到 {count} 家酒店",
+            "hotelsCount": "{count} 家酒店",
+            "staysIn": "{destination} 的住宿",
+            "allProperties": "所有住宿",
+            "propertiesFound": "找到 {count} 个住宿",
+            "pricesMayChange": "价格可能会根据可订情况变化。",
+            "map": "地图",
+            "showMoreRemaining": "显示更多（剩余 {count} 个）",
+            "allResultsShown": "已显示全部 {count} 个结果",
+            "filteredCount": "{filtered}/{total}",
+            "noHotelsAvailable": "暂无可订酒店",
+            "noHotelsAvailableIn": "{destination} 暂无可订酒店"
+        },
+        "mapSearch": {
+            "placeholder": "在地图上搜索位置..."
+        },
+        "mapView": {
+            "findingHotels": "正在查找酒店",
+            "findingHotelsIn": "正在查找 {destination} 的酒店",
+            "comparingRates": "正在比较 200+ 家酒店房价…",
+            "checkIn": "入住",
+            "checkOut": "退房",
+            "nights": "晚",
+            "guests": "住客",
+            "search": "搜索",
+            "searchFallback": "搜索",
+            "back": "返回",
+            "filters": "筛选",
+            "list": "列表",
+            "pricePerNight": "{min} – {max} /晚",
+            "swipeToBrowse": "滑动浏览",
+            "cancellation": "取消政策",
+            "any": "不限",
+            "clearFilters": "清除筛选"
+        },
+        "filters": {
+            "activeFilters": "已启用筛选:",
+            "reset": "重置",
+            "searchByPropertyName": "按住宿名称搜索",
+            "propertyType": "住宿类型",
+            "amenities": "设施",
+            "strictAmenitiesDescription": "启用后，仅显示包含所有已选设施的酒店"
+        },
+        "card": {
+      "freeCancellation": "免费取消",
+      "freeCancelShort": "免费取消",
+      "reviews": "{count} 条评论",
+      "perNight": "/晚",
+      "viewDeal": "查看优惠"
+        }
     },
     "topCities": {
         "headerMain": "热门城市",

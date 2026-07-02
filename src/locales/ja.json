@@ -25,7 +25,8 @@
     },
     "theme": {
         "switchToDark": "ダークモードに切り替え",
-        "switchToLight": "ライトモードに切り替え"
+        "switchToLight": "ライトモードに切り替え",
+        "contextError": "useThemeはThemeProvider内で使用する必要があります"
     },
     "landing": {
         "hero": {
@@ -160,6 +161,18 @@
         }
     },
     "flights": {
+        "validation": {
+            "missingInformation": "情報が不足しています",
+            "selectField": "{field}を選択してください",
+            "fields": {
+                "segmentOriginAirport": "区間{index}の出発空港",
+                "segmentDestinationAirport": "区間{index}の到着空港",
+                "segmentDate": "区間{index}の日付",
+                "returnOriginAirport": "復路の出発空港",
+                "returnDestinationAirport": "復路の到着空港",
+                "returnDate": "復路の日付"
+            }
+        },
         "results": {
             "loading": "最安値を探しています…",
             "empty": "この日程のフライトは見つかりませんでした。",
@@ -179,7 +192,59 @@
             "stop": "回乗り継ぎ",
             "stops": "回乗り継ぎ",
             "viewDeal": "料金を見る",
-            "perPerson": "1人あたり"
+            "perPerson": "1人あたり",
+            "nonstop": "直行便",
+            "stopCount": "{count}回乗り継ぎ",
+            "stopsCount": "{count}回乗り継ぎ",
+            "stopCountShort": "{count}回乗り継ぎ",
+            "nonRefundable": "返金不可",
+            "hideDetails": "詳細を隠す",
+            "showAllSegments": "すべての区間を表示",
+            "compareOptions": "{count}件のオプションを比較",
+            "currentlySelected": "現在選択中",
+            "select": "選択",
+            "selectFare": "{fare}を選択",
+            "thisFare": "この運賃",
+      "outbound": "往路",
+      "return": "復路",
+      "includesTaxesFees": "税金・手数料込み",
+      "freeCancellation": "無料キャンセル",
+      "refundableFee": "返金可 (推定手数料: {fee})",
+      "refundableFeesMayApply": "返金可 (手数料がかかる場合があります)",
+      "noBag": "手荷物なし",
+      "bagsCount": "手荷物 {count}個",
+      "brandsAvailable": "{count}件のブランドあり",
+      "onlySeatsLeft": "残り{count}席!",
+      "seatsLeft": "残り{count}席",
+      "seatsAvailable": "{count}席あり"
+        },
+        "filtersPanel": {
+            "sortBy": "並び替え",
+            "cheapestFirst": "安い順",
+            "fastestFirst": "所要時間が短い順",
+            "earliestDeparture": "出発が早い順",
+            "stops": "乗り継ぎ",
+            "anyStops": "すべての乗り継ぎ",
+            "nonStopOnly": "直行便のみ",
+            "upToOneStop": "乗り継ぎ1回まで",
+            "fareType": "運賃タイプ",
+            "refundableFares": "返金可能な運賃",
+            "refundableFaresDescription": "キャンセル時に返金を受けられる運賃",
+            "provider": "プロバイダー",
+            "airlines": "航空会社",
+            "branded": "ブランド運賃",
+            "ndc": "NDC"
+        },
+        "priceAlert": {
+            "trackPrice": "価格を追跡",
+            "signInRequired": "価格アラートを設定するにはログインしてください",
+            "enabled": "アラートを設定しました。価格が下がったらメールでお知らせします。",
+            "remove": "価格アラートを削除",
+            "emailWhenDrops": "価格が下がったらメールで通知",
+            "loading": "読み込み中...",
+            "active": "アラート有効",
+            "removed": "アラートを削除しました",
+            "failed": "アラートを設定できませんでした"
         }
     },
     "auth": {
@@ -247,6 +312,19 @@
         "downloadBtn": "アプリをダウンロード",
         "learnMore": "詳細はこちら"
     },
+    "search": {
+        "validation": {
+            "selectField": "{field}を選択してください",
+            "allHotelFieldsRequired": "ホテル検索にはすべての項目が必要です",
+            "fieldList": "{fields}と{last}",
+            "listSeparator": "、",
+            "fields": {
+                "destination": "目的地",
+                "checkInDate": "チェックイン日",
+                "checkOutDate": "チェックアウト日"
+            }
+        }
+    },
     "deals": {
         "popularRoute": "人気路線",
         "searchFlights": "フライトを検索",
@@ -265,9 +343,11 @@
             "exceptional": "素晴らしい",
             "excellent": "大変良い",
             "superb": "素晴らしい",
-            "veryGood": "とても良い",
-            "good": "良い",
-            "average": "普通"
+      "veryGood": "とても良い",
+      "good": "良い",
+      "average": "普通",
+      "fair": "まずまず",
+      "poor": "低評価"
         },
         "fromPrice": "{price}〜",
         "perNight": "/泊",
@@ -279,7 +359,81 @@
         "subtitleDefault": "厳選されたホテルをお得な価格で",
         "subtitlePersonalized": "{country} の高評価ホテル · 毎日更新",
         "allHotelsCount": "すべてのホテル（{count}軒）",
-        "collapse": "折りたたむ ↑"
+        "collapse": "折りたたむ ↑",
+        "searchPage": {
+            "title": "ホテル・宿泊施設検索 | CheapestGo",
+            "description": "世界中のホテル、アパート、ユニークな宿泊施設を最安値で検索・予約。CheapestGoで価格を比較し、理想の滞在先を見つけましょう。"
+        },
+        "searchResults": {
+            "sort": {
+                "recommended": "おすすめ",
+                "cheapest": "最安値",
+                "topRated": "高評価",
+                "mostReviewed": "レビューが多い順",
+                "priceHighToLow": "価格: 高い順"
+            },
+            "loadingMore": "ホテルをさらに読み込み中",
+            "foundCount": "{count}件見つかりました",
+            "searching": "ホテルを検索中…",
+            "searchingInDestination": "{destination}のホテルを検索中",
+            "searchFailed": "検索に失敗しました。もう一度お試しください。",
+            "noHotelsFound": "ホテルが見つかりません",
+            "noHotelsFoundIn": "{destination}のホテルが見つかりません",
+            "noPropertiesFound": "宿泊施設が見つかりません",
+            "supplierUnavailable": "現在のサプライヤーはこの目的地に対応していない可能性があります。日程を変える、フィルターを調整する、または近くの都市で検索してください。",
+            "supplierUnavailableShort": "現在のサプライヤーはこの目的地に対応していない可能性があります。別の日程または近くの都市をお試しください。",
+            "allResultsLoaded": "全{count}件の結果を読み込みました",
+            "loadMoreShowing": "さらに表示 · {shown}/{total}件を表示中",
+            "hotelsFound": "{count}件のホテルが見つかりました",
+            "hotelsCount": "{count}件のホテル",
+            "staysIn": "{destination}の宿泊施設",
+            "allProperties": "すべての宿泊施設",
+            "propertiesFound": "{count}件の宿泊施設が見つかりました",
+            "pricesMayChange": "料金は空室状況により変動する場合があります。",
+            "map": "地図",
+            "showMoreRemaining": "さらに表示（残り{count}件）",
+            "allResultsShown": "全{count}件の結果を表示しました",
+            "filteredCount": "{filtered}/{total}",
+            "noHotelsAvailable": "利用可能なホテルはありません",
+            "noHotelsAvailableIn": "{destination}で利用可能なホテルはありません"
+        },
+        "mapSearch": {
+            "placeholder": "地図上の場所を検索..."
+        },
+        "mapView": {
+            "findingHotels": "ホテルを検索中",
+            "findingHotelsIn": "{destination}のホテルを検索中",
+            "comparingRates": "200件以上のホテル料金を比較中…",
+            "checkIn": "チェックイン",
+            "checkOut": "チェックアウト",
+            "nights": "泊",
+            "guests": "ゲスト",
+            "search": "検索",
+            "searchFallback": "検索",
+            "back": "戻る",
+            "filters": "絞り込み",
+            "list": "リスト",
+            "pricePerNight": "{min} – {max} /泊",
+            "swipeToBrowse": "スワイプして見る",
+            "cancellation": "キャンセル",
+            "any": "すべて",
+            "clearFilters": "フィルターをクリア"
+        },
+        "filters": {
+            "activeFilters": "適用中のフィルター:",
+            "reset": "リセット",
+            "searchByPropertyName": "宿泊施設名で検索",
+            "propertyType": "宿泊施設タイプ",
+            "amenities": "設備",
+            "strictAmenitiesDescription": "有効にすると、選択したすべての設備があるホテルのみを表示します"
+        },
+        "card": {
+      "freeCancellation": "無料キャンセル",
+      "freeCancelShort": "無料キャンセル",
+      "reviews": "{count}件のレビュー",
+      "perNight": "/泊",
+      "viewDeal": "料金を見る"
+        }
     },
     "topCities": {
         "headerMain": "人気の都市",

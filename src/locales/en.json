@@ -25,7 +25,8 @@
     },
     "theme": {
         "switchToDark": "Switch to dark mode",
-        "switchToLight": "Switch to light mode"
+        "switchToLight": "Switch to light mode",
+        "contextError": "useTheme must be used within a ThemeProvider"
     },
     "landing": {
         "hero": {
@@ -160,6 +161,18 @@
         }
     },
     "flights": {
+        "validation": {
+            "missingInformation": "Missing information",
+            "selectField": "Please select {field}",
+            "fields": {
+                "segmentOriginAirport": "segment {index} origin airport",
+                "segmentDestinationAirport": "segment {index} destination airport",
+                "segmentDate": "segment {index} date",
+                "returnOriginAirport": "return origin airport",
+                "returnDestinationAirport": "return destination airport",
+                "returnDate": "return date"
+            }
+        },
         "results": {
             "loading": "Finding the best fares…",
             "empty": "No flights found for these dates.",
@@ -176,10 +189,62 @@
         },
         "card": {
             "direct": "Direct",
+            "nonstop": "Nonstop",
             "stop": "stop",
             "stops": "stops",
+            "stopCount": "{count} stop",
+            "stopsCount": "{count} stops",
+            "stopCountShort": "{count} stop(s)",
             "viewDeal": "View deal",
-            "perPerson": "per person"
+            "perPerson": "per person",
+            "nonRefundable": "Non-refundable",
+            "hideDetails": "Hide details",
+            "showAllSegments": "Show all segments",
+            "compareOptions": "Compare {count} options",
+            "currentlySelected": "Currently Selected",
+            "select": "Select",
+            "selectFare": "Select {fare}",
+            "thisFare": "this",
+      "outbound": "Outbound",
+      "return": "Return",
+      "includesTaxesFees": "includes taxes & fees",
+      "freeCancellation": "Free cancellation",
+      "refundableFee": "Refundable (est. fee: {fee})",
+      "refundableFeesMayApply": "Refundable (fees may apply)",
+      "noBag": "No bag",
+      "bagsCount": "{count} bag(s)",
+      "brandsAvailable": "{count} brands available",
+      "onlySeatsLeft": "Only {count} left!",
+      "seatsLeft": "{count} seats left",
+      "seatsAvailable": "{count} seats available"
+        },
+        "filtersPanel": {
+            "sortBy": "Sort By",
+            "cheapestFirst": "Cheapest First",
+            "fastestFirst": "Fastest First",
+            "earliestDeparture": "Earliest Departure",
+            "stops": "Stops",
+            "anyStops": "Any Stops",
+            "nonStopOnly": "Non-stop only",
+            "upToOneStop": "Up to 1 stop",
+            "fareType": "Fare Type",
+            "refundableFares": "Refundable fares",
+            "refundableFaresDescription": "Fares that allow cancellation with a refund",
+            "provider": "Provider",
+            "airlines": "Airlines",
+            "branded": "Branded",
+            "ndc": "NDC"
+        },
+        "priceAlert": {
+            "trackPrice": "Track price",
+            "signInRequired": "Sign in to set price alerts",
+            "enabled": "Alert on! We'll email you when prices drop.",
+            "remove": "Remove price alert",
+            "emailWhenDrops": "Get email when price drops",
+            "loading": "Loading...",
+            "active": "Alert active",
+            "removed": "Alert removed",
+            "failed": "Failed to set alert"
         }
     },
     "auth": {
@@ -247,6 +312,19 @@
         "downloadBtn": "Download App",
         "learnMore": "Learn More"
     },
+    "search": {
+        "validation": {
+            "selectField": "Please select {field}",
+            "allHotelFieldsRequired": "All fields are required to search for hotels",
+            "fieldList": "{fields} and {last}",
+            "listSeparator": ", ",
+            "fields": {
+                "destination": "destination",
+                "checkInDate": "check-in date",
+                "checkOutDate": "check-out date"
+            }
+        }
+    },
     "deals": {
         "popularRoute": "Popular Route",
         "searchFlights": "Search Flights",
@@ -267,7 +345,9 @@
             "excellent": "Excellent",
             "veryGood": "Very Good",
             "good": "Good",
-            "average": "Average"
+            "average": "Average",
+            "fair": "Fair",
+            "poor": "Poor"
         },
         "fromPrice": "From {price}",
         "perNight": "/night",
@@ -279,6 +359,80 @@
         "subtitleDefault": "Handpicked stays at unbeatable prices",
         "subtitlePersonalized": "Top-rated stays in {country} · updated daily",
         "allHotelsCount": "All {count} hotels",
+        "searchPage": {
+            "title": "Search Hotels & Stays | CheapestGo",
+            "description": "Find and book the cheapest hotels, apartments, and unique stays worldwide. Compare prices and discover your perfect accommodation on CheapestGo."
+        },
+        "searchResults": {
+            "sort": {
+                "recommended": "Recommended",
+                "cheapest": "Cheapest",
+                "topRated": "Top Rated",
+                "mostReviewed": "Most Reviewed",
+                "priceHighToLow": "Price: High to Low"
+            },
+            "loadingMore": "Loading more hotels",
+            "foundCount": "{count} found",
+            "searching": "Searching hotels…",
+            "searchingInDestination": "Searching hotels in {destination}",
+            "searchFailed": "Search failed. Please try again.",
+            "noHotelsFound": "No hotels found",
+            "noHotelsFoundIn": "No hotels found in {destination}",
+            "noPropertiesFound": "No properties found",
+            "supplierUnavailable": "Our supplier may not cover this destination yet. Try different dates, adjust your filters, or search a nearby city.",
+            "supplierUnavailableShort": "Our current supplier may not cover this destination yet. Try different dates or a nearby city.",
+            "allResultsLoaded": "All {count} results loaded",
+            "loadMoreShowing": "Load More · showing {shown} of {total}",
+            "hotelsFound": "{count} hotels found",
+            "hotelsCount": "{count} hotels",
+            "staysIn": "Stays in {destination}",
+            "allProperties": "All properties",
+            "propertiesFound": "{count} properties found",
+            "pricesMayChange": "Prices may change based on availability.",
+            "map": "Map",
+            "showMoreRemaining": "Show more ({count} remaining)",
+            "allResultsShown": "All {count} results shown",
+            "filteredCount": "{filtered} of {total}",
+            "noHotelsAvailable": "No hotels available",
+            "noHotelsAvailableIn": "No hotels available in {destination}"
+        },
+        "mapSearch": {
+            "placeholder": "Search location on map..."
+        },
+        "mapView": {
+            "findingHotels": "Finding hotels",
+            "findingHotelsIn": "Finding hotels in {destination}",
+            "comparingRates": "Comparing room rates across 200+ hotels…",
+            "checkIn": "Check-in",
+            "checkOut": "Check-out",
+            "nights": "nights",
+            "guests": "Guests",
+            "search": "Search",
+            "searchFallback": "Search",
+            "back": "Back",
+            "filters": "Filters",
+            "list": "List",
+            "pricePerNight": "{min} – {max} /night",
+            "swipeToBrowse": "Swipe to browse",
+            "cancellation": "Cancellation",
+            "any": "Any",
+            "clearFilters": "Clear filters"
+        },
+        "filters": {
+            "activeFilters": "Active Filters:",
+            "reset": "Reset",
+            "searchByPropertyName": "Search by property name",
+            "propertyType": "Property Type",
+            "amenities": "Amenities",
+            "strictAmenitiesDescription": "When enabled, only shows hotels with every selected amenity"
+        },
+        "card": {
+            "freeCancellation": "Free cancellation",
+            "freeCancelShort": "Free cancel",
+            "reviews": "{count} reviews",
+            "perNight": "/night",
+            "viewDeal": "View Deal"
+        },
         "collapse": "Collapse ↑"
     },
     "topCities": {
