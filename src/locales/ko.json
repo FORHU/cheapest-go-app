@@ -25,7 +25,8 @@
     },
     "theme": {
         "switchToDark": "다크 모드로 전환",
-        "switchToLight": "라이트 모드로 전환"
+        "switchToLight": "라이트 모드로 전환",
+        "contextError": "useTheme은 ThemeProvider 안에서 사용해야 합니다"
     },
     "landing": {
         "hero": {
@@ -160,6 +161,18 @@
         }
     },
     "flights": {
+        "validation": {
+            "missingInformation": "정보가 부족합니다",
+            "selectField": "{field}을(를) 선택해 주세요",
+            "fields": {
+                "segmentOriginAirport": "구간 {index} 출발 공항",
+                "segmentDestinationAirport": "구간 {index} 도착 공항",
+                "segmentDate": "구간 {index} 날짜",
+                "returnOriginAirport": "귀국편 출발 공항",
+                "returnDestinationAirport": "귀국편 도착 공항",
+                "returnDate": "귀국편 날짜"
+            }
+        },
         "results": {
             "loading": "최저가 항공편을 찾고 있습니다…",
             "empty": "해당 날짜에 항공편이 없습니다.",
@@ -179,7 +192,59 @@
             "stop": "회 경유",
             "stops": "회 경유",
             "viewDeal": "요금 보기",
-            "perPerson": "1인당"
+            "perPerson": "1인당",
+            "nonstop": "직항",
+            "stopCount": "{count}회 경유",
+            "stopsCount": "{count}회 경유",
+            "stopCountShort": "{count}회 경유",
+            "nonRefundable": "환불 불가",
+            "hideDetails": "상세 정보 숨기기",
+            "showAllSegments": "모든 구간 보기",
+            "compareOptions": "{count}개 옵션 비교",
+            "currentlySelected": "현재 선택됨",
+            "select": "선택",
+            "selectFare": "{fare} 선택",
+            "thisFare": "이 요금",
+      "outbound": "가는 편",
+      "return": "오는 편",
+      "includesTaxesFees": "세금 및 수수료 포함",
+      "freeCancellation": "무료 취소",
+      "refundableFee": "환불 가능 (예상 수수료: {fee})",
+      "refundableFeesMayApply": "환불 가능 (수수료가 부과될 수 있음)",
+      "noBag": "수하물 없음",
+      "bagsCount": "수하물 {count}개",
+      "brandsAvailable": "브랜드 {count}개 이용 가능",
+      "onlySeatsLeft": "{count}석만 남음!",
+      "seatsLeft": "{count}석 남음",
+      "seatsAvailable": "{count}석 이용 가능"
+        },
+        "filtersPanel": {
+            "sortBy": "정렬 기준",
+            "cheapestFirst": "최저가순",
+            "fastestFirst": "최단 시간순",
+            "earliestDeparture": "가장 이른 출발순",
+            "stops": "경유",
+            "anyStops": "전체 경유",
+            "nonStopOnly": "직항만",
+            "upToOneStop": "최대 1회 경유",
+            "fareType": "요금 유형",
+            "refundableFares": "환불 가능 요금",
+            "refundableFaresDescription": "환불 취소가 가능한 요금",
+            "provider": "공급사",
+            "airlines": "항공사",
+            "branded": "브랜드 요금",
+            "ndc": "NDC"
+        },
+        "priceAlert": {
+            "trackPrice": "가격 추적",
+            "signInRequired": "가격 알림을 설정하려면 로그인하세요",
+            "enabled": "알림이 켜졌습니다. 가격이 내려가면 이메일로 알려드릴게요.",
+            "remove": "가격 알림 제거",
+            "emailWhenDrops": "가격이 내려가면 이메일 받기",
+            "loading": "불러오는 중...",
+            "active": "알림 활성화됨",
+            "removed": "알림이 제거되었습니다",
+            "failed": "알림 설정에 실패했습니다"
         }
     },
     "auth": {
@@ -247,6 +312,19 @@
         "downloadBtn": "앱 다운로드",
         "learnMore": "더 알아보기"
     },
+    "search": {
+        "validation": {
+            "selectField": "{field}을(를) 선택해 주세요",
+            "allHotelFieldsRequired": "호텔을 검색하려면 모든 필드를 입력해야 합니다",
+            "fieldList": "{fields} 및 {last}",
+            "listSeparator": ", ",
+            "fields": {
+                "destination": "목적지",
+                "checkInDate": "체크인 날짜",
+                "checkOutDate": "체크아웃 날짜"
+            }
+        }
+    },
     "deals": {
         "popularRoute": "인기 노선",
         "searchFlights": "항공편 검색",
@@ -265,9 +343,11 @@
             "exceptional": "최고",
             "excellent": "매우 훌륭함",
             "superb": "최상급",
-            "veryGood": "훌륭함",
-            "good": "좋음",
-            "average": "보통"
+      "veryGood": "훌륭함",
+      "good": "좋음",
+      "average": "보통",
+      "fair": "무난함",
+      "poor": "낮음"
         },
         "fromPrice": "{price}부터",
         "perNight": "/박",
@@ -279,7 +359,81 @@
         "subtitleDefault": "엄선된 호텔을 최저가에 제공",
         "subtitlePersonalized": "{country} 인기 호텔 · 매일 업데이트",
         "allHotelsCount": "전체 {count}개 호텔",
-        "collapse": "접기 ↑"
+        "collapse": "접기 ↑",
+        "searchPage": {
+            "title": "호텔 및 숙소 검색 | CheapestGo",
+            "description": "전 세계 호텔, 아파트, 특별한 숙소를 최저가로 찾아 예약하세요. CheapestGo에서 가격을 비교하고 완벽한 숙소를 발견하세요."
+        },
+        "searchResults": {
+            "sort": {
+                "recommended": "추천순",
+                "cheapest": "최저가",
+                "topRated": "평점 높은 순",
+                "mostReviewed": "리뷰 많은 순",
+                "priceHighToLow": "가격 높은 순"
+            },
+            "loadingMore": "호텔을 더 불러오는 중",
+            "foundCount": "{count}개 찾음",
+            "searching": "호텔 검색 중…",
+            "searchingInDestination": "{destination} 호텔 검색 중",
+            "searchFailed": "검색에 실패했습니다. 다시 시도해 주세요.",
+            "noHotelsFound": "호텔을 찾을 수 없습니다",
+            "noHotelsFoundIn": "{destination}에서 호텔을 찾을 수 없습니다",
+            "noPropertiesFound": "숙소를 찾을 수 없습니다",
+            "supplierUnavailable": "현재 공급사가 이 목적지를 지원하지 않을 수 있습니다. 다른 날짜, 필터 조정 또는 근처 도시로 검색해 보세요.",
+            "supplierUnavailableShort": "현재 공급사가 이 목적지를 지원하지 않을 수 있습니다. 다른 날짜나 근처 도시를 시도해 보세요.",
+            "allResultsLoaded": "전체 {count}개 결과를 모두 불러왔습니다",
+            "loadMoreShowing": "더 보기 · {shown}/{total} 표시 중",
+            "hotelsFound": "{count}개 호텔 찾음",
+            "hotelsCount": "{count}개 호텔",
+            "staysIn": "{destination} 숙소",
+            "allProperties": "전체 숙소",
+            "propertiesFound": "{count}개 숙소 찾음",
+            "pricesMayChange": "가격은 예약 가능 여부에 따라 변경될 수 있습니다.",
+            "map": "지도",
+            "showMoreRemaining": "더 보기 ({count}개 남음)",
+            "allResultsShown": "전체 {count}개 결과 표시됨",
+            "filteredCount": "{filtered}/{total}",
+            "noHotelsAvailable": "예약 가능한 호텔이 없습니다",
+            "noHotelsAvailableIn": "{destination}에 예약 가능한 호텔이 없습니다"
+        },
+        "mapSearch": {
+            "placeholder": "지도에서 위치 검색..."
+        },
+        "mapView": {
+            "findingHotels": "호텔 찾는 중",
+            "findingHotelsIn": "{destination} 호텔 찾는 중",
+            "comparingRates": "200개 이상의 호텔 객실 요금 비교 중…",
+            "checkIn": "체크인",
+            "checkOut": "체크아웃",
+            "nights": "박",
+            "guests": "게스트",
+            "search": "검색",
+            "searchFallback": "검색",
+            "back": "뒤로",
+            "filters": "필터",
+            "list": "목록",
+            "pricePerNight": "{min} – {max} /박",
+            "swipeToBrowse": "스와이프하여 보기",
+            "cancellation": "취소",
+            "any": "전체",
+            "clearFilters": "필터 지우기"
+        },
+        "filters": {
+            "activeFilters": "적용된 필터:",
+            "reset": "초기화",
+            "searchByPropertyName": "숙소명으로 검색",
+            "propertyType": "숙소 유형",
+            "amenities": "편의시설",
+            "strictAmenitiesDescription": "활성화하면 선택한 모든 편의시설을 갖춘 호텔만 표시합니다"
+        },
+        "card": {
+      "freeCancellation": "무료 취소",
+      "freeCancelShort": "무료 취소",
+      "reviews": "리뷰 {count}개",
+      "perNight": "/박",
+      "viewDeal": "요금 보기"
+        }
     },
     "topCities": {
         "headerMain": "인기 도시",
