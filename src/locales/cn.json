@@ -28,6 +28,10 @@
         "switchToLight": "切换浅色模式",
         "contextError": "useTheme 必须在 ThemeProvider 内使用"
     },
+    "popularDestinations": {
+        "title": "热门目的地",
+        "subtitle": "探索亚太地区热门景点 — 秒速搜索航班和酒店。"
+    },
     "landing": {
         "hero": {
             "title": "全网最低价机票",
@@ -158,6 +162,23 @@
             "stay": "住宿",
             "flight": "航班",
             "showLess": "收起"
+        },
+        "howItWorksSteps": {
+            "howItWorks": "使用方法",
+            "book": "预订您的旅程",
+            "bookNext": "仅需三个简单步骤。",
+            "search": {
+                "title": "搜索",
+                "description": "输入您的目的地、日期和出行人数，查找最佳航班和酒店。"
+            },
+            "compareStep": {
+                "title": "比较",
+                "description": "浏览各大航空公司和酒店的实时价格。按价格、评分或设施进行筛选。"
+            },
+            "bookStep": {
+                "title": "预订",
+                "description": "通过安全加密的结账流程，几分钟内即可完成预订。每次都能即时确认。"
+            }
         }
     },
     "flights": {

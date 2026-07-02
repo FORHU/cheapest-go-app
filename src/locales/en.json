@@ -28,6 +28,10 @@
         "switchToLight": "Switch to light mode",
         "contextError": "useTheme must be used within a ThemeProvider"
     },
+    "popularDestinations": {
+        "title": "Popular Destinations",
+        "subtitle": "Explore top spots across Asia-Pacific — search flights and hotels in seconds."
+    },
     "landing": {
         "hero": {
             "title": "Flights at the lowest price",
@@ -147,6 +151,23 @@
                 "stays": "Stays",
                 "flights": "Flights",
                 "aiSearch": "AI Search"
+            }
+        },
+        "howItWorksSteps": {
+            "howItWorks": "How It Works",
+            "book": "Book your trip",
+            "bookNext": "in three simple steps.",
+            "search": {
+                "title": "Search",
+                "description": "Enter your destination, dates, and traveler count to find the best flights and hotels."
+            },
+            "compareStep": {
+                "title": "Compare",
+                "description": "Browse real-time prices across airlines and hotels. Filter by price, rating, or amenities."
+            },
+            "bookStep": {
+                "title": "Book",
+                "description": "Secure your trip in minutes with safe, encrypted checkout. Instant confirmation every time."
             }
         },
         "recentlyViewed": {
