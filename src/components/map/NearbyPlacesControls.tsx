@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { POI_FILTERS } from '@/config/map-discovery';
 import { cn } from '@/lib/utils';
 
@@ -29,11 +30,12 @@ export function NearbyPlacesControls({
     placeCount,
     isLoading,
 }: NearbyPlacesControlsProps) {
+    const t = useTranslations('hotels.searchResults');
     return (
         <div className="flex flex-col gap-1.5 animate-in slide-in-from-bottom-2 duration-200">
             {/* Category tabs */}
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
-                {POI_FILTERS.map(({ id, label, icon: Icon }) => (
+                {POI_FILTERS.map(({ id, icon: Icon }) => (
                     <button
                         key={id}
                         onClick={() => onCategoryChange(id)}
@@ -45,7 +47,7 @@ export function NearbyPlacesControls({
                         )}
                     >
                         <Icon className="w-2.5 h-2.5" />
-                        {label}
+                        {t('discovery.' + id)}
                     </button>
                 ))}
             </div>

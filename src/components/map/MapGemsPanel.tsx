@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Search, Star, MapPin, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { POI_FILTERS } from '@/config/map-discovery';
 import { getPoiImageUrl } from '@/utils/images';
 import { cn } from '@/lib/utils';
@@ -59,6 +60,7 @@ export function MapGemsPanel({
     const scroll = (dir: 'left' | 'right') =>
         scrollRef.current?.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' });
 
+    const t = useTranslations('hotels.searchResults');
     const currentFilter = POI_FILTERS.find(f => f.id === selectedCategory);
 
     return (
@@ -74,7 +76,7 @@ export function MapGemsPanel({
                     >
                         {React.createElement(currentFilter?.icon || Search, { size: 12, className: 'text-blue-500' })}
                         <span className="text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
-                            {currentFilter?.label || 'Discovery'}
+                            {currentFilter ? t('discovery.' + currentFilter.id) : 'Discovery'}
                         </span>
                         <ChevronRight size={12} className={`text-slate-400 transition-transform ${dropdownOpen ? '-rotate-90' : 'rotate-90'}`} />
                     </button>
@@ -102,7 +104,7 @@ export function MapGemsPanel({
                                                 )}
                                             >
                                                 <Icon size={12} className={active ? 'text-white' : 'text-slate-400'} />
-                                                <span className="text-[11px] font-semibold">{f.label}</span>
+                                                <span className="text-[11px] font-semibold">{t('discovery.' + f.id)}</span>
                                                 {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />}
                                             </button>
                                         );
