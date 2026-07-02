@@ -27,6 +27,10 @@
         "switchToDark": "다크 모드로 전환",
         "switchToLight": "라이트 모드로 전환"
     },
+    "popularDestinations": {
+        "title": "인기 여행지",
+        "subtitle": "아시아 태평양의 인기 명소를 둘러보세요 — 몇 초 만에 항공편과 호텔을 검색하세요."
+    },
     "landing": {
         "hero": {
             "title": "가장 저렴한 항공권",
@@ -157,6 +161,23 @@
             "stay": "숙소",
             "flight": "항공편",
             "showLess": "접기"
+        },
+        "howItWorksSteps": {
+            "howItWorks": "이용 방법",
+            "book": "여행을 예약하세요",
+            "bookNext": "간단한 3단계로.",
+            "search": {
+                "title": "검색",
+                "description": "목적지, 날짜, 인원 수를 입력하여 최고의 항공권과 호텔을 찾아보세요."
+            },
+            "compareStep": {
+                "title": "비교",
+                "description": "여러 항공사와 호텔의 실시간 가격을 살펴보세요. 가격, 평점, 편의시설로 필터링할 수 있습니다."
+            },
+            "bookStep": {
+                "title": "예약",
+                "description": "안전하게 암호화된 결제로 몇 분 만에 여행을 예약하세요. 매번 즉시 확인됩니다."
+            }
         }
     },
     "flights": {

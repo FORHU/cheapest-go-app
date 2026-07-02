@@ -10,16 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm tsc --noEmit
-      - run: pnpm test --run
+      - run: npm ci --ignore-scripts
+      - run: npx tsc --noEmit
+      - run: npm test -- --run
 
   deploy:
     needs: ci
@@ -32,7 +28,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
@@ -61,13 +57,13 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.PROD_EC2_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Write .env to EC2
         run: |
-          printf '%s' "${{ secrets.PROD_ENV }}" | \
+          printf '%s' "${{ secrets.ENV }}" | \
             ssh -i ~/.ssh/id_rsa \
-                ${{ secrets.PROD_EC2_USER }}@${{ secrets.PROD_EC2_HOST }} \
+                ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
                 "cat > ~/.env && chmod 600 ~/.env"
 
       - name: Deploy to EC2
@@ -75,8 +71,8 @@ jobs:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
           REGION: ${{ secrets.AWS_REGION }}
-          HOST: ${{ secrets.PROD_EC2_HOST }}
-          USER: ${{ secrets.PROD_EC2_USER }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
         run: |
           ECR_PASSWORD=$(aws ecr get-login-password --region "$REGION")
           IMAGE="$REGISTRY/$REPOSITORY:latest"
