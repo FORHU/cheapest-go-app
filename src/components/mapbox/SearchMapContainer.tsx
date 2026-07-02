@@ -50,7 +50,7 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function createCircleGeoJSON(center: [number, number], radiusMeters: number): GeoJSON.Feature {
+function createCircleGeoJSON(center: [number, number], radiusMeters: number): any {
     const points = 64;
     const coords: [number, number][] = [];
     const R = 6371000;

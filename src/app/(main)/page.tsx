@@ -4,16 +4,12 @@ import { Suspense } from "react";
 import Script from "next/script";
 import { Hero } from "@/components/landing/hero";
 import { RecentlyViewed, YourRecentSearches, TopCitiesSection, TopDestinationsSection } from "@/components/landing/sections";
+import { PopularDestinationsSection } from "@/components/landing/sections/PopularDestinationsSection";
+import { HowItWorksSection } from "@/components/landing/sections/HowItWorksSection";
 import { AppBanner } from "@/components/landing/layout";
 import {
   SectionSkeleton,
   DealsSectionStream,
-  HotelDealsSectionStream,
-  StaysForEveryStyleStream,
-  ExploreVacationPackagesStream,
-  ExploreUniqueStaysStream,
-  LastMinuteWeekendDealsStream,
-  GuestFavoritesSectionStream,
 } from "./_sections";
 import { getTranslations } from 'next-intl/server';
 
@@ -65,15 +61,9 @@ export default async function Home() {
           <Suspense fallback={<SectionSkeleton />}>
             <DealsSectionStream />
           </Suspense>
-          <Suspense fallback={<SectionSkeleton />}>
-            <HotelDealsSectionStream />
-          </Suspense>
-          <Suspense fallback={<SectionSkeleton />}>
-            <GuestFavoritesSectionStream />
-          </Suspense>
-          {/* <Suspense fallback={<SectionSkeleton />}>
-            <ExploreUniqueStaysStream />
-          </Suspense> */}
+
+          <PopularDestinationsSection />
+          <HowItWorksSection />
         </div>
       </div>
 
