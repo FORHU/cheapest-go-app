@@ -20,7 +20,6 @@ jobs:
   deploy:
     needs: ci
     runs-on: ubuntu-latest
-    environment: staging
 
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +27,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
@@ -57,13 +56,14 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.STAGING_EC2_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts || true
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
 
       - name: Write .env to EC2
         run: |
-          printf '%s' "${{ secrets.STAGING_ENV }}" | \
+          printf '%s' "${{ secrets.ENV }}" | \
             ssh -i ~/.ssh/id_rsa \
-                ${{ secrets.STAGING_EC2_USER }}@${{ secrets.STAGING_EC2_HOST }} \
+                ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
                 "cat > ~/.env && chmod 600 ~/.env"
 
       - name: Deploy to EC2
@@ -71,8 +71,8 @@ jobs:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
           REGION: ${{ secrets.AWS_REGION }}
-          HOST: ${{ secrets.STAGING_EC2_HOST }}
-          USER: ${{ secrets.STAGING_EC2_USER }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
         run: |
           ECR_PASSWORD=$(aws ecr get-login-password --region "$REGION")
           IMAGE="$REGISTRY/$REPOSITORY:staging-latest"
