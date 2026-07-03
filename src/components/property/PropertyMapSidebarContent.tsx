@@ -425,7 +425,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             ];
 
             const hasGemsLayer = map.getLayer('gems-layer');
-            const features = hasGemsLayer ? map.queryRenderedFeatures(bbox, { layers: ['gems-layer'] }) : [];
+            const features = (hasGemsLayer ? map.queryRenderedFeatures(bbox, { layers: ['gems-layer'] }) : []) as any[];
             
             if (features.length > 0) {
                 const gem = features[0];
@@ -442,10 +442,10 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
 
             // [RESTORATION] Robust detection: query symbol layers first, fallback to ALL layers
             const layersToQuery = symbolLayersRef.current?.filter((id) => map.getLayer(id));
-            let allFeatures = layersToQuery && layersToQuery.length > 0
+            let allFeatures: any[] = layersToQuery && layersToQuery.length > 0
                 ? map.queryRenderedFeatures(bbox, { layers: layersToQuery })
                 : [];
-            
+
             // If no features found in symbols, try everything in the bbox
             if (allFeatures.length === 0) {
                 allFeatures = map.queryRenderedFeatures(bbox);
@@ -463,7 +463,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
             });
 
             if (poiFeature) {
-                const geom = poiFeature.geometry as any;
+                const geom = (poiFeature as any).geometry as any;
                 const coords = geom?.coordinates
                     ? { lng: geom.coordinates[0], lat: geom.coordinates[1] }
                     : { lng: event.lngLat.lng, lat: event.lngLat.lat };

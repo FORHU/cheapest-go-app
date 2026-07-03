@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Property } from '@/types';
 import SearchResults from './SearchResults';
 import { CountryCityPicker } from './CountryCityPicker';
@@ -12,13 +13,15 @@ interface HotelResultsClientProps {
 }
 
 function HotelListSkeleton({ destination, elapsed }: { destination: string; elapsed: number }) {
+    const t = useTranslations('hotels.searchResults');
+
     return (
         <div className="flex-1 min-w-0 animate-pulse">
             <div className="flex items-center justify-between mb-4 md:mb-6">
                 <div className="space-y-2">
                     <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded-lg" />
                     <p className="text-sm text-slate-500 dark:text-slate-400 animate-none!">
-                        {destination ? `Searching hotels in ${destination}` : 'Searching…'}
+                        {destination ? t('searchingInDestination', { destination }) : t('searching')}
                         {elapsed > 0 && (
                             <span className="ml-1 tabular-nums"> · {elapsed}s</span>
                         )}
@@ -47,6 +50,8 @@ function HotelListSkeleton({ destination, elapsed }: { destination: string; elap
 }
 
 export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsClientProps) {
+    const t = useTranslations('hotels.searchResults');
+
     const cacheKey = buildSearchCacheKey(searchParams);
     const cached = getSearchResults(cacheKey);
 
@@ -185,7 +190,7 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
     if (status === 'error') {
         return (
             <div className="flex-1 min-w-0 text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                <p className="text-slate-500 dark:text-slate-400 text-sm">Search failed. Please try again.</p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">{t('searchFailed')}</p>
             </div>
         );
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useSearchStore, Destination } from '@/stores/searchStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -53,6 +54,7 @@ export interface UseSearchModuleReturn {
  * - Provides memoized actions for performance
  */
 export const useSearchModule = (): UseSearchModuleReturn => {
+    const t = useTranslations('search.validation');
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -174,18 +176,21 @@ export const useSearchModule = (): UseSearchModuleReturn => {
 
         // Collect missing fields
         const missingFields: string[] = [];
-        if (!hasDestination) missingFields.push('destination');
-        if (!hasCheckIn) missingFields.push('check-in date');
-        if (!hasCheckOut) missingFields.push('check-out date');
+        if (!hasDestination) missingFields.push(t('fields.destination'));
+        if (!hasCheckIn) missingFields.push(t('fields.checkInDate'));
+        if (!hasCheckOut) missingFields.push(t('fields.checkOutDate'));
 
         // If any fields are missing, show error and focus the first missing field
         if (missingFields.length > 0) {
             const fieldText = missingFields.length === 1
                 ? missingFields[0]
-                : missingFields.slice(0, -1).join(', ') + ' and ' + missingFields[missingFields.length - 1];
+                : t('fieldList', {
+                    fields: missingFields.slice(0, -1).join(t('listSeparator')),
+                    last: missingFields[missingFields.length - 1],
+                });
 
-            toast.error(`Please select ${fieldText}`, {
-                description: 'All fields are required to search for hotels',
+            toast.error(t('selectField', { field: fieldText }), {
+                description: t('allHotelFieldsRequired'),
             });
 
             // Open the first missing dropdown
@@ -248,7 +253,7 @@ export const useSearchModule = (): UseSearchModuleReturn => {
         }
 
         router.push(`/search?${params.toString()}`);
-    }, [router, setIsSearching, setActiveDropdown]);
+    }, [router, setIsSearching, setActiveDropdown, t]);
 
     // Clear specific recent search
     const clearRecentSearch = useCallback((title: string) => {

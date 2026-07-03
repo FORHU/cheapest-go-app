@@ -57,7 +57,7 @@ function formatDistance(km: number): string {
         : `${km.toFixed(2)} km from property`;
 }
 
-function createCircleGeoJSON(center: [number, number], radiusMeters: number): GeoJSON.Feature {
+function createCircleGeoJSON(center: [number, number], radiusMeters: number): any {
     const points = 64;
     const coords: [number, number][] = [];
     const R = 6371000;
@@ -90,7 +90,7 @@ function detectPOI(
 ): POIState | null {
     const features = map.queryRenderedFeatures(point, {
         layers: layers && layers.length > 0 ? layers : undefined,
-    });
+    }) as any[];
     const poi = features.find((f) => {
         const p = f.properties;
         if (!p?.name) return false;

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Popup } from 'react-map-gl/mapbox';
 import { X, Navigation, ExternalLink } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface MapPOIPopupProps {
     name: string;
@@ -18,10 +19,10 @@ function formatCategory(raw: string): string {
     return raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function formatDistance(km: number): string {
+function formatDistance(t: any, km: number): string {
     return km < 1
-        ? `${Math.round(km * 1000)} m from property`
-        : `${km.toFixed(2)} km from property`;
+        ? `${Math.round(km * 1000)} ${t('mFromProperty')}`
+        : `${km.toFixed(2)} ${t('kmFromProperty')}`;
 }
 
 const MapPOIPopup = React.memo(function MapPOIPopup({
@@ -32,6 +33,7 @@ const MapPOIPopup = React.memo(function MapPOIPopup({
     distanceKm,
     onClose,
 }: MapPOIPopupProps) {
+    const t = useTranslations('hotels.poiPopup');
     const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
 
     return (
@@ -69,7 +71,7 @@ const MapPOIPopup = React.memo(function MapPOIPopup({
                     {distanceKm !== null && (
                         <div className="flex items-center gap-1.5 mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
                             <Navigation className="w-3 h-3 flex-shrink-0" />
-                            <span>{formatDistance(distanceKm)}</span>
+                            <span>{formatDistance(t, distanceKm)}</span>
                         </div>
                     )}
 
@@ -81,7 +83,7 @@ const MapPOIPopup = React.memo(function MapPOIPopup({
                         className="mt-2 flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
                     >
                         <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                        View on Google Maps
+                        {t('viewOnGoogleMaps')}
                     </a>
                 </div>
             </div>

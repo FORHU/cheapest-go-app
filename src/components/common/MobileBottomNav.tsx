@@ -5,16 +5,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Search, PlaneTakeoff, Heart, User, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/cn';
 import SignInDropdown from '../auth/SignInDropdown';
 
-const navItems = [
-    { label: 'Home', icon: Search, href: '/' },
-    { label: 'Trips', icon: PlaneTakeoff, href: '/trips' },
-    { label: 'Profile', icon: User, href: '#profile' },
+const NAV_ITEMS = [
+    { key: 'home', icon: Search, href: '/' },
+    { key: 'trips', icon: PlaneTakeoff, href: '/trips' },
+    { key: 'profile', icon: User, href: '#profile' },
 ];
 
 export const MobileBottomNav = () => {
+    const t = useTranslations('nav');
     const pathname = usePathname();
     const [isProfileOpen, setIsProfileOpen] = React.useState(false);
 
@@ -51,15 +53,15 @@ export const MobileBottomNav = () => {
                                 layoutId="active-circle"
                             >
                                 <div className="text-blue-600 dark:text-blue-400">
-                                    {React.createElement(navItems[activeIndex].icon, { size: 16, strokeWidth: 2.5 })}
+                                    {React.createElement(NAV_ITEMS[activeIndex].icon, { size: 16, strokeWidth: 2.5 })}
                                 </div>
                             </motion.div>
                         </div>
                     </motion.div>
 
                     <nav className="flex items-center justify-around w-full relative z-10">
-                        {navItems.map((item, index) => {
-                            const isProfile = item.label === 'Profile';
+                        {NAV_ITEMS.map((item, index) => {
+                            const isProfile = item.key === 'profile';
                             const isActive = index === activeIndex;
 
                             const content = (
@@ -83,7 +85,7 @@ export const MobileBottomNav = () => {
                                             ? "text-blue-600 dark:text-blue-400 translate-y-0.5" 
                                             : "text-slate-400 dark:text-slate-500"
                                     )}>
-                                        {item.label}
+                                        {t(item.key)}
                                     </span>
                                 </div>
                             );
@@ -91,7 +93,7 @@ export const MobileBottomNav = () => {
                             if (isProfile) {
                                 return (
                                     <button
-                                        key={item.label}
+                                        key={item.key}
                                         onClick={() => setIsProfileOpen(!isProfileOpen)}
                                         className="relative outline-none w-1/3 py-2"
                                     >
@@ -102,7 +104,7 @@ export const MobileBottomNav = () => {
 
                             return (
                                 <Link
-                                    key={item.label}
+                                    key={item.key}
                                     href={item.href}
                                     onClick={() => setIsProfileOpen(false)}
                                     className="outline-none w-1/3 py-2"
@@ -140,7 +142,7 @@ export const MobileBottomNav = () => {
                             
                             {/* Drawer Header */}
                             <div className="flex items-center justify-between px-6 py-2 border-b border-slate-100 dark:border-slate-800">
-                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Profile</h2>
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('profile')}</h2>
                                 <button 
                                     onClick={() => setIsProfileOpen(false)}
                                     className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"

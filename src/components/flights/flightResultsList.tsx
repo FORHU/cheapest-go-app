@@ -6,6 +6,7 @@ import { Plane, Search, ChevronDown } from 'lucide-react';
 import { FlightCard } from './flightCard';
 import { Skeleton } from '@/components/shared/Skeleton/Skeleton';
 import type { FlightOffer } from '@/types/flights';
+import { useTranslations } from 'next-intl';
 
 const PAGE_SIZE = 15;
 
@@ -86,8 +87,9 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
     onSelect,
     onRetry,
     skeletonCount = 5,
-    emptyMessage = 'No flights found. Try adjusting your filters or search for different dates.',
+    emptyMessage,
 }) => {
+    const t = useTranslations('flights.results');
     // Loading state — show skeleton cards
     if (loading) {
         return (
@@ -101,8 +103,8 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
                         <div className="absolute inset-0 w-8 h-8 lg:w-12 lg:h-12 border-2 lg:border-[3px] border-indigo-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                     <div>
-                        <p className="text-[10px] lg:text-sm font-medium text-slate-700 dark:text-slate-200">Searching flights...</p>
-                        <p className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500">Checking multiple providers</p>
+                        <p className="text-[10px] lg:text-sm font-medium text-slate-700 dark:text-slate-200">{t('searchingFlights')}</p>
+                        <p className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500">{t('checkingProviders')}</p>
                     </div>
                 </div>
 
@@ -124,7 +126,7 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
                     </svg>
                 </div>
                 <div className="text-center">
-                    <h3 className="text-xs lg:text-lg font-semibold text-slate-800 dark:text-slate-200">Search Failed</h3>
+                    <h3 className="text-xs lg:text-lg font-semibold text-slate-800 dark:text-slate-200">{t('searchFailedTitle')}</h3>
                     <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-sm">{error}</p>
                 </div>
                 {onRetry && (
@@ -132,7 +134,7 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
                         onClick={onRetry}
                         className="mt-1 px-4 lg:px-6 py-1.5 lg:py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-[10px] lg:text-sm transition-colors"
                     >
-                        Try Again
+                        {t('tryAgain')}
                     </button>
                 )}
             </div>
@@ -147,8 +149,8 @@ export const FlightResults: React.FC<FlightResultsProps> = ({
                     <Search className="w-4.5 h-4.5 lg:w-7 lg:h-7 text-slate-400 dark:text-slate-500" />
                 </div>
                 <div className="text-center">
-                    <h3 className="text-xs lg:text-lg font-semibold text-slate-700 dark:text-slate-300">No flights found</h3>
-                    <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-sm">{emptyMessage}</p>
+                    <h3 className="text-xs lg:text-lg font-semibold text-slate-700 dark:text-slate-300">{t('noFlightsTitle')}</h3>
+                    <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-sm">{emptyMessage ?? t('noFlightsDefaultMessage')}</p>
                 </div>
             </div>
         );
@@ -164,6 +166,7 @@ function PaginatedResults({ offers, onSelect, resetKey }: { offers: FlightOffer[
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
     const [isAutoLoading, setIsAutoLoading] = useState(false);
     const sentinelRef = React.useRef<HTMLDivElement>(null);
+    const t = useTranslations('flights.results');
 
     // Reset to first page whenever the offer list or filters change
     React.useEffect(() => { setVisibleCount(PAGE_SIZE); }, [resetKey]);
@@ -220,7 +223,7 @@ function PaginatedResults({ offers, onSelect, resetKey }: { offers: FlightOffer[
                         <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 animate-pulse">
                             <div className="w-1 h-1 rounded-full bg-indigo-500" />
                             <p className="text-[10px] font-bold uppercase tracking-widest">
-                                Discovering more options ({visible.length} of {offers.length})
+                                {t('discoveringMore', { shown: visible.length, total: offers.length })}
                             </p>
                         </div>
                     </div>
@@ -231,7 +234,7 @@ function PaginatedResults({ offers, onSelect, resetKey }: { offers: FlightOffer[
             {!hasMore && !isAutoLoading && offers.length > 0 && (
                 <div className="pt-4 pb-12 text-center">
                     <p className="text-[10px] font-normal text-slate-400 dark:text-slate-500 uppercase tracking-widest opacity-60">
-                        You&apos;ve seen all {offers.length} available flights. Happy travels!
+                        {t('allSeen', { count: offers.length })}
                     </p>
                 </div>
             )}

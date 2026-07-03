@@ -2,18 +2,17 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export type MapTypeId = 'default-3d' | 'default' | 'satellite';
 
 export interface MapDetailToggle {
     id: string;
-    label: string;
     enabled: boolean;
 }
 
 interface MapTypeTile {
     id: MapTypeId;
-    label: string;
     thumbnail: string;
 }
 
@@ -29,17 +28,14 @@ function ExploreIcon({ size = 'w-8 h-8' }: { size?: string }) {
 const MAP_TYPE_TILES: MapTypeTile[] = [
     {
         id: 'default-3d',
-        label: 'Default 3D',
         thumbnail: 'linear-gradient(135deg, #d4e4c8 0%, #c8d8bc 30%, #e8dcc8 60%, #ddd5c8 100%)',
     },
     {
         id: 'default',
-        label: 'Default',
         thumbnail: 'linear-gradient(135deg, #f0f0e8 0%, #e0e0d0 30%, #f5f5ed 60%, #fafafa 100%)',
     },
     {
         id: 'satellite',
-        label: 'Satellite',
         thumbnail: 'linear-gradient(135deg, #2a4a2a 0%, #1a3a2a 30%, #1a2e1a 60%, #0f1f0f 100%)',
     },
 ];
@@ -117,6 +113,8 @@ export function MapDetailsPanel({
     showLabels,
     onLabelsToggle,
 }: MapDetailsPanelProps) {
+    const t = useTranslations('hotels.mapView.mapDetails');
+
     if (!isOpen) return null;
 
     return (
@@ -125,7 +123,7 @@ export function MapDetailsPanel({
         `}>
             {/* Header */}
             <div className={`flex items-center justify-between px-2.5 pt-2.5 pb-1.5 md:px-4 md:pt-4 md:pb-2`}>
-                <h3 className={`text-xs md:text-base font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wide`}>Map details</h3>
+                <h3 className={`text-xs md:text-base font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wide`}>{t('title')}</h3>
                 <button
                     onClick={onClose}
                     className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
@@ -169,7 +167,7 @@ export function MapDetailsPanel({
                                     detail.enabled && !isDisabled ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400'
                                 }`}
                             >
-                                {detail.label}
+                                {t(detail.id)}
                             </span>
                         </button>
                         );
@@ -180,7 +178,7 @@ export function MapDetailsPanel({
             {/* Map type */}
             <div className={`px-2.5 pb-2 md:px-4 md:pb-3`}>
                 <p className={`text-[8px] md:text-xs mb-1 md:mb-2 font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-0.5`}>
-                    Map type
+                    {t('mapType')}
                 </p>
                 <div className={`grid grid-cols-3 gap-1 md:gap-2`}>
                     {MAP_TYPE_TILES.map((tile) => (
@@ -205,7 +203,7 @@ export function MapDetailsPanel({
                                     mapType === tile.id ? 'text-blue-700 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400'
                                 }`}
                             >
-                                {tile.label}
+                                {t(tile.id)}
                             </span>
                         </button>
                     ))}
@@ -214,7 +212,7 @@ export function MapDetailsPanel({
 
             {/* Labels toggle */}
             <div className={`px-3 pb-2 pt-1.5 md:px-5 md:pb-5 md:pt-1 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 mt-0.5`}>
-                <span className={`text-[10px] md:text-sm font-medium text-slate-700 dark:text-slate-300`}>Labels</span>
+                <span className={`text-[10px] md:text-sm font-medium text-slate-700 dark:text-slate-300`}>{t('labels')}</span>
                 <button
                     onClick={onLabelsToggle}
                     className={`
