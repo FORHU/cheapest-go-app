@@ -1,5 +1,7 @@
 {
     "nav": {
+        "home": "ホーム",
+        "profile": "プロフィール",
         "support": "サポート",
         "openApp": "アプリを開く",
         "signIn": "ログイン",
@@ -184,7 +186,16 @@
     "flights": {
         "search": {
             "adult": "{count} 名様",
-            "adult_plural": "{count} 名様"
+            "adult_plural": "{count} 名様",
+            "stillSearching": "検索中...",
+            "takingLonger": "通常より検索に時間がかかっています",
+            "sources": "提供元:",
+            "total_count": "（合計{count}件）",
+            "fetchingProviders": "プロバイダーから取得中...",
+            "providersSlow": "航空会社の応答が遅くなっています。そのままお待ちください。最良の運賃を引き続き検索しています。",
+            "providersSlowDescription": "航空会社の応答が遅くなっています。もう一度お試しいただくか、検索条件を変更してください。",
+            "tryAgain": "再試行",
+            "newSearch": "新しい検索"
         },
         "validation": {
             "missingInformation": "情報が不足しています",
@@ -199,6 +210,7 @@
             }
         },
         "results": {
+            "result": "{count, plural, other {件}}",
             "loading": "最安値を探しています…",
             "empty": "この日程のフライトは見つかりませんでした。",
             "sortBy": "並び替え",
@@ -249,7 +261,9 @@
             "brandsAvailable": "{count}件のブランドあり",
             "onlySeatsLeft": "残り{count}席!",
             "seatsLeft": "残り{count}席",
-            "seatsAvailable": "{count}席あり"
+            "seatsAvailable": "{count}席あり",
+            "perPersonShort": "/人",
+            "moreSegments": "+ {count}件"
         },
         "filtersPanel": {
             "sortBy": "並び替え",
@@ -323,6 +337,7 @@
         "flightsApi": "フライト API",
         "paymentGateway": "決済ゲートウェイ",
         "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "allRightsReserved": "Partners. 無断転載を禁じます。",
         "terms": "利用規約",
         "privacy": "プライバシー",
         "cookies": "クッキー",
@@ -380,7 +395,8 @@
             "good": "良い",
             "average": "普通",
             "fair": "まずまず",
-            "poor": "低評価"
+            "poor": "低評価",
+            "pleasant": "快適"
         },
         "fromPrice": "{price}〜",
         "perNight": "/泊",

@@ -1,5 +1,7 @@
 {
     "nav": {
+        "home": "홈",
+        "profile": "프로필",
         "support": "고객지원",
         "openApp": "앱 열기",
         "signIn": "로그인",
@@ -184,7 +186,16 @@
     "flights": {
         "search": {
             "adult": "성인 {count}명",
-            "adult_plural": "성인 {count}명"
+            "adult_plural": "성인 {count}명",
+            "stillSearching": "아직 검색 중...",
+            "takingLonger": "평소보다 검색 시간이 더 걸리고 있습니다",
+            "sources": "출처:",
+            "total_count": "(총 {count}개)",
+            "fetchingProviders": "공급사에서 검색 중...",
+            "providersSlow": "항공사 공급사의 응답이 느립니다. 잠시만 기다려 주세요. 최적의 요금을 계속 찾고 있습니다.",
+            "providersSlowDescription": "항공사 공급사의 응답이 느립니다. 다시 시도하거나 검색 조건을 조정해 주세요.",
+            "tryAgain": "다시 시도",
+            "newSearch": "새 검색"
         },
         "validation": {
             "missingInformation": "정보가 부족합니다",
@@ -199,6 +210,7 @@
             }
         },
         "results": {
+            "result": "{count, plural, other {결과}}",
             "loading": "최저가 항공편을 찾고 있습니다…",
             "empty": "해당 날짜에 항공편이 없습니다.",
             "sortBy": "정렬 기준",
@@ -249,7 +261,9 @@
             "brandsAvailable": "브랜드 {count}개 이용 가능",
             "onlySeatsLeft": "{count}석만 남음!",
             "seatsLeft": "{count}석 남음",
-            "seatsAvailable": "{count}석 이용 가능"
+            "seatsAvailable": "{count}석 이용 가능",
+            "perPersonShort": "/1인",
+            "moreSegments": "+ {count} 더"
         },
         "filtersPanel": {
             "sortBy": "정렬 기준",
@@ -323,6 +337,7 @@
         "flightsApi": "항공편 API",
         "paymentGateway": "결제 게이트웨이",
         "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "allRightsReserved": "Partners. 모든 권리 보유.",
         "terms": "이용약관",
         "privacy": "개인정보",
         "cookies": "쿠키",
@@ -380,7 +395,8 @@
             "good": "좋음",
             "average": "보통",
             "fair": "무난함",
-            "poor": "낮음"
+            "poor": "낮음",
+            "pleasant": "쾌적함"
         },
         "fromPrice": "{price}부터",
         "perNight": "/박",

@@ -56,7 +56,7 @@ const StandardFooter = () => {
 
       {/* Legal bottom bar — full width */}
       <div className="border-t border-slate-100 dark:border-white/5 px-5 py-6 lg:py-4 flex flex-col lg:flex-row items-center justify-between gap-4 text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">
-        <span className="order-2 lg:order-1 opacity-70">{t('copyright')}</span>
+                    <span className="order-2 lg:order-1 opacity-70">&copy; 2026 JTP {t('allRightsReserved')}</span>
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 order-1 lg:order-2">
           <a href="/terms-of-service" className="hover:text-indigo-500 transition-colors">{t('terms')}</a>
           <a href="/privacy-policy" className="hover:text-indigo-500 transition-colors">{t('privacy')}</a>
@@ -73,9 +73,9 @@ const MinimalFooter = () => {
   return (
     <footer className="w-full border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
       <div className="max-w-[1400px] mx-auto px-5 lg:px-6 h-auto py-2.5 lg:h-12 lg:py-0 landscape:py-2 flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-0 text-[11px] lg:text-xs text-slate-500 dark:text-slate-400">
-        <div className="flex items-center gap-6">
-          <span className="font-semibold text-slate-700 dark:text-slate-300">{t('copyrightMinimal')}</span>
-        </div>
+                        <div className="flex items-center gap-6">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">&copy; 2026 CheapestGo. {t('allRightsReserved')}</span>
+                        </div>
 
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[9px] lg:text-xs lg:gap-6">
           <a href="/terms-of-service" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">{t('termsMinimal')}</a>

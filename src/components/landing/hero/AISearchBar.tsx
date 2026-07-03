@@ -283,6 +283,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                     <MagneticButton
                                         onClick={handleMainSearchClick}
                                         isLoading={isSearching}
+                                        label={t('submit')}
                                         className={`h-12 w-full sm:w-auto px-6 rounded-lg ${searchMode === 'flights' ? 'bg-blue-600! hover:bg-blue-700!' : ''}`}
                                     />
                                 </div>
