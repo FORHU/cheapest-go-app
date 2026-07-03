@@ -192,7 +192,10 @@
             "sources": "출처:",
             "total_count": "(총 {count}개)",
             "fetchingProviders": "공급사에서 검색 중...",
-            "providersSlow": "항공사 공급사의 응답이 느립니다. 잠시만 기다려 주세요. 최적의 요금을 계속 찾고 있습니다."
+            "providersSlow": "항공사 공급사의 응답이 느립니다. 잠시만 기다려 주세요. 최적의 요금을 계속 찾고 있습니다.",
+            "providersSlowDescription": "항공사 공급사의 응답이 느립니다. 다시 시도하거나 검색 조건을 조정해 주세요.",
+            "tryAgain": "다시 시도",
+            "newSearch": "새 검색"
         },
         "validation": {
             "missingInformation": "정보가 부족합니다",
@@ -334,7 +337,7 @@
         "flightsApi": "항공편 API",
         "paymentGateway": "결제 게이트웨이",
         "copyright": "© 2026 JTP Partners. All rights reserved.",
-        "allRightsReserved": "Partners. All rights reserved.",
+        "allRightsReserved": "Partners. 모든 권리 보유.",
         "terms": "이용약관",
         "privacy": "개인정보",
         "cookies": "쿠키",

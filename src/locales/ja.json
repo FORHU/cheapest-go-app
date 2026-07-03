@@ -192,7 +192,10 @@
             "sources": "提供元:",
             "total_count": "（合計{count}件）",
             "fetchingProviders": "プロバイダーから取得中...",
-            "providersSlow": "航空会社の応答が遅くなっています。そのままお待ちください。最良の運賃を引き続き検索しています。"
+            "providersSlow": "航空会社の応答が遅くなっています。そのままお待ちください。最良の運賃を引き続き検索しています。",
+            "providersSlowDescription": "航空会社の応答が遅くなっています。もう一度お試しいただくか、検索条件を変更してください。",
+            "tryAgain": "再試行",
+            "newSearch": "新しい検索"
         },
         "validation": {
             "missingInformation": "情報が不足しています",
@@ -334,7 +337,7 @@
         "flightsApi": "フライト API",
         "paymentGateway": "決済ゲートウェイ",
         "copyright": "© 2026 JTP Partners. All rights reserved.",
-        "allRightsReserved": "Partners. All rights reserved.",
+        "allRightsReserved": "Partners. 無断転載を禁じます。",
         "terms": "利用規約",
         "privacy": "プライバシー",
         "cookies": "クッキー",
