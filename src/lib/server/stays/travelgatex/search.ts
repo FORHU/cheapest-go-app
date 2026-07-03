@@ -310,15 +310,13 @@ async function searchEtgCity(
             return pa - pb;
         });
 
-        const TOP_N = 20;
-        const topHotels = hotels.slice(0, TOP_N);
-        const topIds = topHotels.map((h: any) => h.id as string);
+        const allIds = hotels.map((h: any) => h.id as string);
 
         // Use any pre-existing hotel_content data
-        const existingContent = await fetchHotelContent(topIds);
-        const needInfo = topHotels.filter((h: any) => !existingContent.get(h.id)?.name);
+        const existingContent = await fetchHotelContent(allIds);
+        const needInfo = hotels.filter((h: any) => !existingContent.get(h.id)?.name);
 
-        // Parallel info fetch for the unknown hotels (cap at 15 to stay within rate limit)
+        // Parallel info fetch for hotels missing names (cap at 15 to stay within rate limit)
         const toFetch = needInfo.slice(0, 15);
         const infoResults = toFetch.length > 0
             ? await Promise.allSettled(toFetch.map((h: any) => fetchEtgHotelInfo(h.id as string)))
@@ -333,7 +331,7 @@ async function searchEtgCity(
         // Background-seed hotel_content for all results (Phase 1 catalog for future searches)
         seedEtgHotelContent(hotels, cityName, params.countryCode).catch(() => {});
 
-        const results = topHotels.map((h: any) => {
+        const results = hotels.map((h: any) => {
             const rate = h.rates?.[0];
             const pt   = rate?.payment_options?.payment_types?.[0];
             const price    = parseFloat(pt?.show_amount    ?? '0');
