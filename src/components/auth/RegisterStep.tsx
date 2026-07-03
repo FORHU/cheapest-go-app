@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
@@ -15,10 +15,16 @@ const RegisterStep: React.FC = () => {
         firstName, lastName, password, errors, rememberMe,
         setField, setRememberMe, setErrors, clearErrors,
     } = useAuthFormStore();
+    const [confirmPassword, setConfirmPassword] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         clearErrors();
+
+        if (password !== confirmPassword) {
+            setErrors({ confirmPassword: 'Passwords do not match' });
+            return;
+        }
 
         const formData = { email, firstName, lastName, password };
         const result = registerSchema.safeParse(formData);
@@ -129,6 +135,18 @@ const RegisterStep: React.FC = () => {
                     />
                     <PasswordRequirements password={password} />
                 </div>
+
+                <Input
+                    id="confirmPassword"
+                    type="password"
+                    label="Confirm password"
+                    value={confirmPassword}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    icon={Lock}
+                    error={errors.confirmPassword}
+                    disabled={isLoading}
+                />
 
                 <label className="flex items-center gap-2 cursor-pointer">
                     <input
