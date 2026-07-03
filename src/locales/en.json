@@ -1,5 +1,7 @@
 {
     "nav": {
+        "home": "Home",
+        "profile": "Profile",
         "support": "Support",
         "openApp": "Open app",
         "signIn": "Sign in",
@@ -184,7 +186,16 @@
     "flights": {
         "search": {
             "adult": "{count} adult",
-            "adult_plural": "{count} adults"
+            "adult_plural": "{count} adults",
+            "stillSearching": "Still searching...",
+            "takingLonger": "Search is taking longer than usual",
+            "sources": "Sources:",
+            "total_count": "({count} total)",
+            "fetchingProviders": "Fetching from providers...",
+            "providersSlow": "Flight providers are responding slowly. Hang tight, we're still looking for the best fares.",
+            "providersSlowDescription": "Flight providers are slow to respond right now. Please try again or adjust your search.",
+            "tryAgain": "Try Again",
+            "newSearch": "New Search"
         },
         "validation": {
             "missingInformation": "Missing information",
@@ -199,6 +210,7 @@
             }
         },
         "results": {
+            "result": "{count, plural, one {result} other {results}}",
             "loading": "Finding the best fares…",
             "empty": "No flights found for these dates.",
             "sortBy": "Sort by",
@@ -249,7 +261,9 @@
             "brandsAvailable": "{count} brands available",
             "onlySeatsLeft": "Only {count} left!",
             "seatsLeft": "{count} seats left",
-            "seatsAvailable": "{count} seats available"
+            "seatsAvailable": "{count} seats available",
+            "perPersonShort": "/person",
+            "moreSegments": "+ {count} more"
         },
         "filtersPanel": {
             "sortBy": "Sort By",
@@ -323,6 +337,7 @@
         "flightsApi": "Flights API",
         "paymentGateway": "Payment Gateway",
         "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "allRightsReserved": "Partners. All rights reserved.",
         "terms": "Terms",
         "privacy": "Privacy",
         "cookies": "Cookies",
@@ -380,7 +395,8 @@
             "good": "Good",
             "average": "Average",
             "fair": "Fair",
-            "poor": "Poor"
+            "poor": "Poor",
+            "pleasant": "Pleasant"
         },
         "fromPrice": "From {price}",
         "perNight": "/night",

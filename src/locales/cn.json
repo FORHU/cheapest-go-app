@@ -1,5 +1,7 @@
 {
     "nav": {
+        "home": "首页",
+        "profile": "个人资料",
         "support": "客服支持",
         "openApp": "打开应用",
         "signIn": "登录",
@@ -184,7 +186,16 @@
     "flights": {
         "search": {
             "adult": "{count} 位成人",
-            "adult_plural": "{count} 位成人"
+            "adult_plural": "{count} 位成人",
+            "stillSearching": "仍在搜索...",
+            "takingLonger": "搜索时间比平时长",
+            "sources": "来源:",
+            "total_count": "（共 {count} 个）",
+            "fetchingProviders": "正在从供应商获取数据...",
+            "providersSlow": "航班供应商响应较慢，请稍等，我们仍在寻找最优价格。",
+            "providersSlowDescription": "航班供应商响应较慢，请重试或调整搜索条件。",
+            "tryAgain": "重试",
+            "newSearch": "重新搜索"
         },
         "validation": {
             "missingInformation": "缺少信息",
@@ -199,6 +210,7 @@
             }
         },
         "results": {
+            "result": "{count, plural, other {个结果}}",
             "loading": "正在寻找最优价格…",
             "empty": "该日期暂无可用航班。",
             "sortBy": "排序方式",
@@ -249,7 +261,9 @@
             "brandsAvailable": "{count} 个品牌可选",
             "onlySeatsLeft": "仅剩 {count} 个座位！",
             "seatsLeft": "剩余 {count} 个座位",
-            "seatsAvailable": "{count} 个座位可用"
+            "seatsAvailable": "{count} 个座位可用",
+            "perPersonShort": "/人",
+            "moreSegments": "+ {count} 个"
         },
         "filtersPanel": {
             "sortBy": "排序方式",
@@ -323,6 +337,7 @@
         "flightsApi": "航班 API",
         "paymentGateway": "支付网关",
         "copyright": "© 2026 JTP Partners. 保留所有权利。",
+        "allRightsReserved": "Partners. 保留所有权利。",
         "terms": "条款",
         "privacy": "隐私",
         "cookies": "Cookie 政策",
@@ -380,7 +395,8 @@
             "good": "好",
             "average": "一般",
             "fair": "一般",
-            "poor": "较差"
+            "poor": "较差",
+            "pleasant": "舒适"
         },
         "fromPrice": "{price} 起",
         "perNight": "/晚",

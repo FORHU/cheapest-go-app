@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Search, SlidersHorizontal, ArrowLeft, X } from 'lucide-react';
 import { useSearchActions, useSearchStore } from '@/stores/searchStore';
 import { MobileSearchModal } from '@/components/search/MobileSearchModal';
@@ -31,6 +32,7 @@ export const ResponsiveFlightHeader = ({
     const router = useRouter();
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const { setIsMobileFiltersOpen } = useSearchActions();
+    const t = useTranslations('flights.results');
     const { flightState, handleFlightSearch, isSearching } = useFlightSearch();
     const hasFlightValue = flightState.flights.some(f => f.origin || f.destination || f.date);
 
@@ -82,7 +84,7 @@ export const ResponsiveFlightHeader = ({
                             <div className="flex-1 min-w-0">{statusElement}</div>
                             {resultCount != null && (
                                 <span className="text-[11px] font-normal text-slate-400 shrink-0">
-                                    {resultCount} {resultCount === 1 ? 'result' : 'results'}
+                                    {resultCount} {t('result', { count: resultCount })}
                                 </span>
                             )}
                         </div>
