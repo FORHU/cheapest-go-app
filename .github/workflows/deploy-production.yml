@@ -20,16 +20,10 @@ jobs:
   deploy:
     needs: ci
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Debug secrets
-        run: |
-          echo "AWS_ACCESS_KEY set: ${{ secrets.AWS_ACCESS_KEY != '' }}"
-          echo "AWS_SECRET_ACCESS_KEY set: ${{ secrets.AWS_SECRET_ACCESS_KEY != '' }}"
-          echo "AWS_REGION set: ${{ secrets.AWS_REGION != '' }}"
-          echo "AWS_REGION value: ${{ secrets.AWS_REGION }}"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
