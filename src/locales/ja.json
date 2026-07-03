@@ -190,7 +190,9 @@
             "stillSearching": "検索中...",
             "takingLonger": "通常より検索に時間がかかっています",
             "sources": "提供元:",
-            "total_count": "（合計{count}件）"
+            "total_count": "（合計{count}件）",
+            "fetchingProviders": "プロバイダーから取得中...",
+            "providersSlow": "航空会社の応答が遅くなっています。そのままお待ちください。最良の運賃を引き続き検索しています。"
         },
         "validation": {
             "missingInformation": "情報が不足しています",

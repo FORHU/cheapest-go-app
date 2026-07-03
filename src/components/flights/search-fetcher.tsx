@@ -109,7 +109,7 @@ function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: b
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
                 <span className="inline-flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    Fetching from providers...
+                    {t('fetchingProviders')}
                 </span>
             </div>
         );
@@ -458,7 +458,7 @@ export function SearchFetcher({
                     <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin shrink-0" />
                     <div>
                         <p className="text-sm font-medium text-amber-700 dark:text-amber-300">{t('stillSearching')}</p>
-                        <p className="text-xs text-amber-600/70 dark:text-amber-400/70">Flight providers are responding slowly. Hang tight, we&apos;re still looking for the best fares.</p>
+                        <p className="text-xs text-amber-600/70 dark:text-amber-400/70">{t('providersSlow')}</p>
                     </div>
                 </div>
             )}

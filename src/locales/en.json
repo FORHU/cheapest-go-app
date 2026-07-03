@@ -190,7 +190,9 @@
             "stillSearching": "Still searching...",
             "takingLonger": "Search is taking longer than usual",
             "sources": "Sources:",
-            "total_count": "({count} total)"
+            "total_count": "({count} total)",
+            "fetchingProviders": "Fetching from providers...",
+            "providersSlow": "Flight providers are responding slowly. Hang tight, we're still looking for the best fares."
         },
         "validation": {
             "missingInformation": "Missing information",
