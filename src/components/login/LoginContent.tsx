@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { useLoginForm } from '@/hooks';
 import { loginSchema, registerSchema } from '@/lib/schemas/auth';
@@ -43,8 +43,15 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
         setErrors,
     } = useLoginForm({ isAdminMode: isAdmin });
 
+    const [confirmPassword, setConfirmPassword] = useState('');
+
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (mode === 'signup' && password !== confirmPassword) {
+            setErrors({ confirmPassword: 'Passwords do not match' });
+            return;
+        }
 
         // Validate with Zod schema
         const schema = mode === 'signup' ? registerSchema : loginSchema;
@@ -112,6 +119,7 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
     const handleToggleMode = useCallback(() => {
         setMode(mode === 'signin' ? 'signup' : 'signin');
         setErrors({});
+        setConfirmPassword('');
     }, [mode, setMode, setErrors]);
 
     const clearError = useCallback((field: string) => () => {
@@ -181,6 +189,19 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
                                     placeholder={mode === 'signin' ? 'Enter your password' : 'Create a password'}
                                     showRequirements={mode === 'signup'}
                                 />
+
+                                {mode === 'signup' && (
+                                    <PasswordField
+                                        value={confirmPassword}
+                                        onChange={setConfirmPassword}
+                                        error={errors.confirmPassword}
+                                        onErrorClear={clearError('confirmPassword')}
+                                        disabled={isLoading}
+                                        placeholder="Re-enter your password"
+                                        label="Confirm password"
+                                        showRequirements={false}
+                                    />
+                                )}
 
                                 {mode === 'signin' && (
                                     <div className="text-right">
