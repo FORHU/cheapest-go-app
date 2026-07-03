@@ -12,6 +12,7 @@ import { formatCurrency, cn, buildPropertySlug } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency, useSearchStore, useSearchFilters } from '@/stores/searchStore';
 import CurrencySelector from '@/components/common/CurrencySelector';
+import { useTranslations, useLocale } from 'next-intl';
 
 const SearchMapContainer = dynamic(
     () => import('../mapbox/SearchMapContainer').then(m => ({ default: m.SearchMapContainer })),
@@ -25,11 +26,11 @@ const SearchMapContainer = dynamic(
 
 // ── Sort ────────────────────────────────────────────────
 const SORT_PILLS = [
-    { value: 'recommended', label: 'Recommended' },
-    { value: 'price-low',   label: 'Cheapest' },
-    { value: 'rating',      label: 'Top Rated' },
-    { value: 'most-reviewed', label: 'Most Reviewed' },
-    { value: 'price-high',  label: 'Price: High to Low' },
+    { value: 'recommended', labelKey: 'recommended' },
+    { value: 'price-low', labelKey: 'cheapest' },
+    { value: 'rating', labelKey: 'topRated' },
+    { value: 'most-reviewed', labelKey: 'mostReviewed' },
+    { value: 'price-high', labelKey: 'priceHighToLow' },
 ] as const;
 type SortValue = typeof SORT_PILLS[number]['value'];
 
@@ -48,19 +49,7 @@ function matchesBoardType(hotelBoardTypes: string[], selected: string[]): boolea
     });
 }
 
-const PROPERTY_TYPE_OPTIONS = [
-    { value: 'hotel',     label: 'Hotel' },
-    { value: 'apartment', label: 'Apartment' },
-    { value: 'resort',    label: 'Resort' },
-    { value: 'villa',     label: 'Villa' },
-];
-const BOARD_TYPE_OPTIONS = [
-    { code: 'RO', label: 'Room Only' },
-    { code: 'BB', label: 'Breakfast Included' },
-    { code: 'HB', label: 'Half Board' },
-    { code: 'FB', label: 'Full Board' },
-    { code: 'AI', label: 'All Inclusive' },
-];
+
 
 // Fallback coordinates when a search returns 0 mappable results.
 // Keyed by lowercase city/country name (partial prefix match).
@@ -128,7 +117,7 @@ interface SearchMapViewProps {
 }
 
 const LOADING_TIPS = [
-    'Comparing room rates across 200+ hotels…',
+    'comparingRates',
     'Checking availability for your dates…',
     'Finding the best deals in the area…',
     'Almost there — great results incoming…',
@@ -136,6 +125,7 @@ const LOADING_TIPS = [
 ];
 
 function PriceLoadingSidebar({ destination }: { destination: string }) {
+    const t = useTranslations('hotels.mapView');
     const [tipIdx, setTipIdx] = useState(0);
     useEffect(() => {
         const id = setInterval(() => setTipIdx(i => (i + 1) % LOADING_TIPS.length), 3000);
@@ -145,10 +135,10 @@ function PriceLoadingSidebar({ destination }: { destination: string }) {
         <div className="flex flex-col gap-3 p-3 overflow-y-auto">
             <div className="px-1 py-3 text-center select-none">
                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1">
-                    {destination ? `Finding hotels in ${destination}` : 'Finding hotels'}
+                    {destination ? t('findingHotelsIn', { destination }) : t('findingHotels')}
                 </p>
                 <p className="text-[11px] text-blue-500 dark:text-blue-400 transition-all duration-500 min-h-[16px]">
-                    {LOADING_TIPS[tipIdx]}
+                    {LOADING_TIPS[tipIdx] === 'comparingRates' ? t('comparingRates') : LOADING_TIPS[tipIdx]}
                 </p>
             </div>
             {[1, 2, 3, 4].map(n => (
@@ -169,6 +159,7 @@ function PriceLoadingSidebar({ destination }: { destination: string }) {
 function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<string, any> }) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const t = useTranslations('hotels.mapView');
 
     const today = new Date().toISOString().slice(0, 10);
     // Default to next Friday–Sunday (matches stream API + prewarm cache; OTV has near-zero same-day inventory)
@@ -176,12 +167,12 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
     const _daysUntilFriday = ((5 - _now.getDay() + 7) % 7) || 7;
     const _fri = new Date(_now); _fri.setDate(_now.getDate() + _daysUntilFriday);
     const _sun = new Date(_fri); _sun.setDate(_fri.getDate() + 2);
-    const defaultCheckin  = _fri.toISOString().slice(0, 10);
+    const defaultCheckin = _fri.toISOString().slice(0, 10);
     const defaultCheckout = _sun.toISOString().slice(0, 10);
 
-    const [checkin,  setCheckin]  = useState<string>(rawSearchParams.checkin  || rawSearchParams.checkIn  || defaultCheckin);
+    const [checkin, setCheckin] = useState<string>(rawSearchParams.checkin || rawSearchParams.checkIn || defaultCheckin);
     const [checkout, setCheckout] = useState<string>(rawSearchParams.checkout || rawSearchParams.checkOut || defaultCheckout);
-    const [adults,   setAdults]   = useState<number>(Number(rawSearchParams.adults)   || 2);
+    const [adults, setAdults] = useState<number>(Number(rawSearchParams.adults) || 2);
     const [children, setChildren] = useState<number>(Number(rawSearchParams.children) || 0);
 
     const nights = useMemo(() => {
@@ -192,21 +183,22 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
 
     function handleSearch() {
         const params = new URLSearchParams(searchParams?.toString() || '');
-        params.set('checkin',  checkin);
+        params.set('checkin', checkin);
         params.set('checkout', checkout);
-        params.set('adults',   String(adults));
+        params.set('adults', String(adults));
         params.set('children', String(children));
         router.push(`/search?${params.toString()}`);
     }
 
+    const locale = useLocale();
     const fmt = (s: string) => {
         const d = new Date(s + 'T00:00:00');
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
     };
 
     const fmtDay = (s: string) => {
         const d = new Date(s + 'T00:00:00');
-        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return d.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
     return (
@@ -222,7 +214,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                             (input as any)?.showPicker?.();
                         }}
                     >
-                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Check-in</span>
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkIn')}</span>
                         <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(checkin)}</span>
                         <input
                             type="date" value={checkin} min={today}
@@ -241,7 +233,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                     {/* Nights divider */}
                     <div className="flex flex-col items-center justify-center px-2.5 h-full bg-slate-50 dark:bg-slate-800/40 border-r border-slate-100 dark:border-slate-800 shrink-0">
                         <span className="text-[11px] font-bold text-blue-500">{nights}</span>
-                        <span className="text-[9px] text-slate-400 leading-none">nights</span>
+                        <span className="text-[9px] text-slate-400 leading-none">{t('nights')}</span>
                     </div>
 
                     {/* Check-out */}
@@ -252,7 +244,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                             (input as any)?.showPicker?.();
                         }}
                     >
-                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Check-out</span>
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkOut')}</span>
                         <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(checkout)}</span>
                         <input
                             type="date" value={checkout} min={checkin}
@@ -263,7 +255,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
 
                     {/* Guests */}
                     <div className="flex flex-col justify-center px-5 border-r border-slate-100 dark:border-slate-800 shrink-0 h-full">
-                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Guests</span>
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('guests')}</span>
                         <div className="flex items-center gap-2 mt-0.5">
                             <button onClick={() => setAdults(a => Math.max(1, a - 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">−</button>
                             <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 w-4 text-center tabular-nums">{adults + children}</span>
@@ -277,7 +269,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                         className="flex items-center gap-2 px-6 h-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition-colors cursor-pointer shrink-0"
                     >
                         <Search size={15} />
-                        <span>Search</span>
+                        <span>{t('search')}</span>
                     </button>
                 </div>
             </div>
@@ -302,6 +294,23 @@ function SearchMapView({
 }: SearchMapViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const t = useTranslations('hotels.mapView');
+    const tr = useTranslations('hotels.searchResults');
+    const tc = useTranslations('hotels.card');
+
+    const PROPERTY_TYPE_OPTIONS = React.useMemo(() => [
+        { value: 'hotel', label: t('filterOptions.propertyTypes.hotel') },
+        { value: 'apartment', label: t('filterOptions.propertyTypes.apartment') },
+        { value: 'resort', label: t('filterOptions.propertyTypes.resort') },
+        { value: 'villa', label: t('filterOptions.propertyTypes.villa') },
+    ], [t]);
+    const BOARD_TYPE_OPTIONS = React.useMemo(() => [
+        { code: 'RO', label: t('filterOptions.boardTypes.roomOnly') },
+        { code: 'BB', label: t('filterOptions.boardTypes.breakfast') },
+        { code: 'HB', label: t('filterOptions.boardTypes.halfBoard') },
+        { code: 'FB', label: t('filterOptions.boardTypes.fullBoard') },
+        { code: 'AI', label: t('filterOptions.boardTypes.allInclusive') },
+    ], [t]);
 
     // State — seed from properties, padded with any allMappable hotels not already present
     // (allMappable may contain more hotels than properties when the server cache is stale)
@@ -348,23 +357,23 @@ function SearchMapView({
                 if (!incoming) return (p as any).priceLoading ? null : p;
                 if (!incoming) return (p as any).priceLoading ? null : p;
                 const wantsLocation = !p.location && incoming.location;
-                const wantsImage    = !p.image    && incoming.image;
+                const wantsImage = !p.image && incoming.image;
                 // Sync price when catalog sent price:0 and TGX prices have now arrived
-                const wantsPrice    = (p.price === 0 || p.priceLoading) && (incoming as any).price > 0;
+                const wantsPrice = (p.price === 0 || p.priceLoading) && (incoming as any).price > 0;
                 if (!wantsLocation && !wantsImage && !wantsPrice) return p;
                 changed = true;
                 return {
                     ...p,
-                    location:      incoming.location  || p.location,
-                    image:         incoming.image     || p.image,
-                    images:        incoming.images?.length ? incoming.images : p.images,
+                    location: incoming.location || p.location,
+                    image: incoming.image || p.image,
+                    images: incoming.images?.length ? incoming.images : p.images,
                     ...(wantsPrice && {
-                        price:        (incoming as any).price,
-                        currency:     (incoming as any).currency     ?? p.currency,
-                        offerId:      (incoming as any).offerId      ?? p.offerId,
+                        price: (incoming as any).price,
+                        currency: (incoming as any).currency ?? p.currency,
+                        offerId: (incoming as any).offerId ?? p.offerId,
                         refundableTag: (incoming as any).refundableTag ?? p.refundableTag,
-                        boardCode:    (incoming as any).boardCode    ?? p.boardCode,
-                        _tgx:         (incoming as any)._tgx         ?? p._tgx,
+                        boardCode: (incoming as any).boardCode ?? p.boardCode,
+                        _tgx: (incoming as any)._tgx ?? p._tgx,
                         priceLoading: false,
                     }),
                 };
@@ -378,13 +387,13 @@ function SearchMapView({
             if (!changed && newOnes.length === 0 && filtered.length === prev.length) return prev;
             return [...(changed || filtered.length < prev.length ? filtered : prev), ...newOnes];
         });
-    }, [properties]);  
+    }, [properties]);
 
     // ── Client-side display pagination ───────────────────────────
     const LIST_PAGE_SIZE = 15;
     const [displayCount, setDisplayCount] = useState(LIST_PAGE_SIZE);
     const searchKey = JSON.stringify(rawSearchParams);
-    React.useEffect(() => { setDisplayCount(LIST_PAGE_SIZE); }, [searchKey]);  
+    React.useEffect(() => { setDisplayCount(LIST_PAGE_SIZE); }, [searchKey]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const cardRefs = React.useRef<Map<string, HTMLDivElement>>(new Map());
@@ -529,9 +538,9 @@ function SearchMapView({
             // so the property page would fall back to same-day defaults (near-zero OTV inventory).
             // Use rawSearchParams (the actual dates the search ran with) when the URL has none.
             if (!params.has('checkIn') && !params.has('checkin')) {
-                const ci = rawSearchParams.checkin  || rawSearchParams.checkIn;
+                const ci = rawSearchParams.checkin || rawSearchParams.checkIn;
                 const co = rawSearchParams.checkout || rawSearchParams.checkOut;
-                if (ci) params.set('checkIn',  ci);
+                if (ci) params.set('checkIn', ci);
                 if (co) params.set('checkOut', co);
             }
 
@@ -600,7 +609,7 @@ function SearchMapView({
                     <div className="max-w-[1400px] mx-auto px-4 py-3 flex flex-wrap gap-6">
                         {/* Property Type */}
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Property Type</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t('filterOptions.propertyType')}</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {PROPERTY_TYPE_OPTIONS.map(opt => (
                                     <button
@@ -621,7 +630,7 @@ function SearchMapView({
 
                         {/* Meal Plan */}
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Meal Plan</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t('filterOptions.mealPlan')}</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {BOARD_TYPE_OPTIONS.map(opt => (
                                     <button
@@ -642,9 +651,9 @@ function SearchMapView({
 
                         {/* Cancellation */}
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Cancellation</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t('cancellation')}</p>
                             <div className="flex gap-1.5">
-                                {[{ v: null, l: 'Any' }, { v: true, l: 'Free cancellation' }].map(({ v, l }) => (
+                                {[{ v: null, l: t('any') }, { v: true, l: tc('freeCancellation') }].map(({ v, l }) => (
                                     <button
                                         key={String(v)}
                                         onClick={() => setRefundable(v as boolean | null)}
@@ -667,7 +676,7 @@ function SearchMapView({
                                     onClick={() => resetFilters()}
                                     className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 underline cursor-pointer"
                                 >
-                                    Clear filters
+                                    {t('clearFilters')}
                                 </button>
                             </div>
                         )}
@@ -690,7 +699,7 @@ function SearchMapView({
                         className="flex items-center gap-1 text-[10px] sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                     >
                         <ArrowLeft size={12} className="sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">Back</span>
+                        <span className="hidden sm:inline">{t('back')}</span>
                     </a>
 
                     <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
@@ -698,7 +707,7 @@ function SearchMapView({
                     <div className="flex items-center gap-1 landscape-compact:hidden">
                         <MapPin size={12} className="text-blue-500" />
                         <span className="text-sm md:text-base font-semibold text-slate-900 dark:text-white truncate max-w-[100px] sm:max-w-[200px]">
-                            {destination || 'Search'}
+                            {destination || t('searchFallback')}
                         </span>
                     </div>
 
@@ -706,7 +715,10 @@ function SearchMapView({
                         <>
                             <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 hidden md:block" />
                             <span className="text-xs text-slate-500 dark:text-slate-400 hidden md:inline">
-                                {formatCurrency(convertCurrency(priceRange.min, mappableProperties[0]?.currency || 'USD', targetCurrency), targetCurrency)} – {formatCurrency(convertCurrency(priceRange.max, mappableProperties[0]?.currency || 'USD', targetCurrency), targetCurrency)} /night
+                                {t('pricePerNight', {
+                                    min: formatCurrency(convertCurrency(priceRange.min, mappableProperties[0]?.currency || 'USD', targetCurrency), targetCurrency),
+                                    max: formatCurrency(convertCurrency(priceRange.max, mappableProperties[0]?.currency || 'USD', targetCurrency), targetCurrency),
+                                })}
                             </span>
                         </>
                     )}
@@ -717,8 +729,8 @@ function SearchMapView({
                         {/* Property count pill */}
                         <span className="hidden sm:inline px-2.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-semibold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 whitespace-nowrap">
                             {activeFilterCount > 0
-                                ? `${sortedProperties.length} of ${allProperties.filter((p: any) => p.name && (p.price > 0 || (p as any).priceLoading)).length}`
-                                : `${sortedProperties.length} hotels`
+                                ? tr('filteredCount', { filtered: sortedProperties.length, total: allProperties.filter((p: any) => p.name && (p.price > 0 || (p as any).priceLoading)).length })
+                                : tr('hotelsCount', { count: sortedProperties.length })
                             }
                         </span>
 
@@ -735,7 +747,7 @@ function SearchMapView({
                                             : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400"
                                     )}
                                 >
-                                    {pill.label}
+                                    {tr(`sort.${pill.labelKey}`)}
                                 </button>
                             ))}
                         </div>
@@ -751,7 +763,7 @@ function SearchMapView({
                             )}
                         >
                             <SlidersHorizontal size={12} />
-                            <span className="hidden sm:inline">Filters</span>
+                            <span className="hidden sm:inline">{t('filters')}</span>
                             {activeFilterCount > 0 && (
                                 <span className={cn(
                                     "w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center",
@@ -766,7 +778,7 @@ function SearchMapView({
                             className="hidden sm:flex items-center gap-1 px-2.5 h-[24px] md:h-8 rounded-full border text-[10px] md:text-[11px] font-bold transition-colors cursor-pointer bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400"
                         >
                             <List size={12} />
-                            <span>List</span>
+                            <span>{t('list')}</span>
                         </button>
                     </div>
                 </div>
@@ -810,17 +822,17 @@ function SearchMapView({
                                         onClick={handleShowMore}
                                         className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 cursor-pointer"
                                     >
-                                        Load More · showing {displayCount} of {sortedProperties.length}
+                                        {tr('loadMoreShowing', { shown: displayCount, total: sortedProperties.length })}
                                     </button>
                                 ) : (
-                                    <p className="text-center text-[10px] text-slate-400 font-medium">All {sortedProperties.length} results loaded</p>
+                                    <p className="text-center text-[10px] text-slate-400 font-medium">{tr('allResultsLoaded', { count: sortedProperties.length })}</p>
                                 )}
                             </div>
                         </>
                     ) : allProperties.some((p: any) => (p as any).priceLoading) ? (
                         // Catalog hotels exist but prices haven't arrived yet — show skeletons
                         <div className="flex flex-col gap-3 p-3 overflow-y-auto">
-                            {[1,2,3,4,5,6].map(n => (
+                            {[1, 2, 3, 4, 5, 6].map(n => (
                                 <div key={n} className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 p-3 flex gap-3 animate-pulse">
                                     <div className="w-16 h-16 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
                                     <div className="flex-1 flex flex-col gap-2 py-1">
@@ -838,10 +850,10 @@ function SearchMapView({
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
                             <MapPin className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
                             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                No hotels available{destination ? ` in ${destination}` : ''}
+                                {destination ? tr('noHotelsAvailableIn', { destination }) : tr('noHotelsAvailable')}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[220px]">
-                                Our current supplier may not cover this destination yet. Try different dates or a nearby city.
+                                {tr('supplierUnavailableShort')}
                             </p>
                         </div>
                     )}
@@ -900,9 +912,9 @@ function SearchMapView({
                             {/* Hotel count badge */}
                             <div className="px-4 pb-1.5 flex items-center justify-between">
                                 <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                                    {sortedProperties.length} hotels found
+                                    {tr('hotelsFound', { count: sortedProperties.length })}
                                 </span>
-                                <span className="text-[10px] text-slate-400">Swipe to browse</span>
+                                <span className="text-[10px] text-slate-400">{t('swipeToBrowse')}</span>
                             </div>
                             <div className="w-full overflow-x-auto pb-2 px-3 snap-x snap-mandatory flex gap-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                 {sortedProperties.slice(0, 50).map((property, idx) => (
@@ -958,7 +970,7 @@ function SearchMapView({
                         className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-slate-200 px-3 py-1.5 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 font-bold text-[11px]"
                     >
                         <List size={14} />
-                        List
+                        {t('list')}
                     </button>
                 </div>
             </div>

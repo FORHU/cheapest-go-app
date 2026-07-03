@@ -8,16 +8,17 @@ import { MapPin } from 'lucide-react';
 import { cn, buildPropertySlug } from '@/lib/utils';
 import CurrencySelector from '@/components/common/CurrencySelector';
 import { useSearchStore } from '@/stores/searchStore';
+import { useTranslations } from 'next-intl';
 
 const SORT_OPTIONS = ['recommended', 'price-low', 'price-high', 'rating', 'most-reviewed'] as const;
 type SortValue = typeof SORT_OPTIONS[number];
 
-const SORT_PILLS: { value: SortValue; label: string }[] = [
-    { value: 'recommended', label: 'Recommended' },
-    { value: 'price-low', label: 'Cheapest' },
-    { value: 'rating', label: 'Top Rated' },
-    { value: 'most-reviewed', label: 'Most Reviewed' },
-    { value: 'price-high', label: 'Price: High to Low' },
+const SORT_PILLS: { value: SortValue; labelKey: 'recommended' | 'cheapest' | 'topRated' | 'mostReviewed' | 'priceHighToLow' }[] = [
+    { value: 'recommended', labelKey: 'recommended' },
+    { value: 'price-low', labelKey: 'cheapest' },
+    { value: 'rating', labelKey: 'topRated' },
+    { value: 'most-reviewed', labelKey: 'mostReviewed' },
+    { value: 'price-high', labelKey: 'priceHighToLow' },
 ];
 
 // Match TGX board codes loosely so we handle whatever OTV returns
@@ -48,6 +49,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
     const router = useRouter();
     const searchParams = useSearchParams();
     const destination = searchParams?.get('destination') || '';
+    const t = useTranslations('hotels.searchResults');
 
     const rawSort = searchParams?.get('sort');
     const initialSort: SortValue = SORT_OPTIONS.includes(rawSort as SortValue) ? (rawSort as SortValue) : 'recommended';
@@ -164,10 +166,10 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3 md:mb-4">
                 <div>
                     <h1 className="text-[14px] md:text-xl lg:text-2xl font-display font-bold text-slate-900 dark:text-white leading-tight">
-                        {destination ? `Stays in ${destination}` : 'All properties'}
+                        {destination ? t('staysIn', { destination }) : t('allProperties')}
                     </h1>
                     <p className="text-[10px] md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                        {filteredProperties.length} properties found · Prices may change based on availability.
+                        {t('propertiesFound', { count: filteredProperties.length })} · {t('pricesMayChange')}
                     </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -178,7 +180,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
                             className="flex items-center gap-1 px-2.5 h-[28px] md:h-9 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-[10px] md:text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
                         >
                             <MapPin size={12} />
-                            <span className="hidden sm:inline">Map</span>
+                            <span className="hidden sm:inline">{t('map')}</span>
                             <span className="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">{mappableCount}</span>
                         </button>
                     )}
@@ -198,7 +200,7 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
                                 : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500"
                         )}
                     >
-                        {pill.label}
+                        {t(`sort.${pill.labelKey}`)}
                     </button>
                 ))}
             </div>
@@ -222,10 +224,10 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
                 ) : (
                     <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 px-4">
                         <h3 className="text-lg font-medium text-slate-900 dark:text-white">
-                            {destination ? `No hotels found in ${destination}` : 'No properties found'}
+                            {destination ? t('noHotelsFoundIn', { destination }) : t('noPropertiesFound')}
                         </h3>
                         <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
-                            Our supplier may not cover this destination yet. Try different dates, adjust your filters, or search a nearby city.
+                            {t('supplierUnavailable')}
                         </p>
                     </div>
                 )
@@ -239,11 +241,11 @@ const SearchResultsContent = ({ initialProperties = [], totalCount: initialTotal
                             onClick={handleLoadMore}
                             className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-full transition-all active:scale-95 shadow-md shadow-blue-600/10"
                         >
-                            Show more ({filteredProperties.length - visibleProperties.length} remaining)
+                            {t('showMoreRemaining', { count: filteredProperties.length - visibleProperties.length })}
                         </button>
                     ) : (
                         <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                            All {filteredProperties.length} results shown
+                            {t('allResultsShown', { count: filteredProperties.length })}
                         </span>
                     )}
                 </div>

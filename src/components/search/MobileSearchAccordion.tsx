@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { useSearchStore, useDestination, useDestinationQuery, useDates, useTravelers } from '@/stores/searchStore';
 import { DestinationPicker } from '@/components/landing/hero/search/DestinationPicker';
 import { DatePicker } from '@/components/landing/hero/search/DatePicker';
@@ -17,6 +18,7 @@ interface MobileSearchAccordionProps {
 }
 
 export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ onClose, onSearch }) => {
+    const t = useTranslations('hotels.mobileSearch');
     const [activeSection, setActiveSection] = useState<AccordionSection>(null);
 
     // Search Store hooks
@@ -94,7 +96,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
 
             {/* ─── Unified Header Row ─── */}
             <div className="flex items-center justify-between px-6 pt-5 pb-2 shrink-0">
-                <h2 className="text-lg font-medium text-slate-900 dark:text-white">Search Hotels</h2>
+                <h2 className="text-lg font-medium text-slate-900 dark:text-white">{t('title')}</h2>
                 {onClose && (
                     <button
                         onClick={onClose}
@@ -117,7 +119,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                                 onClick={handleClearAll}
                                 className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                             >
-                                Clear all
+                                {t('clearAll')}
                             </motion.button>
                         )}
                     </AnimatePresence>
@@ -139,7 +141,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             className="flex flex-col h-full p-3 min-h-0"
                         >
                             <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-2 shrink-0 text-left">
-                                Where?
+                                {t('whereQuestion')}
                             </h2>
                             <div className="relative overflow-hidden">
                                 <DestinationPicker
@@ -152,8 +154,8 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                     ) : (
                         <div className="flex flex-col items-start px-4 py-3 min-h-[64px] justify-center">
                             <span className="text-ui-label flex items-center gap-2">
-                                Where
-                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Search city or hotel</span>
+                                {t('where')}
+                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">{t('searchCityHotel')}</span>
                             </span>
                             <span className="text-ui-value truncate w-full mt-0.5">
                                 {destinationText}
@@ -178,7 +180,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             className="flex flex-col h-full p-3 min-h-0"
                         >
                             <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-2 shrink-0 text-left">
-                                When&apos;s your check-in?
+                                {t('checkInQuestion')}
                             </h2>
                             <div className="relative overflow-hidden">
                                 <DatePicker inline forceOpen onDone={() => setActiveSection(null)} />
@@ -187,8 +189,8 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                     ) : (
                         <div className="flex flex-col items-start px-4 py-3 min-h-[64px] justify-center">
                             <span className="text-ui-label flex items-center gap-2">
-                                Check-in
-                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Add dates</span>
+                                {t('checkIn')}
+                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">{t('addDates')}</span>
                             </span>
                             <span className="text-ui-value truncate w-full mt-0.5">
                                 {formatDate(checkIn)}
@@ -213,7 +215,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             className="flex flex-col h-full p-3 min-h-0"
                         >
                             <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-2 shrink-0 text-left">
-                                When&apos;s your check-out?
+                                {t('checkOutQuestion')}
                             </h2>
                             <div className="relative overflow-hidden">
                                 <DatePicker inline forceOpen initialCheckOutMode onDone={() => setActiveSection(null)} />
@@ -222,8 +224,8 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                     ) : (
                         <div className="flex flex-col items-start px-4 py-3 min-h-[64px] justify-center">
                             <span className="text-ui-label flex items-center gap-2">
-                                Check-out
-                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Add dates</span>
+                                {t('checkOut')}
+                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">{t('addDates')}</span>
                             </span>
                             <span className="text-ui-value truncate w-full mt-0.5">
                                 {formatDate(checkOut)}
@@ -248,7 +250,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                             className="flex flex-col h-full p-3 min-h-0"
                         >
                             <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-2 shrink-0 text-left">
-                                Who&apos;s coming?
+                                {t('whoQuestion')}
                             </h2>
                             <div className="relative overflow-hidden">
                                 <TravelersPicker inline forceOpen />
@@ -257,8 +259,8 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                     ) : (
                         <div className="flex flex-col items-start px-4 py-3 min-h-[64px] justify-center">
                             <span className="text-ui-label flex items-center gap-2">
-                                Who
-                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">Number of guests</span>
+                                {t('who')}
+                                <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">{t('numberOfGuests')}</span>
                             </span>
                             <span className="text-ui-value truncate w-full mt-0.5">
                                 {formatTravelers()}
@@ -285,7 +287,7 @@ export const MobileSearchAccordion: React.FC<MobileSearchAccordionProps> = ({ on
                         ) : (
                             <>
                                 <Search size={16} />
-                                Search
+                                {t('search')}
                             </>
                         )}
                     </button>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronRight, ChevronLeft, Search, Star, Maximize, Minimize, Navigation, MapPin } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { POI_FILTERS } from '@/config/map-discovery';
 
 import { cn } from '@/lib/utils';
@@ -57,6 +58,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
     radiusMeters = 2000,
     onRadiusChange,
 }) => {
+    const t = useTranslations('hotels.searchResults');
     return (
         <div className={`transition-all duration-500 ease-in-out group/nearby flex flex-col gap-1 sm:gap-1.5
             ${isFullscreen
@@ -76,7 +78,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                     >
                         {React.createElement(POI_FILTERS.find(f => f.id === selectedCategory)?.icon || Search, { size: 14, className: 'text-blue-500' })}
                         <span className="text-[10px] font-bold uppercase tracking-wider">
-                            {POI_FILTERS.find(f => f.id === selectedCategory)?.label || 'Discovery'}
+                            {t('discovery.' + (POI_FILTERS.find(f => f.id === selectedCategory)?.id ?? 'all'))}
                         </span>
                         <ChevronRight size={14} className={`text-slate-400 transition-transform duration-300 ${isCategoryDropdownOpen ? '-rotate-90' : 'rotate-90'}`} />
                     </button>
@@ -106,7 +108,7 @@ export const PoiDiscovery: React.FC<PoiDiscoveryProps> = ({
                                             >
                                                 <div className="flex items-center gap-2.5">
                                                     <Icon size={14} className={isSelected ? 'text-white' : 'text-slate-400 group-hover/item:text-blue-500'} />
-                                                    <span className="text-[11px] font-bold uppercase tracking-normal">{filter.label}</span>
+                                                    <span className="text-[11px] font-bold uppercase tracking-normal">{t('discovery.' + filter.id)}</span>
                                                 </div>
                                                 {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />}
                                             </button>

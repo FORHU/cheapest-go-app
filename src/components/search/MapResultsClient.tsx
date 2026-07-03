@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Property } from '@/types';
 import LazySearchMapView from './LazySearchMapView';
 import { buildSearchCacheKey, getSearchResults, setSearchResults } from '@/lib/searchResultsCache';
@@ -13,14 +14,16 @@ interface MapResultsClientProps {
 
 
 function StreamingBanner({ count, pricingMode }: { count: number; pricingMode?: boolean }) {
+    const t = useTranslations('hotels.searchResults');
+
     return (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
             <div className="flex items-center gap-2 bg-white dark:bg-slate-800 shadow-lg rounded-full px-3.5 py-1.5 border border-slate-100 dark:border-slate-700 text-xs whitespace-nowrap">
                 <span className="w-3 h-3 rounded-full border-[1.5px] border-blue-500 border-t-transparent animate-spin shrink-0" />
                 <span className="text-slate-600 dark:text-slate-300">
                     {pricingMode
-                        ? <>Checking availability…</>
-                        : <>Loading more hotels{count > 0 ? <> &middot; <strong className="text-slate-800 dark:text-slate-100">{count}</strong> found</> : ''}…</>
+                        ? <>{t('checkingAvailability')}</>
+                        : <>{t('loadingMore')}{count > 0 ? <> &middot; <strong className="text-slate-800 dark:text-slate-100">{count}</strong> {t('found')}</> : ''}…</>
                     }
                 </span>
             </div>
@@ -29,6 +32,8 @@ function StreamingBanner({ count, pricingMode }: { count: number; pricingMode?: 
 }
 
 export function MapResultsClient({ searchParams, destination, onSwitchView }: MapResultsClientProps) {
+    const t = useTranslations('hotels.searchResults');
+
     // 'prices-loading' = catalog hotels shown, TGX prices still in flight
     const cacheKey = buildSearchCacheKey(searchParams);
     const cached = getSearchResults(cacheKey);
@@ -203,7 +208,7 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
             <div className="flex h-full w-full items-center justify-center">
                 <div className="flex flex-col items-center gap-3 select-none">
                     <span className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-                    <p className="text-xs text-slate-400 dark:text-slate-500">Searching hotels…</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{t('searching')}</p>
                 </div>
             </div>
         );
@@ -212,8 +217,8 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
     if (status === 'done' && properties.length === 0) {
         return (
             <div className="flex flex-col h-full w-full items-center justify-center gap-2 select-none">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">No hotels found</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">Try different dates or a nearby city.</p>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('noHotelsFound')}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">{t('tryDifferentDates')}</p>
             </div>
         );
     }
@@ -221,8 +226,8 @@ export function MapResultsClient({ searchParams, destination, onSwitchView }: Ma
     if (status === 'error' && properties.length === 0) {
         return (
             <div className="flex flex-col h-full w-full items-center justify-center gap-2 select-none">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Search unavailable</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">Something went wrong. Try refreshing the page.</p>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('searchUnavailable')}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">{t('refreshPage')}</p>
             </div>
         );
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Theme, ThemeContextType, BaseProps } from '../../types';
 import { Toaster } from 'sonner';
 
@@ -50,9 +51,10 @@ export const ThemeProvider: React.FC<BaseProps> = ({ children }) => {
 };
 
 export const useTheme = () => {
+  const t = useTranslations('theme');
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error(t('contextError'));
   }
   return context;
 };
