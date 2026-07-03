@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useSearchStore, FlightState, FlightSegment } from '@/stores/searchStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -27,6 +28,7 @@ export interface UseFlightSearchReturn {
 }
 
 export const useFlightSearch = (): UseFlightSearchReturn => {
+    const t = useTranslations('flights.validation');
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -127,14 +129,26 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
         const missingFields: string[] = [];
 
         segmentsToSearch.forEach((segment, index) => {
-            if (!segment?.origin?.code) missingFields.push(isRoundTrip && index === 1 ? 'return origin airport' : `segment ${index + 1} origin airport`);
-            if (!segment?.destination?.code) missingFields.push(isRoundTrip && index === 1 ? 'return destination airport' : `segment ${index + 1} destination airport`);
-            if (!segment?.date) missingFields.push(isRoundTrip && index === 1 ? 'return date' : `segment ${index + 1} date`);
+            if (!segment?.origin?.code) {
+                missingFields.push(isRoundTrip && index === 1
+                    ? t('fields.returnOriginAirport')
+                    : t('fields.segmentOriginAirport', { index: index + 1 }));
+            }
+            if (!segment?.destination?.code) {
+                missingFields.push(isRoundTrip && index === 1
+                    ? t('fields.returnDestinationAirport')
+                    : t('fields.segmentDestinationAirport', { index: index + 1 }));
+            }
+            if (!segment?.date) {
+                missingFields.push(isRoundTrip && index === 1
+                    ? t('fields.returnDate')
+                    : t('fields.segmentDate', { index: index + 1 }));
+            }
         });
 
         if (missingFields.length > 0) {
-            toast.error(`Missing information`, {
-                description: `Please select ${missingFields[0]}`,
+            toast.error(t('missingInformation'), {
+                description: t('selectField', { field: missingFields[0] }),
             });
             return;
         }
@@ -175,7 +189,7 @@ export const useFlightSearch = (): UseFlightSearchReturn => {
         // Reset loading after short delay (page transition handles the rest)
         setTimeout(() => setIsSearching(false), 1500);
 
-    }, [router, setIsSearching, setActiveDropdown]);
+    }, [router, setIsSearching, setActiveDropdown, t]);
 
     return {
         searchMode,

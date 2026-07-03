@@ -13,6 +13,7 @@ import { RadioItem } from './RadioItem';
 import { ActiveFiltersSummary } from './ActiveFiltersSummary';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useTranslations } from 'next-intl';
 
 interface SearchFiltersProps {
     initialFacilities?: Array<{ id: number; name: string }>;
@@ -21,6 +22,7 @@ interface SearchFiltersProps {
 
 const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersProps) => {
     const router = useRouter();
+    const t = useTranslations('hotels.filters');
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const initializedRef = useRef(false);
 
@@ -51,18 +53,18 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
     const { hotelName, starRating, minRating, minReviewsCount, facilities, strictFacilityFiltering, propertyTypes, boardTypes, refundable } = filters;
 
     const PROPERTY_TYPE_OPTIONS = [
-        { value: 'hotel', label: 'Hotel' },
-        { value: 'apartment', label: 'Apartment' },
-        { value: 'resort', label: 'Resort' },
-        { value: 'villa', label: 'Villa' },
+        { value: 'hotel', label: t('propertyTypes.hotel') },
+        { value: 'apartment', label: t('propertyTypes.apartment') },
+        { value: 'resort', label: t('propertyTypes.resort') },
+        { value: 'villa', label: t('propertyTypes.villa') },
     ];
 
     const BOARD_TYPE_OPTIONS = [
-        { code: 'RO', label: 'Room Only' },
-        { code: 'BB', label: 'Breakfast Included' },
-        { code: 'HB', label: 'Half Board' },
-        { code: 'FB', label: 'Full Board' },
-        { code: 'AI', label: 'All Inclusive' },
+        { code: 'RO', label: t('boardTypes.roomOnly') },
+        { code: 'BB', label: t('boardTypes.breakfast') },
+        { code: 'HB', label: t('boardTypes.halfBoard') },
+        { code: 'FB', label: t('boardTypes.fullBoard') },
+        { code: 'AI', label: t('boardTypes.allInclusive') },
     ];
 
     // Initialize filters from URL params on mount (only once)
@@ -182,21 +184,21 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                 transition={{ duration: 0.4 }}
                 className="pb-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between"
             >
-                <h3 className="text-sm font-display font-bold text-slate-900 dark:text-white">Filter by</h3>
+                <h3 className="text-sm font-display font-bold text-slate-900 dark:text-white">{t('filterBy')}</h3>
                 {hasActiveFilters && (
                     <button
                         onClick={handleResetFilters}
                         className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
                     >
                         <RotateCcw size={14} />
-                        Reset
+                        {t('reset')}
                     </button>
                 )}
             </motion.div>
 
             {/* Search by Property Name */}
             <div className="py-4 border-b border-slate-200 dark:border-slate-800">
-                <h4 className="font-bold text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Search by property name</h4>
+                <h4 className="font-bold text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">{t('searchByPropertyName')}</h4>
                 <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
                     <input
@@ -210,12 +212,12 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             </div>
 
             {/* Star Rating */}
-            <FilterSection title="Star rating" index={1}>
+            <FilterSection title={t('starRating')} index={1}>
                 <div className="flex flex-col gap-1">
                     {STAR_RATINGS.map(star => (
                         <CheckboxItem
                             key={star}
-                            label={`${star} star${star !== 1 ? 's' : ''}`}
+                            label={t('starCount', { count: star })}
                             checked={starRating.includes(star)}
                             onChange={() => handleStarRatingToggle(star)}
                         />
@@ -224,7 +226,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             </FilterSection>
 
             {/* Guest Rating */}
-            <FilterSection title="Guest rating" index={2}>
+            <FilterSection title={t('guestRating')} index={2}>
                 {GUEST_RATING_OPTIONS.map(option => (
                     <RadioItem
                         key={option.value}
@@ -237,7 +239,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             </FilterSection>
 
             {/* Minimum Reviews */}
-            <FilterSection title="Minimum reviews" index={3}>
+            <FilterSection title={t('minimumReviews')} index={3}>
                 {REVIEW_COUNT_OPTIONS.map(option => (
                     <RadioItem
                         key={option.value}
@@ -250,7 +252,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             </FilterSection>
 
             {/* Property Type */}
-            <FilterSection title="Property Type" index={4}>
+            <FilterSection title={t('propertyTypes')} index={4}>
                 <div className="flex flex-col gap-1">
                     {PROPERTY_TYPE_OPTIONS.map(opt => (
                         <CheckboxItem
@@ -264,9 +266,9 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             </FilterSection>
 
             {/* Room Features */}
-            <FilterSection title="Room Features" index={5}>
+            <FilterSection title={t('roomFeatures')} index={5}>
                 <div className="flex flex-col gap-1 mb-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">Meal Plan</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">{t('mealPlan')}</p>
                     {BOARD_TYPE_OPTIONS.map(opt => (
                         <CheckboxItem
                             key={opt.code}
@@ -277,17 +279,17 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                     ))}
                 </div>
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">Cancellation</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">{t('cancellation')}</p>
                     <div className="flex flex-col gap-1">
                         <RadioItem
                             name="refundable"
-                            label="Any"
+                            label={t('any')}
                             checked={refundable === null}
                             onChange={() => handleRefundableChange(null)}
                         />
                         <RadioItem
                             name="refundable"
-                            label="Free cancellation only"
+                            label={t('freeCancellationOnly')}
                             checked={refundable === true}
                             onChange={() => handleRefundableChange(true)}
                         />
@@ -296,7 +298,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
             </FilterSection>
 
             {/* Amenities */}
-            <FilterSection title="Amenities" index={6}>
+            <FilterSection title={t('amenities')} index={6}>
                 <div className="grid grid-cols-2 gap-2">
                     {facilityOptions.map((facility) => (
                         <CheckboxItem
@@ -311,12 +313,12 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                 {facilities.length > 1 && (
                     <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700">
                         <CheckboxItem
-                            label="Must have ALL selected amenities"
+                            label={t('mustHaveAllSelectedAmenities')}
                             checked={strictFacilityFiltering}
                             onChange={handleStrictFilteringToggle}
                         />
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 ml-7">
-                            When enabled, only shows hotels with every selected amenity
+                            {t('strictAmenitiesDescription')}
                         </p>
                     </div>
                 )}
@@ -359,7 +361,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                             >
                                 <X size={16} className="text-slate-700 dark:text-slate-300" />
                             </button>
-                            <h2 className="text-sm font-bold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">Filters</h2>
+                            <h2 className="text-sm font-bold text-slate-900 dark:text-white absolute left-1/2 -translate-x-1/2">{t('filters')}</h2>
                             <div className="w-8 relative z-20">
                                 {/* Intentionally left blank to balance the flex layout */}
                             </div>
@@ -376,7 +378,7 @@ const SearchFilters = ({ initialFacilities, previewCoordinates }: SearchFiltersP
                                 onClick={() => setIsMobileFiltersOpen(false)}
                                 className="w-full max-w-sm py-2 bg-alabaster-accent dark:bg-obsidian-accent text-white rounded-lg text-xs font-bold flex items-center justify-center transition-transform active:scale-[0.98] shadow-md hover:shadow-lg"
                             >
-                                Show places
+                                {t('showPlaces')}
                             </button>
                         </div>
                     </motion.div>

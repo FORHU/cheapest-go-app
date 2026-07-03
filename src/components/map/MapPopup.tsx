@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Popup } from 'react-map-gl/mapbox';
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { formatCurrency } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -67,6 +68,7 @@ const MapPopup = React.memo(function MapPopup({
 }: MapPopupProps) {
     const isLandscape = useIsLandscapeMobile();
     const targetCurrency = useUserCurrency();
+    const t = useTranslations('hotels.card');
     const sourceCurrency = property.currency || 'USD';
     const displayPrice = React.useMemo(
         () => convertCurrency(property.price, sourceCurrency, targetCurrency),
@@ -125,7 +127,7 @@ const MapPopup = React.memo(function MapPopup({
                 {/* Badges */}
                 {property.refundableTag === 'RFN' && (
                     <span className="absolute bottom-1.5 left-1.5 text-[9px] font-semibold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full">
-                        {isLandscape ? 'Free cancel' : 'Free cancellation'}
+                        {isLandscape ? t('freeCancelShort') : t('freeCancellation')}
                     </span>
                 )}
             </div>
@@ -155,13 +157,13 @@ const MapPopup = React.memo(function MapPopup({
                         <span className={`font-bold text-blue-600 dark:text-blue-400 ${isLandscape ? 'text-xs' : 'text-[13px]'}`}>
                             {formatCurrency(displayPrice, targetCurrency)}
                         </span>
-                        <span className="text-[8px] text-slate-400 ml-0.5">/night</span>
+                        <span className="text-[8px] text-slate-400 ml-0.5">{t('perNight')}</span>
                     </div>
                     <button
                         onClick={() => onViewDetails(property.id)}
                         className={`bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${isLandscape ? 'text-[9px] px-2 py-1' : 'text-[9px] px-2 py-1'}`}
                     >
-                        View Deal
+                        {t('viewDeal')}
                     </button>
                 </div>
             </div>

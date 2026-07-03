@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from "next/link";
 import { Suspense } from 'react';
+import { getTranslations } from 'next-intl/server';
 import { SearchFetcher } from "@/components/flights/search-fetcher";
 import { SectionHeader } from "@/components/ui";
 import BackButton from "@/components/common/BackButton";
@@ -84,6 +85,9 @@ export default async function SearchPage({
     const cabinClass = (sp.cabin as CabinClass) || "economy";
     const bundleHotelId = sp.bundleHotelId as string | undefined;
 
+    const fs = await getTranslations('flights.search');
+    const ls = await getTranslations('landing.search');
+
     // Guard: redirect gracefully when required params are missing
     if (!origin || !destination || !departure) {
         // Arrived from hotel bundle upsell — guide user to fill in origin/destination
@@ -126,8 +130,8 @@ export default async function SearchPage({
         );
     }
 
-    const cabinLabel = cabinClass.replace('_', ' ');
-    const subtitle = [departure, returnDate && `↩ ${returnDate}`, `${adults} Adult${adults > 1 ? 's' : ''}`, cabinLabel]
+    const cabinLabel = ls(`cabinClass.${cabinClass === 'premium_economy' ? 'premiumEconomy' : cabinClass}`);
+    const subtitle = [departure, returnDate && `↩ ${returnDate}`, fs('adult', { count: adults }), cabinLabel]
         .filter(Boolean)
         .join(' · ');
 
