@@ -1,5 +1,7 @@
 {
     "nav": {
+        "home": "首页",
+        "profile": "个人资料",
         "support": "客服支持",
         "openApp": "打开应用",
         "signIn": "登录",
@@ -323,6 +325,7 @@
         "flightsApi": "航班 API",
         "paymentGateway": "支付网关",
         "copyright": "© 2026 JTP Partners. 保留所有权利。",
+        "allRightsReserved": "Partners. 保留所有权利。",
         "terms": "条款",
         "privacy": "隐私",
         "cookies": "Cookie 政策",

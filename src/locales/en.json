@@ -1,5 +1,7 @@
 {
     "nav": {
+        "home": "Home",
+        "profile": "Profile",
         "support": "Support",
         "openApp": "Open app",
         "signIn": "Sign in",
@@ -323,6 +325,7 @@
         "flightsApi": "Flights API",
         "paymentGateway": "Payment Gateway",
         "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "allRightsReserved": "Partners. All rights reserved.",
         "terms": "Terms",
         "privacy": "Privacy",
         "cookies": "Cookies",

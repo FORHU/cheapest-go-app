@@ -1,5 +1,7 @@
 {
     "nav": {
+        "home": "ホーム",
+        "profile": "プロフィール",
         "support": "サポート",
         "openApp": "アプリを開く",
         "signIn": "ログイン",
@@ -323,6 +325,7 @@
         "flightsApi": "フライト API",
         "paymentGateway": "決済ゲートウェイ",
         "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "allRightsReserved": "Partners. All rights reserved.",
         "terms": "利用規約",
         "privacy": "プライバシー",
         "cookies": "クッキー",
