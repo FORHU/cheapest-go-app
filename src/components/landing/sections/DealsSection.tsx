@@ -82,21 +82,15 @@ function isPlaceholderImage(url: string | null | undefined): boolean {
 }
 
 
-/** Route deal cards directly to the book page. The book page handles passenger config + search. */
+/** Route deal cards to the search page so the user can pick their own dates. */
 function buildBookingUrl(deal: Deal): string {
   if (!deal.origin || !deal.destination) return '/flights/search';
   const p = new URLSearchParams({
     origin:      deal.origin,
     destination: deal.destination,
-    cabinClass:  deal.cabinClass || 'economy',
+    cabin:       deal.cabinClass || 'economy',
   });
-  if (deal.salePrice)     p.set('dealPrice',         String(Math.round(deal.salePrice)));
-  if (deal.originalPrice && deal.originalPrice > deal.salePrice)
-                          p.set('dealOriginalPrice', String(Math.round(deal.originalPrice)));
-  if (deal.currency)      p.set('dealCurrency',      deal.currency);
-  if (deal.discount)      p.set('dealDiscount',      deal.discount);
-  if (deal.subtitle)      p.set('dealSubtitle',      deal.subtitle);
-  return `/flights/book?${p.toString()}`;
+  return `/flights/search?${p.toString()}`;
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
