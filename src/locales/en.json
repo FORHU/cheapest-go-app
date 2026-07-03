@@ -392,7 +392,8 @@
             "good": "Good",
             "average": "Average",
             "fair": "Fair",
-            "poor": "Poor"
+            "poor": "Poor",
+            "pleasant": "Pleasant"
         },
         "fromPrice": "From {price}",
         "perNight": "/night",
