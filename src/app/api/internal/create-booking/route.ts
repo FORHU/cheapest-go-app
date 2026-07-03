@@ -469,6 +469,17 @@ async function insertFlightSegments(
             const arrTime = seg.arrival?.time ?? seg.arriving_at ?? seg.arrivalTime ?? null;
             const origin = seg.origin?.iata_code ?? seg.origin?.airport ?? seg.origin ?? '';
             const destination = seg.destination?.iata_code ?? seg.destination?.airport ?? seg.destination ?? '';
+            // airline may be a normalized object ({ code, name }), a raw carrier
+            // object, or a plain IATA string — never insert the object (it coerces
+            // to the literal "[object Object]" in this text column).
+            const airline =
+                (typeof seg.airline === 'object'
+                    ? seg.airline?.code ?? seg.airline?.iata_code
+                    : seg.airline)
+                ?? seg.airline_iata_code
+                ?? seg.operating_carrier?.iata_code
+                ?? seg.marketing_carrier?.iata_code
+                ?? '';
 
             await sql`
                 INSERT INTO flight_segments (
@@ -477,7 +488,7 @@ async function insertFlightSegments(
                     cabin_class, segment_index
                 ) VALUES (
                     ${bookingId},
-                    ${seg.airline ?? seg.airline_iata_code ?? ''},
+                    ${airline},
                     ${seg.flightNumber ?? seg.flight_number ?? ''},
                     ${origin},
                     ${destination},

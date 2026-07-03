@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Calendar, Star, MapPin, Tag, Pencil, Check, X } from 'lucide-react';
+import { Calendar, Star, MapPin, Tag, Pencil, Check, X, ChevronDown } from 'lucide-react';
 import { CancellationPolicySection } from './CancellationPolicySection';
 import { CancellationPolicy } from '@/services/booking.service';
 import type { AppliedVoucher } from '@/types/voucher';
@@ -96,6 +96,10 @@ export function BookingSummary({
     const [editingDates, setEditingDates] = useState(false);
     const [draftCheckIn, setDraftCheckIn] = useState('');
     const [draftCheckOut, setDraftCheckOut] = useState('');
+
+    // Mobile-only: collapse the price line items to save vertical space.
+    // The Total row stays visible regardless; desktop always shows the full breakdown.
+    const [breakdownOpen, setBreakdownOpen] = useState(false);
 
     const today = new Date().toISOString().slice(0, 10);
 
@@ -267,58 +271,75 @@ export function BookingSummary({
 
                     {/* Price Breakdown — all values from server */}
                     <div className="border-t border-dashed border-slate-200 dark:border-white/10 pt-3 lg:pt-4 space-y-1.5 lg:space-y-2">
-                        <div className="flex justify-between text-[11px] lg:text-sm">
-                            <span className="text-slate-600 dark:text-slate-400">
-                                1 room × {totalNights} {totalNights === 1 ? 'night' : 'nights'}
-                            </span>
-                            <span className="font-medium text-slate-900 dark:text-white">
-                                {isLoading ? (
-                                    <span className="h-4 w-16 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
-                                ) : (
-                                    <>{symbol}{roomPrice.toLocaleString()}</>
-                                )}
-                            </span>
-                        </div>
-                        {surcharges && surcharges.length > 0 ? (
-                            surcharges.map((s, i) => (
-                                <div key={i} className="flex justify-between text-[11px] lg:text-sm">
-                                    <span className="text-slate-600 dark:text-slate-400">{formatChargeType(s.chargeType)}</span>
+                        {/* Mobile-only toggle — collapses the line items below. Hidden on desktop where the breakdown is always shown. */}
+                        <button
+                            type="button"
+                            onClick={() => setBreakdownOpen((o) => !o)}
+                            aria-expanded={breakdownOpen}
+                            className="flex lg:hidden w-full items-center justify-between text-[11px] font-medium text-slate-600 dark:text-slate-400"
+                        >
+                            <span>Price details</span>
+                            <ChevronDown
+                                size={14}
+                                className={`transition-transform duration-200 ${breakdownOpen ? 'rotate-180' : ''}`}
+                            />
+                        </button>
+
+                        {/* Line items — collapsed on mobile unless expanded; always visible on desktop */}
+                        <div className={`${breakdownOpen ? 'block' : 'hidden'} lg:block space-y-1.5 lg:space-y-2`}>
+                            <div className="flex justify-between text-[11px] lg:text-sm">
+                                <span className="text-slate-600 dark:text-slate-400">
+                                    1 room × {totalNights} {totalNights === 1 ? 'night' : 'nights'}
+                                </span>
+                                <span className="font-medium text-slate-900 dark:text-white">
+                                    {isLoading ? (
+                                        <span className="h-4 w-16 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
+                                    ) : (
+                                        <>{symbol}{roomPrice.toLocaleString()}</>
+                                    )}
+                                </span>
+                            </div>
+                            {surcharges && surcharges.length > 0 ? (
+                                surcharges.map((s, i) => (
+                                    <div key={i} className="flex justify-between text-[11px] lg:text-sm">
+                                        <span className="text-slate-600 dark:text-slate-400">{formatChargeType(s.chargeType)}</span>
+                                        <span className="font-medium text-slate-900 dark:text-white">
+                                            {isLoading ? (
+                                                <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
+                                            ) : (
+                                                <>{symbol}{s.amount.toLocaleString()}</>
+                                            )}
+                                        </span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex justify-between text-[11px] lg:text-sm">
+                                    <span className="text-slate-600 dark:text-slate-400">Taxes and fees</span>
                                     <span className="font-medium text-slate-900 dark:text-white">
                                         {isLoading ? (
                                             <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
                                         ) : (
-                                            <>{symbol}{s.amount.toLocaleString()}</>
+                                            <>{symbol}{taxes.toLocaleString()}</>
                                         )}
                                     </span>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="flex justify-between text-[11px] lg:text-sm">
-                                <span className="text-slate-600 dark:text-slate-400">Taxes and fees</span>
-                                <span className="font-medium text-slate-900 dark:text-white">
-                                    {isLoading ? (
-                                        <span className="h-4 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse inline-block" />
-                                    ) : (
-                                        <>{symbol}{taxes.toLocaleString()}</>
-                                    )}
-                                </span>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Voucher discount line (server-calculated amount) */}
-                        {appliedVoucher && (
-                            <div className="flex justify-between text-sm items-center">
-                                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                                    <Tag size={12} className="flex-shrink-0" />
-                                    <span>Promo: {appliedVoucher.code}</span>
-                                </span>
-                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                    -{symbol}{appliedVoucher.discountAmount.toLocaleString()}
-                                </span>
-                            </div>
-                        )}
+                            {/* Voucher discount line (server-calculated amount) */}
+                            {appliedVoucher && (
+                                <div className="flex justify-between text-sm items-center">
+                                    <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                        <Tag size={12} className="flex-shrink-0" />
+                                        <span>Promo: {appliedVoucher.code}</span>
+                                    </span>
+                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                        -{symbol}{appliedVoucher.discountAmount.toLocaleString()}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
 
-                        {/* Total — uses server-calculated final price when voucher applied */}
+                        {/* Total — always visible (even when collapsed); uses server-calculated final price when voucher applied */}
                         <div className="flex justify-between text-[14px] lg:text-base font-bold pt-2 border-t border-slate-200 dark:border-white/10">
                             <span className="text-slate-900 dark:text-white">Total</span>
                             <div className="text-right">

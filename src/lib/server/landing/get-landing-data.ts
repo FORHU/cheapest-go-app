@@ -126,6 +126,9 @@ export const getWeekendDeals = cache(async (): Promise<WeekendDeal[]> => {
         currency: d.currency || 'PHP',
         image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
         badge: d.badge,
+        guests: Number(d.guests || 0),
+        bedrooms: Number(d.bedrooms || 0),
+        bathrooms: Number(d.bathrooms || 0),
     })) ?? [];
     // Drop duplicate hotels (same property in the same location).
     return dedupeBy(mapped, d => `${d.name}|${d.location}`);
@@ -183,6 +186,9 @@ export const getHotelDeals = cache(async (): Promise<WeekendDeal[]> => {
         hotelCode: d.hotel_code ?? null,
         checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
         checkOut: d.check_out ? String(d.check_out).slice(0, 10) : null,
+        guests: Number(d.guests || 0),
+        bedrooms: Number(d.bedrooms || 0),
+        bathrooms: Number(d.bathrooms || 0),
     })) ?? [];
     return dedupeBy(mapped, d => `${d.name}|${d.location}`);
 });
@@ -322,7 +328,10 @@ export const getLandingData = cache(async () => {
         salePrice: Number(d.sale_price || 0),
         currency: d.currency || 'PHP',
         image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
-        badge: d.badge
+        badge: d.badge,
+        guests: Number(d.guests || 0),
+        bedrooms: Number(d.bedrooms || 0),
+        bathrooms: Number(d.bathrooms || 0),
     })) ?? [];
 
     const mappedDestinations: VacationPackage[] = popularDestinations?.map(d => ({
