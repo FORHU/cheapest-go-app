@@ -24,12 +24,12 @@ import {
 export const GOOGLE_MAPS_SEARCH_URL = 'https://www.google.com/maps/search/?api=1';
 
 export const POI_FILTERS = [
-    { id: 'all', label: 'All Discovery', icon: Search },
-    { id: 'restaurant', label: 'Dining', icon: Utensils },
-    { id: 'attraction', label: 'Attractions & Parks', icon: Landmark },
-    { id: 'grocery', label: 'Groceries', icon: ShoppingBasket },
-    { id: 'medical', label: 'Hospitals & Health', icon: Pill },
-    { id: 'transit', label: 'Transit', icon: Bus },
+    { id: 'all', icon: Search },
+    { id: 'restaurant', icon: Utensils },
+    { id: 'attraction', icon: Landmark },
+    { id: 'grocery', icon: ShoppingBasket },
+    { id: 'medical', icon: Pill },
+    { id: 'transit', icon: Bus },
 ];
 
 export const NEARBY_CATEGORIES = [

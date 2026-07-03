@@ -12,7 +12,7 @@ import { formatCurrency, cn, buildPropertySlug } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
 import { useUserCurrency, useSearchStore, useSearchFilters } from '@/stores/searchStore';
 import CurrencySelector from '@/components/common/CurrencySelector';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 const SearchMapContainer = dynamic(
     () => import('../mapbox/SearchMapContainer').then(m => ({ default: m.SearchMapContainer })),
@@ -27,10 +27,10 @@ const SearchMapContainer = dynamic(
 // ── Sort ────────────────────────────────────────────────
 const SORT_PILLS = [
     { value: 'recommended', labelKey: 'recommended' },
-    { value: 'price-low',   labelKey: 'cheapest' },
-    { value: 'rating',      labelKey: 'topRated' },
+    { value: 'price-low', labelKey: 'cheapest' },
+    { value: 'rating', labelKey: 'topRated' },
     { value: 'most-reviewed', labelKey: 'mostReviewed' },
-    { value: 'price-high',  labelKey: 'priceHighToLow' },
+    { value: 'price-high', labelKey: 'priceHighToLow' },
 ] as const;
 type SortValue = typeof SORT_PILLS[number]['value'];
 
@@ -49,19 +49,7 @@ function matchesBoardType(hotelBoardTypes: string[], selected: string[]): boolea
     });
 }
 
-const PROPERTY_TYPE_OPTIONS = [
-    { value: 'hotel',     label: 'Hotel' },
-    { value: 'apartment', label: 'Apartment' },
-    { value: 'resort',    label: 'Resort' },
-    { value: 'villa',     label: 'Villa' },
-];
-const BOARD_TYPE_OPTIONS = [
-    { code: 'RO', label: 'Room Only' },
-    { code: 'BB', label: 'Breakfast Included' },
-    { code: 'HB', label: 'Half Board' },
-    { code: 'FB', label: 'Full Board' },
-    { code: 'AI', label: 'All Inclusive' },
-];
+
 
 // Fallback coordinates when a search returns 0 mappable results.
 // Keyed by lowercase city/country name (partial prefix match).
@@ -179,12 +167,12 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
     const _daysUntilFriday = ((5 - _now.getDay() + 7) % 7) || 7;
     const _fri = new Date(_now); _fri.setDate(_now.getDate() + _daysUntilFriday);
     const _sun = new Date(_fri); _sun.setDate(_fri.getDate() + 2);
-    const defaultCheckin  = _fri.toISOString().slice(0, 10);
+    const defaultCheckin = _fri.toISOString().slice(0, 10);
     const defaultCheckout = _sun.toISOString().slice(0, 10);
 
-    const [checkin,  setCheckin]  = useState<string>(rawSearchParams.checkin  || rawSearchParams.checkIn  || defaultCheckin);
+    const [checkin, setCheckin] = useState<string>(rawSearchParams.checkin || rawSearchParams.checkIn || defaultCheckin);
     const [checkout, setCheckout] = useState<string>(rawSearchParams.checkout || rawSearchParams.checkOut || defaultCheckout);
-    const [adults,   setAdults]   = useState<number>(Number(rawSearchParams.adults)   || 2);
+    const [adults, setAdults] = useState<number>(Number(rawSearchParams.adults) || 2);
     const [children, setChildren] = useState<number>(Number(rawSearchParams.children) || 0);
 
     const nights = useMemo(() => {
@@ -195,21 +183,22 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
 
     function handleSearch() {
         const params = new URLSearchParams(searchParams?.toString() || '');
-        params.set('checkin',  checkin);
+        params.set('checkin', checkin);
         params.set('checkout', checkout);
-        params.set('adults',   String(adults));
+        params.set('adults', String(adults));
         params.set('children', String(children));
         router.push(`/search?${params.toString()}`);
     }
 
+    const locale = useLocale();
     const fmt = (s: string) => {
         const d = new Date(s + 'T00:00:00');
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
     };
 
     const fmtDay = (s: string) => {
         const d = new Date(s + 'T00:00:00');
-        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return d.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
     return (
@@ -309,6 +298,20 @@ function SearchMapView({
     const tr = useTranslations('hotels.searchResults');
     const tc = useTranslations('hotels.card');
 
+    const PROPERTY_TYPE_OPTIONS = React.useMemo(() => [
+        { value: 'hotel', label: t('filterOptions.propertyTypes.hotel') },
+        { value: 'apartment', label: t('filterOptions.propertyTypes.apartment') },
+        { value: 'resort', label: t('filterOptions.propertyTypes.resort') },
+        { value: 'villa', label: t('filterOptions.propertyTypes.villa') },
+    ], [t]);
+    const BOARD_TYPE_OPTIONS = React.useMemo(() => [
+        { code: 'RO', label: t('filterOptions.boardTypes.roomOnly') },
+        { code: 'BB', label: t('filterOptions.boardTypes.breakfast') },
+        { code: 'HB', label: t('filterOptions.boardTypes.halfBoard') },
+        { code: 'FB', label: t('filterOptions.boardTypes.fullBoard') },
+        { code: 'AI', label: t('filterOptions.boardTypes.allInclusive') },
+    ], [t]);
+
     // State — seed from properties, padded with any allMappable hotels not already present
     // (allMappable may contain more hotels than properties when the server cache is stale)
     const [allProperties, setAllProperties] = React.useState<Property[]>(() => {
@@ -354,23 +357,23 @@ function SearchMapView({
                 if (!incoming) return (p as any).priceLoading ? null : p;
                 if (!incoming) return (p as any).priceLoading ? null : p;
                 const wantsLocation = !p.location && incoming.location;
-                const wantsImage    = !p.image    && incoming.image;
+                const wantsImage = !p.image && incoming.image;
                 // Sync price when catalog sent price:0 and TGX prices have now arrived
-                const wantsPrice    = (p.price === 0 || p.priceLoading) && (incoming as any).price > 0;
+                const wantsPrice = (p.price === 0 || p.priceLoading) && (incoming as any).price > 0;
                 if (!wantsLocation && !wantsImage && !wantsPrice) return p;
                 changed = true;
                 return {
                     ...p,
-                    location:      incoming.location  || p.location,
-                    image:         incoming.image     || p.image,
-                    images:        incoming.images?.length ? incoming.images : p.images,
+                    location: incoming.location || p.location,
+                    image: incoming.image || p.image,
+                    images: incoming.images?.length ? incoming.images : p.images,
                     ...(wantsPrice && {
-                        price:        (incoming as any).price,
-                        currency:     (incoming as any).currency     ?? p.currency,
-                        offerId:      (incoming as any).offerId      ?? p.offerId,
+                        price: (incoming as any).price,
+                        currency: (incoming as any).currency ?? p.currency,
+                        offerId: (incoming as any).offerId ?? p.offerId,
                         refundableTag: (incoming as any).refundableTag ?? p.refundableTag,
-                        boardCode:    (incoming as any).boardCode    ?? p.boardCode,
-                        _tgx:         (incoming as any)._tgx         ?? p._tgx,
+                        boardCode: (incoming as any).boardCode ?? p.boardCode,
+                        _tgx: (incoming as any)._tgx ?? p._tgx,
                         priceLoading: false,
                     }),
                 };
@@ -384,13 +387,13 @@ function SearchMapView({
             if (!changed && newOnes.length === 0 && filtered.length === prev.length) return prev;
             return [...(changed || filtered.length < prev.length ? filtered : prev), ...newOnes];
         });
-    }, [properties]);  
+    }, [properties]);
 
     // ── Client-side display pagination ───────────────────────────
     const LIST_PAGE_SIZE = 15;
     const [displayCount, setDisplayCount] = useState(LIST_PAGE_SIZE);
     const searchKey = JSON.stringify(rawSearchParams);
-    React.useEffect(() => { setDisplayCount(LIST_PAGE_SIZE); }, [searchKey]);  
+    React.useEffect(() => { setDisplayCount(LIST_PAGE_SIZE); }, [searchKey]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const cardRefs = React.useRef<Map<string, HTMLDivElement>>(new Map());
@@ -535,9 +538,9 @@ function SearchMapView({
             // so the property page would fall back to same-day defaults (near-zero OTV inventory).
             // Use rawSearchParams (the actual dates the search ran with) when the URL has none.
             if (!params.has('checkIn') && !params.has('checkin')) {
-                const ci = rawSearchParams.checkin  || rawSearchParams.checkIn;
+                const ci = rawSearchParams.checkin || rawSearchParams.checkIn;
                 const co = rawSearchParams.checkout || rawSearchParams.checkOut;
-                if (ci) params.set('checkIn',  ci);
+                if (ci) params.set('checkIn', ci);
                 if (co) params.set('checkOut', co);
             }
 
@@ -606,7 +609,7 @@ function SearchMapView({
                     <div className="max-w-[1400px] mx-auto px-4 py-3 flex flex-wrap gap-6">
                         {/* Property Type */}
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Property Type</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t('filterOptions.propertyType')}</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {PROPERTY_TYPE_OPTIONS.map(opt => (
                                     <button
@@ -627,7 +630,7 @@ function SearchMapView({
 
                         {/* Meal Plan */}
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Meal Plan</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{t('filterOptions.mealPlan')}</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {BOARD_TYPE_OPTIONS.map(opt => (
                                     <button
@@ -829,7 +832,7 @@ function SearchMapView({
                     ) : allProperties.some((p: any) => (p as any).priceLoading) ? (
                         // Catalog hotels exist but prices haven't arrived yet — show skeletons
                         <div className="flex flex-col gap-3 p-3 overflow-y-auto">
-                            {[1,2,3,4,5,6].map(n => (
+                            {[1, 2, 3, 4, 5, 6].map(n => (
                                 <div key={n} className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 p-3 flex gap-3 animate-pulse">
                                     <div className="w-16 h-16 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
                                     <div className="flex-1 flex flex-col gap-2 py-1">

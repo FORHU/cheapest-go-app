@@ -182,6 +182,10 @@
         }
     },
     "flights": {
+        "search": {
+            "adult": "{count} adult",
+            "adult_plural": "{count} adults"
+        },
         "validation": {
             "missingInformation": "Missing information",
             "selectField": "Please select {field}",
@@ -206,7 +210,15 @@
                 "direct": "Direct",
                 "oneStop": "1 stop",
                 "twoPlus": "2+ stops"
-            }
+            },
+            "searchingFlights": "Searching flights...",
+            "checkingProviders": "Checking multiple providers",
+            "searchFailedTitle": "Search Failed",
+            "tryAgain": "Try Again",
+            "noFlightsTitle": "No flights found",
+            "noFlightsDefaultMessage": "No flights found. Try adjusting your filters or search for different dates.",
+            "discoveringMore": "Discovering more options ({shown} of {total})",
+            "allSeen": "You've seen all {count} available flights. Happy travels!"
         },
         "card": {
             "direct": "Direct",
@@ -226,18 +238,18 @@
             "select": "Select",
             "selectFare": "Select {fare}",
             "thisFare": "this",
-      "outbound": "Outbound",
-      "return": "Return",
-      "includesTaxesFees": "includes taxes & fees",
-      "freeCancellation": "Free cancellation",
-      "refundableFee": "Refundable (est. fee: {fee})",
-      "refundableFeesMayApply": "Refundable (fees may apply)",
-      "noBag": "No bag",
-      "bagsCount": "{count} bag(s)",
-      "brandsAvailable": "{count} brands available",
-      "onlySeatsLeft": "Only {count} left!",
-      "seatsLeft": "{count} seats left",
-      "seatsAvailable": "{count} seats available"
+            "outbound": "Outbound",
+            "return": "Return",
+            "includesTaxesFees": "includes taxes & fees",
+            "freeCancellation": "Free cancellation",
+            "refundableFee": "Refundable (est. fee: {fee})",
+            "refundableFeesMayApply": "Refundable (fees may apply)",
+            "noBag": "No bag",
+            "bagsCount": "{count} bag(s)",
+            "brandsAvailable": "{count} brands available",
+            "onlySeatsLeft": "Only {count} left!",
+            "seatsLeft": "{count} seats left",
+            "seatsAvailable": "{count} seats available"
         },
         "filtersPanel": {
             "sortBy": "Sort By",
@@ -298,7 +310,7 @@
     "footer": {
         "tagline": "Engineered for the discerning traveler.",
         "taglinePrecision": "Precision data. Zero compromise.",
-        "poweredBy": "Powered by Duffel, Mystifly, TravelgateX, ONDA & Rakuten.",
+        "poweredBy": "Powered by Duffel & TravelgateX",
         "module": "Module",
         "flights": "Flights",
         "hotels": "Hotels",
@@ -416,6 +428,14 @@
             "propertiesFound": "{count} properties found",
             "pricesMayChange": "Prices may change based on availability.",
             "map": "Map",
+            "discovery": {
+                "all": "All Discovery",
+                "restaurant": "Dining",
+                "attraction": "Attractions & Parks",
+                "grocery": "Groceries",
+                "medical": "Hospitals & Health",
+                "transit": "Transit"
+            },
             "showMoreRemaining": "Show more ({count} remaining)",
             "allResultsShown": "All {count} results shown",
             "filteredCount": "{filtered} of {total}",
@@ -442,15 +462,97 @@
             "swipeToBrowse": "Swipe to browse",
             "cancellation": "Cancellation",
             "any": "Any",
-            "clearFilters": "Clear filters"
+            "clearFilters": "Clear filters",
+            "filterOptions": {
+                "propertyType": "Property Type",
+                "mealPlan": "Meal Plan",
+                "propertyTypes": {
+                    "hotel": "Hotel",
+                    "apartment": "Apartment",
+                    "resort": "Resort",
+                    "villa": "Villa"
+                },
+                "boardTypes": {
+                    "roomOnly": "Room Only",
+                    "breakfast": "Breakfast Included",
+                    "halfBoard": "Half Board",
+                    "fullBoard": "Full Board",
+                    "allInclusive": "All Inclusive"
+                }
+            },
+            "mapDetails": {
+                "title": "Map details",
+                "explore": "Explore",
+                "transit": "Transit",
+                "traffic": "Traffic",
+                "biking": "Biking",
+                "terrain": "Terrain",
+                "mapType": "Map type",
+                "default-3d": "Default 3D",
+                "default": "Default",
+                "satellite": "Satellite",
+                "labels": "Labels"
+            }
+        },
+        "mobileSearch": {
+            "title": "Search Hotels",
+            "where": "Where",
+            "whereQuestion": "Where?",
+            "searchCityHotel": "Search city or hotel",
+            "checkIn": "Check-in",
+            "checkInQuestion": "When&apos;s your check-in?",
+            "checkOut": "Check-out",
+            "checkOutQuestion": "When&apos;s your check-out?",
+            "addDates": "Add dates",
+            "who": "Who",
+            "whoQuestion": "Who&apos;s coming?",
+            "numberOfGuests": "Number of guests",
+            "clearAll": "Clear all",
+            "search": "Search"
+        },
+        "poiPopup": {
+            "viewOnGoogleMaps": "View on Google Maps",
+            "fromProperty": "from property",
+            "fromHotel": "from hotel",
+            "mFromProperty": "m from property",
+            "kmFromProperty": "km from property",
+            "mFromHotel": "m from hotel",
+            "kmFromHotel": "km from hotel"
         },
         "filters": {
             "activeFilters": "Active Filters:",
             "reset": "Reset",
             "searchByPropertyName": "Search by property name",
             "propertyType": "Property Type",
+            "mealPlan": "Meal Plan",
             "amenities": "Amenities",
-            "strictAmenitiesDescription": "When enabled, only shows hotels with every selected amenity"
+            "strictAmenitiesDescription": "When enabled, only shows hotels with every selected amenity",
+            "filterBy": "Filter by",
+            "searchPlaceholder": "e.g. Marriott",
+            "starRating": "Star rating",
+            "starCount": "{count, plural, one {# star} other {# stars}}",
+            "guestRating": "Guest rating",
+            "minimumReviews": "Minimum reviews",
+            "roomFeatures": "Room Features",
+            "cancellation": "Cancellation",
+            "any": "Any",
+            "freeCancellationOnly": "Free cancellation only",
+            "mustHaveAllAmenities": "Must have ALL selected amenities",
+            "filters": "Filters",
+            "showPlaces": "Show places",
+            "propertyTypes": {
+                "hotel": "Hotel",
+                "apartment": "Apartment",
+                "resort": "Resort",
+                "villa": "Villa"
+            },
+            "boardTypes": {
+                "roomOnly": "Room Only",
+                "breakfast": "Breakfast Included",
+                "halfBoard": "Half Board",
+                "fullBoard": "Full Board",
+                "allInclusive": "All Inclusive"
+            }
         },
         "card": {
             "freeCancellation": "Free cancellation",
@@ -458,6 +560,11 @@
             "reviews": "{count} reviews",
             "perNight": "/night",
             "viewDeal": "View Deal"
+        },
+        "propertyDatePicker": {
+            "checkIn": "Check-in",
+            "checkOut": "Check-out",
+            "addDate": "Add date"
         },
         "collapse": "Collapse ↑"
     },

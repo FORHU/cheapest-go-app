@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Moon, Users } from 'lucide-react';
 import { useBookingDates, useBookingActions } from '@/stores/bookingStore';
 import { cn } from '@/lib/utils';
+import { useLocale, useTranslations } from 'next-intl';
 
 interface PropertyDatePickerProps {
     propertySlug: string;
@@ -19,17 +20,7 @@ interface PropertyDatePickerProps {
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-const MONTHS = ['January','February','March','April','May','June',
-                'July','August','September','October','November','December'];
-const WDAYS  = ['Su','Mo','Tu','We','Th','Fr','Sa'];
-
 function todayIso() { return new Date().toISOString().slice(0, 10); }
-
-function fmtDisplay(iso: string) {
-    if (!iso) return '';
-    const [y, m, d] = iso.split('-').map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
 // ─── CalendarPanel ────────────────────────────────────────────────────────────
 
@@ -43,6 +34,10 @@ function CalendarPanel({
     onSelect: (field: 'in' | 'out', v: string) => void;
     onClose: () => void;
 }) {
+    const locale = useLocale();
+    const t = useTranslations('hotels.propertyDatePicker');
+    const months = React.useMemo(() => genMonths(locale), [locale]);
+    const wdays  = React.useMemo(() => genWeekdays(locale), [locale]);
     const today = todayIso();
     const [hover, setHover] = useState('');
 
@@ -92,23 +87,23 @@ function CalendarPanel({
                     className={cn(
                         'flex-1 py-1.5 transition-colors',
                         step === 'in'
-                            ? 'bg-blue-600 text-white'
-                            : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800',
-                    )}
-                >
-                    Check-in
-                </button>
-                <button
-                    onClick={() => setStep('out')}
-                    className={cn(
-                        'flex-1 py-1.5 transition-colors',
-                        step === 'out'
-                            ? 'bg-blue-600 text-white'
-                            : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800',
-                    )}
-                >
-                    Check-out
-                </button>
+                                ? 'bg-blue-600 text-white'
+                                : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800',
+                        )}
+                    >
+                        {t('checkIn')}
+                    </button>
+                    <button
+                        onClick={() => setStep('out')}
+                        className={cn(
+                            'flex-1 py-1.5 transition-colors',
+                            step === 'out'
+                                ? 'bg-blue-600 text-white'
+                                : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800',
+                        )}
+                    >
+                        {t('checkOut')}
+                    </button>
             </div>
 
             {/* Month navigation */}
@@ -117,7 +112,7 @@ function CalendarPanel({
                     <ChevronLeft size={15} className="text-slate-500" />
                 </button>
                 <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                    {MONTHS[view.m]} {view.y}
+                    {months[view.m]} {view.y}
                 </span>
                 <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <ChevronRight size={15} className="text-slate-500" />
@@ -126,8 +121,8 @@ function CalendarPanel({
 
             {/* Weekday headers */}
             <div className="grid grid-cols-7 mb-1">
-                {WDAYS.map(d => (
-                    <div key={d} className="text-center text-[10px] font-medium text-slate-400 py-0.5">{d}</div>
+                {wdays.map((d, i) => (
+                    <div key={i} className="text-center text-[10px] font-medium text-slate-400 py-0.5">{d}</div>
                 ))}
             </div>
 
@@ -204,6 +199,8 @@ export default function PropertyDatePicker({
     currency,
     nationality,
 }: PropertyDatePickerProps) {
+    const locale = useLocale();
+    const t = useTranslations('hotels.propertyDatePicker');
     const router = useRouter();
     const { checkIn: storeCheckIn, checkOut: storeCheckOut } = useBookingDates();
     const { setDates } = useBookingActions();
@@ -259,6 +256,12 @@ export default function PropertyDatePicker({
 
     const canSearch = Boolean(checkIn && checkOut && checkOut > checkIn);
 
+    function fmtDisplay(iso: string) {
+        if (!iso) return '';
+        const [y, m, d] = iso.split('-').map(Number);
+        return new Date(y, m - 1, d).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
     function openPicker(s: 'in' | 'out') {
         setStep(s);
         setOpen(true);
@@ -299,7 +302,7 @@ export default function PropertyDatePicker({
                 <div ref={containerRef} className="grid grid-cols-2 gap-2 flex-1 relative min-w-0">
                     {/* Check-in */}
                     <div className="min-w-0">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">Check-in</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">{t('checkIn')}</p>
                         <button
                             onClick={() => openPicker('in')}
                             className={cn(
@@ -311,7 +314,7 @@ export default function PropertyDatePicker({
                         >
                             <span className="text-slate-400 shrink-0">{calSvg}</span>
                             <span className={checkIn ? 'text-slate-900 dark:text-white font-medium' : 'text-slate-400'}>
-                                {checkIn ? fmtDisplay(checkIn) : 'Add date'}
+                                {checkIn ? fmtDisplay(checkIn) : t('addDate')}
                             </span>
                         </button>
                     </div>
@@ -319,7 +322,7 @@ export default function PropertyDatePicker({
                     {/* Check-out — nights shown in label */}
                     <div className="min-w-0">
                         <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
-                            Check-out
+                            {t('checkOut')}
                             {nights > 0 && (
                                 <span className="flex items-center gap-0.5 text-slate-400">
                                     <Moon size={10} />
@@ -338,7 +341,7 @@ export default function PropertyDatePicker({
                         >
                             <span className="text-slate-400 shrink-0">{calSvg}</span>
                             <span className={checkOut ? 'text-slate-900 dark:text-white font-medium' : 'text-slate-400'}>
-                                {checkOut ? fmtDisplay(checkOut) : 'Add date'}
+                                {checkOut ? fmtDisplay(checkOut) : t('addDate')}
                             </span>
                         </button>
                     </div>
