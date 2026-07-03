@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { MapPin } from 'lucide-react';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { cityImagePath } from '@/lib/destination-images';
+import { useTranslations } from 'next-intl';
 
 interface City {
   name: string;
@@ -44,6 +45,7 @@ interface CityCardProps {
 
 const CityCard: React.FC<CityCardProps> = ({ city, index }) => {
   const router = useRouter();
+  const t = useTranslations('topCities');
 
   function navigate() {
     const p = new URLSearchParams({
@@ -90,7 +92,7 @@ const CityCard: React.FC<CityCardProps> = ({ city, index }) => {
 
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <span className="bg-white/90 text-slate-900 text-[11px] font-semibold px-4 py-1.5 rounded-full shadow-lg">
-            Explore Hotels
+            {t('exploreHotels')}
           </span>
         </div>
       </div>
@@ -99,6 +101,7 @@ const CityCard: React.FC<CityCardProps> = ({ city, index }) => {
 };
 
 const TopCitiesSection: React.FC = () => {
+  const t = useTranslations('topCities');
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -109,11 +112,11 @@ const TopCitiesSection: React.FC = () => {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-lg sm:text-xl font-display font-bold text-slate-900 dark:text-white">
-              Top Cities{' '}
-              <span className="text-blue-600 dark:text-blue-400">Worldwide</span>
+              {t('headerMain')}{' '}
+              <span className="text-blue-600 dark:text-blue-400">{t('headerHighlight')}</span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Most visited destinations · find hotels instantly
+              {t('subtitle')}
             </p>
           </div>
         </div>

@@ -1,0 +1,626 @@
+{
+    "nav": {
+        "home": "ホーム",
+        "profile": "プロフィール",
+        "support": "サポート",
+        "openApp": "アプリを開く",
+        "signIn": "ログイン",
+        "signOut": "ログアウト",
+        "myTrips": "マイトリップ",
+        "account": "アカウント",
+        "trips": "旅行",
+        "createAccount": "アカウントを作成",
+        "accountSettings": "アカウント設定",
+        "membersSave": "会員は10%以上割引",
+        "membersSaveSubtitle": "ログイン中の対象宿泊が対象",
+        "accountWorks": "アカウントはCheapestGoおよびすべてのパートナーサイトで利用できます"
+    },
+    "languagePicker": {
+        "label": "言語を選択",
+        "en": "English",
+        "ko": "한국어",
+        "cn": "中文",
+        "ja": "日本語"
+    },
+    "currencyPicker": {
+        "label": "通貨を選択"
+    },
+    "theme": {
+        "switchToDark": "ダークモードに切り替え",
+        "switchToLight": "ライトモードに切り替え",
+        "contextError": "useThemeはThemeProvider内で使用する必要があります"
+    },
+    "popularDestinations": {
+        "title": "人気の目的地",
+        "subtitle": "アジア太平洋の人気スポットを探索 — 数秒でフライトとホテルを検索。"
+    },
+    "landing": {
+        "hero": {
+            "title": "最安値の航空券",
+            "titleLine1": "精密な旅。",
+            "titleLine2": "あなた専用に設計。",
+            "subtitle": "現代の旅行者のためのオペレーティングシステム。",
+            "monoSubtext": "何でも尋ねて、すべてを予約。",
+            "cta": "フライトを検索"
+        },
+        "search": {
+            "from": "出発地",
+            "to": "目的地",
+            "depart": "出発日",
+            "return": "帰国日",
+            "rooms": "部屋",
+            "placeholder": {
+                "airport": "都市または空港",
+                "date": "日付を選択"
+            },
+            "tripType": {
+                "roundTrip": "往復",
+                "oneWay": "片道",
+                "multiCity": "マルチシティ"
+            },
+            "cabinClass": {
+                "economy": "エコノミー",
+                "premiumEconomy": "プレミアムエコノミー",
+                "business": "ビジネス",
+                "first": "ファースト"
+            },
+            "submit": "検索",
+            "anywhere": "どこでも",
+            "anyWeek": "いつでも",
+            "addGuests": "人数を追加",
+            "guests": "{count}名",
+            "guestsPlural": "{count}名",
+            "clearAll": "すべてクリア",
+            "findDeals": "最安値を探す",
+            "comingSoon": "近日公開",
+            "aiDevelopment": "AI検索は現在開発中です。お楽しみに！",
+            "askAi": "AIに聞く",
+            "aiGreeting": "今朝は何をお手伝いしますか？",
+            "results": "検索結果",
+            "findingFlights": "航空便を検索中…",
+            "searchFlightsHeader": "フライト検索",
+            "bundle": {
+                "hotelBooked": "ホテル予約済み！",
+                "instructions": "{from}と{to}の空港を入力し、日程を選んで検索すると最大8%お得になります。"
+            },
+            "whereTo": "どこへ？",
+            "searchDestination": "目的地を検索",
+            "checkIn": "チェックイン",
+            "checkOut": "チェックアウト",
+            "travelers": "旅行者",
+            "guest": "{count}名",
+            "guestPlural": "{count}名",
+            "guestsRooms": "ゲストと部屋",
+            "adults": "大人",
+            "children": "子ども",
+            "childrenAges": "0〜17歳",
+            "roomsNote": "1予約につき1室。追加の部屋は別途予約してください。",
+            "done": "完了",
+            "calendar": "カレンダー",
+            "flexibleDates": "柔軟な日程",
+            "whenTravel": "いつ旅行しますか？",
+            "childLabel": "子ども{index}：{age}歳",
+            "yearsOld": "{age}歳",
+            "month": "月",
+            "year": "年",
+            "searchDestinationsPlaceholder": "目的地を検索...",
+            "recentSearches": "最近の検索",
+            "searching": "検索中...",
+            "noResults": "結果が見つかりません",
+            "countries": "国",
+            "cities": "都市",
+            "typeToSearch": "都市名または空港コードを入力...",
+            "noAirportsFound": "「{query}」の空港が見つかりません",
+            "typeToSearchPrompt": "都市名または空港コードを入力して検索",
+            "cabinClassLabel": "座席クラス",
+            "passengers": "乗客",
+            "infants": "幼児",
+            "adultAge": "12歳以上",
+            "childAge": "2〜11歳",
+            "infantAge": "2歳未満（膝上）",
+            "selectDate": "選択",
+            "months": [
+                "１月",
+                "２月",
+                "３月",
+                "４月",
+                "５月",
+                "６月",
+                "７月",
+                "８月",
+                "９月",
+                "１０月",
+                "１１月",
+                "１２月"
+            ],
+            "days": [
+                "日",
+                "月",
+                "火",
+                "水",
+                "木",
+                "金",
+                "土"
+            ],
+            "flexOptions": [
+                "正確な日付",
+                "±1日",
+                "±2日",
+                "±3日",
+                "±7日"
+            ],
+            "searchMode": {
+                "stays": "宿泊",
+                "flights": "フライト",
+                "aiSearch": "AI 検索"
+            }
+        },
+        "recentlyViewed": {
+            "title": "検索を再開",
+            "subtitle": "前回の続きから",
+            "viewAll": "すべて見る",
+            "recentlySearched": "最近の検索",
+            "from": "から",
+            "stay": "宿泊",
+            "flight": "フライト",
+            "showLess": "折りたたむ"
+        },
+        "howItWorksSteps": {
+            "howItWorks": "ご利用方法",
+            "book": "旅の予約は",
+            "bookNext": "簡単3ステップで。",
+            "search": {
+                "title": "検索",
+                "description": "目的地、日程、旅行者数を入力して、最適なフライトとホテルを見つけましょう。"
+            },
+            "compareStep": {
+                "title": "比較",
+                "description": "航空会社やホテルのリアルタイム料金を比較。価格、評価、設備で絞り込みできます。"
+            },
+            "bookStep": {
+                "title": "予約",
+                "description": "安全に暗号化されたチェックアウトで数分以内に旅行を確定。毎回即時確認されます。"
+            }
+        }
+    },
+    "flights": {
+        "search": {
+            "adult": "{count} 名様",
+            "adult_plural": "{count} 名様",
+            "stillSearching": "検索中...",
+            "takingLonger": "通常より検索に時間がかかっています",
+            "sources": "提供元:",
+            "total_count": "（合計{count}件）",
+            "fetchingProviders": "プロバイダーから取得中...",
+            "providersSlow": "航空会社の応答が遅くなっています。そのままお待ちください。最良の運賃を引き続き検索しています。",
+            "providersSlowDescription": "航空会社の応答が遅くなっています。もう一度お試しいただくか、検索条件を変更してください。",
+            "tryAgain": "再試行",
+            "newSearch": "新しい検索"
+        },
+        "validation": {
+            "missingInformation": "情報が不足しています",
+            "selectField": "{field}を選択してください",
+            "fields": {
+                "segmentOriginAirport": "区間{index}の出発空港",
+                "segmentDestinationAirport": "区間{index}の到着空港",
+                "segmentDate": "区間{index}の日付",
+                "returnOriginAirport": "復路の出発空港",
+                "returnDestinationAirport": "復路の到着空港",
+                "returnDate": "復路の日付"
+            }
+        },
+        "results": {
+            "result": "{count, plural, other {件}}",
+            "loading": "最安値を探しています…",
+            "empty": "この日程のフライトは見つかりませんでした。",
+            "sortBy": "並び替え",
+            "filters": "絞り込み",
+            "price": "料金",
+            "duration": "所要時間",
+            "stops": {
+                "any": "すべて",
+                "direct": "直行便",
+                "oneStop": "乗り継ぎ1回",
+                "twoPlus": "乗り継ぎ2回以上"
+            },
+            "searchingFlights": "フライトを検索中...",
+            "checkingProviders": "複数のプロバイダーを確認しています",
+            "searchFailedTitle": "検索に失敗しました",
+            "tryAgain": "再試行",
+            "noFlightsTitle": "フライトが見つかりません",
+            "noFlightsDefaultMessage": "フライトが見つかりませんでした。フィルターを調整するか、別の日程で検索してください。",
+            "discoveringMore": "他のオプションを検索中（{total}件中{shown}件）",
+            "allSeen": "利用可能なフライト{count}件をすべてご覧いただきました。良い旅を！"
+        },
+        "card": {
+            "direct": "直行便",
+            "stop": "回乗り継ぎ",
+            "stops": "回乗り継ぎ",
+            "viewDeal": "料金を見る",
+            "perPerson": "1人あたり",
+            "nonstop": "直行便",
+            "stopCount": "{count}回乗り継ぎ",
+            "stopsCount": "{count}回乗り継ぎ",
+            "stopCountShort": "{count}回乗り継ぎ",
+            "nonRefundable": "返金不可",
+            "hideDetails": "詳細を隠す",
+            "showAllSegments": "すべての区間を表示",
+            "compareOptions": "{count}件のオプションを比較",
+            "currentlySelected": "現在選択中",
+            "select": "選択",
+            "selectFare": "{fare}を選択",
+            "thisFare": "この運賃",
+            "outbound": "往路",
+            "return": "復路",
+            "includesTaxesFees": "税金・手数料込み",
+            "freeCancellation": "無料キャンセル",
+            "refundableFee": "返金可 (推定手数料: {fee})",
+            "refundableFeesMayApply": "返金可 (手数料がかかる場合があります)",
+            "noBag": "手荷物なし",
+            "bagsCount": "手荷物 {count}個",
+            "brandsAvailable": "{count}件のブランドあり",
+            "onlySeatsLeft": "残り{count}席!",
+            "seatsLeft": "残り{count}席",
+            "seatsAvailable": "{count}席あり",
+            "perPersonShort": "/人",
+            "moreSegments": "+ {count}件"
+        },
+        "filtersPanel": {
+            "sortBy": "並び替え",
+            "cheapestFirst": "安い順",
+            "fastestFirst": "所要時間が短い順",
+            "earliestDeparture": "出発が早い順",
+            "stops": "乗り継ぎ",
+            "anyStops": "すべての乗り継ぎ",
+            "nonStopOnly": "直行便のみ",
+            "upToOneStop": "乗り継ぎ1回まで",
+            "fareType": "運賃タイプ",
+            "refundableFares": "返金可能な運賃",
+            "refundableFaresDescription": "キャンセル時に返金を受けられる運賃",
+            "provider": "プロバイダー",
+            "airlines": "航空会社",
+            "branded": "ブランド運賃",
+            "ndc": "NDC"
+        },
+        "priceAlert": {
+            "trackPrice": "価格を追跡",
+            "signInRequired": "価格アラートを設定するにはログインしてください",
+            "enabled": "アラートを設定しました。価格が下がったらメールでお知らせします。",
+            "remove": "価格アラートを削除",
+            "emailWhenDrops": "価格が下がったらメールで通知",
+            "loading": "読み込み中...",
+            "active": "アラート有効",
+            "removed": "アラートを削除しました",
+            "failed": "アラートを設定できませんでした"
+        }
+    },
+    "auth": {
+        "signIn": {
+            "title": "CheapestGo にログイン",
+            "emailLabel": "メールアドレス",
+            "emailPlaceholder": "your@email.com",
+            "continueWithEmail": "メールで続ける",
+            "continueWithGoogle": "Google で続ける",
+            "continueWithApple": "Apple で続ける",
+            "orDivider": "または",
+            "terms": "ログインすることで{terms}と{privacy}に同意したものとみなされます。",
+            "termsLink": "利用規約",
+            "privacyLink": "プライバシーポリシー"
+        }
+    },
+    "errors": {
+        "generic": "エラーが発生しました。もう一度お試しください。",
+        "notFound": "ページが見つかりません。",
+        "searchFailed": "検索に失敗しました。接続を確認してもう一度お試しください。"
+    },
+    "pwa": {
+        "installPrompt": {
+            "title": "CheapestGo アプリを入手",
+            "body": "ホーム画面に追加すると、より素早くアクセスできます。",
+            "install": "インストール",
+            "dismiss": "後で"
+        }
+    },
+    "footer": {
+        "tagline": "目の肥えた旅行者のために設計。",
+        "taglinePrecision": "正確なデータ。妥協なし。",
+        "poweredBy": "Powered by Duffel & TravelgateX",
+        "module": "サービス",
+        "flights": "フライト",
+        "hotels": "ホテル",
+        "cars": "レンタカー",
+        "company": "会社情報",
+        "aboutUs": "会社概要",
+        "enterprise": "法人向け",
+        "support": "サポート",
+        "network": "接続状況",
+        "flightsApi": "フライト API",
+        "paymentGateway": "決済ゲートウェイ",
+        "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "allRightsReserved": "Partners. 無断転載を禁じます。",
+        "terms": "利用規約",
+        "privacy": "プライバシー",
+        "cookies": "クッキー",
+        "contact": "お問い合わせ",
+        "copyrightMinimal": "CheapestGo © 2026",
+        "termsMinimal": "利用規約と条件",
+        "privacyMinimal": "プライバシーポリシー",
+        "cookiesMinimal": "Cookie 設定",
+        "contactMinimal": "お問い合わせ",
+        "reportBug": "バグを報告"
+    },
+    "appBanner": {
+        "badge": "モバイルアプリ",
+        "title": "アプリでもっとスマートに旅行",
+        "subtitle": "アプリ限定セール、インスタント通知、外出先での旅行管理機能をご利用ください。",
+        "downloads": "ダウンロード",
+        "rating": "アプリ評価",
+        "savings": "特別割引",
+        "installBtn": "アプリをインストール",
+        "downloadBtn": "アプリをダウンロード",
+        "learnMore": "詳細はこちら"
+    },
+    "search": {
+        "validation": {
+            "selectField": "{field}を選択してください",
+            "allHotelFieldsRequired": "ホテル検索にはすべての項目が必要です",
+            "fieldList": "{fields}と{last}",
+            "listSeparator": "、",
+            "fields": {
+                "destination": "目的地",
+                "checkInDate": "チェックイン日",
+                "checkOutDate": "チェックアウト日"
+            }
+        }
+    },
+    "deals": {
+        "popularRoute": "人気路線",
+        "searchFlights": "フライトを検索",
+        "all": "すべて",
+        "oneWay": "片道",
+        "roundTrip": "往復",
+        "headerDefault": "特別セール＆オファー",
+        "headerPersonalized": "{city} 出発の格安航空券",
+        "subtitleDefault": "人気路線の最安値",
+        "subtitlePersonalized": "{city} 出発の最安値フライト",
+        "allDealsCount": "すべてのオファー（{count}件）",
+        "collapse": "折りたたむ ↑"
+    },
+    "hotels": {
+        "ratings": {
+            "exceptional": "素晴らしい",
+            "excellent": "大変良い",
+            "superb": "素晴らしい",
+            "veryGood": "とても良い",
+            "good": "良い",
+            "average": "普通",
+            "fair": "まずまず",
+            "poor": "低評価",
+            "pleasant": "快適"
+        },
+        "fromPrice": "{price}〜",
+        "perNight": "/泊",
+        "pricesMayVary": "価格は変動する場合があります",
+        "guestFavorite": "ゲストのお気に入り",
+        "bookNow": "今すぐ予約",
+        "headerDefault": "人気のホテルセール",
+        "headerPersonalized": "{country} のホテルセール",
+        "subtitleDefault": "厳選されたホテルをお得な価格で",
+        "subtitlePersonalized": "{country} の高評価ホテル · 毎日更新",
+        "allHotelsCount": "すべてのホテル（{count}軒）",
+        "collapse": "折りたたむ ↑",
+        "searchPage": {
+            "title": "ホテル・宿泊施設検索 | CheapestGo",
+            "description": "世界中のホテル、アパート、ユニークな宿泊施設を最安値で検索・予約。CheapestGoで価格を比較し、理想の滞在先を見つけましょう。"
+        },
+        "searchResults": {
+            "sort": {
+                "recommended": "おすすめ",
+                "cheapest": "最安値",
+                "topRated": "高評価",
+                "mostReviewed": "レビューが多い順",
+                "priceHighToLow": "価格: 高い順"
+            },
+            "checkingAvailability": "空室状況を確認中…",
+            "loadingMore": "ホテルをさらに読み込み中",
+            "found": "件見つかりました",
+            "foundCount": "{count}件見つかりました",
+            "searching": "ホテルを検索中…",
+            "searchingInDestination": "{destination}のホテルを検索中",
+            "searchFailed": "検索に失敗しました。もう一度お試しください。",
+            "searchUnavailable": "検索を利用できません",
+            "refreshPage": "問題が発生しました。ページを更新してください。",
+            "noHotelsFound": "ホテルが見つかりません",
+            "noHotelsFoundIn": "{destination}のホテルが見つかりません",
+            "noPropertiesFound": "宿泊施設が見つかりません",
+            "supplierUnavailable": "現在のサプライヤーはこの目的地に対応していない可能性があります。日程を変える、フィルターを調整する、または近くの都市で検索してください。",
+            "supplierUnavailableShort": "現在のサプライヤーはこの目的地に対応していない可能性があります。別の日程または近くの都市をお試しください。",
+            "tryDifferentDates": "別の日程または近くの都市をお試しください。",
+            "allResultsLoaded": "全{count}件の結果を読み込みました",
+            "loadMoreShowing": "さらに表示 · {shown}/{total}件を表示中",
+            "hotelsFound": "{count}件のホテルが見つかりました",
+            "hotelsCount": "{count}件のホテル",
+            "staysIn": "{destination}の宿泊施設",
+            "allProperties": "すべての宿泊施設",
+            "propertiesFound": "{count}件の宿泊施設が見つかりました",
+            "pricesMayChange": "料金は空室状況により変動する場合があります。",
+            "map": "地図",
+            "discovery": {
+                "all": "すべての発見",
+                "restaurant": "食事",
+                "attraction": "観光スポット & 公園",
+                "grocery": "食料品",
+                "medical": "病院 & 健康",
+                "transit": "交通機関"
+            },
+            "showMoreRemaining": "さらに表示（残り{count}件）",
+            "allResultsShown": "全{count}件の結果を表示しました",
+            "filteredCount": "{filtered}/{total}",
+            "noHotelsAvailable": "利用可能なホテルはありません",
+            "noHotelsAvailableIn": "{destination}で利用可能なホテルはありません"
+        },
+        "mapSearch": {
+            "placeholder": "地図上の場所を検索..."
+        },
+        "mapView": {
+            "findingHotels": "ホテルを検索中",
+            "findingHotelsIn": "{destination}のホテルを検索中",
+            "comparingRates": "200件以上のホテル料金を比較中…",
+            "checkIn": "チェックイン",
+            "checkOut": "チェックアウト",
+            "nights": "泊",
+            "guests": "ゲスト",
+            "search": "検索",
+            "searchFallback": "検索",
+            "back": "戻る",
+            "filters": "絞り込み",
+            "list": "リスト",
+            "pricePerNight": "{min} – {max} /泊",
+            "swipeToBrowse": "スワイプして見る",
+            "cancellation": "キャンセル",
+            "any": "すべて",
+            "clearFilters": "フィルターをクリア",
+            "filterOptions": {
+                "propertyType": "宿泊施設タイプ",
+                "mealPlan": "食事プラン",
+                "propertyTypes": {
+                    "hotel": "ホテル",
+                    "apartment": "アパートメント",
+                    "resort": "リゾート",
+                    "villa": "ヴィラ"
+                },
+                "boardTypes": {
+                    "roomOnly": "素泊まり",
+                    "breakfast": "朝食付き",
+                    "halfBoard": "半食付き",
+                    "fullBoard": "一泊二食",
+                    "allInclusive": "オールインクルーシブ"
+                }
+            },
+            "mapDetails": {
+                "title": "地図詳細",
+                "explore": "探索",
+                "transit": "交通機関",
+                "traffic": "渋滞",
+                "biking": "自転車",
+                "terrain": "地形",
+                "mapType": "地図タイプ",
+                "default-3d": "3D標準",
+                "default": "標準",
+                "satellite": "衛星",
+                "labels": "ラベル"
+            }
+        },
+        "mobileSearch": {
+            "title": "ホテルを検索",
+            "where": "場所",
+            "whereQuestion": "どこに行きますか？",
+            "searchCityHotel": "都市またはホテルを検索",
+            "checkIn": "チェックイン",
+            "checkInQuestion": "チェックイン日はいつですか？",
+            "checkOut": "チェックアウト",
+            "checkOutQuestion": "チェックアウト日はいつですか？",
+            "addDates": "日付を追加",
+            "who": "人数",
+            "whoQuestion": "どなたが旅行されますか？",
+            "numberOfGuests": "ゲスト数",
+            "clearAll": "すべてクリア",
+            "search": "検索"
+        },
+        "poiPopup": {
+            "viewOnGoogleMaps": "Google Mapsで見る",
+            "fromProperty": "から",
+            "fromHotel": "から",
+            "mFromProperty": "m",
+            "kmFromProperty": "km",
+            "mFromHotel": "m",
+            "kmFromHotel": "km"
+        },
+        "filters": {
+            "activeFilters": "適用中のフィルター:",
+            "reset": "リセット",
+            "searchByPropertyName": "宿泊施設名で検索",
+            "propertyType": "宿泊施設タイプ",
+            "amenities": "設備",
+            "strictAmenitiesDescription": "有効にすると、選択したすべての設備があるホテルのみを表示します",
+            "filterBy": "絞り込み",
+            "searchPlaceholder": "例：マリオット",
+            "starRating": "星評価",
+            "starCount": "{count}つ星",
+            "guestRating": "ゲスト評価",
+            "minimumReviews": "最低レビュー数",
+            "roomFeatures": "客室の特徴",
+            "cancellation": "キャンセルポリシー",
+            "any": "すべて",
+            "freeCancellationOnly": "無料キャンセルのみ",
+            "mustHaveAllAmenities": "選択したすべての設備を含む",
+            "filters": "絞り込み",
+            "showPlaces": "宿泊施設を表示",
+            "propertyTypes": {
+                "hotel": "ホテル",
+                "apartment": "アパートメント",
+                "resort": "リゾート",
+                "villa": "ヴィラ"
+            },
+            "boardTypes": {
+                "roomOnly": "素泊まり",
+                "breakfast": "朝食付き",
+                "halfBoard": "ハーフボード",
+                "fullBoard": "フルボード",
+                "allInclusive": "オールインクルーシブ"
+            }
+        },
+        "card": {
+            "freeCancellation": "無料キャンセル",
+            "freeCancelShort": "無料キャンセル",
+            "reviews": "{count}件のレビュー",
+            "perNight": "/泊",
+            "viewDeal": "料金を見る"
+        },
+        "propertyDatePicker": {
+            "checkIn": "チェックイン",
+            "checkOut": "チェックアウト",
+            "addDate": "日付を追加"
+        }
+    },
+    "topCities": {
+        "headerMain": "人気の都市",
+        "headerHighlight": "世界中",
+        "subtitle": "最も人気の目的地 · すぐにホテルを検索",
+        "exploreHotels": "ホテルを検索"
+    },
+    "topDestinations": {
+        "headerMain": "人気の目的地",
+        "headerHighlight": "世界中",
+        "subtitle": "世界中から集めたアイコニックな体験",
+        "findHotels": "ホテルを検索"
+    },
+    "guestFavorites": {
+        "headerMain": "お気に入り",
+        "headerHighlight": "ホテル",
+        "subtitle": "旅行者に愛される高評価ホテル · 毎日更新",
+        "allFavoritesCount": "すべてのお気に入り（{count}件）",
+        "collapse": "折りたたむ ↑"
+    },
+    "seo": {
+        "orgDescription": "CheapestGo は、世界中で最安値の航空券とホテルを見つける現代的な旅行予約プラットフォームです。",
+        "faq": {
+            "q1": "CheapestGo はどうやって安い航空券を見つけますか？",
+            "a1": "CheapestGo は複数の航空会社とグローバル流通システムを検索し、リアルタイムで最安値を探して一か所で比較・予約できます。",
+            "q2": "CheapestGo で航空券とホテルの両方を予約できますか？",
+            "a2": "はい。CheapestGo では航空券、ホテル、アパート、ユニークな宿泊施設をすべて一つのプラットフォームで予約できます。",
+            "q3": "CheapestGo は無料で使えますか？",
+            "a3": "はい、価格の検索と比較は完全無料です。費用が発生するのは予約時のみです。",
+            "q4": "CheapestGo はどの通貨に対応していますか？",
+            "a4": "CheapestGo は複数の通貨に対応しており、設定に基づいて自動的に価格を換算し、いつでも現地通貨で確認できます。"
+        }
+    },
+    "ai": {
+        "prompts": {
+            "bali": "バリ島のビーチフロントリゾート、大人2名、2月14〜21日...",
+            "tokyo": "東京の高級ホテル、1泊200ドル以下、プール付き...",
+            "cebu": "来月、セブでカップルの週末旅行...",
+            "manila": "マニラ近郊のファミリーリゾート、大人2名・子ども2名..."
+        }
+    }
+}

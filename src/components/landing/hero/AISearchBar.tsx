@@ -18,6 +18,7 @@ import { useFlightSearch } from '@/hooks/search/useFlightSearch';
 import { DestinationSection, CheckInSection, CheckOutSection, TravelersSection } from './search/SearchSections';
 import { FlightSearchForm } from './search/FlightSearchForm';
 import { TripTypeSelector } from './search/TripTypeSelector';
+import { useTranslations } from 'next-intl';
 
 // Mock AI parse results — visual prototype only
 const DEFAULT_RESULT = {
@@ -42,7 +43,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
     // Global State
     const searchMode = useSearchMode();
     const { setSearchMode } = useSearchActions();
-
+    const t = useTranslations('landing.search');
     // Switch tab + detect bundle context from URL params on mount
     const [isBundleMode, setIsBundleMode] = useState(false);
     const [hasAlreadyBookedFlight, setHasAlreadyBookedFlight] = useState(false);
@@ -56,7 +57,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
         }
         if (params.get('bundleHotelId')) setIsBundleMode(true);
         setHasAlreadyBookedFlight(sessionStorage.getItem('hasAlreadyBookedFlight') === 'true');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // AI Local State
@@ -72,10 +73,10 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
 
     const destination = useDestination();
     const query = useDestinationQuery();
-    const destinationStr = destination?.title || query || 'Anywhere';
+    const destinationStr = destination?.title || query || t('anywhere');
 
     const { checkIn, checkOut } = useDates();
-    let dateStr = 'Any week';
+    let dateStr = t('anyWeek');
     if (checkIn && checkOut) {
         try {
             const start = new Date(checkIn);
@@ -92,7 +93,9 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
 
     const { adults, children } = useTravelers();
     const totalTravelers = adults + children;
-    const guestsStr = totalTravelers ? `${totalTravelers} guest${totalTravelers > 1 ? 's' : ''}` : 'Add guests';
+    const guestsStr = totalTravelers
+        ? (totalTravelers === 1 ? t('guests', { count: totalTravelers }) : t('guestsPlural', { count: totalTravelers }))
+        : t('addGuests');
 
     // Hooks for search actions
     const { handleSearch: handleHotelSearch, isSearching: isHotelSearching } = useSearchModule();
@@ -104,8 +107,8 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
     // Handlers
     const handleModeChange = useCallback((newMode: 'hotels' | 'flights' | 'ai') => {
         if (newMode === 'ai') {
-            toast('Coming Soon', {
-                description: 'AI Search is under development. Stay tuned!',
+            toast(t('comingSoon'), {
+                description: t('aiDevelopment'),
                 icon: '✨',
             });
             return;
@@ -113,7 +116,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
         setSearchMode(newMode);
         setShowResults(false);
         setIsAIThinking(false);
-    }, [setSearchMode]);
+    }, [setSearchMode, t]);
 
     const triggerAI = useCallback((query: string) => {
         setIsAIThinking(true);
@@ -176,7 +179,11 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                         <Hotel size={14} className="text-violet-600 dark:text-violet-400" />
                     </div>
                     <p className="text-xs text-violet-700 dark:text-violet-300 flex-1">
-                        <span className="font-bold">Hotel booked!</span> Enter your <span className="font-semibold">FROM</span> and <span className="font-semibold">TO</span> airports, pick your dates, then hit Search to bundle and save up to 8%.
+                        <span className="font-bold">{t('bundle.hotelBooked')}</span>{' '}
+                        {t.rich('bundle.instructions', {
+                            from: (chunks) => <span className="font-semibold">{chunks}</span>,
+                            to: (chunks) => <span className="font-semibold">{chunks}</span>
+                        })}
                     </p>
                     <button onClick={() => setIsBundleMode(false)} className="shrink-0 text-violet-400 hover:text-violet-600 dark:hover:text-violet-200 transition-colors">
                         <X size={14} />
@@ -209,10 +216,10 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                         <Search size={18} className="text-blue-500 shrink-0" />
                         <div className="flex-1 min-w-0">
                             <p className="text-[13px] font-bold text-slate-900 dark:text-white truncate">
-                                {searchMode === 'flights' ? 'Search flights' : (destinationStr === 'Anywhere' ? 'Where to?' : destinationStr)}
+                                {searchMode === 'flights' ? t('searchFlightsHeader') : (destinationStr === t('anywhere') ? t('whereTo') : destinationStr)}
                             </p>
                             <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate">
-                                {searchMode === 'flights' ? 'Find the best deals' : `${dateStr} · ${guestsStr}`}
+                                {searchMode === 'flights' ? t('findDeals') : `${dateStr} · ${guestsStr}`}
                             </p>
                         </div>
                     </button>
@@ -276,6 +283,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                     <MagneticButton
                                         onClick={handleMainSearchClick}
                                         isLoading={isSearching}
+                                        label={t('submit')}
                                         className={`h-12 w-full sm:w-auto px-6 rounded-lg ${searchMode === 'flights' ? 'bg-blue-600! hover:bg-blue-700!' : ''}`}
                                     />
                                 </div>
@@ -315,7 +323,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                     <MagneticButton
                                         onClick={handleAISubmit}
                                         isLoading={isAIThinking}
-                                        label="Ask AI"
+                                        label={t('askAi')}
                                         icon={<Sparkles size={16} />}
                                         className="h-full min-h-[64px]"
                                     />
@@ -337,7 +345,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                     <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-base font-bold text-slate-900 dark:text-white">Finding flights…</p>
+                                    <p className="text-base font-bold text-slate-900 dark:text-white">{t('findingFlights')}</p>
                                     {(flightState.flights[0]?.origin?.title && flightState.flights[0]?.destination?.title) && (
                                         <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                                             {flightState.flights[0].origin.title} to {flightState.flights[0].destination.title}
@@ -347,7 +355,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                             </div>
                         )}
                         <div className="flex justify-between items-center px-6 pt-5 pb-4 shrink-0">
-                            <h2 className="text-lg font-medium text-slate-900 dark:text-white">Search Flights</h2>
+                            <h2 className="text-lg font-medium text-slate-900 dark:text-white">{t('searchFlightsHeader')}</h2>
                             <button
                                 onClick={() => setIsMobileModalOpen(false)}
                                 className="p-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm"
@@ -367,7 +375,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                         onClick={() => useSearchStore.getState().reset()}
                                         className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                     >
-                                        Clear all
+                                        {t('clearAll')}
                                     </motion.button>
                                 )}
                             </AnimatePresence>
@@ -393,7 +401,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                     }}
                                     isLoading={isSearching}
                                     className="w-full h-10 rounded-xl bg-blue-600! hover:bg-blue-700! text-white! font-medium text-sm shadow-lg shadow-blue-500/25"
-                                    label="Search"
+                                    label={t('submit')}
                                 />
                             </div>
                         </div>
@@ -416,7 +424,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                 <X size={20} />
                             </button>
                             <span className="text-sm font-medium text-slate-900 dark:text-white">
-                                {(isAIThinking || showResults) ? 'Results' : ''}
+                                {(isAIThinking || showResults) ? t('results') : ''}
                             </span>
                             <div className="w-10"></div>
                         </div>
@@ -435,7 +443,7 @@ const AISearchBarContent: React.FC<AISearchBarProps> = ({ onSuggestionReady }) =
                                             className="flex-1 flex flex-col items-center justify-center -mt-10"
                                         >
                                             <h2 className="text-2xl sm:text-3xl font-display font-medium text-slate-800 dark:text-slate-200 text-center max-w-[280px] sm:max-w-xs leading-tight">
-                                                How can I help you this morning?
+                                                {t('aiGreeting')}
                                             </h2>
                                         </motion.div>
                                     ) : (

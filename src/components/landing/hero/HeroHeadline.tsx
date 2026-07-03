@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion, Variants } from 'framer-motion';
 import { VersionBadge } from '../sections/TelemetryComponents';
+import { useTranslations } from 'next-intl';
 
 const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -21,6 +22,8 @@ const itemVariants: Variants = {
 };
 
 const HeroHeadline: React.FC = () => {
+    const t = useTranslations('landing.hero');
+
     return (
         <>
             <VersionBadge />
@@ -33,11 +36,11 @@ const HeroHeadline: React.FC = () => {
             >
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-slate-900 dark:text-white tracking-tighter leading-[1.1] mb-1 sm:mb-3 drop-shadow-sm landscape-compact:mb-0.5 landscape-compact:text-3xl">
                     <motion.span variants={itemVariants} className="block">
-                        Precision Travel.
+                        {t('titleLine1')}
                     </motion.span>
                     <motion.span variants={itemVariants} className="block">
                         <span className="text-4xl sm:text-5xl lg:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-400 dark:from-blue-400 dark:to-cyan-300">
-                            Machined for You.
+                            {t('titleLine2')}
                         </span>
                     </motion.span>
                 </h1>
@@ -46,7 +49,7 @@ const HeroHeadline: React.FC = () => {
                     variants={itemVariants}
                     className="text-base sm:text-lg md:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-body leading-relaxed mb-1 sm:mb-2 landscape-compact:hidden"
                 >
-                    The operating system for the modern voyager.
+                    {t('subtitle')}
                 </motion.p>
 
                 <motion.p
@@ -54,7 +57,7 @@ const HeroHeadline: React.FC = () => {
                     className="text-sm md:text-base max-w-2xl mx-auto font-mono"
                 >
                     <span className="text-xs sm:text-sm text-transparent bg-clip-text bg-gradient-to-r from-slate-400 to-slate-500 dark:from-slate-500 dark:to-slate-400">
-                        Ask anything. Book everything.
+                        {t('monoSubtext')}
                     </span>
                 </motion.p>
             </motion.div>

@@ -8,6 +8,65 @@ import { getSqlAdmin } from '@/lib/db/postgres';
 import { resolveTgxDestinationCode } from '@/lib/server/search';
 import { otvCodeToLabel } from './amenityCodes';
 
+// ─── Country bounding boxes for geographic hotel filtering ───────────────────
+// Used to reject OTV portfolio hotels that are in the wrong country.
+// Bounding boxes are intentionally generous (±2° buffer) to avoid false negatives.
+const COUNTRY_BBOX: Record<string, { minLat: number; maxLat: number; minLng: number; maxLng: number }> = {
+    TH: { minLat: 3.6, maxLat: 22.5, minLng: 95.3, maxLng: 107.7 },
+    ID: { minLat: -13.0, maxLat: 7.9, minLng: 93.0, maxLng: 143.0 },
+    JP: { minLat: 22.0, maxLat: 47.5, minLng: 120.9, maxLng: 147.8 },
+    PH: { minLat: 4.6, maxLat: 21.1, minLng: 116.9, maxLng: 128.0 },
+    SG: { minLat: 1.1, maxLat: 1.6, minLng: 103.6, maxLng: 104.1 },
+    MY: { minLat: -0.2, maxLat: 8.5, minLng: 99.6, maxLng: 119.5 },
+    VN: { minLat: 8.2, maxLat: 23.4, minLng: 102.1, maxLng: 109.5 },
+    KH: { minLat: 9.4, maxLat: 14.7, minLng: 102.3, maxLng: 107.6 },
+    IN: { minLat: 6.7, maxLat: 37.1, minLng: 68.2, maxLng: 97.4 },
+    CN: { minLat: 18.2, maxLat: 53.6, minLng: 73.5, maxLng: 134.8 },
+    KR: { minLat: 33.1, maxLat: 38.6, minLng: 125.1, maxLng: 130.9 },
+    AU: { minLat: -43.7, maxLat: -10.7, minLng: 113.2, maxLng: 153.6 },
+    NZ: { minLat: -47.3, maxLat: -34.4, minLng: 166.4, maxLng: 178.6 },
+    MV: { minLat: -1.0, maxLat: 7.1, minLng: 72.7, maxLng: 73.8 },
+    LK: { minLat: 5.9, maxLat: 9.8, minLng: 79.7, maxLng: 81.9 },
+    AE: { minLat: 22.6, maxLat: 26.1, minLng: 51.6, maxLng: 56.4 },
+    TR: { minLat: 35.8, maxLat: 42.1, minLng: 25.7, maxLng: 44.8 },
+    GR: { minLat: 34.8, maxLat: 41.8, minLng: 19.4, maxLng: 29.6 },
+    IT: { minLat: 36.6, maxLat: 47.1, minLng: 6.7, maxLng: 18.5 },
+    ES: { minLat: 27.6, maxLat: 43.8, minLng: -18.2, maxLng: 4.3 },
+    FR: { minLat: 41.3, maxLat: 51.1, minLng: -5.2, maxLng: 9.6 },
+    DE: { minLat: 47.3, maxLat: 55.1, minLng: 5.9, maxLng: 15.0 },
+    PT: { minLat: 29.8, maxLat: 42.2, minLng: -31.3, maxLng: -6.2 },
+    GB: { minLat: 49.9, maxLat: 60.8, minLng: -8.6, maxLng: 1.8 },
+    US: { minLat: 18.9, maxLat: 71.4, minLng: -179.1, maxLng: -66.9 },
+    MX: { minLat: 14.5, maxLat: 32.7, minLng: -117.1, maxLng: -86.7 },
+    BR: { minLat: -33.8, maxLat: 5.3, minLng: -73.9, maxLng: -34.8 },
+    MA: { minLat: 27.7, maxLat: 35.9, minLng: -13.2, maxLng: -1.0 },
+    EG: { minLat: 22.0, maxLat: 31.7, minLng: 24.7, maxLng: 37.0 },
+    KE: { minLat: -4.7, maxLat: 4.6, minLng: 33.9, maxLng: 41.9 },
+    ZA: { minLat: -34.8, maxLat: -22.1, minLng: 16.5, maxLng: 32.9 },
+    IS: { minLat: 63.3, maxLat: 66.6, minLng: -24.5, maxLng: -13.5 },
+    HK: { minLat: 22.1, maxLat: 22.6, minLng: 113.8, maxLng: 114.5 },
+};
+
+function filterByCountryBbox(
+    codes: string[],
+    contentMap: Map<string, any>,
+    countryCode?: string,
+): string[] {
+    if (!countryCode) return codes;
+    const bbox = COUNTRY_BBOX[countryCode.toUpperCase()];
+    if (!bbox) return codes;
+    const filtered = codes.filter(code => {
+        const c = contentMap.get(code);
+        if (!c) return false;
+        const lat = c.lat as number;
+        const lng = c.lng as number;
+        if (!lat && !lng) return false; // no coords → exclude
+        return lat >= bbox.minLat && lat <= bbox.maxLat &&
+               lng >= bbox.minLng && lng <= bbox.maxLng;
+    });
+    return filtered;
+}
+
 // ─── ETG (RateHawk/WorldOTA) hotel name lookup ───────────────────────────────
 
 /** Fetch hotel names from the ETG B2B API for IDs where OTV returned null hotelName.
@@ -251,15 +310,13 @@ async function searchEtgCity(
             return pa - pb;
         });
 
-        const TOP_N = 20;
-        const topHotels = hotels.slice(0, TOP_N);
-        const topIds = topHotels.map((h: any) => h.id as string);
+        const allIds = hotels.map((h: any) => h.id as string);
 
         // Use any pre-existing hotel_content data
-        const existingContent = await fetchHotelContent(topIds);
-        const needInfo = topHotels.filter((h: any) => !existingContent.get(h.id)?.name);
+        const existingContent = await fetchHotelContent(allIds);
+        const needInfo = hotels.filter((h: any) => !existingContent.get(h.id)?.name);
 
-        // Parallel info fetch for the unknown hotels (cap at 15 to stay within rate limit)
+        // Parallel info fetch for hotels missing names (cap at 15 to stay within rate limit)
         const toFetch = needInfo.slice(0, 15);
         const infoResults = toFetch.length > 0
             ? await Promise.allSettled(toFetch.map((h: any) => fetchEtgHotelInfo(h.id as string)))
@@ -274,7 +331,7 @@ async function searchEtgCity(
         // Background-seed hotel_content for all results (Phase 1 catalog for future searches)
         seedEtgHotelContent(hotels, cityName, params.countryCode).catch(() => {});
 
-        const results = topHotels.map((h: any) => {
+        const results = hotels.map((h: any) => {
             const rate = h.rates?.[0];
             const pt   = rate?.payment_options?.payment_types?.[0];
             const price    = parseFloat(pt?.show_amount    ?? '0');
@@ -798,7 +855,11 @@ async function runCityFallback(
     if (otvCodes.length === 0) {
         console.log(`[tgx-search] DB empty for "${cityName}" — querying OTV portfolio`);
         const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined);
-        otvCodes = otv.codes;
+        const filteredCodes = filterByCountryBbox(otv.codes, otv.contentMap, countryCode);
+        if (filteredCodes.length < otv.codes.length) {
+            console.warn(`[tgx-search] Filtered ${otv.codes.length - filteredCodes.length} out-of-country hotels for "${cityName}" (${countryCode}) — likely OTV dest-code mismatch`);
+        }
+        otvCodes = filteredCodes;
         otvContentMap = otv.contentMap;
     } else {
         // Codes exist in DB — sample up to 20 to detect null-name rows (OTV data quality gap).
@@ -811,7 +872,9 @@ async function runCityFallback(
             console.log(`[tgx-search] ${missingNames}/${sample.length} sampled hotels have no name for "${cityName}" — refreshing OTV portfolio`);
             const otv = await fetchOtvHotelCodesByCity(cityName, resolvedCode ?? undefined);
             otvContentMap = otv.contentMap;
-            if (otv.codes.length > 0) otvCodes = otv.codes;
+            if (otv.codes.length > 0) {
+                otvCodes = filterByCountryBbox(otv.codes, otv.contentMap, countryCode);
+            }
         }
     }
 

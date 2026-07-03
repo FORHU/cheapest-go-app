@@ -9,6 +9,7 @@ import type { FlightOffer, CabinClass } from '@/types/flights';
 import { ListFilter, ChevronDown, X } from 'lucide-react';
 import { ResponsiveFlightHeader } from './ResponsiveFlightHeader';
 import { useSearchActions, useSearchStore } from '@/stores/searchStore';
+import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
@@ -99,6 +100,7 @@ function getProviderCounts(offers: FlightOffer[]): Record<string, number> {
 // ─── Provider Status Badge ────────────────────────────────────────────────────
 
 function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: boolean }) {
+    const t = useTranslations('flights.search');
     const providerCounts = useMemo(() => getProviderCounts(offers), [offers]);
     const entries = Object.entries(providerCounts);
 
@@ -107,7 +109,7 @@ function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: b
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
                 <span className="inline-flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    Fetching from providers...
+                    {t('fetchingProviders')}
                 </span>
             </div>
         );
@@ -117,7 +119,7 @@ function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: b
 
     return (
         <div className="flex flex-wrap items-center gap-2 text-[10px] font-normal">
-            <span className="text-blue-600 dark:text-blue-400">Sources:</span>
+            <span className="text-blue-600 dark:text-blue-400">{t('sources')}</span>
             {entries.map(([provider, count]) => (
                 <span
                     key={provider}
@@ -128,7 +130,7 @@ function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: b
                 </span>
             ))}
             <span className="text-slate-400">
-                ({offers.length} total)
+                {t('total_count', { count: offers.length })}
             </span>
         </div>
     );
@@ -146,6 +148,7 @@ export function SearchFetcher({
     infants,
     cabinClass,
 }: SearchFetcherProps) {
+    const t = useTranslations('flights.search');
     const router = useRouter();
     const [state, setState] = useState<SearchState>({ status: 'loading' });
     const [retryKey, setRetryKey] = useState(0);
@@ -339,19 +342,19 @@ export function SearchFetcher({
         return (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-10 text-center space-y-4">
                 <div className="text-5xl">⏱️</div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Search is taking longer than usual</h2>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t('takingLonger')}</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                    Flight providers are slow to respond right now. Please try again or adjust your search.
+                    {t('providersSlowDescription')}
                 </p>
                 <div className="flex gap-3 justify-center mt-2">
                     <button
                         onClick={() => setRetryKey(k => k + 1)}
                         className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-full transition-colors">
-                        Try Again
+                        {t('tryAgain')}
                     </button>
                     <a href="/"
                         className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white text-sm font-semibold rounded-full transition-colors">
-                        New Search
+                        {t('newSearch')}
                     </a>
                 </div>
             </div>
@@ -373,8 +376,7 @@ export function SearchFetcher({
 
     // ─── Loading + Results layout (with sidebar) ──────────────────────────────
 
-    const cabinLabel = cabinClass.replace('_', ' ');
-    const passengersStr = `${adults} Adult${adults > 1 ? 's' : ''}`;
+    const passengersStr = t('adult', { count: adults });
     const dateStr = returnDate ? `${departureDate} - ${returnDate}` : departureDate;
 
     const mobileFilterModal = (
@@ -455,8 +457,8 @@ export function SearchFetcher({
                 <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-4 flex items-center gap-3">
                     <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin shrink-0" />
                     <div>
-                        <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Still searching...</p>
-                        <p className="text-xs text-amber-600/70 dark:text-amber-400/70">Flight providers are responding slowly. Hang tight, we&apos;re still looking for the best fares.</p>
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-300">{t('stillSearching')}</p>
+                        <p className="text-xs text-amber-600/70 dark:text-amber-400/70">{t('providersSlow')}</p>
                     </div>
                 </div>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface FlightFiltersProps {
     airlines: string[];
@@ -22,6 +23,7 @@ export interface FilterState {
  * FlightFilters - Client-side filtering and sorting for results.
  */
 export default function FlightFilters({ airlines, onFilterChange, className }: FlightFiltersProps) {
+    const t = useTranslations('flights.filtersPanel');
     const [state, setState] = useState<FilterState>({
         sortBy: "price",
         selectedAirlines: [],
@@ -56,37 +58,37 @@ export default function FlightFilters({ airlines, onFilterChange, className }: F
         <div className={`flex flex-col gap-4 ${className}`}>
             {/* Sorting */}
             <div className="space-y-1.5 lg:space-y-2">
-                <p className="text-[10px] lg:text-[11px] font-normal text-slate-400 uppercase tracking-widest">Sort By</p>
+                <p className="text-[10px] lg:text-[11px] font-normal text-slate-400 uppercase tracking-widest">{t('sortBy')}</p>
                 <div className="flex flex-col gap-0.5 lg:gap-1">
                     <button 
                         onClick={() => updateSort("price")}
                         className={`text-left px-3 py-1 lg:py-1.5 rounded-md text-[11px] lg:text-xs font-normal transition-colors ${state.sortBy === 'price' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                     >
-                        Cheapest First
+                        {t('cheapestFirst')}
                     </button>
                     <button 
                         onClick={() => updateSort("duration")}
                         className={`text-left px-3 py-1 lg:py-1.5 rounded-md text-[11px] lg:text-xs font-normal transition-colors ${state.sortBy === 'duration' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                     >
-                        Fastest First
+                        {t('fastestFirst')}
                     </button>
                     <button 
                         onClick={() => updateSort("departure")}
                         className={`text-left px-3 py-1 lg:py-1.5 rounded-md text-[11px] lg:text-xs font-normal transition-colors ${state.sortBy === 'departure' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                     >
-                        Earliest Departure
+                        {t('earliestDeparture')}
                     </button>
                 </div>
             </div>
 
             {/* Stops */}
             <div className="space-y-1.5 lg:space-y-2">
-                <p className="text-[10px] lg:text-[11px] font-normal text-slate-400 uppercase tracking-widest">Stops</p>
+                <p className="text-[10px] lg:text-[11px] font-normal text-slate-400 uppercase tracking-widest">{t('stops')}</p>
                 <div className="flex flex-col gap-0.5 lg:gap-1">
                     {[
-                        { label: "Any Stops", value: null },
-                        { label: "Non-stop only", value: 0 },
-                        { label: "Up to 1 stop", value: 1 },
+                        { label: t('anyStops'), value: null },
+                        { label: t('nonStopOnly'), value: 0 },
+                        { label: t('upToOneStop'), value: 1 },
                     ].map((option) => (
                         <button 
                             key={option.label}
@@ -101,13 +103,13 @@ export default function FlightFilters({ airlines, onFilterChange, className }: F
 
             {/* Fare Type */}
             <div className="space-y-1.5 lg:space-y-2">
-                <p className="text-[10px] lg:text-[11px] font-normal text-slate-400 uppercase tracking-widest">Fare Type</p>
+                <p className="text-[10px] lg:text-[11px] font-normal text-slate-400 uppercase tracking-widest">{t('fareType')}</p>
                 <label className="flex items-center justify-between cursor-pointer group">
                     <div>
                         <span className="text-[11px] lg:text-xs font-normal text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                            Refundable fares
+                            {t('refundableFares')}
                         </span>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Fares that allow cancellation with a refund</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{t('refundableFaresDescription')}</p>
                     </div>
                     <button
                         role="switch"
@@ -133,11 +135,11 @@ export default function FlightFilters({ airlines, onFilterChange, className }: F
             {/* Provider — dev only */}
             {process.env.NODE_ENV !== 'production' && (
             <div className="space-y-1.5 lg:space-y-2">
-                <p className="text-[10px] lg:text-[11px] font-normal text-slate-400 uppercase tracking-widest">Provider</p>
+                <p className="text-[10px] lg:text-[11px] font-normal text-slate-400 uppercase tracking-widest">{t('provider')}</p>
                 <div className="flex flex-col gap-1">
                     {([
-                        { value: "mystifly_v2" as FlightProvider, label: "Mystifly", sub: "Branded" },
-                        { value: "duffel" as FlightProvider, label: "Duffel", sub: "NDC" },
+                        { value: "mystifly_v2" as FlightProvider, label: "Mystifly", sub: t('branded') },
+                        { value: "duffel" as FlightProvider, label: "Duffel", sub: t('ndc') },
                     ]).map(({ value, label, sub }) => {
                         const active = state.selectedProviders.includes(value);
                         return (
@@ -168,7 +170,7 @@ export default function FlightFilters({ airlines, onFilterChange, className }: F
 
             {/* Airlines */}
             <div className="space-y-1.5 lg:space-y-2">
-                <p className="text-[10px] lg:text-[11px] font-normal text-slate-400 uppercase tracking-widest">Airlines</p>
+                <p className="text-[10px] lg:text-[11px] font-normal text-slate-400 uppercase tracking-widest">{t('airlines')}</p>
                 <div className="flex flex-col gap-1.5">
                     {airlines.map(airline => (
                         <label key={airline} className="flex items-center gap-2 cursor-pointer group">

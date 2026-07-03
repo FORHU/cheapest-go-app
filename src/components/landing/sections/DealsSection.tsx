@@ -8,6 +8,7 @@ import { Heart } from 'lucide-react';
 import SectionHeader from './SectionHeader';
 import { type Deal } from '@/types';
 import { useDragScroll } from '@/hooks/useDragScroll';
+import { useTranslations } from 'next-intl';
 
 // ── IATA lookups ──────────────────────────────────────────────────────────────
 const AIRPORT_CITIES: Record<string, string> = {
@@ -41,12 +42,12 @@ const AIRPORT_CITIES: Record<string, string> = {
   EZE: 'Buenos Aires',    SCL: 'Santiago',           BOG: 'Bogotá',
 };
 
-// ── Cabin class labels ────────────────────────────────────────────────────────
-const CABIN_LABELS: Record<string, string> = {
-  economy:         'Economy',
-  premium_economy: 'Premium Economy',
-  business:        'Business Class',
-  first:           'First Class',
+// ── Cabin class translation keys ──────────────────────────────────────────────
+const CABIN_KEYS: Record<string, string> = {
+  economy:         'landing.search.cabinClass.economy',
+  premium_economy: 'landing.search.cabinClass.premiumEconomy',
+  business:        'landing.search.cabinClass.business',
+  first:           'landing.search.cabinClass.first',
 };
 
 function getCity(iata: string | undefined): string {
@@ -81,21 +82,15 @@ function isPlaceholderImage(url: string | null | undefined): boolean {
 }
 
 
-/** Route deal cards directly to the book page. The book page handles passenger config + search. */
+/** Route deal cards to the search page so the user can pick their own dates. */
 function buildBookingUrl(deal: Deal): string {
   if (!deal.origin || !deal.destination) return '/flights/search';
   const p = new URLSearchParams({
     origin:      deal.origin,
     destination: deal.destination,
-    cabinClass:  deal.cabinClass || 'economy',
+    cabin:       deal.cabinClass || 'economy',
   });
-  if (deal.salePrice)     p.set('dealPrice',         String(Math.round(deal.salePrice)));
-  if (deal.originalPrice && deal.originalPrice > deal.salePrice)
-                          p.set('dealOriginalPrice', String(Math.round(deal.originalPrice)));
-  if (deal.currency)      p.set('dealCurrency',      deal.currency);
-  if (deal.discount)      p.set('dealDiscount',      deal.discount);
-  if (deal.subtitle)      p.set('dealSubtitle',      deal.subtitle);
-  return `/flights/book?${p.toString()}`;
+  return `/flights/search?${p.toString()}`;
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────────
@@ -107,6 +102,7 @@ interface DealCardProps {
 
 const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carousel' }) => {
   const router     = useRouter();
+  const t          = useTranslations();
 
   const destCity   = getCity(deal.destination);
   const imageUrl   = isPlaceholderImage(deal.image)
@@ -114,7 +110,7 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
     : deal.image;
 
   const bookingUrl = buildBookingUrl(deal);
-  const cabinLabel = CABIN_LABELS[deal.cabinClass || 'economy'] ?? 'Economy';
+  const cabinLabel = t(CABIN_KEYS[deal.cabinClass || 'economy'] || 'landing.search.cabinClass.economy');
 
   const [isSaved, setIsSaved] = useState(false);
 
@@ -147,7 +143,7 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
           {/* Popular Route badge — top left */}
           <div className="absolute top-1.5 left-2.5 z-10">
             <span className="px-2 py-1 bg-white/20 backdrop-blur-sm text-white text-[11px] rounded-md leading-none border border-white/30">
-              Popular Route
+              {t('deals.popularRoute')}
             </span>
           </div>
 
@@ -180,13 +176,13 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
           {/* Cabin · Trip type + Book button */}
           <div className="flex items-center justify-between gap-2 mt-auto pt-2">
             <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
-             • {cabinLabel} • {deal.return_date ? 'Round Trip' : 'One Way'}
+             • {cabinLabel} • {deal.return_date ? t('deals.roundTrip') : t('deals.oneWay')}
             </p>
             <button
               onClick={e => { e.stopPropagation(); router.push(bookingUrl); }}
               className="shrink-0 inline-flex items-center gap-1 text-[11px] text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-sm transition-colors cursor-pointer leading-none"
             >
-              Search Flights
+              {t('deals.searchFlights')}
             </button>
           </div>
         </div>
@@ -288,6 +284,7 @@ function useUserOrigin(): { iata: string | null; city: string | null } {
 interface DealsSectionProps { deals?: Deal[] }
 
 const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
+  const t         = useTranslations();
   const rawDeals  = deals || [];
   const gridRef   = useRef<HTMLDivElement>(null);
   const { ref: rowRef, dragProps } = useDragScroll<HTMLDivElement>();
@@ -329,18 +326,18 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
             if (!showAll) setTimeout(() => gridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
           }}
           title={isPersonalized
-            ? <>Flight Deals from <span className="text-blue-600 dark:text-blue-400">{userCity ?? userOrigin}</span></>
-            : 'Exclusive Deals & Offers'}
+            ? t.rich('deals.headerPersonalized', { city: () => <span className="text-blue-600 dark:text-blue-400">{userCity ?? userOrigin}</span> })
+            : t('deals.headerDefault')}
           subtitle={isPersonalized
-            ? `Low fares departing from ${userCity ?? userOrigin}`
-            : 'Low fares on popular routes'}
+            ? t('deals.subtitlePersonalized', { city: userCity ?? userOrigin })
+            : t('deals.subtitleDefault')}
         >
           {/* Trip-type filter pills */}
           <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {([
-              { key: 'all',       label: 'All' },
-              { key: 'oneway',    label: 'One Way' },
-              { key: 'roundtrip', label: 'Round Trip' },
+              { key: 'all',       label: t('deals.all') },
+              { key: 'oneway',    label: t('deals.oneWay') },
+              { key: 'roundtrip', label: t('deals.roundTrip') },
             ] as const).map(({ key, label }) => (
               <button
                 key={key}
@@ -383,13 +380,13 @@ const DealsSection: React.FC<DealsSectionProps> = ({ deals }) => {
             >
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                  All {displayDeals.length} deals
+                  {t('deals.allDealsCount', { count: displayDeals.length })}
                 </p>
                 <button
                   onClick={() => setShowAll(false)}
                   className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors rounded-md"
                 >
-                  Collapse ↑
+                  {t('deals.collapse')}
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">

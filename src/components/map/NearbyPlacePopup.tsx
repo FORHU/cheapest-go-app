@@ -3,6 +3,7 @@
 import React from 'react';
 import { Popup } from 'react-map-gl/mapbox';
 import { X, Navigation, ExternalLink } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { NearbyPlace } from './useMapNearbyPlaces';
 
 interface NearbyPlacePopupProps {
@@ -15,10 +16,10 @@ function formatCategory(raw: string): string {
     return raw.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatDistance(km: number): string {
+function formatDistance(t: any, km: number): string {
     return km < 1
-        ? `${Math.round(km * 1000)} m from hotel`
-        : `${km.toFixed(2)} km from hotel`;
+        ? `${Math.round(km * 1000)} ${t('mFromHotel')}`
+        : `${km.toFixed(2)} ${t('kmFromHotel')}`;
 }
 
 function getRatingLabel(rating: number): string {
@@ -42,6 +43,7 @@ const NearbyPlacePopup = React.memo(function NearbyPlacePopup({
     distanceKm,
     onClose,
 }: NearbyPlacePopupProps) {
+    const t = useTranslations('hotels.poiPopup');
     const mapsUrl = place.placeId
         ? `https://www.google.com/maps/place/?q=place_id:${place.placeId}`
         : `https://maps.google.com/?q=${place.lat},${place.lng}`;
@@ -102,7 +104,7 @@ const NearbyPlacePopup = React.memo(function NearbyPlacePopup({
                     {distanceKm !== null && (
                         <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
                             <Navigation className="w-3 h-3 flex-shrink-0" />
-                            <span>{formatDistance(distanceKm)}</span>
+                            <span>{formatDistance(t, distanceKm)}</span>
                         </div>
                     )}
 
@@ -113,7 +115,7 @@ const NearbyPlacePopup = React.memo(function NearbyPlacePopup({
                         className="mt-2 flex items-center gap-1.5 text-[10px] text-blue-600 dark:text-blue-400 hover:underline"
                     >
                         <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                        View on Google Maps
+                        {t('viewOnGoogleMaps')}
                     </a>
                 </div>
             </div>

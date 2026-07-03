@@ -8,11 +8,11 @@ export function useMapDetails(defaultMapType: MapTypeId = 'default') {
     const [showDetailsPanel, setShowDetailsPanel] = useState(false);
     const [showLabels, setShowLabels] = useState(true);
     const [mapDetails, setMapDetails] = useState<MapDetailToggle[]>([
-        { id: 'explore',  label: 'Explore',   enabled: true },
-        { id: 'transit',  label: 'Transit',   enabled: false },
-        { id: 'traffic',  label: 'Traffic',   enabled: false },
-        { id: 'biking',   label: 'Biking',    enabled: false },
-        { id: 'terrain',  label: 'Terrain',   enabled: false },
+        { id: 'explore',  enabled: true },
+        { id: 'transit',  enabled: false },
+        { id: 'traffic',  enabled: false },
+        { id: 'biking',   enabled: false },
+        { id: 'terrain',  enabled: false },
     ]);
 
     // Derive feature flags from the toggle list once; avoids repeated .find() calls per render
