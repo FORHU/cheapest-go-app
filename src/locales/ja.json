@@ -392,7 +392,8 @@
             "good": "良い",
             "average": "普通",
             "fair": "まずまず",
-            "poor": "低評価"
+            "poor": "低評価",
+            "pleasant": "快適"
         },
         "fromPrice": "{price}〜",
         "perNight": "/泊",

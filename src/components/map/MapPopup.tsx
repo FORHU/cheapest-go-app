@@ -17,12 +17,12 @@ interface MapPopupProps {
     isCentered?: boolean;
 }
 
-function getRatingLabel(rating: number): string {
-    if (rating >= 9) return 'Exceptional';
-    if (rating >= 8) return 'Excellent';
-    if (rating >= 7) return 'Very Good';
-    if (rating >= 6) return 'Good';
-    return 'Pleasant';
+function getRatingLabel(rating: number, t: ReturnType<typeof useTranslations>): string {
+    if (rating >= 9) return t('exceptional');
+    if (rating >= 8) return t('excellent');
+    if (rating >= 7) return t('veryGood');
+    if (rating >= 6) return t('good');
+    return t('pleasant');
 }
 
 const STAR_PATH = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z';
@@ -69,6 +69,7 @@ const MapPopup = React.memo(function MapPopup({
     const isLandscape = useIsLandscapeMobile();
     const targetCurrency = useUserCurrency();
     const t = useTranslations('hotels.card');
+    const rt = useTranslations('hotels.ratings');
     const sourceCurrency = property.currency || 'USD';
     const displayPrice = React.useMemo(
         () => convertCurrency(property.price, sourceCurrency, targetCurrency),
@@ -104,7 +105,7 @@ const MapPopup = React.memo(function MapPopup({
                 map.off('wheel', handleMapClose);
             }
         };
-     
+
     }, [mapRef])
     const content = (
         <div className="bg-white dark:bg-slate-900 rounded-xl overflow-hidden shadow-2xl w-[240px]">
@@ -142,7 +143,7 @@ const MapPopup = React.memo(function MapPopup({
                 {rating > 0 && (
                     <div className="flex items-center gap-1 mt-1">
                         <StarRating rating={rating} size={10} />
-                        <span className="text-[9px] text-slate-500 dark:text-slate-400">{rating.toFixed(1)}</span>
+                        <span className="text-[9px] text-slate-500 dark:text-slate-400">{rating.toFixed(1)} · {getRatingLabel(rating, rt)}</span>
                     </div>
                 )}
 

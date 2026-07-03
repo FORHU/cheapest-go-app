@@ -392,7 +392,8 @@
             "good": "좋음",
             "average": "보통",
             "fair": "무난함",
-            "poor": "낮음"
+            "poor": "낮음",
+            "pleasant": "쾌적함"
         },
         "fromPrice": "{price}부터",
         "perNight": "/박",

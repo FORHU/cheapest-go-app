@@ -392,7 +392,8 @@
             "good": "好",
             "average": "一般",
             "fair": "一般",
-            "poor": "较差"
+            "poor": "较差",
+            "pleasant": "舒适"
         },
         "fromPrice": "{price} 起",
         "perNight": "/晚",
