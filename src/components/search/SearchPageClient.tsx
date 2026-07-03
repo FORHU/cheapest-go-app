@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { MapResultsClient } from './MapResultsClient';
 import { HotelResultsClient } from './HotelResultsClient';
 import SearchFilters from './SearchFilters';
@@ -16,6 +17,7 @@ interface SearchPageClientProps {
 }
 
 export function SearchPageClient({ searchParams, destination, initialFacilities, initialView }: SearchPageClientProps) {
+    const t = useTranslations('hotels.mapView');
     const [view, setView] = useState<'map' | 'list'>(initialView);
     // Lazy-mount list view — only after user first switches to it (or starts there).
     // Prevents HotelResultsClient from fetching before the map has populated the cache.
@@ -59,7 +61,7 @@ export function SearchPageClient({ searchParams, destination, initialFacilities,
                 >
                     <div className="max-w-[1400px] mx-auto">
                         <div className="hidden lg:block mb-4">
-                            <BackButton label="Back to Home" href="/" />
+                            <BackButton label={t('back')} href="/" />
                         </div>
                         <ResponsiveSearchHeader />
                     </div>

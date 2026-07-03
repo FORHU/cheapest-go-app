@@ -9,6 +9,7 @@ import type { FlightOffer, CabinClass } from '@/types/flights';
 import { ListFilter, ChevronDown, X } from 'lucide-react';
 import { ResponsiveFlightHeader } from './ResponsiveFlightHeader';
 import { useSearchActions, useSearchStore } from '@/stores/searchStore';
+import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
@@ -146,6 +147,7 @@ export function SearchFetcher({
     infants,
     cabinClass,
 }: SearchFetcherProps) {
+    const t = useTranslations('flights.search');
     const router = useRouter();
     const [state, setState] = useState<SearchState>({ status: 'loading' });
     const [retryKey, setRetryKey] = useState(0);
@@ -373,8 +375,7 @@ export function SearchFetcher({
 
     // ─── Loading + Results layout (with sidebar) ──────────────────────────────
 
-    const cabinLabel = cabinClass.replace('_', ' ');
-    const passengersStr = `${adults} Adult${adults > 1 ? 's' : ''}`;
+    const passengersStr = t('adult', { count: adults });
     const dateStr = returnDate ? `${departureDate} - ${returnDate}` : departureDate;
 
     const mobileFilterModal = (

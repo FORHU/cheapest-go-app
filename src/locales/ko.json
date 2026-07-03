@@ -182,6 +182,10 @@
         }
     },
     "flights": {
+        "search": {
+            "adult": "성인 {count}명",
+            "adult_plural": "성인 {count}명"
+        },
         "validation": {
             "missingInformation": "정보가 부족합니다",
             "selectField": "{field}을(를) 선택해 주세요",
@@ -206,7 +210,15 @@
                 "direct": "직항",
                 "oneStop": "경유 1회",
                 "twoPlus": "경유 2회 이상"
-            }
+            },
+            "searchingFlights": "항공편 검색 중...",
+            "checkingProviders": "여러 공급사를 확인하는 중입니다",
+            "searchFailedTitle": "검색 실패",
+            "tryAgain": "다시 시도",
+            "noFlightsTitle": "항공편을 찾을 수 없습니다",
+            "noFlightsDefaultMessage": "항공편을 찾을 수 없습니다. 필터를 조정하거나 다른 날짜로 검색해 보세요.",
+            "discoveringMore": "더 많은 옵션을 찾는 중 ({total}개 중 {shown}개)",
+            "allSeen": "이용 가능한 항공편 {count}개를 모두 확인하셨습니다. 즐거운 여행 되세요!"
         },
         "card": {
             "direct": "직항",
@@ -226,18 +238,18 @@
             "select": "선택",
             "selectFare": "{fare} 선택",
             "thisFare": "이 요금",
-      "outbound": "가는 편",
-      "return": "오는 편",
-      "includesTaxesFees": "세금 및 수수료 포함",
-      "freeCancellation": "무료 취소",
-      "refundableFee": "환불 가능 (예상 수수료: {fee})",
-      "refundableFeesMayApply": "환불 가능 (수수료가 부과될 수 있음)",
-      "noBag": "수하물 없음",
-      "bagsCount": "수하물 {count}개",
-      "brandsAvailable": "브랜드 {count}개 이용 가능",
-      "onlySeatsLeft": "{count}석만 남음!",
-      "seatsLeft": "{count}석 남음",
-      "seatsAvailable": "{count}석 이용 가능"
+            "outbound": "가는 편",
+            "return": "오는 편",
+            "includesTaxesFees": "세금 및 수수료 포함",
+            "freeCancellation": "무료 취소",
+            "refundableFee": "환불 가능 (예상 수수료: {fee})",
+            "refundableFeesMayApply": "환불 가능 (수수료가 부과될 수 있음)",
+            "noBag": "수하물 없음",
+            "bagsCount": "수하물 {count}개",
+            "brandsAvailable": "브랜드 {count}개 이용 가능",
+            "onlySeatsLeft": "{count}석만 남음!",
+            "seatsLeft": "{count}석 남음",
+            "seatsAvailable": "{count}석 이용 가능"
         },
         "filtersPanel": {
             "sortBy": "정렬 기준",
@@ -298,7 +310,7 @@
     "footer": {
         "tagline": "안목 있는 여행자를 위해 정밀하게 설계되었습니다.",
         "taglinePrecision": "정밀한 데이터. 타협 없는 서비스.",
-        "poweredBy": "Powered by Duffel, Mystifly, TravelgateX, ONDA & Rakuten.",
+        "poweredBy": "Powered by Duffel & TravelgateX",
         "module": "모듈",
         "flights": "항공편",
         "hotels": "호텔",
@@ -364,11 +376,11 @@
             "exceptional": "최고",
             "excellent": "매우 훌륭함",
             "superb": "최상급",
-      "veryGood": "훌륭함",
-      "good": "좋음",
-      "average": "보통",
-      "fair": "무난함",
-      "poor": "낮음"
+            "veryGood": "훌륭함",
+            "good": "좋음",
+            "average": "보통",
+            "fair": "무난함",
+            "poor": "낮음"
         },
         "fromPrice": "{price}부터",
         "perNight": "/박",
@@ -417,6 +429,14 @@
             "propertiesFound": "{count}개 숙소 찾음",
             "pricesMayChange": "가격은 예약 가능 여부에 따라 변경될 수 있습니다.",
             "map": "지도",
+            "discovery": {
+                "all": "전체 발견",
+                "restaurant": "식당",
+                "attraction": "관광명소 & 공원",
+                "grocery": "식료품점",
+                "medical": "병원 & 건강",
+                "transit": "대중교통"
+            },
             "showMoreRemaining": "더 보기 ({count}개 남음)",
             "allResultsShown": "전체 {count}개 결과 표시됨",
             "filteredCount": "{filtered}/{total}",
@@ -443,7 +463,62 @@
             "swipeToBrowse": "스와이프하여 보기",
             "cancellation": "취소",
             "any": "전체",
-            "clearFilters": "필터 지우기"
+            "clearFilters": "필터 지우기",
+            "filterOptions": {
+                "propertyType": "숙소 유형",
+                "mealPlan": "식사 계획",
+                "propertyTypes": {
+                    "hotel": "호텔",
+                    "apartment": "아파트",
+                    "resort": "리조트",
+                    "villa": "빌라"
+                },
+                "boardTypes": {
+                    "roomOnly": "객실만",
+                    "breakfast": "조식 포함",
+                    "halfBoard": "반식 제공",
+                    "fullBoard": "전식 제공",
+                    "allInclusive": "올 인클루시브"
+                }
+            },
+            "mapDetails": {
+                "title": "지도 세부 정보",
+                "explore": "탐색",
+                "transit": "대중교통",
+                "traffic": "교통",
+                "biking": "자전거",
+                "terrain": "지형",
+                "mapType": "지도 유형",
+                "default-3d": "3D 기본",
+                "default": "기본",
+                "satellite": "위성",
+                "labels": "레이블"
+            }
+        },
+        "mobileSearch": {
+            "title": "호텔 검색",
+            "where": "위치",
+            "whereQuestion": "어디로?",
+            "searchCityHotel": "도시 또는 호텔 검색",
+            "checkIn": "체크인",
+            "checkInQuestion": "체크인 날짜는 언제인가요?",
+            "checkOut": "체크아웃",
+            "checkOutQuestion": "체크아웃 날짜는 언제인가요?",
+            "addDates": "날짜 추가",
+            "who": "인원",
+            "whoQuestion": "누가 여행하나요?",
+            "numberOfGuests": "게스트 수",
+            "clearAll": "전체 지우기",
+            "search": "검색"
+        },
+        "poiPopup": {
+            "viewOnGoogleMaps": "Google Maps에서 보기",
+            "fromProperty": "숙소에서",
+            "fromHotel": "호텔에서",
+            "mFromProperty": "m 거리",
+            "kmFromProperty": "km 거리",
+            "mFromHotel": "m 거리",
+            "kmFromHotel": "km 거리"
         },
         "filters": {
             "activeFilters": "적용된 필터:",
@@ -451,14 +526,45 @@
             "searchByPropertyName": "숙소명으로 검색",
             "propertyType": "숙소 유형",
             "amenities": "편의시설",
-            "strictAmenitiesDescription": "활성화하면 선택한 모든 편의시설을 갖춘 호텔만 표시합니다"
+            "strictAmenitiesDescription": "활성화하면 선택한 모든 편의시설을 갖춘 호텔만 표시합니다",
+            "filterBy": "필터",
+            "searchPlaceholder": "예: 메리어트",
+            "starRating": "성급",
+            "starCount": "{count}성급",
+            "guestRating": "게스트 평점",
+            "minimumReviews": "최소 리뷰 수",
+            "roomFeatures": "객실 특징",
+            "cancellation": "취소 정책",
+            "any": "전체",
+            "freeCancellationOnly": "무료 취소만",
+            "mustHaveAllAmenities": "선택한 모든 편의시설 포함 필수",
+            "filters": "필터",
+            "showPlaces": "숙소 보기",
+            "propertyTypes": {
+                "hotel": "호텔",
+                "apartment": "아파트",
+                "resort": "리조트",
+                "villa": "빌라"
+            },
+            "boardTypes": {
+                "roomOnly": "숙박만",
+                "breakfast": "조식 포함",
+                "halfBoard": "하프보드",
+                "fullBoard": "풀보드",
+                "allInclusive": "올인클루시브"
+            }
         },
         "card": {
-      "freeCancellation": "무료 취소",
-      "freeCancelShort": "무료 취소",
-      "reviews": "리뷰 {count}개",
-      "perNight": "/박",
-      "viewDeal": "요금 보기"
+            "freeCancellation": "무료 취소",
+            "freeCancelShort": "무료 취소",
+            "reviews": "리뷰 {count}개",
+            "perNight": "/박",
+            "viewDeal": "요금 보기"
+        },
+        "propertyDatePicker": {
+            "checkIn": "체크인",
+            "checkOut": "체크아웃",
+            "addDate": "날짜 추가"
         }
     },
     "topCities": {

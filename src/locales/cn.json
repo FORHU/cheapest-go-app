@@ -182,6 +182,10 @@
         }
     },
     "flights": {
+        "search": {
+            "adult": "{count} 位成人",
+            "adult_plural": "{count} 位成人"
+        },
         "validation": {
             "missingInformation": "缺少信息",
             "selectField": "请选择{field}",
@@ -206,7 +210,15 @@
                 "direct": "直飞",
                 "oneStop": "经停1次",
                 "twoPlus": "经停2次以上"
-            }
+            },
+            "searchingFlights": "正在搜索航班...",
+            "checkingProviders": "正在检查多个供应商",
+            "searchFailedTitle": "搜索失败",
+            "tryAgain": "重试",
+            "noFlightsTitle": "未找到航班",
+            "noFlightsDefaultMessage": "未找到航班，请调整筛选条件或尝试其他日期。",
+            "discoveringMore": "正在发现更多选项（{total} 项中的 {shown} 项）",
+            "allSeen": "您已浏览全部 {count} 个可用航班，祝您旅途愉快！"
         },
         "card": {
             "direct": "直飞",
@@ -226,18 +238,18 @@
             "select": "选择",
             "selectFare": "选择 {fare}",
             "thisFare": "此票价",
-      "outbound": "去程",
-      "return": "返程",
-      "includesTaxesFees": "含税费",
-      "freeCancellation": "免费取消",
-      "refundableFee": "可退款（预计费用：{fee}）",
-      "refundableFeesMayApply": "可退款（可能收取费用）",
-      "noBag": "无行李",
-      "bagsCount": "{count} 件行李",
-      "brandsAvailable": "{count} 个品牌可选",
-      "onlySeatsLeft": "仅剩 {count} 个座位！",
-      "seatsLeft": "剩余 {count} 个座位",
-      "seatsAvailable": "{count} 个座位可用"
+            "outbound": "去程",
+            "return": "返程",
+            "includesTaxesFees": "含税费",
+            "freeCancellation": "免费取消",
+            "refundableFee": "可退款（预计费用：{fee}）",
+            "refundableFeesMayApply": "可退款（可能收取费用）",
+            "noBag": "无行李",
+            "bagsCount": "{count} 件行李",
+            "brandsAvailable": "{count} 个品牌可选",
+            "onlySeatsLeft": "仅剩 {count} 个座位！",
+            "seatsLeft": "剩余 {count} 个座位",
+            "seatsAvailable": "{count} 个座位可用"
         },
         "filtersPanel": {
             "sortBy": "排序方式",
@@ -298,7 +310,7 @@
     "footer": {
         "tagline": "专为挑剔的旅行者设计。",
         "taglinePrecision": "精准数据。绝不妥协。",
-        "poweredBy": "由 Duffel、Mystifly、TravelgateX、ONDA 和 Rakuten 提供支持。",
+        "poweredBy": "由 Duffel 和 TravelgateX 提供支持",
         "module": "模块",
         "flights": "航班",
         "hotels": "酒店",
@@ -364,11 +376,11 @@
             "exceptional": "超棒",
             "excellent": "极好",
             "superb": "极好",
-      "veryGood": "非常好",
-      "good": "好",
-      "average": "一般",
-      "fair": "一般",
-      "poor": "较差"
+            "veryGood": "非常好",
+            "good": "好",
+            "average": "一般",
+            "fair": "一般",
+            "poor": "较差"
         },
         "fromPrice": "{price} 起",
         "perNight": "/晚",
@@ -417,6 +429,14 @@
             "propertiesFound": "找到 {count} 个住宿",
             "pricesMayChange": "价格可能会根据可订情况变化。",
             "map": "地图",
+            "discovery": {
+                "all": "全部发现",
+                "restaurant": "餐饮",
+                "attraction": "景点 & 公园",
+                "grocery": "杂货",
+                "medical": "医院 & 健康",
+                "transit": "交通"
+            },
             "showMoreRemaining": "显示更多（剩余 {count} 个）",
             "allResultsShown": "已显示全部 {count} 个结果",
             "filteredCount": "{filtered}/{total}",
@@ -443,7 +463,62 @@
             "swipeToBrowse": "滑动浏览",
             "cancellation": "取消政策",
             "any": "不限",
-            "clearFilters": "清除筛选"
+            "clearFilters": "清除筛选",
+            "filterOptions": {
+                "propertyType": "住宿类型",
+                "mealPlan": "膳食计划",
+                "propertyTypes": {
+                    "hotel": "酒店",
+                    "apartment": "公寓",
+                    "resort": "度假村",
+                    "villa": "别墅"
+                },
+                "boardTypes": {
+                    "roomOnly": "仅客房",
+                    "breakfast": "含早餐",
+                    "halfBoard": "半食宿",
+                    "fullBoard": "全食宿",
+                    "allInclusive": "全包"
+                }
+            },
+            "mapDetails": {
+                "title": "地图详情",
+                "explore": "探索",
+                "transit": "公交",
+                "traffic": "交通",
+                "biking": "骑行",
+                "terrain": "地形",
+                "mapType": "地图类型",
+                "default-3d": "3D 默认",
+                "default": "默认",
+                "satellite": "卫星",
+                "labels": "标签"
+            }
+        },
+        "mobileSearch": {
+            "title": "搜索酒店",
+            "where": "位置",
+            "whereQuestion": "去哪里？",
+            "searchCityHotel": "搜索城市或酒店",
+            "checkIn": "入住",
+            "checkInQuestion": "您的入住日期是？",
+            "checkOut": "退房",
+            "checkOutQuestion": "您的退房日期是？",
+            "addDates": "添加日期",
+            "who": "住客",
+            "whoQuestion": "谁将出行？",
+            "numberOfGuests": "住客人数",
+            "clearAll": "全部清除",
+            "search": "搜索"
+        },
+        "poiPopup": {
+            "viewOnGoogleMaps": "在 Google 地图上查看",
+            "fromProperty": "距离住宿",
+            "fromHotel": "距离酒店",
+            "mFromProperty": "米",
+            "kmFromProperty": "公里",
+            "mFromHotel": "米",
+            "kmFromHotel": "公里"
         },
         "filters": {
             "activeFilters": "已启用筛选:",
@@ -451,14 +526,45 @@
             "searchByPropertyName": "按住宿名称搜索",
             "propertyType": "住宿类型",
             "amenities": "设施",
-            "strictAmenitiesDescription": "启用后，仅显示包含所有已选设施的酒店"
+            "strictAmenitiesDescription": "启用后，仅显示包含所有已选设施的酒店",
+            "filterBy": "筛选条件",
+            "searchPlaceholder": "例如 Marriott",
+            "starRating": "星级",
+            "starCount": "{count} 星",
+            "guestRating": "住客评分",
+            "minimumReviews": "最低评论数",
+            "roomFeatures": "房间特色",
+            "cancellation": "取消政策",
+            "any": "不限",
+            "freeCancellationOnly": "仅显示可免费取消",
+            "mustHaveAllAmenities": "必须包含所有已选设施",
+            "filters": "筛选",
+            "showPlaces": "查看结果",
+            "propertyTypes": {
+                "hotel": "酒店",
+                "apartment": "公寓",
+                "resort": "度假村",
+                "villa": "别墅"
+            },
+            "boardTypes": {
+                "roomOnly": "仅住宿",
+                "breakfast": "含早餐",
+                "halfBoard": "半食宿",
+                "fullBoard": "全食宿",
+                "allInclusive": "全包"
+            }
         },
         "card": {
-      "freeCancellation": "免费取消",
-      "freeCancelShort": "免费取消",
-      "reviews": "{count} 条评论",
-      "perNight": "/晚",
-      "viewDeal": "查看优惠"
+            "freeCancellation": "免费取消",
+            "freeCancelShort": "免费取消",
+            "reviews": "{count} 条评论",
+            "perNight": "/晚",
+            "viewDeal": "查看优惠"
+        },
+        "propertyDatePicker": {
+            "checkIn": "入住",
+            "checkOut": "退房",
+            "addDate": "添加日期"
         }
     },
     "topCities": {
