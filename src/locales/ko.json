@@ -190,7 +190,9 @@
             "stillSearching": "아직 검색 중...",
             "takingLonger": "평소보다 검색 시간이 더 걸리고 있습니다",
             "sources": "출처:",
-            "total_count": "(총 {count}개)"
+            "total_count": "(총 {count}개)",
+            "fetchingProviders": "공급사에서 검색 중...",
+            "providersSlow": "항공사 공급사의 응답이 느립니다. 잠시만 기다려 주세요. 최적의 요금을 계속 찾고 있습니다."
         },
         "validation": {
             "missingInformation": "정보가 부족합니다",
