@@ -192,7 +192,10 @@
             "sources": "Sources:",
             "total_count": "({count} total)",
             "fetchingProviders": "Fetching from providers...",
-            "providersSlow": "Flight providers are responding slowly. Hang tight, we're still looking for the best fares."
+            "providersSlow": "Flight providers are responding slowly. Hang tight, we're still looking for the best fares.",
+            "providersSlowDescription": "Flight providers are slow to respond right now. Please try again or adjust your search.",
+            "tryAgain": "Try Again",
+            "newSearch": "New Search"
         },
         "validation": {
             "missingInformation": "Missing information",

@@ -192,7 +192,10 @@
             "sources": "来源:",
             "total_count": "（共 {count} 个）",
             "fetchingProviders": "正在从供应商获取数据...",
-            "providersSlow": "航班供应商响应较慢，请稍等，我们仍在寻找最优价格。"
+            "providersSlow": "航班供应商响应较慢，请稍等，我们仍在寻找最优价格。",
+            "providersSlowDescription": "航班供应商响应较慢，请重试或调整搜索条件。",
+            "tryAgain": "重试",
+            "newSearch": "重新搜索"
         },
         "validation": {
             "missingInformation": "缺少信息",

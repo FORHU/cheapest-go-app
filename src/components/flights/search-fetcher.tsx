@@ -344,17 +344,17 @@ export function SearchFetcher({
                 <div className="text-5xl">⏱️</div>
                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t('takingLonger')}</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-                    Flight providers are slow to respond right now. Please try again or adjust your search.
+                    {t('providersSlowDescription')}
                 </p>
                 <div className="flex gap-3 justify-center mt-2">
                     <button
                         onClick={() => setRetryKey(k => k + 1)}
                         className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-full transition-colors">
-                        Try Again
+                        {t('tryAgain')}
                     </button>
                     <a href="/"
                         className="px-6 py-2.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-white text-sm font-semibold rounded-full transition-colors">
-                        New Search
+                        {t('newSearch')}
                     </a>
                 </div>
             </div>
