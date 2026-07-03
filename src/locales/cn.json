@@ -186,7 +186,11 @@
     "flights": {
         "search": {
             "adult": "{count} 位成人",
-            "adult_plural": "{count} 位成人"
+            "adult_plural": "{count} 位成人",
+            "stillSearching": "仍在搜索...",
+            "takingLonger": "搜索时间比平时长",
+            "sources": "来源:",
+            "total_count": "（共 {count} 个）"
         },
         "validation": {
             "missingInformation": "缺少信息",
@@ -201,6 +205,7 @@
             }
         },
         "results": {
+            "result": "{count, plural, other {个结果}}",
             "loading": "正在寻找最优价格…",
             "empty": "该日期暂无可用航班。",
             "sortBy": "排序方式",
@@ -251,7 +256,9 @@
             "brandsAvailable": "{count} 个品牌可选",
             "onlySeatsLeft": "仅剩 {count} 个座位！",
             "seatsLeft": "剩余 {count} 个座位",
-            "seatsAvailable": "{count} 个座位可用"
+            "seatsAvailable": "{count} 个座位可用",
+            "perPersonShort": "/人",
+            "moreSegments": "+ {count} 个"
         },
         "filtersPanel": {
             "sortBy": "排序方式",

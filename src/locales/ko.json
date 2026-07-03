@@ -186,7 +186,11 @@
     "flights": {
         "search": {
             "adult": "성인 {count}명",
-            "adult_plural": "성인 {count}명"
+            "adult_plural": "성인 {count}명",
+            "stillSearching": "아직 검색 중...",
+            "takingLonger": "평소보다 검색 시간이 더 걸리고 있습니다",
+            "sources": "출처:",
+            "total_count": "(총 {count}개)"
         },
         "validation": {
             "missingInformation": "정보가 부족합니다",
@@ -201,6 +205,7 @@
             }
         },
         "results": {
+            "result": "{count, plural, other {결과}}",
             "loading": "최저가 항공편을 찾고 있습니다…",
             "empty": "해당 날짜에 항공편이 없습니다.",
             "sortBy": "정렬 기준",
@@ -251,7 +256,9 @@
             "brandsAvailable": "브랜드 {count}개 이용 가능",
             "onlySeatsLeft": "{count}석만 남음!",
             "seatsLeft": "{count}석 남음",
-            "seatsAvailable": "{count}석 이용 가능"
+            "seatsAvailable": "{count}석 이용 가능",
+            "perPersonShort": "/1인",
+            "moreSegments": "+ {count} 더"
         },
         "filtersPanel": {
             "sortBy": "정렬 기준",

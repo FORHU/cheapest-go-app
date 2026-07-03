@@ -186,7 +186,11 @@
     "flights": {
         "search": {
             "adult": "{count} adult",
-            "adult_plural": "{count} adults"
+            "adult_plural": "{count} adults",
+            "stillSearching": "Still searching...",
+            "takingLonger": "Search is taking longer than usual",
+            "sources": "Sources:",
+            "total_count": "({count} total)"
         },
         "validation": {
             "missingInformation": "Missing information",
@@ -201,6 +205,7 @@
             }
         },
         "results": {
+            "result": "{count, plural, one {result} other {results}}",
             "loading": "Finding the best fares…",
             "empty": "No flights found for these dates.",
             "sortBy": "Sort by",
@@ -251,7 +256,9 @@
             "brandsAvailable": "{count} brands available",
             "onlySeatsLeft": "Only {count} left!",
             "seatsLeft": "{count} seats left",
-            "seatsAvailable": "{count} seats available"
+            "seatsAvailable": "{count} seats available",
+            "perPersonShort": "/person",
+            "moreSegments": "+ {count} more"
         },
         "filtersPanel": {
             "sortBy": "Sort By",
