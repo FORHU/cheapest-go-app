@@ -22,6 +22,19 @@ interface PropertyDatePickerProps {
 
 function todayIso() { return new Date().toISOString().slice(0, 10); }
 
+function genMonths(locale: string): string[] {
+    return Array.from({ length: 12 }, (_, i) =>
+        new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2024, i, 1))
+    );
+}
+
+function genWeekdays(locale: string): string[] {
+    // Jan 7 2024 is a Sunday — iterate 7 days to get Sun–Sat, matching getDay() === 0 start
+    return Array.from({ length: 7 }, (_, i) =>
+        new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2024, 0, 7 + i))
+    );
+}
+
 // ─── CalendarPanel ────────────────────────────────────────────────────────────
 
 function CalendarPanel({
