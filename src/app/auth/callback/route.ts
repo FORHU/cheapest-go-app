@@ -18,8 +18,9 @@ function validateRedirectUrl(url: string): string {
 }
 
 function getOrigin(request: Request): string {
-    const fwdHost = request.headers.get('x-forwarded-host');
-    const fwdProto = request.headers.get('x-forwarded-proto') || 'https';
+    // Cloudflare can send comma-separated values — take the first only
+    const fwdHost = request.headers.get('x-forwarded-host')?.split(',')[0].trim();
+    const fwdProto = (request.headers.get('x-forwarded-proto') || 'https').split(',')[0].trim();
     if (fwdHost) return `${fwdProto}://${fwdHost}`;
     return process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
 }
@@ -121,6 +122,12 @@ export async function GET(request: Request) {
     const storedState    = cookieStore.get('oauth_state')?.value;
     const storedProvider = cookieStore.get('oauth_provider')?.value;
 
+    // If code is present but provider cookie is missing (lost in redirect), treat as OAuth start
+    if (code && !storedProvider) {
+        console.error('[OAuth] Provider cookie missing — cookie was dropped during redirect');
+        return NextResponse.redirect(`${origin}/login?error=oauth_state`);
+    }
+
     if (code && storedProvider === 'google') {
         // Clear state cookies
         cookieStore.delete('oauth_state');
@@ -149,18 +156,24 @@ export async function GET(request: Request) {
             await createUserSession(userId);
 
             return NextResponse.redirect(`${origin}/`);
-        } catch (err: any) {
-            console.error('[OAuth] Google callback error:', err.message);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error('[OAuth] Google callback error:', msg);
             return NextResponse.redirect(`${origin}/login?error=oauth_failed`);
         }
     }
 
     // ── Fallback: already authenticated ────────────────────────────────────
-    const { getSession } = await import('@/lib/auth/session');
-    const { user } = await getSession();
-    if (user) {
-        const target = user.role === 'admin' ? '/admin' : validateRedirectUrl(searchParams.get('next') || '/');
-        return NextResponse.redirect(`${origin}${target}`);
+    try {
+        const { getSession } = await import('@/lib/auth/session');
+        const { user } = await getSession();
+        if (user) {
+            const target = user.role === 'admin' ? '/admin' : validateRedirectUrl(searchParams.get('next') || '/');
+            return NextResponse.redirect(`${origin}${target}`);
+        }
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[OAuth] getSession fallback error:', msg);
     }
 
     return NextResponse.redirect(`${origin}/login`);

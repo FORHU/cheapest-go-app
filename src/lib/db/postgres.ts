@@ -33,15 +33,22 @@ function getConnectionString(pooled = true): string {
     return url;
 }
 
+function sslOption(): false | undefined {
+    // 'false' → explicitly disable SSL (local dev)
+    // anything else → omit the option so the URL's sslmode=require drives SSL
+    return process.env.DATABASE_SSL === 'false' ? false : undefined;
+}
+
 /** Standard connection pool used by API routes and server components. */
 export function getSql(): postgres.Sql {
     if (!_sql) {
+        const ssl = sslOption();
         _sql = postgres(getConnectionString(), {
             max: 10,
             idle_timeout: 30,
             connect_timeout: 10,
-            ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
-            onnotice: () => {}, // suppress NOTICE messages
+            ...(ssl !== undefined ? { ssl } : {}),
+            onnotice: () => {},
         });
     }
     return _sql;
@@ -50,11 +57,12 @@ export function getSql(): postgres.Sql {
 /** Admin connection — bypasses RLS for service-role operations */
 export function getSqlAdmin(): postgres.Sql {
     if (!_sqlAdmin) {
+        const ssl = sslOption();
         _sqlAdmin = postgres(getConnectionString(), {
             max: 5,
             idle_timeout: 30,
             connect_timeout: 10,
-            ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
+            ...(ssl !== undefined ? { ssl } : {}),
             onnotice: () => {},
         });
     }
