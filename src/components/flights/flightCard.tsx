@@ -191,7 +191,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                             </div>
                             <div className="text-[10px] lg:text-xs text-slate-500 dark:text-slate-400">
                                 {primary.flightNumber}
-                                {offer.segments.length > 1 && ` + ${offer.segments.length - 1} more`}
+                                {offer.segments.length > 1 && ` ${t('moreSegments', { count: offer.segments.length - 1 })}`}
                             </div>
                         </div>
                     </div>
@@ -431,7 +431,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
 
                     <div className="lg:text-right">
                         <div className="text-xs lg:text-lg font-normal text-slate-900 dark:text-white leading-tight">
-                            {formatPrice(offer.price.pricePerAdult, offer.price.currency, targetCurrency)}<span className="text-[8px] lg:text-xs text-slate-400 dark:text-slate-500">/person</span>
+                            {formatPrice(offer.price.pricePerAdult, offer.price.currency, targetCurrency)}<span className="text-[8px] lg:text-xs text-slate-400 dark:text-slate-500">{t('perPersonShort')}</span>
                         </div>
                         <div className="text-[9px] lg:text-xs text-slate-400 dark:text-slate-500">
                             {t('includesTaxesFees')}

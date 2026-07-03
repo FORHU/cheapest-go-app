@@ -100,6 +100,7 @@ function getProviderCounts(offers: FlightOffer[]): Record<string, number> {
 // ─── Provider Status Badge ────────────────────────────────────────────────────
 
 function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: boolean }) {
+    const t = useTranslations('flights.search');
     const providerCounts = useMemo(() => getProviderCounts(offers), [offers]);
     const entries = Object.entries(providerCounts);
 
@@ -118,7 +119,7 @@ function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: b
 
     return (
         <div className="flex flex-wrap items-center gap-2 text-[10px] font-normal">
-            <span className="text-blue-600 dark:text-blue-400">Sources:</span>
+            <span className="text-blue-600 dark:text-blue-400">{t('sources')}</span>
             {entries.map(([provider, count]) => (
                 <span
                     key={provider}
@@ -129,7 +130,7 @@ function ProviderStatus({ offers, loading }: { offers: FlightOffer[]; loading: b
                 </span>
             ))}
             <span className="text-slate-400">
-                ({offers.length} total)
+                {t('total_count', { count: offers.length })}
             </span>
         </div>
     );
@@ -341,7 +342,7 @@ export function SearchFetcher({
         return (
             <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-10 text-center space-y-4">
                 <div className="text-5xl">⏱️</div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Search is taking longer than usual</h2>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t('takingLonger')}</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                     Flight providers are slow to respond right now. Please try again or adjust your search.
                 </p>
@@ -456,7 +457,7 @@ export function SearchFetcher({
                 <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-4 flex items-center gap-3">
                     <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin shrink-0" />
                     <div>
-                        <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Still searching...</p>
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-300">{t('stillSearching')}</p>
                         <p className="text-xs text-amber-600/70 dark:text-amber-400/70">Flight providers are responding slowly. Hang tight, we&apos;re still looking for the best fares.</p>
                     </div>
                 </div>
