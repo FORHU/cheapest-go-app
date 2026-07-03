@@ -1,5 +1,7 @@
 {
     "nav": {
+        "home": "홈",
+        "profile": "프로필",
         "support": "고객지원",
         "openApp": "앱 열기",
         "signIn": "로그인",
@@ -323,6 +325,7 @@
         "flightsApi": "항공편 API",
         "paymentGateway": "결제 게이트웨이",
         "copyright": "© 2026 JTP Partners. All rights reserved.",
+        "allRightsReserved": "Partners. All rights reserved.",
         "terms": "이용약관",
         "privacy": "개인정보",
         "cookies": "쿠키",

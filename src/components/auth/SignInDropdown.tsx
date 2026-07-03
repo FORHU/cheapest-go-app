@@ -204,7 +204,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                     onClick={() => setIsOpen(!isOpen)}
                     className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-full transition-colors shrink-0"
                 >
-                    Sign in
+                    {t('signIn')}
                 </button>
 
                 <AnimatePresence>
