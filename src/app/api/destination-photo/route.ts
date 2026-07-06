@@ -150,13 +150,20 @@ async function fetchWikimediaPhoto(query: string): Promise<string | null> {
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
+function getRequestOrigin(req: NextRequest): string {
+  const fwdHost = req.headers.get('x-forwarded-host')?.split(',')[0].trim();
+  const fwdProto = (req.headers.get('x-forwarded-proto') || 'https').split(',')[0].trim();
+  if (fwdHost) return `${fwdProto}://${fwdHost}`;
+  return process.env.NEXT_PUBLIC_SITE_URL || `http://localhost:${process.env.PORT || 3000}`;
+}
+
 export async function GET(req: NextRequest) {
   const iata  = new URL(req.url).searchParams.get('iata')?.toUpperCase() ?? '';
 
   // Serve local static image if we have one downloaded
   const slug = IATA_TO_SLUG[iata];
   if (slug) {
-    return NextResponse.redirect(new URL(`/images/destinations/${slug}.jpg`, req.url));
+    return NextResponse.redirect(`${getRequestOrigin(req)}/images/destinations/${slug}.jpg`);
   }
 
   const query = PLACE_QUERIES[iata];
