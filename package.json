@@ -47,14 +47,6 @@
     "zod": "^4.3.5",
     "zustand": "^5.0.10"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@sentry/cli",
-      "sharp",
-      "@prisma/engines",
-      "prisma"
-    ]
-  },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
