@@ -801,10 +801,18 @@ async function runCityFallback(
             console.log(`[tgx-search] Dest code "${resolvedCode}" is a known OTV miss — skipping dest-code search for "${cityName}"`);
         } else {
             const __t0 = Date.now();
-            const destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
-                criteria: { ...baseCriteria, destinations: [resolvedCode] },
-                settings,
-            });
+            // Run TGX availability search and OTV portfolio (for coords/names) in parallel.
+            // Previously the portfolio was fire-and-forget AFTER buildCityResults, so hotels
+            // had lat=0 on the first search and only got coordinates on the second search.
+            const [destResult, otvContent] = await Promise.all([
+                tgxGraphQL(CITY_SEARCH_QUERY, {
+                    criteria: { ...baseCriteria, destinations: [resolvedCode] },
+                    settings,
+                }),
+                cityName
+                    ? fetchOtvHotelCodesByCity(cityName, resolvedCode).catch(() => ({ codes: [] as string[], contentMap: new Map<string, any>() }))
+                    : Promise.resolve({ codes: [] as string[], contentMap: new Map<string, any>() }),
+            ]);
             console.log(`[tgx-search][TIMING] dest-code round-trip for "${resolvedCode}" took ${Date.now() - __t0}ms`);
             const destOptions: TgxOption[] = destResult?.data?.hotelX?.search?.options || [];
             const destErrors: any[] = destResult?.data?.hotelX?.search?.errors || [];
@@ -813,23 +821,16 @@ async function runCityFallback(
             );
             if (destMerchant.length > 0) {
                 console.log(`[tgx-search] Destination-code search returned ${destMerchant.length} options for "${cityName}"`);
-                // Dest-code path never calls fetchOtvHotelCodesByCity, so hotel_content stays empty.
-                // Seed it now (background) so the instant catalog shows up on the next request.
-                if (cityName) {
-                    fetchOtvHotelCodesByCity(cityName, resolvedCode)
-                        .then(otv => {
-                            if (otv.codes.length > 0) {
-                                const nullNames = otv.codes.filter(c => !otv.contentMap.get(c)?.name);
-                                if (nullNames.length > 0) {
-                                    fetchEtgHotelNames(nullNames)
-                                        .then(etgNames => updateHotelNamesInDb(etgNames))
-                                        .catch(() => {});
-                                }
-                            }
-                        })
-                        .catch(() => {});
+                // Enrich null-name codes from ETG in the background
+                if (otvContent.codes.length > 0) {
+                    const nullNames = otvContent.codes.filter((c: string) => !otvContent.contentMap.get(c)?.name);
+                    if (nullNames.length > 0) {
+                        fetchEtgHotelNames(nullNames)
+                            .then(etgNames => updateHotelNamesInDb(etgNames))
+                            .catch(() => {});
+                    }
                 }
-                return buildCityResults(destMerchant, cityName, countryCode);
+                return buildCityResults(destMerchant, cityName, countryCode, otvContent.contentMap);
             }
             // No usable MERCHANT options — whether TGX sent an explicit "Empty hotels"
             // error or just a clean empty array (observed for some destination codes,
