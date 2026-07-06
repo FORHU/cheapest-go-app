@@ -126,6 +126,9 @@ export const getWeekendDeals = cache(async (): Promise<WeekendDeal[]> => {
         currency: d.currency || 'PHP',
         image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
         badge: d.badge,
+        guests: Number(d.guests || 0),
+        bedrooms: Number(d.bedrooms || 0),
+        bathrooms: Number(d.bathrooms || 0),
     })) ?? [];
     // Drop duplicate hotels (same property in the same location).
     return dedupeBy(mapped, d => `${d.name}|${d.location}`);
@@ -166,6 +169,67 @@ export const getUniqueStays = cache(async () => {
     })) ?? [];
 });
 
+export const getHotelDeals = cache(async (): Promise<WeekendDeal[]> => {
+    const { data, error } = await supabaseQuery("hotel_deals", 20);
+    if (error) console.error("[Landing] hotel_deals error:", (error as any).message ?? error);
+    const mapped: WeekendDeal[] = data?.map((d: any) => ({
+        id: d.hotel_code ?? String(d.id),
+        name: d.name,
+        location: d.location,
+        rating: Number(d.rating || 0),
+        reviews: 0,
+        originalPrice: Number(d.baseline_price || d.price || 0),
+        salePrice: Number(d.price || 0),
+        currency: d.currency || 'USD',
+        image: d.image_url || `/api/hotel-photo?hotelCode=${encodeURIComponent(d.hotel_code || '')}`,
+        badge: d.discount_tag ?? null,
+        hotelCode: d.hotel_code ?? null,
+        checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
+        checkOut: d.check_out ? String(d.check_out).slice(0, 10) : null,
+        guests: Number(d.guests || 0),
+        bedrooms: Number(d.bedrooms || 0),
+        bathrooms: Number(d.bathrooms || 0),
+    })) ?? [];
+    return dedupeBy(mapped, d => `${d.name}|${d.location}`);
+});
+
+export const getGuestFavorites = cache(async (): Promise<WeekendDeal[]> => {
+    let supabase: any;
+    try {
+        supabase = getPublicClient();
+    } catch (err) {
+        console.error('[Landing] guest_favorites error:', (err as Error).message ?? err);
+        return [];
+    }
+    const { data, error } = await Promise.race([
+        supabase
+            .from('hotel_deals')
+            .select('*')
+            .gt('rating', 7)
+            .order('rating', { ascending: false })
+            .limit(15),
+        new Promise<{ data: null; error: Error }>(resolve =>
+            setTimeout(() => resolve({ data: null, error: new Error('Query timeout: guest_favorites') }), QUERY_TIMEOUT_MS)
+        ),
+    ]);
+    if (error) console.error('[Landing] guest_favorites error:', (error as any).message ?? error);
+    const mapped: WeekendDeal[] = data?.map((d: any) => ({
+        id: d.hotel_code ?? String(d.id),
+        name: d.name,
+        location: d.location,
+        rating: Number(d.rating || 0),
+        reviews: Number(d.reviews || 0),
+        originalPrice: Number(d.baseline_price || d.price || 0),
+        salePrice: Number(d.price || 0),
+        currency: d.currency || 'USD',
+        image: d.image_url || `/api/hotel-photo?hotelCode=${encodeURIComponent(d.hotel_code || '')}`,
+        badge: d.discount_tag ?? null,
+        hotelCode: d.hotel_code ?? null,
+        checkIn: d.check_in ? String(d.check_in).slice(0, 10) : null,
+        checkOut: d.check_out ? String(d.check_out).slice(0, 10) : null,
+    })) ?? [];
+    return dedupeBy(mapped, d => `${d.name}|${d.location}`);
+});
 
 export const getTravelStyles = cache(async () => {
     const { data, error } = await supabaseQuery("travel_styles", 10);
@@ -264,7 +328,10 @@ export const getLandingData = cache(async () => {
         salePrice: Number(d.sale_price || 0),
         currency: d.currency || 'PHP',
         image: d.image_url || `/api/hotel-photo?q=${encodeURIComponent(`${d.name} ${d.location}`)}`,
-        badge: d.badge
+        badge: d.badge,
+        guests: Number(d.guests || 0),
+        bedrooms: Number(d.bedrooms || 0),
+        bathrooms: Number(d.bathrooms || 0),
     })) ?? [];
 
     const mappedDestinations: VacationPackage[] = popularDestinations?.map(d => ({
