@@ -958,7 +958,20 @@ async function runCityFallback(
             (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
         );
         if (fallbackMerchant.length > 0) {
-            return buildCityResults(fallbackMerchant, cityName, countryCode, otvContentMap);
+            const otvResults = await buildCityResults(fallbackMerchant, cityName, countryCode, otvContentMap);
+            // We only reach the hotel-code path when OTV's full-catalog dest-code search
+            // already failed (empty or a known miss), so this is a partial snapshot
+            // scavenged from hotel_content — e.g. Manila returns 6 of hundreds. ETG/RateHawk
+            // carries the whole city, so consult it here too and keep whichever set is
+            // larger. We swap rather than merge to avoid cross-supplier dedup: OTV hotel
+            // codes and ETG slugs share no common key (same rationale as ADR-0004).
+            const etgResult = await searchEtgCity(cityName, searchParams);
+            if (etgResult.data.length > otvResults.data.length) {
+                console.log(`[tgx-search] ETG (${etgResult.data.length}) > OTV hotel-code snapshot (${otvResults.data.length}) for "${cityName}" — using ETG`);
+                return etgResult;
+            }
+            console.log(`[tgx-search] OTV hotel-code snapshot (${otvResults.data.length}) >= ETG (${etgResult.data.length}) for "${cityName}" — using OTV`);
+            return otvResults;
         }
         // OTV codes exist but no availability — fall through to ETG
     }
