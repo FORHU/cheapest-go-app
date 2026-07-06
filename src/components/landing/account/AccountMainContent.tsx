@@ -5,6 +5,7 @@ import { User, Lock, Bell, Loader2, Check, Eye, EyeOff, HelpCircle, MessageCircl
 import type { User as UserType } from '@/types/auth';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 interface AccountMainContentProps {
     user: UserType;
@@ -13,6 +14,7 @@ interface AccountMainContentProps {
 
 export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, activeSection = 'profile' }) => {
     const { updateProfile, updatePassword } = useAuthStore();
+    const t = useTranslations('account');
 
     // Profile form state
     const [firstName, setFirstName] = useState(user.firstName || '');
@@ -41,17 +43,17 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!firstName.trim() || !lastName.trim()) {
-            toast.error('Please fill in all fields');
+            toast.error(t('profile.fillAllFields'));
             return;
         }
 
         setProfileSaving(true);
         try {
             await updateProfile({ firstName: firstName.trim(), lastName: lastName.trim() });
-            toast.success('Profile updated successfully');
+            toast.success(t('profile.updateSuccess'));
             setIsEditingProfile(false);
         } catch (error: any) {
-            toast.error(error.message || 'Failed to update profile');
+            toast.error(error.message || t('profile.updateError'));
         } finally {
             setProfileSaving(false);
         }
@@ -61,29 +63,29 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
         e.preventDefault();
 
         if (!currentPassword || !newPassword || !confirmPassword) {
-            toast.error('Please fill in all password fields');
+            toast.error(t('security.fillAllPasswordFields'));
             return;
         }
 
         if (newPassword.length < 6) {
-            toast.error('New password must be at least 6 characters');
+            toast.error(t('security.passwordTooShort'));
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            toast.error('New passwords do not match');
+            toast.error(t('security.passwordsDoNotMatch'));
             return;
         }
 
         setPasswordSaving(true);
         try {
             await updatePassword(currentPassword, newPassword);
-            toast.success('Password updated successfully');
+            toast.success(t('security.passwordUpdateSuccess'));
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
         } catch (error: any) {
-            toast.error(error.message || 'Failed to update password');
+            toast.error(error.message || t('security.passwordUpdateError'));
         } finally {
             setPasswordSaving(false);
         }
@@ -96,19 +98,19 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-6 lg:p-8">
                     <h2 className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
                         <Lock className="w-6 h-6 text-blue-600" />
-                        Security Settings
+                        {t('security.heading')}
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400 mb-8">
-                        Manage your password and account security
+                        {t('security.subheading')}
                     </p>
 
                     <section className="mb-8">
-                        <h3 className="text-[clamp(0.9375rem,2vw,1.125rem)] font-semibold text-slate-900 dark:text-white mb-4">Change Password</h3>
+                        <h3 className="text-[clamp(0.9375rem,2vw,1.125rem)] font-semibold text-slate-900 dark:text-white mb-4">{t('security.changePassword')}</h3>
 
                         <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-md">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                    Current Password
+                                    {t('security.currentPassword')}
                                 </label>
                                 <div className="relative">
                                     <input
@@ -129,7 +131,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                    New Password
+                                    {t('security.newPassword')}
                                 </label>
                                 <div className="relative">
                                     <input
@@ -146,12 +148,12 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                         {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                     </button>
                                 </div>
-                                <p className="text-xs text-slate-500 mt-1">Minimum 6 characters</p>
+                                <p className="text-xs text-slate-500 mt-1">{t('security.newPasswordHint')}</p>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                    Confirm New Password
+                                    {t('security.confirmPassword')}
                                 </label>
                                 <input
                                     type="password"
@@ -170,12 +172,12 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                     {passwordSaving ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                            Updating...
+                                            {t('security.updating')}
                                         </>
                                     ) : (
                                         <>
                                             <Lock className="w-4 h-4" />
-                                            Update Password
+                                            {t('security.updatePassword')}
                                         </>
                                     )}
                                 </button>
@@ -186,13 +188,13 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                     <hr className="border-slate-200 dark:border-white/10 my-8" />
 
                     <section>
-                        <h3 className="text-[clamp(0.9375rem,2vw,1.125rem)] font-semibold text-slate-900 dark:text-white mb-2">Account Email</h3>
+                        <h3 className="text-[clamp(0.9375rem,2vw,1.125rem)] font-semibold text-slate-900 dark:text-white mb-2">{t('security.accountEmail')}</h3>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                            Your account email address
+                            {t('security.accountEmailSubtitle')}
                         </p>
                         <div className="bg-slate-50 dark:bg-white/5 rounded-lg p-4 border border-slate-200 dark:border-white/10">
                             <p className="font-medium text-slate-900 dark:text-white">{user.email}</p>
-                            <p className="text-xs text-slate-500 mt-1">Email cannot be changed</p>
+                            <p className="text-xs text-slate-500 mt-1">{t('security.emailCannotChange')}</p>
                         </div>
                     </section>
                 </div>
@@ -207,17 +209,17 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-6 lg:p-8">
                     <h2 className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
                         <Bell className="w-6 h-6 text-blue-600" />
-                        Communication Preferences
+                        {t('communications.heading')}
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400 mb-8">
-                        Control which notifications and emails you receive
+                        {t('communications.subheading')}
                     </p>
 
                     <div className="space-y-6">
                         <label className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
                             <div>
-                                <p className="font-medium text-slate-900 dark:text-white">Email Notifications</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Receive booking confirmations and updates</p>
+                                <p className="font-medium text-slate-900 dark:text-white">{t('communications.emailNotifications')}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{t('communications.emailNotificationsDesc')}</p>
                             </div>
                             <div className="relative">
                                 <input
@@ -234,8 +236,8 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
 
                         <label className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
                             <div>
-                                <p className="font-medium text-slate-900 dark:text-white">Trip Reminders</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Get reminders before your upcoming trips</p>
+                                <p className="font-medium text-slate-900 dark:text-white">{t('communications.tripReminders')}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{t('communications.tripRemindersDesc')}</p>
                             </div>
                             <div className="relative">
                                 <input
@@ -252,8 +254,8 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
 
                         <label className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
                             <div>
-                                <p className="font-medium text-slate-900 dark:text-white">Marketing Emails</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Receive deals, promotions, and travel tips</p>
+                                <p className="font-medium text-slate-900 dark:text-white">{t('communications.marketingEmails')}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{t('communications.marketingEmailsDesc')}</p>
                             </div>
                             <div className="relative">
                                 <input
@@ -271,11 +273,11 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
 
                     <div className="mt-8">
                         <button
-                            onClick={() => toast.success('Preferences saved')}
+                            onClick={() => toast.success(t('communications.preferencesSaved'))}
                             className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
                         >
                             <Check className="w-4 h-4" />
-                            Save Preferences
+                            {t('communications.savePreferences')}
                         </button>
                     </div>
                 </div>
@@ -290,10 +292,10 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-6 lg:p-8">
                     <h2 className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
                         <HelpCircle className="w-6 h-6 text-blue-600" />
-                        Help & Support
+                        {t('help.heading')}
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400 mb-8">
-                        Get help with your account and bookings
+                        {t('help.subheading')}
                     </p>
 
                     <div className="space-y-4">
@@ -305,8 +307,8 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                 <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div>
-                                <p className="font-medium text-slate-900 dark:text-white">Email Support</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">support@cheapestgo.com</p>
+                                <p className="font-medium text-slate-900 dark:text-white">{t('help.emailSupport')}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{t('help.emailSupportAddress')}</p>
                             </div>
                         </a>
 
@@ -318,29 +320,29 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                 <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
                             </div>
                             <div>
-                                <p className="font-medium text-slate-900 dark:text-white">Live Chat</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Chat with our support team</p>
+                                <p className="font-medium text-slate-900 dark:text-white">{t('help.liveChat')}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{t('help.liveChatDesc')}</p>
                             </div>
                         </a>
 
                         <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/50">
-                            <h3 className="font-medium text-slate-900 dark:text-white mb-2">Frequently Asked Questions</h3>
+                            <h3 className="font-medium text-slate-900 dark:text-white mb-2">{t('help.faqTitle')}</h3>
                             <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
                                 <li className="flex items-start gap-2">
                                     <span className="text-blue-600">•</span>
-                                    How do I cancel or modify my booking?
+                                    {t('help.faq1')}
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <span className="text-blue-600">•</span>
-                                    When will I receive my booking confirmation?
+                                    {t('help.faq2')}
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <span className="text-blue-600">•</span>
-                                    How do I request a refund?
+                                    {t('help.faq3')}
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <span className="text-blue-600">•</span>
-                                    What payment methods are accepted?
+                                    {t('help.faq4')}
                                 </li>
                             </ul>
                         </div>
@@ -357,10 +359,10 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                 {/* User Name Header */}
                 <h2 className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
                     <User className="w-6 h-6 text-blue-600" />
-                    Profile Information
+                    {t('profile.heading')}
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400 mb-8">
-                    Manage your personal information
+                    {t('profile.subheading')}
                 </p>
 
                 {/* Basic Information Section */}
@@ -370,7 +372,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                        First Name
+                                        {t('profile.firstName')}
                                     </label>
                                     <input
                                         type="text"
@@ -381,7 +383,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                        Last Name
+                                        {t('profile.lastName')}
                                     </label>
                                     <input
                                         type="text"
@@ -400,12 +402,12 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                     {profileSaving ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                            Saving...
+                                            {t('profile.saving')}
                                         </>
                                     ) : (
                                         <>
                                             <Check className="w-4 h-4" />
-                                            Save
+                                            {t('profile.save')}
                                         </>
                                     )}
                                 </button>
@@ -418,7 +420,7 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                     }}
                                     className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition-colors"
                                 >
-                                    Cancel
+                                    {t('profile.cancel')}
                                 </button>
                             </div>
                         </form>
@@ -426,20 +428,20 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                         <div className="space-y-4">
                             <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-white/5 rounded-xl">
                                 <div>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">Full Name</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">{t('profile.fullName')}</p>
                                     <p className="font-medium text-slate-900 dark:text-white">{user.firstName} {user.lastName}</p>
                                 </div>
                                 <button
                                     onClick={() => setIsEditingProfile(true)}
                                     className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                                 >
-                                    Edit
+                                    {t('profile.edit')}
                                 </button>
                             </div>
                             <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-xl">
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Email Address</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{t('profile.emailAddress')}</p>
                                 <p className="font-medium text-slate-900 dark:text-white">{user.email}</p>
-                                <p className="text-xs text-slate-400 mt-1">Email cannot be changed</p>
+                                <p className="text-xs text-slate-400 mt-1">{t('profile.emailCannotChange')}</p>
                             </div>
                         </div>
                     )}

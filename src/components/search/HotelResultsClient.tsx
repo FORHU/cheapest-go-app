@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Property } from '@/types';
 import SearchResults from './SearchResults';
 import { CountryCityPicker } from './CountryCityPicker';
+import { ResponsiveSearchHeader } from './ResponsiveSearchHeader';
 import { buildSearchCacheKey, getSearchResults, setSearchResults } from '@/lib/searchResultsCache';
 
 interface HotelResultsClientProps {
@@ -184,21 +185,36 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
     }, [searchKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (status === 'loading') {
-        return <HotelListSkeleton destination={destination} elapsed={elapsed} />;
+        return (
+            <div className="flex-1 min-w-0">
+                <Suspense fallback={<div className="h-16" />}>
+                    <ResponsiveSearchHeader />
+                </Suspense>
+                <HotelListSkeleton destination={destination} elapsed={elapsed} />
+            </div>
+        );
     }
 
     if (status === 'error') {
         return (
-            <div className="flex-1 min-w-0 text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                <p className="text-slate-500 dark:text-slate-400 text-sm">{t('searchFailed')}</p>
+            <div className="flex-1 min-w-0">
+                <Suspense fallback={<div className="h-16" />}>
+                    <ResponsiveSearchHeader />
+                </Suspense>
+                <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">{t('searchFailed')}</p>
+                </div>
             </div>
         );
     }
 
     return (
         <div className="flex-1 min-w-0">
+            <Suspense fallback={<div className="h-16" />}>
+                <ResponsiveSearchHeader />
+            </Suspense>
             <CountryCityPicker searchParams={searchParams} />
-            {/* key={status} forces SearchResults to re-sync allProperties when prices arrive
+            {/* key={status} forces SearchResults to re-sync allProperties when price arrivals arrive
                 (streaming → done). The single remount is imperceptible after ~18s of price skeletons. */}
             <SearchResults
                 key={status}

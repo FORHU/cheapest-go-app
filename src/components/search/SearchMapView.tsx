@@ -180,7 +180,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                 checkOut: checkoutStr ? new Date(checkoutStr + 'T00:00:00') : null,
             });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const checkin = storeCheckIn ? storeCheckIn.toISOString().slice(0, 10) : '';
