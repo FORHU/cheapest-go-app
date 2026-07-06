@@ -1144,7 +1144,7 @@ async function buildCityResults(
     // Wrapped in try/catch — enrichment must never prevent results from rendering.
     if (hotelCodes.length > 0) {
         const noNameCodes = hotelCodes.filter(c => !contentMap.get(c)?.name && !preloadedContent.get(c)?.name);
-        if (noNameCodes.length >= hotelCodes.length * 0.3) {
+        if (noNameCodes.length > 0) {
             try {
                 const etgNames = await fetchEtgHotelNames(noNameCodes);
                 if (etgNames.size > 0) {
