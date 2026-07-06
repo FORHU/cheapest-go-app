@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { buildDestinationSlug } from '@/lib/utils';
-import { env } from '@/utils/env';
+import { getTranslations } from 'next-intl/server';
 
 export const revalidate = 3600;
 
@@ -34,8 +34,9 @@ export async function generateMetadata({
     const dest = await getDestination(slug);
     if (!dest) return {};
 
-    const title = `Hotels in ${dest.city}, ${dest.country} – Cheapest Rates | CheapestGo`;
-    const description = `Find and book the cheapest hotels in ${dest.city}, ${dest.country}. Compare prices and get the best deals on CheapestGo.`;
+    const t = await getTranslations('destinations');
+    const title = t('title', { city: dest.city, country: dest.country });
+    const description = t('description', { city: dest.city, country: dest.country });
 
     return {
         title,
@@ -57,6 +58,7 @@ export default async function DestinationPage({
 }) {
     const { slug } = await params;
     const dest = await getDestination(slug);
+    const t = await getTranslations('destinations');
     if (!dest) notFound();
 
     const searchUrl = `/hotels/search?destination=${encodeURIComponent(`${dest.city}, ${dest.country}`)}`;
@@ -82,7 +84,7 @@ export default async function DestinationPage({
                     <p className="text-lg md:text-xl mt-2 text-white/80">{dest.country}</p>
                     {dest.average_price && (
                         <p className="mt-3 text-sm text-white/70">
-                            Hotels from <span className="font-semibold text-white">${dest.average_price.toFixed(0)}</span> / night
+                            {t('hotelsFrom', { price: `$${dest.average_price.toFixed(0)}` })}
                         </p>
                     )}
                 </div>
@@ -91,16 +93,16 @@ export default async function DestinationPage({
             {/* CTA */}
             <div className="max-w-3xl mx-auto px-4 py-12 text-center">
                 <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-3">
-                    Find hotels in {dest.city}
+                    {t('findHotelsIn', { city: dest.city })}
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400 mb-8">
-                    Browse the cheapest available hotels in {dest.city}, {dest.country} and book with confidence.
+                    {t('browseHotels', { city: dest.city, country: dest.country })}
                 </p>
                 <Link
                     href={searchUrl}
                     className="inline-flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors shadow-md"
                 >
-                    Search Hotels in {dest.city}
+                    {t('searchHotels', { city: dest.city })}
                 </Link>
             </div>
         </main>

@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 import { formatCurrency, calculateNights } from '@/lib/utils';
 import { PrintButton } from './PrintButton';
+import { getTranslations } from 'next-intl/server';
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -14,6 +15,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
     const { type } = await searchParams;
 
     const { user, error: authError } = await getAuthenticatedUser();
+    const t = await getTranslations('invoice');
     if (authError || !user) redirect('/login');
 
     const isAdmin = user.role === 'admin';
@@ -140,18 +142,18 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                 <div className="flex items-start justify-between px-8 pt-8 pb-6 border-b border-slate-100 dark:border-slate-800">
                     <div>
                         <h1 className="text-2xl font-extrabold text-indigo-600 tracking-tight">CheapestGo</h1>
-                        <p className="text-xs text-slate-400 mt-0.5">Your Travel Partner</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{t('yourTravelPartner')}</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-xl font-bold text-slate-800 dark:text-white">RECEIPT</p>
+                        <p className="text-xl font-bold text-slate-800 dark:text-white">{t('receipt')}</p>
                         <p className="text-xs text-slate-400 mt-0.5">{invoiceNumber}</p>
-                        <p className="text-xs text-slate-400">Issued: {issuedDate}</p>
+                        <p className="text-xs text-slate-400">{t('issued', { date: issuedDate })}</p>
                     </div>
                 </div>
 
                 {/* Billed to */}
                 <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Billed to</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{t('billedTo')}</p>
                     {isHotel ? (
                         <>
                             <p className="text-sm font-semibold text-slate-800 dark:text-white">
@@ -171,14 +173,14 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
 
                 {/* Booking details */}
                 <div className="px-8 py-5 border-b border-slate-100 dark:border-slate-800">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-3">Booking Details</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-3">{t('bookingDetails')}</p>
 
                     {isHotel ? (
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-100 dark:border-slate-800">
-                                    <th className="text-left pb-2 font-medium">Description</th>
-                                    <th className="text-right pb-2 font-medium">Amount</th>
+                                    <th className="text-left pb-2 font-medium">{t('description')}</th>
+                                    <th className="text-right pb-2 font-medium">{t('amount')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -208,9 +210,9 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-[10px] text-slate-400 uppercase tracking-wide border-b border-slate-100 dark:border-slate-800">
-                                    <th className="text-left pb-2 font-medium">Flight</th>
-                                    <th className="text-left pb-2 font-medium">Route</th>
-                                    <th className="text-left pb-2 font-medium">Date</th>
+                                    <th className="text-left pb-2 font-medium">{t('flight')}</th>
+                                    <th className="text-left pb-2 font-medium">{t('route')}</th>
+                                    <th className="text-left pb-2 font-medium">{t('date')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -234,7 +236,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                     {/* Passengers for flights */}
                     {!isHotel && booking.passengers?.length > 0 && (
                         <div className="mt-4">
-                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Passengers</p>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{t('passengers')}</p>
                             <div className="space-y-1">
                                 {booking.passengers.map((p: any, i: number) => (
                                     <div key={i} className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
@@ -252,32 +254,32 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                 {/* Booking reference */}
                 <div className="px-8 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap gap-6 text-xs text-slate-500">
                     <div>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">Booking Ref</span>
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">{t('bookingRef')}</span>
                         <span className="font-mono text-slate-700 dark:text-slate-300">
                             {isHotel ? booking.booking_id : booking.pnr}
                         </span>
                     </div>
                     <div>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">Type</span>
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">{t('type')}</span>
                         <span className="text-slate-700 dark:text-slate-300 capitalize">
-                            {isHotel ? 'Hotel' : `Flight · ${booking.trip_type ?? 'one-way'}`}
+                            {isHotel ? t('hotel') : `Flight · ${booking.trip_type ?? 'one-way'}`}
                         </span>
                     </div>
                     <div>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">Provider</span>
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">{t('provider')}</span>
                         <span className="text-slate-700 dark:text-slate-300 capitalize">
-                            {isHotel ? 'Hotel Partner' : booking.provider}
+                            {isHotel ? t('hotelPartner') : booking.provider}
                         </span>
                     </div>
                     <div>
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">Payment</span>
-                        <span className="text-slate-700 dark:text-slate-300">Stripe (Card)</span>
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide block mb-0.5">{t('payment')}</span>
+                        <span className="text-slate-700 dark:text-slate-300">{t('paymentMethod')}</span>
                     </div>
                 </div>
 
                 {/* Total */}
                 <div className="px-8 py-5 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-500">Total Paid</p>
+                    <p className="text-sm font-semibold text-slate-500">{t('totalPaid')}</p>
                     <p className="text-2xl font-extrabold text-slate-900 dark:text-white">
                         {formatCurrency(totalPrice, currency)}
                     </p>
@@ -286,7 +288,7 @@ export default async function InvoicePage({ params, searchParams }: PageProps) {
                 {/* Footer */}
                 <div className="px-8 pb-8">
                     <div className="bg-slate-50 dark:bg-slate-800 rounded-xl px-5 py-4 text-xs text-slate-400 text-center">
-                        Thank you for booking with CheapestGo. For support, contact{' '}
+                        {t('thankYou')}{' '}
                         <span className="text-indigo-500">crm@myfarebox.com</span>
                     </div>
                 </div>

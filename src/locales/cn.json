@@ -292,6 +292,10 @@
             "active": "提醒已启用",
             "removed": "提醒已移除",
             "failed": "设置提醒失败"
+        },
+        "book": {
+            "title": "Book Flight | CheapestGo",
+            "loading": "Loading booking..."
         }
     },
     "auth": {
@@ -311,7 +315,13 @@
     "errors": {
         "generic": "出现错误，请重试。",
         "notFound": "页面未找到。",
-        "searchFailed": "搜索失败，请检查网络连接后重试。"
+        "searchFailed": "搜索失败，请检查网络连接后重试。",
+        "auth": {
+            "title": "Authentication Error",
+            "description": "There was an error processing your authentication request. This could happen if the link expired or was already used.",
+            "signInAgain": "Try signing in again",
+            "goHome": "Go to homepage"
+        }
     },
     "pwa": {
         "installPrompt": {
@@ -384,7 +394,12 @@
         "subtitleDefault": "热门路线的超低票价",
         "subtitlePersonalized": "从 {city} 出发的超低票价",
         "allDealsCount": "共 {count} 个特惠",
-        "collapse": "收起 ↑"
+        "collapse": "收起 ↑",
+        "pageTitle": "Exclusive Deals & Offers",
+        "pageSubtitle": "Handpicked limited-time travel deals. Prices are updated frequently and may change. Book early to secure the best rates.",
+        "noDealsTitle": "No active deals found",
+        "noDealsDescription": "Check back soon for new exclusive travel offers.",
+        "backButton": "Back to Home"
     },
     "hotels": {
         "ratings": {
@@ -621,6 +636,220 @@
             "tokyo": "东京豪华酒店，每晚200美元以内，含泳池...",
             "cebu": "下个月宿务情侣周末游...",
             "manila": "马尼拉附近家庭度假村，2大2小..."
+        }
+    },
+    "account": {
+        "title": "Account Settings | CheapestGo",
+        "backToHome": "返回首页",
+        "sidebar": {
+            "greeting": "您好, {name}",
+            "membershipTier": "蓝色",
+            "pointsValue": "积分价值",
+            "pointsAmount": "₱ 0.00",
+            "viewRewardsActivity": "查看奖励活动",
+            "promoTitle": "获取旅行灵感和优惠",
+            "promoSubtitle": "接收 CheapestGo 的优惠、小贴士和见解",
+            "getEmails": "订阅邮件",
+            "signOut": "退出登录",
+            "partnerInfo": "您的账户可在 CheapestGo 及所有合作网站使用"
+        },
+        "nav": {
+            "profile": {
+                "title": "个人资料",
+                "description": "查看和编辑您的个人信息"
+            },
+            "communications": {
+                "title": "通讯",
+                "description": "管理通知设置"
+            },
+            "security": {
+                "title": "安全",
+                "description": "更新您的密码"
+            },
+            "help": {
+                "title": "帮助与反馈",
+                "description": "获取客户支持"
+            }
+        },
+        "profile": {
+            "heading": "个人资料信息",
+            "subheading": "管理您的个人信息",
+            "fullName": "全名",
+            "emailAddress": "电子邮件地址",
+            "emailCannotChange": "电子邮件无法更改",
+            "edit": "编辑",
+            "firstName": "名",
+            "lastName": "姓",
+            "save": "保存",
+            "saving": "保存中...",
+            "cancel": "取消",
+            "updateSuccess": "个人资料更新成功",
+            "updateError": "个人资料更新失败",
+            "fillAllFields": "请填写所有字段"
+        },
+        "security": {
+            "heading": "安全设置",
+            "subheading": "管理您的密码和账户安全",
+            "changePassword": "更改密码",
+            "currentPassword": "当前密码",
+            "newPassword": "新密码",
+            "newPasswordHint": "最少6个字符",
+            "confirmPassword": "确认新密码",
+            "updatePassword": "更新密码",
+            "updating": "更新中...",
+            "accountEmail": "账户邮箱",
+            "accountEmailSubtitle": "您的账户电子邮件地址",
+            "emailCannotChange": "电子邮件无法更改",
+            "passwordUpdateSuccess": "密码更新成功",
+            "passwordUpdateError": "密码更新失败",
+            "fillAllPasswordFields": "请填写所有密码字段",
+            "passwordTooShort": "新密码至少需要6个字符",
+            "passwordsDoNotMatch": "两次输入的新密码不一致"
+        },
+        "communications": {
+            "heading": "通讯偏好",
+            "subheading": "设置您要接收的通知和邮件",
+            "emailNotifications": "电子邮件通知",
+            "emailNotificationsDesc": "接收预订确认和更新",
+            "tripReminders": "旅行提醒",
+            "tripRemindersDesc": "在即将到来的旅行前获取提醒",
+            "marketingEmails": "营销邮件",
+            "marketingEmailsDesc": "接收优惠、促销和旅行小贴士",
+            "savePreferences": "保存偏好",
+            "preferencesSaved": "偏好已保存"
+        },
+        "help": {
+            "heading": "帮助与支持",
+            "subheading": "获取账户和预订相关帮助",
+            "emailSupport": "邮件支持",
+            "emailSupportAddress": "support@cheapestgo.com",
+            "liveChat": "在线客服",
+            "liveChatDesc": "与支持团队在线聊天",
+            "faqTitle": "常见问题",
+            "faq1": "如何取消或修改我的预订？",
+            "faq2": "我什么时候会收到预订确认？",
+            "faq3": "如何申请退款？",
+            "faq4": "支持哪些付款方式？"
+        },
+        "sectionHeader": {
+            "edit": "编辑"
+        }
+    },
+    "checkout": {
+        "title": "Checkout | CheapestGo"
+    },
+    "destinations": {
+        "title": "Hotels in {city}, {country} \u2013 Cheapest Rates | CheapestGo",
+        "description": "Find and book the cheapest hotels in {city}, {country}. Compare prices and get the best deals on CheapestGo.",
+        "hotelsFrom": "Hotels from {price} / night",
+        "findHotelsIn": "Find hotels in {city}",
+        "browseHotels": "Browse the cheapest available hotels in {city}, {country} and book with confidence.",
+        "searchHotels": "Search Hotels in {city}"
+    },
+    "property": {
+        "bundleActive": "Bundle Discount Active",
+        "bundleApplied": "Bundle discount applied \u2014 you're saving {percent}% on this hotel",
+        "savePercent": "SAVE {percent}%",
+        "propertyNotFound": "Property not found. (ID: {id})",
+        "breadcrumbHome": "Home",
+        "breadcrumbStaysIn": "Stays in {city}"
+    },
+    "trips": {
+        "title": "My Trips | CheapestGo",
+        "myTrips": "My Trips",
+        "viewReceipt": "View Receipt",
+        "noSegmentDetails": "No segment details available.",
+        "status": {
+            "pending": "Pending",
+            "confirmed": "Confirmed",
+            "completed": "Completed",
+            "cancelled": "Cancelled",
+            "refunded": "Refunded",
+            "refundFailed": "Refund Failed",
+            "processing": "Processing",
+            "booked": "Booked",
+            "ticketing": "Ticketing",
+            "ticketed": "Confirmed",
+            "failed": "Failed",
+            "cancelPending": "Cancellation Pending",
+            "cancelFailed": "Cancel Failed",
+            "refundPending": "Refund Pending",
+            "cancelledProviderMissing": "Cancelled"
+        },
+        "sections": {
+            "stayDetails": "Stay Details",
+            "guestInformation": "Guest Information",
+            "cancellationPolicy": "Cancellation Policy",
+            "payment": "Payment",
+            "itinerary": "Itinerary",
+            "passengers": "Passengers"
+        },
+        "labels": {
+            "checkIn": "Check-in",
+            "checkOut": "Check-out",
+            "duration": "Duration",
+            "room": "Room",
+            "guests": "Guests",
+            "specialRequests": "Special Requests",
+            "name": "Name",
+            "email": "Email",
+            "totalPaid": "Total Paid",
+            "paymentMethod": "Payment Method",
+            "bookedOn": "Booked On",
+            "provider": "Provider",
+            "freeCancellation": "Free cancellation available",
+            "nonRefundable": "Non-refundable",
+            "freeCancelUntil": "Free cancellation until",
+            "afterDatePenalty": "After {date}: penalty of {amount}",
+            "policyNotAvailable": "Cancellation policy details not available."
+        }
+    },
+    "invoice": {
+        "receipt": "RECEIPT",
+        "yourTravelPartner": "Your Travel Partner",
+        "issued": "Issued: {date}",
+        "billedTo": "Billed to",
+        "bookingDetails": "Booking Details",
+        "totalPaid": "Total Paid",
+        "bookingRef": "Booking Ref",
+        "type": "Type",
+        "provider": "Provider",
+        "payment": "Payment",
+        "paymentMethod": "Stripe (Card)",
+        "thankYou": "Thank you for booking with CheapestGo. For support, contact",
+        "flight": "Flight",
+        "route": "Route",
+        "date": "Date",
+        "description": "Description",
+        "amount": "Amount",
+        "passengers": "Passengers",
+        "hotel": "Hotel",
+        "hotelPartner": "Hotel Partner"
+    },
+    "legal": {
+        "cookiePolicy": {
+            "title": "Cookie Policy \u2014 CheapestGo",
+            "description": "How CheapestGo uses cookies and similar tracking technologies.",
+            "pageTitle": "Cookie Policy",
+            "pageSubtitle": "How we use cookies and similar technologies on CheapestGo."
+        },
+        "privacyPolicy": {
+            "title": "Privacy Policy \u2014 CheapestGo",
+            "description": "How CheapestGo collects, uses, and protects your personal information.",
+            "pageTitle": "Privacy Policy",
+            "pageSubtitle": "How we collect, use, and protect your personal information."
+        },
+        "refundPolicy": {
+            "title": "Refund & Cancellation Policy \u2014 CheapestGo",
+            "description": "Understand how cancellations, refunds, and amendments work on CheapestGo.",
+            "pageTitle": "Refund & Cancellation Policy",
+            "pageSubtitle": "Everything you need to know about cancellations, refunds, and booking changes."
+        },
+        "termsOfService": {
+            "title": "Terms of Service \u2014 CheapestGo",
+            "description": "The terms and conditions governing your use of CheapestGo.",
+            "pageTitle": "Terms of Service",
+            "pageSubtitle": "Please read these terms carefully before using CheapestGo."
         }
     }
 }

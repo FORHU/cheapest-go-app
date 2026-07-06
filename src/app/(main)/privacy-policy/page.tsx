@@ -1,16 +1,18 @@
 import { LegalLayout } from '@/components/landing/layout/LegalLayout';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy — CheapestGo',
-  description: 'How CheapestGo collects, uses, and protects your personal information.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('legal.privacyPolicy');
+  return { title: t('title'), description: t('description') };
+}
 
-export default function PrivacyPolicyPage() {
+export default async function PrivacyPolicyPage() {
+  const t = await getTranslations('legal.privacyPolicy');
   return (
     <LegalLayout
-      title="Privacy Policy"
-      subtitle="How we collect, use, and protect your personal information."
+      title={t('pageTitle')}
+      subtitle={t('pageSubtitle')}
       effectiveDate="May 1, 2025"
       lastUpdated="April 1, 2025"
       sections={[
