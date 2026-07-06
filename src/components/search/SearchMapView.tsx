@@ -10,7 +10,8 @@ import { ArrowLeft, MapPin, List, SlidersHorizontal, Calendar, Users, Search } f
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency, cn, buildPropertySlug } from '@/lib/utils';
 import { convertCurrency } from '@/lib/currency';
-import { useUserCurrency, useSearchStore, useSearchFilters } from '@/stores/searchStore';
+import { useUserCurrency, useSearchStore, useSearchFilters, useDates, useActiveDropdown } from '@/stores/searchStore';
+import { DatePicker } from '@/components/landing/hero/search/DatePicker';
 import CurrencySelector from '@/components/common/CurrencySelector';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -161,27 +162,38 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
     const searchParams = useSearchParams();
     const t = useTranslations('hotels.mapView');
 
-    const today = new Date().toISOString().slice(0, 10);
-    // Default to next Friday–Sunday (matches stream API + prewarm cache; OTV has near-zero same-day inventory)
-    const _now = new Date();
-    const _daysUntilFriday = ((5 - _now.getDay() + 7) % 7) || 7;
-    const _fri = new Date(_now); _fri.setDate(_now.getDate() + _daysUntilFriday);
-    const _sun = new Date(_fri); _sun.setDate(_fri.getDate() + 2);
-    const defaultCheckin = _fri.toISOString().slice(0, 10);
-    const defaultCheckout = _sun.toISOString().slice(0, 10);
+    // Use the same store-backed DatePicker as the landing page
+    const { setDates, setActiveDropdown } = useSearchStore();
+    const { checkIn: storeCheckIn, checkOut: storeCheckOut } = useDates();
+    const activeDropdown = useActiveDropdown();
 
-    const [checkin, setCheckin] = useState<string>(rawSearchParams.checkin || rawSearchParams.checkIn || defaultCheckin);
-    const [checkout, setCheckout] = useState<string>(rawSearchParams.checkout || rawSearchParams.checkOut || defaultCheckout);
     const [adults, setAdults] = useState<number>(Number(rawSearchParams.adults) || 2);
     const [children, setChildren] = useState<number>(Number(rawSearchParams.children) || 0);
 
+    // Sync URL params → store on mount so the bar reflects the current search dates
+    useEffect(() => {
+        const checkinStr = rawSearchParams.checkin || rawSearchParams.checkIn;
+        const checkoutStr = rawSearchParams.checkout || rawSearchParams.checkOut;
+        if (checkinStr) {
+            setDates({
+                checkIn: new Date(checkinStr + 'T00:00:00'),
+                checkOut: checkoutStr ? new Date(checkoutStr + 'T00:00:00') : null,
+            });
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const checkin = storeCheckIn ? storeCheckIn.toISOString().slice(0, 10) : '';
+    const checkout = storeCheckOut ? storeCheckOut.toISOString().slice(0, 10) : '';
+
     const nights = useMemo(() => {
-        const d1 = new Date(checkin), d2 = new Date(checkout);
-        const n = Math.round((d2.getTime() - d1.getTime()) / 86_400_000);
+        if (!storeCheckIn || !storeCheckOut) return 1;
+        const n = Math.round((storeCheckOut.getTime() - storeCheckIn.getTime()) / 86_400_000);
         return n > 0 ? n : 1;
-    }, [checkin, checkout]);
+    }, [storeCheckIn, storeCheckOut]);
 
     function handleSearch() {
+        if (!checkin || !checkout) return;
         const params = new URLSearchParams(searchParams?.toString() || '');
         params.set('checkin', checkin);
         params.set('checkout', checkout);
@@ -191,44 +203,29 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
     }
 
     const locale = useLocale();
-    const fmt = (s: string) => {
-        const d = new Date(s + 'T00:00:00');
-        return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
-    };
-
-    const fmtDay = (s: string) => {
-        const d = new Date(s + 'T00:00:00');
-        return d.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
+    const fmtDay = (date: Date | null) => {
+        if (!date) return '—';
+        return new Date(date).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
     return (
         <div className="shrink-0 bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 px-4 py-2">
             <div className="max-w-2xl mx-auto">
-                <div className="flex items-center w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm overflow-hidden h-14">
+                {/* overflow-visible so the DatePicker dropdown can escape the bar */}
+                <div className="flex items-center w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm h-14">
 
-                    {/* Check-in */}
-                    <label
-                        className="relative flex flex-col justify-center px-5 flex-1 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 group"
-                        onClick={e => {
-                            const input = (e.currentTarget as HTMLElement).querySelector('input');
-                            (input as any)?.showPicker?.();
-                        }}
-                    >
-                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkIn')}</span>
-                        <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(checkin)}</span>
-                        <input
-                            type="date" value={checkin} min={today}
-                            onChange={e => {
-                                setCheckin(e.target.value);
-                                if (e.target.value >= checkout) {
-                                    const d = new Date(e.target.value + 'T00:00:00');
-                                    d.setDate(d.getDate() + 1);
-                                    setCheckout(d.toISOString().slice(0, 10));
-                                }
-                            }}
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                        />
-                    </label>
+                    {/* Check-in — relative wrapper so DatePicker positions itself here */}
+                    <div className="relative flex-1 h-full">
+                        <div
+                            className="flex flex-col justify-center px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-l-2xl"
+                            onClick={() => setActiveDropdown(activeDropdown === 'dates-in' ? null : 'dates-in')}
+                            data-datepicker-trigger
+                        >
+                            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkIn')}</span>
+                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(storeCheckIn)}</span>
+                        </div>
+                        <DatePicker triggerDropdown="dates-in" />
+                    </div>
 
                     {/* Nights divider */}
                     <div className="flex flex-col items-center justify-center px-2.5 h-full bg-slate-50 dark:bg-slate-800/40 border-r border-slate-100 dark:border-slate-800 shrink-0">
@@ -236,22 +233,18 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                         <span className="text-[9px] text-slate-400 leading-none">{t('nights')}</span>
                     </div>
 
-                    {/* Check-out */}
-                    <label
-                        className="relative flex flex-col justify-center px-5 flex-1 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 group"
-                        onClick={e => {
-                            const input = (e.currentTarget as HTMLElement).querySelector('input');
-                            (input as any)?.showPicker?.();
-                        }}
-                    >
-                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkOut')}</span>
-                        <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(checkout)}</span>
-                        <input
-                            type="date" value={checkout} min={checkin}
-                            onChange={e => setCheckout(e.target.value)}
-                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                        />
-                    </label>
+                    {/* Check-out — relative wrapper so DatePicker positions itself here */}
+                    <div className="relative flex-1 h-full">
+                        <div
+                            className="flex flex-col justify-center px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800"
+                            onClick={() => setActiveDropdown(activeDropdown === 'dates-out' ? null : 'dates-out')}
+                            data-datepicker-trigger
+                        >
+                            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkOut')}</span>
+                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(storeCheckOut)}</span>
+                        </div>
+                        <DatePicker initialCheckOutMode triggerDropdown="dates-out" />
+                    </div>
 
                     {/* Guests */}
                     <div className="flex flex-col justify-center px-5 border-r border-slate-100 dark:border-slate-800 shrink-0 h-full">
@@ -266,7 +259,7 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                     {/* Search */}
                     <button
                         onClick={handleSearch}
-                        className="flex items-center gap-2 px-6 h-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition-colors cursor-pointer shrink-0"
+                        className="flex items-center gap-2 px-6 h-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition-colors cursor-pointer shrink-0 rounded-r-2xl"
                     >
                         <Search size={15} />
                         <span>{t('search')}</span>
@@ -414,7 +407,9 @@ function SearchMapView({
     // Use allMappable (fast coord-only list) if provided, otherwise fall back to allProperties.
     // allMappable is used for map pins only; sortedProperties drives the list.
     const mappableProperties = useMemo<MappableProperty[]>(() => {
-        const source = allMappable.length > 0 ? allMappable : allProperties;
+        // Use allProperties (full priced set) for pins; allMappable is only a fallback for
+        // the brief window before the done event arrives.
+        const source = allProperties.length > 0 ? allProperties : allMappable;
         const filtered = source
             .filter(
                 (p: any): p is MappableProperty =>
@@ -456,7 +451,12 @@ function SearchMapView({
 
     // Apply client-side filters + sort to ALL loaded properties (includes Load More results)
     const sortedProperties = useMemo(() => {
-        let list = allProperties.filter((p: any) => p.name && p.price > 0 && !(p as any).priceLoading);
+        // Raw hotel codes from OTV look like 'yello_hotel' or 'cebu_hilltop_hotel' — all lowercase,
+        // digits, and underscores with no spaces. Exclude them until ETG enrichment populates real names.
+        const isRawCode = (name: string) => /^[a-z0-9_]+$/.test(name) && name.includes('_');
+        let list = allProperties.filter((p: any) =>
+            p.name && !isRawCode(p.name) && p.price > 0 && !(p as any).priceLoading
+        );
 
         if (propertyTypes.length > 0) {
             list = list.filter((p: any) => propertyTypes.includes(p.type));
@@ -509,11 +509,12 @@ function SearchMapView({
         if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, [visibleProperties]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // When no results, fall back to the searched destination's known coordinates
+    // Always seed the map with the destination's coordinates so it starts centred on
+    // the right city. The guard on mappableProperties was incorrectly cleared this,
+    // causing the map to default to Tokyo (or globe view) while pins were loading.
     const fallbackCoords = useMemo(() => {
-        if (mappableProperties.length > 0) return null;
         return destination ? getDestinationCoords(destination) : null;
-    }, [mappableProperties.length, destination]);
+    }, [destination]);
 
     // ── Handlers ────────────────────────────────────────────
 
