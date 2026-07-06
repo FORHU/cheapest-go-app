@@ -509,11 +509,12 @@ function SearchMapView({
         if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, [visibleProperties]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // When no results, fall back to the searched destination's known coordinates
+    // Always seed the map with the destination's coordinates so it starts centred on
+    // the right city. The guard on mappableProperties was incorrectly cleared this,
+    // causing the map to default to Tokyo (or globe view) while pins were loading.
     const fallbackCoords = useMemo(() => {
-        if (mappableProperties.length > 0) return null;
         return destination ? getDestinationCoords(destination) : null;
-    }, [mappableProperties.length, destination]);
+    }, [destination]);
 
     // ── Handlers ────────────────────────────────────────────
 
