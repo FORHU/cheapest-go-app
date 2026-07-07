@@ -1,16 +1,18 @@
 import { LegalLayout } from '@/components/landing/layout/LegalLayout';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = {
-  title: 'Terms of Service — CheapestGo',
-  description: 'The terms and conditions governing your use of CheapestGo.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('legal.termsOfService');
+  return { title: t('title'), description: t('description') };
+}
 
-export default function TermsOfServicePage() {
+export default async function TermsOfServicePage() {
+  const t = await getTranslations('legal.termsOfService');
   return (
     <LegalLayout
-      title="Terms of Service"
-      subtitle="Please read these terms carefully before using CheapestGo."
+      title={t('pageTitle')}
+      subtitle={t('pageSubtitle')}
       effectiveDate="May 1, 2025"
       lastUpdated="April 1, 2025"
       sections={[

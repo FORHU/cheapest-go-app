@@ -292,6 +292,10 @@
             "active": "アラート有効",
             "removed": "アラートを削除しました",
             "failed": "アラートを設定できませんでした"
+        },
+        "book": {
+            "title": "Book Flight | CheapestGo",
+            "loading": "Loading booking..."
         }
     },
     "auth": {
@@ -311,7 +315,13 @@
     "errors": {
         "generic": "エラーが発生しました。もう一度お試しください。",
         "notFound": "ページが見つかりません。",
-        "searchFailed": "検索に失敗しました。接続を確認してもう一度お試しください。"
+        "searchFailed": "検索に失敗しました。接続を確認してもう一度お試しください。",
+        "auth": {
+            "title": "Authentication Error",
+            "description": "There was an error processing your authentication request. This could happen if the link expired or was already used.",
+            "signInAgain": "Try signing in again",
+            "goHome": "Go to homepage"
+        }
     },
     "pwa": {
         "installPrompt": {
@@ -384,7 +394,12 @@
         "subtitleDefault": "人気路線の最安値",
         "subtitlePersonalized": "{city} 出発の最安値フライト",
         "allDealsCount": "すべてのオファー（{count}件）",
-        "collapse": "折りたたむ ↑"
+        "collapse": "折りたたむ ↑",
+        "pageTitle": "Exclusive Deals & Offers",
+        "pageSubtitle": "Handpicked limited-time travel deals. Prices are updated frequently and may change. Book early to secure the best rates.",
+        "noDealsTitle": "No active deals found",
+        "noDealsDescription": "Check back soon for new exclusive travel offers.",
+        "backButton": "Back to Home"
     },
     "hotels": {
         "ratings": {
@@ -621,6 +636,220 @@
             "tokyo": "東京の高級ホテル、1泊200ドル以下、プール付き...",
             "cebu": "来月、セブでカップルの週末旅行...",
             "manila": "マニラ近郊のファミリーリゾート、大人2名・子ども2名..."
+        }
+    },
+    "account": {
+        "title": "Account Settings | CheapestGo",
+        "backToHome": "ホームに戻る",
+        "sidebar": {
+            "greeting": "こんにちは、{name}さん",
+            "membershipTier": "ブルー",
+            "pointsValue": "ポイント価値",
+            "pointsAmount": "₱ 0.00",
+            "viewRewardsActivity": "リワード活動を見る",
+            "promoTitle": "旅のインスピレーションとオファーを受け取る",
+            "promoSubtitle": "CheapestGoのお得情報、ヒント、インサイトを受け取る",
+            "getEmails": "メールを受け取る",
+            "signOut": "サインアウト",
+            "partnerInfo": "アカウントはCheapestGoおよびすべてのパートナーサイトで使用できます"
+        },
+        "nav": {
+            "profile": {
+                "title": "プロフィール",
+                "description": "個人情報の確認と編集"
+            },
+            "communications": {
+                "title": "コミュニケーション",
+                "description": "通知設定の管理"
+            },
+            "security": {
+                "title": "セキュリティ",
+                "description": "パスワードの更新"
+            },
+            "help": {
+                "title": "ヘルプとフィードバック",
+                "description": "カスタマーサポートを受ける"
+            }
+        },
+        "profile": {
+            "heading": "プロフィール情報",
+            "subheading": "個人情報を管理する",
+            "fullName": "氏名",
+            "emailAddress": "メールアドレス",
+            "emailCannotChange": "メールアドレスは変更できません",
+            "edit": "編集",
+            "firstName": "名",
+            "lastName": "姓",
+            "save": "保存",
+            "saving": "保存中...",
+            "cancel": "キャンセル",
+            "updateSuccess": "プロフィールが正常に更新されました",
+            "updateError": "プロフィールの更新に失敗しました",
+            "fillAllFields": "すべての項目を入力してください"
+        },
+        "security": {
+            "heading": "セキュリティ設定",
+            "subheading": "パスワードとアカウントのセキュリティを管理する",
+            "changePassword": "パスワードの変更",
+            "currentPassword": "現在のパスワード",
+            "newPassword": "新しいパスワード",
+            "newPasswordHint": "6文字以上",
+            "confirmPassword": "新しいパスワードの確認",
+            "updatePassword": "パスワードを更新",
+            "updating": "更新中...",
+            "accountEmail": "アカウントメール",
+            "accountEmailSubtitle": "アカウントのメールアドレス",
+            "emailCannotChange": "メールアドレスは変更できません",
+            "passwordUpdateSuccess": "パスワードが正常に更新されました",
+            "passwordUpdateError": "パスワードの更新に失敗しました",
+            "fillAllPasswordFields": "すべてのパスワード項目を入力してください",
+            "passwordTooShort": "新しいパスワードは6文字以上必要です",
+            "passwordsDoNotMatch": "新しいパスワードが一致しません"
+        },
+        "communications": {
+            "heading": "コミュニケーション設定",
+            "subheading": "受け取る通知とメールを設定する",
+            "emailNotifications": "メール通知",
+            "emailNotificationsDesc": "予約確認と更新を受け取る",
+            "tripReminders": "旅行リマインダー",
+            "tripRemindersDesc": "予定の旅行前にリマインダーを受け取る",
+            "marketingEmails": "マーケティングメール",
+            "marketingEmailsDesc": "お得情報、プロモーション、旅のヒントを受け取る",
+            "savePreferences": "設定を保存",
+            "preferencesSaved": "設定が保存されました"
+        },
+        "help": {
+            "heading": "ヘルプとサポート",
+            "subheading": "アカウントと予約に関するサポートを受ける",
+            "emailSupport": "メールサポート",
+            "emailSupportAddress": "support@cheapestgo.com",
+            "liveChat": "ライブチャット",
+            "liveChatDesc": "サポートチームとチャットする",
+            "faqTitle": "よくある質問",
+            "faq1": "予約をキャンセルまたは変更するにはどうすればよいですか？",
+            "faq2": "予約確認はいつ受け取れますか？",
+            "faq3": "返金を申請するにはどうすればよいですか？",
+            "faq4": "どのような支払い方法が利用できますか？"
+        },
+        "sectionHeader": {
+            "edit": "編集"
+        }
+    },
+    "checkout": {
+        "title": "Checkout | CheapestGo"
+    },
+    "destinations": {
+        "title": "Hotels in {city}, {country} \u2013 Cheapest Rates | CheapestGo",
+        "description": "Find and book the cheapest hotels in {city}, {country}. Compare prices and get the best deals on CheapestGo.",
+        "hotelsFrom": "Hotels from {price} / night",
+        "findHotelsIn": "Find hotels in {city}",
+        "browseHotels": "Browse the cheapest available hotels in {city}, {country} and book with confidence.",
+        "searchHotels": "Search Hotels in {city}"
+    },
+    "property": {
+        "bundleActive": "Bundle Discount Active",
+        "bundleApplied": "Bundle discount applied \u2014 you're saving {percent}% on this hotel",
+        "savePercent": "SAVE {percent}%",
+        "propertyNotFound": "Property not found. (ID: {id})",
+        "breadcrumbHome": "Home",
+        "breadcrumbStaysIn": "Stays in {city}"
+    },
+    "trips": {
+        "title": "My Trips | CheapestGo",
+        "myTrips": "My Trips",
+        "viewReceipt": "View Receipt",
+        "noSegmentDetails": "No segment details available.",
+        "status": {
+            "pending": "Pending",
+            "confirmed": "Confirmed",
+            "completed": "Completed",
+            "cancelled": "Cancelled",
+            "refunded": "Refunded",
+            "refundFailed": "Refund Failed",
+            "processing": "Processing",
+            "booked": "Booked",
+            "ticketing": "Ticketing",
+            "ticketed": "Confirmed",
+            "failed": "Failed",
+            "cancelPending": "Cancellation Pending",
+            "cancelFailed": "Cancel Failed",
+            "refundPending": "Refund Pending",
+            "cancelledProviderMissing": "Cancelled"
+        },
+        "sections": {
+            "stayDetails": "Stay Details",
+            "guestInformation": "Guest Information",
+            "cancellationPolicy": "Cancellation Policy",
+            "payment": "Payment",
+            "itinerary": "Itinerary",
+            "passengers": "Passengers"
+        },
+        "labels": {
+            "checkIn": "Check-in",
+            "checkOut": "Check-out",
+            "duration": "Duration",
+            "room": "Room",
+            "guests": "Guests",
+            "specialRequests": "Special Requests",
+            "name": "Name",
+            "email": "Email",
+            "totalPaid": "Total Paid",
+            "paymentMethod": "Payment Method",
+            "bookedOn": "Booked On",
+            "provider": "Provider",
+            "freeCancellation": "Free cancellation available",
+            "nonRefundable": "Non-refundable",
+            "freeCancelUntil": "Free cancellation until",
+            "afterDatePenalty": "After {date}: penalty of {amount}",
+            "policyNotAvailable": "Cancellation policy details not available."
+        }
+    },
+    "invoice": {
+        "receipt": "RECEIPT",
+        "yourTravelPartner": "Your Travel Partner",
+        "issued": "Issued: {date}",
+        "billedTo": "Billed to",
+        "bookingDetails": "Booking Details",
+        "totalPaid": "Total Paid",
+        "bookingRef": "Booking Ref",
+        "type": "Type",
+        "provider": "Provider",
+        "payment": "Payment",
+        "paymentMethod": "Stripe (Card)",
+        "thankYou": "Thank you for booking with CheapestGo. For support, contact",
+        "flight": "Flight",
+        "route": "Route",
+        "date": "Date",
+        "description": "Description",
+        "amount": "Amount",
+        "passengers": "Passengers",
+        "hotel": "Hotel",
+        "hotelPartner": "Hotel Partner"
+    },
+    "legal": {
+        "cookiePolicy": {
+            "title": "Cookie Policy \u2014 CheapestGo",
+            "description": "How CheapestGo uses cookies and similar tracking technologies.",
+            "pageTitle": "Cookie Policy",
+            "pageSubtitle": "How we use cookies and similar technologies on CheapestGo."
+        },
+        "privacyPolicy": {
+            "title": "Privacy Policy \u2014 CheapestGo",
+            "description": "How CheapestGo collects, uses, and protects your personal information.",
+            "pageTitle": "Privacy Policy",
+            "pageSubtitle": "How we collect, use, and protect your personal information."
+        },
+        "refundPolicy": {
+            "title": "Refund & Cancellation Policy \u2014 CheapestGo",
+            "description": "Understand how cancellations, refunds, and amendments work on CheapestGo.",
+            "pageTitle": "Refund & Cancellation Policy",
+            "pageSubtitle": "Everything you need to know about cancellations, refunds, and booking changes."
+        },
+        "termsOfService": {
+            "title": "Terms of Service \u2014 CheapestGo",
+            "description": "The terms and conditions governing your use of CheapestGo.",
+            "pageTitle": "Terms of Service",
+            "pageSubtitle": "Please read these terms carefully before using CheapestGo."
         }
     }
 }

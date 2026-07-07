@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { parsePropertySlug, buildPropertySlug } from '@/lib/utils';
+import { getTranslations } from 'next-intl/server';
 import PropertyGallery from '@/components/property/PropertyGallery';
 import PropertyOverview from '@/components/property/PropertyOverview';
 import PropertyNav from '@/components/property/PropertyNav';
@@ -81,6 +82,7 @@ export default async function PropertyPage({
     const { id: rawSlug } = await params;
     const searchParamsResult = await searchParams;
     const { id, nameSlug } = parsePropertySlug(rawSlug);
+    const t = await getTranslations('property');
 
     // Phase 1: fast DB fetch + reviews (~10ms total)
     const [staticData, reviewsData] = await Promise.all([
@@ -114,7 +116,7 @@ export default async function PropertyPage({
     if (!property) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <p>Property not found. (ID: {id})</p>
+                <p>{t('propertyNotFound', { id })}</p>
             </div>
         );
     }
@@ -145,8 +147,8 @@ export default async function PropertyPage({
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl}/` },
-            ...(city ? [{ '@type': 'ListItem', position: 2, name: `Stays in ${city}`, item: `${siteUrl}/search?destination=${encodeURIComponent(city)}` }] : []),
+            { '@type': 'ListItem', position: 1, name: t('breadcrumbHome'), item: `${siteUrl}/` },
+            ...(city ? [{ '@type': 'ListItem', position: 2, name: t('breadcrumbStaysIn', { city }), item: `${siteUrl}/search?destination=${encodeURIComponent(city)}` }] : []),
             { '@type': 'ListItem', position: city ? 3 : 2, name: property.name, item: `${siteUrl}/property/${propertySlug}` },
         ],
     };
@@ -225,10 +227,10 @@ export default async function PropertyPage({
                         <div className="flex items-center gap-3 px-4 py-3 bg-linear-to-r from-violet-600 to-indigo-600 rounded-xl text-white shadow-md shadow-violet-500/20">
                             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 shrink-0 text-base">✦</div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold leading-tight">Bundle Discount Active</p>
-                                <p className="text-[11px] text-violet-200 leading-tight mt-0.5 truncate">Bundle discount applied — you're saving 3% on this hotel</p>
+                                <p className="text-xs font-bold leading-tight">{t('bundleActive')}</p>
+                                <p className="text-[11px] text-violet-200 leading-tight mt-0.5 truncate">{t('bundleApplied', { percent: 3 })}</p>
                             </div>
-                            <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-bold">SAVE 3%</span>
+                            <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-bold">{t('savePercent', { percent: 3 })}</span>
                         </div>
                     </div>
                 )}

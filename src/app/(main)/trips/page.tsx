@@ -1,10 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-
-export const metadata: Metadata = {
-  title: 'My Trips | CheapestGo',
-  robots: { index: false, follow: false },
-};
+import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { fetchTripsData } from '@/lib/trips';
 import { TripsContent } from '@/components/trips';
@@ -12,6 +8,11 @@ import { Skeleton } from '@/components/shared/Skeleton';
 import { getAuthenticatedUser } from '@/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata(): Promise<Metadata> {
+    const t = await getTranslations('trips');
+    return { title: t('title'), robots: { index: false, follow: false } };
+}
 
 function TripsSkeleton() {
   return (
