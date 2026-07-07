@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { CheckCircle, PartyPopper, MapPin, Calendar, Mail, Plane, Sparkles } from 'lucide-react';
 import { Confetti, Balloons } from '@/components/ui/Animations';
@@ -33,6 +34,7 @@ export function BookingSuccess({
     hotelDestination,
 }: BookingSuccessProps) {
     const router = useRouter();
+    const t = useTranslations('checkout');
     const [hasAlreadyBookedFlight, setHasAlreadyBookedFlight] = React.useState(false);
 
     React.useEffect(() => {
@@ -106,7 +108,7 @@ export function BookingSuccess({
                     transition={{ delay: 0.3 }}
                     className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-1.5 sm:mb-2"
                 >
-                    Booking Confirmed! 🎉
+                    {t('success.bookingConfirmed')}
                 </motion.h1>
 
                 <motion.p
@@ -115,7 +117,7 @@ export function BookingSuccess({
                     transition={{ delay: 0.4 }}
                     className="text-[13px] sm:text-base text-slate-500 dark:text-slate-400 mb-4 sm:mb-6"
                 >
-                    Your reservation at <span className="font-semibold text-emerald-600 dark:text-emerald-400">{propertyName}</span> is complete.
+                    {t.rich('success.reservationComplete', { name: propertyName, strong: (chunks) => <span className="font-semibold text-emerald-600 dark:text-emerald-400">{chunks}</span> })}
                 </motion.p>
 
                 {/* Booking Details Card */}
@@ -130,7 +132,7 @@ export function BookingSuccess({
                             <MapPin className="text-blue-600 dark:text-blue-400 w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                         </div>
                         <div className="flex-1">
-                            <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Booking ID</p>
+                            <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">{t('success.bookingId')}</p>
                             <p className="font-mono font-bold text-slate-900 dark:text-white text-[13px] sm:text-sm">{bookingId}</p>
                         </div>
                     </div>
@@ -141,7 +143,7 @@ export function BookingSuccess({
                                 <Calendar className="text-purple-600 dark:text-purple-400 w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                             </div>
                             <div className="flex-1">
-                                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">Stay Duration</p>
+                                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">{t('success.stayDuration')}</p>
                                 <p className="font-medium text-slate-900 dark:text-white text-[13px] sm:text-sm">
                                     {checkIn.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {checkOut.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </p>
@@ -154,7 +156,7 @@ export function BookingSuccess({
                             <Mail className="text-green-600 dark:text-green-400 w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">Confirmation sent to</p>
+                            <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">{t('success.confirmationSentTo')}</p>
                             <p className="font-medium text-slate-900 dark:text-white text-[12px] sm:text-sm truncate">{email}</p>
                         </div>
                         {emailSent && (
@@ -164,7 +166,7 @@ export function BookingSuccess({
                                 className="flex items-center gap-1 text-[10px] sm:text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full shrink-0"
                             >
                                 <CheckCircle size={10} className="sm:w-3 sm:h-3" />
-                                Sent
+                                {t('success.sent')}
                             </motion.div>
                         )}
                     </div>
@@ -180,14 +182,14 @@ export function BookingSuccess({
                                 <Plane className="text-violet-600 dark:text-violet-400 w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-[10px] sm:text-xs text-violet-500 dark:text-violet-400">Flight + Hotel Bundle</p>
+                                <p className="text-[10px] sm:text-xs text-violet-500 dark:text-violet-400">{t('success.flightHotelBundle')}</p>
                                 <p className="font-medium text-violet-900 dark:text-violet-200 text-[12px] sm:text-sm">
-                                    Bundle discount applied
+                                    {t('success.bundleDiscountApplied')}
                                 </p>
                             </div>
                             {bundleSavings && bundleSavings > 0 && (
                                 <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] sm:text-xs font-bold">
-                                    -{new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(bundleSavings)} saved
+                                    {t('success.saved', { amount: new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(bundleSavings) })}
                                 </span>
                             )}
                         </motion.div>
@@ -208,14 +210,14 @@ export function BookingSuccess({
                             </div>
                             <div>
                                 <div className="flex items-center gap-1.5 mb-0.5">
-                                    <p className="text-xs font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wide">✦ Bundle Deal</p>
-                                    <span className="px-1.5 py-px text-[9px] font-bold bg-amber-400 text-amber-900 rounded-full">Save up to 8%</span>
+                                    <p className="text-xs font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wide">{t('success.bundleDeal')}</p>
+                                    <span className="px-1.5 py-px text-[9px] font-bold bg-amber-400 text-amber-900 rounded-full">{t('success.saveUpTo')}</span>
                                 </div>
                                 <p className="text-[12px] sm:text-sm text-violet-800 dark:text-violet-200 font-medium">
-                                    Need a flight to {hotelDestination || propertyName}?
+                                    {t('success.needFlight', { destination: hotelDestination || propertyName })}
                                 </p>
                                 <p className="text-[10px] sm:text-xs text-violet-600/80 dark:text-violet-400/80 mt-0.5">
-                                    Book your flight now and get a bundle discount on your total.
+                                    {t('success.bookFlightBundle')}
                                 </p>
                             </div>
                         </div>
@@ -224,7 +226,7 @@ export function BookingSuccess({
                             className="w-full py-2 text-xs sm:text-sm font-bold bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors flex items-center justify-center gap-1.5 active:scale-[0.98]"
                         >
                             <Sparkles size={13} />
-                            Search flights &amp; bundle
+                            {t('success.searchFlightsAndBundle')}
                         </button>
                     </motion.div>
                 )}
@@ -239,16 +241,16 @@ export function BookingSuccess({
                         onClick={() => router.push('/trips')}
                         className="w-full py-2.5 sm:py-4 text-[13px] sm:text-base bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-lg sm:rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all active:scale-[0.98]"
                     >
-                        View My Trips
+                        {t('success.viewMyTrips')}
                     </button>
                     <button
                         onClick={() => router.push('/')}
                         className="w-full py-2 sm:py-3 text-[13px] sm:text-base text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium transition-colors"
                     >
-                        Return to Home
+                        {t('success.returnToHome')}
                     </button>
                     <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500">
-                        Check your email for booking details and updates
+                        {t('success.checkEmail')}
                     </p>
                 </motion.div>
             </motion.div>

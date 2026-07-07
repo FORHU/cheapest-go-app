@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2, LogIn, AlertTriangle } from 'lucide-react';
 import { useUserCurrency } from '@/stores/searchStore';
 import { getCurrencySymbol } from '@/lib/currency';
@@ -26,6 +27,7 @@ export function SubmitBookingButton({
     prebookError,
     onSubmit,
 }: SubmitBookingButtonProps) {
+    const t = useTranslations('checkout');
     const currency = useUserCurrency();
     const symbol = getCurrencySymbol(currency);
     const isPriceVerifying = !!prebookId && !priceReady && !prebookError;
@@ -54,8 +56,8 @@ export function SubmitBookingButton({
                 <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-xs font-semibold text-red-700 dark:text-red-300">Hotel temporarily unavailable</p>
-                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">This hotel cannot be booked right now. Please go back and choose a different hotel.</p>
+                        <p className="text-xs font-semibold text-red-700 dark:text-red-300">{t('submit.hotelUnavailable')}</p>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{t('submit.hotelUnavailableDesc')}</p>
                     </div>
                 </div>
             )}
@@ -63,8 +65,8 @@ export function SubmitBookingButton({
                 <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-xs font-semibold text-red-700 dark:text-red-300">Room session expired</p>
-                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">Your room hold has expired. Go back and reselect the room to get a fresh session — you can pick the same room again.</p>
+                        <p className="text-xs font-semibold text-red-700 dark:text-red-300">{t('submit.sessionExpired')}</p>
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{t('submit.sessionExpiredDesc')}</p>
                     </div>
                 </div>
             )}
@@ -80,31 +82,31 @@ export function SubmitBookingButton({
                 {loading ? (
                     <>
                         <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
-                        <span>Processing Your Booking...</span>
+                        <span>{t('submit.processingBooking')}</span>
                     </>
                 ) : (prebooking && !prebookId) ? (
                     <>
                         <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
-                        <span>Verifying Room...</span>
+                        <span>{t('submit.verifyingRoom')}</span>
                     </>
                 ) : isPriceVerifying ? (
                     <>
                         <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
-                        <span>Verifying Price...</span>
+                        <span>{t('submit.verifyingPrice')}</span>
                     </>
                 ) : isHotelUnavailable ? (
-                    <span>Go back &amp; choose a different hotel</span>
+                    <span>{t('submit.goBackDifferentHotel')}</span>
                 ) : isSessionExpired ? (
-                    <span>Go back &amp; reselect room</span>
+                    <span>{t('submit.goBackReselect')}</span>
                 ) : prebookError ? (
-                    <span>Verification failed — see error above</span>
+                    <span>{t('submit.verificationFailed')}</span>
                 ) : !isAuthenticated ? (
                     <>
                         <LogIn className="w-4 h-4 lg:w-5 lg:h-5" />
-                        <span>Sign In to Complete Booking</span>
+                        <span>{t('submit.signInToComplete')}</span>
                     </>
                 ) : (
-                    `Continue to Payment • ${symbol}${(totalPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                    t('submit.continueToPayment', { amount: `${symbol}${(totalPrice || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}` })
                 )}
             </button>
 
@@ -112,10 +114,10 @@ export function SubmitBookingButton({
             {loading && (
                 <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg text-center">
                     <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-                        Please wait while we confirm your reservation with the hotel...
+                        {t('submit.waitingMessage')}
                     </p>
                     <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
-                        This may take up to 30 seconds. Do not close this page.
+                        {t('submit.waitingWarning')}
                     </p>
                 </div>
             )}
