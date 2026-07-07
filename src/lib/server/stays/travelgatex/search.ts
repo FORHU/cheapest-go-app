@@ -1051,7 +1051,7 @@ async function _runTgxSearch(params: TgxSearchParams) {
         const baseCriteria = { checkIn: checkin, checkOut: checkout, occupancies, nationality: guest_nationality, currency };
         return runCityFallback(
             cityName, countryCode, baseCriteria, settings,
-            resolveTgxDestinationCode(cityName).catch(() => undefined),
+            resolveTgxDestinationCode(cityName, countryCode).catch(() => undefined),
             fetchHotelCodesByCity(cityName, countryCode).catch(() => []),
             params,
         );
