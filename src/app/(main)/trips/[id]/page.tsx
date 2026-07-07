@@ -96,7 +96,7 @@ function HotelDetail({ booking, t }: { booking: any; t: TFunc }) {
     const refundable = policy?.refundableTag === 'RFN';
     const freeCancelDeadline = policy?.cancelPolicyInfos?.[0]?.cancelTime;
     const s = t;
-    const l = (key: string) => t(`labels.${key}`);
+    const l = (key: string, params?: Record<string, string | number>) => t(`labels.${key}`, params);
 
     return (
         <div className="space-y-4">
