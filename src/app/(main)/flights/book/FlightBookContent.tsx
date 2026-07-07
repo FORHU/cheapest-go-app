@@ -1056,15 +1056,6 @@ function BookingContent() {
                             </div>
                         ))}
 
-                        {/* Add Passenger Button */}
-                        <button
-                            type="button"
-                            onClick={addPassenger}
-                            className="w-full py-2 lg:py-2.5 rounded-md border-2 border-dashed border-slate-300 dark:border-slate-700 text-[10px] lg:text-[13px] text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors"
-                        >
-                            + Add Passenger
-                        </button>
-
                         {/* Contact Info */}
                         <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5">
                             <h2 className="flex items-center gap-1.5 lg:gap-2 text-[11px] lg:text-[14px] font-normal text-slate-900 dark:text-white mb-3 lg:mb-4">
