@@ -300,13 +300,6 @@ async function searchEtgCity(
         }
         console.log(`[tgx-search] ETG fallback: region ${regionId} for "${cityName}" (${params.checkin}→${params.checkout})`);
 
-        // Residency gates which rates/hotels a supplier returns, so mirror the guest's
-        // nationality instead of a hardcoded US resident — otherwise the app can show
-        // fewer/different hotels than a same-residency Ratehawk session. Falls back to
-        // 'us' for unmapped nationalities. Currency stays USD (display-only; converted
-        // downstream, consistent with the OTV path).
-        const etgResidency = resolveIsoCodeEtg(params.guest_nationality)?.toLowerCase() ?? 'us';
-
         const serpAbort = new AbortController();
         const serpTimeout = setTimeout(() => serpAbort.abort(), 20_000);
         const serpRes = await fetch('https://api.worldota.net/api/b2b/v3/search/serp/region/', {
@@ -319,7 +312,7 @@ async function searchEtgCity(
                 guests:    [{ adults: Number(params.adults ?? 2) }],
                 currency:  'USD',
                 language:  'en',
-                residency: etgResidency,
+                residency: 'us',
             }),
             signal: serpAbort.signal,
         });
@@ -830,18 +823,10 @@ async function runCityFallback(
             console.log(`[tgx-search] Dest code "${resolvedCode}" is a known OTV miss — skipping dest-code search for "${cityName}"`);
         } else {
             const __t0 = Date.now();
-            // Run TGX availability search and OTV portfolio (for coords/names) in parallel.
-            // Previously the portfolio was fire-and-forget AFTER buildCityResults, so hotels
-            // had lat=0 on the first search and only got coordinates on the second search.
-            const [destResult, otvContent] = await Promise.all([
-                tgxGraphQL(CITY_SEARCH_QUERY, {
-                    criteria: { ...baseCriteria, destinations: [resolvedCode] },
-                    settings,
-                }),
-                cityName
-                    ? fetchOtvHotelCodesByCity(cityName, resolvedCode).catch(() => ({ codes: [] as string[], contentMap: new Map<string, any>() }))
-                    : Promise.resolve({ codes: [] as string[], contentMap: new Map<string, any>() }),
-            ]);
+            const destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
+                criteria: { ...baseCriteria, destinations: [resolvedCode] },
+                settings,
+            });
             console.log(`[tgx-search][TIMING] dest-code round-trip for "${resolvedCode}" took ${Date.now() - __t0}ms`);
             const destOptions: TgxOption[] = destResult?.data?.hotelX?.search?.options || [];
             const destErrors: any[] = destResult?.data?.hotelX?.search?.errors || [];
@@ -850,16 +835,23 @@ async function runCityFallback(
             );
             if (destMerchant.length > 0) {
                 console.log(`[tgx-search] Destination-code search returned ${destMerchant.length} options for "${cityName}"`);
-                // Enrich null-name codes from ETG in the background
-                if (otvContent.codes.length > 0) {
-                    const nullNames = otvContent.codes.filter((c: string) => !otvContent.contentMap.get(c)?.name);
-                    if (nullNames.length > 0) {
-                        fetchEtgHotelNames(nullNames)
-                            .then(etgNames => updateHotelNamesInDb(etgNames))
-                            .catch(() => {});
-                    }
+                // Dest-code path never calls fetchOtvHotelCodesByCity, so hotel_content stays empty.
+                // Seed it now (background) so the instant catalog shows up on the next request.
+                if (cityName) {
+                    fetchOtvHotelCodesByCity(cityName, resolvedCode)
+                        .then(otv => {
+                            if (otv.codes.length > 0) {
+                                const nullNames = otv.codes.filter(c => !otv.contentMap.get(c)?.name);
+                                if (nullNames.length > 0) {
+                                    fetchEtgHotelNames(nullNames)
+                                        .then(etgNames => updateHotelNamesInDb(etgNames))
+                                        .catch(() => {});
+                                }
+                            }
+                        })
+                        .catch(() => {});
                 }
-                return buildCityResults(destMerchant, cityName, countryCode, otvContent.contentMap);
+                return buildCityResults(destMerchant, cityName, countryCode);
             }
             // No usable MERCHANT options — whether TGX sent an explicit "Empty hotels"
             // error or just a clean empty array (observed for some destination codes,
@@ -958,20 +950,7 @@ async function runCityFallback(
             (o) => o.paymentType === 'MERCHANT' && (o.status === 'AVAILABLE' || o.status === 'OK')
         );
         if (fallbackMerchant.length > 0) {
-            const otvResults = await buildCityResults(fallbackMerchant, cityName, countryCode, otvContentMap);
-            // We only reach the hotel-code path when OTV's full-catalog dest-code search
-            // already failed (empty or a known miss), so this is a partial snapshot
-            // scavenged from hotel_content — e.g. Manila returns 6 of hundreds. ETG/RateHawk
-            // carries the whole city, so consult it here too and keep whichever set is
-            // larger. We swap rather than merge to avoid cross-supplier dedup: OTV hotel
-            // codes and ETG slugs share no common key (same rationale as ADR-0004).
-            const etgResult = await searchEtgCity(cityName, searchParams);
-            if (etgResult.data.length > otvResults.data.length) {
-                console.log(`[tgx-search] ETG (${etgResult.data.length}) > OTV hotel-code snapshot (${otvResults.data.length}) for "${cityName}" — using ETG`);
-                return etgResult;
-            }
-            console.log(`[tgx-search] OTV hotel-code snapshot (${otvResults.data.length}) >= ETG (${etgResult.data.length}) for "${cityName}" — using OTV`);
-            return otvResults;
+            return buildCityResults(fallbackMerchant, cityName, countryCode, otvContentMap);
         }
         // OTV codes exist but no availability — fall through to ETG
     }
@@ -1187,7 +1166,7 @@ async function buildCityResults(
     // Wrapped in try/catch — enrichment must never prevent results from rendering.
     if (hotelCodes.length > 0) {
         const noNameCodes = hotelCodes.filter(c => !contentMap.get(c)?.name && !preloadedContent.get(c)?.name);
-        if (noNameCodes.length > 0) {
+        if (noNameCodes.length >= hotelCodes.length * 0.3) {
             try {
                 const etgNames = await fetchEtgHotelNames(noNameCodes);
                 if (etgNames.size > 0) {
