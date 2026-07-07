@@ -150,16 +150,16 @@ export async function confirmAndSaveTgxBooking(
 ): Promise<ConfirmAndSaveResult> {
   const clientReference = `FORHU-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-  // Build paxes: adults first, then children
-  const adultPaxes = Array(params.adults).fill(null).map(() => ({
-    name: params.holder.firstName,
-    surname: params.holder.lastName,
+  // Build paxes: adults first (use individual names from form), then children
+  const adultPaxes = Array(params.adults).fill(null).map((_, i) => ({
+    name: params.guests[i]?.firstName || params.holder.firstName,
+    surname: params.guests[i]?.lastName || params.holder.lastName,
     age: 30,
   }));
   const childPaxes = Array(params.children).fill(null).map((_, i) => ({
     name: params.guests[params.adults + i]?.firstName || `Child${i + 1}`,
-    surname: params.holder.lastName,
-    age: params.guests[params.adults + i]?.age || 10,
+    surname: params.guests[params.adults + i]?.lastName || params.holder.lastName,
+    age: (params.guests[params.adults + i] as any)?.age || 10,
   }));
 
   let tgxResult: any;

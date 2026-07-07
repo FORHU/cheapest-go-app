@@ -857,14 +857,18 @@ async function runCityFallback(
             // error or just a clean empty array (observed for some destination codes,
             // e.g. Tokyo's 504948), this code isn't yielding results either way.
             // Persist so subsequent cold starts also skip this 18-22s round-trip.
-            persistFailedDestCode(resolvedCode, cityName);
+            // WRONG_FIELD/Empty hotels = TGX mapping gap (OTV was never called).
+            // Don't blacklist — the city may have OTV coverage once TGX mapping syncs.
             if (hasEmptyHotelsError(destErrors)) {
-                console.warn(`[tgx-search] Dest code "${resolvedCode}" returned Empty hotels — recorded as OTV miss`);
-            } else if (destErrors.length) {
-                console.warn('[tgx-search] Destination-code search errors:', destErrors.map((e: any) => e.description || e.code).join(', '));
-                console.warn(`[tgx-search] Dest code "${resolvedCode}" had errors and 0 merchant options — recorded as OTV miss`);
+                console.warn(`[tgx-search] Dest code "${resolvedCode}" has TGX mapping gap (Empty hotels) — not recorded as OTV miss`);
             } else {
-                console.warn(`[tgx-search] Dest code "${resolvedCode}" returned 0 options with no errors — recorded as OTV miss`);
+                persistFailedDestCode(resolvedCode, cityName);
+                if (destErrors.length) {
+                    console.warn('[tgx-search] Destination-code search errors:', destErrors.map((e: any) => e.description || e.code).join(', '));
+                    console.warn(`[tgx-search] Dest code "${resolvedCode}" had errors and 0 merchant options — recorded as OTV miss`);
+                } else {
+                    console.warn(`[tgx-search] Dest code "${resolvedCode}" returned 0 options with no errors — recorded as OTV miss`);
+                }
             }
         }
     }
