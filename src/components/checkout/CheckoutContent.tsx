@@ -691,7 +691,7 @@ export function CheckoutContent() {
                                                     {t('duplicateBookingTitle', { hotel: property?.name || '' })}
                                                     {duplicateBooking.existingCheckIn && duplicateBooking.existingCheckOut && (
                                                         <> ({new Date(duplicateBooking.existingCheckIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(duplicateBooking.existingCheckOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})</>
-                                                    )} for overlapping dates.
+                                                    )}
                                                 </p>
                                             </div>
                                             <p className="text-xs text-red-600 dark:text-red-400">{t('duplicateBookingDesc')}</p>

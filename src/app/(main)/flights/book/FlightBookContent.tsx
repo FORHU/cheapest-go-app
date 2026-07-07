@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Plane, User, Mail, Loader2, CheckCircle, AlertTriangle, MapPin, PartyPopper, Info, Clock, Shield, XCircle, X, BadgeDollarSign, RefreshCw, Users, BedDouble, ArrowRight, Armchair, Luggage, Sparkles, ChevronDown } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -37,6 +38,7 @@ interface FarePolicyPanelProps {
 }
 
 function FarePolicyPanel({ policy, policyChanged }: FarePolicyPanelProps) {
+    const t = useTranslations('flightBook');
     const isRefundable = policy.isRefundable;
     const penalty = policy.refundPenaltyAmount;
     const isLocked = policy.policyVersion === 'revalidated';
@@ -45,13 +47,13 @@ function FarePolicyPanel({ policy, policyChanged }: FarePolicyPanelProps) {
     if (isRefundable && penalty === 0) {
         badge = (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-normal bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-                <Shield className="w-3 h-3" /> Free cancellation
+                <Shield className="w-3 h-3" /> {t('farePolicy.freeCancellation')}
             </span>
         );
     } else if (isRefundable) {
         const feeLabel = penalty != null && penalty > 0
-            ? `Refundable (fee: ${policy.refundPenaltyCurrency ?? ''}${penalty})`
-            : 'Refundable (fees may apply)';
+            ? t('farePolicy.refundableFee', { fee: `${policy.refundPenaltyCurrency ?? ''}${penalty}` })
+            : t('farePolicy.refundableFeesMayApply');
         badge = (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-normal bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400">
                 <BadgeDollarSign className="w-3 h-3" /> {feeLabel}
@@ -60,7 +62,7 @@ function FarePolicyPanel({ policy, policyChanged }: FarePolicyPanelProps) {
     } else {
         badge = (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-normal bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400">
-                <XCircle className="w-3 h-3" /> Non-refundable
+                <XCircle className="w-3 h-3" /> {t('farePolicy.nonRefundable')}
             </span>
         );
     }
@@ -71,32 +73,30 @@ function FarePolicyPanel({ policy, policyChanged }: FarePolicyPanelProps) {
             {policyChanged && (
                 <div className="flex items-center gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-[11px]">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>
-                        <strong>Fare policy updated.</strong> The refundability of this fare has changed since you selected it. Please review before proceeding.
-                    </span>
+                    <span dangerouslySetInnerHTML={{ __html: t.raw('farePolicy.policyUpdated') }} />
                 </div>
             )}
             <div className="flex items-center justify-between">
                 <h3 className="text-[11px] lg:text-xs font-normal text-slate-900 dark:text-white flex items-center gap-1.5">
                     <RefreshCw className="w-3.5 h-3.5 text-indigo-500" />
-                    Fare Policy
+                    {t('farePolicy.title')}
                 </h3>
                 {isLocked && (
-                    <span className="text-[9px] lg:text-[11px] text-emerald-600 dark:text-emerald-400 font-normal">✓ Airline confirmed</span>
+                    <span className="text-[9px] lg:text-[11px] text-emerald-600 dark:text-emerald-400 font-normal">{t('farePolicy.airlineConfirmed')}</span>
                 )}
             </div>
             <div className="flex flex-wrap gap-1.5 items-center">
                 {badge}
                 {policy.isChangeable && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-normal bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400">
-                        Changes allowed
+                        {t('farePolicy.changesAllowed')}
                     </span>
                 )}
             </div>
             <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
                 {isLocked
-                    ? 'Final fare rules confirmed by airline during booking.'
-                    : 'Indicative only — final policy confirmed at payment stage.'}
+                    ? t('farePolicy.finalRules')
+                    : t('farePolicy.indicativeOnly')}
             </p>
         </div>
     );
@@ -120,8 +120,9 @@ function useCountdown(expiresAt: Date | null) {
 }
 
 function OfferExpiryBanner({ expiresAt }: { expiresAt: Date }) {
+    const t = useTranslations('flightBook');
     const secsLeft = useCountdown(expiresAt);
-    if (secsLeft === null || secsLeft > 10 * 60) return null; // Only show under 10 min
+    if (secsLeft === null || secsLeft > 10 * 60) return null;
     const mins = Math.floor(secsLeft / 60);
     const secs = secsLeft % 60;
     const isUrgent = secsLeft < 2 * 60;
@@ -133,19 +134,20 @@ function OfferExpiryBanner({ expiresAt }: { expiresAt: Date }) {
         }`}>
             <Clock className="w-3.5 h-3.5 shrink-0" />
             {secsLeft === 0
-                ? 'This offer has expired — please search again.'
-                : `Offer expires in ${mins}:${String(secs).padStart(2, '0')} — complete your booking before time runs out.`}
+                ? t('offerExpiry.expired')
+                : t('offerExpiry.expiresIn', { time: `${mins}:${String(secs).padStart(2, '0')}` })}
         </div>
     );
 }
 
 function AncillaryExpiredNotice() {
+    const t = useTranslations('flightBook');
     return (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
             <AlertTriangle className="w-5 h-5 text-amber-500" />
-            <p className="text-xs font-normal text-slate-700 dark:text-slate-300">Not available for this offer</p>
+            <p className="text-xs font-normal text-slate-700 dark:text-slate-300">{t('ancillaryExpired.title')}</p>
             <p className="text-[11px] text-slate-400 dark:text-slate-500">
-                This fare is no longer available for ancillary services. You can still proceed with your booking — seats and bags can be managed directly with the airline.
+                {t('ancillaryExpired.description')}
             </p>
         </div>
     );
@@ -205,6 +207,8 @@ const PHONE_CODES = [
 ];
 
 function BookingContent() {
+    const t = useTranslations('flightBook');
+    const tPayment = useTranslations('payment');
     const [bookingStepIdx, setBookingStepIdx] = React.useState(0);
     const bookingStepTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
     const [showSuccess, setShowSuccess] = React.useState(false);
@@ -382,14 +386,14 @@ function BookingContent() {
                 <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
                     <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
                     <div>
-                        <h2 className="text-lg font-normal text-slate-900 dark:text-white mb-1">Confirming your booking</h2>
+                        <h2 className="text-lg font-normal text-slate-900 dark:text-white mb-1">{t('confirmingBooking')}</h2>
                         <p className="text-[11px] text-blue-600 dark:text-blue-400 font-normal animate-pulse min-h-[20px]">
-                            {FLIGHT_BOOKING_STEPS[bookingStepIdx]}
+                            {(t('bookingSteps') as string[])[bookingStepIdx] || FLIGHT_BOOKING_STEPS[bookingStepIdx]}
                         </p>
                     </div>
                     <div className="w-full space-y-2">
-                        {FLIGHT_BOOKING_STEPS.map((label, i) => (
-                            <div key={label} className={`flex items-center gap-2 text-[11px] ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
+                        {(t('bookingSteps') as string[]).map((label, i) => (
+                            <div key={i} className={`flex items-center gap-2 text-[11px] ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
                                 <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] font-normal ${i < bookingStepIdx ? 'bg-green-500 text-white' : i === bookingStepIdx ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
                                     {i < bookingStepIdx ? '✓' : i + 1}
                                 </span>
@@ -397,7 +401,7 @@ function BookingContent() {
                             </div>
                         ))}
                     </div>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">Please don&apos;t close this page</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{t('dontClosePage')}</p>
                 </div>
             </main>
         );
@@ -425,15 +429,15 @@ function BookingContent() {
                         }
                     </div>
                     <h1 className="text-xl font-normal text-slate-900 dark:text-white mb-2">
-                        {isPending ? 'Flight Unavailable' : 'Booking Failed'}
+                        {isPending ? t('error.flightUnavailable') : t('error.bookingFailed')}
                     </h1>
                     <p className={`text-[11px] mb-2 ${isPending ? 'text-amber-700 dark:text-amber-400' : 'text-red-700 dark:text-red-400'}`}>
-                        {errorMsg || 'Your booking could not be completed.'}
+                        {errorMsg || t('error.defaultMessage')}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
                         {errorMsg?.includes('automatically refunded')
-                            ? 'Please try a different flight or date.'
-                            : <>Your card has <strong>not</strong> been charged. Please try a different flight or date.</>
+                            ? t('error.notChargedShort')
+                            : <span dangerouslySetInnerHTML={{ __html: t.raw('error.notCharged') }} />
                         }
                     </p>
                     {/* Only show Try Again if the error happened before payment was taken */}
@@ -442,20 +446,20 @@ function BookingContent() {
                             onClick={() => setStep('form')}
                             className="w-full py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-normal text-[11px] transition-colors"
                         >
-                            Try Again
+                            {t('error.tryAgain')}
                         </button>
                     )}
                     <button
                         onClick={() => router.push('/flights/search')}
                         className="w-full py-2.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-normal text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                     >
-                        Search Again
+                        {t('error.searchAgain')}
                     </button>
                     <button
                         onClick={() => router.back()}
                         className="w-full mt-2 py-2.5 text-slate-400 dark:text-slate-500 font-normal text-xs hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                     >
-                        Go Back
+                        {t('error.goBack')}
                     </button>
                 </motion.div>
             </main>
@@ -520,7 +524,7 @@ function BookingContent() {
                         transition={{ delay: 0.3 }}
                         className="text-lg lg:text-2xl font-normal text-slate-900 dark:text-white mb-1.5 lg:mb-2"
                     >
-                        Booking Confirmed! 🎉
+                        {t('success.bookingConfirmed')}
                     </motion.h1>
 
                     <motion.p
@@ -530,8 +534,8 @@ function BookingContent() {
                         className="text-[11px] lg:text-sm text-slate-500 dark:text-slate-400 mb-4 lg:mb-6"
                     >
                         {isBundledWithHotel 
-                            ? "Your flight has been successfully added to your bundle."
-                            : "Your flight has been booked successfully."}
+                            ? t('success.bundleSuccess')
+                            : t('success.flightSuccess')}
                     </motion.p>
 
                     {/* Booking Details Card */}
@@ -542,15 +546,15 @@ function BookingContent() {
                         className="bg-linier-to-br from-slate-50 to-slate-100 dark:from-white/5 dark:to-white/10 p-3.5 lg:p-5 rounded-xl lg:rounded-2xl mb-4 lg:mb-6 text-left border border-slate-200/50 dark:border-white/5 space-y-3 lg:space-y-4"
                     >
                         <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
-                            <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">PNR</span>
+                            <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">{t('success.pnr')}</span>
                             <span className="text-[9px] lg:text-xs font-mono font-normal text-slate-900 dark:text-white">{bookingResult.pnr}</span>
                         </div>
                         <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
-                            <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">Booking ID</span>
+                            <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">{t('success.bookingId')}</span>
                             <span className="text-[9px] lg:text-xs font-mono text-slate-700 dark:text-slate-300">{bookingResult.bookingId?.slice(0, 8) || 'N/A'}...</span>
                         </div>
                         <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
-                            <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">Route</span>
+                            <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400">{t('success.route')}</span>
                             <span className="text-[9px] lg:text-xs font-normal text-slate-900 dark:text-white">
                                 {(() => {
                                     const outbound = offer.segments.filter((s: any) => (s.segmentIndex ?? 0) === 0);
@@ -562,7 +566,7 @@ function BookingContent() {
                             </span>
                         </div>
                         <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-white/10">
-                            <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">Total</span>
+                            <span className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">{t('success.total')}</span>
                             <div className="flex flex-col items-end">
                                 <span className="text-[10px] lg:text-sm font-normal text-slate-900 dark:text-white">
                                     {formatPrice(offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}
@@ -570,14 +574,14 @@ function BookingContent() {
                                 {isBundledWithHotel && (
                                     <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
                                         <Sparkles className="w-2.5 h-2.5" />
-                                        Bundle discount applied
+                                        {t('success.bundleDiscountApplied')}
                                     </span>
                                 )}
                             </div>
                         </div>
                         {bookingResult.tickets && bookingResult.tickets.length > 0 && (
                             <div className="flex justify-between items-start pt-1">
-                                <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400 mt-1">E-Tickets</span>
+                                <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400 mt-1">{t('success.eTickets')}</span>
                                 <div className="flex flex-col items-end gap-1">
                                     {bookingResult.tickets.map((t, i) => (
                                         <div key={i} className="text-[10px] lg:text-sm flex items-center gap-2">
@@ -597,14 +601,14 @@ function BookingContent() {
                         transition={{ delay: 0.52 }}
                         className="mb-4 text-left"
                     >
-                        <p className="text-[10px] lg:text-xs font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">What's next</p>
+                        <p className="text-[10px] lg:text-xs font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">{t('success.whatsNext')}</p>
                         <div className="space-y-2">
                             <div className="flex items-start gap-2.5">
                                 <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0 mt-0.5">
                                     <Mail className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                                 </div>
                                 <p className="text-[10px] lg:text-[11px] text-slate-600 dark:text-slate-400">
-                                    Your e-ticket and booking confirmation will be emailed to you within a few minutes.
+                                    {t('success.emailInfo')}
                                 </p>
                             </div>
                             <div className="flex items-start gap-2.5">
@@ -612,7 +616,7 @@ function BookingContent() {
                                     <Plane className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                 </div>
                                 <p className="text-[10px] lg:text-[11px] text-slate-600 dark:text-slate-400">
-                                    Online check-in typically opens 24–48 hours before departure. Visit the airline's website and use your PNR <span className="font-mono font-normal text-slate-800 dark:text-slate-200">{bookingResult.pnr}</span> to check in.
+                                    {t.rich('success.checkInInfo', { pnr: bookingResult.pnr })}
                                 </p>
                             </div>
                             <div className="flex items-start gap-2.5">
@@ -620,7 +624,7 @@ function BookingContent() {
                                     <Info className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                                 </div>
                                 <p className="text-[11px] lg:text-xs text-slate-600 dark:text-slate-400">
-                                    Your boarding pass will be issued at check-in. You can download it from the airline's app or website after checking in.
+                                    {t('success.boardingPassInfo')}
                                 </p>
                             </div>
                         </div>
@@ -667,47 +671,46 @@ function BookingContent() {
 
                                     {/* Bundle badge */}
                                     <div className="absolute top-3 right-3 z-20">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-normal shadow-md">
-                                            ✦ BUNDLE DEAL
-                                        </span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-normal shadow-md">
+                                        {t('success.bundleDealBadge')}
+                                    </span>
+                                </div>
+
+                                <div className="relative z-10 p-4">
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className="w-11 h-11 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                                            <BedDouble className="w-6 h-6 text-white" />
+                                        </div>
+                                        <div className="flex-1 pr-16">
+                                            <p className="text-sm font-normal text-white leading-tight">
+                                                {t('success.addHotel')}
+                                            </p>
+                                            <p className="text-xs text-violet-100 mt-0.5">
+                                                {t('success.addHotelDesc', { destination: dest })}
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    <div className="relative z-10 p-4">
-                                        <div className="flex items-start gap-3 mb-3">
-                                            <div className="w-11 h-11 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-                                                <BedDouble className="w-6 h-6 text-white" />
-                                            </div>
-                                            <div className="flex-1 pr-16">
-                                                <p className="text-sm font-normal text-white leading-tight">
-                                                    Add a hotel to complete your trip
-                                                </p>
-                                                <p className="text-xs text-violet-100 mt-0.5">
-                                                    Book your stay in {dest} and save with our flight + hotel bundle rate
-                                                </p>
-                                            </div>
+                                    <div className="flex items-center gap-2 mb-3 px-1">
+                                        <div className="flex-1 bg-white/10 rounded-md p-2 text-center">
+                                            <p className="text-[9px] text-violet-200 font-normal">{t('success.bookSeparately')}</p>
+                                            <p className="text-sm font-normal text-white/60 line-through">{t('success.standardRate')}</p>
                                         </div>
-
-                                        {/* Savings comparison */}
-                                        <div className="flex items-center gap-2 mb-3 px-1">
-                                            <div className="flex-1 bg-white/10 rounded-md p-2 text-center">
-                                                <p className="text-[9px] text-violet-200 font-normal">Book separately</p>
-                                                <p className="text-sm font-normal text-white/60 line-through">Standard rate</p>
-                                            </div>
-                                            <div className="text-white/50 text-lg">→</div>
-                                            <div className="flex-1 bg-amber-400/20 border border-amber-400/40 rounded-md p-2 text-center">
-                                                <p className="text-[9px] text-amber-200 font-normal">Add to this trip</p>
-                                                <p className="text-sm font-normal text-amber-300">Bundle savings</p>
-                                            </div>
+                                        <div className="text-white/50 text-lg">→</div>
+                                        <div className="flex-1 bg-amber-400/20 border border-amber-400/40 rounded-md p-2 text-center">
+                                            <p className="text-[9px] text-amber-200 font-normal">{t('success.addToThisTrip')}</p>
+                                            <p className="text-sm font-normal text-amber-300">{t('success.bundleSavings')}</p>
                                         </div>
+                                    </div>
 
-                                        <button
-                                            onClick={() => router.push(hotelUrl)}
-                                            className="w-full py-2.5 rounded-md bg-white text-violet-700 font-normal text-sm flex items-center justify-center gap-2 hover:bg-violet-50 active:scale-[0.98] transition-all shadow-md"
-                                        >
-                                            <BedDouble className="w-4 h-4" />
-                                            Find Hotels in {dest}
-                                            <ArrowRight className="w-4 h-4" />
-                                        </button>
+                                    <button
+                                        onClick={() => router.push(hotelUrl)}
+                                        className="w-full py-2.5 rounded-md bg-white text-violet-700 font-normal text-sm flex items-center justify-center gap-2 hover:bg-violet-50 active:scale-[0.98] transition-all shadow-md"
+                                    >
+                                        <BedDouble className="w-4 h-4" />
+                                        {t('success.findHotels', { destination: dest })}
+                                        <ArrowRight className="w-4 h-4" />
+                                    </button>
                                     </div>
                                 </div>
                             </motion.div>
@@ -724,13 +727,13 @@ function BookingContent() {
                             onClick={() => router.push('/trips')}
                             className="w-full py-3 lg:py-4 bg-linear-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-xs lg:text-base rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all active:scale-[0.98]"
                         >
-                            View My Trips
+                            {t('success.viewMyTrips')}
                         </button>
                         <button
                             onClick={() => router.push('/')}
                             className="w-full py-2.5 lg:py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-normal text-xs transition-colors"
                         >
-                            Return to Home
+                            {t('success.returnToHome')}
                         </button>
                     </motion.div>
                 </motion.div>
@@ -754,8 +757,8 @@ function BookingContent() {
                             const airport = getAirportByCode(primary.arrival.airport);
                             const airportName = airport ? airport.name : primary.arrival.airport;
                             return (offer as any).tripType === 'round-trip'
-                                ? `Round trip to ${airportName} (${primary.arrival.airport})`
-                                : `Booking to ${airportName} (${primary.arrival.airport})`;
+                                ? t('header.roundTrip', { name: airportName, code: primary.arrival.airport })
+                                : t('header.oneWay', { name: airportName, code: primary.arrival.airport });
                         })()}
                     </h1>
                 </div>
@@ -796,7 +799,7 @@ function BookingContent() {
                         </div>
                         <div className="ml-auto text-right pl-2 lg:pl-4 border-l border-slate-200 dark:border-slate-700">
                             <div className="text-sm lg:text-lg font-normal text-slate-900 dark:text-white">{formatPrice(offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}</div>
-                            <div className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">total price</div>
+                            <div className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{t('totalPrice')}</div>
                         </div>
                     </div>
                     {offer.seatsRemaining != null && offer.seatsRemaining > 0 && (
@@ -810,10 +813,12 @@ function BookingContent() {
                             }`}>
                                 <Users className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                                 {offer.seatsRemaining <= 3
-                                    ? `Only ${offer.seatsRemaining} seat${offer.seatsRemaining === 1 ? '' : 's'} left!`
+                                    ? offer.seatsRemaining === 1
+                                        ? t('seatsRemaining.onlyLeft', { count: offer.seatsRemaining })
+                                        : t('seatsRemaining.onlyLeftPlural', { count: offer.seatsRemaining })
                                     : offer.seatsRemaining <= 6
-                                    ? `${offer.seatsRemaining} seats left`
-                                    : `${offer.seatsRemaining} seats available`}
+                                    ? t('seatsRemaining.leftPlural', { count: offer.seatsRemaining })
+                                    : t('seatsRemaining.available', { count: offer.seatsRemaining })}
                             </span>
                         </div>
                     )}
@@ -836,13 +841,13 @@ function BookingContent() {
                             <div className="flex flex-col gap-0.5">
                                 {dealDiscount && (
                                     <span className="text-[10px] lg:text-[11px] font-normal text-emerald-700 dark:text-emerald-400">
-                                        {dealDiscount} deal applied
+                                        {t('dealBanner.dealApplied', { discount: dealDiscount })}
                                     </span>
                                 )}
                                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                                     {dealPrice && (
                                         <span className="text-[10px] lg:text-[11px] text-slate-700 dark:text-slate-300">
-                                            {fmtPrice(Number(dealPrice))} / person
+                                            {fmtPrice(Number(dealPrice))} {t('dealBanner.perPerson')}
                                             {dealOriginalPrice && Number(dealOriginalPrice) > Number(dealPrice) && (
                                                 <span className="ml-1.5 line-through text-slate-400">{fmtPrice(Number(dealOriginalPrice))}</span>
                                             )}
@@ -850,7 +855,7 @@ function BookingContent() {
                                     )}
                                     {dep && (
                                         <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">
-                                            · Departs {fmt(dep)}{ret ? ` · Returns ${fmt(ret)}` : ''}
+                                            · {t('dealBanner.departs', { date: fmt(dep) })}{ret ? ` · ${t('dealBanner.returns', { date: fmt(ret) })}` : ''}
                                         </span>
                                     )}
                                 </div>
@@ -917,7 +922,7 @@ function BookingContent() {
                                 <div className="flex items-center justify-between mb-3 lg:mb-4">
                                     <h2 className="flex items-center gap-1.5 lg:gap-2 text-[11px] lg:text-[14px] font-normal text-slate-900 dark:text-white">
                                         <User className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-500" />
-                                        Passenger {idx + 1}
+                                        {t('passenger.title', { number: idx + 1 })}
                                     </h2>
                                     <div className="flex items-center gap-1.5 lg:gap-2">
                                         <DropdownMenu>
@@ -926,23 +931,23 @@ function BookingContent() {
                                                     type="button"
                                                     className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] lg:text-xs font-normal bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group"
                                                 >
-                                                    <span>{PASSENGER_TYPES.find(t => t.code === pax.type)?.label || 'Adult'}</span>
+                                                    <span>{t(`passenger.${PASSENGER_TYPES.find(t => t.code === pax.type)?.label?.toLowerCase() || 'adult'}`)}</span>
                                                     <ChevronDown size={12} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                                 </button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="rounded-xl min-w-[100px] z-1001">
-                                                {PASSENGER_TYPES.map((t) => (
+                                                {PASSENGER_TYPES.map((pt) => (
                                                     <DropdownMenuItem
-                                                        key={t.code}
-                                                        onClick={() => updatePassenger(idx, 'type', t.code)}
+                                                        key={pt.code}
+                                                        onClick={() => updatePassenger(idx, 'type', pt.code)}
                                                         className={cn(
                                                             "flex items-center gap-2 px-3 py-1.5 text-[10px] lg:text-[11px] font-normal transition-colors cursor-pointer",
-                                                            pax.type === t.code
+                                                            pax.type === pt.code
                                                                 ? "bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
                                                                 : "text-slate-700 dark:text-slate-300"
                                                         )}
                                                     >
-                                                        <span>{t.label}</span>
+                                                        <span>{t(`passenger.${pt.label?.toLowerCase() || 'adult'}`)}</span>
                                                     </DropdownMenuItem>
                                                 ))}
                                             </DropdownMenuContent>
@@ -953,7 +958,7 @@ function BookingContent() {
                                                 onClick={() => removePassenger(idx)}
                                                 className="text-[10px] lg:text-xs text-red-500 hover:text-red-400 font-normal"
                                             >
-                                                Remove
+                                                {t('passenger.remove')}
                                             </button>
                                         )}
                                     </div>
@@ -961,13 +966,13 @@ function BookingContent() {
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 lg:gap-3">
                                     <input
-                                        type="text" placeholder="First Name *" required
+                                        type="text" placeholder={t('passenger.firstName')} required
                                         value={pax.firstName}
                                         onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)}
                                         className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                                     />
                                     <input
-                                        type="text" placeholder="Last Name *" required
+                                        type="text" placeholder={t('passenger.lastName')} required
                                         value={pax.lastName}
                                         onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)}
                                         className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
@@ -979,7 +984,7 @@ function BookingContent() {
                                                 className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
                                             >
                                                 <span className={cn(!pax.gender && "text-slate-400")}>
-                                                    {GENDERS.find(g => g.value === pax.gender)?.label || 'Gender *'}
+                                                    {GENDERS.find(g => g.value === pax.gender) ? t(`genderOptions.${pax.gender === 'M' ? 'male' : 'female'}`) : t('passenger.gender')}
                                                 </span>
                                                 <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                             </button>
@@ -996,13 +1001,13 @@ function BookingContent() {
                                                             : "text-slate-700 dark:text-slate-300"
                                                     )}
                                                 >
-                                                    <span>{g.label}</span>
+                                                    <span>{t(`genderOptions.${g.value === 'M' ? 'male' : 'female'}`)}</span>
                                                 </DropdownMenuItem>
                                             ))}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                     <FormDatePicker
-                                        placeholder="Birthdate *"
+                                        placeholder={t('passenger.birthdate')}
                                         value={pax.birthDate}
                                         onChange={(val) => updatePassenger(idx, 'birthDate', val)}
                                         maxDate={new Date()}
@@ -1015,7 +1020,7 @@ function BookingContent() {
                                                 className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
                                             >
                                                 <span>
-                                                    {NATIONALITIES.find(n => n.code === pax.nationality)?.name || 'Nationality *'}
+                                                    {NATIONALITIES.find(n => n.code === pax.nationality) ? tPayment(`countries.${pax.nationality}`) : t('passenger.nationality')}
                                                 </span>
                                                 <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                             </button>
@@ -1033,13 +1038,13 @@ function BookingContent() {
                                                     )}
                                                 >
                                                     <span className="text-[9px] text-slate-400 font-bold w-6">{n.code}</span>
-                                                    <span>{n.name}</span>
+                                                    <span>{tPayment(`countries.${n.code}`)}</span>
                                                 </DropdownMenuItem>
                                             ))}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                     <input
-                                        type="text" placeholder="Passport Number *" required
+                                        type="text" placeholder={t('passenger.passport')} required
                                         value={pax.passport}
                                         onChange={(e) => updatePassenger(idx, 'passport', e.target.value)}
                                         className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
@@ -1049,7 +1054,7 @@ function BookingContent() {
                                         onChange={(val) => updatePassenger(idx, 'passportExpiry', val)}
                                         minDate={new Date()}
                                         required
-                                        placeholder="Passport Expiry Date *"
+                                        placeholder={t('passenger.passportExpiry')}
                                         className="lg:col-span-2"
                                     />
                                 </div>
@@ -1057,23 +1062,23 @@ function BookingContent() {
                         ))}
 
                         {/* Add Passenger Button */}
-                        <button
-                            type="button"
-                            onClick={addPassenger}
-                            className="w-full py-2 lg:py-2.5 rounded-md border-2 border-dashed border-slate-300 dark:border-slate-700 text-[10px] lg:text-[13px] text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors"
-                        >
-                            + Add Passenger
-                        </button>
+                            <button
+                                type="button"
+                                onClick={addPassenger}
+                                className="w-full py-2 lg:py-2.5 rounded-md border-2 border-dashed border-slate-300 dark:border-slate-700 text-[10px] lg:text-[13px] text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors"
+                            >
+                                {t('passenger.addPassenger')}
+                            </button>
 
                         {/* Contact Info */}
                         <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5">
                             <h2 className="flex items-center gap-1.5 lg:gap-2 text-[11px] lg:text-[14px] font-normal text-slate-900 dark:text-white mb-3 lg:mb-4">
                                 <Mail className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-500" />
-                                Contact Information
+                                {t('contact.title')}
                             </h2>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 lg:gap-3">
                                 <input
-                                    type="email" placeholder="Email Address *" required
+                                    type="email" placeholder={t('contact.email')} required
                                     value={contact.email}
                                     onChange={(e) => setContact(prev => ({ ...prev, email: e.target.value }))}
                                     className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
@@ -1107,7 +1112,7 @@ function BookingContent() {
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                     <input
-                                        type="tel" placeholder="Phone Number *" required
+                                        type="tel" placeholder={t('contact.phone')} required
                                         value={contact.phone}
                                         onChange={(e) => setContact(prev => ({ ...prev, phone: e.target.value }))}
                                         className="flex-1 px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
@@ -1120,23 +1125,23 @@ function BookingContent() {
                         <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5">
                             <h2 className="flex items-center gap-1.5 lg:gap-2 text-[11px] lg:text-[14px] font-normal text-slate-900 dark:text-white mb-3 lg:mb-4">
                                 <MapPin className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-500" />
-                                Billing Address
+                                {t('address.title')}
                             </h2>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 lg:gap-3">
                                 <input
-                                    type="text" placeholder="Address Line *" required
+                                    type="text" placeholder={t('address.addressLine')} required
                                     value={contact.addressLine}
                                     onChange={(e) => setContact(prev => ({ ...prev, addressLine: e.target.value }))}
                                     className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 lg:col-span-2"
                                 />
                                 <input
-                                    type="text" placeholder="City *" required
+                                    type="text" placeholder={t('address.city')} required
                                     value={contact.city}
                                     onChange={(e) => setContact(prev => ({ ...prev, city: e.target.value }))}
                                     className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
                                 />
                                 <input
-                                    type="text" placeholder="Postal Code *" required
+                                    type="text" placeholder={t('address.postalCode')} required
                                     value={contact.postalCode}
                                     onChange={(e) => setContact(prev => ({ ...prev, postalCode: e.target.value }))}
                                     className="w-full px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
@@ -1148,7 +1153,7 @@ function BookingContent() {
                                             className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 lg:col-span-2 group"
                                         >
                                             <span>
-                                                {NATIONALITIES.find(n => n.code === contact.country)?.name || 'Country *'}
+                                                {NATIONALITIES.find(n => n.code === contact.country) ? tPayment(`countries.${contact.country}`) : t('address.country')}
                                             </span>
                                             <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                         </button>
@@ -1166,7 +1171,7 @@ function BookingContent() {
                                                 )}
                                             >
                                                 <span className="text-[9px] text-slate-400 font-bold w-6">{n.code}</span>
-                                                <span>{n.name}</span>
+                                                <span>{tPayment(`countries.${n.code}`)}</span>
                                             </DropdownMenuItem>
                                         ))}
                                     </DropdownMenuContent>
@@ -1188,12 +1193,14 @@ function BookingContent() {
                                             <Luggage className="w-4 h-4 text-sky-500" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">Extra Bags</p>
-                                            <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
-                                                {selectedBags.length > 0
-                                                    ? `${selectedBags.length} bag${selectedBags.length > 1 ? 's' : ''} added · +${formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}`
-                                                    : 'Optional — add checked or carry-on bags'}
-                                            </p>
+                                        <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">{t('bags.title')}</p>
+                                        <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
+                                            {selectedBags.length > 0
+                                                ? (selectedBags.length === 1
+                                                    ? t('bags.added', { count: selectedBags.length, price: formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency) })
+                                                    : t('bags.addedPlural', { count: selectedBags.length, price: formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency) }))
+                                                : t('bags.optional')}
+                                        </p>
                                         </div>
                                         <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
                                             {bagsOpen ? '▲' : '▼'}
@@ -1204,7 +1211,7 @@ function BookingContent() {
                                         {refreshingOffer ? (
                                             <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
                                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                                Refreshing offer…
+                                                {t('bags.refreshing')}
                                             </div>
                                         ) : refreshFailed ? (
                                             <AncillaryExpiredNotice />
@@ -1214,7 +1221,7 @@ function BookingContent() {
                                                 offerId={effectiveOfferId}
                                                 duffelPassengerIds={((offer as any)._rawOffer?.passengers ?? (offer as any).raw?.passengers ?? []).map((p: any) => p.id)}
                                                 passengerCount={passengers.length}
-                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                passengerLabels={passengers.map((p, i) => `${t('passenger.title', { number: i + 1 })}${p.firstName ? ` (${p.firstName})` : ''}`)}
                                                 selectedBags={selectedBags}
                                                 onBagsChange={setSelectedBags}
                                                 currency={offer.price.currency}
@@ -1235,12 +1242,14 @@ function BookingContent() {
                                             <Armchair className="w-4 h-4 text-indigo-500" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">Seat Selection</p>
-                                            <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
-                                                {selectedSeats.length > 0
-                                                    ? `${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''} selected · +${formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency)}`
-                                                    : 'Optional — pick your seat on the cabin map'}
-                                            </p>
+                                        <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">{t('seats.title')}</p>
+                                        <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
+                                            {selectedSeats.length > 0
+                                                ? (selectedSeats.length === 1
+                                                    ? t('seats.selected', { count: selectedSeats.length, price: formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency) })
+                                                    : t('seats.selectedPlural', { count: selectedSeats.length, price: formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency) }))
+                                                : t('seats.optional')}
+                                        </p>
                                         </div>
                                         <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
                                             {seatsOpen ? '▲' : '▼'}
@@ -1251,7 +1260,7 @@ function BookingContent() {
                                         {refreshingOffer ? (
                                             <div className="flex items-center gap-2 py-6 text-sm text-slate-500 justify-center">
                                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                                Refreshing offer…
+                                                {t('bags.refreshing')}
                                             </div>
                                         ) : refreshFailed ? (
                                             <AncillaryExpiredNotice />
@@ -1261,7 +1270,7 @@ function BookingContent() {
                                                 offerId={effectiveOfferId}
                                                 segments={offer.segments.map(s => ({ origin: s.departure.airport, destination: s.arrival.airport }))}
                                                 passengerCount={passengers.length}
-                                                passengerLabels={passengers.map((p, i) => `Pax ${i + 1}${p.firstName ? ` (${p.firstName})` : ''}`)}
+                                                passengerLabels={passengers.map((p, i) => `${t('passenger.title', { number: i + 1 })}${p.firstName ? ` (${p.firstName})` : ''}`)}
                                                 selectedSeats={selectedSeats}
                                                 onSeatsChange={setSelectedSeats}
                                                 currency={offer.price.currency}
@@ -1280,14 +1289,12 @@ function BookingContent() {
                                 <div className="flex items-start gap-2">
                                     <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-[10px] lg:text-[13px] font-normal text-amber-800 dark:text-amber-300">Fare price has changed</p>
+                                        <p className="text-[10px] lg:text-[13px] font-normal text-amber-800 dark:text-amber-300">{t('priceChange.title')}</p>
                                         <p className="text-[10px] lg:text-[13px] text-amber-700 dark:text-amber-400 mt-0.5">
-                                            This flight is now{' '}
-                                            <span className="font-normal">
-                                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: priceChangedData.currency }).format(priceChangedData.newPrice)}
-                                            </span>
-                                            {' '}(was {new Intl.NumberFormat('en-US', { style: 'currency', currency: priceChangedData.currency }).format(priceChangedData.oldPrice)}).
-                                            Do you want to continue at the new price?
+                                            {t('priceChange.description', {
+                                                newPrice: new Intl.NumberFormat('en-US', { style: 'currency', currency: priceChangedData.currency }).format(priceChangedData.newPrice),
+                                                oldPrice: new Intl.NumberFormat('en-US', { style: 'currency', currency: priceChangedData.currency }).format(priceChangedData.oldPrice),
+                                            })}
                                         </p>
                                     </div>
                                 </div>
@@ -1297,14 +1304,14 @@ function BookingContent() {
                                         onClick={confirmPriceChange}
                                         className="flex-1 py-2 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-normal text-[10px] lg:text-[13px] transition-colors"
                                     >
-                                        Accept new price &amp; continue
+                                        {t('priceChange.accept')}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => router.back()}
                                         className="flex-1 py-2 rounded-md bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 font-normal text-[10px] lg:text-[13px] transition-colors hover:bg-amber-50 dark:hover:bg-amber-900/30"
                                     >
-                                        Search again
+                                        {t('priceChange.searchAgain')}
                                     </button>
                                 </div>
                             </div>
@@ -1316,9 +1323,9 @@ function BookingContent() {
                                 <div className="flex items-start gap-2">
                                     <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-[10px] lg:text-[13px] font-normal text-red-800 dark:text-red-300">You already have a flight booked on this day</p>
+                                        <p className="text-[10px] lg:text-[13px] font-normal text-red-800 dark:text-red-300">{t('duplicate.title')}</p>
                                         <p className="text-[10px] lg:text-[13px] text-red-700 dark:text-red-400 mt-0.5">
-                                            An active booking was found departing <span className="font-normal">{duplicateBookingData.route}</span> on <span className="font-normal">{duplicateBookingData.departureDate}</span>. Cancel the existing booking first, or go back.
+                                            {t('duplicate.description', { route: duplicateBookingData.route, date: duplicateBookingData.departureDate })}
                                         </p>
                                     </div>
                                 </div>
@@ -1328,14 +1335,14 @@ function BookingContent() {
                                         onClick={() => router.push(`/trips?highlight=${duplicateBookingData.existingBookingId}`)}
                                         className="flex-1 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-normal text-[10px] lg:text-[13px] transition-colors"
                                     >
-                                        View existing booking
+                                        {t('duplicate.viewExisting')}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => router.push('/')}
                                         className="flex-1 py-2 rounded-md bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 font-normal text-[10px] lg:text-[13px] transition-colors hover:bg-red-50 dark:hover:bg-red-900/30"
                                     >
-                                        Keep existing booking
+                                        {t('duplicate.keepExisting')}
                                     </button>
                                 </div>
                             </div>
@@ -1355,7 +1362,7 @@ function BookingContent() {
                                         <AlertTriangle className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0" />
                                     )}
                                     <span className="pr-6">
-                                        {errorMsg || 'Booking failed. Please try again.'}
+                                        {errorMsg || t('error.bookingFailedDefault')}
                                     </span>
                                     <button
                                         type="button"

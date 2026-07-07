@@ -752,7 +752,7 @@
         "bookingErrorTitle": "Booking error",
         "goBackBtn": "Go back",
         "retry": "Retry",
-        "duplicateBookingTitle": "You already have a booking at {hotel}",
+        "duplicateBookingTitle": "You already have a booking at {hotel} for overlapping dates.",
         "duplicateBookingDesc": "Cancel your existing booking first, or go back and keep it.",
         "viewExistingBooking": "View existing booking",
         "keepExistingBooking": "Keep existing booking",
@@ -858,7 +858,18 @@
             "country": "Country",
             "payeeFirstName": "Payee First Name",
             "payeeLastName": "Payee Last Name",
-            "securedMessage": "Your payment information is secured."
+            "securedMessage": "Your payment information is secured.",
+            "countries": {
+                "PH": "Philippines",
+                "SG": "Singapore",
+                "MY": "Malaysia",
+                "ID": "Indonesia",
+                "TH": "Thailand",
+                "VN": "Vietnam",
+                "KR": "South Korea",
+                "JP": "Japan",
+                "US": "United States"
+            }
         },
         "specialRequests": {
             "title": "Any special requests?",
@@ -927,6 +938,275 @@
             "payNow": "Pay Now",
             "unexpectedError": "An unexpected error occurred.",
             "processing": "Payment is processing..."
+        }
+    },
+    "flightBook": {
+        "farePolicy": {
+            "freeCancellation": "Free cancellation",
+            "refundableFee": "Refundable (fee: {fee})",
+            "refundableFeesMayApply": "Refundable (fees may apply)",
+            "nonRefundable": "Non-refundable",
+            "policyUpdated": "<strong>Fare policy updated.</strong> The refundability of this fare has changed since you selected it. Please review before proceeding.",
+            "title": "Fare Policy",
+            "airlineConfirmed": "\u2713 Airline confirmed",
+            "changesAllowed": "Changes allowed",
+            "finalRules": "Final fare rules confirmed by airline during booking.",
+            "indicativeOnly": "Indicative only \u2014 final policy confirmed at payment stage."
+        },
+        "offerExpiry": {
+            "expired": "This offer has expired \u2014 please search again.",
+            "expiresIn": "Offer expires in {time} \u2014 complete your booking before time runs out."
+        },
+        "ancillaryExpired": {
+            "title": "Not available for this offer",
+            "description": "This fare is no longer available for ancillary services. You can still proceed with your booking \u2014 seats and bags can be managed directly with the airline."
+        },
+        "bookingSteps": [
+            "Verifying payment...",
+            "Securing your seat...",
+            "Confirming with the airline...",
+            "Finalizing booking details..."
+        ],
+        "confirmingBooking": "Confirming your booking",
+        "dontClosePage": "Please don't close this page",
+        "error": {
+            "flightUnavailable": "Flight Unavailable",
+            "bookingFailed": "Booking Failed",
+            "defaultMessage": "Your booking could not be completed.",
+            "notCharged": "Your card has <strong>not</strong> been charged. Please try a different flight or date.",
+            "notChargedShort": "Please try a different flight or date.",
+            "tryAgain": "Try Again",
+            "searchAgain": "Search Again",
+            "goBack": "Go Back",
+            "bookingFailedDefault": "Booking failed. Please try again."
+        },
+        "success": {
+            "bookingConfirmed": "Booking Confirmed! \ud83c\udf89",
+            "bundleSuccess": "Your flight has been successfully added to your bundle.",
+            "flightSuccess": "Your flight has been booked successfully.",
+            "pnr": "PNR",
+            "bookingId": "Booking ID",
+            "route": "Route",
+            "total": "Total",
+            "bundleDiscountApplied": "Bundle discount applied",
+            "eTickets": "E-Tickets",
+            "whatsNext": "What's next",
+            "emailInfo": "Your e-ticket and booking confirmation will be emailed to you within a few minutes.",
+            "checkInInfo": "Online check-in typically opens 24\u201348 hours before departure. Visit the airline's website and use your PNR {pnr} to check in.",
+            "boardingPassInfo": "Your boarding pass will be issued at check-in. You can download it from the airline's app or website after checking in.",
+            "bundleDealBadge": "\u2726 BUNDLE DEAL",
+            "addHotel": "Add a hotel to complete your trip",
+            "addHotelDesc": "Book your stay in {destination} and save with our flight + hotel bundle rate",
+            "bookSeparately": "Book separately",
+            "standardRate": "Standard rate",
+            "addToThisTrip": "Add to this trip",
+            "bundleSavings": "Bundle savings",
+            "findHotels": "Find Hotels in {destination}",
+            "viewMyTrips": "View My Trips",
+            "returnToHome": "Return to Home"
+        },
+        "header": {
+            "roundTrip": "Round trip to {name} ({code})",
+            "oneWay": "Booking to {name} ({code})"
+        },
+        "totalPrice": "total price",
+        "seatsRemaining": {
+            "onlyLeft": "Only {count} seat left!",
+            "onlyLeftPlural": "Only {count} seats left!",
+            "leftPlural": "{count} seats left",
+            "available": "{count} seats available"
+        },
+        "dealBanner": {
+            "dealApplied": "{discount} deal applied",
+            "perPerson": "/ person",
+            "departs": "Departs {date}",
+            "returns": "Returns {date}"
+        },
+        "passenger": {
+            "title": "Passenger {number}",
+            "adult": "Adult",
+            "child": "Child",
+            "infant": "Infant",
+            "remove": "Remove",
+            "firstName": "First Name *",
+            "lastName": "Last Name *",
+            "gender": "Gender *",
+            "birthdate": "Birthdate *",
+            "nationality": "Nationality *",
+            "passport": "Passport Number *",
+            "passportExpiry": "Passport Expiry Date *",
+            "addPassenger": "+ Add Passenger"
+        },
+        "genderOptions": {
+            "male": "Male",
+            "female": "Female"
+        },
+        "contact": {
+            "title": "Contact Information",
+            "email": "Email Address *",
+            "phone": "Phone Number *"
+        },
+        "address": {
+            "title": "Billing Address",
+            "addressLine": "Address Line *",
+            "city": "City *",
+            "postalCode": "Postal Code *",
+            "country": "Country *"
+        },
+        "bags": {
+            "title": "Extra Bags",
+            "added": "{count} bag added \u00b7 +{price}",
+            "addedPlural": "{count} bags added \u00b7 +{price}",
+            "optional": "Optional \u2014 add checked or carry-on bags",
+            "refreshing": "Refreshing offer\u2026",
+            "carryOn": "Carry-on bag",
+            "checked": "Checked bag",
+            "weight": "up to {weight} kg",
+            "free": "Free",
+            "upgradeTotal": "Bag upgrade total",
+            "loading": "Loading bag options\u2026",
+            "notAvailable": "Bag upgrades not available",
+            "errorDetail": "Could not load bag options: {error}",
+            "notSupported": "Extra bag selection isn't supported for this flight."
+        },
+        "seats": {
+            "title": "Seat Selection",
+            "selected": "{count} seat selected \u00b7 +{price}",
+            "selectedPlural": "{count} seats selected \u00b7 +{price}",
+            "optional": "Optional \u2014 pick your seat on the cabin map",
+            "seatUpgrade": "Seat upgrade:",
+            "seatLabel": "Seat {designator}",
+            "tapToSelect": "Tap a seat to select it",
+            "selectingFor": "Selecting for {name}",
+            "seatChosen": "\u00b7 Seat {designator} chosen",
+            "tapSeatBelow": "\u00b7 tap a seat below",
+            "seatsCount": "{selected}/{total} seats",
+            "legend": {
+                "free": "Free",
+                "paid": "Paid",
+                "taken": "Taken",
+                "selected": "Selected",
+                "extraLegroom": "Extra legroom",
+                "exitRow": "Exit row"
+            },
+            "clear": "Clear",
+            "done": "Done",
+            "skip": "Skip",
+            "loading": "Loading seat map\u2026",
+            "notAvailable": "Seat map not available",
+            "errorDetail": "Could not load seat map: {error}",
+            "notSupported": "This airline doesn't support seat selection for this flight through our booking system.",
+            "extraLegroomTooltip": "\u2726 Extra legroom",
+            "exitRowTooltip": "\u26a0 Exit row"
+        },
+        "priceChange": {
+            "title": "Fare price has changed",
+            "description": "This flight is now {newPrice} (was {oldPrice}). Do you want to continue at the new price?",
+            "accept": "Accept new price & continue",
+            "searchAgain": "Search again"
+        },
+        "duplicate": {
+            "title": "You already have a flight booked on this day",
+            "description": "An active booking was found departing {route} on {date}. Cancel the existing booking first, or go back.",
+            "viewExisting": "View existing booking",
+            "keepExisting": "Keep existing booking"
+        },
+        "orderSummary": {
+            "title": "Order Summary",
+            "nonstop": "Nonstop",
+            "stops": "{count} stop(s)",
+            "economy": "Economy",
+            "passenger": "{count} passenger",
+            "passengerPlural": "{count} passengers",
+            "baseFare": "Base fare",
+            "seatSelection": "Seat selection",
+            "extraBags": "Extra bags",
+            "total": "Total"
+        },
+        "submitBtn": {
+            "processing": "Processing Booking...",
+            "confirm": "Confirm Booking \u00b7 {price}"
+        },
+        "dealGate": {
+            "dealUnavailable": "Deal no longer available",
+            "tryAgain": "Try Again",
+            "searchAll": "Search All Flights",
+            "securingDeal": "Securing your deal",
+            "searchMessages": [
+                "Searching for available flights\u2026",
+                "Checking seat availability\u2026",
+                "Locking in the best price\u2026",
+                "Almost there\u2026"
+            ]
+        },
+        "fareRules": {
+            "title": "Fare Rules",
+            "noRules": "No rule text provided by airline.",
+            "viewOnWebsite": "View fare rules on airline website \u2192",
+            "routeLabel": "Route {number}",
+            "rule": "rule",
+            "rules": "rules",
+            "error": "Could not load fare rules"
+        },
+        "fareConditions": {
+            "title": "Fare Conditions",
+            "fullyRefundable": "Fully refundable",
+            "nonRefundable": "Non-refundable",
+            "partialRefund": "Partial refund",
+            "changeBefore": "Change before departure",
+            "changeAfter": "Change after departure",
+            "refundBefore": "Refund before departure",
+            "refundAfter": "Refund after departure",
+            "notAllowed": "Not allowed",
+            "allowedFeeMayApply": "Allowed (fee may apply)",
+            "free": "Free",
+            "allowedFee": "Allowed \u00b7 {fee} fee",
+            "disclaimer": "Conditions are per passenger and subject to airline policy. Penalties apply per ticket."
+        },
+        "priceCalendar": {
+            "exploreRoundTrip": "Explore prices by date (Round-trip)",
+            "exploreOneWay": "Explore prices by date (One-way)",
+            "checkingPrices": "Checking prices\u2026",
+            "loading": "Loading\u2026",
+            "fetchingLive": "Fetching live prices\u2026",
+            "from": "From {price}",
+            "tipTitle": "Tip:",
+            "tipDescription": "These are real fares for nearby dates from this provider. Click any date to instantly search flights on that day.",
+            "clickToSearch": "Click to search this date",
+            "clickToSearchWithPrice": "{price} \u2014 click to search",
+            "datesFound": "{count} dates with prices found",
+            "searchingBestPrices": "Searching for the best prices\u2026",
+            "updatingMonth": "Updating month\u2026",
+            "searchDates": "Search all {count} dates for {month}",
+            "days": ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
+            "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        },
+        "datePicker": {
+            "selectDate": "Select date",
+            "month": "Month",
+            "year": "Year",
+            "cancel": "Cancel",
+            "select": "Select",
+            "days": ["S", "M", "T", "W", "T", "F", "S"],
+            "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        },
+        "backToDetails": "Back to Details",
+        "countries": {
+            "KR": "South Korea",
+            "PH": "Philippines",
+            "US": "United States",
+            "JP": "Japan",
+            "CN": "China",
+            "GB": "United Kingdom",
+            "AU": "Australia",
+            "CA": "Canada",
+            "DE": "Germany",
+            "FR": "France",
+            "SG": "Singapore",
+            "TH": "Thailand",
+            "VN": "Vietnam",
+            "IN": "India",
+            "MY": "Malaysia"
         }
     },
     "destinations": {

@@ -60,7 +60,7 @@ function CheckoutForm({ clientSecret, onSuccess }: {
 
     return (
         <form onSubmit={handleSubmit} className="p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm mt-4">
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">{tsc('stripe.completePayment')}</h2>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">{t('stripe.completePayment')}</h2>
 
             <PaymentElement
                 className="mb-4"

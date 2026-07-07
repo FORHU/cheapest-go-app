@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -6,9 +7,6 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 interface FormDatePickerProps {
     value?: string; // YYYY-MM-DD
@@ -24,13 +22,18 @@ interface FormDatePickerProps {
 export const FormDatePicker: React.FC<FormDatePickerProps> = ({
     value,
     onChange,
-    placeholder = "Select date",
+    placeholder,
     required,
     className,
     minDate,
     maxDate,
     customTrigger
 }) => {
+    const t = useTranslations('flightBook.datePicker');
+    const monthsList = t.raw('months') as string[];
+    const daysList = t.raw('days') as string[];
+    const defaultPlaceholder = placeholder || t('selectDate');
+
     const [currentMonth, setCurrentMonth] = useState(() => {
         if (value) {
             const d = new Date(value);
@@ -154,7 +157,7 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
                             className
                         )}
                     >
-                        <span>{displayValue || placeholder}</span>
+                        <span>{displayValue || defaultPlaceholder}</span>
                         <CalendarIcon size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
                     </button>
                 )}
@@ -170,7 +173,7 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
                                 className="flex items-center gap-1 group"
                             >
                                 <span className="text-[11px] font-normal text-blue-600 dark:text-blue-400 uppercase tracking-widest group-hover:opacity-70 transition-opacity">
-                                    {MONTHS[currentMonth.getMonth()]}
+                                    {monthsList[currentMonth.getMonth()]}
                                 </span>
                                 <div className={cn("transition-transform duration-200", view === 'month' ? "rotate-180" : "")}>
                                     <ChevronDown size={14} className="text-blue-600 dark:text-blue-400" />
@@ -226,9 +229,9 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
                         {/* Month Picker Overlay */}
                         {view === 'month' && (
                             <div className="absolute inset-0 bg-white dark:bg-obsidian z-20 overflow-y-auto custom-scrollbar pr-1 animate-in fade-in zoom-in-95 duration-200">
-                                <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">Month</div>
+                                <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">{t('month')}</div>
                                 <div className="grid grid-cols-1 gap-1">
-                                    {MONTHS.map((m, i) => (
+                                    {monthsList.map((m, i) => (
                                         <button
                                             key={m}
                                             type="button"
@@ -253,7 +256,7 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
                         {/* Year Picker Overlay */}
                         {view === 'year' && (
                             <div className="absolute inset-0 bg-white dark:bg-obsidian z-20 overflow-y-auto custom-scrollbar pr-1 animate-in fade-in zoom-in-95 duration-200">
-                                <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">Year</div>
+                                <div className="text-[10px] font-normal text-slate-400 uppercase tracking-widest mb-3 sticky top-0 bg-white dark:bg-obsidian py-1">{t('year')}</div>
                                 <div className="grid grid-cols-3 gap-2">
                                     {years.map((y) => (
                                         <button
@@ -280,13 +283,13 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
                         {/* Calendar View */}
                         <div className="animate-in fade-in duration-300">
                             <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                                {DAYS.map((d, i) => (
+                                {daysList.map((d, i) => (
                                     <span key={i} className="text-[10px] font-normal text-slate-400 uppercase tracking-widest">{d}</span>
                                 ))}
                             </div>
 
                             <div className="grid grid-cols-7 gap-1">
-                                {renderCalendar()}
+                                    {renderCalendar()}
                             </div>
                         </div>
                     </div>
@@ -298,7 +301,7 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
                                 type="button"
                                 className="flex-1 py-2 rounded-md text-[12px] font-normal text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-all border border-slate-100 dark:border-white/5"
                             >
-                                Cancel
+                                {t('cancel')}
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuTrigger asChild>
@@ -306,7 +309,7 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
                                 type="button"
                                 className="flex-1 py-2 rounded-md text-[12px] font-normal text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
                             >
-                                Select
+                                {t('select')}
                             </button>
                         </DropdownMenuTrigger>
                     </div>

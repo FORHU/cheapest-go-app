@@ -89,15 +89,11 @@ export function PaymentForm({
                         onChange={onInputChange}
                         className="w-full px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500"
                     >
-                        <option value="PH">Philippines</option>
-                        <option value="SG">Singapore</option>
-                        <option value="MY">Malaysia</option>
-                        <option value="ID">Indonesia</option>
-                        <option value="TH">Thailand</option>
-                        <option value="VN">Vietnam</option>
-                        <option value="KR">South Korea</option>
-                        <option value="JP">Japan</option>
-                        <option value="US">United States</option>
+                        {(['PH', 'SG', 'MY', 'ID', 'TH', 'VN', 'KR', 'JP', 'US'] as const).map((code) => (
+                            <option key={code} value={code}>
+                                {t(`payment.countries.${code}`)}
+                            </option>
+                        ))}
                     </select>
                 </div>
 
