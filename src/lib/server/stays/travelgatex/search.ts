@@ -173,17 +173,39 @@ async function getEtgRegionId(cityName: string, countryCode?: string): Promise<n
         const data = await res.json();
         const regions: any[] = data?.data?.regions ?? [];
         const iso = resolveIsoCodeEtg(countryCode);
-        return (
-            regions.find((r: any) =>
-                r.type === 'City' &&
-                r.name.toLowerCase().startsWith(query.toLowerCase()) &&
-                (!iso || r.country_code === iso)
-            ) ??
-            regions.find((r: any) =>
-                r.type === 'City' &&
-                r.name.toLowerCase().startsWith(query.toLowerCase())
-            )
-        )?.id ?? null;
+        const q = query.toLowerCase();
+        const nameMatches = (r: any) => typeof r?.name === 'string' && r.name.toLowerCase().startsWith(q);
+        const inCountry = (r: any) => !iso || r.country_code === iso;
+
+        // A city and the area around it can share a name ("Cebu" the city vs Cebu the
+        // province). Resolve a city first so existing city searches never regress, then
+        // fall back to area-level regions so province/region queries ("Palawan") resolve
+        // to the whole area — matching what Ratehawk's own site returns. Kept as an
+        // allow-list so airports, whole countries, continents and seas are never picked.
+        // Exact ETG multicomplete `type` strings (verified against live responses —
+        // note the spaces/hyphens, e.g. Palawan comes back as "Multi-City (Vicinity)").
+        const AREA_TYPES = new Set([
+            'Province (State)',
+            'Region',
+            'Multi-City (Vicinity)',
+            'Multi-Region (within a country)',
+        ]);
+        const isCity = (r: any) => r?.type === 'City';
+        const isArea = (r: any) => AREA_TYPES.has(r?.type);
+
+        const pick =
+            regions.find((r: any) => isCity(r) && nameMatches(r) && inCountry(r)) ??
+            regions.find((r: any) => isCity(r) && nameMatches(r)) ??
+            regions.find((r: any) => isArea(r) && nameMatches(r) && inCountry(r)) ??
+            regions.find((r: any) => isArea(r) && nameMatches(r));
+
+        if (!pick) {
+            // No city or known area type matched. Surface the types ETG actually returned
+            // so an unmapped area label is a one-line allow-list fix, not a silent miss.
+            const seen = regions.filter(nameMatches).map((r: any) => r.type);
+            console.warn(`[tgx-search] ETG multicomplete: no city/area match for "${query}" — types seen: ${seen.join(', ') || '(none)'}`);
+        }
+        return pick?.id ?? null;
     } catch {
         return null;
     }
@@ -278,6 +300,13 @@ async function searchEtgCity(
         }
         console.log(`[tgx-search] ETG fallback: region ${regionId} for "${cityName}" (${params.checkin}→${params.checkout})`);
 
+        // Residency gates which rates/hotels a supplier returns, so mirror the guest's
+        // nationality instead of a hardcoded US resident — otherwise the app can show
+        // fewer/different hotels than a same-residency Ratehawk session. Falls back to
+        // 'us' for unmapped nationalities. Currency stays USD (display-only; converted
+        // downstream, consistent with the OTV path).
+        const etgResidency = resolveIsoCodeEtg(params.guest_nationality)?.toLowerCase() ?? 'us';
+
         const serpAbort = new AbortController();
         const serpTimeout = setTimeout(() => serpAbort.abort(), 20_000);
         const serpRes = await fetch('https://api.worldota.net/api/b2b/v3/search/serp/region/', {
@@ -290,7 +319,7 @@ async function searchEtgCity(
                 guests:    [{ adults: Number(params.adults ?? 2) }],
                 currency:  'USD',
                 language:  'en',
-                residency: 'us',
+                residency: etgResidency,
             }),
             signal: serpAbort.signal,
         });
