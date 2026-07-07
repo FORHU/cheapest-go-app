@@ -32,7 +32,6 @@ import { buildPropertySlug } from '@/lib/utils';
 import {
     BookingSuccess,
     UserDetailsForm,
-    BookingForSection,
     SpecialRequestsSection,
     BookingSummary,
     SubmitBookingButton,
@@ -93,6 +92,7 @@ export function CheckoutContent() {
     // Form state hook
     const {
         formData,
+        setFormData,
         handleInputChange,
         bookingFor,
         setBookingFor,
@@ -111,6 +111,22 @@ export function CheckoutContent() {
         setFormErrors,
         clearFormErrors,
     } = useCheckoutForm();
+
+    const handleGuestChange = useCallback((index: number, field: 'firstName' | 'lastName', value: string) => {
+        const current = formData.additionalGuests ?? [];
+        const updated = [...current];
+        if (!updated[index]) updated[index] = { firstName: '', lastName: '' };
+        updated[index] = { ...updated[index], [field]: value };
+        setFormData({ additionalGuests: updated });
+    }, [formData.additionalGuests, setFormData]);
+
+    const handleChildChange = useCallback((index: number, field: 'firstName' | 'lastName' | 'age', value: string) => {
+        const current = formData.childGuests ?? [];
+        const updated = [...current];
+        if (!updated[index]) updated[index] = { firstName: '', lastName: '', age: '' };
+        updated[index] = { ...updated[index], [field]: value };
+        setFormData({ childGuests: updated });
+    }, [formData.childGuests, setFormData]);
 
     const prebookError = prebookErrorObj?.message || null;
 
@@ -252,7 +268,7 @@ export function CheckoutContent() {
 
         // Validate form fields using server utility
         clearFormErrors();
-        const validation = validateCheckoutForm(formData, bookingFor);
+        const validation = validateCheckoutForm(formData);
         if (!validation.success) {
             setFormErrors(validation.errors);
             toast.error('Please fix the highlighted fields before continuing.');
@@ -336,7 +352,7 @@ export function CheckoutContent() {
                 throw new Error("Booking session expired.");
             }
 
-            const guests = buildGuestPayload(formData, bookingFor, specialRequests);
+            const guests = buildGuestPayload(formData, specialRequests);
             const holder = buildHolderPayload(formData);
 
             // Confirm booking with LiteAPI (payment already captured by Stripe)
@@ -450,6 +466,10 @@ export function CheckoutContent() {
         }
     }, [showSuccess]);
 
+    // Guard state for missing-dates picker — must be declared before any early returns
+    const [guardCheckIn, setGuardCheckIn] = useState('');
+    const [guardCheckOut, setGuardCheckOut] = useState('');
+
     // Deal flow: property set but no room chosen yet — show date picker + room search CTA
     if (property && !selectedRoom) {
         const ci = checkIn ? checkIn.toISOString().slice(0, 10) : '';
@@ -534,8 +554,6 @@ export function CheckoutContent() {
     }
 
     // Guard: missing dates — show inline date picker before the form
-    const [guardCheckIn, setGuardCheckIn] = useState('');
-    const [guardCheckOut, setGuardCheckOut] = useState('');
     const guardToday = new Date().toISOString().slice(0, 10);
 
     if (!checkIn || !checkOut) {
@@ -722,14 +740,10 @@ export function CheckoutContent() {
                                         isWorkTravel={isWorkTravel}
                                         onWorkTravelChange={setIsWorkTravel}
                                         errors={formErrors}
-                                    />
-
-                                    <BookingForSection
-                                        bookingFor={bookingFor}
-                                        onBookingForChange={setBookingFor}
-                                        formData={formData}
-                                        onInputChange={handleInputChange}
-                                        errors={formErrors}
+                                        adults={adults}
+                                        children={children}
+                                        onGuestChange={handleGuestChange}
+                                        onChildChange={handleChildChange}
                                     />
 
                                     <SpecialRequestsSection

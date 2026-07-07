@@ -12,6 +12,10 @@ interface UserDetailsFormProps {
     isWorkTravel: boolean;
     onWorkTravelChange: (value: boolean) => void;
     errors?: Record<string, string>;
+    adults?: number;
+    children?: number;
+    onGuestChange?: (index: number, field: 'firstName' | 'lastName', value: string) => void;
+    onChildChange?: (index: number, field: 'firstName' | 'lastName' | 'age', value: string) => void;
 }
 
 const FieldError = ({ message }: { message?: string }) =>
@@ -25,13 +29,25 @@ export function UserDetailsForm({
     isWorkTravel,
     onWorkTravelChange,
     errors = {},
+    adults = 1,
+    children = 0,
+    onGuestChange,
+    onChildChange,
 }: UserDetailsFormProps) {
+    const additionalGuests = formData.additionalGuests ?? [];
+    const childGuests = formData.childGuests ?? [];
+
     return (
         <div className="bg-white dark:bg-slate-900 rounded-lg lg:rounded-xl border border-slate-200 dark:border-white/10 p-3 lg:p-6 shadow-sm">
             <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-2 lg:mb-4 flex items-center gap-1.5 lg:gap-2">
                 <UserIcon className="text-blue-600 w-4 h-4 lg:w-5 lg:h-5" />
                 Your details
             </h2>
+
+            {/* Guest 1 — primary contact */}
+            {adults > 1 && (
+                <p className="text-[10px] lg:text-xs font-bold uppercase text-blue-600 mb-1.5 lg:mb-2">Guest 1 (You)</p>
+            )}
             <div className="grid grid-cols-2 gap-2.5 lg:gap-4">
                 <div>
                     <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">First Name *</label>
@@ -123,6 +139,87 @@ export function UserDetailsForm({
                     </div>
                 </div>
             </div>
+
+            {/* Additional adult guests (Guest 2..N) */}
+            {adults > 1 && Array.from({ length: adults - 1 }, (_, i) => {
+                const guest = additionalGuests[i] ?? { firstName: '', lastName: '' };
+                return (
+                    <div key={i} className="mt-3 lg:mt-5 pt-3 lg:pt-5 border-t border-slate-100 dark:border-white/5">
+                        <p className="text-[10px] lg:text-xs font-bold uppercase text-blue-600 mb-1.5 lg:mb-2">Guest {i + 2}</p>
+                        <div className="grid grid-cols-2 gap-2.5 lg:gap-4">
+                            <div>
+                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">First Name *</label>
+                                <input
+                                    value={guest.firstName}
+                                    onChange={e => onGuestChange?.(i, 'firstName', e.target.value)}
+                                    type="text"
+                                    className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`guest_${i}_firstName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                                    placeholder="First name"
+                                />
+                                <FieldError message={errors[`guest_${i}_firstName`]} />
+                            </div>
+                            <div>
+                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">Last Name *</label>
+                                <input
+                                    value={guest.lastName}
+                                    onChange={e => onGuestChange?.(i, 'lastName', e.target.value)}
+                                    type="text"
+                                    className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`guest_${i}_lastName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                                    placeholder="Last name"
+                                />
+                                <FieldError message={errors[`guest_${i}_lastName`]} />
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+
+            {/* Child guests */}
+            {children > 0 && Array.from({ length: children }, (_, i) => {
+                const child = childGuests[i] ?? { firstName: '', lastName: '', age: '' };
+                return (
+                    <div key={`child-${i}`} className="mt-3 lg:mt-5 pt-3 lg:pt-5 border-t border-slate-100 dark:border-white/5">
+                        <p className="text-[10px] lg:text-xs font-bold uppercase text-amber-600 mb-1.5 lg:mb-2">Child {i + 1}</p>
+                        <div className="grid grid-cols-2 gap-2.5 lg:gap-4">
+                            <div>
+                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">First Name *</label>
+                                <input
+                                    value={child.firstName}
+                                    onChange={e => onChildChange?.(i, 'firstName', e.target.value)}
+                                    type="text"
+                                    className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`child_${i}_firstName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                                    placeholder="First name"
+                                />
+                                <FieldError message={errors[`child_${i}_firstName`]} />
+                            </div>
+                            <div>
+                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">Last Name *</label>
+                                <input
+                                    value={child.lastName}
+                                    onChange={e => onChildChange?.(i, 'lastName', e.target.value)}
+                                    type="text"
+                                    className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`child_${i}_lastName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                                    placeholder="Last name"
+                                />
+                                <FieldError message={errors[`child_${i}_lastName`]} />
+                            </div>
+                            <div>
+                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">Age *</label>
+                                <input
+                                    value={child.age}
+                                    onChange={e => onChildChange?.(i, 'age', e.target.value)}
+                                    type="number"
+                                    min="0"
+                                    max="17"
+                                    className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`child_${i}_age`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
+                                    placeholder="0–17"
+                                />
+                                <FieldError message={errors[`child_${i}_age`]} />
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
         </div>
     );
 }
