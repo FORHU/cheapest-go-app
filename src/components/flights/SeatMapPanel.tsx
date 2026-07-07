@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2, PlaneTakeoff, AlertTriangle, ArrowRight, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NormalizedSegmentSeatMap, NormalizedSeat, SelectedSeat } from '@/types/seatMap';
@@ -33,6 +34,7 @@ export default function SeatMapPanel({
     onDone,
     onOfferExpired,
 }: SeatMapPanelProps) {
+    const t = useTranslations('flightBook.seats');
     const [seatMaps, setSeatMaps] = useState<NormalizedSegmentSeatMap[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -143,7 +145,7 @@ export default function SeatMapPanel({
         return (
             <div className="flex items-center justify-center gap-2 py-8 text-slate-500 dark:text-slate-400 text-[10px] lg:text-xs">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Loading seat map…
+                {t('loading')}
             </div>
         );
     }
@@ -155,11 +157,11 @@ export default function SeatMapPanel({
                     <AlertTriangle className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
-                    <p className="text-[11px] font-normal text-slate-700 dark:text-slate-300">Seat map not available</p>
+                    <p className="text-[11px] font-normal text-slate-700 dark:text-slate-300">{t('notAvailable')}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                         {error
-                            ? `Could not load seat map: ${error}`
-                            : 'This airline doesn\'t support seat selection for this flight through our booking system.'}
+                            ? t('errorDetail', { error })
+                            : t('notSupported')}
                     </p>
                 </div>
             </div>
@@ -181,7 +183,7 @@ export default function SeatMapPanel({
                         />
                     </div>
                     <span className="text-[9px] text-slate-500 dark:text-slate-400 shrink-0 tabular-nums">
-                        {totalSelected}/{totalRequired} seats
+                        {t('seatsCount', { selected: totalSelected, total: totalRequired })}
                     </span>
                 </div>
             )}
@@ -249,18 +251,15 @@ export default function SeatMapPanel({
             {passengerCount === 1 ? (
                 <p className="text-[9px] text-slate-500 dark:text-slate-400">
                     {getSelected(activeSegment, 0)
-                        ? `Seat ${getSelected(activeSegment, 0)!.designator} selected`
-                        : 'Tap a seat to select it'}
+                        ? t('seatLabel', { designator: getSelected(activeSegment, 0)!.designator })
+                        : t('tapToSelect')}
                 </p>
             ) : (
                 <p className="text-[9px] text-slate-500 dark:text-slate-400">
-                    Selecting for{' '}
-                    <span className="font-normal text-slate-700 dark:text-slate-300">
-                        {passengerLabels[activePassenger]?.split(' ').slice(0, 2).join(' ')}
-                    </span>
+                    {t('selectingFor', { name: passengerLabels[activePassenger]?.split(' ').slice(0, 2).join(' ') })}
                     {getSelected(activeSegment, activePassenger)
-                        ? ` · Seat ${getSelected(activeSegment, activePassenger)!.designator} chosen`
-                        : ' · tap a seat below'}
+                        ? t('seatChosen', { designator: getSelected(activeSegment, activePassenger)!.designator })
+                        : t('tapSeatBelow')}
                 </p>
             )}
 
@@ -275,19 +274,19 @@ export default function SeatMapPanel({
 
             {/* Legend */}
             <div className="flex justify-center items-center gap-x-4 gap-y-2 flex-wrap text-[9px] text-slate-500 dark:text-slate-400">
-                <LegendItem color="bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700" label="Free" />
-                <LegendItem color="bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700" label="Paid" />
-                <LegendItem color="bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 opacity-60" label="Taken" />
-                <LegendItem color="bg-indigo-500 border-indigo-500" label="Selected" textColor="text-blue-600 dark:text-blue-400" />
-                <LegendItem color="bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 ring-1 ring-offset-1 ring-emerald-500" label="Extra legroom" />
-                <LegendItem color="bg-rose-100 dark:bg-rose-900/40 border-rose-300 dark:border-rose-700 ring-1 ring-offset-1 ring-rose-500" label="Exit row" />
+                <LegendItem color="bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700" label={t('legend.free')} />
+                <LegendItem color="bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700" label={t('legend.paid')} />
+                <LegendItem color="bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 opacity-60" label={t('legend.taken')} />
+                <LegendItem color="bg-indigo-500 border-indigo-500" label={t('legend.selected')} textColor="text-blue-600 dark:text-blue-400" />
+                <LegendItem color="bg-emerald-100 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700 ring-1 ring-offset-1 ring-emerald-500" label={t('legend.extraLegroom')} />
+                <LegendItem color="bg-rose-100 dark:bg-rose-900/40 border-rose-300 dark:border-rose-700 ring-1 ring-offset-1 ring-rose-500" label={t('legend.exitRow')} />
             </div>
 
             {/* Seat cost summary + Done/Skip */}
             <div className="flex items-center gap-2">
                 {totalSeatCost > 0 && (
                     <div className="flex-1 flex items-center gap-1.5 text-[11px] text-blue-600 dark:text-blue-400 font-normal py-2">
-                        <span>Seat upgrade:</span>
+                        <span>{t('seatUpgrade')}</span>
                         <span className="font-normal">
                             +{new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(totalSeatCost)}
                         </span>
@@ -301,7 +300,7 @@ export default function SeatMapPanel({
                             className="flex items-center gap-1 px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                         >
                             <X className="w-3 h-3" />
-                            Clear
+                            {t('clear')}
                         </button>
                     )}
                     {onDone && (
@@ -317,7 +316,7 @@ export default function SeatMapPanel({
                             )}
                         >
                             {allSeatsChosen ? <Check className="w-3.5 h-3.5" /> : null}
-                            {allSeatsChosen ? 'Done' : 'Skip'}
+                            {allSeatsChosen ? t('done') : t('skip')}
                         </button>
                     )}
                 </div>
@@ -428,13 +427,14 @@ function SeatButton({ seat, passengerIndex, segmentIndex, selectedSeats, onClick
     const isPaid = !isFree && seat.price !== null && seat.price > 0;
     const isAvailable = seat.status === 'available' && !takenByOther;
 
+    const seatLabel = t('seatLabel', { designator: seat.designator });
     const priceLabel = isPaid
-        ? `${seat.designator} · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: seat.currency }).format(seat.price!)}`
-        : seat.designator;
+        ? `${seatLabel} · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: seat.currency }).format(seat.price!)}`
+        : seatLabel;
     const tooltip = [
         priceLabel,
-        seat.extraLegroom ? '✦ Extra legroom' : '',
-        seat.isExit ? '⚠ Exit row' : '',
+        seat.extraLegroom ? t('extraLegroomTooltip') : '',
+        seat.isExit ? t('exitRowTooltip') : '',
     ].filter(Boolean).join('\n');
 
     return (

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronUp, FileText, Loader2, AlertTriangle } from 'lucide-react';
 
 interface RuleDetail {
@@ -26,6 +27,7 @@ interface FareRulesPanelProps {
 }
 
 export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
+    const t = useTranslations('flightBook.fareRules');
     const [fareRules, setFareRules] = useState<FareRule[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -45,17 +47,17 @@ export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
                 if (data.success) {
                     setFareRules(data.fareRules ?? []);
                 } else {
-                    const msg = data.error ?? 'Could not load fare rules';
+                    const msg = data.error ?? t('error');
                     console.error('[FareRulesPanel] API error:', msg);
                     setError(msg);
                 }
             })
             .catch(err => {
                 console.error('[FareRulesPanel] Fetch error:', err);
-                setError('Could not load fare rules');
+                setError(t('error'));
             })
             .finally(() => setLoading(false));
-    }, [fareSourceCode]);
+    }, [fareSourceCode, t]);
 
     const toggleCategory = (i: number) => {
         setOpenCategories(prev => {
@@ -77,10 +79,10 @@ export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
             >
                 <span className="flex items-center gap-1.5 text-[11px] lg:text-xs font-normal text-slate-900 dark:text-white">
                     <FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                    Fare Rules
+                    {t('title')}
                     {!loading && fareRules.length > 0 && (
                         <span className="ml-1.5 text-[9px] lg:text-[11px] font-normal text-slate-400 dark:text-slate-500">
-                            ({fareRules.length} {fareRules.length === 1 ? 'rule' : 'rules'})
+                            ({fareRules.length} {fareRules.length === 1 ? t('rule') : t('rules')})
                         </span>
                     )}
                 </span>
@@ -101,7 +103,7 @@ export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
                             {error}
                         </div>
                     ) : fareRules.map((rule, i) => {
-                        const groupTitle = [rule.Airline, rule.CityPair].filter(Boolean).join(' · ') || `Route ${i + 1}`;
+                        const groupTitle = [rule.Airline, rule.CityPair].filter(Boolean).join(' · ') || t('routeLabel', { number: i + 1 });
                         // Normalise: use nested RuleDetails if present, otherwise wrap flat fields
                         const details: RuleDetail[] = rule.RuleDetails?.length
                             ? rule.RuleDetails
@@ -137,7 +139,7 @@ export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
                                                     {fcaUrl && (
                                                         <a href={fcaUrl} target="_blank" rel="noopener noreferrer"
                                                             className="text-[9px] lg:text-[11px] text-indigo-600 dark:text-indigo-400 underline underline-offset-2 block">
-                                                            View fare rules on airline website →
+                                                            {t('viewOnWebsite')}
                                                         </a>
                                                     )}
                                                     {body && (
@@ -146,7 +148,7 @@ export function FareRulesPanel({ fareSourceCode }: FareRulesPanelProps) {
                                                         </p>
                                                     )}
                                                     {!body && !fcaUrl && (
-                                                        <p className="text-[9px] lg:text-[11px] text-slate-400 italic">No rule text provided by airline.</p>
+                                                        <p className="text-[9px] lg:text-[11px] text-slate-400 italic">{t('noRules')}</p>
                                                     )}
                                                 </div>
                                             );

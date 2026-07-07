@@ -857,7 +857,18 @@
             "country": "국가",
             "payeeFirstName": "수취인 이름",
             "payeeLastName": "수취인 성",
-            "securedMessage": "결제 정보는 안전하게 보호됩니다."
+            "securedMessage": "결제 정보는 안전하게 보호됩니다.",
+            "countries": {
+                "PH": "필리핀",
+                "SG": "싱가포르",
+                "MY": "말레이시아",
+                "ID": "인도네시아",
+                "TH": "태국",
+                "VN": "베트남",
+                "KR": "대한민국",
+                "JP": "일본",
+                "US": "미국"
+            }
         },
         "specialRequests": {
             "title": "특별 요청이 있으신가요?",
@@ -926,6 +937,257 @@
             "payNow": "지금 결제",
             "unexpectedError": "예상치 못한 오류가 발생했습니다.",
             "processing": "결제 처리 중..."
+        }
+    },
+    "flightBook": {
+        "farePolicy": {
+            "freeCancellation": "\ubb34\ub8cc \ucde8\uc18c",
+            "refundableFee": "\ud658\ubd88 \uac00\ub2a5(\uc218\uc218\ub8cc: {fee})",
+            "refundableFeesMayApply": "\ud658\ubd88 \uac00\ub2a5(\uc218\uc218\ub8cc\uac00 \ubd80\uacfc\ub420 \uc218 \uc788\uc74c)",
+            "nonRefundable": "\ud658\ubd88 \ubd88\uac00",
+            "policyUpdated": "<strong>\uc694\uae08 \uc815\ucc45\uc774 \uc5c5\ub370\uc774\ud2b8\ub418\uc5c8\uc2b5\ub2c8\ub2e4.</strong> \uc774 \ud56d\uacf8\uc758 \ud658\ubd88 \uac00\ub2a5\uc131\uc774 \ubcc0\uacbd\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \uacc4\uc18d\ud558\uae30 \uc804\uc5d0 \uac80\ud1a0\ud574 \uc8fc\uc138\uc694.",
+            "title": "\uc694\uae08 \uc815\ucc45",
+            "airlineConfirmed": "\u2713 \ud56d\uacf5\uc0ac \ud655\uc778 \uc644\ub8cc",
+            "changesAllowed": "\ubcc0\uacbd \uac00\ub2a5",
+            "finalRules": "\ucd5c\uc885 \uc694\uae08 \uaddc\uce59\uc740 \uc608\uc57d \uc2dc \ud56d\uacf5\uc0ac\uac00 \ud655\uc778\ud569\ub2c8\ub2e4.",
+            "indicativeOnly": "\ucc38\uace0\uc6a9\uc785\ub2c8\ub2e4 \u2014 \ucd5c\uc815 \uc815\ucc45\uc740 \uacb0\uc81c \ub2e8\uacc4\uc5d0\uc11c \ud655\uc778\ub429\ub2c8\ub2e4."
+        },
+        "offerExpiry": {
+            "expired": "\uc774 \ud61c\ud0dd\uc774 \ub9cc\ub8cc\ub418\uc5c8\uc2b5\ub2c8\ub2e4 \u2014 \ub2e4\uc2dc \uac80\uc0c9\ud574 \uc8fc\uc138\uc694.",
+            "expiresIn": "{time} \ud6c4\uc5d0 \ud61c\ud0dd\uc774 \ub9cc\ub8cc\ub429\ub2c8\ub2e4 \u2014 \uc2dc\uac04 \ub0b4\uc5d0 \uc608\uc57d\uc744 \uc644\ub8cc\ud558\uc138\uc694."
+        },
+        "ancillaryExpired": {
+            "title": "\uc774 \ud61c\ud0dd\uc5d0\uc11c\ub294 \uc0ac\uc6a9\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4",
+            "description": "\uc774 \uc694\uae08\uc740 \ub354 \uc774\uc0c1 \ubcf4\uc870 \uc11c\ube44\uc2a4\ub97c \uc81c\uacf5\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4. \uc608\uc57d\uc740 \uacc4\uc18d\ud560 \uc218 \uc788\uc73c\uba70 \uc88c\uc11d\uacfc \uc218\ud654\ubb3c\uc740 \ud56d\uacf5\uc0ac\uc5d0\uc11c \uc9c1\uc811 \uad00\ub9ac\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4."
+        },
+        "bookingSteps": [
+            "\uacb0\uc81c \ud655\uc778 \uc911...",
+            "\uc88c\uc11d \ud655\ubcf4 \uc911...",
+            "\ud56d\uacf5\uc0ac \ud655\uc778 \uc911...",
+            "\uc608\uc57d \uc138\ubd80 \uc815\ub9ac \uc911..."
+        ],
+        "confirmingBooking": "\uc608\uc57d \ud655\uc778 \uc911",
+        "dontClosePage": "\uc774 \ud398\uc774\uc9c0\ub97c \ub2eb\uc9c0 \ub9c8\uc138\uc694",
+        "error": {
+            "flightUnavailable": "\ud56d\uacf8\uc744 \uc0ac\uc6a9\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4",
+            "bookingFailed": "\uc608\uc57d \uc2e4\ud328",
+            "defaultMessage": "\uc608\uc57d\uc744 \uc644\ub8cc\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
+            "notCharged": "\uce74\ub4dc\uac00 <strong>\uc544\uc9c1</strong> \ucca98\ub9ac\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4. \ub2e4\ub978 \ud56d\uacf8\ub098 \ub0a0\uc9dc\ub97c \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.",
+            "notChargedShort": "\ub2e4\ub978 \ud56d\uacf8\ub098 \ub0a0\uc9dc\ub97c \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.",
+            "tryAgain": "\ub2e4\uc2dc \uc2dc\ub3c4",
+            "searchAgain": "\ub2e4\uc2dc \uac80\uc0c9",
+            "goBack": "\ub4a4\ub85c \uac00\uae30",
+            "bookingFailedDefault": "\uc608\uc57d\uc774 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4. \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694."
+        },
+        "success": {
+            "bookingConfirmed": "\uc608\uc57d \ud655\uc815! \ud83c\udf89",
+            "bundleSuccess": "\ud56d\uacf8\uc774 \ubc88\ub4e4\uc5d0 \uc131\uacf5\uc801\uc73c\ub85c \ucd94\uac00\ub418\uc5c8\uc2b5\ub2c8\ub2e4.",
+            "flightSuccess": "\ud56d\uacf8\uc774 \uc131\uacf5\uc801\uc73c\ub85c \uc608\uc57d\ub418\uc5c8\uc2b5\ub2c8\ub2e4.",
+            "pnr": "PNR",
+            "bookingId": "\uc608\uc57d ID",
+            "route": "\ub178\uc120",
+            "total": "\ucd1d\uacc4",
+            "bundleDiscountApplied": "\ubc88\ub4e4 \ud560\uc778 \uc801\uc6a9\ub428",
+            "eTickets": "\uc804\uc790 \ud2f0\ucf13",
+            "whatsNext": "\ub2e4\uc74c \ub2e8\uacc4",
+            "emailInfo": "\uc804\uc790 \ud2f0\ucf13\uacfc \uc608\uc57d \ud655\uc778\uba54\uc77c\uc774 \ubd84 \ub0b4\uc5d0 \uc774\uba54\uc77c\ub85c \ubc1c\uc1a1\ub429\ub2c8\ub2e4.",
+            "checkInInfo": "\uc628\ub77c\uc778 \uccb4\ud06c\uc778\uc740 \ubcf4\ud1b5 \ucd9c\ubc1c 24\u201348 \uc2dc\uac04 \uc804\uc5d0 \uc5f4\ub9bd\ub2c8\ub2e4. \ud56d\uacf5\uc0ac \uc6f9\uc0ac\uc774\ud2b8\uc5d0 \ubc29\ubb38\ud558\uc5ec PNR {pnr}\uc744 \uc0ac\uc6a9\ud558\uc5ec \uccb4\ud06c\uc778\ud558\uc138\uc694.",
+            "boardingPassInfo": "\ud0d1\uc2b9\uad8c\uc740 \uccb4\ud06c\uc778 \uc2dc \ubc1c\uae09\ub429\ub2c8\ub2e4. \uccb4\ud06c\uc778 \ud6c4 \ud56d\uacf5\uc0ac\uc758 \uc571 \ub610\ub294 \uc6f9\uc0ac\uc774\ud2b8\uc5d0\uc11c \ub2e4\uc6b4\ub85c\ub4dc\ud560 \uc218 \uc788\uc2b5\ub2c8\ub2e4.",
+            "bundleDealBadge": "\u2726 \ubc88\ub4e4 \ud560\uc778",
+            "addHotel": "\ud638\ud154\uc744 \ucd94\uac00\ud558\uc5ec \uc5ec\ud589\uc744 \ub9e4\ub044\uc5b4\ubcf4\uc138\uc694",
+            "addHotelDesc": "{destination}\uc5d0\uc11c \uc219\ubc15\uc744 \uc608\uc57d\ud558\uace0 \ud56d\uacf8 + \ud638\ud154 \ubc88\ub4e8\ub85c \ud560\uc778\ud61c\ud0dd\uc744 \ubc1b\uc73c\uc138\uc694",
+            "bookSeparately": "\ubcc4\ub3c4 \uc608\uc57d",
+            "standardRate": "\ud45c\uc900 \uc694\uae08",
+            "addToThisTrip": "\uc774 \uc5ec\ud589\uc5d0 \ucd94\uac00",
+            "bundleSavings": "\ubc88\ub4e4 \ud560\uc778",
+            "findHotels": "{destination} \ud638\ud154 \uac80\uc0c9",
+            "viewMyTrips": "\ub0b4 \uc5ec\ud589 \ubcf4\uae30",
+            "returnToHome": "\ud648\uc73c\ub85c \ub3cc\uc544\uac00\uae30"
+        },
+        "header": {
+            "roundTrip": "{name}({code}) \uc655\ubcf5",
+            "oneWay": "{name}({code})(\uc73c)\ub85c \uc608\uc57d"
+        },
+        "totalPrice": "\ucd1d \uae08\uc561",
+        "seatsRemaining": {
+            "onlyLeft": "{count}\uc11d \ub9cc \ub0a8\uc74c!",
+            "onlyLeftPlural": "{count}\uc11d \ub9cc \ub0a8\uc74c!",
+            "leftPlural": "{count}\uc11d \ub0a8\uc74c",
+            "available": "{count}\uc11d \uc774\uc6a9 \uac00\ub2a5"
+        },
+        "dealBanner": {
+            "dealApplied": "{discount} \ud560\uc778\uc774 \uc801\uc6a9\ub418\uc5c8\uc2b5\ub2c8\ub2e4",
+            "perPerson": "/ 1\uc778",
+            "departs": "{date} \ucd9c\ubc1c",
+            "returns": "{date} \ub3cc\uc544\uc628"
+        },
+        "passenger": {
+            "title": "\uc5ec\uac1d {number}",
+            "adult": "\uc131\uc778",
+            "child": "\uc18c\uc544",
+            "infant": "\uc720\uc544",
+            "remove": "\uc0ad\uc81c",
+            "firstName": "\uc774\ub984 *",
+            "lastName": "\uc131 *",
+            "gender": "\uc131\ubcc4 *",
+            "birthdate": "\uc0dd\ub144\uc6d4\uc77c *",
+            "nationality": "\uad6d\uc801 *",
+            "passport": "\uc5ec\uad8c \ubc88\ud638 *",
+            "passportExpiry": "\uc5ec\uad8c \ub9cc\ub8cc\uc77c *",
+            "addPassenger": "+ \uc5ec\uac1d \ucd94\uac00"
+        },
+        "genderOptions": {
+            "male": "\ub0a8\uc131",
+            "female": "\uc5ec\uc131"
+        },
+        "contact": {
+            "title": "\uc5f0\ub77d\ucc98",
+            "email": "\uc774\uba54\uc77c *",
+            "phone": "\uc804\ud654\ubc88\ud638 *"
+        },
+        "address": {
+            "title": "\uccad\uad6c\uc9c0 \uc8fc\uc18c",
+            "addressLine": "\uc8fc\uc18c *",
+            "city": "\ub3c4\uc2dc *",
+            "postalCode": "\uc6b0\ud3b8\ubc88\ud638 *",
+            "country": "\uad6d\uac00 *"
+        },
+        "bags": {
+            "title": "\ucd94\uac00 \uc218\ud654\ubb3c",
+            "added": "\uc218\ud654\ubb3c {count}\uac1c \ucd94\uac00\ub428 \u00b7 +{price}",
+            "addedPlural": "\uc218\ud654\ubb3c {count}\uac1c \ucd94\uac00\ub428 \u00b7 +{price}",
+            "optional": "\uc120\ud0dd \u2014 \uc704\ud0d1 \ub610\ub294 \uae30\ub0b4 \uc218\ud654\ubb3c \ucd94\uac00",
+            "refreshing": "\ud61c\ud0dd \uc0c8\ub85c\uace0\uce68 \uc911\u2026",
+            "carryOn": "\uae30\ub0b4 \uc218\ud654\ubb3c",
+            "checked": "\uc704\ud0d1 \uc218\ud654\ubb3c",
+            "weight": "\ucd5c\ub300 {weight} kg",
+            "free": "\ubb34\ub8cc",
+            "upgradeTotal": "\uc218\ud654\ubb3c \uc5c5\uadf8\ub808\uc774\ub4dc \ud569\uacc4",
+            "loading": "\uc218\ud654\ubb3c \uc635\uc158 \ubd88\ub7ec\uc624\ub294 \uc911\u2026",
+            "notAvailable": "\uc218\ud654\ubb3c \uc5c5\uadf8\ub808\uc774\ub4dc\ub97c \uc0ac\uc6a9\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4",
+            "errorDetail": "\uc218\ud654\ubb3c \uc635\uc158\uc744 \ubd88\ub7ec\uc62c \uc218 \uc5c6\uc2b5\ub2c8\ub2e4: {error}",
+            "notSupported": "\uc774 \ud56d\uacf8\uc740 \ucd94\uac00 \uc218\ud654\ubb3c \uc120\ud0dd\uc744 \uc9c0\uc6d0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4."
+        },
+        "seats": {
+            "title": "\uc88c\uc11d \uc120\ud0dd",
+            "selected": "\uc88c\uc11d {count}\uac1c \uc120\ud0dd\ub428 \u00b7 +{price}",
+            "selectedPlural": "\uc88c\uc11d {count}\uac1c \uc120\ud0dd\ub428 \u00b7 +{price}",
+            "optional": "\uc120\ud0dd \u2014 \uae30\ub0b4 \ub9f5\uc5d0\uc11c \uc88c\uc11d \uc120\ud0dd",
+            "seatUpgrade": "\uc88c\uc11d \uc5c5\uadf8\ub808\uc774\ub4dc:",
+            "seatLabel": "\uc88c\uc11d {designator}",
+            "tapToSelect": "\ud0ed\ud558\uc5ec \uc88c\uc11d \uc120\ud0dd",
+            "selectingFor": "{name} \uc120\ud0dd \uc911",
+            "seatChosen": "\u00b7 {designator} \uc88c\uc11d \uc120\ud0dd\ub428",
+            "tapSeatBelow": "\u00b7 \uc544\ub798 \uc88c\uc11d\uc744 \ud0ed\ud558\uc138\uc694",
+            "seatsCount": "{selected}/{total} \uc88c\uc11d",
+            "legend": {
+                "free": "\ubb34\ub8cc",
+                "paid": "\uc720\ub8cc",
+                "taken": "\uc9c0\ub09c \uc88c\uc11d",
+                "selected": "\uc120\ud0dd\ub428",
+                "extraLegroom": "\ub2e4\ub9ac \uacf5\uac04 \ud655\ubcf4",
+                "exitRow": "\ube44\uc0c1\uad6c \uc5f4"
+            },
+            "clear": "\uc9c0\uc6b0\uae30",
+            "done": "\uc644\ub8cc",
+            "skip": "\uc2a4\ud0b5",
+            "loading": "\uc88c\uc11d \ub9f5 \ubd88\ub7ec\uc624\ub294 \uc911\u2026",
+            "notAvailable": "\uc88c\uc11d \ub9f5\uc744 \uc0ac\uc6a9\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4",
+            "errorDetail": "\uc88c\uc11d \ub9f5\uc744 \ubd88\ub7ec\uc62c \uc218 \uc5c6\uc2b5\ub2c8\ub2e4: {error}",
+            "notSupported": "\uc774 \ud56d\uacf8\uc740 \uc608\uc57d \uc2dc\uc2a4\ud15c\uc744 \ud1b5\ud55c \uc88c\uc11d \uc120\ud0dd\uc744 \uc9c0\uc6d0\ud558\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+            "extraLegroomTooltip": "\u2726 \ub2e4\ub9ac \uacf5\uac04 \ud655\ubcf4",
+            "exitRowTooltip": "\u26a0 \ube44\uc0c1\uad6c \uc5f4"
+        },
+        "priceChange": {
+            "title": "\uc694\uae08\uc774 \ubcc0\uacbd\ub418\uc5c8\uc2b5\ub2c8\ub2e4",
+            "description": "\uc774 \ud56d\uacf8\uc740 \ud604\uc7ac {newPrice}\uc785\ub2c8\ub2e4(\uc774\uc804 \uae08\uc561 {oldPrice}). \uc0c8 \uae08\uc561\uc73c\ub85c \uacc4\uc18d\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?",
+            "accept": "\uc0c8 \uae08\uc561 \uc218\ub099 \ubc0f \uacc4\uc18d",
+            "searchAgain": "\ub2e4\uc2dc \uac80\uc0c9"
+        },
+        "duplicate": {
+            "title": "\uc774\ubbf8 \ud574\ub2f9 \ub0a0\uc9dc\uc758 \ud56d\uacf8\uc744 \uc608\uc57d\ud558\uc168\uc2b5\ub2c8\ub2e4",
+            "description": "{route} \ucd9c\ubc1c\ud558\ub294 \ud65c\uc131 \uc608\uc57d\uc774 {date}\uc5d0 \ubc1c\uacac\ub418\uc5c8\uc2b5\ub2c8\ub2e4. \uba3c\uc800 \uae30\uc874 \uc608\uc57d\uc744 \ucde8\uc18c\ud558\uac70\ub098 \ub4a4\ub85c \ub3cc\uc544\uac00\uc138\uc694.",
+            "viewExisting": "\uae30\uc874 \uc608\uc57d \ubcf4\uae30",
+            "keepExisting": "\uae30\uc874 \uc608\uc57d \uc720\uc9c0"
+        },
+        "orderSummary": {
+            "title": "\uc8fc\ubb38 \uc694\uc57d",
+            "nonstop": "\uc9c1\ud56d",
+            "stops": "\uacbd\uc720 {count}\ud68c",
+            "economy": "\uc774\ucf54\ub178\ubbf8",
+            "passenger": "\uc5ec\uac1d {count}\uba85",
+            "passengerPlural": "\uc5ec\uac1d {count}\uba85",
+            "baseFare": "\uae30\ubcf8 \uc694\uae08",
+            "seatSelection": "\uc88c\uc11d \uc120\ud0dd",
+            "extraBags": "\ucd94\uac00 \uc218\ud654\ubb3c",
+            "total": "\ucd1d\uacc4"
+        },
+        "submitBtn": {
+            "processing": "\uc608\uc57d \ucc98\ub9ac \uc911...",
+            "confirm": "\uc608\uc57d \ud655\uc778 \u00b7 {price}"
+        },
+        "dealGate": {
+            "dealUnavailable": "\ud61c\ud0dd\uc744 \uc774\uc6a9\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4",
+            "tryAgain": "\ub2e4\uc2dc \uc2dc\ub3c4",
+            "searchAll": "\ubaa8\ub4e0 \ud56d\uacf8 \uac80\uc0c9",
+            "securingDeal": "\ud61c\ud0dd \ud655\ubcf4 \uc911",
+            "searchMessages": [
+                "\uc774\uc6a9 \uac00\ub2a5\ud55c \ud56d\uacf8 \uac80\uc0c9 \uc911\u2026",
+                "\uc88c\uc11d \uac00\ub2a5 \uc5ec\ubd80 \ud655\uc778 \uc911\u2026",
+                "\ucd5c\uace0 \uac00\uaca9 \ud655\ubcf4 \uc911\u2026",
+                "\uac70\uc758 \ub2e4 \w588\uc2b5\ub2c8\ub2e4\u2026"
+            ]
+        },
+        "fareRules": {
+            "title": "\uc694\uae08 \uaddc\uce59",
+            "noRules": "\ud56d\uacf5\uc0ac\uc5d0\uc11c \uc81c\uacf5\ud55c \uaddc\uce59 \ud14d\uc2a4\ud2b8\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.",
+            "viewOnWebsite": "\ud56d\uacf5\uc0ac \uc6f9\uc0ac\uc774\ud2b8\uc5d0\uc11c \uc694\uae08 \uaddc\uce59 \ubcf4\uae30 \u2192",
+            "routeLabel": "\ub178\uc120 {number}",
+            "rule": "\uaddc\uce59",
+            "rules": "\uaddc\uce59",
+            "error": "\uc694\uae08 \uaddc\uce59\uc744 \ubd88\ub7ec\uc62c \uc218 \uc5c6\uc2b5\ub2c8\ub2e4"
+        },
+        "fareConditions": {
+            "title": "\uc694\uae08 \uc870\uac74",
+            "fullyRefundable": "\uc804\uc561 \ud658\ubd88 \uac00\ub2a5",
+            "nonRefundable": "\ud658\ubd88 \ubd88\uac00",
+            "partialRefund": "\ubd80\ubd84 \ud658\ubd88",
+            "changeBefore": "\ucd9c\ubc1c \uc804 \ubcc0\uacbd",
+            "changeAfter": "\ucd9c\ubc1c \ud6c4 \ubcc0\uacbd",
+            "refundBefore": "\ucd9c\ubc1c \uc804 \ud658\ubd88",
+            "refundAfter": "\ucd9c\ubc1c \ud6c4 \ud658\ubd88",
+            "notAllowed": "\ud5c8\uc6a9\ub418\uc9c0 \uc54a\uc74c",
+            "allowedFeeMayApply": "\ud5c8\uc6a9\ub428(\uc218\uc218\ub8cc\uac00 \ubd80\uacfc\ub420 \uc218 \uc788\uc74c)",
+            "free": "\ubb34\ub8cc",
+            "allowedFee": "\ud5c8\uc6a9\ub428 \u00b7 {fee} \uc218\uc218\ub8cc",
+            "disclaimer": "\uc870\uac74\uc740 \uc5ec\uac1d \ub9c8\ub2e4 \uc801\uc6a9\ub418\uba70 \ud56d\uacf5\uc0ac \uc815\ucc45\uc5d0 \ub530\ub985\ub2c8\ub2e4. \ubc8c\uae08\uc740 \ud2f0\ucf13 \ub2f9 \uc801\uc6a9\ub429\ub2c8\ub2e4."
+        },
+        "priceCalendar": {
+            "exploreRoundTrip": "\ub0a0\uc9dc\ubcc4 \uac00\uaca9 \ud0d0\uc0c9(\uc655\ubcf5)",
+            "exploreOneWay": "\ub0a0\uc9dc\ubcc4 \uac00\uaca9 \ud0d0\uc0c9(\ud3b8\ub3c4)",
+            "checkingPrices": "\uac00\uaca9 \ud655\uc778 \uc911\u2026",
+            "loading": "\ubd88\ub7ec\uc624\ub294 \uc911\u2026",
+            "fetchingLive": "\uc2e4\uc2dc\uac04 \uac00\uaca9 \uc870\ud68c \uc911\u2026",
+            "from": "{price}\ubd80\ud130",
+            "tipTitle": "\ud301:",
+            "tipDescription": "\uc774\uac83\uc740 \ud574\ub2f9 \uc81c\uacf5\uc0ac\uc758 \uadfc\ucc98 \ub0a0\uc9dc \uc2e4\uc81c \uc694\uae08\uc785\ub2c8\ub2e4. \ub0a0\uc9dc\ub97c \ud074\ub9ad\ud558\uba74 \uadf8 \ub0a0\uc9dc\uc758 \ud56d\uacf8\uc744 \uac80\uc0c9\ud569\ub2c8\ub2e4.",
+            "clickToSearch": "\ud074\ub9ad\ud558\uc5ec \uc774 \ub0a0\uc9dc \uac80\uc0c9",
+            "clickToSearchWithPrice": "{price} \u2014 \ud074\ub9ad\ud558\uc5ec \uac80\uc0c9",
+            "datesFound": "{count}\uac1c \ub0a0\uc9dc\uc5d0 \uac00\uaca9 \uc788\uc74c",
+            "searchingBestPrices": "\ucd5c\uace0 \uac00\uaca9 \uac80\uc0c9 \uc911\u2026",
+            "updatingMonth": "\uc6d4 \uc5c5\ub370\uc774\ud2b8 \uc911\u2026",
+            "searchDates": "{month}\uc758 {count}\uac1c \ub0a0\uc9dc \uac80\uc0c9",
+            "days": ["\uc77c", "\uc6d4", "\ud654", "\uc218", "\ubaa9", "\uae08", "\ud1a0"],
+            "months": ["1\uc6d4", "2\uc6d4", "3\uc6d4", "4\uc6d4", "5\uc6d4", "6\uc6d4", "7\uc6d4", "8\uc6d4", "9\uc6d4", "10\uc6d4", "11\uc6d4", "12\uc6d4"]
+        },
+        "datePicker": {
+            "selectDate": "\ub0a0\uc9dc \uc120\ud0dd",
+            "month": "\uc6d4",
+            "year": "\ub144",
+            "cancel": "\ucde8\uc18c",
+            "select": "\uc120\ud0dd",
+            "days": ["\uc77c", "\uc6d4", "\ud654", "\uc218", "\ubaa9", "\uae08", "\ud1a0"],
+            "months": ["1\uc6d4", "2\uc6d4", "3\uc6d4", "4\uc6d4", "5\uc6d4", "6\uc6d4", "7\uc6d4", "8\uc6d4", "9\uc6d4", "10\uc6d4", "11\uc6d4", "12\uc6d4"]
         }
     },
     "destinations": {
