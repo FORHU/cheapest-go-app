@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { CancellationPolicy } from '@/services/booking.service';
 import { Info, AlertTriangle, LogOut, Ban, CheckCircle } from 'lucide-react';
 import { extractNoShowPenalty, extractEarlyDepartureFee } from '@/lib/cancellation';
@@ -40,6 +41,7 @@ export function CancellationPolicySection({
     totalPrice = 0,
     currency = 'PHP',
 }: CancellationPolicySectionProps) {
+    const t = useTranslations('checkout');
     const userCurrency = useUserCurrency();
     const displayCurrency = userCurrency || currency;
     const noShowPenalty = extractNoShowPenalty(cancellationPolicies);
@@ -77,23 +79,23 @@ export function CancellationPolicySection({
                 <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
                     <CheckCircle size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                        Free cancellation available — see deadlines below
+                        {t('cancellation.freeCancellation')}
                     </span>
                 </div>
             ) : (
                 <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
                     <Ban size={14} className="text-red-600 dark:text-red-400 shrink-0" />
                     <span className="text-xs font-semibold text-red-700 dark:text-red-300">
-                        Non-refundable — this booking cannot be cancelled for a refund
+                        {t('cancellation.nonRefundable')}
                     </span>
                 </div>
             )}
 
             <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
-                Cancellation Policy
+                {t('cancellation.title')}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                How much will it cost to cancel the rooms?
+                {t('cancellation.description')}
             </p>
 
             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg overflow-hidden">
@@ -118,7 +120,7 @@ export function CancellationPolicySection({
                         >
                             <div className="text-xs text-slate-600 dark:text-slate-300">
                                 <span className="font-medium">
-                                    {isFreeCancellation ? 'Cancel by' : 'Cancel after'}
+                                    {isFreeCancellation ? t('cancellation.cancelBy') : t('cancellation.cancelAfter')}
                                 </span>
                                 <br />
                                 <span className="text-slate-500 dark:text-slate-400">
@@ -128,9 +130,9 @@ export function CancellationPolicySection({
                             <div className="text-right">
                                 {isFreeCancellation ? (
                                     <div className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                        Free Cancellation
+                                        {t('cancellation.freeCancellationLabel')}
                                         <br />
-                                        <span className="text-emerald-500">(Full refund)</span>
+                                        <span className="text-emerald-500">{t('cancellation.fullRefund')}</span>
                                     </div>
                                 ) : (
                                     <div className="text-xs text-slate-600 dark:text-slate-300">
@@ -139,7 +141,7 @@ export function CancellationPolicySection({
                                         </span>
                                         <br />
                                         <span className="text-slate-500 dark:text-slate-400">
-                                            {formatAmount(refundAmount, policy.currency || currency)} Refund
+                                            {t('cancellation.refund', { amount: formatAmount(refundAmount, policy.currency || currency) })}
                                         </span>
                                     </div>
                                 )}
@@ -153,7 +155,7 @@ export function CancellationPolicySection({
             <div className="flex items-start gap-2 mt-2 text-[10px] text-slate-400 dark:text-slate-500">
                 <Info size={12} className="mt-0.5 shrink-0" />
                 <span>
-                    Cancellation costs are based on the total booking value. All dates and times are mentioned in GMT.
+                    {t('cancellation.footer')}
                 </span>
             </div>
 
@@ -162,8 +164,7 @@ export function CancellationPolicySection({
                 <div className="flex items-start gap-2 mt-3 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
                     <AlertTriangle size={14} className="mt-0.5 text-orange-500 shrink-0" />
                     <div className="text-xs text-orange-700 dark:text-orange-300">
-                        <span className="font-medium">No-Show Penalty:</span>{' '}
-                        {formatAmount(noShowPenalty, currency)} if you don&apos;t check in without cancelling.
+                        {t('cancellation.noShowPenalty', { amount: formatAmount(noShowPenalty, currency) })}
                     </div>
                 </div>
             )}
@@ -173,8 +174,7 @@ export function CancellationPolicySection({
                 <div className="flex items-start gap-2 mt-2 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
                     <LogOut size={14} className="mt-0.5 text-orange-500 shrink-0" />
                     <div className="text-xs text-orange-700 dark:text-orange-300">
-                        <span className="font-medium">Early Departure Fee:</span>{' '}
-                        {formatAmount(earlyDepartureFee, currency)} if you check out before your scheduled date.
+                        {t('cancellation.earlyDepartureFee', { amount: formatAmount(earlyDepartureFee, currency) })}
                     </div>
                 </div>
             )}

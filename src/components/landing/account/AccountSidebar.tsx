@@ -36,7 +36,7 @@ export const AccountSidebar: React.FC<AccountSidebarProps> = ({
                 {/* User Greeting */}
                 <div className="mb-6">
                     <h1 className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white">
-                        {t('sidebar.greeting', { name: user.firstName })}
+                        {t('sidebar.greeting', { name: user.firstName || '' })}
                     </h1>
                     <p className="text-[clamp(0.75rem,1.5vw,0.875rem)] text-slate-500 dark:text-slate-400">{user.email}</p>
                 </div>

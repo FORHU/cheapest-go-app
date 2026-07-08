@@ -36,10 +36,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: true, seatMaps: [], unavailable: true });
         }
 
-        const clientMsg = res.status === 404
-            ? 'This offer has expired. Please go back and search again for updated prices.'
-            : msg;
-        return NextResponse.json({ success: false, error: clientMsg }, { status: res.status });
+        if (res.status === 404) {
+            return NextResponse.json({ success: false, errorCode: 'offer_expired' }, { status: res.status });
+        }
+        return NextResponse.json({ success: false, error: msg }, { status: res.status });
     }
 
     const json = await res.json();

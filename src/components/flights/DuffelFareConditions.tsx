@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,15 +23,15 @@ interface DuffelFareConditionsProps {
     currency?: string;
 }
 
-function penaltyLabel(cond: DuffelCondition, currency: string): string {
-    if (!cond.allowed) return 'Not allowed';
-    if (cond.penalty_amount === null) return 'Allowed (fee may apply)';
+function penaltyLabel(cond: DuffelCondition, currency: string, t: any): string {
+    if (!cond.allowed) return t('notAllowed');
+    if (cond.penalty_amount === null) return t('allowedFeeMayApply');
     const amt = parseFloat(cond.penalty_amount ?? '0');
-    if (amt === 0) return 'Free';
-    return `Allowed · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: cond.penalty_currency ?? currency }).format(amt)} fee`;
+    if (amt === 0) return t('free');
+    return t('allowedFee', { fee: new Intl.NumberFormat('en-US', { style: 'currency', currency: cond.penalty_currency ?? currency }).format(amt) });
 }
 
-function ConditionRow({ label, cond, currency }: { label: string; cond: DuffelCondition | undefined; currency: string }) {
+function ConditionRow({ label, cond, currency, t }: { label: string; cond: DuffelCondition | undefined; currency: string; t: any }) {
     if (!cond) return null;
     const Icon = cond.allowed
         ? (parseFloat(cond.penalty_amount ?? '0') === 0 && cond.penalty_amount !== null)
@@ -49,7 +50,7 @@ function ConditionRow({ label, cond, currency }: { label: string; cond: DuffelCo
             <div className="flex items-center gap-1.5 shrink-0">
                 <Icon className={cn('w-3.5 h-3.5', color)} />
                 <span className={cn('text-[11px] font-normal', color)}>
-                    {penaltyLabel(cond, currency)}
+                    {penaltyLabel(cond, currency, t)}
                 </span>
             </div>
         </div>
@@ -57,6 +58,7 @@ function ConditionRow({ label, cond, currency }: { label: string; cond: DuffelCo
 }
 
 export default function DuffelFareConditions({ rawOffer, currency = 'USD' }: DuffelFareConditionsProps) {
+    const t = useTranslations('flightBook.fareConditions');
     const [open, setOpen] = React.useState(false);
 
     const conds: DuffelConditions | null = rawOffer?.conditions ?? null;
@@ -82,13 +84,13 @@ export default function DuffelFareConditions({ rawOffer, currency = 'USD' }: Duf
                 className="w-full flex items-center justify-between px-3.5 py-3 text-left"
             >
                 <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-normal text-slate-800 dark:text-slate-200">Fare Conditions</span>
+                    <span className="text-[11px] font-normal text-slate-800 dark:text-slate-200">{t('title')}</span>
                     {isFullyRefundable ? (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-normal">Fully refundable</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-normal">{t('fullyRefundable')}</span>
                     ) : isNonRefundable ? (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-normal">Non-refundable</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-normal">{t('nonRefundable')}</span>
                     ) : (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-normal">Partial refund</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-normal">{t('partialRefund')}</span>
                     )}
                 </div>
                 {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
@@ -96,12 +98,12 @@ export default function DuffelFareConditions({ rawOffer, currency = 'USD' }: Duf
 
             {open && (
                 <div className="px-3.5 pb-3.5 border-t border-slate-100 dark:border-slate-800 pt-2.5 divide-y divide-slate-100 dark:divide-slate-800">
-                    <ConditionRow label="Change before departure" cond={conds.change_before_departure} currency={offerCurrency} />
-                    <ConditionRow label="Change after departure" cond={conds.change_after_departure} currency={offerCurrency} />
-                    <ConditionRow label="Refund before departure" cond={conds.refund_before_departure} currency={offerCurrency} />
-                    <ConditionRow label="Refund after departure" cond={conds.refund_after_departure} currency={offerCurrency} />
+                    <ConditionRow label={t('changeBefore')} cond={conds.change_before_departure} currency={offerCurrency} t={t} />
+                    <ConditionRow label={t('changeAfter')} cond={conds.change_after_departure} currency={offerCurrency} t={t} />
+                    <ConditionRow label={t('refundBefore')} cond={conds.refund_before_departure} currency={offerCurrency} t={t} />
+                    <ConditionRow label={t('refundAfter')} cond={conds.refund_after_departure} currency={offerCurrency} t={t} />
                     <p className="text-[9px] text-slate-400 dark:text-slate-500 pt-2">
-                        Conditions are per passenger and subject to airline policy. Penalties apply per ticket.
+                        {t('disclaimer')}
                     </p>
                 </div>
             )}
