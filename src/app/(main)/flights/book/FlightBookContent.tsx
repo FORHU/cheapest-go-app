@@ -1070,7 +1070,7 @@ function BookingContent() {
                             onClick={addPassenger}
                             className="w-full py-2 lg:py-2.5 rounded-md border-2 border-dashed border-slate-300 dark:border-slate-700 text-[10px] lg:text-[13px] text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors"
                         >
-                            {t('passenger.addPassenger')}
+                            + Add Passenger
                         </button>
 
                         {/* Contact Info */}
@@ -1459,13 +1459,15 @@ function BookingContent() {
                                 </>
                             ) : (
                                 <>
-                                    {t('submitBtn.confirm', { price: formatPrice(
-                                        offer.price.total
-                                        + selectedSeats.reduce((s, x) => s + x.price, 0)
-                                        + selectedBags.reduce((s, b) => s + b.price, 0),
-                                        offer.price.currency,
-                                        targetCurrency,
-                                    ) })}
+                                    {t('submitBtn.confirm', {
+                                        price: formatPrice(
+                                            offer.price.total
+                                            + selectedSeats.reduce((s, x) => s + x.price, 0)
+                                            + selectedBags.reduce((s, b) => s + b.price, 0),
+                                            offer.price.currency,
+                                            targetCurrency,
+                                        )
+                                    })}
                                 </>
                             )}
                         </button>

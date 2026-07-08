@@ -16,6 +16,8 @@ export interface CheckoutFormData {
     cardAddress: string;
     cardCity: string;
     cardZip: string;
+    additionalGuests: Array<{ firstName: string; lastName: string }>;
+    childGuests: Array<{ firstName: string; lastName: string; age: string }>;
 }
 
 export type BookingForType = 'myself' | 'someone_else';

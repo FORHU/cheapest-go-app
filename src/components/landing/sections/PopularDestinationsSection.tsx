@@ -30,7 +30,7 @@ export function PopularDestinationsSection() {
                 {POPULAR_DESTINATIONS.map((dest) => (
                     <Link
                         key={dest.id}
-                        href={`/?destination=${encodeURIComponent(dest.city)}`}
+                        href={`/?destination=${encodeURIComponent(dest.city)}&countryCode=${dest.countryCode}`}
                         className="group relative shrink-0 w-[160px] sm:w-[200px] md:w-[220px] aspect-3/4 rounded-2xl overflow-hidden block"
                         style={{ scrollSnapAlign: 'start' }}
                     >
