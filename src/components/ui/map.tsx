@@ -355,7 +355,7 @@ const Map = React.memo(
             return (
                 <div
                     className={cn(
-                        'relative w-full h-full min-h-[200px] rounded-lg [overflow:clip] cursor-grab active:cursor-grabbing',
+                        'relative w-full h-full min-h-[200px] rounded-lg overflow:clip cursor-grab active:cursor-grabbing',
                         className
                     )}
                 >
