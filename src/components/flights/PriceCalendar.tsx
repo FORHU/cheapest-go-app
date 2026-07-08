@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight, ChevronDown, CalendarDays, Loader2, Sparkles, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -69,6 +70,9 @@ export default function PriceCalendar({
     const router = useRouter();
     const searchParams = useSearchParams();
     const targetCurrency = useUserCurrency();
+    const t = useTranslations('flightBook.priceCalendar');
+    const daysList = t.raw('days') as string[];
+    const monthsList = t.raw('months') as string[];
 
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
@@ -258,7 +262,7 @@ export default function PriceCalendar({
             >
                 <CalendarDays size={14} className="text-blue-500 shrink-0" />
                 <span className="text-[9px] min-[360px]:text-[10px] min-[400px]:text-[11px] font-normal text-blue-600 dark:text-blue-400 flex-1 truncate">
-                    Explore prices by date {returnDate ? '(Round-trip)' : '(One-way)'}
+                    {returnDate ? t('exploreRoundTrip') : t('exploreOneWay')}
                 </span>
 
                 {/* Collapsed state: show cheapest badge or loading indicator */}
@@ -266,12 +270,12 @@ export default function PriceCalendar({
                     isLoading ? (
                         <span className="flex items-center gap-1 text-[10px] text-slate-400 mr-1">
                             <Loader2 size={10} className="animate-spin" />
-                            Checking prices…
+                            {t('checkingPrices')}
                         </span>
                     ) : monthMinEntry ? (
                         <span className="mr-1 flex items-center gap-1 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-normal px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
                             <Sparkles size={9} />
-                            From {fmt(monthMinEntry[1].price, monthMinEntry[1].currency, targetCurrency)}
+                            {t('from', { price: fmt(monthMinEntry[1].price, monthMinEntry[1].currency, targetCurrency) })}
                         </span>
                     ) : null
                 )}
@@ -279,7 +283,7 @@ export default function PriceCalendar({
                 {open && isLoading && (
                     <span className="flex items-center gap-1 text-[10px] text-slate-400 mr-1">
                         <Loader2 size={10} className="animate-spin" />
-                        {loadingCache ? 'Loading…' : 'Fetching live prices…'}
+                        {loadingCache ? t('loading') : t('fetchingLive')}
                     </span>
                 )}
 
@@ -293,8 +297,7 @@ export default function PriceCalendar({
                         <div className="mx-3 mt-3 flex items-start gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md px-3 py-2">
                             <Sparkles size={13} className="text-blue-500 shrink-0 mt-0.5" />
                             <p className="text-[10px] text-blue-700 dark:text-blue-300 flex-1 leading-relaxed">
-                                <strong>Tip:</strong> These are real fares for nearby dates from this provider.
-                                Click any date to instantly search flights on that day.
+                                <strong>{t('tipTitle')}</strong> {t('tipDescription')}
                             </p>
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowTip(false); }}
@@ -311,7 +314,7 @@ export default function PriceCalendar({
                             <ChevronLeft size={14} />
                         </button>
                         <span className="text-[11px] font-normal text-slate-700 dark:text-slate-200">
-                            {MONTHS[month - 1]} {year}
+                            {monthsList[month - 1]} {year}
                         </span>
                         <button onClick={() => changeMonth(1)} className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
                             <ChevronRight size={14} />
@@ -348,7 +351,7 @@ export default function PriceCalendar({
                             >
                                 {/* Day headers */}
                                 <div className="grid grid-cols-7 px-2">
-                                    {DAYS.map(d => (
+                                    {daysList.map(d => (
                                         <div key={d} className="py-1 text-center text-[9px] font-normal text-slate-400 uppercase tracking-wider">{d}</div>
                                     ))}
                                 </div>
@@ -368,7 +371,7 @@ export default function PriceCalendar({
                                                 key={day}
                                                 onClick={() => handleDay(day)}
                                                 disabled={past}
-                                                title={p ? `${fmt(p.price, p.currency, targetCurrency)} — click to search` : 'Click to search this date'}
+                                                title={p ? t('clickToSearchWithPrice', { price: fmt(p.price, p.currency, targetCurrency) }) : t('clickToSearch')}
                                                 className={`flex flex-col items-center justify-center rounded-md py-1 min-h-[44px] transition-all
                                                     ${past ? 'opacity-25 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 hover:scale-105 active:scale-95'}
                                                     ${selected ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-400 dark:ring-blue-600' : ''}
@@ -400,8 +403,8 @@ export default function PriceCalendar({
                         <div className="flex flex-col gap-0.5">
                             <p className="text-[9px] text-slate-400">
                                 {priceCount > 0
-                                    ? `${priceCount} dates with prices found`
-                                    : 'Searching for the best prices…'}
+                                    ? t('datesFound', { count: priceCount })
+                                    : t('searchingBestPrices')}
                             </p>
                             {missingCount > 0 && (
                                 <button 
@@ -412,12 +415,12 @@ export default function PriceCalendar({
                                     {loadingLive ? (
                                         <>
                                             <Loader2 size={10} className="animate-spin" />
-                                            Updating month…
+                                            {t('updatingMonth')}
                                         </>
                                     ) : (
                                         <>
                                             <Sparkles size={10} />
-                                            Search all {missingCount} dates for {MONTHS[month - 1]}
+                                            {t('searchDates', { count: missingCount, month: monthsList[month - 1] })}
                                         </>
                                     )}
                                 </button>

@@ -113,9 +113,17 @@ const _destCodeCache = new Map<string, string>();
  * Resolve a TravelgateX destination code for a given city.
  * Checks in-process cache → DB → TGX API (in that order).
  * Writes back to DB so future lookups skip the TGX API call entirely.
+ *
+ * When countryCode is provided the cache key is scoped to that country so
+ * ambiguous city names (e.g. "Bali" → Crete OR Indonesia) resolve correctly
+ * for each country.  The TGX result selection also prefers ZONE over CITY when
+ * countryCode is given — geographic zones (islands, provinces) are rarely shared
+ * across countries, while small city names often clash.
  */
-export async function resolveTgxDestinationCode(cityName: string): Promise<string | undefined> {
-    const key = cityName.toLowerCase().trim();
+export async function resolveTgxDestinationCode(cityName: string, countryCode?: string): Promise<string | undefined> {
+    const key = countryCode
+        ? `${cityName.toLowerCase().trim()}:${countryCode.toLowerCase()}`
+        : cityName.toLowerCase().trim();
 
     // 1. In-process cache (fastest)
     if (_destCodeCache.has(key)) return _destCodeCache.get(key);
@@ -152,7 +160,12 @@ export async function resolveTgxDestinationCode(cityName: string): Promise<strin
         const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
         const cityItem = items.find((i: any) => i.type === 'CITY');
         const zoneItem = items.find((i: any) => i.type === 'ZONE');
-        const code = cityItem?.code ?? zoneItem?.code ?? undefined;
+        // With a known country, prefer ZONE: "Bali, Indonesia" is a ZONE while
+        // the Greek town of Bali is a CITY — zone-first avoids cross-country mismatches.
+        // Falls back to CITY when no ZONE exists so well-known cities still resolve.
+        const code = countryCode
+            ? (zoneItem?.code ?? cityItem?.code ?? undefined)
+            : (cityItem?.code ?? zoneItem?.code ?? undefined);
         if (code) {
             _destCodeCache.set(key, code);
             // Write to DB (fire-and-forget — non-blocking)
