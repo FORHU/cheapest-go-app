@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Loader2 } from 'lucide-react';
@@ -22,6 +23,7 @@ function CheckoutForm({ clientSecret, onSuccess }: {
     const stripe = useStripe();
     const elements = useElements();
 
+    const t = useTranslations('checkout');
     const [message, setMessage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -43,7 +45,7 @@ function CheckoutForm({ clientSecret, onSuccess }: {
         });
 
         if (error) {
-            setMessage(error.message || "An unexpected error occurred.");
+            setMessage(error.message || t('stripe.unexpectedError'));
             setIsLoading(false);
         } else if (paymentIntent && (
             paymentIntent.status === 'succeeded' ||
@@ -51,14 +53,14 @@ function CheckoutForm({ clientSecret, onSuccess }: {
         )) {
             onSuccess(paymentIntent.id);
         } else {
-            setMessage("Payment is processing...");
+            setMessage(t('stripe.processing'));
             setIsLoading(false);
         }
     };
 
     return (
         <form onSubmit={handleSubmit} className="p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm mt-4">
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">Complete Payment</h2>
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-3">{t('stripe.completePayment')}</h2>
 
             <PaymentElement
                 className="mb-4"
@@ -67,7 +69,7 @@ function CheckoutForm({ clientSecret, onSuccess }: {
                     console.error('[stripe] PaymentElement load error:', event.elementType, event.error);
                     setMessage(
                         (event.error as any)?.message ||
-                        'Failed to load the payment form. Please refresh and try again.'
+                        t('stripe.loadError')
                     );
                 }}
             />
@@ -76,7 +78,7 @@ function CheckoutForm({ clientSecret, onSuccess }: {
                 disabled={isLoading || submitted || !stripe || !elements}
                 className="w-full py-2 sm:py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white text-sm font-semibold flex items-center justify-center gap-2"
             >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Pay Now'}
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('stripe.payNow')}
             </button>
 
             {message && <div className="mt-3 text-xs text-red-500 text-center">{message}</div>}
