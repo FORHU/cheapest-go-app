@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
                 console.log('[/confirm] Booking already failed for session:', sessionId);
                 return NextResponse.json({
                     success: false,
+                    errorCode: 'booking_failed_refunded',
                     error: 'Booking failed — the flight offer was no longer available. Your payment has been automatically refunded.',
                 }, { status: 400 });
             }

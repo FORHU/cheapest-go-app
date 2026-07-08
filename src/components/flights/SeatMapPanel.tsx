@@ -54,11 +54,11 @@ export default function SeatMapPanel({
             .then(async r => {
                 const data = await r.json();
                 if (cancelled) return;
-                if ((r.status === 404 || r.status === 422) && onOfferExpired) {
+                if ((r.status === 404 || r.status === 422 || data.errorCode === 'offer_expired') && onOfferExpired) {
                     onOfferExpired();
                     return;
                 }
-                if (!data.success) throw new Error(data.error || 'Failed to load seat map');
+                if (!data.success) throw new Error(data.errorCode || data.error || 'Failed to load seat map');
                 const maps = data.seatMaps ?? [];
                 setSeatMaps(maps);
                 if (maps.length === 0 && onUnavailable) onUnavailable();
@@ -341,61 +341,61 @@ function CabinGrid({ map, passengerIndex, segmentIndex, selectedSeats, onSeatCli
             <div className="min-w-max">
                 {/* Cabin class label + column headers */}
                 <div className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                {map.cabinClass && (
-                    <div className="px-3 pt-1.5 pb-0.5">
-                        <span className="text-[8px] font-normal uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                            {map.cabinClass.replace(/_/g, ' ')}
-                        </span>
-                    </div>
-                )}
-                <div className="px-3 py-1.5">
-                    <div className="flex items-center gap-3">
-                        <span className="w-7 shrink-0" />
-                        {map.columnHeaders.map((section, si) => (
-                            <React.Fragment key={si}>
-                                {si > 0 && <span className="w-4 shrink-0" />}
-                                <div className="flex gap-1">
-                                    {section.map(col => (
-                                        <span key={col} className="w-7 text-center text-[9px] font-normal text-slate-500 dark:text-slate-400">
-                                            {col}
-                                        </span>
-                                    ))}
-                                </div>
-                            </React.Fragment>
-                        ))}
+                    {map.cabinClass && (
+                        <div className="px-3 pt-1.5 pb-0.5">
+                            <span className="text-[8px] font-normal uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                {map.cabinClass.replace(/_/g, ' ')}
+                            </span>
+                        </div>
+                    )}
+                    <div className="px-3 py-1.5">
+                        <div className="flex items-center gap-3">
+                            <span className="w-7 shrink-0" />
+                            {map.columnHeaders.map((section, si) => (
+                                <React.Fragment key={si}>
+                                    {si > 0 && <span className="w-4 shrink-0" />}
+                                    <div className="flex gap-1">
+                                        {section.map(col => (
+                                            <span key={col} className="w-7 text-center text-[9px] font-normal text-slate-500 dark:text-slate-400">
+                                                {col}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </React.Fragment>
+                            ))}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Rows */}
-            <div className="px-3 py-2 space-y-1">
-                {map.rows.map(row => (
-                    <div key={row.rowNumber} className="flex items-center gap-3">
-                        {/* Row number */}
-                        <span className="w-7 shrink-0 text-right text-[9px] text-slate-400 dark:text-slate-500 font-mono">
-                            {row.rowNumber}
-                        </span>
+                {/* Rows */}
+                <div className="px-3 py-2 space-y-1">
+                    {map.rows.map(row => (
+                        <div key={row.rowNumber} className="flex items-center gap-3">
+                            {/* Row number */}
+                            <span className="w-7 shrink-0 text-right text-[9px] text-slate-400 dark:text-slate-500 font-mono">
+                                {row.rowNumber}
+                            </span>
 
-                        {row.sections.map((section, si) => (
-                            <React.Fragment key={si}>
-                                {si > 0 && <span className="w-4 shrink-0" />}
-                                <div className="flex gap-1">
-                                    {section.map((seat, seatIdx) => (
-                                        <SeatButton
-                                            key={seatIdx}
-                                            seat={seat}
-                                            passengerIndex={passengerIndex}
-                                            segmentIndex={segmentIndex}
-                                            selectedSeats={selectedSeats}
-                                            onClick={() => onSeatClick(seat, segmentIndex, passengerIndex)}
-                                        />
-                                    ))}
-                                </div>
-                            </React.Fragment>
-                        ))}
-                    </div>
-                ))}
-            </div>
+                            {row.sections.map((section, si) => (
+                                <React.Fragment key={si}>
+                                    {si > 0 && <span className="w-4 shrink-0" />}
+                                    <div className="flex gap-1">
+                                        {section.map((seat, seatIdx) => (
+                                            <SeatButton
+                                                key={seatIdx}
+                                                seat={seat}
+                                                passengerIndex={passengerIndex}
+                                                segmentIndex={segmentIndex}
+                                                selectedSeats={selectedSeats}
+                                                onClick={() => onSeatClick(seat, segmentIndex, passengerIndex)}
+                                            />
+                                        ))}
+                                    </div>
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
@@ -415,7 +415,7 @@ function SeatButton({ seat, passengerIndex, segmentIndex, selectedSeats, onClick
     if (seat.elementType !== 'seat') {
         return <span className="w-7 h-7 shrink-0" />;
     }
-
+    const t = useTranslations('flightBook.seats');
     const isSelected = selectedSeats.some(
         s => s.segmentIndex === segmentIndex && s.passengerIndex === passengerIndex && s.designator === seat.designator
     );

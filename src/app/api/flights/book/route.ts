@@ -236,7 +236,10 @@ export async function POST(req: NextRequest) {
         if (revalData.priceChanged && revalData.newPrice > 0) {
             return NextResponse.json({
                 success: false,
-                error: `Flight price changed from ${flightTotal} to ${revalData.newPrice}. Please restart booking.`
+                error: 'price_changed',
+                oldPrice: flightTotal,
+                newPrice: revalData.newPrice,
+                currency: (flight as any).currency || 'USD',
             }, { status: 409 });
         }
 
@@ -794,21 +797,22 @@ export async function POST(req: NextRequest) {
                 const isSeatErr = /seat|service.*unavailable|no longer.*available.*service/i.test(rawErrMsg) && !isExpiredErr;
                 const isSupplierOutage = status >= 500;
 
-                const errMsg = isPhoneErr
-                    ? 'Invalid phone number format. Please check your phone number and country code.'
-                    : isExpiredErr
-                    ? 'This flight is no longer available. Please search again for current prices.'
-                    : isSeatErr
-                    ? 'One or more selected seats are no longer available. Please choose different seats or continue without seat selection.'
-                    : isSupplierOutage
-                    ? 'The airline\'s booking system is currently experiencing technical difficulties. Please try again in a few minutes or choose a different flight.'
-                    : rawErrMsg || 'Flight booking failed. Please try again.';
+                let errorCode: string | null = null;
+                if (isPhoneErr) errorCode = 'phone_number_invalid';
+                else if (isExpiredErr) errorCode = 'flight_unavailable';
+                else if (isSeatErr) errorCode = 'seats_unavailable';
+                else if (isSupplierOutage) errorCode = 'supplier_outage';
 
                 let httpStatus = 400;
                 if (isExpiredErr) httpStatus = 409;
-                if (isSupplierOutage) httpStatus = 502; // Bad Gateway
+                if (isSupplierOutage) httpStatus = 502;
 
-                return NextResponse.json({ success: false, error: errMsg, requestId }, { status: httpStatus });
+                return NextResponse.json({
+                    success: false,
+                    errorCode,
+                    error: errorCode ? undefined : (rawErrMsg || 'Flight booking failed. Please try again.'),
+                    requestId,
+                }, { status: httpStatus });
             }
 
             const order = duffelOrderData.data;

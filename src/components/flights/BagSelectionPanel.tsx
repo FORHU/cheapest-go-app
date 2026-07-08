@@ -50,11 +50,11 @@ export default function BagSelectionPanel({
             .then(async r => {
                 const data = await r.json();
                 if (cancelled) return;
-                if (r.status === 404 && onOfferExpired) {
+                if ((r.status === 404 || data.errorCode === 'offer_expired') && onOfferExpired) {
                     onOfferExpired();
                     return;
                 }
-                if (!data.success) throw new Error(data.error || 'Failed to load bag options');
+                if (!data.success) throw new Error(data.errorCode || data.error || 'Failed to load bag options');
                 const opts: NormalizedBagOption[] = data.bagOptions ?? [];
                 setOptions(opts);
                 if (opts.length === 0 && onUnavailable) onUnavailable();
