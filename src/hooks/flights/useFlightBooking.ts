@@ -372,7 +372,7 @@ export function useFlightBooking() {
                     err.newOffer = data.newOffer;
                     throw err;
                 }
-                throw new Error(data.error || 'Booking failed');
+                throw new Error(data.errorCode || data.error || 'booking_failed');
             }
 
             return data.data ?? data;
@@ -420,7 +420,7 @@ export function useFlightBooking() {
         },
         onError: (error: any) => {
             if (error.message === "unauthenticated") {
-                setErrorMsg("You need to sign in to complete your booking.");
+                setErrorMsg('CODE:unauthenticated');
                 setStep('form');
                 if (typeof window !== 'undefined') {
                     import('@/stores/authStore').then(({ useAuthStore }) => {
@@ -433,22 +433,18 @@ export function useFlightBooking() {
                 setStep('form');
                 idempotencyKeyRef.current = generateId();
             } else if (error.message === 'offer_replaced' && error.newOffer) {
-                // The edge case where the flight offer expired, auto-refresh was successful,
-                // but the old seat/bag service IDs were rendered invalid. We swap the offer
-                // and force the user to reselect seats on the new offer ID without losing passenger data.
                 if (typeof window !== 'undefined') sessionStorage.setItem('selectedFlight', JSON.stringify(error.newOffer));
                 setOffer(error.newOffer);
                 const rRaw = (error.newOffer as any).raw || (error.newOffer as any)._rawOffer || (error.newOffer as any).rawOffer;
                 const rExpiry = rRaw?.expires_at ?? error.newOffer.expires_at ?? error.newOffer.lastTicketDate;
                 if (rExpiry) setOfferExpiresAt(new Date(rExpiry));
-                
                 setSelectedSeats([]);
                 setSelectedBags([]);
-                setErrorMsg('Your flight offer expired. We refreshed it with the latest availability, but your seat and bag selections were cleared. Please reselect them and try again.');
+                setErrorMsg('CODE:offer_replaced_seats_cleared');
                 setStep('form');
                 idempotencyKeyRef.current = generateId();
             } else {
-                setErrorMsg(error.message || 'Booking failed. Please try again.');
+                setErrorMsg('CODE:' + (error.message || 'booking_failed'));
                 setStep('error');
                 idempotencyKeyRef.current = generateId();
             }
@@ -545,7 +541,7 @@ export function useFlightBooking() {
         if (winner.type === 'poll') {
             const d = winner.data;
             if (d.failed) {
-                setErrorMsg(d.error || 'Booking failed. Your payment has been automatically refunded.');
+                setErrorMsg(d.errorCode ? 'CODE:' + d.errorCode : (d.error || 'CODE:booking_failed_refunded'));
                 setStep('error');
                 return;
             }
@@ -557,7 +553,7 @@ export function useFlightBooking() {
         // confirm won
         const { data, ok } = winner;
         if (!data || !ok || data.success === false) {
-            const errMsg = data?.error || 'Booking could not be completed. Your card has not been charged.';
+            const errMsg = data?.errorCode ? 'CODE:' + data.errorCode : (data?.error || 'CODE:booking_card_not_charged');
             setErrorMsg(errMsg);
             setStep('error');
             if (typeof window !== 'undefined') {
