@@ -516,7 +516,7 @@ export const SearchMapContainer = React.memo(({
 
             {/* ── Mobile Centered Property Preview ── */}
             {isMobile && selectedProperty && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-[min(200px,calc(100vw-48px))] pointer-events-auto">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-60 w-[min(200px,calc(100vw-48px))] pointer-events-auto">
                     <div className="relative">
                         <MapPopup
                             property={selectedProperty}
