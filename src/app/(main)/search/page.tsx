@@ -30,7 +30,7 @@ export default async function SearchPage(props: {
     // ─── MAP VIEW ───────────────────────────────────────────────────
     if (viewMode === 'map') {
         return (
-            <main className="h-[calc(100dvh-64px)] w-full overflow-hidden flex flex-col">
+            <main className="h-[calc(100dvh-109px)] md:h-[calc(100dvh-121px)] lg:h-[calc(100dvh-57px)] w-full overflow-hidden flex flex-col">
                 {flatParams.destinationType === 'country' && (
                     <div className="shrink-0 px-3 pt-2">
                         <CountryCityPicker searchParams={flatParams} />

@@ -209,60 +209,60 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
     };
 
     return (
-        <div className="shrink-0 bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 px-4 py-2">
+        <div className="shrink-0 bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 px-4 py-1.5 sm:py-2">
             <div className="max-w-2xl mx-auto">
                 {/* overflow-visible so the DatePicker dropdown can escape the bar */}
-                <div className="flex items-center w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm h-14">
+                <div className="flex items-center w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm h-11 sm:h-14">
 
                     {/* Check-in — relative wrapper so DatePicker positions itself here */}
-                    <div className="relative flex-1 h-full">
+                    <div className="relative flex-1 min-w-0 h-full">
                         <div
-                            className="flex flex-col justify-center px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-l-2xl"
+                            className="flex flex-col justify-center px-2.5 sm:px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-l-2xl"
                             onClick={() => setActiveDropdown(activeDropdown === 'dates-in' ? null : 'dates-in')}
                             data-datepicker-trigger
                         >
-                            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkIn')}</span>
-                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(storeCheckIn)}</span>
+                            <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">{t('checkIn')}</span>
+                            <span className="text-[11.5px] sm:text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight whitespace-nowrap">{fmtDay(storeCheckIn)}</span>
                         </div>
                         <DatePicker triggerDropdown="dates-in" />
                     </div>
 
                     {/* Nights divider */}
-                    <div className="flex flex-col items-center justify-center px-2.5 h-full bg-slate-50 dark:bg-slate-800/40 border-r border-slate-100 dark:border-slate-800 shrink-0">
+                    <div className="flex flex-col items-center justify-center px-1.5 sm:px-2.5 h-full bg-slate-50 dark:bg-slate-800/40 border-r border-slate-100 dark:border-slate-800 shrink-0">
                         <span className="text-[11px] font-bold text-blue-500">{nights}</span>
                         <span className="text-[9px] text-slate-400 leading-none">{t('nights')}</span>
                     </div>
 
                     {/* Check-out — relative wrapper so DatePicker positions itself here */}
-                    <div className="relative flex-1 h-full">
+                    <div className="relative flex-1 min-w-0 h-full">
                         <div
-                            className="flex flex-col justify-center px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800"
+                            className="flex flex-col justify-center px-2.5 sm:px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800"
                             onClick={() => setActiveDropdown(activeDropdown === 'dates-out' ? null : 'dates-out')}
                             data-datepicker-trigger
                         >
-                            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkOut')}</span>
-                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(storeCheckOut)}</span>
+                            <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">{t('checkOut')}</span>
+                            <span className="text-[11.5px] sm:text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight whitespace-nowrap">{fmtDay(storeCheckOut)}</span>
                         </div>
                         <DatePicker initialCheckOutMode triggerDropdown="dates-out" />
                     </div>
 
                     {/* Guests */}
-                    <div className="flex flex-col justify-center px-5 border-r border-slate-100 dark:border-slate-800 shrink-0 h-full">
-                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('guests')}</span>
+                    <div className="flex flex-col justify-center px-2 sm:px-4 border-r border-slate-100 dark:border-slate-800 shrink-0 h-full">
+                        <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">{t('guests')}</span>
                         <div className="flex items-center gap-2 mt-0.5">
-                            <button onClick={() => setAdults(a => Math.max(1, a - 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">−</button>
-                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 w-4 text-center tabular-nums">{adults + children}</span>
-                            <button onClick={() => setAdults(a => Math.min(16, a + 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">+</button>
+                            <button onClick={() => setAdults(a => Math.max(1, a - 1))} className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-sm sm:text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">−</button>
+                            <span className="text-[11.5px] sm:text-[13px] font-semibold text-slate-800 dark:text-slate-100 w-4 text-center tabular-nums">{adults + children}</span>
+                            <button onClick={() => setAdults(a => Math.min(16, a + 1))} className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-sm sm:text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">+</button>
                         </div>
                     </div>
 
                     {/* Search */}
                     <button
                         onClick={handleSearch}
-                        className="flex items-center gap-2 px-6 h-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition-colors cursor-pointer shrink-0 rounded-r-2xl"
+                        className="flex items-center justify-center gap-2 px-3.5 sm:px-6 h-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition-colors cursor-pointer shrink-0 rounded-r-2xl"
                     >
                         <Search size={15} />
-                        <span>{t('search')}</span>
+                        <span className="hidden sm:inline">{t('search')}</span>
                     </button>
                 </div>
             </div>
@@ -887,7 +887,7 @@ function SearchMapView({
                     hoveredId={hoveredId}
                     onHoverId={setHoveredId}
                     onViewDetails={handleViewDetails}
-                    searchOverlayClassName="absolute top-4 left-4 right-4 z-20"
+                    searchOverlayClassName="absolute top-4 left-4 right-14 z-20"
                     defaultCenter={fallbackCoords ?? undefined}
                 />
 
