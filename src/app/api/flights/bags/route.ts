@@ -43,10 +43,10 @@ export async function POST(req: NextRequest) {
         const err = await res.json().catch(() => ({}));
         const msg = err?.errors?.[0]?.message ?? `Duffel services error ${res.status}`;
         console.error(`[bags] Duffel ${res.status} for offer ${offerId}:`, msg);
-        const clientMsg = res.status === 404
-            ? 'This offer has expired. Please go back and search again for updated prices.'
-            : msg;
-        return NextResponse.json({ success: false, error: clientMsg }, { status: 200 });
+        if (res.status === 404) {
+            return NextResponse.json({ success: false, errorCode: 'offer_expired' }, { status: 200 });
+        }
+        return NextResponse.json({ success: false, error: msg }, { status: 200 });
     }
 
     const json = await res.json();

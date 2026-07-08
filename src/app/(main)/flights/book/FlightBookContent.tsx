@@ -28,7 +28,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FormDatePicker } from '@/components/common/FormDatePicker';
-import {  } from 'zod';
+import { } from 'zod';
 
 // ─── Fare Policy Panel ───────────────────────────────────────────────
 
@@ -127,11 +127,10 @@ function OfferExpiryBanner({ expiresAt }: { expiresAt: Date }) {
     const secs = secsLeft % 60;
     const isUrgent = secsLeft < 2 * 60;
     return (
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-normal mb-3 lg:mb-6 border ${
-            isUrgent
-                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
-                : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
-        }`}>
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-md text-[11px] font-normal mb-3 lg:mb-6 border ${isUrgent
+            ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+            : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+            }`}>
             <Clock className="w-3.5 h-3.5 shrink-0" />
             {secsLeft === 0
                 ? t('offerExpiry.expired')
@@ -208,7 +207,6 @@ const PHONE_CODES = [
 
 function BookingContent() {
     const t = useTranslations('flightBook');
-    const tPayment = useTranslations('payment');
     const [bookingStepIdx, setBookingStepIdx] = React.useState(0);
     const bookingStepTimer = React.useRef<ReturnType<typeof setInterval> | null>(null);
     const [showSuccess, setShowSuccess] = React.useState(false);
@@ -251,12 +249,12 @@ function BookingContent() {
             try {
                 const { adults = 1 } = JSON.parse(searchCounts);
                 adultsCount = adults;
-            } catch {}
+            } catch { }
         }
 
         const outboundSegments = offer.segments.filter((s: any) => (s.segmentIndex ?? 0) === 0);
         const returnSegments = offer.segments.filter((s: any) => (s.segmentIndex ?? 0) === 1);
-        
+
         if (!outboundSegments.length) return null;
 
         const origin = outboundSegments[0].departure.airport;
@@ -388,11 +386,11 @@ function BookingContent() {
                     <div>
                         <h2 className="text-lg font-normal text-slate-900 dark:text-white mb-1">{t('confirmingBooking')}</h2>
                         <p className="text-[11px] text-blue-600 dark:text-blue-400 font-normal animate-pulse min-h-[20px]">
-                            {(t('bookingSteps') as string[])[bookingStepIdx] || FLIGHT_BOOKING_STEPS[bookingStepIdx]}
+                            {(t.raw('bookingSteps') as string[])[bookingStepIdx] || FLIGHT_BOOKING_STEPS[bookingStepIdx]}
                         </p>
                     </div>
                     <div className="w-full space-y-2">
-                        {(t('bookingSteps') as string[]).map((label, i) => (
+                        {(t.raw('bookingSteps') as string[]).map((label, i) => (
                             <div key={i} className={`flex items-center gap-2 text-[11px] ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
                                 <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] font-normal ${i < bookingStepIdx ? 'bg-green-500 text-white' : i === bookingStepIdx ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
                                     {i < bookingStepIdx ? '✓' : i + 1}
@@ -413,7 +411,13 @@ function BookingContent() {
     // ─── Booking Failed State ─────────────────────────────────────────
 
     if (step === 'error') {
-        const isPending = errorMsg?.toLowerCase().includes('pending');
+        const errorCode = errorMsg?.startsWith('CODE:') ? errorMsg.slice(5) : null;
+        const isPending = ['pending', 'booking_pending'].includes(errorCode ?? '');
+        const isRefunded = errorCode === 'booking_failed_refunded';
+        const isExpired = errorCode === 'flight_unavailable' || errorCode === 'offer_expired';
+        const displayMsg = errorCode
+            ? (t(`error.${errorCode}`) === `error.${errorCode}` ? errorMsg : t(`error.${errorCode}`))
+            : (errorMsg || t('error.defaultMessage'));
         return (
             <main className="min-h-screen flex items-center justify-center bg-linier-to-br from-red-50/60 via-white/40 to-orange-50/60 dark:from-slate-950/60 dark:via-slate-900/40 dark:to-red-950/60 px-4">
                 <motion.div
@@ -432,16 +436,16 @@ function BookingContent() {
                         {isPending ? t('error.flightUnavailable') : t('error.bookingFailed')}
                     </h1>
                     <p className={`text-[11px] mb-2 ${isPending ? 'text-amber-700 dark:text-amber-400' : 'text-red-700 dark:text-red-400'}`}>
-                        {errorMsg || t('error.defaultMessage')}
+                        {displayMsg}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-                        {errorMsg?.includes('automatically refunded')
+                        {isRefunded
                             ? t('error.notChargedShort')
                             : <span dangerouslySetInnerHTML={{ __html: t.raw('error.notCharged') }} />
                         }
                     </p>
                     {/* Only show Try Again if the error happened before payment was taken */}
-                    {!errorMsg?.includes('automatically refunded') && !errorMsg?.includes('expired') && (
+                    {!isRefunded && !isExpired && (
                         <button
                             onClick={() => setStep('form')}
                             className="w-full py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-normal text-[11px] transition-colors"
@@ -533,7 +537,7 @@ function BookingContent() {
                         transition={{ delay: 0.4 }}
                         className="text-[11px] lg:text-sm text-slate-500 dark:text-slate-400 mb-4 lg:mb-6"
                     >
-                        {isBundledWithHotel 
+                        {isBundledWithHotel
                             ? t('success.bundleSuccess')
                             : t('success.flightSuccess')}
                     </motion.p>
@@ -616,7 +620,7 @@ function BookingContent() {
                                     <Plane className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                                 </div>
                                 <p className="text-[10px] lg:text-[11px] text-slate-600 dark:text-slate-400">
-                                    {t.rich('success.checkInInfo', { pnr: bookingResult.pnr })}
+                                    {t.rich('success.checkInInfo', { pnr: bookingResult.pnr || 'N/A' })}
                                 </p>
                             </div>
                             <div className="flex items-start gap-2.5">
@@ -671,46 +675,46 @@ function BookingContent() {
 
                                     {/* Bundle badge */}
                                     <div className="absolute top-3 right-3 z-20">
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-normal shadow-md">
-                                        {t('success.bundleDealBadge')}
-                                    </span>
-                                </div>
-
-                                <div className="relative z-10 p-4">
-                                    <div className="flex items-start gap-3 mb-3">
-                                        <div className="w-11 h-11 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-                                            <BedDouble className="w-6 h-6 text-white" />
-                                        </div>
-                                        <div className="flex-1 pr-16">
-                                            <p className="text-sm font-normal text-white leading-tight">
-                                                {t('success.addHotel')}
-                                            </p>
-                                            <p className="text-xs text-violet-100 mt-0.5">
-                                                {t('success.addHotelDesc', { destination: dest })}
-                                            </p>
-                                        </div>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-amber-900 text-[10px] font-normal shadow-md">
+                                            {t('success.bundleDealBadge')}
+                                        </span>
                                     </div>
 
-                                    <div className="flex items-center gap-2 mb-3 px-1">
-                                        <div className="flex-1 bg-white/10 rounded-md p-2 text-center">
-                                            <p className="text-[9px] text-violet-200 font-normal">{t('success.bookSeparately')}</p>
-                                            <p className="text-sm font-normal text-white/60 line-through">{t('success.standardRate')}</p>
+                                    <div className="relative z-10 p-4">
+                                        <div className="flex items-start gap-3 mb-3">
+                                            <div className="w-11 h-11 rounded-md bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                                                <BedDouble className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div className="flex-1 pr-16">
+                                                <p className="text-sm font-normal text-white leading-tight">
+                                                    {t('success.addHotel')}
+                                                </p>
+                                                <p className="text-xs text-violet-100 mt-0.5">
+                                                    {t('success.addHotelDesc', { destination: dest })}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className="text-white/50 text-lg">→</div>
-                                        <div className="flex-1 bg-amber-400/20 border border-amber-400/40 rounded-md p-2 text-center">
-                                            <p className="text-[9px] text-amber-200 font-normal">{t('success.addToThisTrip')}</p>
-                                            <p className="text-sm font-normal text-amber-300">{t('success.bundleSavings')}</p>
-                                        </div>
-                                    </div>
 
-                                    <button
-                                        onClick={() => router.push(hotelUrl)}
-                                        className="w-full py-2.5 rounded-md bg-white text-violet-700 font-normal text-sm flex items-center justify-center gap-2 hover:bg-violet-50 active:scale-[0.98] transition-all shadow-md"
-                                    >
-                                        <BedDouble className="w-4 h-4" />
-                                        {t('success.findHotels', { destination: dest })}
-                                        <ArrowRight className="w-4 h-4" />
-                                    </button>
+                                        <div className="flex items-center gap-2 mb-3 px-1">
+                                            <div className="flex-1 bg-white/10 rounded-md p-2 text-center">
+                                                <p className="text-[9px] text-violet-200 font-normal">{t('success.bookSeparately')}</p>
+                                                <p className="text-sm font-normal text-white/60 line-through">{t('success.standardRate')}</p>
+                                            </div>
+                                            <div className="text-white/50 text-lg">→</div>
+                                            <div className="flex-1 bg-amber-400/20 border border-amber-400/40 rounded-md p-2 text-center">
+                                                <p className="text-[9px] text-amber-200 font-normal">{t('success.addToThisTrip')}</p>
+                                                <p className="text-sm font-normal text-amber-300">{t('success.bundleSavings')}</p>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => router.push(hotelUrl)}
+                                            className="w-full py-2.5 rounded-md bg-white text-violet-700 font-normal text-sm flex items-center justify-center gap-2 hover:bg-violet-50 active:scale-[0.98] transition-all shadow-md"
+                                        >
+                                            <BedDouble className="w-4 h-4" />
+                                            {t('success.findHotels', { destination: dest })}
+                                            <ArrowRight className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 </div>
                             </motion.div>
@@ -767,8 +771,8 @@ function BookingContent() {
                 <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5 mb-3 lg:mb-6 shadow-sm">
                     <div className="flex items-center gap-2 lg:gap-3 mb-2 lg:mb-3">
                         <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-md lg:rounded-md bg-white border border-slate-200 dark:border-slate-700 overflow-hidden flex items-center justify-center shadow-sm">
-                            <img 
-                                src={`https://www.gstatic.com/flights/airline_logos/70px/${primary.airline.code}.png`} 
+                            <img
+                                src={`https://www.gstatic.com/flights/airline_logos/70px/${primary.airline.code}.png`}
                                 alt={primary.airline.name}
                                 className="w-full h-full object-contain p-1.5"
                             />
@@ -790,7 +794,7 @@ function BookingContent() {
                                 <Plane className="w-3 h-3 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
                             </div>
                             <span className="text-[9px] lg:text-[11px] text-emerald-600 dark:text-emerald-400 font-normal">
-                                {offer.totalStops === 0 ? 'Nonstop' : `${offer.totalStops} stop(s)`}
+                                {offer.totalStops === 0 ? t('orderSummary.nonstop') : t('orderSummary.stops', { count: offer.totalStops })}
                             </span>
                         </div>
                         <div className="text-center">
@@ -804,21 +808,20 @@ function BookingContent() {
                     </div>
                     {offer.seatsRemaining != null && offer.seatsRemaining > 0 && (
                         <div className="mt-2 lg:mt-3 pt-2 lg:pt-3 border-t border-slate-100 dark:border-slate-800">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] font-normal border ${
-                                offer.seatsRemaining <= 3
-                                    ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
-                                    : offer.seatsRemaining <= 6
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 lg:py-1 rounded-full text-[9px] lg:text-[11px] font-normal border ${offer.seatsRemaining <= 3
+                                ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+                                : offer.seatsRemaining <= 6
                                     ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
                                     : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
-                            }`}>
+                                }`}>
                                 <Users className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
                                 {offer.seatsRemaining <= 3
                                     ? offer.seatsRemaining === 1
                                         ? t('seatsRemaining.onlyLeft', { count: offer.seatsRemaining })
                                         : t('seatsRemaining.onlyLeftPlural', { count: offer.seatsRemaining })
                                     : offer.seatsRemaining <= 6
-                                    ? t('seatsRemaining.leftPlural', { count: offer.seatsRemaining })
-                                    : t('seatsRemaining.available', { count: offer.seatsRemaining })}
+                                        ? t('seatsRemaining.leftPlural', { count: offer.seatsRemaining })
+                                        : t('seatsRemaining.available', { count: offer.seatsRemaining })}
                             </span>
                         </div>
                     )}
@@ -911,7 +914,7 @@ function BookingContent() {
                             onClick={() => setStep('form')}
                             className="w-full mt-4 py-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400 font-normal rounded-md text-sm transition-colors"
                         >
-                            Back to Details
+                            {t('backToDetails')}
                         </button>
                     </div>
                 ) : (
@@ -1020,7 +1023,7 @@ function BookingContent() {
                                                 className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 group"
                                             >
                                                 <span>
-                                                    {NATIONALITIES.find(n => n.code === pax.nationality) ? tPayment(`countries.${pax.nationality}`) : t('passenger.nationality')}
+                                                    {NATIONALITIES.find(n => n.code === pax.nationality) ? t(`countries.${pax.nationality}`) : t('passenger.nationality')}
                                                 </span>
                                                 <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                             </button>
@@ -1038,7 +1041,7 @@ function BookingContent() {
                                                     )}
                                                 >
                                                     <span className="text-[9px] text-slate-400 font-bold w-6">{n.code}</span>
-                                                    <span>{tPayment(`countries.${n.code}`)}</span>
+                                                    <span>{t(`countries.${n.code}`)}</span>
                                                 </DropdownMenuItem>
                                             ))}
                                         </DropdownMenuContent>
@@ -1062,13 +1065,13 @@ function BookingContent() {
                         ))}
 
                         {/* Add Passenger Button */}
-                            <button
-                                type="button"
-                                onClick={addPassenger}
-                                className="w-full py-2 lg:py-2.5 rounded-md border-2 border-dashed border-slate-300 dark:border-slate-700 text-[10px] lg:text-[13px] text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors"
-                            >
-                                {t('passenger.addPassenger')}
-                            </button>
+                        <button
+                            type="button"
+                            onClick={addPassenger}
+                            className="w-full py-2 lg:py-2.5 rounded-md border-2 border-dashed border-slate-300 dark:border-slate-700 text-[10px] lg:text-[13px] text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors"
+                        >
+                            {t('passenger.addPassenger')}
+                        </button>
 
                         {/* Contact Info */}
                         <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5">
@@ -1153,7 +1156,7 @@ function BookingContent() {
                                             className="w-full flex items-center justify-between px-2.5 lg:px-3 py-2 lg:py-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] lg:text-[13px] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 lg:col-span-2 group"
                                         >
                                             <span>
-                                                {NATIONALITIES.find(n => n.code === contact.country) ? tPayment(`countries.${contact.country}`) : t('address.country')}
+                                                {NATIONALITIES.find(n => n.code === contact.country) ? t(`countries.${contact.country}`) : t('address.country')}
                                             </span>
                                             <ChevronDown size={14} className="text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
                                         </button>
@@ -1171,7 +1174,7 @@ function BookingContent() {
                                                 )}
                                             >
                                                 <span className="text-[9px] text-slate-400 font-bold w-6">{n.code}</span>
-                                                <span>{tPayment(`countries.${n.code}`)}</span>
+                                                <span>{t(`countries.${n.code}`)}</span>
                                             </DropdownMenuItem>
                                         ))}
                                     </DropdownMenuContent>
@@ -1193,14 +1196,14 @@ function BookingContent() {
                                             <Luggage className="w-4 h-4 text-sky-500" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                        <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">{t('bags.title')}</p>
-                                        <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
-                                            {selectedBags.length > 0
-                                                ? (selectedBags.length === 1
-                                                    ? t('bags.added', { count: selectedBags.length, price: formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency) })
-                                                    : t('bags.addedPlural', { count: selectedBags.length, price: formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency) }))
-                                                : t('bags.optional')}
-                                        </p>
+                                            <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">{t('bags.title')}</p>
+                                            <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
+                                                {selectedBags.length > 0
+                                                    ? (selectedBags.length === 1
+                                                        ? t('bags.added', { count: selectedBags.length, price: formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency) })
+                                                        : t('bags.addedPlural', { count: selectedBags.length, price: formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency) }))
+                                                    : t('bags.optional')}
+                                            </p>
                                         </div>
                                         <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
                                             {bagsOpen ? '▲' : '▼'}
@@ -1242,14 +1245,14 @@ function BookingContent() {
                                             <Armchair className="w-4 h-4 text-indigo-500" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                        <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">{t('seats.title')}</p>
-                                        <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
-                                            {selectedSeats.length > 0
-                                                ? (selectedSeats.length === 1
-                                                    ? t('seats.selected', { count: selectedSeats.length, price: formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency) })
-                                                    : t('seats.selectedPlural', { count: selectedSeats.length, price: formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency) }))
-                                                : t('seats.optional')}
-                                        </p>
+                                            <p className="text-[11px] lg:text-[13px] font-normal text-slate-800 dark:text-slate-200">{t('seats.title')}</p>
+                                            <p className="text-[9px] lg:text-[11px] text-slate-400 dark:text-slate-500">
+                                                {selectedSeats.length > 0
+                                                    ? (selectedSeats.length === 1
+                                                        ? t('seats.selected', { count: selectedSeats.length, price: formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency) })
+                                                        : t('seats.selectedPlural', { count: selectedSeats.length, price: formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency) }))
+                                                    : t('seats.optional')}
+                                            </p>
                                         </div>
                                         <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
                                             {seatsOpen ? '▲' : '▼'}
@@ -1380,7 +1383,7 @@ function BookingContent() {
 
                         {/* Booking summary */}
                         <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-3 lg:p-5 shadow-sm">
-                            <h3 className="text-[10px] lg:text-xs font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Order Summary</h3>
+                            <h3 className="text-[10px] lg:text-xs font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{t('orderSummary.title')}</h3>
 
                             {/* Flight itinerary */}
                             <div className="flex items-center gap-2 lg:gap-4 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -1395,7 +1398,7 @@ function BookingContent() {
                                         <Plane className="w-3 h-3 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
                                     </div>
                                     <span className="text-[9px] lg:text-[11px] text-slate-400">
-                                        {offer.totalStops === 0 ? 'Nonstop' : `${offer.totalStops} stop(s)`}
+                                        {offer.totalStops === 0 ? t('orderSummary.nonstop') : t('orderSummary.stops', { count: offer.totalStops })}
                                     </span>
                                 </div>
                                 <div className="text-center">
@@ -1408,30 +1411,30 @@ function BookingContent() {
                             {/* Meta row */}
                             <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                                 <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{primary.airline.name} · {primary.flightNumber}</span>
-                                <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{primary.cabinClass?.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Economy'}</span>
-                                <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{passengers.length} passenger{passengers.length > 1 ? 's' : ''}</span>
+                                <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{primary.cabinClass?.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) || t('orderSummary.economy')}</span>
+                                <span className="text-[9px] lg:text-[11px] text-slate-500 dark:text-slate-400">{passengers.length === 1 ? t('orderSummary.passenger', { count: 1 }) : t('orderSummary.passengerPlural', { count: passengers.length })}</span>
                             </div>
 
                             {/* Price breakdown */}
                             <div className="space-y-1.5">
                                 <div className="flex justify-between">
-                                    <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">Base fare</span>
+                                    <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">{t('orderSummary.baseFare')}</span>
                                     <span className="text-[10px] lg:text-[11px] text-slate-900 dark:text-white">{formatPrice(offer.price.total, offer.price.currency, targetCurrency)}</span>
                                 </div>
                                 {selectedSeats.length > 0 && (
                                     <div className="flex justify-between">
-                                        <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">Seat selection</span>
+                                        <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">{t('orderSummary.seatSelection')}</span>
                                         <span className="text-[10px] lg:text-[11px] text-slate-900 dark:text-white">+{formatPrice(selectedSeats.reduce((s, x) => s + x.price, 0), offer.price.currency, targetCurrency)}</span>
                                     </div>
                                 )}
                                 {selectedBags.length > 0 && (
                                     <div className="flex justify-between">
-                                        <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">Extra bags</span>
+                                        <span className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400">{t('orderSummary.extraBags')}</span>
                                         <span className="text-[10px] lg:text-[11px] text-slate-900 dark:text-white">+{formatPrice(selectedBags.reduce((s, b) => s + b.price, 0), offer.price.currency, targetCurrency)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                                    <span className="text-[11px] lg:text-[13px] font-normal text-slate-900 dark:text-white">Total</span>
+                                    <span className="text-[11px] lg:text-[13px] font-normal text-slate-900 dark:text-white">{t('orderSummary.total')}</span>
                                     <span className="text-[11px] lg:text-[13px] font-normal text-slate-900 dark:text-white">
                                         {formatPrice(
                                             offer.price.total + selectedSeats.reduce((s, x) => s + x.price, 0) + selectedBags.reduce((s, b) => s + b.price, 0),
@@ -1452,17 +1455,17 @@ function BookingContent() {
                             {step === 'submitting' ? (
                                 <>
                                     <Loader2 className="w-3.5 h-3.5 lg:w-4 lg:h-4 animate-spin" />
-                                    Processing Booking...
+                                    {t('submitBtn.processing')}
                                 </>
                             ) : (
                                 <>
-                                    Confirm Booking · {formatPrice(
+                                    {t('submitBtn.confirm', { price: formatPrice(
                                         offer.price.total
-                                            + selectedSeats.reduce((s, x) => s + x.price, 0)
-                                            + selectedBags.reduce((s, b) => s + b.price, 0),
+                                        + selectedSeats.reduce((s, x) => s + x.price, 0)
+                                        + selectedBags.reduce((s, b) => s + b.price, 0),
                                         offer.price.currency,
                                         targetCurrency,
-                                    )}
+                                    ) })}
                                 </>
                             )}
                         </button>
@@ -1486,17 +1489,13 @@ interface DealGateProps {
     onReady: () => void;
 }
 
-const DEAL_SEARCH_MESSAGES = [
-    'Searching for available flights…',
-    'Checking seat availability…',
-    'Locking in the best price…',
-    'Almost there…',
-] as const;
+const DEAL_SEARCH_MESSAGES: readonly string[] = [];
 
 function DealGate({
     origin, destination, departure, returnDate, cabinClass,
     onReady,
 }: DealGateProps) {
+    const t = useTranslations('flightBook');
     const router = useRouter();
     const [hasError, setHasError] = React.useState(false);
     const [errorMsg, setErrorMsg] = React.useState('');
@@ -1532,7 +1531,7 @@ function DealGate({
             const json = await res.json();
             if (!json.success || !json.data?.offers?.length) {
                 setHasError(true);
-                setErrorMsg(json.error || 'No flights found for this deal on the selected date. The deal may have expired.');
+                setErrorMsg(json.error || t('dealGate.noFlightsFound'));
                 return;
             }
             const offers: import('@/types/flights').FlightOffer[] = json.data.offers;
@@ -1542,7 +1541,7 @@ function DealGate({
             onReady();
         } catch (err: any) {
             setHasError(true);
-            setErrorMsg(err.message || 'Something went wrong. Please try again.');
+            setErrorMsg(err.message || t('dealGate.somethingWrong'));
         }
     }, [origin, destination, departure, returnDate, cabinClass, isRoundTrip, onReady]);
 
@@ -1564,19 +1563,19 @@ function DealGate({
                 <div className="bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 p-6 max-w-sm w-full text-center shadow-sm space-y-4">
                     <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
                     <div>
-                        <h2 className="text-sm font-normal text-slate-900 dark:text-white mb-1">Deal no longer available</h2>
+                        <h2 className="text-sm font-normal text-slate-900 dark:text-white mb-1">{t('dealGate.dealUnavailable')}</h2>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">{errorMsg}</p>
                     </div>
                     <div className="space-y-2">
                         <button
                             onClick={() => { searchFired.current = false; runSearch(); }}
                             className="w-full py-2.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-normal transition-colors">
-                            Try Again
+                            {t('dealGate.tryAgain')}
                         </button>
                         <button
                             onClick={() => router.push(`/flights/search?origin=${origin}&destination=${destination}&departure=${departure}${returnDate ? `&return=${returnDate}` : ''}&cabin=${cabinClass}`)}
                             className="w-full py-2.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-[11px] font-normal hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                            Search All Flights
+                            {t('dealGate.searchAll')}
                         </button>
                     </div>
                 </div>
@@ -1589,9 +1588,9 @@ function DealGate({
             <div className="flex flex-col items-center gap-6 text-center max-w-xs">
                 <div className="w-16 h-16 rounded-full border-4 border-indigo-100 dark:border-indigo-900 border-t-indigo-600 animate-spin" />
                 <div>
-                    <h2 className="text-base font-normal text-slate-900 dark:text-white mb-1">Securing your deal</h2>
+                    <h2 className="text-base font-normal text-slate-900 dark:text-white mb-1">{t('dealGate.securingDeal')}</h2>
                     <p className="text-[11px] text-indigo-600 dark:text-indigo-400 animate-pulse">
-                        {DEAL_SEARCH_MESSAGES[msgIdx]}
+                        {t.raw('dealGate.searchMessages')[msgIdx]}
                     </p>
                 </div>
                 <p className="text-[10px] text-slate-400">{originLabel} → {destLabel} · {formatDealDate(departure)}</p>

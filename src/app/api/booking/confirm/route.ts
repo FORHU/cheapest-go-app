@@ -144,6 +144,7 @@ export async function POST(req: NextRequest) {
                 console.log(`[confirm] Auto-refunded ${refund.id} for failed booking`);
                 return Response.json({
                     success: false,
+                    errorCode: 'booking_failed_refunded',
                     error: (result.error || 'Booking failed') + '. Your payment has been automatically refunded.',
                 });
             } catch (refundErr: any) {
