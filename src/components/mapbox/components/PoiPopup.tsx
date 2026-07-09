@@ -59,7 +59,7 @@ export const PoiPopup = React.memo(({ poi, distance, carDuration, walkDuration, 
                         </div>
                     )}
                     {imgStatus === 'loaded' && (
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                     )}
                     <button
                         onClick={onClose}
