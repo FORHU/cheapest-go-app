@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Droplets, Wind, Thermometer, Sun, Sunrise, Sunset, Umbrella, X, Cloud, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { WeatherData } from '@/hooks/useWeather';
 
 interface WeatherWidgetProps {
@@ -21,9 +22,9 @@ const formatTime = (isoStr: string) => {
     }
 };
 
-const getDayLabel = (dateStr: string, idx: number) => {
-    if (idx === 0) return 'Today';
-    if (idx === 1) return 'Tomorrow';
+const getDayLabel = (dateStr: string, idx: number, t: (key: string) => string) => {
+    if (idx === 0) return t('today');
+    if (idx === 1) return t('tomorrow');
     if (!dateStr || dateStr === 'undefined') return '---';
     try {
         const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
@@ -35,11 +36,11 @@ const getDayLabel = (dateStr: string, idx: number) => {
 };
 
 const getUvLabel = (uv: number) => {
-    if (uv <= 2) return { label: 'Low', color: 'text-green-500' };
-    if (uv <= 5) return { label: 'Moderate', color: 'text-yellow-500' };
-    if (uv <= 7) return { label: 'High', color: 'text-orange-500' };
-    if (uv <= 10) return { label: 'Very High', color: 'text-red-500' };
-    return { label: 'Extreme', color: 'text-purple-500' };
+    if (uv <= 2) return { labelKey: 'low', color: 'text-green-500' };
+    if (uv <= 5) return { labelKey: 'moderate', color: 'text-yellow-500' };
+    if (uv <= 7) return { labelKey: 'high', color: 'text-orange-500' };
+    if (uv <= 10) return { labelKey: 'veryHigh', color: 'text-red-500' };
+    return { labelKey: 'extreme', color: 'text-purple-500' };
 };
 
 /** Google Weather icon or fallback cloud icon */
@@ -51,6 +52,7 @@ const WeatherIcon = ({ url, size = 20 }: { url: string | null; size?: number }) 
 };
 
 export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading, isFullscreen = true }) => {
+    const t = useTranslations('property.weather');
     const [open, setOpen] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -135,17 +137,17 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading
                     <div className={`grid grid-cols-3 gap-1 py-2 ${isFullscreen ? 'px-3' : 'hidden sm:grid px-2'}`}>
                         <div className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg bg-slate-50/80 dark:bg-slate-800/60">
                             <Thermometer size={12} className="text-orange-500" />
-                            <span className="text-[8px] text-slate-400 font-medium">Feels like</span>
+                            <span className="text-[8px] text-slate-400 font-medium">{t('feelsLike')}</span>
                             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{current.feelsLike}°</span>
                         </div>
                         <div className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg bg-slate-50/80 dark:bg-slate-800/60">
                             <Droplets size={12} className="text-blue-500" />
-                            <span className="text-[8px] text-slate-400 font-medium">Humidity</span>
+                            <span className="text-[8px] text-slate-400 font-medium">{t('humidity')}</span>
                             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{current.humidity}%</span>
                         </div>
                         <div className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg bg-slate-50/80 dark:bg-slate-800/60">
                             <Wind size={12} className="text-teal-500" />
-                            <span className="text-[8px] text-slate-400 font-medium">Wind</span>
+                            <span className="text-[8px] text-slate-400 font-medium">{t('wind')}</span>
                             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
                                 {current.windSpeed} <span className="text-[8px] font-normal">{current.windCardinal ? current.windCardinal.slice(0, 3) : ''}</span>
                             </span>
@@ -180,7 +182,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading
                     {hourly.length > 0 && (
                         <div className={`pb-2 relative group ${isFullscreen ? 'px-3' : 'px-2'}`}>
                             <div className="flex items-center justify-between mb-1.5">
-                                <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Next hours</p>
+                                <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('nextHours')}</p>
                                 <div className="flex gap-1">
                                     <button 
                                         onClick={() => scrollRef.current?.scrollBy({ left: -100, behavior: 'smooth' })}
@@ -219,11 +221,11 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading
                     {/* 3-day forecast (Hidden on mobile to save map space) */}
                     {daily.length > 0 && (
                         <div className="hidden sm:block px-3 sm:px-4 pb-3">
-                            <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Forecast</p>
+                            <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">{t('forecast')}</p>
                             <div className="space-y-0.5">
                                 {daily.map((d, i) => (
                                     <div key={d.date} className="flex items-center gap-3 px-1.5 py-1 rounded-lg hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 w-[60px] shrink-0">{getDayLabel(d.date, i)}</span>
+                                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 w-[60px] shrink-0">{getDayLabel(d.date, i, t)}</span>
                                         <WeatherIcon url={d.iconUrl} size={18} />
                                         {d.precipChance > 0 && (
                                             <div className="flex items-center gap-0.5 shrink-0">
@@ -242,7 +244,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({ weather, isLoading
 
                     {/* Powered by Google attribution */}
                     <div className="px-3 pb-2 flex justify-end">
-                        <span className="text-[7px] text-slate-300 dark:text-slate-600">Powered by Google Weather</span>
+                        <span className="text-[7px] text-slate-300 dark:text-slate-600">{t('poweredBy')}</span>
                     </div>
                 </div>
             )}

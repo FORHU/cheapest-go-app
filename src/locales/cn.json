@@ -1,4 +1,4 @@
-{
+﻿{
     "nav": {
         "home": "首页",
         "profile": "个人资料",
@@ -14,6 +14,43 @@
         "membersSave": "会员可省夐10%或更多",
         "membersSaveSubtitle": "登录后可享选定住宿折扣",
         "accountWorks": "您的账户可在CheapestGo及所有合作站点使用"
+    },
+    "propertyGallery": {
+        "noImages": "暂无图片",
+        "viewPhoto": "查看照片",
+        "moreInfo": "更多信息",
+        "showAllPhotos": "查看所有照片",
+        "morePhotos": "+{count} 张照片",
+        "alt": {
+            "propertyView": "房源图片",
+            "propertyViewNumbered": "房源图片 {number}",
+            "mainPropertyView": "房源主图",
+            "view": "图片 {number}",
+            "galleryView": "画廊图片 {number}",
+            "thumbnail": "缩略图 {number}"
+        }
+    },
+    "propertyOverview": {
+        "verifiedReview": "{count} 条已验证评论",
+        "verifiedReviews": "{count} 条已验证评论",
+        "aboutProperty": "关于此住宿",
+        "showLess": "收起",
+        "readMore": "阅读更多",
+        "popularAmenities": "热门设施",
+        "showLessAmenities": "收起设施",
+        "seeAllAmenities": "查看全部 {count} 项设施",
+        "cleaningSafety": {
+            "title": "清洁与安全措施",
+            "description": "该住宿采取了全面的卫生措施，包括无接触入住和加强的清洁流程。"
+        }
+    },
+    "propertyNav": {
+        "overview": "概览",
+        "rooms": "客房",
+        "location": "位置",
+        "amenities": "设施",
+        "policies": "政策",
+        "reviews": "评论"
     },
     "languagePicker": {
         "label": "选择语言",
@@ -304,6 +341,7 @@
         }
     },
     "auth": {
+        "closeModal": "Close modal",
         "signIn": {
             "title": "登录 CheapestGo",
             "emailLabel": "电子邮箱",
@@ -315,6 +353,110 @@
             "terms": "登录即表示您同意我们的{terms}和{privacy}。",
             "termsLink": "服务条款",
             "privacyLink": "隐私政策"
+        },
+        "labels": {
+            "email": "Email",
+            "emailPlaceholder": "Enter your email",
+            "firstName": "First name",
+            "firstNamePlaceholder": "First",
+            "lastName": "Last name",
+            "lastNamePlaceholder": "Last",
+            "password": "Password",
+            "passwordPlaceholder": "Create a password",
+            "confirmPassword": "Confirm password",
+            "confirmPasswordPlaceholder": "Re-enter your password"
+        },
+        "actions": {
+            "continue": "Continue",
+            "createAccount": "Create account",
+            "signIn": "Sign in",
+            "back": "Back",
+            "sendResetLink": "Send reset link",
+            "resetPassword": "Reset Password",
+            "resendConfirmation": "Resend confirmation email",
+            "backToLogin": "Back to login",
+            "backToHome": "Back to home",
+            "createOne": "Create one",
+            "tryAgain": "try again",
+            "forgotPassword": "Forgot password?"
+        },
+        "emailStep": {
+            "title": "Sign in or create an account",
+            "subtitle": "One account for all your travel needs",
+            "noAccount": "Don't have an account?",
+            "createWithEmail": "Create one with email",
+            "hasAccount": "Already have an account?",
+            "otherWays": "Other ways to sign in",
+            "terms": "By signing in, you agree to our <terms>Terms & Conditions</terms> and <privacy>Privacy Statement</privacy>.",
+            "termsLink": "Terms & Conditions",
+            "privacyLink": "Privacy Statement"
+        },
+        "registerStep": {
+            "title": "Create your account",
+            "for": "for",
+            "hasAccount": "Already have an account?",
+            "terms": "By creating an account, you agree to our <terms>Terms & Conditions</terms> and <privacy>Privacy Statement</privacy>.",
+            "termsLink": "Terms & Conditions",
+            "privacyLink": "Privacy Statement",
+            "keepSignedIn": "Keep me signed in"
+        },
+        "passwordStep": {
+            "title": "Enter your password",
+            "for": "for",
+            "noAccount": "Don't have an account?",
+            "keepSignedIn": "Keep me signed in"
+        },
+        "forgotPasswordStep": {
+            "title": "Reset your password",
+            "subtitle": "Enter your email and we'll send you a reset link.",
+            "emailPlaceholder": "your@email.com",
+            "checkInbox": "Check your inbox",
+            "sentDescription": "We sent a password reset link to {email}. Click the link in the email to set a new password.",
+            "notReceived": "Didn't receive it? Check your spam folder or"
+        },
+        "verifyEmailStep": {
+            "title": "Check your email",
+            "description": "We sent a confirmation link to",
+            "description2": "Click the link in the email to sign in."
+        },
+        "resetPassword": {
+            "title": "Reset your password",
+            "subtitle": "Enter your new password below",
+            "newPasswordLabel": "New Password",
+            "newPasswordPlaceholder": "Enter new password",
+            "confirmPasswordLabel": "Confirm Password",
+            "confirmPasswordPlaceholder": "Confirm new password",
+            "successTitle": "Password Reset Successful",
+            "successDescription": "Your password has been updated. You can now sign in with your new password."
+        },
+        "passwordRequirements": {
+            "minLength": "8+ characters",
+            "uppercase": "Uppercase",
+            "lowercase": "Lowercase",
+            "number": "Number"
+        },
+        "social": {
+            "signInWithGoogle": "Sign in with Google",
+            "appleAriaLabel": "Sign in with Apple",
+            "facebookAriaLabel": "Sign in with Facebook"
+        },
+        "messages": {
+            "invalidEmail": "Invalid email",
+            "passwordsDoNotMatch": "Passwords do not match",
+            "accountCreated": "Account created successfully!",
+            "verificationSent": "Please check your email. Verification link already sent.",
+            "accountExists": "Account already exists. Attempting to sign in...",
+            "welcomeBack": "Welcome back!",
+            "accountExistsSignIn": "Account exists. Please sign in.",
+            "registrationFailed": "Registration failed. Please try again.",
+            "wrongPassword": "Wrong password, or this account was created with Google. Try Google sign-in or reset your password.",
+            "invalidCredentials": "Invalid email or password.",
+            "sendResetFailed": "Failed to send reset email. Please try again.",
+            "resentSuccess": "Confirmation email resent!",
+            "resendFailed": "Failed to resend email. Please try again.",
+            "requirementsNotMet": "Password does not meet all requirements",
+            "invalidLink": "Invalid reset link. Please request a new one.",
+            "failedToReset": "Failed to reset password. Please try again."
         }
     },
     "errors": {
@@ -1271,7 +1413,91 @@
         "savePercent": "SAVE {percent}%",
         "propertyNotFound": "Property not found. (ID: {id})",
         "breadcrumbHome": "Home",
-        "breadcrumbStaysIn": "Stays in {city}"
+        "breadcrumbStaysIn": "Stays in {city}",
+        "locationTitle": "Where you'll be",
+        "locationLabel": "Location",
+        "addressNotAvailable": "Address not available",
+        "faq": {
+            "title": "Frequently asked questions",
+            "checkInQuestion": "What time is check-in at this property?",
+            "checkInAnswer": "Check-in time is {time}",
+            "checkOutQuestion": "What are the check-out times?",
+            "checkOutAnswer": "Check-out time is {time}",
+            "parkingQuestion": "Does {name} have parking?",
+            "parkingAnswer": "Yes, the property offers {facility}.",
+            "wifiQuestion": "Is WiFi available at {name}?",
+            "wifiAnswer": "Yes, WiFi is available at the property.",
+            "poolQuestion": "Does {name} have a pool?",
+            "poolAnswer": "Yes, the property has {facility}.",
+            "restaurantQuestion": "Is there a restaurant at {name}?",
+            "restaurantAnswer": "Yes, the property has an on-site restaurant.",
+            "importantQuestion": "Is there anything important I should know before booking?",
+            "fallbackCancellationQuestion": "What is the cancellation policy at {name}?",
+            "fallbackCancellationAnswer": "Cancellation policies vary by rate. Please check the room options above for specific cancellation terms before booking.",
+            "fallbackPaymentQuestion": "Does {name} accept credit cards?",
+            "fallbackPaymentAnswer": "Most major credit and debit cards are accepted. Contact the property directly to confirm accepted payment methods.",
+            "fallbackModificationQuestion": "How do I modify or cancel my reservation?",
+            "fallbackModificationAnswer": "You can manage your booking through the confirmation email you receive after booking. For urgent changes, contact the property directly."
+        },
+        "rooms": {
+            "availableRooms": "Available Rooms ({count})",
+            "filterAll": "All",
+            "filterRefundable": "Refundable",
+            "filterNonRefundable": "Non-refundable",
+            "showingRooms": "Showing {start}–{end} of {total} rooms",
+            "noRefundableRooms": "No refundable rooms available.",
+            "noNonRefundableRooms": "No non-refundable rooms available.",
+            "standardRoom": "Standard Room",
+            "freeCancellationTick": "✓ Free cancellation",
+            "nonRefundable": "Non-refundable",
+            "total": "total",
+            "reserve": "Reserve",
+            "noRooms": "No rooms available for the selected dates.",
+            "pageOf": "Page {current} of {total}",
+            "viewRoomPhotos": "View room photos",
+            "viewHotelPhotos": "View hotel photos",
+            "sleeps": "Sleeps {count}",
+            "rateOptions": "{count} rate options",
+            "roomOnly": "Room only",
+            "noMeals": "No meals included",
+            "freeCancellation": "Free cancellation",
+            "nonRefundablePill": "Non-Refundable",
+            "choose": "Choose",
+            "chooseRoom": "Choose room",
+            "perNight": "/night",
+            "includesTaxes": "(1 night, 1 Room incl. taxes)"
+        },
+        "bookingWidget": {
+            "roomDetails": "Room Details",
+            "selectedRoom": "Selected Room",
+            "guests": "{count} guests",
+            "description": "Description",
+            "amenities": "Amenities",
+            "bookThisRoom": "Book This Room"
+        },
+        "mobileCta": {
+            "from": "From",
+            "checkRoomRates": "Check room rates",
+            "viewRooms": "View Rooms",
+            "perNight": "/night"
+        },
+        "weather": {
+            "today": "Today",
+            "tomorrow": "Tomorrow",
+            "feelsLike": "Feels like",
+            "humidity": "Humidity",
+            "wind": "Wind",
+            "uv": {
+                "low": "Low",
+                "moderate": "Moderate",
+                "high": "High",
+                "veryHigh": "Very High",
+                "extreme": "Extreme"
+            },
+            "nextHours": "Next hours",
+            "forecast": "Forecast",
+            "poweredBy": "Powered by Google Weather"
+        }
     },
     "trips": {
         "title": "My Trips | CheapestGo",

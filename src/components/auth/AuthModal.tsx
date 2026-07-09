@@ -14,6 +14,7 @@ import ForgotPasswordStep from './ForgotPasswordStep';
 
 const AuthModal: React.FC = () => {
     const t = useTranslations('nav');
+    const ta = useTranslations('auth');
     const { isAuthModalOpen, closeAuthModal, authStep } = useAuthStore();
     const resetForm = useAuthFormStore((s) => s.reset);
 
@@ -79,7 +80,7 @@ const AuthModal: React.FC = () => {
                         <button
                             onClick={() => { closeAuthModal(); resetForm(); }}
                             className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors z-10"
-                            aria-label="Close modal"
+                            aria-label={ta('closeModal')}
                         >
                             <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
                         </button>
