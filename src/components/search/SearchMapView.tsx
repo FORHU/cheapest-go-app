@@ -333,7 +333,7 @@ function SearchMapView({
     totalCount: _totalCount = 0,
     allMappable = [],
     rawSearchParams = {},
-    isStreaming = false,
+    isStreaming: _isStreaming = false,
     onSwitchToList,
 }: SearchMapViewProps) {
     const router = useRouter();
@@ -393,12 +393,9 @@ function SearchMapView({
 
             // Update existing entries that have empty location/image OR no price yet.
             // Drop priceLoading hotels that disappeared from properties (TGX had no availability).
-            // Update existing entries that have empty location/image OR no price yet.
-            // Drop priceLoading hotels that disappeared from properties (TGX had no availability).
             const updated = prev.map((p: any) => {
                 const id = p.id ?? p.hotelId;
                 const incoming = incomingMap.get(id);
-                if (!incoming) return (p as any).priceLoading ? null : p;
                 if (!incoming) return (p as any).priceLoading ? null : p;
                 const wantsLocation = !p.location && incoming.location;
                 const wantsImage = !p.image && incoming.image;
@@ -882,22 +879,7 @@ function SearchMapView({
                             </div>
                         </>
                     ) : allProperties.some((p: any) => (p as any).priceLoading) ? (
-                        // Catalog hotels exist but prices haven't arrived yet — show skeletons
-                        <div className="flex flex-col gap-3 p-3 overflow-y-auto">
-                            {[1, 2, 3, 4, 5, 6].map(n => (
-                                <div key={n} className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 p-3 flex gap-3 animate-pulse">
-                                    <div className="w-16 h-16 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
-                                    <div className="flex-1 flex flex-col gap-2 py-1">
-                                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
-                                        <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
-                                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mt-auto" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : allProperties.some((p: any) => (p as any).priceLoading) ? (
                         <PriceLoadingSidebar destination={destination ?? ''} />
-
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
                             <MapPin className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />

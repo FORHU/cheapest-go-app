@@ -82,7 +82,7 @@ const MapMarker = React.memo(function MapMarker({
 
                 {/* Triangle Tail */}
                 <div className={cn(
-                    'w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] -mt-[1px]',
+                    'w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] -mt-1px',
                     isSelected ? 'border-t-blue-700' : 'border-t-white dark:border-t-slate-900'
                 )} />
 
