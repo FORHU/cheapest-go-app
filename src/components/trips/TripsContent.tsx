@@ -276,14 +276,14 @@ export function TripsContent({ initialData }: TripsContentProps) {
                       <Link
                         href={trip.deep_link}
                         className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
-                        title="Search again"
+                        title={t('wishlist.searchAgain')}
                       >
                         <ExternalLink size={13} />
                       </Link>
                       <button
                         onClick={() => removeSaved(trip.id)}
                         className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-500 transition-colors"
-                        title="Remove from wishlist"
+                        title={t('wishlist.removeFromWishlist')}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -302,18 +302,18 @@ export function TripsContent({ initialData }: TripsContentProps) {
               <Luggage className="w-8 h-8 sm:w-10 sm:h-10 text-slate-400" />
             </div>
             <h2 className="text-[clamp(1rem,3vw,1.25rem)] font-bold text-slate-900 dark:text-white mb-2 px-4">
-              {activeTab === 'upcoming' ? 'No upcoming trips' : activeTab === 'past' ? 'No past trips' : 'No trips yet'}
+              {activeTab === 'upcoming' ? t('emptyState.upcomingTitle') : activeTab === 'past' ? t('emptyState.pastTitle') : t('emptyState.allTitle')}
             </h2>
             <p className="text-[clamp(0.8125rem,2vw,1rem)] text-slate-500 dark:text-slate-400 mb-4 sm:mb-6 px-4">
               {activeTab === 'upcoming'
-                ? "Time to plan your next adventure!"
-                : "Start exploring and book your first trip"}
+                ? t('emptyState.upcomingDesc')
+                : t('emptyState.otherDesc')}
             </p>
             <Link
               href="/"
               className="inline-flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white text-[clamp(0.8125rem,2vw,1rem)] font-medium rounded-full transition-colors"
             >
-              Explore destinations
+              {t('exploreDestinations')}
               <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Link>
           </div>
@@ -340,7 +340,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
                   onClick={() => setVisibleCount(prev => prev + 10)}
                   className="px-4 py-2 sm:px-6 sm:py-3 text-[clamp(0.6875rem,2vw,0.875rem)] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors"
                 >
-                  View more ({displayedBookings.length - visibleCount} remaining)
+                  {t('viewMore', { count: displayedBookings.length - visibleCount })}
                 </button>
               </div>
             )}
