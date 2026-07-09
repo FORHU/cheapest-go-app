@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { User, Bed, Square, X, Check, ChevronLeft, ChevronRight, Images } from 'lucide-react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { getCurrencySymbol, convertCurrency } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 
@@ -189,6 +190,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
     onViewDetails = undefined,
     rateOptions = []
 }) => {
+    const t = useTranslations('property.rooms');
     const [selectedRateIdx, setSelectedRateIdx] = useState(0);
     const [mounted, setMounted] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -265,7 +267,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     {lightboxImages.length > 0 && (
                         <div className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-xl pointer-events-none">
                             <span className="text-white text-[9px] font-medium bg-black/50 px-1.5 py-0.5 rounded backdrop-blur-sm">
-                                {hasRoomPhotos ? 'View room photos' : 'View hotel photos'}
+                                {hasRoomPhotos ? t('viewRoomPhotos') : t('viewHotelPhotos')}
                             </span>
                         </div>
                     )}
@@ -317,7 +319,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     {/* Compact Room Specs */}
                     <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] lg:text-xs text-slate-500 dark:text-slate-400 mb-2 lg:mb-3">
                         {roomSize && <span className="flex items-center gap-1"><Square size={9} /> {roomSize}</span>}
-                        <span className="flex items-center gap-1"><User size={9} /> Sleeps {maxOccupancy || 2}</span>
+                        <span className="flex items-center gap-1"><User size={9} /> {t('sleeps', { count: maxOccupancy || 2 })}</span>
                         {bedType && <span className="flex items-center gap-1"><Bed size={9} /> {bedType}</span>}
                     </div>
 
@@ -325,7 +327,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     {hasMultipleRates ? (
                         <div className="space-y-1 mb-1 lg:mb-4">
                             <div className="text-[9px] lg:text-xs font-bold text-slate-900 dark:text-white mb-0.5 mt-1.5 lg:mt-2">
-                                {rateOptions.length} rate options
+                                {t('rateOptions', { count: rateOptions.length })}
                             </div>
                             <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                                 {rateOptions.map((rate, idx) => (
@@ -346,16 +348,16 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                             />
                                             <div className="min-w-0 flex-1">
                                                 <div className="text-[10px] lg:text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
-                                                    {rate.boardName || 'Room only'}
+                                                    {rate.boardName || t('roomOnly')}
                                                 </div>
                                                 <div className={`text-[8px] lg:text-[11px] font-medium leading-tight truncate ${rate.refundable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                    {rate.refundable ? 'Free cancellation' : 'Non-refundable'}
+                                                    {rate.refundable ? t('freeCancellation') : t('nonRefundablePill')}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="text-[10px] lg:text-sm font-bold text-slate-900 dark:text-white ml-2 text-right shrink-0 whitespace-nowrap">
                                             {currencySymbol}{mounted ? convertCurrency(rate.price, rate.currency || sourceCurrency, targetCurrency).toLocaleString('en-US', { maximumFractionDigits: 0 }) : rate.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                                            <div className="text-[8px] text-slate-500 font-normal">/night</div>
+                                            <div className="text-[8px] text-slate-500 font-normal">{t('perNight')}</div>
                                         </div>
                                     </label>
                                 ))}
@@ -364,22 +366,22 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                     ) : (
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-2 lg:p-2.5 border border-slate-100 dark:border-slate-700">
                             <div className="font-bold text-[10px] lg:text-sm text-slate-900 dark:text-white mb-0.5 lg:mb-1">
-                                Room only
+                                {t('roomOnly')}
                             </div>
                             <div className="space-y-1">
                                 <div className="text-[9px] lg:text-xs text-slate-500 flex items-center gap-1.5">
-                                    <X size={10} className="text-slate-400" /> No meals included
+                                    <X size={10} className="text-slate-400" /> {t('noMeals')}
                                 </div>
                                 {displayRefundable ? (
                                     <div className="text-[9px] lg:text-xs text-emerald-600 font-medium flex items-center gap-1.5">
-                                        <Check size={10} /> Free cancellation
+                                        <Check size={10} /> {t('freeCancellation')}
                                     </div>
                                 ) : (
                                     <div className="text-[9px] lg:text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
                                         <div className="w-2.5 h-2.5 rounded-full border border-amber-400 dark:border-amber-500 flex items-center justify-center text-[7px] text-amber-500">
                                             i
                                         </div>
-                                        Non-Refundable
+                                        {t('nonRefundablePill')}
                                     </div>
                                 )}
                             </div>
@@ -396,7 +398,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                                     <span className="text-[12px] font-bold text-blue-600 dark:text-blue-400 leading-none whitespace-nowrap">
                                         {currencySymbol}{displayPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                     </span>
-                                    <span className="text-[9px] text-slate-500 whitespace-nowrap">/night</span>
+                                    <span className="text-[9px] text-slate-500 whitespace-nowrap">{t('perNight')}</span>
                                 </div>
                             </div>
                         )}
@@ -407,7 +409,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         onClick={() => onReserve(displayOfferId)}
                         className="lg:hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2.5 rounded-lg text-[11px] shadow-sm shrink-0"
                     >
-                        Choose
+                        {t('choose')}
                     </button>
                 </div>
             </div>
@@ -419,10 +421,10 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         <span className="text-[18px] font-bold text-slate-900 dark:text-white leading-none">
                             {currencySymbol}{displayPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                         </span>
-                        <span className="text-[12px] text-slate-500">/night</span>
+                        <span className="text-[12px] text-slate-500">{t('perNight')}</span>
                     </div>
                     <div className="text-[10px] text-slate-400 mt-2">
-                        (1 night, 1 Room incl. taxes)
+                        {t('includesTaxes')}
                     </div>
                 </div>
 
@@ -431,7 +433,7 @@ export const RoomCard: React.FC<RoomCardProps> = ({
                         onClick={() => onReserve(displayOfferId)}
                         className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-[13px] lg:text-sm transition-colors w-full focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     >
-                        Choose room
+                        {t('chooseRoom')}
                     </button>
                 </div>
             </div>

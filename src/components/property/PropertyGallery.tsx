@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Image as ImageIcon, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 
 interface PropertyGalleryProps {
     images: string[];
@@ -16,7 +17,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
     const hasImages = displayImages.length > 0;
     const mainImage = displayImages[0] || '';
     const subImages = displayImages.slice(1, 5);
-
+    const t = useTranslations('propertyGallery');
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const thumbnailContainerRef = useRef<HTMLDivElement>(null);
     const [mounted, setMounted] = useState(false);
@@ -74,7 +75,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                 <div className="h-[200px] md:h-[400px] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     <div className="text-center text-slate-400">
                         <ImageIcon size={48} className="mx-auto mb-2 opacity-50" />
-                        <p>No images available</p>
+                        <p>{t('noImages')}</p>
                     </div>
                 </div>
             ) : displayImages.length === 1 ? (
@@ -84,7 +85,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                 >
                     <Image
                         src={mainImage}
-                        alt="Property view"
+                        alt={t('alt.propertyView')}
                         fill
                         sizes="(max-width: 768px) 100vw, 50vw"
                         fetchPriority="high"
@@ -95,7 +96,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                         className="absolute bottom-3 right-3 md:bottom-4 md:right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
                     >
                         <ImageIcon size={14} />
-                        View photo
+                        {t('viewPhoto')}
                     </button>
                 </div>
             ) : (
@@ -111,7 +112,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                                 >
                                     <Image
                                         src={img}
-                                        alt={`Property view ${i + 1}`}
+                                        alt={t('alt.propertyViewNumbered', { number: i + 1 })}
                                         fill
                                         sizes="(max-width: 768px) 100vw, 0vw"
                                         fetchPriority={i === 0 ? 'high' : 'auto'}
@@ -150,7 +151,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                         >
                             <Image
                                 src={mainImage}
-                                alt="Main property view"
+                                alt={t('alt.mainPropertyView')}
                                 fill
                                 sizes="(max-width: 768px) 100vw, 50vw"
                                 fetchPriority="high"
@@ -165,14 +166,14 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                             >
                                 <Image
                                     src={img}
-                                    alt={`View ${i + 1}`}
+                                    alt={t('alt.view', { number: i + 1 })}
                                     fill
                                     sizes="(max-width: 768px) 0vw, 25vw"
                                     className="object-cover hover:scale-105 transition-transform duration-500"
                                 />
                                 {i === gallerySubImages.length - 1 && displayImages.length > 5 && (
                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-sm backdrop-blur-sm z-10">
-                                        +{displayImages.length - 5} photos
+                                        {t('morePhotos', { count: displayImages.length - 5 })}
                                     </div>
                                 )}
                             </div>
@@ -182,7 +183,7 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
                             className="absolute bottom-4 right-4 bg-white/90 backdrop-blur text-slate-900 border border-slate-200 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm hover:scale-105 transition-transform z-10"
                         >
                             <ImageIcon size={14} />
-                            Show all photos
+                            {t('showAllPhotos')}
                         </button>
                     </div>
                 </>
@@ -190,105 +191,105 @@ const PropertyGallery: React.FC<PropertyGalleryProps> = ({ images }) => {
 
             {/* Lightbox Modal */}
             {mounted && createPortal(
-            <AnimatePresence>
-                {selectedIndex !== null && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="fixed inset-0 z-[100] bg-black/98 flex flex-col outline-none"
-                        onClick={handleClose}
-                        onKeyDown={handleKeyDown}
-                        tabIndex={0}
-                        autoFocus
-                    >
-                        {/* Header */}
-                        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/60 to-transparent">
-                            <span className="text-white/80 text-sm font-medium ml-2">
-                                {selectedIndex + 1} / {displayImages.length}
-                            </span>
-                            <div className="flex gap-4">
-                                <button className="text-white/80 hover:text-white flex items-center gap-2 text-sm transition-colors">
-                                    <ImageIcon size={18} />
-                                    More Info
-                                </button>
-                                <button
-                                    onClick={handleClose}
-                                    className="text-white/80 hover:text-white transition-colors p-1"
-                                >
-                                    <X size={24} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Main Image Area */}
-                        <div className="flex-1 flex items-center justify-center relative w-full h-full p-4 md:pb-28">
-                            <button
-                                className="absolute left-2 md:left-4 p-2 md:p-3 bg-white/10 md:bg-white/5 hover:bg-white/20 md:hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors backdrop-blur-sm group z-20"
-                                onClick={(e) => { e.stopPropagation(); handlePrev(); }}
-                            >
-                                <ChevronLeft size={24} className="md:w-8 md:h-8 group-hover:-translate-x-0.5 transition-transform" />
-                            </button>
-
-                            <button
-                                className="absolute right-2 md:right-4 p-2 md:p-3 bg-white/10 md:bg-white/5 hover:bg-white/20 md:hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors backdrop-blur-sm group z-20"
-                                onClick={(e) => { e.stopPropagation(); handleNext(); }}
-                            >
-                                <ChevronRight size={24} className="md:w-8 md:h-8 group-hover:translate-x-0.5 transition-transform" />
-                            </button>
-
-                            {/* Main image */}
-                            <div className="relative w-full h-full max-h-[80vh] md:max-h-[85vh]">
-                                <Image
-                                    key={selectedIndex}
-                                    src={displayImages[selectedIndex]}
-                                    alt={`Gallery view ${selectedIndex + 1}`}
-                                    fill
-                                    sizes="100vw"
-                                    unoptimized={true}
-                                    className="object-contain shadow-2xl select-none"
-                                    onClick={(e) => e.stopPropagation()}
-                                    draggable={false}
-                                    priority
-                                />
-                            </div>
-                        </div>
-
-                        {/* Thumbnail Strip */}
-                        <div
-                            ref={thumbnailContainerRef}
-                            className="bg-black/90 border-t border-white/10 p-4 hidden md:flex justify-center w-full absolute bottom-0 z-20 overflow-x-auto"
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                <AnimatePresence>
+                    {selectedIndex !== null && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.15 }}
+                            className="fixed inset-0 z-[100] bg-black/98 flex flex-col outline-none"
+                            onClick={handleClose}
+                            onKeyDown={handleKeyDown}
+                            tabIndex={0}
+                            autoFocus
                         >
-                            <div className="flex gap-2 max-w-full px-4">
-                                {displayImages.map((img, idx) => (
-                                    <button
-                                        key={idx}
-                                        data-index={idx}
-                                        onClick={() => handleThumbnailClick(idx)}
-                                        className={`relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0 rounded-md overflow-hidden border-2
-                                            ${selectedIndex === idx
-                                                ? 'border-white opacity-100 scale-105'
-                                                : 'border-transparent opacity-60 hover:opacity-90 hover:border-white/50'}
-                                            transition-[border-color,opacity] duration-100`}
-                                    >
-                                        <Image
-                                            src={img}
-                                            alt={`Thumbnail ${idx + 1}`}
-                                            fill
-                                            sizes="80px"
-                                            className="object-cover"
-                                        />
+                            {/* Header */}
+                            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/60 to-transparent">
+                                <span className="text-white/80 text-sm font-medium ml-2">
+                                    {selectedIndex + 1} / {displayImages.length}
+                                </span>
+                                <div className="flex gap-4">
+                                    <button className="text-white/80 hover:text-white flex items-center gap-2 text-sm transition-colors">
+                                        <ImageIcon size={18} />
+                                        {t('moreInfo')}
                                     </button>
-                                ))}
+                                    <button
+                                        onClick={handleClose}
+                                        className="text-white/80 hover:text-white transition-colors p-1"
+                                    >
+                                        <X size={24} />
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>,
-            document.body
+
+                            {/* Main Image Area */}
+                            <div className="flex-1 flex items-center justify-center relative w-full h-full p-4 md:pb-28">
+                                <button
+                                    className="absolute left-2 md:left-4 p-2 md:p-3 bg-white/10 md:bg-white/5 hover:bg-white/20 md:hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors backdrop-blur-sm group z-20"
+                                    onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                                >
+                                    <ChevronLeft size={24} className="md:w-8 md:h-8 group-hover:-translate-x-0.5 transition-transform" />
+                                </button>
+
+                                <button
+                                    className="absolute right-2 md:right-4 p-2 md:p-3 bg-white/10 md:bg-white/5 hover:bg-white/20 md:hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors backdrop-blur-sm group z-20"
+                                    onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                                >
+                                    <ChevronRight size={24} className="md:w-8 md:h-8 group-hover:translate-x-0.5 transition-transform" />
+                                </button>
+
+                                {/* Main image */}
+                                <div className="relative w-full h-full max-h-[80vh] md:max-h-[85vh]">
+                                    <Image
+                                        key={selectedIndex}
+                                        src={displayImages[selectedIndex]}
+                                        alt={t('alt.galleryView', { number: selectedIndex + 1 })}
+                                        fill
+                                        sizes="100vw"
+                                        unoptimized={true}
+                                        className="object-contain shadow-2xl select-none"
+                                        onClick={(e) => e.stopPropagation()}
+                                        draggable={false}
+                                        priority
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Thumbnail Strip */}
+                            <div
+                                ref={thumbnailContainerRef}
+                                className="bg-black/90 border-t border-white/10 p-4 hidden md:flex justify-center w-full absolute bottom-0 z-20 overflow-x-auto"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                            >
+                                <div className="flex gap-2 max-w-full px-4">
+                                    {displayImages.map((img, idx) => (
+                                        <button
+                                            key={idx}
+                                            data-index={idx}
+                                            onClick={() => handleThumbnailClick(idx)}
+                                            className={`relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0 rounded-md overflow-hidden border-2
+                                            ${selectedIndex === idx
+                                                    ? 'border-white opacity-100 scale-105'
+                                                    : 'border-transparent opacity-60 hover:opacity-90 hover:border-white/50'}
+                                            transition-[border-color,opacity] duration-100`}
+                                        >
+                                            <Image
+                                                src={img}
+                                                alt={t('alt.thumbnail', { number: idx + 1 })}
+                                                fill
+                                                sizes="80px"
+                                                className="object-cover"
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>,
+                document.body
             )}
         </>
     );

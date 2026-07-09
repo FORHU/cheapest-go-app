@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthFormStore } from '@/stores/authFormStore';
 import { Input, Button } from '@/components/ui';
@@ -10,6 +11,7 @@ import { PasswordRequirements } from './PasswordRequirements';
 import { registerSchema } from '@/lib/schemas/auth';
 
 const RegisterStep: React.FC = () => {
+    const t = useTranslations('auth');
     const { email, setAuthStep, register, isLoading, login } = useAuthStore();
     const {
         firstName, lastName, password, errors, rememberMe,
@@ -22,7 +24,7 @@ const RegisterStep: React.FC = () => {
         clearErrors();
 
         if (password !== confirmPassword) {
-            setErrors({ confirmPassword: 'Passwords do not match' });
+            setErrors({ confirmPassword: t('messages.passwordsDoNotMatch') });
             return;
         }
 
@@ -42,33 +44,33 @@ const RegisterStep: React.FC = () => {
 
         try {
             await register({ email, password, firstName, lastName });
-            toast.success("Account created successfully!");
+            toast.success(t('messages.accountCreated'));
         } catch (error: any) {
             if (error?.code === 'over_email_send_rate_limit' || error?.message?.includes('rate limit')) {
-                toast.warning("Please check your email. Verification link already sent.");
+                toast.warning(t('messages.verificationSent'));
                 setAuthStep('verify-email');
                 return;
             }
 
             if (error?.message?.includes('already registered')) {
                 try {
-                    toast.info("Account already exists. Attempting to sign in...");
+                    toast.info(t('messages.accountExists'));
                     await login(email, password);
-                    toast.success("Welcome back!");
+                    toast.success(t('messages.welcomeBack'));
                     return;
                 } catch (loginError: any) {
                     if (loginError?.message?.toLowerCase().includes('email not confirmed')) {
                         setAuthStep('verify-email');
                         return;
                     }
-                    toast.error("Account exists. Please sign in.");
+                    toast.error(t('messages.accountExistsSignIn'));
                     setAuthStep('password');
                     return;
                 }
             }
 
-            toast.error(error?.message || "Registration failed. Please try again.");
-            setErrors({ general: error?.message || 'Registration failed. Please try again.' });
+            toast.error(error?.message || t('messages.registrationFailed'));
+            setErrors({ general: error?.message || t('messages.registrationFailed') });
         }
     };
 
@@ -80,15 +82,15 @@ const RegisterStep: React.FC = () => {
                 type="button"
             >
                 <ArrowLeft className="h-4 w-4" />
-                Back
+                {t('actions.back')}
             </button>
 
             <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                    Create your account
+                    {t('registerStep.title')}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    for <span className="text-blue-600 dark:text-blue-400">{email}</span>
+                    {t('registerStep.for')} <span className="text-blue-600 dark:text-blue-400">{email}</span>
                 </p>
             </div>
 
@@ -102,20 +104,20 @@ const RegisterStep: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                     <Input
                         id="firstName"
-                        label="First name"
+                        label={t('labels.firstName')}
                         value={firstName}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('firstName', e.target.value)}
-                        placeholder="First"
+                        placeholder={t('labels.firstNamePlaceholder')}
                         icon={User}
                         error={errors.firstName}
                         disabled={isLoading}
                     />
                     <Input
                         id="lastName"
-                        label="Last name"
+                        label={t('labels.lastName')}
                         value={lastName}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('lastName', e.target.value)}
-                        placeholder="Last"
+                        placeholder={t('labels.lastNamePlaceholder')}
                         error={errors.lastName}
                         disabled={isLoading}
                     />
@@ -125,10 +127,10 @@ const RegisterStep: React.FC = () => {
                     <Input
                         id="registerPassword"
                         type="password"
-                        label="Password"
+                        label={t('labels.password')}
                         value={password}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('password', e.target.value)}
-                        placeholder="Create a password"
+                        placeholder={t('labels.passwordPlaceholder')}
                         icon={Lock}
                         error={errors.password}
                         disabled={isLoading}
@@ -139,10 +141,10 @@ const RegisterStep: React.FC = () => {
                 <Input
                     id="confirmPassword"
                     type="password"
-                    label="Confirm password"
+                    label={t('labels.confirmPassword')}
                     value={confirmPassword}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter your password"
+                    placeholder={t('labels.confirmPasswordPlaceholder')}
                     icon={Lock}
                     error={errors.confirmPassword}
                     disabled={isLoading}
@@ -155,29 +157,29 @@ const RegisterStep: React.FC = () => {
                         onChange={(e) => setRememberMe(e.target.checked)}
                         className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <span className="text-sm text-slate-600 dark:text-slate-400">Keep me signed in</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{t('registerStep.keepSignedIn')}</span>
                 </label>
 
                 <Button type="submit" fullWidth isLoading={isLoading}>
-                    Create account
+                    {t('actions.createAccount')}
                 </Button>
             </form>
 
             <div className="space-y-2">
                 <p className="text-xs text-center text-slate-500 dark:text-slate-400">
-                    By creating an account, you agree to our{' '}
-                    <a href="#" className="text-blue-600 hover:underline">Terms & Conditions</a>
-                    {' '}and{' '}
-                    <a href="#" className="text-blue-600 hover:underline">Privacy Statement</a>
+                    {t.rich('registerStep.terms', {
+                        terms: (chunks) => <a href="#" className="text-blue-600 hover:underline">{chunks}</a>,
+                        privacy: (chunks) => <a href="#" className="text-blue-600 hover:underline">{chunks}</a>,
+                    })}
                 </p>
 
                 <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-                    Already have an account?{' '}
+                    {t('registerStep.hasAccount')}{' '}
                     <button
                         onClick={() => setAuthStep('password')}
                         className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                     >
-                        Sign in
+                        {t('actions.signIn')}
                     </button>
                 </p>
             </div>
