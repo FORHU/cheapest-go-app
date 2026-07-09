@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { X, Pencil, Loader2 } from 'lucide-react';
 import type { BookingRecord } from '@/services/booking.service';
 import { useAmendBooking } from '@/hooks/trips';
@@ -16,6 +17,7 @@ interface ModificationModalProps {
 }
 
 export default function ModificationModal({ booking, isOpen, onClose, onModified }: ModificationModalProps) {
+    const t = useTranslations('trips');
     const [mounted, setMounted] = useState(false);
     useEffect(() => {
         setMounted(true);
@@ -117,7 +119,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
                                     <Pencil className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                                    Modify Booking
+                                    {t('modificationModal.title')}
                                 </h2>
                             </div>
                             <button
@@ -136,7 +138,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
                                     {booking.property_name}
                                 </h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                                    Booking ID: {booking.booking_id}
+                                    {t('cancellationModal.bookingId', { id: booking.booking_id })}
                                 </p>
                             </div>
 
@@ -144,7 +146,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
                             <div className="flex items-center gap-2 p-3 rounded-lg mb-5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
                                 <Pencil className="w-4 h-4 flex-shrink-0" />
                                 <span className="text-sm">
-                                    You can update the booking holder&apos;s name, email, and special requests.
+                                    {t('modificationModal.infoBanner')}
                                 </span>
                             </div>
 
@@ -152,7 +154,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                        First Name
+                                        {t('modificationModal.firstName')}
                                     </label>
                                     <input
                                         type="text"
@@ -163,7 +165,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
                                                 ? 'border-red-300 dark:border-red-500'
                                                 : 'border-slate-200 dark:border-white/10'
                                         } bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-                                        placeholder="First name"
+                                        placeholder={t('modificationModal.firstNamePlaceholder')}
                                     />
                                     {errors.firstName && (
                                         <p className="mt-1 text-xs text-red-500">{errors.firstName}</p>
@@ -172,7 +174,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
 
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                        Last Name
+                                        {t('modificationModal.lastName')}
                                     </label>
                                     <input
                                         type="text"
@@ -183,7 +185,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
                                                 ? 'border-red-300 dark:border-red-500'
                                                 : 'border-slate-200 dark:border-white/10'
                                         } bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-                                        placeholder="Last name"
+                                        placeholder={t('modificationModal.lastNamePlaceholder')}
                                     />
                                     {errors.lastName && (
                                         <p className="mt-1 text-xs text-red-500">{errors.lastName}</p>
@@ -192,7 +194,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
 
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                        Email
+                                        {t('modificationModal.email')}
                                     </label>
                                     <input
                                         type="email"
@@ -203,7 +205,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
                                                 ? 'border-red-300 dark:border-red-500'
                                                 : 'border-slate-200 dark:border-white/10'
                                         } bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
-                                        placeholder="email@example.com"
+                                        placeholder={t('modificationModal.emailPlaceholder')}
                                     />
                                     {errors.email && (
                                         <p className="mt-1 text-xs text-red-500">{errors.email}</p>
@@ -212,15 +214,15 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
 
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                        Special Requests
-                                        <span className="text-slate-400 font-normal ml-1">(optional)</span>
+                                        {t('modificationModal.specialRequests')}
+                                        <span className="text-slate-400 font-normal ml-1">{t('modificationModal.optional')}</span>
                                     </label>
                                     <textarea
                                         value={form.remarks || ''}
                                         onChange={(e) => handleChange('remarks', e.target.value)}
                                         rows={3}
                                         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none"
-                                        placeholder="e.g., Late check-in, extra pillows..."
+                                        placeholder={t('modificationModal.remarksPlaceholder')}
                                     />
                                 </div>
                             </div>
@@ -233,7 +235,7 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
                                 disabled={amendMutation.isPending}
                                 className="flex-1 py-3 px-4 text-slate-700 dark:text-slate-300 font-medium rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
                             >
-                                Discard
+                                {t('modificationModal.discard')}
                             </button>
                             <button
                                 onClick={handleSubmit}
@@ -243,10 +245,10 @@ export default function ModificationModal({ booking, isOpen, onClose, onModified
                                 {amendMutation.isPending ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                        Saving...
+                                        {t('modificationModal.saving')}
                                     </>
                                 ) : (
-                                    'Save Changes'
+                                    t('modificationModal.saveChanges')
                                 )}
                             </button>
                         </div>

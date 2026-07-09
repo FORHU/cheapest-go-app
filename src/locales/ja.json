@@ -528,6 +528,28 @@
                 "checkInDate": "チェックイン日",
                 "checkOutDate": "チェックアウト日"
             }
+        },
+        "results": {
+            "showingHotelsIn": "Showing hotels in",
+            "otherCities": "Other cities:",
+            "anywhere": "Anywhere",
+            "anyWeek": "Any week",
+            "whereTo": "Where to?",
+            "guestCount": "{count} {count, plural, one {guest} other {guests}}",
+            "activeFilters": "Active Filters:",
+            "namePrefix": "Name: {name}",
+            "starSuffix": "{stars} stars",
+            "ratingPrefix": "Rating {rating}+",
+            "reviewsSuffix": "{count}+ reviews",
+            "amenitiesSuffix": "{count} amenities",
+            "boardTypes": {
+                "RO": "Room Only",
+                "BB": "Breakfast",
+                "HB": "Half Board",
+                "FB": "Full Board",
+                "AI": "All Inclusive"
+            },
+            "freeCancellation": "Free cancellation"
         }
     },
     "deals": {
@@ -1519,7 +1541,8 @@
             "cancelPending": "Cancellation Pending",
             "cancelFailed": "Cancel Failed",
             "refundPending": "Refund Pending",
-            "cancelledProviderMissing": "Cancelled"
+            "cancelledProviderMissing": "Cancelled",
+            "unknown": "Unknown"
         },
         "sections": {
             "stayDetails": "Stay Details",
@@ -1547,6 +1570,189 @@
             "freeCancelUntil": "Free cancellation until",
             "afterDatePenalty": "After {date}: penalty of {amount}",
             "policyNotAvailable": "Cancellation policy details not available."
+        },
+        "bookingCard": {
+            "ratings": {
+                "exceptional": "Exceptional",
+                "excellent": "Excellent",
+                "veryGood": "Very Good",
+                "good": "Good",
+                "pleasant": "Pleasant"
+            },
+            "night": "{count} night",
+            "nights": "{count} nights",
+            "adult": "{count} adult",
+            "adults": "{count} adults",
+            "child": "{count} child",
+            "children": "{count} children",
+            "reviews": "{count} reviews",
+            "total": "total",
+            "tripCompleted": "Trip completed",
+            "cancelled": "Cancelled",
+            "policyBadges": {
+                "freeCancellation": "Free cancellation",
+                "nonRefundable": "Non-refundable",
+                "partialRefund": "Partial refund"
+            },
+            "actions": {
+                "map": "Map",
+                "details": "Details",
+                "modify": "Modify",
+                "cancel": "Cancel",
+                "retryRefund": "Retry refund",
+                "receipt": "Receipt"
+            }
+        },
+        "cancellationModal": {
+            "title": "Cancel Booking",
+            "retryRefundTitle": "Retry Refund",
+            "loadingPolicy": "Loading cancellation policy...",
+            "unableToLoadPolicy": "Unable to load policy",
+            "tryAgain": "Try again",
+            "bookingId": "Booking ID: {id}",
+            "policyTimeline": "Cancellation Policy Timeline",
+            "keepBooking": "Keep Booking",
+            "close": "Close",
+            "cancelling": "Cancelling...",
+            "retrying": "Retrying...",
+            "cancelBooking": "Cancel Booking",
+            "retryRefund": "Retry Refund"
+        },
+        "cancellationPolicies": {
+            "noPolicy": "No specific cancellation policy available. Standard terms apply.",
+            "passed": "Passed: ",
+            "before": "Before: ",
+            "cancellationFee": "Cancellation fee: {amount}",
+            "noShowPenalty": "No-Show Penalty",
+            "noShowDescription": "{amount} will be charged if you don't check in without cancelling.",
+            "earlyDepartureFee": "Early Departure Fee",
+            "earlyDepartureDescription": "{amount} fee applies if you check out before your scheduled date.",
+            "importantNotes": "Important Notes"
+        },
+        "modificationModal": {
+            "title": "Modify Booking",
+            "infoBanner": "You can update the booking holder's name, email, and special requests.",
+            "firstName": "First Name",
+            "firstNamePlaceholder": "First name",
+            "lastName": "Last Name",
+            "lastNamePlaceholder": "Last name",
+            "email": "Email",
+            "emailPlaceholder": "email@example.com",
+            "specialRequests": "Special Requests",
+            "optional": "(optional)",
+            "remarksPlaceholder": "e.g., Late check-in, extra pillows...",
+            "discard": "Discard",
+            "saving": "Saving...",
+            "saveChanges": "Save Changes"
+        },
+        "flightBookingCard": {
+            "flightBooking": "Flight Booking",
+            "originTo": "{origin} to {destination}",
+            "tripTypes": {
+                "oneWay": "One-way",
+                "roundTrip": "Round-trip",
+                "multiCity": "Multi-city"
+            },
+            "nonstop": "Nonstop",
+            "stop": "{count} stop",
+            "stops": "{count} stops",
+            "passenger": "{count} passenger",
+            "passengers": "{count} passengers",
+            "pax": "{count} pax",
+            "totalPaid": "Total paid",
+            "totalRefund": "Total Refund",
+            "noRefund": "No refund issued",
+            "penaltyApplied": "Penalty applied: {amount}",
+            "cancellationFailed": "Cancellation failed",
+            "refundFailed": "Refund failed",
+            "retry": "Retry",
+            "cancelBooking": "Cancel Booking",
+            "cancel": "Cancel",
+            "receipt": "Receipt",
+            "details": "Details",
+            "cancelModal": {
+                "title": "Cancel Booking?",
+                "pnr": "PNR: {pnr}",
+                "refundPolicy": "Refund Policy:",
+                "checkingRefund": "Checking with airline for live refund amount…",
+                "noRefund": "No refund — this fare is non-refundable per airline policy.",
+                "taxesRefund": "Taxes & fees refund: {amount}",
+                "baseFareNonRefundable": "The base fare is non-refundable — only taxes and fees are returned.",
+                "willReceive": "You will receive {amount} back.",
+                "fareRulesNonRefundable": "The fare rules indicate this ticket is non-refundable.",
+                "zeroRefund": "You will receive $0 back if you cancel.",
+                "refundEligibility": "Refund eligibility and amounts are strictly determined by the airline's fare rules.",
+                "estimatedPenalty": "Estimated airline penalty: {amount}",
+                "penaltiesDeducted": "Cancellation penalties set by the airline will be deducted.",
+                "refundTiming": "If a refund is issued, it typically takes 5–10 business days.",
+                "cannotUndo": "This action cannot be undone.",
+                "cannotCancelOnline": "This booking cannot be cancelled online. Please contact support.",
+                "noQuote": "Could not fetch cancellation quote from airline.",
+                "networkError": "Network error fetching cancellation quote.",
+                "keepBooking": "Keep Booking",
+                "cancelling": "Cancelling…",
+                "loading": "Loading…",
+                "confirmCancel": "Yes, Cancel Booking"
+            },
+            "stateChips": {
+                "cancelStuck": "Cancellation stuck — retry below",
+                "refundProcessing": "Refund processing",
+                "refunded": "Refunded",
+                "refundFailed": "Refund Failed",
+                "cancelFailed": "Cancel failed — retry below",
+                "upcomingFlight": "Upcoming Flight",
+                "awaitingConfirmation": "Awaiting Confirmation",
+                "flightCompleted": "Flight completed",
+                "cancelled": "Cancelled",
+                "supplierNotFound": "Supplier record not found",
+                "emailToCancel": "Email crm@myfarebox.com to cancel",
+                "contactSupport": "Contact support to cancel"
+            },
+            "successBanners": {
+                "refundProcessed": "Booking cancelled. Refund has been processed.",
+                "refundProcessing": "Booking cancelled. Refund is being processed — check back shortly.",
+                "cancelled": "Booking cancelled successfully."
+            },
+            "airlineDetails": "Airline details",
+            "airlineBookingDetails": "Airline booking details",
+            "hideDetails": "Hide details",
+            "voidQuote": "Void quote",
+            "hideVoidQuote": "Hide void quote",
+            "voidNotAvailable": "Void not available",
+            "voidNotAvailablePolicy": "Void not available (airline policy)",
+            "refundQuote": "Refund quote",
+            "hideRefundQuote": "Hide refund quote",
+            "refundNotAvailable": "Refund not available",
+            "refundNotAvailablePolicy": "Refund not available (airline policy)",
+            "changeFlight": "Change flight",
+            "hideChangeFlight": "Hide change flight",
+            "fareBadges": {
+                "freeCancellation": "Free cancellation",
+                "refundable": "Refundable",
+                "nonRefundable": "Non-refundable",
+                "fareRulesNonRefundable": "Fare rules: Non-refundable",
+                "changeable": "Changeable",
+                "checkingFarePolicy": "Checking fare policy…"
+            },
+            "pnr": "PNR",
+            "eTicket": "E-TKT",
+            "issuedTickets": "Issued Tickets",
+            "seat": "SEAT",
+            "assignedSeats": "Assigned Seats",
+            "bookingNotes": "Booking Notes",
+            "addBookingNote": "Add Booking Note",
+            "notePlaceholder": "Enter a note for this booking…",
+            "save": "Save",
+            "noteAdded": "Note added successfully.",
+            "loadingTripDetails": "Loading airline details…",
+            "couldNotLoadTripDetails": "Could not load trip details",
+            "networkError": "Network error. Please try again.",
+            "amErrors": {
+                "mystiflyCannotCancel": "This ticketed booking cannot be cancelled via API. Please email crm@myfarebox.com to request cancellation.",
+                "duffelCannotCancel": "This booking cannot be cancelled online. Please contact us at crm@cheapestgo.com to request a manual cancellation.",
+                "cancelFailed": "Cancellation failed. Please contact support.",
+                "networkError": "Network error. Please try again."
+            }
         }
     },
     "invoice": {

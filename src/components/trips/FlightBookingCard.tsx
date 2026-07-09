@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, RotateCcw, ChevronDown, ChevronUp, Plane, Receipt, ArrowLeftRight, ChevronRight } from 'lucide-react';
 import type { FlightBookingRecord } from '@/services/booking.service';
 import { formatDate, formatCurrency } from '@/lib/utils';
@@ -62,6 +63,7 @@ interface CancelModalProps {
 }
 
 function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCurrency }: CancelModalProps) {
+    const t = useTranslations('trips');
     const [mounted, setMounted] = useState(false);
     const [quoteLoading, setQuoteLoading] = useState(booking.provider === 'duffel');
     const [quoteData, setQuoteData] = useState<{ refundAmount: number; refundCurrency: string; penaltyAmount: number; cancellationId: string | null } | null>(null);
@@ -89,12 +91,12 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
                 if (data.success) {
                     setQuoteData({ refundAmount: data.refundAmount, refundCurrency: data.refundCurrency, penaltyAmount: data.penaltyAmount, cancellationId: data.cancellationId });
                 } else if (data.requiresManualCancellation) {
-                    setQuoteError('This booking cannot be cancelled online. Please contact support.');
+                    setQuoteError(t('flightBookingCard.cancelModal.cannotCancelOnline'));
                 } else if (!data.noQuote) {
-                    setQuoteError(data.error ?? 'Could not fetch cancellation quote from airline.');
+                    setQuoteError(data.error ?? t('flightBookingCard.cancelModal.noQuote'));
                 }
             })
-            .catch(() => { if (!cancelled) setQuoteError('Network error fetching cancellation quote.'); })
+            .catch(() => { if (!cancelled) setQuoteError(t('flightBookingCard.cancelModal.networkError')); })
             .finally(() => { if (!cancelled) setQuoteLoading(false); });
         return () => { cancelled = true; };
     }, [booking.id, booking.provider]);
@@ -109,7 +111,7 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
                 return (
                     <li className="flex items-center gap-1.5">
                         <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                        Checking with airline for live refund amount…
+                        {t('flightBookingCard.cancelModal.checkingRefund')}
                     </li>
                 );
             }
@@ -122,7 +124,7 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
                 if (!hasRefund) {
                     return (
                         <li className="font-semibold text-red-600 dark:text-red-400">
-                            No refund — this fare is non-refundable per airline policy.
+                            {t('flightBookingCard.cancelModal.noRefund')}
                         </li>
                     );
                 }
@@ -130,15 +132,15 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
                     return (
                         <>
                             <li className="font-semibold text-emerald-700 dark:text-emerald-400">
-                                Taxes &amp; fees refund: {fmtAmount(quoteData.refundAmount, quoteData.refundCurrency)}
+                                {t('flightBookingCard.cancelModal.taxesRefund', { amount: fmtAmount(quoteData.refundAmount, quoteData.refundCurrency) })}
                             </li>
-                            <li>The base fare is non-refundable — only taxes and fees are returned.</li>
+                            <li>{t('flightBookingCard.cancelModal.baseFareNonRefundable')}</li>
                         </>
                     );
                 }
                 return (
                     <li className="font-semibold text-emerald-700 dark:text-emerald-400">
-                        You will receive {fmtAmount(quoteData.refundAmount, quoteData.refundCurrency)} back.
+                        {t('flightBookingCard.cancelModal.willReceive', { amount: fmtAmount(quoteData.refundAmount, quoteData.refundCurrency) })}
                     </li>
                 );
             }
@@ -149,18 +151,18 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
         if (booking.fare_policy?.isRefundable === false) {
             return (
                 <>
-                    <li className="font-bold text-red-600 dark:text-red-400">The fare rules indicate this ticket is non-refundable.</li>
-                    <li>You will receive $0 back if you cancel.</li>
+                    <li className="font-bold text-red-600 dark:text-red-400">{t('flightBookingCard.cancelModal.fareRulesNonRefundable')}</li>
+                    <li>{t('flightBookingCard.cancelModal.zeroRefund')}</li>
                 </>
             );
         }
         return (
             <>
-                <li>Refund eligibility and amounts are strictly determined by the airline&apos;s fare rules.</li>
+                <li>{t('flightBookingCard.cancelModal.refundEligibility')}</li>
                 {booking.fare_policy?.refundPenaltyAmount ? (
-                    <li>Estimated airline penalty: {fmtAmount(booking.fare_policy.refundPenaltyAmount, booking.fare_policy.refundPenaltyCurrency || booking.currency || 'USD')}</li>
+                    <li>{t('flightBookingCard.cancelModal.estimatedPenalty', { amount: fmtAmount(booking.fare_policy.refundPenaltyAmount, booking.fare_policy.refundPenaltyCurrency || booking.currency || 'USD') })}</li>
                 ) : (
-                    <li>Cancellation penalties set by the airline will be deducted.</li>
+                    <li>{t('flightBookingCard.cancelModal.penaltiesDeducted')}</li>
                 )}
             </>
         );
@@ -183,19 +185,19 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
                     <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
                         <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
                     </div>
-                    <div>
-                        <h2 className="text-base font-semibold text-slate-900 dark:text-white">Cancel Booking?</h2>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">PNR: {booking.pnr}</p>
-                    </div>
+                <div>
+                    <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('flightBookingCard.cancelModal.title')}</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('flightBookingCard.cancelModal.pnr', { pnr: booking.pnr })}</p>
+                </div>
                 </div>
 
                 {/* Refund summary */}
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4 text-xs text-amber-900 dark:text-amber-400 space-y-2">
-                    <p className="font-semibold text-amber-800 dark:text-amber-500">Refund Policy:</p>
+                    <p className="font-semibold text-amber-800 dark:text-amber-500">{t('flightBookingCard.cancelModal.refundPolicy')}</p>
                     <ul className="list-disc list-inside space-y-1 text-amber-700 dark:text-amber-400/90">
                         {renderRefundSummary()}
-                        <li>If a refund is issued, it typically takes 5–10 business days.</li>
-                        <li className="font-semibold pt-1 text-amber-800 dark:text-amber-500">This action cannot be undone.</li>
+                        <li>{t('flightBookingCard.cancelModal.refundTiming')}</li>
+                        <li className="font-semibold pt-1 text-amber-800 dark:text-amber-500">{t('flightBookingCard.cancelModal.cannotUndo')}</li>
                     </ul>
                 </div>
 
@@ -212,7 +214,7 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
                         disabled={isLoading}
                         className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                     >
-                        Keep Booking
+                        {t('flightBookingCard.cancelModal.keepBooking')}
                     </button>
                     <button
                         onClick={() => onConfirm(quoteData?.cancellationId ?? undefined)}
@@ -222,15 +224,15 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
                         {isLoading ? (
                             <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Cancelling…
+                                {t('flightBookingCard.cancelModal.cancelling')}
                             </>
                         ) : quoteLoading ? (
                             <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                Loading…
+                                {t('flightBookingCard.cancelModal.loading')}
                             </>
                         ) : (
-                            'Yes, Cancel Booking'
+                            t('flightBookingCard.cancelModal.confirmCancel')
                         )}
                     </button>
                 </div>
@@ -243,6 +245,7 @@ function CancelModal({ booking, onConfirm, onClose, isLoading, error, displayCur
 // ─── Main Component ──────────────────────────────────────────────────
 
 export default function FlightBookingCard({ booking, onCancelled }: FlightBookingCardProps) {
+    const t = useTranslations('trips');
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancelError, setCancelError] = useState<string | null>(null);
@@ -383,15 +386,15 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
 
     const canCancel = CANCELLABLE_STATUSES.has(localStatus) && !requiresManualCancellation;
 
-    let tripType = 'One-way';
+    let tripType = t('flightBookingCard.tripTypes.oneWay');
     let mainDestination = lastSegment?.destination;
     const origin = firstSegment?.origin;
 
     if (booking.trip_type) {
         const map: Record<string, string> = {
-            'one-way': 'One-way', 'round-trip': 'Round-trip', 'multi-city': 'Multi-city',
+            'one-way': t('flightBookingCard.tripTypes.oneWay'), 'round-trip': t('flightBookingCard.tripTypes.roundTrip'), 'multi-city': t('flightBookingCard.tripTypes.multiCity'),
         };
-        tripType = map[booking.trip_type] ?? 'One-way';
+        tripType = map[booking.trip_type] ?? t('flightBookingCard.tripTypes.oneWay');
 
         if (booking.trip_type === 'round-trip' && segments.length > 1 && origin) {
             let maxLayover = -1;
@@ -404,7 +407,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         }
     } else if (segments.length > 1 && origin && lastSegment) {
         if (origin === lastSegment.destination) {
-            tripType = 'Round-trip';
+            tripType = t('flightBookingCard.tripTypes.roundTrip');
             let maxLayover = -1;
             let turnAroundSegment = segments[0];
             for (let i = 0; i < segments.length - 1; i++) {
@@ -419,7 +422,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                 const layover = new Date(segments[i + 1].departure).getTime() - new Date(segments[i].arrival).getTime();
                 if (layover > 24 * 60 * 60 * 1000) { hasLongLayoverOrGap = true; break; }
             }
-            if (hasLongLayoverOrGap) tripType = 'Multi-city';
+            if (hasLongLayoverOrGap) tripType = t('flightBookingCard.tripTypes.multiCity');
         }
     }
 
@@ -446,12 +449,12 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     const isMystifly = booking.provider === 'mystifly_v2';
                     setCancelError(
                         isMystifly
-                            ? 'This ticketed booking cannot be cancelled via API. Please email crm@myfarebox.com to request cancellation.'
-                            : 'This booking cannot be cancelled online. Please contact us at crm@cheapestgo.com to request a manual cancellation.'
+                            ? t('flightBookingCard.amErrors.mystiflyCannotCancel')
+                            : t('flightBookingCard.amErrors.duffelCannotCancel')
                     );
                     setShowCancelModal(false);
                 } else {
-                    setCancelError(data.error || 'Cancellation failed. Please contact support.');
+                    setCancelError(data.error || t('flightBookingCard.amErrors.cancelFailed'));
                 }
                 setLocalStatus('cancel_failed');
                 return;
@@ -464,7 +467,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             setShowCancelModal(false);
             onCancelled?.(booking.id);
         } catch {
-            setCancelError('Network error. Please try again.');
+            setCancelError(t('flightBookingCard.amErrors.networkError'));
         } finally {
             setIsCancelling(false);
         }
@@ -500,10 +503,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             if (data.success) {
                 setTripDetails(data.travelItinerary);
             } else {
-                setTripDetailsError(data.error || 'Could not load trip details');
+                setTripDetailsError(data.error || t('flightBookingCard.couldNotLoadTripDetails'));
             }
         } catch {
-            setTripDetailsError('Network error. Please try again.');
+            setTripDetailsError(t('flightBookingCard.amErrors.networkError'));
         } finally {
             setLoadingTripDetails(false);
         }
@@ -1000,28 +1003,28 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
         if (localStatus === 'cancel_requested') {
             return (
                 <span className="inline-flex items-center gap-1 text-[10px] text-orange-600 dark:text-orange-400 font-medium whitespace-nowrap">
-                    <AlertTriangle className="w-3 h-3 shrink-0" /> Cancellation stuck — retry below
+                    <AlertTriangle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.stateChips.cancelStuck')}
                 </span>
             );
         }
         if (localStatus === 'refund_pending') {
             return (
                 <span className="inline-flex items-center gap-1 text-[10px] text-purple-600 dark:text-purple-400 font-medium whitespace-nowrap">
-                    <RefreshCw className="w-3 h-3 shrink-0" /> Refund processing
+                    <RefreshCw className="w-3 h-3 shrink-0" /> {t('flightBookingCard.stateChips.refundProcessing')}
                 </span>
             );
         }
         if (localStatus === 'refunded') {
             return (
                 <span className="inline-flex items-center gap-1 text-[10px] text-teal-600 dark:text-teal-400 font-medium whitespace-nowrap">
-                    <CheckCircle className="w-3 h-3 shrink-0" /> Refunded
+                    <CheckCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.stateChips.refunded')}
                 </span>
             );
         }
         if (localStatus === 'refund_failed') {
             return (
                 <span className="inline-flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400 font-medium whitespace-nowrap">
-                    <XCircle className="w-3 h-3 shrink-0" /> Refund Failed
+                    <XCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.stateChips.refundFailed')}
                 </span>
             );
         }
@@ -1029,37 +1032,37 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
             return requiresManualCancellation ? (
                 <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
                     <AlertTriangle className="w-3 h-3 shrink-0" />
-                    {booking.provider === 'mystifly_v2' ? 'Email crm@myfarebox.com to cancel' : 'Contact support to cancel'}
+                    {booking.provider === 'mystifly_v2' ? t('flightBookingCard.stateChips.emailToCancel') : t('flightBookingCard.stateChips.contactSupport')}
                 </span>
             ) : (
                 <span className="inline-flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400 font-medium whitespace-nowrap">
-                    <XCircle className="w-3 h-3 shrink-0" /> Cancel failed — retry below
+                    <XCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.stateChips.cancelFailed')}
                 </span>
             );
         }
         if (isUpcoming && (localStatus === 'ticketed' || localStatus === 'awaiting_ticket')) {
             return (
                 <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" /> Upcoming Flight
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shrink-0" /> {t('flightBookingCard.stateChips.upcomingFlight')}
                 </span>
             );
         }
         if (localStatus === 'awaiting_ticket') {
             return (
                 <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium whitespace-nowrap">
-                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" /> Awaiting Confirmation
+                    <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" /> {t('flightBookingCard.stateChips.awaitingConfirmation')}
                 </span>
             );
         }
         if (isPast && localStatus === 'ticketed') {
-            return <span className="text-[10px] text-slate-400 whitespace-nowrap">Flight completed</span>;
+            return <span className="text-[10px] text-slate-400 whitespace-nowrap">{t('flightBookingCard.stateChips.flightCompleted')}</span>;
         }
         if (localStatus === 'cancelled' || localStatus === 'cancelled_provider_missing') {
             return (
                 <div className="flex flex-col items-end">
-                    <span className="text-[10px] text-red-500 dark:text-red-400 whitespace-nowrap">Cancelled</span>
+                    <span className="text-[10px] text-red-500 dark:text-red-400 whitespace-nowrap">{t('flightBookingCard.stateChips.cancelled')}</span>
                     {localStatus === 'cancelled_provider_missing' && (
-                        <span className="text-[8px] text-slate-400 whitespace-nowrap mt-0.5">Supplier record not found</span>
+                        <span className="text-[8px] text-slate-400 whitespace-nowrap mt-0.5">{t('flightBookingCard.stateChips.supplierNotFound')}</span>
                     )}
                 </div>
             );
@@ -1094,10 +1097,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     }`}>
                         <CheckCircle className="w-3.5 h-3.5 shrink-0" />
                         {cancelSuccessStatus === 'refunded'
-                            ? 'Booking cancelled. Refund has been processed.'
+                            ? t('flightBookingCard.successBanners.refundProcessed')
                             : cancelSuccessStatus === 'refund_pending'
-                            ? 'Booking cancelled. Refund is being processed — check back shortly.'
-                            : 'Booking cancelled successfully.'}
+                            ? t('flightBookingCard.successBanners.refundProcessing')
+                            : t('flightBookingCard.successBanners.cancelled')}
                     </div>
                 )}
 
@@ -1122,7 +1125,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         </div>
                         <div className="absolute top-1 left-1">
                             <span className={`text-[clamp(0.5rem,1.5vw,0.5625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${flightStatusColors[localStatus] || flightStatusColors.booked}`}>
-                                {flightStatusLabels[localStatus] || 'Unknown'}
+                                {flightStatusLabels[localStatus] || t('status.unknown')}
                             </span>
                         </div>
                     </div>
@@ -1141,7 +1144,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1.5 flex flex-wrap gap-2">
                             <span className="font-mono">{booking.pnr}</span>
                             <span>·</span>
-                            <span>{booking.passengers?.length || 0} pax</span>
+                            <span>{t('flightBookingCard.pax', { count: booking.passengers?.length || 0 })}</span>
                             {/* Seat badges — mobile */}
                             {booking.passengers?.some(p => p.seat_number) && (
                                 <span className="flex items-center gap-1">
@@ -1166,7 +1169,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     onClick={() => setShowCancelModal(true)}
                                     className="text-[10px] font-medium text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 border border-red-200 dark:border-red-800 rounded px-1.5 py-0.5 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
                                 >
-                                    Cancel
+                                    {t('flightBookingCard.cancel')}
                                 </button>
                             )}
                         </div>
@@ -1180,7 +1183,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                             onClick={handleViewTripDetails}
                             className="w-full flex items-center justify-between px-2.5 py-2 text-[10px] text-indigo-600 dark:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                         >
-                            <span className="flex items-center gap-1"><Plane className="w-3 h-3" /> Airline booking details</span>
+                            <span className="flex items-center gap-1"><Plane className="w-3 h-3" /> {t('flightBookingCard.airlineBookingDetails')}</span>
                             {showTripDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </button>
                         {localStatus === 'ticketed' && (<>
@@ -1191,13 +1194,13 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 >
                                     <span className="flex items-center gap-1">
                                         {loadingVoidQuote ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
-                                        Void quote
+                                        {t('flightBookingCard.voidQuote')}
                                     </span>
                                     {!loadingVoidQuote && (showVoidQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                 </button>
                             ) : (
                                 <div className="flex items-center gap-1.5 px-2.5 py-2 text-[10px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
-                                    <XCircle className="w-3 h-3 shrink-0" /> Void not available (airline policy)
+                                    <XCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.voidNotAvailablePolicy')}
                                 </div>
                             )}
                             {fareEligibility === null || fareEligibility.isRefundable || isDuffel ? (
@@ -1207,13 +1210,13 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 >
                                     <span className="flex items-center gap-1">
                                         {['quoting', 'accepting'].includes(refundStep) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
-                                        Refund quote
+                                        {t('flightBookingCard.refundQuote')}
                                     </span>
                                     {!['quoting', 'accepting'].includes(refundStep) && (showRefundQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                 </button>
                             ) : (
                                 <div className="flex items-center gap-1.5 px-2.5 py-2 text-[10px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
-                                    <XCircle className="w-3 h-3 shrink-0" /> Refund not available (airline policy)
+                                    <XCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.refundNotAvailablePolicy')}
                                 </div>
                             )}
                         </>)}
@@ -1227,7 +1230,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         {/* Status badge — sits on top of the logo */}
                         <div className="absolute top-1.5 left-1.5 z-20">
                             <span className={`text-[clamp(0.5625rem,1.5vw,0.625rem)] font-semibold px-1.5 py-0.5 rounded shadow ${flightStatusColors[localStatus] || flightStatusColors.booked}`}>
-                                {flightStatusLabels[localStatus] || 'Unknown'}
+                                {flightStatusLabels[localStatus] || t('status.unknown')}
                             </span>
                         </div>
                         {/* Logo fills entire panel */}
@@ -1252,7 +1255,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         <div className="flex items-center gap-2 mb-1">
                             <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0">{tripType}</span>
                             <h3 className="text-[clamp(0.75rem,2vw,0.875rem)] font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                                {firstSegment ? `${origin} to ${mainDestination}` : 'Flight Booking'}
+                            {firstSegment ? t('flightBookingCard.originTo', { origin, destination: mainDestination }) : t('flightBookingCard.flightBooking')}
                             </h3>
                         </div>
 
@@ -1274,7 +1277,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <Users className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                                <span>{booking.passengers?.length || 0} passenger{(booking.passengers?.length || 0) !== 1 && 's'}</span>
+                                <span>{t('flightBookingCard.passengers', { count: booking.passengers?.length || 0 })}</span>
                             </div>
                             {segments.length > 0 && (() => {
                                 // Group hops by itinerary_index (outbound=0, return=1, etc.)
@@ -1287,7 +1290,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 const itineraryKeys = Object.keys(byItinerary).map(Number).sort();
                                 const stopLabels = itineraryKeys.map(k => {
                                     const count = byItinerary[k].length - 1;
-                                    return count === 0 ? 'Nonstop' : `${count} stop${count > 1 ? 's' : ''}`;
+                                    return count === 0 ? t('flightBookingCard.nonstop') : t(count === 1 ? 'flightBookingCard.stop' : 'flightBookingCard.stops', { count });
                                 });
                                 return (
                                     <div className="flex items-center gap-1.5">
@@ -1304,7 +1307,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
                                     <div className="flex items-center gap-1.5">
                                         <span className="text-emerald-500 font-bold px-1 py-0.5 rounded bg-emerald-50 dark:bg-emerald-900/30 text-[9px] uppercase border border-emerald-100 dark:border-emerald-800 shrink-0">E-TKT</span>
-                                        <span className="font-medium text-[11px] text-slate-600 dark:text-slate-300">Issued Tickets</span>
+                                        <span className="font-medium text-[11px] text-slate-600 dark:text-slate-300">{t('flightBookingCard.issuedTickets')}</span>
                                     </div>
                                     <div className="flex flex-wrap gap-2 text-[10px]">
                                         {booking.passengers.filter(p => p.ticket_number).map((p, idx) => (
@@ -1321,7 +1324,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
                                     <div className="flex items-center gap-1.5">
                                         <span className="text-blue-500 font-bold px-1 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-[9px] uppercase border border-blue-100 dark:border-blue-800 shrink-0">SEAT</span>
-                                        <span className="font-medium text-[11px] text-slate-600 dark:text-slate-300">Assigned Seats</span>
+                                        <span className="font-medium text-[11px] text-slate-600 dark:text-slate-300">{t('flightBookingCard.assignedSeats')}</span>
                                     </div>
                                     <div className="flex flex-wrap gap-2 text-[10px]">
                                         {booking.passengers.filter(p => p.seat_number).map((p, idx) => (
@@ -1340,31 +1343,31 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 <div className="flex flex-wrap gap-1.5">
                                     {fareEligibility.isVoidable ? (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                            <CheckCircle className="w-3 h-3 shrink-0" /> Free cancellation
+                                            <CheckCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.fareBadges.freeCancellation')}
                                         </span>
                                     ) : fareEligibility.isRefundable ? (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-                                            <RotateCcw className="w-3 h-3 shrink-0" /> Refundable
+                                            <RotateCcw className="w-3 h-3 shrink-0" /> {t('flightBookingCard.fareBadges.refundable')}
                                         </span>
                                     ) : isDuffel ? (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                                            <XCircle className="w-3 h-3 shrink-0" /> Fare rules: Non-refundable
+                                            <XCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.fareBadges.fareRulesNonRefundable')}
                                         </span>
                                     ) : (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800">
-                                            <XCircle className="w-3 h-3 shrink-0" /> Non-refundable
+                                            <XCircle className="w-3 h-3 shrink-0" /> {t('flightBookingCard.fareBadges.nonRefundable')}
                                         </span>
                                     )}
                                     {isDuffel && fareEligibility.isChangeable && (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
-                                            <ArrowLeftRight className="w-3 h-3 shrink-0" /> Changeable
+                                            <ArrowLeftRight className="w-3 h-3 shrink-0" /> {t('flightBookingCard.fareBadges.changeable')}
                                         </span>
                                     )}
                                 </div>
                             )}
                             {loadingEligibility && (
                                 <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                                    <Loader2 className="w-3 h-3 animate-spin" /> Checking fare policy…
+                                    <Loader2 className="w-3 h-3 animate-spin" /> {t('flightBookingCard.fareBadges.checkingFarePolicy')}
                                 </div>
                             )}
                         </div>
@@ -1373,7 +1376,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     {/* Right panel — status & price */}
                     <div className="flex flex-col items-end justify-between w-[140px] p-3 border-l border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 gap-2">
                         <div className="text-right w-full">
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">Total paid</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-0.5">{t('flightBookingCard.totalPaid')}</div>
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(
                                     frozenTotal?.amount ?? (booking.charged_price ?? booking.total_price),
@@ -1390,15 +1393,15 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 if (!hasRefund && localRefundAmount === null && booking.refund_amount === undefined) return null;
                                 return (
                                     <div className={`text-right mt-1 p-2 rounded border w-full ${hasRefund ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
-                                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Total Refund</div>
+                                        <div className="text-[10px] text-slate-500 dark:text-slate-400">{t('flightBookingCard.totalRefund')}</div>
                                         <div className={`text-xs font-bold ${hasRefund ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                                             {hasRefund
                                                 ? formatCurrency(convertPrice(refundAmt, refundCurr), displayCurrency)
-                                                : 'No refund issued'}
+                                                : t('flightBookingCard.noRefund')}
                                         </div>
                                         {(booking.refund_penalty_amount ?? 0) > 0 && (
                                             <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
-                                                Penalty applied: {formatCurrency(convertPrice(booking.refund_penalty_amount!, booking.refund_currency || 'USD'), displayCurrency)}
+                                                {t('flightBookingCard.penaltyApplied', { amount: formatCurrency(convertPrice(booking.refund_penalty_amount!, booking.refund_currency || 'USD'), displayCurrency) })}
                                             </div>
                                         )}
                                     </div>
@@ -1410,14 +1413,14 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 <div className="w-full rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-2 space-y-1.5">
                                     <div className="flex items-center gap-1 text-[10px] font-semibold text-red-600 dark:text-red-400">
                                         <XCircle className="w-3 h-3 shrink-0" />
-                                        {localStatus === 'cancel_failed' ? 'Cancellation failed' : 'Refund failed'}
+                                        {localStatus === 'cancel_failed' ? t('flightBookingCard.cancellationFailed') : t('flightBookingCard.refundFailed')}
                                     </div>
                                     <button
                                         onClick={() => setShowCancelModal(true)}
                                         className="w-full text-[10px] font-semibold bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded px-2 py-1.5 transition-colors flex items-center justify-center gap-1"
                                     >
                                         <RotateCcw className="w-3 h-3" />
-                                        Retry
+                                        {t('flightBookingCard.retry')}
                                     </button>
                                 </div>
                             ) : (
@@ -1430,7 +1433,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                             className="w-full text-[10px] font-medium text-red-500 dark:text-red-400 hover:text-white border border-red-200 dark:border-red-800 hover:bg-red-500 dark:hover:bg-red-600 rounded-lg px-2 py-1.5 transition-all duration-200 flex items-center justify-center gap-1"
                                         >
                                             <RotateCcw className="w-3 h-3" />
-                                            Cancel Booking
+                                            {t('flightBookingCard.cancelBooking')}
                                         </button>
                                     )}
                                 </>
@@ -1444,7 +1447,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                 className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg px-2 py-1.5 transition-colors"
                             >
                                 <Plane className="w-3 h-3" />
-                                {showTripDetails ? 'Hide details' : 'Airline details'}
+                                {showTripDetails ? t('flightBookingCard.hideDetails') : t('flightBookingCard.airlineDetails')}
                                 {showTripDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             </button>
                             {localStatus === 'ticketed' && (<>
@@ -1454,13 +1457,13 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                         className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg px-2 py-1.5 transition-colors"
                                     >
                                         {loadingVoidQuote ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
-                                        {showVoidQuote ? 'Hide void quote' : 'Void quote'}
+                                        {showVoidQuote ? t('flightBookingCard.hideVoidQuote') : t('flightBookingCard.voidQuote')}
                                         {!loadingVoidQuote && (showVoidQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                     </button>
                                 ) : (
                                     <div className="flex w-full items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 cursor-default">
                                         <XCircle className="w-3 h-3 shrink-0" />
-                                        <span>Void not available</span>
+                                        <span>{t('flightBookingCard.voidNotAvailable')}</span>
                                     </div>
                                 )}
                                 {fareEligibility === null || fareEligibility.isRefundable || isDuffel ? (
@@ -1469,13 +1472,13 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                         className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
                                     >
                                         {['quoting', 'accepting'].includes(refundStep) ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
-                                        {showRefundQuote ? 'Hide refund quote' : 'Refund quote'}
+                                        {showRefundQuote ? t('flightBookingCard.hideRefundQuote') : t('flightBookingCard.refundQuote')}
                                         {!['quoting', 'accepting'].includes(refundStep) && (showRefundQuote ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                                     </button>
                                 ) : (
                                     <div className="flex w-full items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 cursor-default">
                                         <XCircle className="w-3 h-3 shrink-0" />
-                                        <span>Refund not available</span>
+                                        <span>{t('flightBookingCard.refundNotAvailable')}</span>
                                     </div>
                                 )}
                             </>)}
@@ -1486,7 +1489,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg px-2 py-1.5 transition-colors"
                                 >
                                     <ArrowLeftRight className="w-3 h-3" />
-                                    {showReissue ? 'Hide change flight' : 'Change flight'}
+                                    {showReissue ? t('flightBookingCard.hideChangeFlight') : t('flightBookingCard.changeFlight')}
                                     {showReissue ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                 </button>
                             )}
@@ -1496,14 +1499,14 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                             className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
                         >
                             <ChevronRight className="w-3 h-3" />
-                            Details
+                            {t('flightBookingCard.details')}
                         </a>
                         <a
                             href={`/trips/invoice/${booking.id}?type=flight`}
                             className="flex w-full items-center justify-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
                         >
                             <Receipt className="w-3 h-3" />
-                            Receipt
+                            {t('flightBookingCard.receipt')}
                         </a>
                     </div>
                     </div>
@@ -1514,7 +1517,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                     <div className="border-t border-slate-100 dark:border-slate-800 px-3 lg:px-5 py-3">
                         {loadingTripDetails && (
                             <div className="flex items-center gap-2 text-xs text-slate-500">
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading airline details…
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('flightBookingCard.loadingTripDetails')}
                             </div>
                         )}
                         {tripDetailsError && (
@@ -1525,7 +1528,7 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                         {/* Existing Notes */}
                         {existingNotes.length > 0 && (
                             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 mb-2">
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Booking Notes</p>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{t('flightBookingCard.bookingNotes')}</p>
                                 <div className="space-y-1.5">
                                     {existingNotes.map((n, i) => (
                                         <div key={i} className="flex items-start gap-2 text-xs bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-2 border border-slate-100 dark:border-slate-700">
@@ -1542,14 +1545,14 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
 
                         {/* Add Note */}
                         <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Add Booking Note</p>
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{t('flightBookingCard.addBookingNote')}</p>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
                                     value={noteText}
                                     onChange={e => { setNoteText(e.target.value); setNoteSuccess(false); setNoteError(null); }}
                                     onKeyDown={e => e.key === 'Enter' && handleAddNote()}
-                                    placeholder="Enter a note for this booking…"
+                                    placeholder={t('flightBookingCard.notePlaceholder')}
                                     className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                                 />
                                 <button
@@ -1557,10 +1560,10 @@ export default function FlightBookingCard({ booking, onCancelled }: FlightBookin
                                     disabled={submittingNote || !noteText.trim()}
                                     className="shrink-0 text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 flex items-center gap-1 transition-colors"
                                 >
-                                    {submittingNote ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+                                    {submittingNote ? <Loader2 className="w-3 h-3 animate-spin" /> : t('flightBookingCard.save')}
                                 </button>
                             </div>
-                            {noteSuccess && <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Note added successfully.</p>}
+                            {noteSuccess && <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t('flightBookingCard.noteAdded')}</p>}
                             {noteError && <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> {noteError}</p>}
                         </div>
 
