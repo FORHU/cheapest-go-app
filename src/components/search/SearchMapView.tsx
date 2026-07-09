@@ -267,54 +267,54 @@ function SearchRefinementBar({ rawSearchParams }: { rawSearchParams: Record<stri
                 <div className="hidden sm:flex items-center w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm h-14">
 
                     {/* Check-in — relative wrapper so DatePicker positions itself here */}
-                    <div className="relative flex-1 h-full">
+                    <div className="relative flex-1 min-w-0 h-full">
                         <div
-                            className="flex flex-col justify-center px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-l-2xl"
+                            className="flex flex-col justify-center px-2.5 sm:px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800 rounded-l-2xl"
                             onClick={() => setActiveDropdown(activeDropdown === 'dates-in' ? null : 'dates-in')}
                             data-datepicker-trigger
                         >
-                            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkIn')}</span>
-                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(storeCheckIn)}</span>
+                            <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">{t('checkIn')}</span>
+                            <span className="text-[11.5px] sm:text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight whitespace-nowrap">{fmtDay(storeCheckIn)}</span>
                         </div>
                         <DatePicker triggerDropdown="dates-in" />
                     </div>
 
                     {/* Nights divider */}
-                    <div className="flex flex-col items-center justify-center px-2.5 h-full bg-slate-50 dark:bg-slate-800/40 border-r border-slate-100 dark:border-slate-800 shrink-0">
+                    <div className="flex flex-col items-center justify-center px-1.5 sm:px-2.5 h-full bg-slate-50 dark:bg-slate-800/40 border-r border-slate-100 dark:border-slate-800 shrink-0">
                         <span className="text-[11px] font-bold text-blue-500">{nights}</span>
                         <span className="text-[9px] text-slate-400 leading-none">{t('nights')}</span>
                     </div>
 
                     {/* Check-out — relative wrapper so DatePicker positions itself here */}
-                    <div className="relative flex-1 h-full">
+                    <div className="relative flex-1 min-w-0 h-full">
                         <div
-                            className="flex flex-col justify-center px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800"
+                            className="flex flex-col justify-center px-2.5 sm:px-5 h-full cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800"
                             onClick={() => setActiveDropdown(activeDropdown === 'dates-out' ? null : 'dates-out')}
                             data-datepicker-trigger
                         >
-                            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('checkOut')}</span>
-                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtDay(storeCheckOut)}</span>
+                            <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">{t('checkOut')}</span>
+                            <span className="text-[11.5px] sm:text-[13px] font-semibold text-slate-800 dark:text-slate-100 leading-tight whitespace-nowrap">{fmtDay(storeCheckOut)}</span>
                         </div>
                         <DatePicker initialCheckOutMode triggerDropdown="dates-out" />
                     </div>
 
                     {/* Guests */}
-                    <div className="flex flex-col justify-center px-5 border-r border-slate-100 dark:border-slate-800 shrink-0 h-full">
-                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('guests')}</span>
+                    <div className="flex flex-col justify-center px-2 sm:px-4 border-r border-slate-100 dark:border-slate-800 shrink-0 h-full">
+                        <span className="text-[9px] sm:text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">{t('guests')}</span>
                         <div className="flex items-center gap-2 mt-0.5">
-                            <button onClick={() => setAdults(a => Math.max(1, a - 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">−</button>
-                            <span className="text-[13px] font-semibold text-slate-800 dark:text-slate-100 w-4 text-center tabular-nums">{adults + children}</span>
-                            <button onClick={() => setAdults(a => Math.min(16, a + 1))} className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">+</button>
+                            <button onClick={() => setAdults(a => Math.max(1, a - 1))} className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-sm sm:text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">−</button>
+                            <span className="text-[11.5px] sm:text-[13px] font-semibold text-slate-800 dark:text-slate-100 w-4 text-center tabular-nums">{adults + children}</span>
+                            <button onClick={() => setAdults(a => Math.min(16, a + 1))} className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-sm sm:text-base font-light flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 cursor-pointer leading-none select-none">+</button>
                         </div>
                     </div>
 
                     {/* Search */}
                     <button
                         onClick={handleSearch}
-                        className="flex items-center gap-2 px-6 h-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition-colors cursor-pointer shrink-0 rounded-r-2xl"
+                        className="flex items-center justify-center gap-2 px-3.5 sm:px-6 h-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition-colors cursor-pointer shrink-0 rounded-r-2xl"
                     >
                         <Search size={15} />
-                        <span>{t('search')}</span>
+                        <span className="hidden sm:inline">{t('search')}</span>
                     </button>
                 </div>
             </div>
@@ -334,7 +334,7 @@ function SearchMapView({
     totalCount: _totalCount = 0,
     allMappable = [],
     rawSearchParams = {},
-    isStreaming = false,
+    isStreaming: _isStreaming = false,
     onSwitchToList,
 }: SearchMapViewProps) {
     const router = useRouter();
@@ -394,12 +394,9 @@ function SearchMapView({
 
             // Update existing entries that have empty location/image OR no price yet.
             // Drop priceLoading hotels that disappeared from properties (TGX had no availability).
-            // Update existing entries that have empty location/image OR no price yet.
-            // Drop priceLoading hotels that disappeared from properties (TGX had no availability).
             const updated = prev.map((p: any) => {
                 const id = p.id ?? p.hotelId;
                 const incoming = incomingMap.get(id);
-                if (!incoming) return (p as any).priceLoading ? null : p;
                 if (!incoming) return (p as any).priceLoading ? null : p;
                 const wantsLocation = !p.location && incoming.location;
                 const wantsImage = !p.image && incoming.image;
@@ -883,22 +880,7 @@ function SearchMapView({
                             </div>
                         </>
                     ) : allProperties.some((p: any) => (p as any).priceLoading) ? (
-                        // Catalog hotels exist but prices haven't arrived yet — show skeletons
-                        <div className="flex flex-col gap-3 p-3 overflow-y-auto">
-                            {[1, 2, 3, 4, 5, 6].map(n => (
-                                <div key={n} className="rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 p-3 flex gap-3 animate-pulse">
-                                    <div className="w-16 h-16 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
-                                    <div className="flex-1 flex flex-col gap-2 py-1">
-                                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
-                                        <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
-                                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mt-auto" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : allProperties.some((p: any) => (p as any).priceLoading) ? (
                         <PriceLoadingSidebar destination={destination ?? ''} />
-
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full px-6 text-center">
                             <MapPin className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
@@ -939,7 +921,7 @@ function SearchMapView({
                     hoveredId={hoveredId}
                     onHoverId={setHoveredId}
                     onViewDetails={handleViewDetails}
-                    searchOverlayClassName="absolute top-4 left-4 right-4 z-20"
+                    searchOverlayClassName="absolute top-4 left-4 right-14 z-20"
                     defaultCenter={fallbackCoords ?? undefined}
                 />
 

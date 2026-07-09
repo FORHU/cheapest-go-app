@@ -161,14 +161,16 @@ export const SearchMapContainer = React.memo(({
     // On desktop the MapPopup (anchor="bottom", offset=60) floats ~180px above the marker.
     // offset [0, 120] positions the hotel ~120px below viewport centre so the popup is
     // visually centred and clears the ~150px-tall gems panel at the bottom.
+    // Mobile uses zoom 14 (vs 16 on desktop) to avoid loading heavy 3D tiles mid-animation.
     React.useEffect(() => {
         if (!selectedId || !isMapLoaded) return;
         const prop = mappableProperties.find(p => p.id === selectedId);
         if (!prop) return;
         const currentZoom = mapRef.current?.getZoom() ?? 12;
+        const targetZoom = isMobile ? Math.max(currentZoom, 14) : Math.max(currentZoom, 16);
         mapRef.current?.easeTo({
             center: [prop.coordinates.lng, prop.coordinates.lat],
-            zoom: Math.max(currentZoom, 16),
+            zoom: targetZoom,
             offset: isMobile ? [0, 0] : [0, 120],
             duration: 800,
             essential: true,
@@ -221,8 +223,21 @@ export const SearchMapContainer = React.memo(({
     const [activeGemName, setActiveGemName] = React.useState<string | null>(null);
     const [selectedNearbyPlace, setSelectedNearbyPlace] = React.useState<NearbyPlace | null>(null);
 
+    // Delay the gems fetch until after the easeTo animation finishes (800ms duration + 100ms buffer).
+    // Firing it immediately causes Google Places + Mapbox SearchBox calls to compete with
+    // camera animation startup (Option A lag) and Stage-2 enrichment re-renders to hit
+    // right as the map is rendering new tiles after landing (Option C freeze).
+    const [gemsEnabled, setGemsEnabled] = React.useState(false);
+    const gemsTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    React.useEffect(() => {
+        if (gemsTimerRef.current) clearTimeout(gemsTimerRef.current);
+        if (!selectedProperty) { setGemsEnabled(false); return; }
+        gemsTimerRef.current = setTimeout(() => setGemsEnabled(true), 900);
+        return () => { if (gemsTimerRef.current) clearTimeout(gemsTimerRef.current); };
+    }, [selectedProperty?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const { nearbyGems, isFetchingGems } = useNearbyGems({
-        isLoaded: isMapLoaded && !!selectedProperty,
+        isLoaded: isMapLoaded && !!selectedProperty && gemsEnabled,
         coordinates: selectedProperty
             ? { lat: selectedProperty.coordinates.lat, lng: selectedProperty.coordinates.lng }
             : undefined,
@@ -361,16 +376,17 @@ export const SearchMapContainer = React.memo(({
         standardConfig,
     } = useMapDetails('default-3d');
 
-    // Full 3D standard config for the search map
+    // Full 3D standard config for the search map.
+    // On mobile, 3D geometry is disabled to avoid GPU overload during tile loading after easeTo.
     const searchStandardConfig = React.useMemo(() => ({
         ...standardConfig,
-        show3dObjects: true,
-        show3dBuildings: true,
-        show3dFacades: true,
-        show3dTrees: true,
-        show3dLandmarks: true,
+        show3dObjects: !isMobile,
+        show3dBuildings: !isMobile,
+        show3dFacades: !isMobile,
+        show3dTrees: !isMobile,
+        show3dLandmarks: !isMobile,
         lightPreset: 'day' as const,
-    }), [standardConfig]);
+    }), [standardConfig, isMobile]);
 
 
     // Reset loading state on style change to prevent "Style not done loading" errors
@@ -385,7 +401,7 @@ export const SearchMapContainer = React.memo(({
                 mapStyle={mapStyleUrl}
                 standardConfig={mapType === 'default-3d' ? searchStandardConfig : undefined}
                 enable3DTerrain={terrainEnabled}
-                antialias={true}
+                antialias={!isMobile}
                 maxPitch={85}
                 initialViewState={{
                     longitude: defaultCenter?.lng ?? 139.6917,
@@ -500,7 +516,7 @@ export const SearchMapContainer = React.memo(({
 
             {/* ── Mobile Centered Property Preview ── */}
             {isMobile && selectedProperty && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-[min(200px,calc(100vw-48px))] pointer-events-auto">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-60 w-[min(200px,calc(100vw-48px))] pointer-events-auto">
                     <div className="relative">
                         <MapPopup
                             property={selectedProperty}
