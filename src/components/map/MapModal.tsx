@@ -13,9 +13,7 @@ const SearchMapContainer = dynamic(
     {
         ssr: false,
         loading: () => (
-            <div className="flex-1 h-full flex items-center justify-center bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
-                <div className="animate-pulse text-sm text-slate-500 font-medium">Loading map...</div>
-            </div>
+            <div className="flex-1 h-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
         ),
     }
 );
