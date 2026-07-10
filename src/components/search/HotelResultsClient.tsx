@@ -155,14 +155,21 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                 ));
                                 if (accumulated.length !== before && !cancelled) setProperties([...accumulated]);
                             } else if (msg.type === 'done') {
+                                // Drop catalog hotels that never received a TGX price — they have
+                                // no real availability for these dates and would show "0 rooms" if clicked.
+                                const priced = accumulated.filter((h: any) => h.priceLoading !== true && h.price > 0);
+                                if (priced.length !== accumulated.length) {
+                                    accumulated.splice(0, accumulated.length, ...priced);
+                                    if (!cancelled) setProperties([...accumulated]);
+                                }
                                 if (!cancelled) {
-                                    setTotalCount(msg.totalCount ?? accumulated.length);
+                                    setTotalCount(accumulated.length);
                                     setStatus('done');
                                 }
                                 // Cache the fully-priced results for 10 minutes
                                 setSearchResults(cacheKey, {
                                     properties: [...accumulated],
-                                    totalCount: msg.totalCount ?? accumulated.length,
+                                    totalCount: accumulated.length,
                                     allMappable: msg.allMappable ?? [],
                                     queryParams: searchParams,
                                 });

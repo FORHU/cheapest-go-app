@@ -1006,7 +1006,11 @@
             "checkIn": "Check-in",
             "checkOut": "Check-out",
             "clearFilters": "Clear filters",
-            "comparingRates": "Comparing room rates across 200+ hotelsâ€¦",
+            "almostThere": "Almost there — great results incoming…",
+            "checkingAvailabilityDates": "Checking availability for your dates…",
+            "comparingRates": "Comparing room rates across 200+ hotels…",
+            "findingBestDeals": "Finding the best deals in the area…",
+            "securingLivePrices": "Securing live prices from our suppliers…",
             "filterOptions": {
                 "boardTypes": {
                     "allInclusive": "All Inclusive",
@@ -1441,6 +1445,7 @@
             "noMeals": "No meals included",
             "noNonRefundableRooms": "No non-refundable rooms available.",
             "noRefundableRooms": "No refundable rooms available.",
+            "changeDates": "Change dates",
             "noRooms": "No rooms available for the selected dates.",
             "nonRefundable": "Non-refundable",
             "nonRefundablePill": "Non-Refundable",

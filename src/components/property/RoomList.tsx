@@ -200,8 +200,22 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                         </button>
                     </div>
                 ) : (
-                    <div className="py-8 text-center text-slate-400 text-sm">
-                        {t('noRooms')}
+                    <div className="py-10 text-center flex flex-col items-center gap-3">
+                        <div className="text-3xl select-none">🗓️</div>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('noRooms')}</p>
+                        <button
+                            onClick={() => {
+                                const picker = document.querySelector<HTMLElement>('[data-date-picker]');
+                                if (picker) {
+                                    picker.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    picker.classList.add('ring-2', 'ring-blue-400', 'ring-offset-2');
+                                    setTimeout(() => picker.classList.remove('ring-2', 'ring-blue-400', 'ring-offset-2'), 2000);
+                                }
+                            }}
+                            className="text-xs text-blue-600 dark:text-blue-400 font-medium underline underline-offset-2 hover:no-underline"
+                        >
+                            {t('changeDates')}
+                        </button>
                     </div>
                 )}
             </div>

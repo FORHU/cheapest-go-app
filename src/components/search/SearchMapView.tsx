@@ -119,11 +119,11 @@ interface SearchMapViewProps {
 
 const LOADING_TIPS = [
     'comparingRates',
-    'Checking availability for your dates…',
-    'Finding the best deals in the area…',
-    'Almost there — great results incoming…',
-    'Securing live prices from our suppliers…',
-];
+    'checkingAvailabilityDates',
+    'findingBestDeals',
+    'almostThere',
+    'securingLivePrices',
+] as const;
 
 function PriceLoadingSidebar({ destination }: { destination: string }) {
     const t = useTranslations('hotels.mapView');
@@ -139,7 +139,7 @@ function PriceLoadingSidebar({ destination }: { destination: string }) {
                     {destination ? t('findingHotelsIn', { destination }) : t('findingHotels')}
                 </p>
                 <p className="text-[11px] text-blue-500 dark:text-blue-400 transition-all duration-500 min-h-[16px]">
-                    {LOADING_TIPS[tipIdx] === 'comparingRates' ? t('comparingRates') : LOADING_TIPS[tipIdx]}
+                    {t(LOADING_TIPS[tipIdx])}
                 </p>
             </div>
             {[1, 2, 3, 4].map(n => (

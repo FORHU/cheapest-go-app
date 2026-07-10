@@ -874,7 +874,11 @@
             "checkIn": "入住",
             "checkOut": "退房",
             "clearFilters": "清除筛选",
+            "almostThere": "即将完成 — 精彩结果即将呈现…",
+            "checkingAvailabilityDates": "正在检查您所选日期的空房情况…",
             "comparingRates": "正在比较 200+ 家酒店房价…",
+            "findingBestDeals": "正在查找该地区最优惠的价格…",
+            "securingLivePrices": "正在从供应商获取实时价格…",
             "filterOptions": {
                 "boardTypes": {
                     "allInclusive": "全包",
@@ -1348,6 +1352,7 @@
             "noMeals": "不含餐食",
             "noNonRefundableRooms": "没有不可退款的房间。",
             "noRefundableRooms": "没有可退款的房间。",
+            "changeDates": "更改日期",
             "noRooms": "所选日期暂无可用房间。",
             "nonRefundable": "不可退款",
             "nonRefundablePill": "不可退款",

@@ -872,7 +872,11 @@
             "checkIn": "체크인",
             "checkOut": "체크아웃",
             "clearFilters": "필터 지우기",
+            "almostThere": "거의 다 됐습니다 — 최적의 결과가 곧 나타납니다…",
+            "checkingAvailabilityDates": "선택하신 날짜의 가용성을 확인 중입니다…",
             "comparingRates": "200개 이상의 호텔 객실 요금 비교 중…",
+            "findingBestDeals": "이 지역에서 최저가를 찾고 있습니다…",
+            "securingLivePrices": "공급업체로부터 실시간 가격을 가져오는 중…",
             "filterOptions": {
                 "boardTypes": {
                     "allInclusive": "올 인클루시브",
@@ -1345,6 +1349,7 @@
             "noMeals": "식사 미포함",
             "noNonRefundableRooms": "환불 불가 객실이 없습니다.",
             "noRefundableRooms": "환불 가능한 객실이 없습니다.",
+            "changeDates": "날짜 변경", 
             "noRooms": "선택한 날짜에 이용 가능한 객실이 없습니다.",
             "nonRefundable": "환불 불가",
             "nonRefundablePill": "환불 불가",
