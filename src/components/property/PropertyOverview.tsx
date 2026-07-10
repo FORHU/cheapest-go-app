@@ -51,6 +51,7 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
     const descriptionText = stripHtml(property.description);
     const isDescriptionLong = descriptionText.length > 150;
     const t = useTranslations('propertyOverview');
+    const tRatings = useTranslations('hotels.ratings');
 
     return (
         <div id="overview-section" className="space-y-4 md:space-y-8 scroll-mt-24 md:scroll-mt-36">
@@ -88,7 +89,7 @@ const PropertyOverview: React.FC<PropertyOverviewProps> = ({ property, reviewsDa
                     </div>
                     <div>
                         <div className="font-extra-bold text-[11px] lg:text-base text-slate-900 dark:text-white">
-                            {getRatingLabel(rating)}
+                            {tRatings(getRatingLabel(rating))}
                         </div>
                         <div className="text-[9px] lg:text-sm text-slate-600 dark:text-slate-300">
                             {reviewCount !== 1

@@ -76,6 +76,7 @@ export default function ReviewsModal({ isOpen, onClose, reviews, averageRating, 
     const [showAll, setShowAll] = useState(false);
     const displayedReviews = showAll ? reviews : reviews.slice(0, 4);
     const t = useTranslations('reviewsSection');
+    const tRatings = useTranslations('hotels.ratings');
 
     if (!isOpen) return null;
 
@@ -97,7 +98,7 @@ export default function ReviewsModal({ isOpen, onClose, reviews, averageRating, 
                         </div>
                         <div>
                             <p className="font-bold text-slate-900 dark:text-white">
-                                {getRatingLabel(averageRating)}
+                                {tRatings(getRatingLabel(averageRating))}
                             </p>
                             <p className="text-sm text-slate-500 dark:text-slate-400">
                                 {t('verifiedReviewCount', { count: totalCount })}

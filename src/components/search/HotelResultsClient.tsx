@@ -147,6 +147,13 @@ export function HotelResultsClient({ searchParams, onSwitchView }: HotelResultsC
                                     }
                                 }
                                 if (patched && !cancelled) setProperties([...accumulated]);
+                            } else if (msg.type === 'remove') {
+                                const removeIds = new Set<string>(msg.ids ?? []);
+                                const before = accumulated.length;
+                                accumulated.splice(0, accumulated.length, ...accumulated.filter((h: any) =>
+                                    !removeIds.has(h.hotelId ?? h.id) && !removeIds.has(h.id)
+                                ));
+                                if (accumulated.length !== before && !cancelled) setProperties([...accumulated]);
                             } else if (msg.type === 'done') {
                                 if (!cancelled) {
                                     setTotalCount(msg.totalCount ?? accumulated.length);
