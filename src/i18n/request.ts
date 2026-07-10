@@ -13,7 +13,7 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial
         srcVal as Record<string, unknown>,
       ) as T[keyof T];
     } else if (srcVal !== undefined) {
-      result[key] = srcVal;
+      result[key] = srcVal as T[keyof T];
     }
   }
   return result;
