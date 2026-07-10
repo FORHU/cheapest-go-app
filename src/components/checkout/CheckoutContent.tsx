@@ -25,6 +25,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api/client';
 import { AlertTriangle, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import BackButton from '@/components/common/BackButton';
 import AuthModal from '@/components/auth/AuthModal';
 import { validateCheckoutForm, buildGuestPayload, buildHolderPayload } from '@/lib/server/checkout';
@@ -32,7 +33,6 @@ import { buildPropertySlug } from '@/lib/utils';
 import {
     BookingSuccess,
     UserDetailsForm,
-    BookingForSection,
     SpecialRequestsSection,
     BookingSummary,
     SubmitBookingButton,
@@ -53,14 +53,8 @@ const StripeEmbeddedCheckout = dynamic(
     }
 );
 
-const BOOKING_STEPS = [
-    'Verifying payment...',
-    'Securing your reservation...',
-    'Confirming with the hotel...',
-    'Finalizing booking details...',
-] as const;
-
 export function CheckoutContent() {
+    const t = useTranslations('checkout');
     const router = useRouter();
 
     // Booking store selectors
@@ -93,6 +87,7 @@ export function CheckoutContent() {
     // Form state hook
     const {
         formData,
+        setFormData,
         handleInputChange,
         bookingFor,
         setBookingFor,
@@ -111,6 +106,22 @@ export function CheckoutContent() {
         setFormErrors,
         clearFormErrors,
     } = useCheckoutForm();
+
+    const handleGuestChange = useCallback((index: number, field: 'firstName' | 'lastName', value: string) => {
+        const current = formData.additionalGuests ?? [];
+        const updated = [...current];
+        if (!updated[index]) updated[index] = { firstName: '', lastName: '' };
+        updated[index] = { ...updated[index], [field]: value };
+        setFormData({ additionalGuests: updated });
+    }, [formData.additionalGuests, setFormData]);
+
+    const handleChildChange = useCallback((index: number, field: 'firstName' | 'lastName' | 'age', value: string) => {
+        const current = formData.childGuests ?? [];
+        const updated = [...current];
+        if (!updated[index]) updated[index] = { firstName: '', lastName: '', age: '' };
+        updated[index] = { ...updated[index], [field]: value };
+        setFormData({ childGuests: updated });
+    }, [formData.childGuests, setFormData]);
 
     const prebookError = prebookErrorObj?.message || null;
 
@@ -131,12 +142,19 @@ export function CheckoutContent() {
     const bookingStepTimer = useRef<ReturnType<typeof setInterval> | null>(null);
     const [showSuccess, setShowSuccess] = useState(false);
 
+    const bookingSteps = [
+        t('verifyingPayment'),
+        t('securingReservation'),
+        t('confirmingWithHotel'),
+        t('finalizingDetails'),
+    ];
+
     useEffect(() => {
         if (loading && step === 'payment') {
             setBookingStepIdx(0);
             setShowSuccess(false);
             bookingStepTimer.current = setInterval(() => {
-                setBookingStepIdx((i) => Math.min(i + 1, BOOKING_STEPS.length - 1));
+                setBookingStepIdx((i) => Math.min(i + 1, bookingSteps.length - 1));
             }, 4000);
         } else if (isSuccess && !loading) {
             // API done — fast-forward animation to final step
@@ -144,7 +162,7 @@ export function CheckoutContent() {
                 clearInterval(bookingStepTimer.current);
                 bookingStepTimer.current = null;
             }
-            setBookingStepIdx(BOOKING_STEPS.length - 1);
+            setBookingStepIdx(bookingSteps.length - 1);
         } else {
             if (bookingStepTimer.current) {
                 clearInterval(bookingStepTimer.current);
@@ -158,9 +176,9 @@ export function CheckoutContent() {
 
     // Reveal success screen once animation reaches the last step
     useEffect(() => {
-        if (isSuccess && bookingStepIdx === BOOKING_STEPS.length - 1) {
-            const t = setTimeout(() => setShowSuccess(true), 800);
-            return () => clearTimeout(t);
+        if (isSuccess && bookingStepIdx === bookingSteps.length - 1) {
+            const timer = setTimeout(() => setShowSuccess(true), 800);
+            return () => clearTimeout(timer);
         }
     }, [isSuccess, bookingStepIdx]);
 
@@ -252,24 +270,20 @@ export function CheckoutContent() {
 
         // Validate form fields using server utility
         clearFormErrors();
-        const validation = validateCheckoutForm(formData, bookingFor);
+        const validation = validateCheckoutForm(formData);
         if (!validation.success) {
             setFormErrors(validation.errors);
-            toast.error('Please fix the highlighted fields before continuing.');
+            toast.error(t('validation.fixHighlighted'));
             return;
         }
 
         if (!prebookId || !selectedRoom?.offerId) {
-            toast.error("Booking session expired. Please go back and select the room again.");
+            toast.error(t('validation.sessionExpired'));
             return;
         }
 
-        // Guard: priceData may still be null in the brief render window between
-        // prebookId being set (Zustand) and priceData arriving (React state).
-        // Without this, the fallback totalPrice (store price × nights + 12% estimate)
-        // can be inflated and fail server-side amount validation.
         if (!priceData) {
-            toast.error("Price is still being verified — please wait a moment and try again.");
+            toast.error(t('validation.priceVerifying'));
             return;
         }
 
@@ -281,7 +295,7 @@ export function CheckoutContent() {
             : totalPrice;
 
         if (!chargeAmount || chargeAmount <= 0) {
-            toast.error("Invalid booking price. Please retry.");
+            toast.error(t('validation.invalidPrice'));
             return;
         }
 
@@ -322,7 +336,7 @@ export function CheckoutContent() {
             setClientSecret(result.data.clientSecret);
             setStep('payment');
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Payment setup failed';
+            const message = err instanceof Error ? err.message : t('validation.paymentSetupFailed');
             toast.error(message);
         } finally {
             setIsCreatingPayment(false);
@@ -336,7 +350,7 @@ export function CheckoutContent() {
                 throw new Error("Booking session expired.");
             }
 
-            const guests = buildGuestPayload(formData, bookingFor, specialRequests);
+            const guests = buildGuestPayload(formData, specialRequests);
             const holder = buildHolderPayload(formData);
 
             // Confirm booking with LiteAPI (payment already captured by Stripe)
@@ -411,14 +425,14 @@ export function CheckoutContent() {
             // Do NOT claim a refund will happen automatically (auth failed before refund logic runs).
             if (message === 'Authentication required' || message.toLowerCase().includes('authentication')) {
                 toast.error(
-                    `Your session expired during payment. Your card was charged — please contact support with payment reference: ${stripePaymentIntentId}`,
+                    t('validation.sessionExpiredCharge', { id: stripePaymentIntentId }),
                     { duration: 15000 }
                 );
                 openAuthModal('email', window.location.pathname + window.location.search);
             } else if (message.includes("refunded")) {
                 toast.error(message);
             } else {
-                toast.error(`Booking confirmation failed: ${message}. Your payment will be automatically refunded.`);
+                toast.error(t('validation.bookingFailed', { message }));
             }
             // Return to form so user can retry
             setStep('form');
@@ -450,6 +464,10 @@ export function CheckoutContent() {
         }
     }, [showSuccess]);
 
+    // Guard state for missing-dates picker — must be declared before any early returns
+    const [guardCheckIn, setGuardCheckIn] = useState('');
+    const [guardCheckOut, setGuardCheckOut] = useState('');
+
     // Deal flow: property set but no room chosen yet — show date picker + room search CTA
     if (property && !selectedRoom) {
         const ci = checkIn ? checkIn.toISOString().slice(0, 10) : '';
@@ -463,10 +481,10 @@ export function CheckoutContent() {
                 <div className="max-w-lg mx-auto space-y-6">
                     <button onClick={() => router.back()} className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
-                        Back
+                        {t('back')}
                     </button>
 
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Complete your booking</h1>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('completeYourBooking')}</h1>
 
                     {/* Hotel card */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
@@ -487,10 +505,10 @@ export function CheckoutContent() {
 
                         {/* Inline date picker */}
                         <div className="border-t border-slate-200 dark:border-white/10 p-4 space-y-3">
-                            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Select your dates</p>
+                            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">{t('selectYourDates')}</p>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Check-in</label>
+                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('checkIn')}</label>
                                     <input
                                         type="date"
                                         defaultValue={ci}
@@ -504,7 +522,7 @@ export function CheckoutContent() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Check-out</label>
+                                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('checkOut')}</label>
                                     <input
                                         type="date"
                                         defaultValue={co}
@@ -526,7 +544,7 @@ export function CheckoutContent() {
                         disabled={!ci || !co}
                         className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold rounded-xl transition-colors"
                     >
-                        Search available rooms →
+                        {t('searchAvailableRooms')}
                     </button>
                 </div>
             </main>
@@ -534,8 +552,6 @@ export function CheckoutContent() {
     }
 
     // Guard: missing dates — show inline date picker before the form
-    const [guardCheckIn, setGuardCheckIn] = useState('');
-    const [guardCheckOut, setGuardCheckOut] = useState('');
     const guardToday = new Date().toISOString().slice(0, 10);
 
     if (!checkIn || !checkOut) {
@@ -544,12 +560,12 @@ export function CheckoutContent() {
             <main className="min-h-screen flex items-center justify-center px-4">
                 <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-lg p-6 w-full max-w-sm space-y-5">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Choose your dates</h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Pick check-in and check-out to continue.</p>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('chooseYourDates')}</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('pickDatesDescription')}</p>
                     </div>
                     <div className="space-y-3">
                         <div>
-                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Check-in</label>
+                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t('checkIn')}</label>
                             <input
                                 type="date"
                                 value={guardCheckIn}
@@ -559,7 +575,7 @@ export function CheckoutContent() {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Check-out</label>
+                            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t('checkOut')}</label>
                             <input
                                 type="date"
                                 value={guardCheckOut}
@@ -577,10 +593,10 @@ export function CheckoutContent() {
                         }}
                         className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-semibold rounded-lg transition-colors text-sm"
                     >
-                        Continue
+                        {t('continue')}
                     </button>
                     <button onClick={() => router.back()} className="w-full text-center text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
-                        ← Go back
+                        {t('goBack')}
                     </button>
                 </div>
             </main>
@@ -613,7 +629,7 @@ export function CheckoutContent() {
                     {/* Desktop Text Back Button — hidden on payment step (has its own back button) */}
                     {step !== 'payment' && (
                         <div className="hidden md:flex mb-2 justify-between items-center">
-                            <BackButton label="Modify booking" />
+                            <BackButton label={t('modifyBooking')} />
                         </div>
                     )}
 
@@ -630,7 +646,7 @@ export function CheckoutContent() {
                     </div>
 
                     <h1 className="text-[18px] lg:text-3xl font-display font-bold text-slate-900 dark:text-white mb-4 lg:mb-8 text-left">
-                        Secure your booking
+                        {t('secureYourBooking')}
                     </h1>
 
                     {/* Auth Required Banner */}
@@ -639,9 +655,9 @@ export function CheckoutContent() {
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                                 <LogIn className="text-amber-600 dark:text-amber-400 shrink-0" size={24} />
                                 <div className="flex-1">
-                                    <h3 className="font-semibold text-amber-800 dark:text-amber-200">Sign in to complete your booking</h3>
+                                    <h3 className="font-semibold text-amber-800 dark:text-amber-200">{t('signInToComplete')}</h3>
                                     <p className="text-sm text-amber-600 dark:text-amber-400">
-                                        You'll receive booking confirmation and updates via email.
+                                        {t('signInBannerDesc')}
                                     </p>
                                 </div>
                                 <button
@@ -651,7 +667,7 @@ export function CheckoutContent() {
                                     }}
                                     className="px-4 py-2 min-h-[44px] bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors w-full sm:w-auto"
                                 >
-                                    Sign In
+                                    {t('signIn')}
                                 </button>
                             </div>
                         </div>
@@ -660,20 +676,20 @@ export function CheckoutContent() {
                     {/* Prebook Error — unavailability is handled inline near the button; show banner only for other errors */}
                     {prebookError && !isAuthModalOpen && !(!user && /auth/i.test(prebookError)) && !/no longer available|not available|unavailable|sold out|try a different hotel|currently unavailable for booking/i.test(prebookError) && (
                         <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 p-4 rounded-lg">
-                            <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">Booking error</p>
+                            <p className="text-sm font-semibold text-red-700 dark:text-red-300 mb-1">{t('bookingErrorTitle')}</p>
                             <p className="text-sm text-red-600 dark:text-red-400 mb-3">{prebookError}</p>
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => window.history.back()}
                                     className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
                                 >
-                                    Go back
+                                    {t('goBackBtn')}
                                 </button>
                                 <button
                                     onClick={retryPrebook}
                                     className="px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 text-sm font-semibold rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                 >
-                                    Retry
+                                    {t('retry')}
                                 </button>
                             </div>
                         </div>
@@ -690,25 +706,25 @@ export function CheckoutContent() {
                                             <div className="flex items-center gap-2">
                                                 <AlertTriangle className="text-red-500 dark:text-red-400 shrink-0" size={18} />
                                                 <p className="text-sm font-bold text-red-700 dark:text-red-300">
-                                                    You already have a booking at {property?.name}
+                                                    {t('duplicateBookingTitle', { hotel: property?.name || '' })}
                                                     {duplicateBooking.existingCheckIn && duplicateBooking.existingCheckOut && (
                                                         <> ({new Date(duplicateBooking.existingCheckIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(duplicateBooking.existingCheckOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})</>
-                                                    )} for overlapping dates.
+                                                    )}
                                                 </p>
                                             </div>
-                                            <p className="text-xs text-red-600 dark:text-red-400">Cancel your existing booking first, or go back and keep it.</p>
+                                            <p className="text-xs text-red-600 dark:text-red-400">{t('duplicateBookingDesc')}</p>
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => router.push(`/trips?highlight=${duplicateBooking.existingBookingId}`)}
                                                     className="flex-1 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                                                 >
-                                                    View existing booking
+                                                    {t('viewExistingBooking')}
                                                 </button>
                                                 <button
                                                     onClick={() => router.push('/')}
                                                     className="flex-1 py-2 text-xs font-medium border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                                                 >
-                                                    Keep existing booking
+                                                    {t('keepExistingBooking')}
                                                 </button>
                                             </div>
                                         </div>
@@ -722,14 +738,10 @@ export function CheckoutContent() {
                                         isWorkTravel={isWorkTravel}
                                         onWorkTravelChange={setIsWorkTravel}
                                         errors={formErrors}
-                                    />
-
-                                    <BookingForSection
-                                        bookingFor={bookingFor}
-                                        onBookingForChange={setBookingFor}
-                                        formData={formData}
-                                        onInputChange={handleInputChange}
-                                        errors={formErrors}
+                                        adults={adults}
+                                        children={children}
+                                        onGuestChange={handleGuestChange}
+                                        onChildChange={handleChildChange}
                                     />
 
                                     <SpecialRequestsSection
@@ -760,7 +772,7 @@ export function CheckoutContent() {
                                             className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></svg>
-                                            Back to booking details
+                                            {t('backToBookingDetails')}
                                         </button>
 
                                         {clientSecret ? (
@@ -769,7 +781,7 @@ export function CheckoutContent() {
                                                 onSuccess={handlePaymentSuccess}
                                             />
                                         ) : (
-                                            <div className="p-8 text-center text-slate-500">Loading payment form...</div>
+                                            <div className="p-8 text-center text-slate-500">{t('loadingPaymentForm')}</div>
                                         )}
                                     </div>
                                 </>
@@ -827,13 +839,13 @@ export function CheckoutContent() {
                         <div className="flex flex-col items-center gap-6 px-8 text-center max-w-xs">
                             <div className="w-16 h-16 rounded-full border-4 border-blue-100 dark:border-blue-900 border-t-blue-600 animate-spin" />
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Confirming your booking</h2>
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{t('confirmingBooking')}</h2>
                                 <p className="text-sm text-blue-600 dark:text-blue-400 font-medium animate-pulse min-h-[20px]">
-                                    {BOOKING_STEPS[bookingStepIdx]}
+                                    {bookingSteps[bookingStepIdx]}
                                 </p>
                             </div>
                             <div className="w-full space-y-2">
-                                {BOOKING_STEPS.map((label, i) => (
+                                {bookingSteps.map((label, i) => (
                                     <div key={label} className={`flex items-center gap-2 text-xs ${i <= bookingStepIdx ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600'}`}>
                                         <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${i < bookingStepIdx ? 'bg-green-500 text-white' : i === bookingStepIdx ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
                                             {i < bookingStepIdx ? '✓' : i + 1}
@@ -842,7 +854,7 @@ export function CheckoutContent() {
                                     </div>
                                 ))}
                             </div>
-                            <p className="text-xs text-slate-400 dark:text-slate-500">Please don&apos;t close this page</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">{t('dontClosePage')}</p>
                         </div>
                     </div>
                 )}

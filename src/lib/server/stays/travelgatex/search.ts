@@ -173,17 +173,39 @@ async function getEtgRegionId(cityName: string, countryCode?: string): Promise<n
         const data = await res.json();
         const regions: any[] = data?.data?.regions ?? [];
         const iso = resolveIsoCodeEtg(countryCode);
-        return (
-            regions.find((r: any) =>
-                r.type === 'City' &&
-                r.name.toLowerCase().startsWith(query.toLowerCase()) &&
-                (!iso || r.country_code === iso)
-            ) ??
-            regions.find((r: any) =>
-                r.type === 'City' &&
-                r.name.toLowerCase().startsWith(query.toLowerCase())
-            )
-        )?.id ?? null;
+        const q = query.toLowerCase();
+        const nameMatches = (r: any) => typeof r?.name === 'string' && r.name.toLowerCase().startsWith(q);
+        const inCountry = (r: any) => !iso || r.country_code === iso;
+
+        // A city and the area around it can share a name ("Cebu" the city vs Cebu the
+        // province). Resolve a city first so existing city searches never regress, then
+        // fall back to area-level regions so province/region queries ("Palawan") resolve
+        // to the whole area — matching what Ratehawk's own site returns. Kept as an
+        // allow-list so airports, whole countries, continents and seas are never picked.
+        // Exact ETG multicomplete `type` strings (verified against live responses —
+        // note the spaces/hyphens, e.g. Palawan comes back as "Multi-City (Vicinity)").
+        const AREA_TYPES = new Set([
+            'Province (State)',
+            'Region',
+            'Multi-City (Vicinity)',
+            'Multi-Region (within a country)',
+        ]);
+        const isCity = (r: any) => r?.type === 'City';
+        const isArea = (r: any) => AREA_TYPES.has(r?.type);
+
+        const pick =
+            regions.find((r: any) => isCity(r) && nameMatches(r) && inCountry(r)) ??
+            regions.find((r: any) => isCity(r) && nameMatches(r)) ??
+            regions.find((r: any) => isArea(r) && nameMatches(r) && inCountry(r)) ??
+            regions.find((r: any) => isArea(r) && nameMatches(r));
+
+        if (!pick) {
+            // No city or known area type matched. Surface the types ETG actually returned
+            // so an unmapped area label is a one-line allow-list fix, not a silent miss.
+            const seen = regions.filter(nameMatches).map((r: any) => r.type);
+            console.warn(`[tgx-search] ETG multicomplete: no city/area match for "${query}" — types seen: ${seen.join(', ') || '(none)'}`);
+        }
+        return pick?.id ?? null;
     } catch {
         return null;
     }
@@ -801,18 +823,10 @@ async function runCityFallback(
             console.log(`[tgx-search] Dest code "${resolvedCode}" is a known OTV miss — skipping dest-code search for "${cityName}"`);
         } else {
             const __t0 = Date.now();
-            // Run TGX availability search and OTV portfolio (for coords/names) in parallel.
-            // Previously the portfolio was fire-and-forget AFTER buildCityResults, so hotels
-            // had lat=0 on the first search and only got coordinates on the second search.
-            const [destResult, otvContent] = await Promise.all([
-                tgxGraphQL(CITY_SEARCH_QUERY, {
-                    criteria: { ...baseCriteria, destinations: [resolvedCode] },
-                    settings,
-                }),
-                cityName
-                    ? fetchOtvHotelCodesByCity(cityName, resolvedCode).catch(() => ({ codes: [] as string[], contentMap: new Map<string, any>() }))
-                    : Promise.resolve({ codes: [] as string[], contentMap: new Map<string, any>() }),
-            ]);
+            const destResult = await tgxGraphQL(CITY_SEARCH_QUERY, {
+                criteria: { ...baseCriteria, destinations: [resolvedCode] },
+                settings,
+            });
             console.log(`[tgx-search][TIMING] dest-code round-trip for "${resolvedCode}" took ${Date.now() - __t0}ms`);
             const destOptions: TgxOption[] = destResult?.data?.hotelX?.search?.options || [];
             const destErrors: any[] = destResult?.data?.hotelX?.search?.errors || [];
@@ -821,29 +835,40 @@ async function runCityFallback(
             );
             if (destMerchant.length > 0) {
                 console.log(`[tgx-search] Destination-code search returned ${destMerchant.length} options for "${cityName}"`);
-                // Enrich null-name codes from ETG in the background
-                if (otvContent.codes.length > 0) {
-                    const nullNames = otvContent.codes.filter((c: string) => !otvContent.contentMap.get(c)?.name);
-                    if (nullNames.length > 0) {
-                        fetchEtgHotelNames(nullNames)
-                            .then(etgNames => updateHotelNamesInDb(etgNames))
-                            .catch(() => {});
-                    }
+                // Dest-code path never calls fetchOtvHotelCodesByCity, so hotel_content stays empty.
+                // Seed it now (background) so the instant catalog shows up on the next request.
+                if (cityName) {
+                    fetchOtvHotelCodesByCity(cityName, resolvedCode)
+                        .then(otv => {
+                            if (otv.codes.length > 0) {
+                                const nullNames = otv.codes.filter(c => !otv.contentMap.get(c)?.name);
+                                if (nullNames.length > 0) {
+                                    fetchEtgHotelNames(nullNames)
+                                        .then(etgNames => updateHotelNamesInDb(etgNames))
+                                        .catch(() => {});
+                                }
+                            }
+                        })
+                        .catch(() => {});
                 }
-                return buildCityResults(destMerchant, cityName, countryCode, otvContent.contentMap);
+                return buildCityResults(destMerchant, cityName, countryCode);
             }
             // No usable MERCHANT options — whether TGX sent an explicit "Empty hotels"
             // error or just a clean empty array (observed for some destination codes,
             // e.g. Tokyo's 504948), this code isn't yielding results either way.
             // Persist so subsequent cold starts also skip this 18-22s round-trip.
-            persistFailedDestCode(resolvedCode, cityName);
+            // WRONG_FIELD/Empty hotels = TGX mapping gap (OTV was never called).
+            // Don't blacklist — the city may have OTV coverage once TGX mapping syncs.
             if (hasEmptyHotelsError(destErrors)) {
-                console.warn(`[tgx-search] Dest code "${resolvedCode}" returned Empty hotels — recorded as OTV miss`);
-            } else if (destErrors.length) {
-                console.warn('[tgx-search] Destination-code search errors:', destErrors.map((e: any) => e.description || e.code).join(', '));
-                console.warn(`[tgx-search] Dest code "${resolvedCode}" had errors and 0 merchant options — recorded as OTV miss`);
+                console.warn(`[tgx-search] Dest code "${resolvedCode}" has TGX mapping gap (Empty hotels) — not recorded as OTV miss`);
             } else {
-                console.warn(`[tgx-search] Dest code "${resolvedCode}" returned 0 options with no errors — recorded as OTV miss`);
+                persistFailedDestCode(resolvedCode, cityName);
+                if (destErrors.length) {
+                    console.warn('[tgx-search] Destination-code search errors:', destErrors.map((e: any) => e.description || e.code).join(', '));
+                    console.warn(`[tgx-search] Dest code "${resolvedCode}" had errors and 0 merchant options — recorded as OTV miss`);
+                } else {
+                    console.warn(`[tgx-search] Dest code "${resolvedCode}" returned 0 options with no errors — recorded as OTV miss`);
+                }
             }
         }
     }
@@ -1026,7 +1051,7 @@ async function _runTgxSearch(params: TgxSearchParams) {
         const baseCriteria = { checkIn: checkin, checkOut: checkout, occupancies, nationality: guest_nationality, currency };
         return runCityFallback(
             cityName, countryCode, baseCriteria, settings,
-            resolveTgxDestinationCode(cityName).catch(() => undefined),
+            resolveTgxDestinationCode(cityName, countryCode).catch(() => undefined),
             fetchHotelCodesByCity(cityName, countryCode).catch(() => []),
             params,
         );
@@ -1145,7 +1170,7 @@ async function buildCityResults(
     // Wrapped in try/catch — enrichment must never prevent results from rendering.
     if (hotelCodes.length > 0) {
         const noNameCodes = hotelCodes.filter(c => !contentMap.get(c)?.name && !preloadedContent.get(c)?.name);
-        if (noNameCodes.length > 0) {
+        if (noNameCodes.length >= hotelCodes.length * 0.3) {
             try {
                 const etgNames = await fetchEtgHotelNames(noNameCodes);
                 if (etgNames.size > 0) {

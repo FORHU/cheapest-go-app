@@ -28,7 +28,9 @@ const DEFAULT_FORM_DATA: CheckoutFormData = {
     cardCountry: 'PH',
     cardAddress: '',
     cardCity: '',
-    cardZip: ''
+    cardZip: '',
+    additionalGuests: [],
+    childGuests: [],
 };
 
 export interface CheckoutState {

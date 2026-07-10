@@ -24,6 +24,7 @@ export interface Guest {
   lastName: string;
   email: string;
   remarks?: string;
+  age?: number;
 }
 
 /**

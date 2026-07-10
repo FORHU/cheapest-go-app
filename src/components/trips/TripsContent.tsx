@@ -9,21 +9,22 @@ import type { BookingRecord, FlightBookingRecord } from '@/services/booking.serv
 import BookingCard from './BookingCard';
 import FlightBookingCard from './FlightBookingCard';
 import type { TripsData } from '@/lib/trips';
+import { useTranslations } from 'next-intl';
 // Realtime replaced with polling — no Supabase client needed
 
 type TabValue = 'upcoming' | 'past' | 'all' | 'wishlist';
 const VALID_TABS: TabValue[] = ['upcoming', 'past', 'all', 'wishlist'];
 
 interface SavedTrip {
-    id: string;
-    type: 'flight' | 'hotel';
-    title: string;
-    subtitle?: string;
-    price?: number;
-    currency: string;
-    image_url?: string;
-    deep_link: string;
-    created_at: string;
+  id: string;
+  type: 'flight' | 'hotel';
+  title: string;
+  subtitle?: string;
+  price?: number;
+  currency: string;
+  image_url?: string;
+  deep_link: string;
+  created_at: string;
 }
 
 interface TripsContentProps {
@@ -37,6 +38,7 @@ function isFlight(b: MixedBooking): b is FlightBookingRecord {
 }
 
 export function TripsContent({ initialData }: TripsContentProps) {
+  const t = useTranslations('trips');
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useUser();
@@ -86,7 +88,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
     fetch('/api/saved-trips')
       .then(r => r.json())
       .then(j => setSavedTrips(j.data ?? []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setSavedLoading(false));
   }, [activeTab]);
 
@@ -146,10 +148,10 @@ export function TripsContent({ initialData }: TripsContentProps) {
         <div className="mb-4 sm:mb-6 md:mb-8">
           <h1 className="text-[clamp(1.25rem,4vw,1.875rem)] font-display font-bold text-slate-900 dark:text-white mb-1 sm:mb-2 flex items-center gap-2 sm:gap-3">
             <Plane className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-blue-600 flex-shrink-0" />
-            <span>My Trips</span>
+            <span>{t('myTrips')}</span>
           </h1>
           <p className="text-[clamp(0.75rem,2vw,1rem)] text-slate-500 dark:text-slate-400">
-            View and manage your bookings
+            {t('subtitle')}
           </p>
         </div>
 
@@ -162,7 +164,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
               : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
           >
-            <span>Upcoming</span>
+            <span>{t('tabs.upcoming')}</span>
             {counts.upcoming > 0 && (
               <span className="px-1.5 sm:px-2 py-0.5 text-[clamp(0.5625rem,1.5vw,0.75rem)] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
                 {counts.upcoming}
@@ -179,7 +181,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
               : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
           >
-            Past
+            {t('tabs.past')}
             {activeTab === 'past' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
             )}
@@ -191,7 +193,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
               : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
               }`}
           >
-            All
+            {t('tabs.all')}
             {activeTab === 'all' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />
             )}
@@ -204,7 +206,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
               }`}
           >
             <Heart size={13} className={activeTab === 'wishlist' ? 'fill-rose-500 text-rose-500' : ''} />
-            Wishlist
+            {t('tabs.wishlist')}
             {activeTab === 'wishlist' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-rose-500 dark:bg-rose-400" />
             )}
@@ -225,15 +227,15 @@ export function TripsContent({ initialData }: TripsContentProps) {
                 <div className="w-16 h-16 mx-auto mb-4 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center">
                   <Heart className="w-8 h-8 text-rose-300" />
                 </div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No saved trips yet</h2>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{t('wishlist.emptyTitle')}</h2>
                 <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
-                  Tap the heart icon on any flight or hotel to save it here.
+                  {t('wishlist.emptyDesc')}
                 </p>
                 <Link
                   href="/"
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-full transition-colors"
                 >
-                  Explore destinations
+                  {t('exploreDestinations')}
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -255,7 +257,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
                         <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{trip.subtitle}</p>
                       )}
                       <p className="text-[10px] text-slate-400 mt-0.5">
-                        Saved {new Date(trip.created_at).toLocaleDateString()}
+                        {t('wishlist.savedOn', { date: new Date(trip.created_at).toLocaleDateString() })}
                       </p>
                     </div>
 
@@ -265,7 +267,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
                         <p className="text-sm font-bold text-slate-900 dark:text-white">
                           {new Intl.NumberFormat('en-US', { style: 'currency', currency: trip.currency, maximumFractionDigits: 0 }).format(trip.price)}
                         </p>
-                        <p className="text-[10px] text-slate-400">per person</p>
+                        <p className="text-[10px] text-slate-400">{t('wishlist.perPerson')}</p>
                       </div>
                     )}
 
@@ -274,14 +276,14 @@ export function TripsContent({ initialData }: TripsContentProps) {
                       <Link
                         href={trip.deep_link}
                         className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
-                        title="Search again"
+                        title={t('wishlist.searchAgain')}
                       >
                         <ExternalLink size={13} />
                       </Link>
                       <button
                         onClick={() => removeSaved(trip.id)}
                         className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-500 transition-colors"
-                        title="Remove from wishlist"
+                        title={t('wishlist.removeFromWishlist')}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -300,18 +302,18 @@ export function TripsContent({ initialData }: TripsContentProps) {
               <Luggage className="w-8 h-8 sm:w-10 sm:h-10 text-slate-400" />
             </div>
             <h2 className="text-[clamp(1rem,3vw,1.25rem)] font-bold text-slate-900 dark:text-white mb-2 px-4">
-              {activeTab === 'upcoming' ? 'No upcoming trips' : activeTab === 'past' ? 'No past trips' : 'No trips yet'}
+              {activeTab === 'upcoming' ? t('emptyState.upcomingTitle') : activeTab === 'past' ? t('emptyState.pastTitle') : t('emptyState.allTitle')}
             </h2>
             <p className="text-[clamp(0.8125rem,2vw,1rem)] text-slate-500 dark:text-slate-400 mb-4 sm:mb-6 px-4">
               {activeTab === 'upcoming'
-                ? "Time to plan your next adventure!"
-                : "Start exploring and book your first trip"}
+                ? t('emptyState.upcomingDesc')
+                : t('emptyState.otherDesc')}
             </p>
             <Link
               href="/"
               className="inline-flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white text-[clamp(0.8125rem,2vw,1rem)] font-medium rounded-full transition-colors"
             >
-              Explore destinations
+              {t('exploreDestinations')}
               <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Link>
           </div>
@@ -338,7 +340,7 @@ export function TripsContent({ initialData }: TripsContentProps) {
                   onClick={() => setVisibleCount(prev => prev + 10)}
                   className="px-4 py-2 sm:px-6 sm:py-3 text-[clamp(0.6875rem,2vw,0.875rem)] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors"
                 >
-                  View more ({displayedBookings.length - visibleCount} remaining)
+                  {t('viewMore', { count: displayedBookings.length - visibleCount })}
                 </button>
               </div>
             )}

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { type Property } from '@/types';
 import { useBookingActions } from '@/stores/bookingStore';
 import { useRoomGrouping } from '@/hooks';
@@ -24,6 +25,7 @@ interface RoomListProps {
 
 const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, hotelImages = [] }) => {
     const router = useRouter();
+    const t = useTranslations('property.rooms');
     const {
         setProperty,
         setSelectedRoom,
@@ -89,16 +91,16 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
     return (
         <div id="room-list-section" className="mt-6 lg:mt-8 scroll-mt-24">
             <h3 className="text-[14px] lg:text-xl font-display font-bold text-slate-900 dark:text-white mb-3 lg:mb-4">
-                Available Rooms {hasRooms && `(${filteredRooms.length})`}
+                {t('availableRooms', { count: filteredRooms.length })}
             </h3>
 
             {hasRooms && (
                 <div className="flex items-center gap-2 mb-4 flex-wrap">
                     {([
-                        { key: 'all',  label: 'All',             count: groupedRooms.length },
-                        { key: 'rfn',  label: 'Refundable',      count: rfnCount },
-                        { key: 'nrfn', label: 'Non-refundable',  count: nrfnCount },
-                    ] as { key: RateFilter; label: string; count: number }[]).map(({ key, label, count }) => (
+                        { key: 'all',  labelKey: 'filterAll',           count: groupedRooms.length },
+                        { key: 'rfn',  labelKey: 'filterRefundable',    count: rfnCount },
+                        { key: 'nrfn', labelKey: 'filterNonRefundable', count: nrfnCount },
+                    ] as { key: RateFilter; labelKey: string; count: number }[]).map(({ key, labelKey, count }) => (
                         <button
                             key={key}
                             onClick={() => handleFilterChange(key)}
@@ -108,7 +110,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                                     : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500'
                             }`}
                         >
-                            {label}
+                            {t(labelKey)}
                             <span className={`text-[10px] px-1 rounded-full ${rateFilter === key ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
                                 {count}
                             </span>
@@ -120,7 +122,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
             <div className="flex flex-col gap-4">
                 {hasRooms && filteredRooms.length > 0 && (
                     <p className="text-xs text-slate-400 dark:text-slate-500">
-                        Showing {(currentPage - 1) * ROOMS_PER_PAGE + 1}–{Math.min(currentPage * ROOMS_PER_PAGE, filteredRooms.length)} of {filteredRooms.length} rooms
+                        {t('showingRooms', { start: (currentPage - 1) * ROOMS_PER_PAGE + 1, end: Math.min(currentPage * ROOMS_PER_PAGE, filteredRooms.length), total: filteredRooms.length })}
                     </p>
                 )}
                 {hasRooms ? (
@@ -159,7 +161,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                         );
                     }) : (
                         <div className="py-6 text-center text-slate-400 text-sm">
-                            No {rateFilter === 'rfn' ? 'refundable' : 'non-refundable'} rooms available.
+                            {rateFilter === 'rfn' ? t('noRefundableRooms') : t('noNonRefundableRooms')}
                         </div>
                     )
                 ) : property._tgx?.token ? (
@@ -169,20 +171,20 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                             <div>
                                 <p className="font-semibold text-slate-900 dark:text-white text-sm">
                                     {property._tgx.boardCode
-                                        ? `${property._tgx.boardCode} — Standard Room`
-                                        : 'Standard Room'}
+                                        ? `${property._tgx.boardCode} — ${t('standardRoom')}`
+                                        : t('standardRoom')}
                                 </p>
                                 <p className="text-xs text-slate-500 mt-1">
                                     {property.refundableTag === 'RFN'
-                                        ? '✓ Free cancellation'
-                                        : 'Non-refundable'}
+                                        ? t('freeCancellationTick')
+                                        : t('nonRefundable')}
                                 </p>
                             </div>
                             <div className="text-right shrink-0">
                                 <p className="text-lg font-bold text-slate-900 dark:text-white">
                                     {property.currency || 'USD'} {property.price?.toLocaleString()}
                                 </p>
-                                <p className="text-xs text-slate-400">total</p>
+                                <p className="text-xs text-slate-400">{t('total')}</p>
                             </div>
                         </div>
                         <button
@@ -194,12 +196,12 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
                             )}
                             className="w-full bg-primary text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
                         >
-                            Reserve
+                            {t('reserve')}
                         </button>
                     </div>
                 ) : (
                     <div className="py-8 text-center text-slate-400 text-sm">
-                        No rooms available for the selected dates.
+                        {t('noRooms')}
                     </div>
                 )}
             </div>
@@ -207,7 +209,7 @@ const RoomList: React.FC<RoomListProps> = ({ property, roomTypes, searchParams, 
             {hasRooms && totalPages > 1 && (
                 <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <p className="text-xs text-slate-400 dark:text-slate-500">
-                        Page {currentPage} of {totalPages}
+                        {t('pageOf', { current: currentPage, total: totalPages })}
                     </p>
                     <div className="flex items-center gap-1">
                         <button

@@ -1,9 +1,25 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSqlAdmin } from '@/lib/db/postgres';
 import { tgxGraphQL, getTgxConfig } from '@/lib/server/stays/travelgatex/client';
 
 // ── In-memory cache (server-lifetime, per cold start) ─────────────────────────
-const photoCache = new Map<string, { url: string; expires: number }>();
+// Holds the decoded image bytes, not the provider URL. Caching only the URL
+// meant every request re-downloaded ~250 KB from the provider CDN; a landing
+// screen renders ~20 cards at once, so that was ~5 MB per render.
+type CachedPhoto = {
+  body: Buffer | null;      // null → lookup failed; serve the placeholder
+  contentType: string;
+  expires: number;
+};
+
+const photoCache = new Map<string, CachedPhoto>();
+let cacheBytes = 0;
+const MAX_CACHE_BYTES = 64 * 1024 * 1024;
+
+const PHOTO_TTL_MS = 86_400_000;
+const MISS_TTL_MS = 5 * 60 * 1000;
 
 // ── 1. hotel_content DB lookup ────────────────────────────────────────────────
 async function fetchFromDb(hotelCode: string): Promise<string | null> {
@@ -106,11 +122,11 @@ async function backfillToDb(hotelCode: string, images: string[]): Promise<void> 
 export async function GET(req: NextRequest) {
   const hotelCode = new URL(req.url).searchParams.get('hotelCode')?.trim() || '';
 
-  if (!hotelCode) return placeholderSvg();
+  if (!hotelCode) return placeholderImage();
 
   const cached = photoCache.get(hotelCode);
   if (cached && cached.expires > Date.now()) {
-    return cached.url ? proxyImage(cached.url) : placeholderSvg();
+    return cached.body ? imageResponse(cached.body, cached.contentType) : placeholderImage();
   }
 
   let photoUrl: string | null = null;
@@ -124,46 +140,81 @@ export async function GET(req: NextRequest) {
   // 3. OTV via TGX GraphQL
   if (!photoUrl) photoUrl = await fetchFromOtv(hotelCode);
 
-  const cacheTtl = photoUrl ? 86_400_000 : 5 * 60 * 1000;
-  photoCache.set(hotelCode, { url: photoUrl ?? '', expires: Date.now() + cacheTtl });
+  const fetched = photoUrl ? await fetchImageBytes(photoUrl) : null;
+  rememberPhoto(hotelCode, fetched);
 
-  return photoUrl ? proxyImage(photoUrl) : placeholderSvg();
+  return fetched ? imageResponse(fetched.body, fetched.contentType) : placeholderImage();
 }
 
-// ── Proxy image bytes so API keys never reach the browser ─────────────────────
-async function proxyImage(url: string): Promise<NextResponse> {
-  if (!url) return placeholderSvg();
+/** Store the bytes, evicting oldest-first once the budget is exceeded. */
+function rememberPhoto(hotelCode: string, fetched: FetchedImage | null): void {
+  const previous = photoCache.get(hotelCode);
+  if (previous?.body) cacheBytes -= previous.body.byteLength;
+
+  if (fetched) cacheBytes += fetched.body.byteLength;
+  photoCache.set(hotelCode, {
+    body: fetched?.body ?? null,
+    contentType: fetched?.contentType ?? '',
+    expires: Date.now() + (fetched ? PHOTO_TTL_MS : MISS_TTL_MS),
+  });
+
+  // Map iterates in insertion order, so the first key is the oldest.
+  for (const key of photoCache.keys()) {
+    if (cacheBytes <= MAX_CACHE_BYTES) break;
+    if (key === hotelCode) continue;
+    cacheBytes -= photoCache.get(key)?.body?.byteLength ?? 0;
+    photoCache.delete(key);
+  }
+}
+
+// ── Download image bytes so API keys never reach the browser ──────────────────
+type FetchedImage = { body: Buffer; contentType: string };
+
+async function fetchImageBytes(url: string): Promise<FetchedImage | null> {
+  if (!url) return null;
 
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (res.ok) {
-      const contentType = res.headers.get('content-type') ?? 'image/jpeg';
-      if (contentType.startsWith('image/')) {
-        return new NextResponse(await res.arrayBuffer(), {
-          headers: {
-            'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=43200',
-          },
-        });
-      }
-    }
-  } catch { /* fall through */ }
+    if (!res.ok) return null;
 
-  return placeholderSvg();
+    const contentType = res.headers.get('content-type') ?? 'image/jpeg';
+    if (!contentType.startsWith('image/')) return null;
+
+    return { body: Buffer.from(await res.arrayBuffer()), contentType };
+  } catch {
+    return null;
+  }
 }
 
-function placeholderSvg(): NextResponse {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
-  <rect width="800" height="600" fill="#1e293b"/>
-  <rect x="320" y="220" width="160" height="120" rx="12" fill="#334155"/>
-  <circle cx="400" cy="200" r="40" fill="#334155"/>
-  <rect x="360" y="270" width="80" height="50" rx="4" fill="#475569"/>
-  <circle cx="370" cy="260" r="12" fill="#64748b"/>
-</svg>`;
-  return new NextResponse(svg, {
+/**
+ * Copy the cached bytes into each response. Handing the cached Buffer straight
+ * to NextResponse would let a consumed body invalidate the cache entry.
+ * Content-Length matters: without it the response is chunked, and React
+ * Native's native image loader is happier with a declared length.
+ */
+function imageResponse(body: Buffer, contentType: string): NextResponse {
+  return new NextResponse(new Uint8Array(body), {
     headers: {
-      'Content-Type': 'image/svg+xml',
+      'Content-Type': contentType,
+      'Content-Length': String(body.byteLength),
+      'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=43200',
+    },
+  });
+}
+
+// PNG, not SVG: Android's Fresco cannot decode SVG, so an SVG placeholder
+// renders as a blank card rather than as a placeholder.
+const PLACEHOLDER_PNG = readFileSync(
+  path.join(process.cwd(), 'public', 'hotel-placeholder.png')
+);
+
+function placeholderImage(): NextResponse {
+  return new NextResponse(new Uint8Array(PLACEHOLDER_PNG), {
+    headers: {
+      'Content-Type': 'image/png',
+      'Content-Length': String(PLACEHOLDER_PNG.byteLength),
       'Cache-Control': 'public, max-age=60',
     },
   });
 }
+

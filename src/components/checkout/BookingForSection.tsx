@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { CheckoutFormData, BookingForType } from './types';
 
 interface BookingForSectionProps {
@@ -21,27 +22,28 @@ export function BookingForSection({
     onInputChange,
     errors = {},
 }: BookingForSectionProps) {
+    const t = useTranslations('checkout');
     return (
         <div className="bg-white dark:bg-slate-900 rounded-lg lg:rounded-xl border border-slate-200 dark:border-white/10 p-2.5 lg:p-6 shadow-sm">
-            <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-1.5 lg:mb-4">Who is the booking for?</h2>
+            <h2 className="text-[14px] lg:text-xl font-bold text-slate-900 dark:text-white mb-1.5 lg:mb-4">{t('bookingFor.whoIsBooking')}</h2>
             <div className="flex gap-1.5 lg:gap-4 mb-2 lg:mb-4">
                 <button
                     className={`flex-1 py-1 lg:py-2 text-[11px] lg:text-sm rounded lg:rounded-lg border ${bookingFor === 'myself' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200'}`}
                     onClick={() => onBookingForChange('myself')}
                 >
-                    Myself
+                    {t('bookingFor.myself')}
                 </button>
                 <button
                     className={`flex-1 py-1 lg:py-2 text-[11px] lg:text-sm rounded lg:rounded-lg border ${bookingFor === 'someone_else' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200'}`}
                     onClick={() => onBookingForChange('someone_else')}
                 >
-                    Someone else
+                    {t('bookingFor.someoneElse')}
                 </button>
             </div>
             {bookingFor === 'someone_else' && (
                 <div className="grid grid-cols-2 gap-2 lg:gap-4">
                     <div>
-                        <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">Guest First Name *</label>
+                        <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">{t('bookingFor.guestFirstName')}</label>
                         <input
                             name="guestFirstName"
                             value={formData.guestFirstName}
@@ -52,7 +54,7 @@ export function BookingForSection({
                         <FieldError message={errors.guestFirstName} />
                     </div>
                     <div>
-                        <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">Guest Last Name *</label>
+                        <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">{t('bookingFor.guestLastName')}</label>
                         <input
                             name="guestLastName"
                             value={formData.guestLastName}
