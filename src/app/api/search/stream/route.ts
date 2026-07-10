@@ -310,12 +310,19 @@ export async function POST(req: NextRequest) {
                     }));
 
                     const catalogIds = new Set(catalogHotels.map((h: any) => h.id));
+                    const tgxHotelIds = new Set(tgxHotels.map((h: any) => h.hotelId || h.id));
                     const newHotels = tgxHotels.filter((h: any) => !catalogIds.has(h.hotelId || h.id));
                     const matchedCount = prices.filter(p => catalogIds.has(p.hotelId)).length;
+                    const unavailableIds = catalogHotels
+                        .filter((h: any) => !tgxHotelIds.has(h.id))
+                        .map((h: any) => h.id);
 
-                    console.log(`[stream] prices patch: ${matchedCount} matched catalog, ${newHotels.length} new from TGX, ${catalogHotels.length - matchedCount} catalog hotels unavailable`);
+                    console.log(`[stream] prices patch: ${matchedCount} matched catalog, ${newHotels.length} new from TGX, ${unavailableIds.length} catalog hotels unavailable (removing)`);
 
                     if (prices.length > 0) send({ type: 'prices', data: prices });
+                    // Remove catalog hotels TGX found no availability for — only when TGX
+                    // actually returned results so a TGX timeout doesn't wipe the catalog.
+                    if (tgxHotels.length > 0 && unavailableIds.length > 0) send({ type: 'remove', ids: unavailableIds });
 
                     if (newHotels.length > 0) {
                         const newMappable = newHotels.filter((h: any) => h.lat && h.lng);

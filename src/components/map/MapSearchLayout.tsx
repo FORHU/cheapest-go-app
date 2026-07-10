@@ -16,9 +16,7 @@ const PropertyMapView = dynamic(
     {
         ssr: false,
         loading: () => (
-            <div className="flex-1 h-full flex items-center justify-center bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
-                <div className="animate-pulse text-sm text-slate-500">Loading map component...</div>
-            </div>
+            <div className="flex-1 h-full bg-slate-100 dark:bg-slate-800 animate-pulse border-l border-slate-200 dark:border-slate-800" />
         ),
     }
 );
@@ -108,7 +106,7 @@ function MapSearchLayout({ properties, title }: MapSearchLayoutProps) {
             <div
                 id={LIST_CONTAINER_ID}
                 className={`
-                    flex-shrink-0 h-full overflow-hidden
+                    shrink-0 h-full overflow-hidden
                     transition-all duration-300 ease-in-out
                     ${showMap ? 'w-full lg:w-[420px] xl:w-[460px]' : 'w-full'}
                 `}

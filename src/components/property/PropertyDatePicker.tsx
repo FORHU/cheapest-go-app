@@ -190,10 +190,10 @@ function CalendarPanel({
             {/* Footer */}
             <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <p className="text-xs text-slate-400">
-                    {step === 'in' ? 'Select check-in date' : 'Select check-out date'}
+                    {step === 'in' ? t('selectCheckIn') : t('selectCheckOut')}
                 </p>
                 <button onClick={onClose} className="text-xs font-medium text-blue-500 hover:text-blue-600">
-                    Done
+                    {t('done')}
                 </button>
             </div>
         </div>
@@ -306,7 +306,7 @@ export default function PropertyDatePicker({
     return (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-4 md:p-5 shadow-sm">
             <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
-                Your stay
+                {t('yourStay')}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
@@ -375,7 +375,7 @@ export default function PropertyDatePicker({
                 {/* ── Guests picker ── */}
                 <div className="flex items-end gap-3">
                     <div ref={guestRef} className="relative">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">Guests</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">{t('guests')}</p>
                         <button
                             onClick={() => setGuestOpen(v => !v)}
                             className={cn(
@@ -387,8 +387,8 @@ export default function PropertyDatePicker({
                         >
                             <Users size={13} className="text-slate-400 shrink-0" />
                             <span className="text-slate-900 dark:text-white font-medium whitespace-nowrap">
-                                {adultsLocal} {adultsLocal === 1 ? 'adult' : 'adults'}
-                                {childrenLocal > 0 && `, ${childrenLocal} ${childrenLocal === 1 ? 'child' : 'children'}`}
+                                {adultsLocal} {adultsLocal === 1 ? t('adult') : t('adults')}
+                                {childrenLocal > 0 && `, ${childrenLocal} ${childrenLocal === 1 ? t('child') : t('children')}`}
                             </span>
                         </button>
 
@@ -397,7 +397,7 @@ export default function PropertyDatePicker({
                                 {/* Adults */}
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-xs font-medium text-slate-900 dark:text-white">Adults</p>
+                                        <p className="text-xs font-medium text-slate-900 dark:text-white">{t('adultsLabel')}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button
@@ -416,8 +416,8 @@ export default function PropertyDatePicker({
                                 {/* Children */}
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-xs font-medium text-slate-900 dark:text-white">Children</p>
-                                        <p className="text-[10px] text-slate-400">Ages 0–17</p>
+                                        <p className="text-xs font-medium text-slate-900 dark:text-white">{t('childrenLabel')}</p>
+                                        <p className="text-[10px] text-slate-400">{t('childrenAges')}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button
@@ -437,7 +437,7 @@ export default function PropertyDatePicker({
                                     onClick={() => setGuestOpen(false)}
                                     className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
                                 >
-                                    Done
+                                    {t('done')}
                                 </button>
                             </div>
                         )}
@@ -452,11 +452,11 @@ export default function PropertyDatePicker({
                         {isPending ? (
                             <>
                                 <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                                Searching…
+                                {t('searching')}
                             </>
                         ) : (
                             <>
-                                Check availability
+                                {t('checkAvailability')}
                                 <ChevronRight size={14} />
                             </>
                         )}

@@ -25,6 +25,7 @@ interface ReviewsSectionProps {
  */
 function RatingSummary({ rating: rawRating, totalCount }: { rating: number; totalCount: number }) {
     const t1 = useTranslations('reviewsSection');
+    const tRatings = useTranslations('hotels.ratings');
     const rating = Number(rawRating) || 0;
     return (
         <div className="flex items-center gap-2 lg:gap-3 lg:mb-6">
@@ -33,7 +34,7 @@ function RatingSummary({ rating: rawRating, totalCount }: { rating: number; tota
             </div>
             <div>
                 <p className="font-semibold text-slate-900 dark:text-white text-xs lg:text-lg leading-tight">
-                    {getRatingLabel(rating)}
+                    {tRatings(getRatingLabel(rating))}
                 </p>
                 <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">
                     {totalCount > 0
