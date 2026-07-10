@@ -86,7 +86,7 @@ export const MapContainer = ({
             enable3DBuildings={false}
             antialias={propAntialias ?? false}
             attributionControl={false}
-            className="rounded-md min-h-0 w-full h-full"
+            className="min-h-0 w-full h-full"
         >
             <NavigationControl position="top-right" showCompass visualizePitch />
             <AttributionControl position="top-right" compact />
