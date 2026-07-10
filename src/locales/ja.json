@@ -871,7 +871,11 @@
             "checkIn": "チェックイン",
             "checkOut": "チェックアウト",
             "clearFilters": "フィルターをクリア",
+            "almostThere": "もうすぐです — 最高の結果をお届けします…",
+            "checkingAvailabilityDates": "ご選択の日程の空き状況を確認中…",
             "comparingRates": "200件以上のホテル料金を比較中…",
+            "findingBestDeals": "このエリアで最安値を探しています…",
+            "securingLivePrices": "サプライヤーからリアルタイム価格を取得中…",
             "filterOptions": {
                 "boardTypes": {
                     "allInclusive": "オールインクルーシブ",
@@ -1345,6 +1349,7 @@
             "noMeals": "食事なし",
             "noNonRefundableRooms": "返金不可の部屋はありません。",
             "noRefundableRooms": "返金可能な部屋はありません。",
+            "changeDates": "日程を変更",
             "noRooms": "選択した日程に空き部屋がありません。",
             "nonRefundable": "返金不可",
             "nonRefundablePill": "返金不可",
