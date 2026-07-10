@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Calendar, Info, AlertTriangle, LogOut } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import type { CancelPolicyInfo } from '@/services/booking.service';
@@ -23,6 +24,7 @@ export function CancellationPolicies({
     earlyDepartureFee = 0,
     currency = 'PHP',
 }: CancellationPoliciesProps) {
+    const t = useTranslations('trips');
     const hasNoPolicies = !policies || policies.length === 0;
     const hasExtraFees = noShowPenalty > 0 || earlyDepartureFee > 0;
 
@@ -30,7 +32,7 @@ export function CancellationPolicies({
         return (
             <div className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-white/5 p-4 rounded-lg">
                 <Info className="inline-block w-4 h-4 mr-2" />
-                No specific cancellation policy available. Standard terms apply.
+                {t('cancellationPolicies.noPolicy')}
             </div>
         );
     }
@@ -63,7 +65,7 @@ export function CancellationPolicies({
                         <Calendar className={`w-5 h-5 mt-0.5 ${isPast ? 'text-red-500' : 'text-slate-400'}`} />
                         <div className="flex-1">
                             <p className={`text-sm font-medium ${isPast ? 'text-red-700 dark:text-red-300' : 'text-slate-700 dark:text-slate-300'}`}>
-                                {isPast ? 'Passed: ' : 'Before: '}
+                                {isPast ? t('cancellationPolicies.passed') : t('cancellationPolicies.before')}
                                 {formatDate(policy.cancelTime, {
                                     weekday: 'short',
                                     month: 'short',
@@ -74,7 +76,7 @@ export function CancellationPolicies({
                                 }, 'en-US')}
                             </p>
                             <p className={`text-sm ${isPast ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                                Cancellation fee: {feeAmount}
+                                {t('cancellationPolicies.cancellationFee', { amount: feeAmount })}
                             </p>
                         </div>
                     </div>
@@ -87,10 +89,10 @@ export function CancellationPolicies({
                     <AlertTriangle className="w-5 h-5 mt-0.5 text-orange-500" />
                     <div className="flex-1">
                         <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                            No-Show Penalty
+                            {t('cancellationPolicies.noShowPenalty')}
                         </p>
                         <p className="text-sm text-orange-600 dark:text-orange-400">
-                            {formatCurrency(noShowPenalty, currency)} will be charged if you don&apos;t check in without cancelling.
+                            {t('cancellationPolicies.noShowDescription', { amount: formatCurrency(noShowPenalty, currency) })}
                         </p>
                     </div>
                 </div>
@@ -102,10 +104,10 @@ export function CancellationPolicies({
                     <LogOut className="w-5 h-5 mt-0.5 text-orange-500" />
                     <div className="flex-1">
                         <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                            Early Departure Fee
+                            {t('cancellationPolicies.earlyDepartureFee')}
                         </p>
                         <p className="text-sm text-orange-600 dark:text-orange-400">
-                            {formatCurrency(earlyDepartureFee, currency)} fee applies if you check out before your scheduled date.
+                            {t('cancellationPolicies.earlyDepartureDescription', { amount: formatCurrency(earlyDepartureFee, currency) })}
                         </p>
                     </div>
                 </div>
@@ -115,7 +117,7 @@ export function CancellationPolicies({
             {hotelRemarks && hotelRemarks.length > 0 && (
                 <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 mt-2">
                     <h4 className="font-medium text-amber-800 dark:text-amber-200 mb-2 text-sm">
-                        Important Notes
+                        {t('cancellationPolicies.importantNotes')}
                     </h4>
                     <ul className="space-y-1">
                         {hotelRemarks.map((remark, idx) => (

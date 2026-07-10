@@ -3,10 +3,12 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { PlaneTakeoff, ArrowLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/authStore';
 import { usePasswordValidation } from '@/hooks';
 
 export function ResetPasswordContent() {
+    const t = useTranslations('auth');
     const { isLoading } = useAuthStore();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -20,12 +22,11 @@ export function ResetPasswordContent() {
         e.preventDefault();
         setError('');
 
-        if (!allMet) { setError('Password does not meet all requirements'); return; }
-        if (password !== confirmPassword) { setError('Passwords do not match'); return; }
+        if (!allMet) { setError(t('messages.requirementsNotMet')); return; }
+        if (password !== confirmPassword) { setError(t('messages.passwordsDoNotMatch')); return; }
 
-        // Extract token from URL (?token=...)
         const token = new URLSearchParams(window.location.search).get('token');
-        if (!token) { setError('Invalid reset link. Please request a new one.'); return; }
+        if (!token) { setError(t('messages.invalidLink')); return; }
 
         try {
             const res = await fetch('/api/auth/reset-password', {
@@ -34,10 +35,10 @@ export function ResetPasswordContent() {
                 body: JSON.stringify({ token, password }),
             });
             const json = await res.json();
-            if (!res.ok) throw new Error(json.error || 'Failed to reset password');
+            if (!res.ok) throw new Error(json.error || t('messages.failedToReset'));
             setSuccess(true);
         } catch (err: any) {
-            setError(err?.message || 'Failed to reset password. Please try again.');
+            setError(err?.message || t('messages.failedToReset'));
         }
     };
 
@@ -51,16 +52,16 @@ export function ResetPasswordContent() {
                                 <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
                             </div>
                             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                                Password Reset Successful
+                                {t('resetPassword.successTitle')}
                             </h2>
                             <p className="text-slate-500 dark:text-slate-400 mb-6">
-                                Your password has been updated. You can now sign in with your new password.
+                                {t('resetPassword.successDescription')}
                             </p>
                             <Link
                                 href="/login"
                                 className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors"
                             >
-                                Sign in
+                                {t('actions.signIn')}
                             </Link>
                         </div>
                     </div>
@@ -78,7 +79,7 @@ export function ResetPasswordContent() {
                     className="inline-flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    Back to home
+                    {t('actions.backToHome')}
                 </Link>
             </header>
 
@@ -100,10 +101,10 @@ export function ResetPasswordContent() {
                     {/* Reset Password Card */}
                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-white/10 p-8">
                         <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-                            Reset your password
+                            {t('resetPassword.title')}
                         </h2>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                            Enter your new password below
+                            {t('resetPassword.subtitle')}
                         </p>
 
                         {error && (
@@ -115,7 +116,7 @@ export function ResetPasswordContent() {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                    New Password
+                                    {t('resetPassword.newPasswordLabel')}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -126,7 +127,7 @@ export function ResetPasswordContent() {
                                         id="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        placeholder="Enter new password"
+                                        placeholder={t('resetPassword.newPasswordPlaceholder')}
                                         className="w-full pl-10 pr-12 py-3 border border-slate-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                                         disabled={isLoading}
                                     />
@@ -143,28 +144,30 @@ export function ResetPasswordContent() {
                                     </button>
                                 </div>
 
-                                {/* Password Requirements */}
                                 {password && (
                                     <div className="mt-3 space-y-2">
-                                        {requirements.map((req, index) => (
-                                            <div key={index} className="flex items-center gap-2">
-                                                {req.met ? (
-                                                    <Check className="h-4 w-4 text-green-500" />
-                                                ) : (
-                                                    <X className="h-4 w-4 text-slate-300 dark:text-slate-600" />
-                                                )}
-                                                <span className={`text-xs ${req.met ? 'text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                                                    {req.label}
-                                                </span>
-                                            </div>
-                                        ))}
+                                        {requirements.map((req, index) => {
+                                            const labelKey = ['passwordRequirements.minLength', 'passwordRequirements.uppercase', 'passwordRequirements.lowercase', 'passwordRequirements.number'][index];
+                                            return (
+                                                <div key={index} className="flex items-center gap-2">
+                                                    {req.met ? (
+                                                        <Check className="h-4 w-4 text-green-500" />
+                                                    ) : (
+                                                        <X className="h-4 w-4 text-slate-300 dark:text-slate-600" />
+                                                    )}
+                                                    <span className={`text-xs ${req.met ? 'text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                        {t(labelKey)}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
 
                             <div>
                                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                    Confirm Password
+                                    {t('resetPassword.confirmPasswordLabel')}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -175,7 +178,7 @@ export function ResetPasswordContent() {
                                         id="confirmPassword"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        placeholder="Confirm new password"
+                                        placeholder={t('resetPassword.confirmPasswordPlaceholder')}
                                         className="w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                                         disabled={isLoading}
                                     />
@@ -190,7 +193,7 @@ export function ResetPasswordContent() {
                                 {isLoading ? (
                                     <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                 ) : (
-                                    'Reset Password'
+                                    t('actions.resetPassword')
                                 )}
                             </button>
                         </form>

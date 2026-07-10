@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { MapPin, XCircle, Pencil, Receipt, CheckCircle, RotateCcw, Ban, AlertTriangle, Map, ChevronRight } from 'lucide-react';
 
 const TripMapView = dynamic(() => import('./TripMapView'), { ssr: false });
@@ -22,12 +23,12 @@ interface BookingCardProps {
     index?: number;
 }
 
-function getRatingLabel(rating: number): string {
-    if (rating >= 9) return 'Exceptional';
-    if (rating >= 8) return 'Excellent';
-    if (rating >= 7) return 'Very Good';
-    if (rating >= 6) return 'Good';
-    return 'Pleasant';
+function getRatingLabel(rating: number, t: (key: string) => string): string {
+    if (rating >= 9) return t('bookingCard.ratings.exceptional');
+    if (rating >= 8) return t('bookingCard.ratings.excellent');
+    if (rating >= 7) return t('bookingCard.ratings.veryGood');
+    if (rating >= 6) return t('bookingCard.ratings.good');
+    return t('bookingCard.ratings.pleasant');
 }
 
 function getRatingColor(rating: number): string {
@@ -39,6 +40,7 @@ function getRatingColor(rating: number): string {
 }
 
 export default function BookingCard({ booking, onBookingUpdated, index = 0 }: BookingCardProps) {
+    const t = useTranslations('trips');
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showModifyModal, setShowModifyModal] = useState(false);
     const [showMapView, setShowMapView]         = useState(false);
@@ -111,12 +113,12 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         </h3>
 
                         <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1 truncate">
-                            {fmtDate(checkInDate)} → {fmtDate(checkOutDate)} · {nights} {nights === 1 ? 'night' : 'nights'}
+                            {fmtDate(checkInDate)} → {fmtDate(checkOutDate)} · {t(nights === 1 ? 'bookingCard.night' : 'bookingCard.nights', { count: nights })}
                         </div>
 
                         <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1">
-                            {booking.guests_adults} {booking.guests_adults === 1 ? 'adult' : 'adults'}
-                            {booking.guests_children > 0 && `, ${booking.guests_children} ${booking.guests_children === 1 ? 'child' : 'children'}`}
+                            {t(booking.guests_adults === 1 ? 'bookingCard.adult' : 'bookingCard.adults', { count: booking.guests_adults })}
+                            {booking.guests_children > 0 && `, ${t(booking.guests_children === 1 ? 'bookingCard.child' : 'bookingCard.children', { count: booking.guests_children })}`}
                         </div>
 
                         {/* Policy badge (mobile) */}
@@ -124,15 +126,15 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                             <div className="mb-1.5">
                                 {policyType === 'free_cancellation' ? (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                        <CheckCircle className="w-3 h-3 shrink-0" /> Free cancellation
+                                        <CheckCircle className="w-3 h-3 shrink-0" /> {t('bookingCard.policyBadges.freeCancellation')}
                                     </span>
                                 ) : policyType === 'non_refundable' ? (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800">
-                                        <Ban className="w-3 h-3 shrink-0" /> Non-refundable
+                                        <Ban className="w-3 h-3 shrink-0" /> {t('bookingCard.policyBadges.nonRefundable')}
                                     </span>
                                 ) : (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                                        <RotateCcw className="w-3 h-3 shrink-0" /> Partial refund
+                                        <RotateCcw className="w-3 h-3 shrink-0" /> {t('bookingCard.policyBadges.partialRefund')}
                                     </span>
                                 )}
                             </div>
@@ -148,13 +150,13 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                     onClick={(e) => { e.stopPropagation(); setShowMapView(true); }}
                                     className="text-[10px] font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-0.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
                                 >
-                                    <Map className="w-3 h-3" /> Map
+                                    <Map className="w-3 h-3" /> {t('bookingCard.actions.map')}
                                 </button>
                                 <a
                                     href={`/trips/${booking.id}`}
                                     className="text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-0.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center gap-1"
                                 >
-                                    <ChevronRight className="w-3 h-3" /> Details
+                                    <ChevronRight className="w-3 h-3" /> {t('bookingCard.actions.details')}
                                 </a>
                             {isUpcoming && normalizedStatus === 'confirmed' && (
                                 <div className="flex items-center gap-1.5 shrink-0">
@@ -162,13 +164,13 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                         onClick={(e) => { e.stopPropagation(); setShowModifyModal(true); }}
                                         className="text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded px-1.5 py-0.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                                     >
-                                        Modify
+                                        {t('bookingCard.actions.modify')}
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
                                         className="text-[10px] font-medium text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800 rounded px-1.5 py-0.5 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                                     >
-                                        Cancel
+                                        {t('bookingCard.actions.cancel')}
                                     </button>
                                 </div>
                             )}
@@ -177,7 +179,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                     onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
                                     className="flex items-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-700 rounded px-1.5 py-0.5 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors shrink-0"
                                 >
-                                    <AlertTriangle className="w-3 h-3" /> Retry refund
+                                    <AlertTriangle className="w-3 h-3" /> {t('bookingCard.actions.retryRefund')}
                                 </button>
                             )}
                             </div>
@@ -220,14 +222,14 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                         </div>
 
                         <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] text-slate-500 dark:text-slate-400 mb-1">
-                            {fmtDate(checkInDate)} → {fmtDate(checkOutDate)} · {nights} {nights === 1 ? 'night' : 'nights'}
+                            {fmtDate(checkInDate)} → {fmtDate(checkOutDate)} · {t(nights === 1 ? 'bookingCard.night' : 'bookingCard.nights', { count: nights })}
                         </div>
 
                         {/* Guests */}
                         <div className="flex flex-wrap gap-1 mb-1.5">
                             <span className="inline-flex items-center px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-600 dark:text-slate-300">
-                                {booking.guests_adults} {booking.guests_adults === 1 ? 'adult' : 'adults'}
-                                {booking.guests_children > 0 && `, ${booking.guests_children} ${booking.guests_children === 1 ? 'child' : 'children'}`}
+                                {t(booking.guests_adults === 1 ? 'bookingCard.adult' : 'bookingCard.adults', { count: booking.guests_adults })}
+                                {booking.guests_children > 0 && `, ${t(booking.guests_children === 1 ? 'bookingCard.child' : 'bookingCard.children', { count: booking.guests_children })}`}
                             </span>
                         </div>
 
@@ -236,25 +238,25 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                             <div className="mb-1.5">
                                 {policyType === 'free_cancellation' ? (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                        <CheckCircle className="w-3 h-3 shrink-0" /> Free cancellation
+                                        <CheckCircle className="w-3 h-3 shrink-0" /> {t('bookingCard.policyBadges.freeCancellation')}
                                     </span>
                                 ) : policyType === 'non_refundable' ? (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800">
-                                        <Ban className="w-3 h-3 shrink-0" /> Non-refundable
+                                        <Ban className="w-3 h-3 shrink-0" /> {t('bookingCard.policyBadges.nonRefundable')}
                                     </span>
                                 ) : (
                                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                                        <RotateCcw className="w-3 h-3 shrink-0" /> Partial refund
+                                        <RotateCcw className="w-3 h-3 shrink-0" /> {t('bookingCard.policyBadges.partialRefund')}
                                     </span>
                                 )}
                             </div>
                         )}
 
                         {isPast && normalizedStatus === 'confirmed' && (
-                            <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-400">Trip completed</span>
+                            <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-400">{t('bookingCard.tripCompleted')}</span>
                         )}
                         {normalizedStatus === 'cancelled' && (
-                            <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-red-500 dark:text-red-400">Cancelled</span>
+                            <span className="mt-auto text-[clamp(0.5625rem,1.5vw,0.625rem)] text-red-500 dark:text-red-400">{t('bookingCard.cancelled')}</span>
                         )}
                     </div>
 
@@ -268,11 +270,11 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                 </span>
                                 <div className="text-right">
                                     <div className="text-[clamp(0.625rem,1.5vw,0.75rem)] font-semibold text-slate-900 dark:text-white leading-none">
-                                        {getRatingLabel(rating)}
+                                        {getRatingLabel(rating, t)}
                                     </div>
                                     {(booking as any).reviews != null && (booking as any).reviews > 0 && (
                                         <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400">
-                                            {(booking as any).reviews.toLocaleString()} reviews
+                                            {t('bookingCard.reviews', { count: (booking as any).reviews.toLocaleString() })}
                                         </div>
                                     )}
                                 </div>
@@ -284,7 +286,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                             <span className="text-[clamp(0.875rem,2.5vw,1rem)] font-bold text-slate-900 dark:text-white">
                                 {formatCurrency(displayPrice, displayCurrency)}
                             </span>
-                            <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400">total</div>
+                            <div className="text-[clamp(0.5625rem,1.5vw,0.625rem)] text-slate-500 dark:text-slate-400">{t('bookingCard.total')}</div>
                         </div>
 
                         {/* Action buttons */}
@@ -295,14 +297,14 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                     className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
                                 >
                                     <Pencil className="w-3 h-3" />
-                                    Modify
+                                    {t('bookingCard.actions.modify')}
                                 </button>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setShowCancelModal(true); }}
                                     className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg px-2 py-1.5 transition-colors"
                                 >
                                     <XCircle className="w-3 h-3" />
-                                    Cancel
+                                    {t('bookingCard.actions.cancel')}
                                 </button>
                             </>)}
                             {normalizedStatus === 'cancelled_refund_failed' && (
@@ -311,7 +313,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                     className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg px-2 py-1.5 transition-colors"
                                 >
                                     <AlertTriangle className="w-3 h-3" />
-                                    Retry refund
+                                    {t('bookingCard.actions.retryRefund')}
                                 </button>
                             )}
                             <button
@@ -319,14 +321,14 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                 className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
                             >
                                 <Map className="w-3 h-3" />
-                                Map
+                                {t('bookingCard.actions.map')}
                             </button>
                             <a
                                 href={`/trips/${booking.id}`}
                                 className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg px-2 py-1.5 transition-colors"
                             >
                                 <ChevronRight className="w-3 h-3" />
-                                Details
+                                {t('bookingCard.actions.details')}
                             </a>
                             <a
                                 href={`/trips/invoice/${booking.id}?type=hotel`}
@@ -335,7 +337,7 @@ export default function BookingCard({ booking, onBookingUpdated, index = 0 }: Bo
                                 className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg px-2 py-1.5 transition-colors"
                             >
                                 <Receipt className="w-3 h-3" />
-                                Receipt
+                                {t('bookingCard.actions.receipt')}
                             </a>
                         </div>
                     </div>

@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, PlaneTakeoff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthFormStore } from '@/stores/authFormStore';
 import EmailStep from './EmailStep';
@@ -12,6 +13,8 @@ import VerifyEmailStep from './VerifyEmailStep';
 import ForgotPasswordStep from './ForgotPasswordStep';
 
 const AuthModal: React.FC = () => {
+    const t = useTranslations('nav');
+    const ta = useTranslations('auth');
     const { isAuthModalOpen, closeAuthModal, authStep } = useAuthStore();
     const resetForm = useAuthFormStore((s) => s.reset);
 
@@ -77,7 +80,7 @@ const AuthModal: React.FC = () => {
                         <button
                             onClick={() => { closeAuthModal(); resetForm(); }}
                             className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors z-10"
-                            aria-label="Close modal"
+                            aria-label={ta('closeModal')}
                         >
                             <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
                         </button>
@@ -112,7 +115,7 @@ const AuthModal: React.FC = () => {
                         {/* Partner Logos Footer */}
                         <div className="border-t border-slate-100 dark:border-white/5 py-3 px-6 shrink-0">
                             <p className="text-xs text-center text-slate-400 dark:text-slate-500">
-                                Your account works across all our partner sites
+                                {t('accountWorks')}
                             </p>
                         </div>
                     </motion.div>

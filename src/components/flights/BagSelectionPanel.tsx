@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2, Luggage, ShoppingBag, AlertTriangle, Plus, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NormalizedBagOption, SelectedBag } from '@/types/bags';
@@ -31,6 +32,7 @@ export default function BagSelectionPanel({
     onUnavailable,
     onOfferExpired,
 }: BagSelectionPanelProps) {
+    const t = useTranslations('flightBook.bags');
     const [options, setOptions] = useState<NormalizedBagOption[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -48,11 +50,11 @@ export default function BagSelectionPanel({
             .then(async r => {
                 const data = await r.json();
                 if (cancelled) return;
-                if (r.status === 404 && onOfferExpired) {
+                if ((r.status === 404 || data.errorCode === 'offer_expired') && onOfferExpired) {
                     onOfferExpired();
                     return;
                 }
-                if (!data.success) throw new Error(data.error || 'Failed to load bag options');
+                if (!data.success) throw new Error(data.errorCode || data.error || 'Failed to load bag options');
                 const opts: NormalizedBagOption[] = data.bagOptions ?? [];
                 setOptions(opts);
                 if (opts.length === 0 && onUnavailable) onUnavailable();
@@ -94,7 +96,7 @@ export default function BagSelectionPanel({
         return (
             <div className="flex items-center justify-center gap-2 py-8 text-slate-500 dark:text-slate-400 text-[10px] lg:text-xs">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Loading bag options…
+                {t('loading')}
             </div>
         );
     }
@@ -107,11 +109,11 @@ export default function BagSelectionPanel({
                     <AlertTriangle className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
-                    <p className="text-[11px] font-normal text-slate-700 dark:text-slate-300">Bag upgrades not available</p>
+                    <p className="text-[11px] font-normal text-slate-700 dark:text-slate-300">{t('notAvailable')}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                         {error
-                            ? `Could not load bag options: ${error}`
-                            : 'Extra bag selection isn\'t supported for this flight.'}
+                            ? t('errorDetail', { error })
+                            : t('notSupported')}
                     </p>
                 </div>
             </div>
@@ -144,7 +146,7 @@ export default function BagSelectionPanel({
             {/* Cost summary */}
             {totalBagCost > 0 && (
                 <div className="flex items-center justify-between text-xs bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-800 rounded-md px-3 py-2">
-                    <span className="text-sky-700 dark:text-sky-300 font-normal">Bag upgrade total</span>
+                    <span className="text-sky-700 dark:text-sky-300 font-normal">{t('upgradeTotal')}</span>
                     <span className="font-normal text-sky-700 dark:text-sky-300">
                         +{new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(totalBagCost)}
                     </span>
@@ -216,11 +218,12 @@ interface BagOptionCardProps {
 }
 
 function BagOptionCard({ opt, selected, onToggle, currency }: BagOptionCardProps) {
+    const t = useTranslations('flightBook.bags');
     const Icon = opt.bagType === 'carry_on' ? ShoppingBag : Luggage;
-    const label = opt.bagType === 'carry_on' ? 'Carry-on bag' : 'Checked bag';
-    const weightLabel = opt.weightKg != null ? `up to ${opt.weightKg} kg` : null;
+    const label = opt.bagType === 'carry_on' ? t('carryOn') : t('checked');
+    const weightLabel = opt.weightKg != null ? t('weight', { weight: opt.weightKg }) : null;
     const priceLabel = opt.price === 0
-        ? 'Free'
+        ? t('free')
         : new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(opt.price);
 
     return (

@@ -333,21 +333,21 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                               <div className="bg-slate-50/50 dark:bg-slate-800/20 px-2.5 lg:px-5 py-3 border-b border-slate-100 dark:border-slate-800">
                                   <h4 className="text-[11px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                                       <BadgeDollarSign className="w-3.5 h-3.5 text-indigo-500" />
-                                      Available Fare Options
+                                      {t('availableFareOptions')}
                                   </h4>
                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                                       {/* Current main offer as one of the options */}
                                       <div className="flex flex-col p-2.5 rounded-lg border-2 border-indigo-500 bg-white dark:bg-slate-900 shadow-sm">
                                           <div className="flex justify-between items-start mb-1">
                                               <span className="text-[11px] font-normal text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 rounded uppercase">
-                                                  {offer.brandedFare?.brandName || offer.brandedFare?.fareType || 'Standard'}
+                                                  {offer.brandedFare?.brandName || offer.brandedFare?.fareType || t('standard')}
                                               </span>
                                               <span className="text-xs font-normal text-slate-900 dark:text-white">
                                                   {formatPrice(offer.price.total, offer.price.currency, targetCurrency)}
                                               </span>
                                           </div>
                                           <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 italic mb-2">
-                                              {(offer.segments[0].cabinClass || 'economy').replace('_', ' ')} · Best value
+                                               {(offer.segments[0].cabinClass || 'economy').replace('_', ' ')} · {t('bestValue')}
                                           </p>
                                           <button
                                               disabled
@@ -362,7 +362,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                           <div key={alt.offerId} className="flex flex-col p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300 transition-colors">
                                               <div className="flex justify-between items-start mb-1">
                                                   <span className="text-[11px] font-normal text-slate-600 dark:text-slate-300 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded uppercase">
-                                                      {alt.brandedFare?.brandName || alt.brandedFare?.fareType || 'Option'}
+                                                      {alt.brandedFare?.brandName || alt.brandedFare?.fareType || t('option')}
                                                   </span>
                                                   <span className="text-xs font-normal text-slate-900 dark:text-white">
                                                       {formatPrice(alt.price.total, alt.price.currency, targetCurrency)}
@@ -392,7 +392,7 @@ export const FlightCard: React.FC<FlightCardProps> = ({ offer, index = 0, onSele
                                   const legSegments = legGroups[idx];
                                   if (!legSegments || legSegments.length === 0) return null;
 
-                                  let label = `Leg ${routeIndex + 1}`;
+                                  let label = t('legLabel', { number: routeIndex + 1 });
                                   if (routeIndices.length === 2) {
                                       label = routeIndex === 0 ? t('outbound') : t('return');
                                   }

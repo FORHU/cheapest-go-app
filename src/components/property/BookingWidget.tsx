@@ -3,6 +3,7 @@
 import React from 'react';
 import { type Property } from '@/types';
 import { MapPin, X, Bed, User, Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useViewingRoom, useBookingActions } from '@/stores/bookingStore';
 import { calculateNights } from '@/lib/utils';
 
@@ -18,6 +19,7 @@ interface BookingWidgetProps {
 }
 
 const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, searchParams }) => {
+    const t = useTranslations('property.bookingWidget');
     // Use granular selectors (Phase 2)
     const viewingRoom = useViewingRoom();
     const { setViewingRoom } = useBookingActions();
@@ -52,7 +54,7 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, se
                     <div className="relative w-full max-w-[480px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200 dark:border-slate-800">
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 px-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
-                            <h3 className="font-bold text-lg text-slate-900 dark:text-white">Room Details</h3>
+                            <h3 className="font-bold text-lg text-slate-900 dark:text-white">{t('roomDetails')}</h3>
                             <button
                                 onClick={() => setViewingRoom(null)}
                                 className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
@@ -78,7 +80,7 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, se
                         {/* Content Scrollable Area */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
                             <h4 className="text-2xl font-display font-bold text-slate-900 dark:text-white mb-2 leading-tight">
-                                {viewingRoom.name || viewingRoom.roomName || "Selected Room"}
+                                {viewingRoom.name || viewingRoom.roomName || t('selectedRoom')}
                             </h4>
 
                             <div className="flex flex-wrap gap-4 text-sm text-slate-500 dark:text-slate-400 mb-6 pb-6 border-b border-slate-100 dark:border-slate-800">
@@ -90,7 +92,7 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, se
                                 )}
                                 <div className="flex items-center gap-1.5">
                                     <User size={16} />
-                                    {viewingRoom.maxOccupancy || 2} guests
+                                    {t('guests', { count: viewingRoom.maxOccupancy || 2 })}
                                 </div>
                                 {viewingRoom.bedType && (
                                     <div className="flex items-center gap-1.5">
@@ -102,7 +104,7 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, se
 
                             {viewingRoom.roomDescription && (
                                 <div className="mb-8">
-                                    <h5 className="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider">Description</h5>
+                                    <h5 className="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider">{t('description')}</h5>
                                     <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                                         {viewingRoom.roomDescription}
                                     </p>
@@ -110,7 +112,7 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, se
                             )}
 
                             <div>
-                                <h5 className="text-xs font-bold uppercase text-slate-400 mb-4 tracking-wider">Amenities</h5>
+                                <h5 className="text-xs font-bold uppercase text-slate-400 mb-4 tracking-wider">{t('amenities')}</h5>
                                 <div className="grid grid-cols-2 gap-3">
                                     {(viewingRoom.amenities || ['Air conditioning', 'WiFi', 'Private Bathroom', 'Flat-screen TV', 'Soundproofing']).map((item, i) => (
                                         <div key={i} className="flex items-start gap-2.5 text-sm text-slate-700 dark:text-slate-300">
@@ -133,7 +135,7 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({ property, preBookData, se
                                 }}
                                 className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98]"
                             >
-                                Book This Room
+                                {t('bookThisRoom')}
                             </button>
                         </div>
                     </div>

@@ -1,13 +1,17 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { CheckoutContent } from '@/components/checkout';
-
-export const metadata: Metadata = {
-  title: 'Checkout | CheapestGo',
-  robots: { index: false, follow: false },
-};
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata(): Promise<Metadata> {
+    const t = await getTranslations('checkout');
+    return {
+        title: t('title'),
+        robots: { index: false, follow: false },
+    };
+}
 
 export default function CheckoutPage() {
     return (

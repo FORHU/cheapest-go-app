@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { MapPin, ChevronRight } from 'lucide-react';
 import { COUNTRY_POPULAR_CITIES, COUNTRY_DEFAULT_CITY, COUNTRY_SEARCH_LIST } from '@/lib/constants/countries';
 
@@ -19,6 +20,7 @@ function buildCityUrl(searchParams: Record<string, string>, city: string): strin
  * Displays which city is currently showing and lets them jump to other popular cities.
  */
 export function CountryCityPicker({ searchParams }: CountryCityPickerProps) {
+    const t = useTranslations('search');
     if (searchParams.destinationType !== 'country') return null;
 
     const countryCode = searchParams.countryCode || '';
@@ -42,12 +44,12 @@ export function CountryCityPicker({ searchParams }: CountryCityPickerProps) {
                 <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium shrink-0">
                     <MapPin size={13} className="shrink-0" />
                     <span>
-                        Showing hotels in <strong>{currentCity}</strong>
+                        {t('results.showingHotelsIn')} <strong>{currentCity}</strong>
                         {countryName ? ` · ${countryName}` : ''}
                     </span>
                     <ChevronRight size={13} className="shrink-0 opacity-60" />
                     <span className="text-slate-500 dark:text-slate-400 font-normal">
-                        Other cities:
+                        {t('results.otherCities')}
                     </span>
                 </div>
 

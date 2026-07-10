@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({
                 found: true,
                 failed: true,
+                errorCode: 'booking_failed_refunded',
                 error: 'Booking failed — the flight offer was no longer available. Your payment has been automatically refunded.',
             });
         }

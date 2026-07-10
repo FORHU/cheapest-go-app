@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/authStore';
 
 interface SocialLoginButtonsProps {
@@ -33,6 +34,7 @@ const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
     showLabels = true,
     compact = false
 }) => {
+    const t = useTranslations('auth');
     const { socialLogin, isLoading } = useAuthStore();
 
     const handleSocialLogin = (provider: 'google' | 'apple' | 'facebook') => {
@@ -46,7 +48,7 @@ const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
                     onClick={() => handleSocialLogin('apple')}
                     disabled={isLoading}
                     className="p-3 rounded-full border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
-                    aria-label="Sign in with Apple"
+                    aria-label={t('social.appleAriaLabel')}
                 >
                     <AppleIcon />
                 </button>
@@ -54,7 +56,7 @@ const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
                     onClick={() => handleSocialLogin('facebook')}
                     disabled={isLoading}
                     className="p-3 rounded-full border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
-                    aria-label="Sign in with Facebook"
+                    aria-label={t('social.facebookAriaLabel')}
                 >
                     <FacebookIcon />
                 </button>
@@ -71,7 +73,7 @@ const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
                 className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg hover:bg-slate-50 dark:hover:bg-white/10 transition-colors disabled:opacity-50 font-medium text-slate-700 dark:text-white"
             >
                 <GoogleIcon />
-                {showLabels && <span>Sign in with Google</span>}
+                {showLabels && <span>{t('social.signInWithGoogle')}</span>}
             </button>
 
             {/* Divider */}
@@ -80,7 +82,7 @@ const SocialLoginButtons: React.FC<SocialLoginButtonsProps> = ({
                     <div className="w-full border-t border-slate-200 dark:border-white/10"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400">or</span>
+                    <span className="px-4 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400">{t('signIn.orDivider')}</span>
                 </div>
             </div>
         </div>

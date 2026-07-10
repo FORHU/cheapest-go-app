@@ -599,7 +599,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                 {/* Map Container */}
                 <div className="relative w-full h-[320px] sm:h-[450px] lg:h-full mb-2 lg:mb-0">
                     {isFullscreen && mounted ? createPortal(
-                        <div className="fixed inset-0 z-[10000] bg-slate-950/20 dark:bg-slate-950 flex flex-col">
+                        <div className="fixed inset-0 z-10000 bg-slate-950/20 dark:bg-slate-950 flex flex-col">
                             <div className="relative flex-1">
                                 <div className="absolute inset-0">
                                     {hasCoordinates ? (
@@ -615,7 +615,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                             onMouseMove={onMouseMove}
                                             maxPitch={60}
                                             antialias={false}
-                                            className="!min-h-0 !rounded-none h-full"
+                                            className="min-h-0 rounded-none h-full"
                                         >
                                             <NavigationControl position="top-right" showCompass={false} />
                                             <MapDetailsPanel
@@ -723,7 +723,7 @@ const PropertyMapSidebarContent = React.memo<PropertyMapSidebarProps>(
                                     onMouseMove={onMouseMove}
                                     maxPitch={60}
                                     antialias={false}
-                                    className="!min-h-0 !rounded-none h-full"
+                                    className="min-h-0 rounded-none h-full"
                                 >
                                     <NavigationControl position="top-right" showCompass={false} />
                                     <MapDetailsPanel

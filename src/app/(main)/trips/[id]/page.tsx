@@ -10,45 +10,49 @@ import {
     ChevronRight, Luggage, CreditCard, Shield,
 } from 'lucide-react';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-    title: 'Booking Details | CheapestGo',
-    robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+    const t = await getTranslations('trips');
+    return { title: t('title'), robots: { index: false, follow: false } };
+}
 
 // ── Status display helpers ────────────────────────────────────────────────────
 
-const HOTEL_STATUS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    pending:                   { label: 'Pending',           color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',   icon: <Clock size={13} /> },
-    confirmed:                 { label: 'Confirmed',         color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: <CheckCircle size={13} /> },
-    completed:                 { label: 'Completed',         color: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400',       icon: <CheckCircle size={13} /> },
-    cancelled:                 { label: 'Cancelled',         color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',           icon: <XCircle size={13} /> },
-    cancelled_refunded:        { label: 'Refunded',          color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',       icon: <RotateCcw size={13} /> },
-    cancelled_refund_failed:   { label: 'Refund Failed',     color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',           icon: <AlertTriangle size={13} /> },
+type TFunc = (key: string, params?: Record<string, string | number>) => string;
+
+const HOTEL_STATUS_MAP: Record<string, { key: string; color: string; icon: React.ReactNode }> = {
+    pending:                   { key: 'pending',                 color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',   icon: <Clock size={13} /> },
+    confirmed:                 { key: 'confirmed',               color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: <CheckCircle size={13} /> },
+    completed:                 { key: 'completed',               color: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400',       icon: <CheckCircle size={13} /> },
+    cancelled:                 { key: 'cancelled',               color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',           icon: <XCircle size={13} /> },
+    cancelled_refunded:        { key: 'refunded',                color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',       icon: <RotateCcw size={13} /> },
+    cancelled_refund_failed:   { key: 'refundFailed',            color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',           icon: <AlertTriangle size={13} /> },
 };
 
-const FLIGHT_STATUS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    booked:            { label: 'Processing',        color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',         icon: <Clock size={13} /> },
-    pnr_created:       { label: 'Booked',            color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',         icon: <CheckCircle size={13} /> },
-    awaiting_ticket:   { label: 'Ticketing',         color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',     icon: <Clock size={13} /> },
-    ticketed:          { label: 'Confirmed',         color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: <CheckCircle size={13} /> },
-    failed:            { label: 'Failed',            color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',             icon: <XCircle size={13} /> },
-    cancel_requested:  { label: 'Cancellation Pending', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', icon: <Clock size={13} /> },
-    cancel_failed:     { label: 'Cancel Failed',     color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',             icon: <AlertTriangle size={13} /> },
-    cancelled:         { label: 'Cancelled',         color: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400',         icon: <XCircle size={13} /> },
-    refund_pending:    { label: 'Refund Pending',    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', icon: <Clock size={13} /> },
-    refund_failed:     { label: 'Refund Failed',     color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',             icon: <AlertTriangle size={13} /> },
-    refunded:          { label: 'Refunded',          color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',         icon: <RotateCcw size={13} /> },
-    cancelled_provider_missing: { label: 'Cancelled', color: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400',        icon: <XCircle size={13} /> },
+const FLIGHT_STATUS_MAP: Record<string, { key: string; color: string; icon: React.ReactNode }> = {
+    booked:            { key: 'processing',                   color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',         icon: <Clock size={13} /> },
+    pnr_created:       { key: 'booked',                       color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',         icon: <CheckCircle size={13} /> },
+    awaiting_ticket:   { key: 'ticketing',                    color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',     icon: <Clock size={13} /> },
+    ticketed:          { key: 'ticketed',                     color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: <CheckCircle size={13} /> },
+    failed:            { key: 'failed',                       color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',             icon: <XCircle size={13} /> },
+    cancel_requested:  { key: 'cancelPending',                color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', icon: <Clock size={13} /> },
+    cancel_failed:     { key: 'cancelFailed',                 color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',             icon: <AlertTriangle size={13} /> },
+    cancelled:         { key: 'cancelled',                    color: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400',         icon: <XCircle size={13} /> },
+    refund_pending:    { key: 'refundPending',                color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', icon: <Clock size={13} /> },
+    refund_failed:     { key: 'refundFailed',                 color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',             icon: <AlertTriangle size={13} /> },
+    refunded:          { key: 'refunded',                     color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',         icon: <RotateCcw size={13} /> },
+    cancelled_provider_missing: { key: 'cancelledProviderMissing', color: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-400',    icon: <XCircle size={13} /> },
 };
 
-function StatusBadge({ status, map }: { status: string; map: typeof HOTEL_STATUS }) {
-    const cfg = map[status] ?? { label: status, color: 'bg-slate-100 text-slate-600', icon: null };
+function StatusBadge({ status, map, t }: { status: string; map: typeof HOTEL_STATUS_MAP; t: TFunc }) {
+    const cfg = map[status] ?? { key: status, color: 'bg-slate-100 text-slate-600', icon: null };
+    const label = t(`status.${cfg.key}`, {});
     return (
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
-            {cfg.icon}{cfg.label}
+            {cfg.icon}{label}
         </span>
     );
 }
@@ -86,11 +90,13 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
 
 // ── Hotel detail view ─────────────────────────────────────────────────────────
 
-function HotelDetail({ booking }: { booking: any }) {
+function HotelDetail({ booking, t }: { booking: any; t: TFunc }) {
     const nights = calculateNights(new Date(booking.check_in), new Date(booking.check_out));
     const policy = booking.cancellation_policy as any;
     const refundable = policy?.refundableTag === 'RFN';
     const freeCancelDeadline = policy?.cancelPolicyInfos?.[0]?.cancelTime;
+    const s = t;
+    const l = (key: string, params?: Record<string, string | number>) => t(`labels.${key}`, params);
 
     return (
         <div className="space-y-4">
@@ -115,47 +121,47 @@ function HotelDetail({ booking }: { booking: any }) {
                         </div>
                     )}
                     <div className={!booking.property_image ? 'shrink-0' : 'w-full flex justify-between items-center'}>
-                        <StatusBadge status={booking.status} map={HOTEL_STATUS} />
+                        <StatusBadge status={booking.status} map={HOTEL_STATUS_MAP} t={t} />
                         <p className="text-xs text-slate-400 mt-1">Ref: <span className="font-mono">{booking.booking_id}</span></p>
                     </div>
                 </div>
             </div>
 
             {/* Stay details */}
-            <Section title="Stay Details" icon={<Calendar size={15} />}>
-                <InfoRow label="Check-in" value={fmtDate(booking.check_in)} />
-                <InfoRow label="Check-out" value={fmtDate(booking.check_out)} />
-                <InfoRow label="Duration" value={`${nights} night${nights !== 1 ? 's' : ''}`} />
-                <InfoRow label="Room" value={booking.room_name} />
+            <Section title={t('sections.stayDetails')} icon={<Calendar size={15} />}>
+                <InfoRow label={l('checkIn')} value={fmtDate(booking.check_in)} />
+                <InfoRow label={l('checkOut')} value={fmtDate(booking.check_out)} />
+                <InfoRow label={l('duration')} value={`${nights} night${nights !== 1 ? 's' : ''}`} />
+                <InfoRow label={l('room')} value={booking.room_name} />
                 <InfoRow
-                    label="Guests"
+                    label={l('guests')}
                     value={`${booking.guests_adults} adult${booking.guests_adults !== 1 ? 's' : ''}${booking.guests_children > 0 ? `, ${booking.guests_children} child${booking.guests_children !== 1 ? 'ren' : ''}` : ''}`}
                 />
                 {booking.special_requests && (
-                    <InfoRow label="Special Requests" value={booking.special_requests} />
+                    <InfoRow label={l('specialRequests')} value={booking.special_requests} />
                 )}
             </Section>
 
             {/* Guest info */}
-            <Section title="Guest Information" icon={<Users size={15} />}>
-                <InfoRow label="Name" value={`${booking.holder_first_name} ${booking.holder_last_name}`} />
-                <InfoRow label="Email" value={booking.holder_email} />
+            <Section title={t('sections.guestInformation')} icon={<Users size={15} />}>
+                <InfoRow label={l('name')} value={`${booking.holder_first_name} ${booking.holder_last_name}`} />
+                <InfoRow label={l('email')} value={booking.holder_email} />
             </Section>
 
             {/* Cancellation policy */}
-            <Section title="Cancellation Policy" icon={<Shield size={15} />}>
+            <Section title={t('sections.cancellationPolicy')} icon={<Shield size={15} />}>
                 <div className="py-3">
                     <div className={`flex items-center gap-2 mb-3 p-3 rounded-xl ${refundable ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
                         {refundable
                             ? <CheckCircle size={16} className="text-emerald-600 shrink-0" />
                             : <XCircle size={16} className="text-red-500 shrink-0" />}
                         <span className={`text-sm font-semibold ${refundable ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {refundable ? 'Free cancellation available' : 'Non-refundable'}
+                            {refundable ? l('freeCancellation') : l('nonRefundable')}
                         </span>
                     </div>
                     {freeCancelDeadline && (
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Free cancellation until{' '}
+                            {l('freeCancelUntil')}{' '}
                             <span className="font-semibold text-slate-700 dark:text-slate-300">
                                 {fmtDate(freeCancelDeadline, { month: 'long', day: 'numeric', year: 'numeric' })}
                             </span>
@@ -163,23 +169,23 @@ function HotelDetail({ booking }: { booking: any }) {
                     )}
                     {policy?.cancelPolicyInfos?.map((p: any, i: number) => (
                         <div key={i} className="mt-2 text-xs text-slate-500">
-                            After {fmtDate(p.cancelTime)}: penalty of {formatCurrency(p.amount, p.currency || booking.currency)}
+                            {l('afterDatePenalty', { date: fmtDate(p.cancelTime), amount: formatCurrency(p.amount, p.currency || booking.currency) })}
                         </div>
                     ))}
                     {policy?.hotelRemarks?.map((r: string, i: number) => (
                         <p key={i} className="mt-1.5 text-xs text-slate-400 italic">{r}</p>
                     ))}
                     {!policy && (
-                        <p className="text-xs text-slate-400">Cancellation policy details not available.</p>
+                        <p className="text-xs text-slate-400">{l('policyNotAvailable')}</p>
                     )}
                 </div>
             </Section>
 
             {/* Payment */}
-            <Section title="Payment" icon={<CreditCard size={15} />}>
-                <InfoRow label="Total Paid" value={<span className="text-base font-bold">{formatCurrency(booking.total_price, booking.currency || 'USD')}</span>} />
-                <InfoRow label="Payment Method" value="Card (Stripe)" />
-                <InfoRow label="Booked On" value={fmtDate(booking.created_at)} />
+            <Section title={t('sections.payment')} icon={<CreditCard size={15} />}>
+                <InfoRow label={l('totalPaid')} value={<span className="text-base font-bold">{formatCurrency(booking.total_price, booking.currency || 'USD')}</span>} />
+                <InfoRow label={l('paymentMethod')} value="Card (Stripe)" />
+                <InfoRow label={l('bookedOn')} value={fmtDate(booking.created_at)} />
             </Section>
         </div>
     );
@@ -187,9 +193,10 @@ function HotelDetail({ booking }: { booking: any }) {
 
 // ── Flight detail view ────────────────────────────────────────────────────────
 
-function FlightDetail({ booking }: { booking: any }) {
+function FlightDetail({ booking, t }: { booking: any; t: TFunc }) {
     const segments: any[] = booking.flight_segments ?? [];
     const passengers: any[] = booking.passengers ?? [];
+    const l = (key: string, params?: Record<string, string | number>) => t(`labels.${key}`, params);
 
     const origin = segments[0]?.origin ?? '—';
     const destination = segments[segments.length - 1]?.destination ?? '—';
@@ -207,7 +214,7 @@ function FlightDetail({ booking }: { booking: any }) {
                 </div>
                 <p className="text-sm text-slate-500 mb-3">{departDate} · {booking.trip_type ?? 'one-way'}</p>
                 <div className="flex flex-wrap items-center gap-3">
-                    <StatusBadge status={booking.status} map={FLIGHT_STATUS} />
+                    <StatusBadge status={booking.status} map={FLIGHT_STATUS_MAP} t={t} />
                     {booking.pnr && (
                         <span className="text-xs text-slate-500">
                             PNR: <span className="font-mono font-semibold text-slate-800 dark:text-white tracking-wider">{booking.pnr}</span>
@@ -217,7 +224,7 @@ function FlightDetail({ booking }: { booking: any }) {
             </div>
 
             {/* Itinerary */}
-            <Section title="Itinerary" icon={<Plane size={15} />}>
+            <Section title={t('sections.itinerary')} icon={<Plane size={15} />}>
                 <div className="py-2 space-y-0">
                     {segments.map((seg: any, i: number) => (
                         <div key={i} className="flex gap-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
@@ -242,14 +249,14 @@ function FlightDetail({ booking }: { booking: any }) {
                         </div>
                     ))}
                     {segments.length === 0 && (
-                        <p className="text-sm text-slate-400 py-3">No segment details available.</p>
+                        <p className="text-sm text-slate-400 py-3">{t('noSegmentDetails')}</p>
                     )}
                 </div>
             </Section>
 
             {/* Passengers */}
             {passengers.length > 0 && (
-                <Section title="Passengers" icon={<Users size={15} />}>
+                <Section title={t('sections.passengers')} icon={<Users size={15} />}>
                     {passengers.map((p: any, i: number) => (
                         <div key={i} className="py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
                             <div className="flex items-center justify-between gap-2">
@@ -274,10 +281,10 @@ function FlightDetail({ booking }: { booking: any }) {
             )}
 
             {/* Payment */}
-            <Section title="Payment" icon={<CreditCard size={15} />}>
-                <InfoRow label="Total Paid" value={<span className="text-base font-bold">{formatCurrency(booking.total_price, booking.currency || 'USD')}</span>} />
-                <InfoRow label="Provider" value={<span className="capitalize">{booking.provider}</span>} />
-                <InfoRow label="Booked On" value={fmtDate(booking.created_at)} />
+            <Section title={t('sections.payment')} icon={<CreditCard size={15} />}>
+                <InfoRow label={l('totalPaid')} value={<span className="text-base font-bold">{formatCurrency(booking.total_price, booking.currency || 'USD')}</span>} />
+                <InfoRow label={l('provider')} value={<span className="capitalize">{booking.provider}</span>} />
+                <InfoRow label={l('bookedOn')} value={fmtDate(booking.created_at)} />
             </Section>
         </div>
     );
@@ -294,6 +301,7 @@ export default async function TripDetailPage({ params }: PageProps) {
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError || !user) redirect(`/login?next=/trips/${id}`);
 
+    const t = await getTranslations('trips');
     const db = createAdminClient();
     const sql = getSqlAdmin();
 
@@ -313,17 +321,17 @@ export default async function TripDetailPage({ params }: PageProps) {
                     <div className="flex items-center justify-between mb-5">
                         <Link href="/trips" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
                             <ArrowLeft size={15} />
-                            My Trips
+                            {t('myTrips')}
                         </Link>
                         <Link
                             href={invoiceUrl}
                             className="flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
                         >
                             <FileText size={13} />
-                            View Receipt
+                            {t('viewReceipt')}
                         </Link>
                     </div>
-                    <HotelDetail booking={hotelBooking} />
+                    <HotelDetail booking={hotelBooking} t={t} />
                 </div>
             </main>
         );
@@ -360,17 +368,17 @@ export default async function TripDetailPage({ params }: PageProps) {
                     <div className="flex items-center justify-between mb-5">
                         <Link href="/trips" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
                             <ArrowLeft size={15} />
-                            My Trips
+                            {t('myTrips')}
                         </Link>
                         <Link
                             href={invoiceUrl}
                             className="flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
                         >
                             <FileText size={13} />
-                            View Receipt
+                            {t('viewReceipt')}
                         </Link>
                     </div>
-                    <FlightDetail booking={flightBooking} />
+                    <FlightDetail booking={flightBooking} t={t} />
                 </div>
             </main>
         );

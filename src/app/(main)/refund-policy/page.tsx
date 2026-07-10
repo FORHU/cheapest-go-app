@@ -1,16 +1,18 @@
 import { LegalLayout } from '@/components/landing/layout/LegalLayout';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = {
-  title: 'Refund & Cancellation Policy — CheapestGo',
-  description: 'Understand how cancellations, refunds, and amendments work on CheapestGo.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('legal.refundPolicy');
+  return { title: t('title'), description: t('description') };
+}
 
-export default function RefundPolicyPage() {
+export default async function RefundPolicyPage() {
+  const t = await getTranslations('legal.refundPolicy');
   return (
     <LegalLayout
-      title="Refund & Cancellation Policy"
-      subtitle="Everything you need to know about cancellations, refunds, and booking changes."
+      title={t('pageTitle')}
+      subtitle={t('pageSubtitle')}
       effectiveDate="May 1, 2025"
       lastUpdated="April 1, 2025"
       sections={[

@@ -15,6 +15,7 @@ import { PWAInstallProvider } from '@/contexts/PWAInstallContext';
 import InstallPWAPrompt from '@/components/pwa/InstallPWAPrompt';
 import PWAServiceWorkerRegistrar from '@/components/pwa/PWAServiceWorkerRegistrar';
 import { env } from '@/utils/env';
+import { ClientOnly } from '@/components/common/ClientOnly';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
 import { ScrollToTop } from '@/components/common/ScrollToTop';
 
@@ -84,7 +85,7 @@ export default async function RootLayout({
       {/* {process.env.NODE_ENV === 'development' && (
         <Script src="https://cdn.jsdelivr.net/npm/react-scan/dist/auto.global.js" />
       )} */}
-      <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} font-sans`}>
+      <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} font-sans`} suppressHydrationWarning>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <QueryProvider>
             <ThemeProvider>
@@ -92,13 +93,19 @@ export default async function RootLayout({
                 <AuthListener />
                 <ExchangeRateListener />
                 <PWAServiceWorkerRegistrar />
-                <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px">
+                <div className="relative min-h-screen w-full bg-alabaster dark:bg-obsidian text-slate-900 dark:text-white transition-colors duration-800 bg-grid-alabaster dark:bg-grid-obsidian bg-size-40px_40px" suppressHydrationWarning>
                   <GlobalSparkle />
-                  <div className="relative flex flex-col flex-1 pb-24 lg:pb-0">
+                  <div className="relative flex flex-col flex-1 pb-24 lg:pb-0" suppressHydrationWarning>
                     {children}
                   </div>
                   <ScrollToTop />
-                  <MobileBottomNav />
+                  {/* ClientOnly prevents MobileBottomNav from SSR-ing.
+                      It uses usePathname() + Framer Motion layoutId which
+                      produce different HTML on server vs client, causing
+                      the bis_skin_checked hydration mismatch. */}
+                  <ClientOnly>
+                    <MobileBottomNav />
+                  </ClientOnly>
                 </div>
                 <AuthModal />
                 <InstallPWAPrompt />

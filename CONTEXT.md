@@ -58,7 +58,15 @@ _Avoid_: assuming every enum-like column uses the same mechanism, or converting 
 
 **Flight Provider** — Duffel (primary, active) or Mystifly (onboarding). Mystifly bookings currently disabled in the booking endpoint.
 
-**Hotel Provider** — TravelGateX OTV (active). LiteAPI deprecated.
+**Hotel Provider** — hotel availability is sourced from two channels, tried in priority order:
+- **OTV** — the active TravelGateX supplier (`TRAVELGATEX_SUPPLIER`/`TRAVELGATEX_CONTEXT`, default `OTV`), reached through the TravelGateX GraphQL hub. Primary path.
+- **ETG** — Emerging Travel Group's B2B API (`api.worldota.net`), whose partner brand is **RateHawk**. Used as a direct fallback when OTV returns no results, and for the nightly hotel-reviews sync. LiteAPI deprecated.
+_Avoid_: calling ETG "Ratehawk" in code (the codebase name is `ETG`/`_etg`); treating OTV and ETG as one supplier (OTV is via the TGX hub, ETG is direct worldota).
+
+**RTX** — used in this document (refresh-cadence note) as a supplier name but never appears in code. Denotes the same supplier as **ETG/RateHawk**. Prefer **ETG** everywhere; RTX is a flagged alias, not a distinct provider.
+
+**Destination granularity** — the two hotel channels resolve a searched place at different levels. **OTV/TravelGateX** resolves **City** or **Zone** only. **ETG** resolves a **City** *or* an area (**Province/Region/Multi-city**) via ETG's region endpoint. So a **Province/Region** query (e.g. "Palawan", offered by the autocomplete as a Mapbox `region`) is served by ETG across the whole province — matching Ratehawk — while OTV contributes nothing at province level.
+_Avoid_: assuming OTV can service a province; assuming a place the picker offers resolves identically on every channel.
 
 ## Landing Page
 

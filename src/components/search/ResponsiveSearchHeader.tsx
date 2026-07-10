@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, SlidersHorizontal, ArrowLeft, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,18 +12,19 @@ import { MobileSearchModal } from './MobileSearchModal';
 import { useSearchFilters, useSearchActions } from '@/stores/searchStore';
 
 export const ResponsiveSearchHeader = () => {
+    const t = useTranslations('search');
     const searchParams = useSearchParams();
     const router = useRouter();
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const filters = useSearchFilters();
     const searchActions = useSearchActions();
 
-    const destination = searchParams?.get('destination') || 'Anywhere';
+    const destination = searchParams?.get('destination') || t('results.anywhere');
     const checkIn = searchParams?.get('checkIn');
     const checkOut = searchParams?.get('checkOut');
     const adults = searchParams?.get('adults') || '2';
 
-    let dateStr = 'Any week';
+    let dateStr = t('results.anyWeek');
     if (checkIn && checkOut) {
         try {
             const start = new Date(checkIn);
@@ -41,7 +43,7 @@ export const ResponsiveSearchHeader = () => {
         }
     }
 
-    const guestsStr = `${adults} guest${parseInt(adults) > 1 ? 's' : ''}`;
+    const guestsStr = t('results.guestCount', { count: parseInt(adults) });
 
     const activeFilterCount = (filters.hotelName ? 1 : 0) +
         filters.starRating.length +
@@ -75,7 +77,7 @@ export const ResponsiveSearchHeader = () => {
                         <Search size={13} className="text-slate-800 font-bold dark:text-slate-200" />
                         <div className="flex flex-col items-start flex-1 min-w-0">
                             <span className="text-[10px] font-bold text-slate-900 dark:text-white truncate w-full">
-                                {destination === 'Anywhere' ? 'Where to?' : destination}
+                                {destination === t('results.anywhere') ? t('results.whereTo') : destination}
                             </span>
                             <span className="text-[8px] text-slate-500 dark:text-slate-400 truncate w-full">
                                 {dateStr} • {guestsStr}
