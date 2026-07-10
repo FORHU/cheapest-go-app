@@ -149,7 +149,7 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
                 `query TgxResolveCity($access: ID!, $text: String!, $maxSize: Int) {
                    hotelX {
                      destinationSearcher(criteria: { access: $access, text: $text, maxSize: $maxSize }) {
-                       ... on DestinationData { code type }
+                       ... on DestinationData { code type texts { text language } }
                      }
                    }
                  }`,
@@ -158,11 +158,20 @@ export async function resolveTgxDestinationCode(cityName: string, countryCode?: 
             timeout,
         ]);
         const items: any[] = result?.data?.hotelX?.destinationSearcher ?? [];
-        const cityItem = items.find((i: any) => i.type === 'CITY');
-        const zoneItem = items.find((i: any) => i.type === 'ZONE');
+        const exactName = cityName.toLowerCase();
+        const matchesName = (i: any) =>
+            (i.texts ?? []).some((t: any) => t.language === 'en' && t.text.toLowerCase() === exactName);
+
+        // Prefer the item whose English text exactly matches the query to avoid
+        // false positives (e.g. "Little Tokyo" LA being picked over "Tokyo" Japan).
         // With a known country, prefer ZONE: "Bali, Indonesia" is a ZONE while
         // the Greek town of Bali is a CITY — zone-first avoids cross-country mismatches.
-        // Falls back to CITY when no ZONE exists so well-known cities still resolve.
+        const cityItem =
+            items.find((i: any) => i.type === 'CITY' && matchesName(i)) ??
+            items.find((i: any) => i.type === 'CITY');
+        const zoneItem =
+            items.find((i: any) => i.type === 'ZONE' && matchesName(i)) ??
+            items.find((i: any) => i.type === 'ZONE');
         const code = countryCode
             ? (zoneItem?.code ?? cityItem?.code ?? undefined)
             : (cityItem?.code ?? zoneItem?.code ?? undefined);
