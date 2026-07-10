@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 interface MobileBookingCTAProps {
     price: number;
@@ -8,6 +9,7 @@ interface MobileBookingCTAProps {
 }
 
 const MobileBookingCTA: React.FC<MobileBookingCTAProps> = ({ price, currency }) => {
+    const t = useTranslations('property.mobileCta');
     const currencySymbol = currency === 'PHP' ? '₱' : currency === 'USD' ? '$' : currency;
 
     const handleViewRooms = () => {
@@ -24,15 +26,15 @@ const MobileBookingCTA: React.FC<MobileBookingCTAProps> = ({ price, currency }) 
                 <div>
                     {price > 0 ? (
                         <>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">From</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{t('from')}</p>
                             <p className="text-lg font-bold text-slate-900 dark:text-white">
                                 {currencySymbol}{price.toLocaleString()}
-                                <span className="text-xs font-normal text-slate-500">/night</span>
+                                <span className="text-xs font-normal text-slate-500">{t('perNight')}</span>
                             </p>
                         </>
                     ) : (
                         <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Check room rates
+                            {t('checkRoomRates')}
                         </p>
                     )}
                 </div>
@@ -41,7 +43,7 @@ const MobileBookingCTA: React.FC<MobileBookingCTAProps> = ({ price, currency }) 
                     onClick={handleViewRooms}
                     className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-full text-sm transition-colors shadow-lg shadow-blue-500/20"
                 >
-                    View Rooms
+                    {t('viewRooms')}
                 </button>
             </div>
         </div>

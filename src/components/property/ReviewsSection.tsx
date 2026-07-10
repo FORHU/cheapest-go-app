@@ -11,7 +11,7 @@ import {
     TravelerBreakdown
 } from '@/lib/property/reviewsUtils';
 import { useReviewsStore } from '@/stores/reviewsStore';
-
+import { useTranslations } from 'next-intl';
 interface ReviewsSectionProps {
     reviews: HotelReview[];
     averageRating: number;
@@ -24,6 +24,7 @@ interface ReviewsSectionProps {
  * Rating Summary Card - Shows overall score and label
  */
 function RatingSummary({ rating: rawRating, totalCount }: { rating: number; totalCount: number }) {
+    const t1 = useTranslations('reviewsSection');
     const rating = Number(rawRating) || 0;
     return (
         <div className="flex items-center gap-2 lg:gap-3 lg:mb-6">
@@ -36,8 +37,10 @@ function RatingSummary({ rating: rawRating, totalCount }: { rating: number; tota
                 </p>
                 <p className="text-[10px] lg:text-sm text-slate-500 dark:text-slate-400">
                     {totalCount > 0
-                        ? `Based on ${totalCount.toLocaleString()} review${totalCount !== 1 ? 's' : ''}`
-                        : 'Aggregated guest score'}
+                        ? (totalCount !== 1
+                            ? t1('basedOnReviews', { count: totalCount.toLocaleString() })
+                            : t1('basedOnReview', { count: totalCount.toLocaleString() }))
+                        : t1('aggregatedScore')}
                 </p>
             </div>
         </div>
@@ -48,19 +51,20 @@ function RatingSummary({ rating: rawRating, totalCount }: { rating: number; tota
  * Who Stays Here Section - Shows traveler type breakdown
  */
 function WhoStaysHere({ breakdown }: { breakdown: TravelerBreakdown }) {
+    const t1 = useTranslations('reviewsSection');
     const types = [
-        { key: 'family', label: 'Family', icon: Users, value: breakdown.family },
-        { key: 'couple', label: 'Couple', icon: Heart, value: breakdown.couple },
-        { key: 'friendsGroup', label: 'Friends/Group', icon: Users2, value: breakdown.friendsGroup },
-        { key: 'solo', label: 'Solo', icon: UserCircle, value: breakdown.solo },
-        { key: 'business', label: 'Business', icon: Briefcase, value: breakdown.business },
+        { key: 'family', label: t1('travelerTypes.family'), icon: Users, value: breakdown.family },
+        { key: 'couple', label: t1('travelerTypes.couple'), icon: Heart, value: breakdown.couple },
+        { key: 'friendsGroup', label: t1('travelerTypes.friendsGroup'), icon: Users2, value: breakdown.friendsGroup },
+        { key: 'solo', label: t1('travelerTypes.solo'), icon: UserCircle, value: breakdown.solo },
+        { key: 'business', label: t1('travelerTypes.business'), icon: Briefcase, value: breakdown.business },
     ].filter(t => t.value > 0);
 
     if (types.length === 0) return null;
 
     return (
         <div className="mb-4 lg:mb-6">
-            <h3 className="text-[10px] lg:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 lg:mb-3">Who stays here</h3>
+            <h3 className="text-[10px] lg:text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 lg:mb-3">{t1('whoStaysHere')}</h3>
             <div className="flex flex-wrap gap-2.5 lg:gap-4">
                 {types.map(({ key, label, icon: Icon, value }) => (
                     <div key={key} className="flex flex-col items-center text-center">
@@ -78,6 +82,7 @@ function WhoStaysHere({ breakdown }: { breakdown: TravelerBreakdown }) {
  * Single Review Item - Matches LiteAPI style
  */
 function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
+    const t1 = useTranslations('reviewsSection');
     const { toggleExpanded, expandedReviewIds } = useReviewsStore();
     const reviewId = `${review.name}-${index}`;
     const isExpanded = expandedReviewIds.has(reviewId);
@@ -96,7 +101,7 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 lg:gap-2 mb-0.5">
                         <span className="font-semibold text-[11px] lg:text-sm text-slate-900 dark:text-white truncate">
-                            {review.name || 'Anonymous'}
+                            {review.name || t1('anonymous')}
                         </span>
                         {review.type && (
                             <span className="text-[9px] lg:text-xs text-slate-500 dark:text-slate-400 shrink-0">
@@ -133,7 +138,7 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
                                     onClick={() => toggleExpanded(reviewId)}
                                     className="text-blue-600 hover:text-blue-700 text-[9px] lg:text-xs font-medium mt-1"
                                 >
-                                    {isExpanded ? 'Show Less' : 'Show More'}
+                                    {isExpanded ? t1('showLess') : t1('showMore')}
                                 </button>
                             )}
                         </div>
@@ -154,6 +159,7 @@ function ReviewItem({ review, index }: { review: HotelReview; index: number }) {
 // === Main Component ===
 
 export default function ReviewsSection({ reviews, averageRating, totalCount }: ReviewsSectionProps) {
+    const t1 = useTranslations('reviewsSection');
     const {
         displayCount,
         loadMore,
@@ -225,12 +231,12 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
     }
 
     const sortOptions = [
-        { value: 'newest', label: 'Newest first' },
-        { value: 'highest', label: 'Highest rated' },
-        { value: 'lowest', label: 'Lowest rated' },
+        { value: 'newest', label: t1('sort.newestFirst') },
+        { value: 'highest', label: t1('sort.highestRated') },
+        { value: 'lowest', label: t1('sort.lowestRated') },
     ];
 
-    const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label || 'Newest first';
+    const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label || t1('sort.newestFirst');
 
     return (
         <section id="reviews-section" className="py-4 lg:py-8">
@@ -292,8 +298,8 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
                                 ))
                             ) : (
                                 <div className="py-8 text-center text-slate-400 dark:text-slate-500">
-                                    <p className="text-sm">No individual reviews available.</p>
-                                    <p className="text-xs mt-1">Guest score is based on aggregated ratings.</p>
+                                    <p className="text-sm">{t1('noReviews')}</p>
+                                    <p className="text-xs mt-1">{t1('aggregatedNote')}</p>
                                 </div>
                             )}
                         </div>
@@ -306,11 +312,11 @@ export default function ReviewsSection({ reviews, averageRating, totalCount }: R
                                 onClick={handleLoadMore}
                                 className="w-auto px-4 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm active:scale-95"
                             >
-                                Load more reviews
+                                {t1('loadMore')}
                             </button>
                         )}
                         <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center w-full sm:w-auto mt-1 sm:mt-0">
-                            Showing {displayedReviews.length} of {reviewsToDisplay.length} reviews
+                            {t1('showingCount', { shown: displayedReviews.length, total: reviewsToDisplay.length })}
                         </span>
                     </div>
                 </div>

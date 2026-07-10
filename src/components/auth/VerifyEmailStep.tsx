@@ -3,10 +3,12 @@
 import React, { useState } from 'react';
 import { Mail, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui';
 
 const VerifyEmailStep: React.FC = () => {
+    const t = useTranslations('auth');
     const { email, setAuthStep, resendConfirmation, isLoading } = useAuthStore();
     const [isResending, setIsResending] = useState(false);
 
@@ -14,9 +16,9 @@ const VerifyEmailStep: React.FC = () => {
         setIsResending(true);
         try {
             await resendConfirmation(email);
-            toast.success("Confirmation email resent!");
+            toast.success(t('messages.resentSuccess'));
         } catch {
-            toast.error("Failed to resend email. Please try again.");
+            toast.error(t('messages.resendFailed'));
         } finally {
             setIsResending(false);
         }
@@ -30,14 +32,14 @@ const VerifyEmailStep: React.FC = () => {
 
             <div className="space-y-2 text-center">
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                    Check your email
+                    {t('verifyEmailStep.title')}
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400 text-sm max-w-[280px] mx-auto">
-                    We sent a confirmation link to <br />
+                    {t('verifyEmailStep.description')} <br />
                     <span className="font-medium text-slate-900 dark:text-white">{email}</span>
                 </p>
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-                    Click the link in the email to sign in.
+                    {t('verifyEmailStep.description2')}
                 </p>
             </div>
 
@@ -49,7 +51,7 @@ const VerifyEmailStep: React.FC = () => {
                     disabled={isLoading}
                     className="text-blue-600 dark:text-blue-400 font-normal"
                 >
-                    Resend confirmation email
+                    {t('actions.resendConfirmation')}
                 </Button>
 
                 <button
@@ -57,7 +59,7 @@ const VerifyEmailStep: React.FC = () => {
                     className="flex items-center justify-center gap-1 text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors w-full"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    Back to login
+                    {t('actions.backToLogin')}
                 </button>
             </div>
         </div>

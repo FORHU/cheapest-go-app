@@ -1,124 +1,553 @@
 {
-    "nav": {
-        "home": "Home",
-        "profile": "Profile",
-        "support": "Support",
-        "openApp": "Open app",
-        "signIn": "Sign in",
-        "signOut": "Sign out",
-        "myTrips": "My trips",
-        "account": "Account",
-        "trips": "Trips",
-        "createAccount": "Create an account",
-        "accountSettings": "Account Settings",
-        "membersSave": "Members save 10% or more",
-        "membersSaveSubtitle": "on select stays when signed in",
-        "accountWorks": "Your account works across CheapestGo and all partner sites"
+    "account": {
+        "backToHome": "Back to home",
+        "communications": {
+            "emailNotifications": "Email Notifications",
+            "emailNotificationsDesc": "Receive booking confirmations and updates",
+            "heading": "Communication Preferences",
+            "marketingEmails": "Marketing Emails",
+            "marketingEmailsDesc": "Receive deals, promotions, and travel tips",
+            "preferencesSaved": "Preferences saved",
+            "savePreferences": "Save Preferences",
+            "subheading": "Control which notifications and emails you receive",
+            "tripReminders": "Trip Reminders",
+            "tripRemindersDesc": "Get reminders before your upcoming trips"
+        },
+        "help": {
+            "emailSupport": "Email Support",
+            "emailSupportAddress": "support@cheapestgo.com",
+            "faq1": "How do I cancel or modify my booking?",
+            "faq2": "When will I receive my booking confirmation?",
+            "faq3": "How do I request a refund?",
+            "faq4": "What payment methods are accepted?",
+            "faqTitle": "Frequently Asked Questions",
+            "heading": "Help & Support",
+            "liveChat": "Live Chat",
+            "liveChatDesc": "Chat with our support team",
+            "subheading": "Get help with your account and bookings"
+        },
+        "nav": {
+            "communications": {
+                "description": "Control which notifications you get",
+                "title": "Communications"
+            },
+            "help": {
+                "description": "Get customer support",
+                "title": "Help and feedback"
+            },
+            "profile": {
+                "description": "View and edit your personal details",
+                "title": "Profile"
+            },
+            "security": {
+                "description": "Update your password",
+                "title": "Security"
+            }
+        },
+        "profile": {
+            "cancel": "Cancel",
+            "edit": "Edit",
+            "emailAddress": "Email Address",
+            "emailCannotChange": "Email cannot be changed",
+            "fillAllFields": "Please fill in all fields",
+            "firstName": "First Name",
+            "fullName": "Full Name",
+            "heading": "Profile Information",
+            "lastName": "Last Name",
+            "save": "Save",
+            "saving": "Saving...",
+            "subheading": "Manage your personal information",
+            "updateError": "Failed to update profile",
+            "updateSuccess": "Profile updated successfully"
+        },
+        "sectionHeader": {
+            "edit": "Edit"
+        },
+        "security": {
+            "accountEmail": "Account Email",
+            "accountEmailSubtitle": "Your account email address",
+            "changePassword": "Change Password",
+            "confirmPassword": "Confirm New Password",
+            "currentPassword": "Current Password",
+            "emailCannotChange": "Email cannot be changed",
+            "fillAllPasswordFields": "Please fill in all password fields",
+            "heading": "Security Settings",
+            "newPassword": "New Password",
+            "newPasswordHint": "Minimum 6 characters",
+            "passwordTooShort": "New password must be at least 6 characters",
+            "passwordUpdateError": "Failed to update password",
+            "passwordUpdateSuccess": "Password updated successfully",
+            "passwordsDoNotMatch": "New passwords do not match",
+            "subheading": "Manage your password and account security",
+            "updatePassword": "Update Password",
+            "updating": "Updating..."
+        },
+        "sidebar": {
+            "getEmails": "Get emails",
+            "greeting": "Hi, {name}",
+            "membershipTier": "Blue",
+            "partnerInfo": "Your account works across all partner sites",
+            "pointsAmount": "â‚± 0.00",
+            "pointsValue": "Points value",
+            "promoSubtitle": "Receive deals, tips, and insights from CheapestGo",
+            "promoTitle": "Get trip inspiration and offers",
+            "signOut": "Sign out",
+            "viewRewardsActivity": "View rewards activity"
+        },
+        "title": "Account Settings | CheapestGo"
     },
-    "languagePicker": {
-        "label": "Select language",
-        "en": "English",
-        "ko": "í•œêµ­ì–´",
-        "cn": "ä¸­æ–‡",
-        "ja": "æ—¥æœ¬èªž"
+    "ai": {
+        "prompts": {
+            "bali": "Find me a beachfront resort in Bali for 2 adults, Feb 14-21...",
+            "cebu": "Weekend getaway in Cebu for a couple, next month...",
+            "manila": "Family resort near Manila, 2 adults 2 kids...",
+            "tokyo": "Luxury hotel in Tokyo under $200/night with pool..."
+        }
+    },
+    "appBanner": {
+        "badge": "Mobile App",
+        "downloadBtn": "Download App",
+        "downloads": "Downloads",
+        "installBtn": "Install App",
+        "learnMore": "Learn More",
+        "rating": "App Rating",
+        "savings": "Extra Savings",
+        "subtitle": "Get exclusive app-only deals, instant notifications, and manage your trips on the go.",
+        "title": "Travel smarter with our app"
+    },
+    "auth": {
+        "actions": {
+            "back": "Back",
+            "backToHome": "Back to home",
+            "backToLogin": "Back to login",
+            "continue": "Continue",
+            "createAccount": "Create account",
+            "createOne": "Create one",
+            "forgotPassword": "Forgot password?",
+            "resendConfirmation": "Resend confirmation email",
+            "resetPassword": "Reset Password",
+            "sendResetLink": "Send reset link",
+            "signIn": "Sign in",
+            "tryAgain": "try again"
+        },
+        "closeModal": "Close modal",
+        "emailStep": {
+            "createWithEmail": "Create one with email",
+            "hasAccount": "Already have an account?",
+            "noAccount": "Don't have an account?",
+            "otherWays": "Other ways to sign in",
+            "privacyLink": "Privacy Statement",
+            "subtitle": "One account for all your travel needs",
+            "terms": "By signing in, you agree to our <terms>Terms & Conditions</terms> and <privacy>Privacy Statement</privacy>.",
+            "termsLink": "Terms & Conditions",
+            "title": "Sign in or create an account"
+        },
+        "forgotPasswordStep": {
+            "checkInbox": "Check your inbox",
+            "emailPlaceholder": "your@email.com",
+            "notReceived": "Didn't receive it? Check your spam folder or",
+            "sentDescription": "We sent a password reset link to {email}. Click the link in the email to set a new password.",
+            "subtitle": "Enter your email and we'll send you a reset link.",
+            "title": "Reset your password"
+        },
+        "labels": {
+            "confirmPassword": "Confirm password",
+            "confirmPasswordPlaceholder": "Re-enter your password",
+            "email": "Email",
+            "emailPlaceholder": "Enter your email",
+            "firstName": "First name",
+            "firstNamePlaceholder": "First",
+            "lastName": "Last name",
+            "lastNamePlaceholder": "Last",
+            "password": "Password",
+            "passwordPlaceholder": "Create a password"
+        },
+        "messages": {
+            "accountCreated": "Account created successfully!",
+            "accountExists": "Account already exists. Attempting to sign in...",
+            "accountExistsSignIn": "Account exists. Please sign in.",
+            "failedToReset": "Failed to reset password. Please try again.",
+            "invalidCredentials": "Invalid email or password.",
+            "invalidEmail": "Invalid email",
+            "invalidLink": "Invalid reset link. Please request a new one.",
+            "passwordsDoNotMatch": "Passwords do not match",
+            "registrationFailed": "Registration failed. Please try again.",
+            "requirementsNotMet": "Password does not meet all requirements",
+            "resendFailed": "Failed to resend email. Please try again.",
+            "resentSuccess": "Confirmation email resent!",
+            "sendResetFailed": "Failed to send reset email. Please try again.",
+            "verificationSent": "Please check your email. Verification link already sent.",
+            "welcomeBack": "Welcome back!",
+            "wrongPassword": "Wrong password, or this account was created with Google. Try Google sign-in or reset your password."
+        },
+        "passwordRequirements": {
+            "lowercase": "Lowercase",
+            "minLength": "8+ characters",
+            "number": "Number",
+            "uppercase": "Uppercase"
+        },
+        "passwordStep": {
+            "for": "for",
+            "keepSignedIn": "Keep me signed in",
+            "noAccount": "Don't have an account?",
+            "title": "Enter your password"
+        },
+        "registerStep": {
+            "for": "for",
+            "hasAccount": "Already have an account?",
+            "keepSignedIn": "Keep me signed in",
+            "privacyLink": "Privacy Statement",
+            "terms": "By creating an account, you agree to our <terms>Terms & Conditions</terms> and <privacy>Privacy Statement</privacy>.",
+            "termsLink": "Terms & Conditions",
+            "title": "Create your account"
+        },
+        "resetPassword": {
+            "confirmPasswordLabel": "Confirm Password",
+            "confirmPasswordPlaceholder": "Confirm new password",
+            "newPasswordLabel": "New Password",
+            "newPasswordPlaceholder": "Enter new password",
+            "subtitle": "Enter your new password below",
+            "successDescription": "Your password has been updated. You can now sign in with your new password.",
+            "successTitle": "Password Reset Successful",
+            "title": "Reset your password"
+        },
+        "signIn": {
+            "continueWithApple": "Continue with Apple",
+            "continueWithEmail": "Continue with email",
+            "continueWithGoogle": "Continue with Google",
+            "emailLabel": "Email address",
+            "emailPlaceholder": "you@example.com",
+            "orDivider": "or",
+            "privacyLink": "Privacy",
+            "terms": "By signing in you agree to our {terms} and {privacy}.",
+            "termsLink": "Terms",
+            "title": "Sign in to CheapestGo"
+        },
+        "social": {
+            "appleAriaLabel": "Sign in with Apple",
+            "facebookAriaLabel": "Sign in with Facebook",
+            "signInWithGoogle": "Sign in with Google"
+        },
+        "verifyEmailStep": {
+            "description": "We sent a confirmation link to",
+            "description2": "Click the link in the email to sign in.",
+            "title": "Check your email"
+        }
+    },
+    "checkout": {
+        "back": "Back",
+        "backToBookingDetails": "Back to booking details",
+        "bookingErrorTitle": "Booking error",
+        "bookingFor": {
+            "guestFirstName": "Guest First Name *",
+            "guestLastName": "Guest Last Name *",
+            "myself": "Myself",
+            "someoneElse": "Someone else",
+            "whoIsBooking": "Who is the booking for?"
+        },
+        "cancellation": {
+            "cancelAfter": "Cancel after",
+            "cancelBy": "Cancel by",
+            "description": "How much will it cost to cancel the rooms?",
+            "earlyDepartureFee": "Early Departure Fee: {amount} if you check out before your scheduled date.",
+            "footer": "Cancellation costs are based on the total booking value. All dates and times are mentioned in GMT.",
+            "freeCancellation": "Free cancellation available â€” see deadlines below",
+            "freeCancellationLabel": "Free Cancellation",
+            "fullRefund": "(Full refund)",
+            "noShowPenalty": "No-Show Penalty: {amount} if you don’t check in without cancelling.",
+            "nonRefundable": "Non-refundable â€” this booking cannot be cancelled for a refund",
+            "refund": "{amount} Refund",
+            "title": "Cancellation Policy"
+        },
+        "checkIn": "Check-in",
+        "checkOut": "Check-out",
+        "chooseYourDates": "Choose your dates",
+        "completeYourBooking": "Complete your booking",
+        "confirmingBooking": "Confirming your booking",
+        "confirmingWithHotel": "Confirming with the hotel...",
+        "continue": "Continue",
+        "dontClosePage": "Please don't close this page",
+        "duplicateBookingDesc": "Cancel your existing booking first, or go back and keep it.",
+        "duplicateBookingTitle": "You already have a booking at {hotel} for overlapping dates.",
+        "finalizingDetails": "Finalizing booking details...",
+        "goBack": "â† Go back",
+        "goBackBtn": "Go back",
+        "keepExistingBooking": "Keep existing booking",
+        "loadingPaymentForm": "Loading payment form...",
+        "modifyBooking": "Modify booking",
+        "payment": {
+            "card": "Card",
+            "cardNumber": "Card number",
+            "countries": {
+                "ID": "Indonesia",
+                "JP": "Japan",
+                "KR": "South Korea",
+                "MY": "Malaysia",
+                "PH": "Philippines",
+                "SG": "Singapore",
+                "TH": "Thailand",
+                "US": "United States",
+                "VN": "Vietnam"
+            },
+            "country": "Country",
+            "mmYY": "MM / YY",
+            "payeeFirstName": "Payee First Name",
+            "payeeLastName": "Payee Last Name",
+            "paymentInformation": "Payment Information",
+            "securedMessage": "Your payment information is secured.",
+            "securityCode": "Security code"
+        },
+        "pickDatesDescription": "Pick check-in and check-out to continue.",
+        "promos": {
+            "applied": "Applied",
+            "apply": "Apply",
+            "availableForBooking": "Available promos for this booking",
+            "availablePromos": "Available promos",
+            "failedToApply": "Failed to apply promo. Please try again.",
+            "hotelDeal": "Hotel Deal",
+            "loadingPromos": "Loading available promos...",
+            "location": "Location",
+            "minAmount": "Min. {amount}",
+            "newUser": "New User",
+            "off": "off",
+            "promo": "Promo",
+            "seasonal": "Seasonal",
+            "until": "Until {date}",
+            "upTo": "Up to {amount}"
+        },
+        "rating": {
+            "average": "Average",
+            "exceptional": "Exceptional",
+            "fabulous": "Fabulous",
+            "good": "Good",
+            "pleasant": "Pleasant",
+            "veryGood": "Very Good"
+        },
+        "retry": "Retry",
+        "searchAvailableRooms": "Search available rooms â†’",
+        "secureYourBooking": "Secure your booking",
+        "securingReservation": "Securing your reservation...",
+        "selectYourDates": "Select your dates",
+        "signIn": "Sign In",
+        "signInBannerDesc": "You'll receive booking confirmation and updates via email.",
+        "signInToComplete": "Sign in to complete your booking",
+        "specialRequests": {
+            "placeholder": "The property will do its best to arrange it.",
+            "title": "Any special requests?"
+        },
+        "stripe": {
+            "completePayment": "Complete Payment",
+            "loadError": "Failed to load the payment form. Please refresh and try again.",
+            "payNow": "Pay Now",
+            "processing": "Payment is processing...",
+            "unexpectedError": "An unexpected error occurred."
+        },
+        "submit": {
+            "continueToPayment": "Continue to Payment • {amount}",
+            "goBackDifferentHotel": "Go back & choose a different hotel",
+            "goBackReselect": "Go back & reselect room",
+            "hotelUnavailable": "Hotel temporarily unavailable",
+            "hotelUnavailableDesc": "This hotel cannot be booked right now. Please go back and choose a different hotel.",
+            "processingBooking": "Processing Your Booking...",
+            "sessionExpired": "Room session expired",
+            "sessionExpiredDesc": "Your room hold has expired. Go back and reselect the room to get a fresh session â€” you can pick the same room again.",
+            "signInToComplete": "Sign In to Complete Booking",
+            "verificationFailed": "Verification failed â€” see error above",
+            "verifyingPrice": "Verifying Price...",
+            "verifyingRoom": "Verifying Room...",
+            "waitingMessage": "Please wait while we confirm your reservation with the hotel...",
+            "waitingWarning": "This may take up to 30 seconds. Do not close this page."
+        },
+        "success": {
+            "bookFlightBundle": "Book your flight now and get a bundle discount on your total.",
+            "bookingConfirmed": "Booking Confirmed! ðŸŽ‰",
+            "bookingId": "Booking ID",
+            "bundleDeal": "✦ Bundle Deal",
+            "bundleDiscountApplied": "Bundle discount applied",
+            "checkEmail": "Check your email for booking details and updates",
+            "confirmationSentTo": "Confirmation sent to",
+            "flightHotelBundle": "Flight + Hotel Bundle",
+            "needFlight": "Need a flight to {destination}?",
+            "reservationComplete": "Your reservation at <strong>{name}</strong> is complete.",
+            "returnToHome": "Return to Home",
+            "saveUpTo": "Save up to 8%",
+            "saved": "{amount} saved",
+            "searchFlightsAndBundle": "Search flights & bundle",
+            "sent": "Sent",
+            "stayDuration": "Stay Duration",
+            "viewMyTrips": "View My Trips"
+        },
+        "summary": {
+            "adult": "Adult",
+            "adults": "Adults",
+            "averagePerNight": "average per night",
+            "calculatingPerNight": "Calculated per night...",
+            "checkInAndOut": "Check-in & Check-out",
+            "checkInLabel": "Check-in",
+            "checkOutLabel": "Check-out",
+            "child": "Child",
+            "children": "Children",
+            "edit": "Edit",
+            "night": "night",
+            "nights": "nights",
+            "priceDetails": "Price details",
+            "promoCode": "Promo: {code}",
+            "roomConfirmed": "Room Confirmed",
+            "roomNights": "1 room Ã— {nights} {count}",
+            "taxesAndFees": "Taxes and fees",
+            "total": "Total",
+            "updateDates": "Update dates",
+            "youSave": "You save {amount} with this promo",
+            "yourRoom": "Your Room"
+        },
+        "title": "Checkout | CheapestGo",
+        "userDetails": {
+            "email": "Email *",
+            "emailPlaceholder": "Email",
+            "firstName": "First Name *",
+            "firstNamePlaceholder": "First name",
+            "lastName": "Last Name *",
+            "lastNamePlaceholder": "Last name",
+            "no": "No",
+            "phone": "Phone *",
+            "phonePlaceholder": "Number",
+            "title": "Your details",
+            "travelingForWork": "Traveling for work?",
+            "yes": "Yes"
+        },
+        "validation": {
+            "bookingFailed": "Booking confirmation failed: {message}. Your payment will be automatically refunded.",
+            "fixHighlighted": "Please fix the highlighted fields before continuing.",
+            "invalidPrice": "Invalid booking price. Please retry.",
+            "paymentSetupFailed": "Payment setup failed",
+            "priceVerifying": "Price is still being verified â€” please wait a moment and try again.",
+            "requiresAuth": "Authentication required",
+            "sessionExpired": "Booking session expired. Please go back and select the room again.",
+            "sessionExpiredCharge": "Your session expired during payment. Your card was charged â€” please contact support with payment reference: {id}"
+        },
+        "verifyingPayment": "Verifying payment...",
+        "viewExistingBooking": "View existing booking",
+        "voucher": {
+            "apply": "Apply",
+            "enterPromoCode": "ENTER PROMO CODE",
+            "failedToValidate": "Failed to validate voucher. Please try again.",
+            "havePromoCode": "Have a promo code?",
+            "off": "OFF",
+            "promoCode": "Promo code",
+            "removeVoucher": "Remove voucher",
+            "saved": "{amount} saved"
+        }
     },
     "currencyPicker": {
         "label": "Select currency"
     },
-    "theme": {
-        "switchToDark": "Switch to dark mode",
-        "switchToLight": "Switch to light mode",
-        "contextError": "useTheme must be used within a ThemeProvider"
+    "deals": {
+        "all": "All",
+        "allDealsCount": "All {count} deals",
+        "backButton": "Back to Home",
+        "collapse": "Collapse â†‘",
+        "headerDefault": "Exclusive Deals & Offers",
+        "headerPersonalized": "Flight Deals from {city}",
+        "noDealsDescription": "Check back soon for new exclusive travel offers.",
+        "noDealsTitle": "No active deals found",
+        "oneWay": "One Way",
+        "pageSubtitle": "Handpicked limited-time travel deals. Prices are updated frequently and may change. Book early to secure the best rates.",
+        "pageTitle": "Exclusive Deals & Offers",
+        "popularRoute": "Popular Route",
+        "roundTrip": "Round Trip",
+        "searchFlights": "Search Flights",
+        "subtitleDefault": "Low fares on popular routes",
+        "subtitlePersonalized": "Low fares departing from {city}"
     },
-    "popularDestinations": {
-        "title": "Popular Destinations",
-        "subtitle": "Explore top spots across Asia-Pacific â€” search flights and hotels in seconds."
+    "destinations": {
+        "browseHotels": "Browse the cheapest available hotels in {city}, {country} and book with confidence.",
+        "description": "Find and book the cheapest hotels in {city}, {country}. Compare prices and get the best deals on CheapestGo.",
+        "findHotelsIn": "Find hotels in {city}",
+        "hotelsFrom": "Hotels from {price} / night",
+        "searchHotels": "Search Hotels in {city}",
+        "title": "Hotels in {city}, {country} – Cheapest Rates | CheapestGo"
     },
-    "landing": {
-        "hero": {
-            "title": "Flights at the lowest price",
-            "titleLine1": "Precision Travel.",
-            "titleLine2": "Machined for You.",
-            "subtitle": "The operating system for the modern voyager.",
-            "monoSubtext": "Ask anything. Book everything.",
-            "cta": "Search flights"
+    "errors": {
+        "auth": {
+            "description": "There was an error processing your authentication request. This could happen if the link expired or was already used.",
+            "goHome": "Go to homepage",
+            "signInAgain": "Try signing in again",
+            "title": "Authentication Error"
         },
-        "search": {
-            "from": "From",
-            "to": "To",
-            "depart": "Depart",
-            "return": "Return",
-            "passengers": "Passengers",
-            "placeholder": {
-                "airport": "City or airport",
-                "date": "Add date"
-            },
-            "tripType": {
-                "roundTrip": "Round trip",
-                "oneWay": "One way",
-                "multiCity": "Multi-city"
-            },
-            "cabinClass": {
-                "economy": "Economy",
-                "premiumEconomy": "Premium economy",
-                "business": "Business",
-                "first": "First"
-            },
-            "submit": "Search",
-            "anywhere": "Anywhere",
-            "anyWeek": "Any week",
-            "addGuests": "Add guests",
-            "guests": "{count} guest",
-            "guestsPlural": "{count} guests",
-            "clearAll": "Clear all",
-            "findDeals": "Find the best deals",
-            "comingSoon": "Coming Soon",
-            "aiDevelopment": "AI Search is under development. Stay tuned!",
-            "askAi": "Ask AI",
-            "aiGreeting": "How can I help you this morning?",
-            "results": "Results",
-            "findingFlights": "Finding flightsâ€¦",
-            "searchFlightsHeader": "Search Flights",
-            "bundle": {
-                "hotelBooked": "Hotel booked!",
-                "instructions": "Enter your {from} and {to} airports, pick your dates, then hit Search to bundle and save up to 8%."
-            },
-            "whereTo": "Where to?",
-            "searchDestination": "Search destination",
-            "checkIn": "Check-in",
-            "checkOut": "Check-out",
-            "travelers": "Travelers",
-            "selectDate": "Select date",
-            "guest": "{count} Guest",
-            "guestPlural": "{count} Guests",
-            "guestsRooms": "Guests & Rooms",
-            "adults": "Adults",
-            "children": "Children",
-            "childrenAges": "Ages 0 to 17",
-            "rooms": "Rooms",
-            "roomsNote": "1 room per booking. Book separately for more.",
-            "done": "Done",
-            "calendar": "Calendar",
-            "flexibleDates": "Flexible dates",
-            "whenTravel": "When do you want to travel?",
-            "childLabel": "Child {index}: {age} yrs",
-            "yearsOld": "{age} years old",
+        "generic": "Something went wrong. Please try again.",
+        "notFound": "Page not found.",
+        "searchFailed": "Search failed. Check your connection and try again."
+    },
+    "flightBook": {
+        "address": {
+            "addressLine": "Address Line *",
+            "city": "City *",
+            "country": "Country *",
+            "postalCode": "Postal Code *",
+            "title": "Billing Address"
+        },
+        "ancillaryExpired": {
+            "description": "This fare is no longer available for ancillary services. You can still proceed with your booking — seats and bags can be managed directly with the airline.",
+            "title": "Not available for this offer"
+        },
+        "backToDetails": "Back to Details",
+        "bags": {
+            "added": "{count} bag added · +{price}",
+            "addedPlural": "{count} bags added · +{price}",
+            "carryOn": "Carry-on bag",
+            "checked": "Checked bag",
+            "errorDetail": "Could not load bag options: {error}",
+            "free": "Free",
+            "loading": "Loading bag options…",
+            "notAvailable": "Bag upgrades not available",
+            "notSupported": "Extra bag selection isn't supported for this flight.",
+            "optional": "Optional — add checked or carry-on bags",
+            "refreshing": "Refreshing offer…",
+            "title": "Extra Bags",
+            "upgradeTotal": "Bag upgrade total",
+            "weight": "up to {weight} kg"
+        },
+        "bookingSteps": [
+            "Verifying payment...",
+            "Securing your seat...",
+            "Confirming with the airline...",
+            "Finalizing booking details..."
+        ],
+        "confirmingBooking": "Confirming your booking",
+        "contact": {
+            "email": "Email Address *",
+            "phone": "Phone Number *",
+            "title": "Contact Information"
+        },
+        "countries": {
+            "AU": "Australia",
+            "CA": "Canada",
+            "CN": "China",
+            "DE": "Germany",
+            "FR": "France",
+            "GB": "United Kingdom",
+            "IN": "India",
+            "JP": "Japan",
+            "KR": "South Korea",
+            "MY": "Malaysia",
+            "PH": "Philippines",
+            "SG": "Singapore",
+            "TH": "Thailand",
+            "US": "United States",
+            "VN": "Vietnam"
+        },
+        "datePicker": {
+            "cancel": "Cancel",
+            "days": [
+                "S",
+                "M",
+                "T",
+                "W",
+                "T",
+                "F",
+                "S"
+            ],
             "month": "Month",
-            "year": "Year",
-            "searchDestinationsPlaceholder": "Search destinations...",
-            "recentSearches": "Recent Searches",
-            "searching": "Searching...",
-            "noResults": "No results found",
-            "countries": "Countries",
-            "cities": "Cities",
-            "typeToSearch": "Type city name or airport code...",
-            "noAirportsFound": "No airports found for \"{query}\"",
-            "typeToSearchPrompt": "Type a city or airport code to search",
-            "cabinClassLabel": "Cabin Class",
-            "infants": "Infants",
-            "adultAge": "Age 12+",
-            "childAge": "Age 2-11",
-            "infantAge": "Under 2 (lap)",
             "months": [
                 "January",
                 "February",
@@ -133,1058 +562,128 @@
                 "November",
                 "December"
             ],
-            "days": [
-                "S",
-                "M",
-                "T",
-                "W",
-                "T",
-                "F",
-                "S"
-            ],
-            "flexOptions": [
-                "Exact dates",
-                "± 1 day",
-                "± 2 days",
-                "± 3 days",
-                "± 7 days"
-            ],
-            "searchMode": {
-                "stays": "Stays",
-                "flights": "Flights",
-                "aiSearch": "AI Search"
-            }
-        },
-        "howItWorksSteps": {
-            "howItWorks": "How It Works",
-            "book": "Book your trip",
-            "bookNext": "in three simple steps.",
-            "search": {
-                "title": "Search",
-                "description": "Enter your destination, dates, and traveler count to find the best flights and hotels."
-            },
-            "compareStep": {
-                "title": "Compare",
-                "description": "Browse real-time prices across airlines and hotels. Filter by price, rating, or amenities."
-            },
-            "bookStep": {
-                "title": "Book",
-                "description": "Secure your trip in minutes with safe, encrypted checkout. Instant confirmation every time."
-            }
-        },
-        "recentlyViewed": {
-            "title": "Continue Your Search",
-            "subtitle": "Pick up where you left off",
-            "viewAll": "View all",
-            "recentlySearched": "Recently searched",
-            "from": "from",
-            "stay": "Stay",
-            "flight": "Flight",
-            "showLess": "Show less"
-        }
-    },
-    "flights": {
-        "search": {
-            "adult": "{count} adult",
-            "adult_plural": "{count} adults",
-            "stillSearching": "Still searching...",
-            "takingLonger": "Search is taking longer than usual",
-            "sources": "Sources:",
-            "total_count": "({count} total)",
-            "fetchingProviders": "Fetching from providers...",
-            "providersSlow": "Flight providers are responding slowly. Hang tight, we're still looking for the best fares.",
-            "providersSlowDescription": "Flight providers are slow to respond right now. Please try again or adjust your search.",
-            "tryAgain": "Try Again",
-            "newSearch": "New Search"
-        },
-        "validation": {
-            "missingInformation": "Missing information",
-            "selectField": "Please select {field}",
-            "fields": {
-                "segmentOriginAirport": "segment {index} origin airport",
-                "segmentDestinationAirport": "segment {index} destination airport",
-                "segmentDate": "segment {index} date",
-                "returnOriginAirport": "return origin airport",
-                "returnDestinationAirport": "return destination airport",
-                "returnDate": "return date"
-            }
-        },
-        "results": {
-            "result": "{count, plural, one {result} other {results}}",
-            "loading": "Finding the best faresâ€¦",
-            "empty": "No flights found for these dates.",
-            "sortBy": "Sort by",
-            "filters": "Filters",
-            "price": "Price",
-            "duration": "Duration",
-            "stops": {
-                "any": "Any",
-                "direct": "Direct",
-                "oneStop": "1 stop",
-                "twoPlus": "2+ stops"
-            },
-            "searchingFlights": "Searching flights...",
-            "checkingProviders": "Checking multiple providers",
-            "searchFailedTitle": "Search Failed",
-            "tryAgain": "Try Again",
-            "noFlightsTitle": "No flights found",
-            "noFlightsDefaultMessage": "No flights found. Try adjusting your filters or search for different dates.",
-            "discoveringMore": "Discovering more options ({shown} of {total})",
-            "allSeen": "You've seen all {count} available flights. Happy travels!"
-        },
-        "card": {
-            "direct": "Direct",
-            "nonstop": "Nonstop",
-            "stop": "stop",
-            "stops": "stops",
-            "stopCount": "{count} stop",
-            "stopsCount": "{count} stops",
-            "stopCountShort": "{count} stop(s)",
-            "viewDeal": "View deal",
-            "perPerson": "per person",
-            "nonRefundable": "Non-refundable",
-            "hideDetails": "Hide details",
-            "showAllSegments": "Show all segments",
-            "compareOptions": "Compare {count} options",
-            "currentlySelected": "Currently Selected",
             "select": "Select",
-            "selectFare": "Select {fare}",
-            "thisFare": "this",
-            "outbound": "Outbound",
-            "return": "Return",
-            "includesTaxesFees": "includes taxes & fees",
-            "freeCancellation": "Free cancellation",
-            "refundableFee": "Refundable (est. fee: {fee})",
-            "refundableFeesMayApply": "Refundable (fees may apply)",
-            "noBag": "No bag",
-            "bagsCount": "{count} bag(s)",
-            "brandsAvailable": "{count} brands available",
-            "onlySeatsLeft": "Only {count} left!",
-            "seatsLeft": "{count} seats left",
-            "seatsAvailable": "{count} seats available",
-            "perPersonShort": "/person",
-            "legLabel": "Leg {number}",
-            "availableFareOptions": "Available Fare Options",
-            "standard": "Standard",
-            "option": "Option",
-            "bestValue": "Best value",
-            "moreSegments": "+ {count} more"
-        },
-        "filtersPanel": {
-            "sortBy": "Sort By",
-            "cheapestFirst": "Cheapest First",
-            "fastestFirst": "Fastest First",
-            "earliestDeparture": "Earliest Departure",
-            "stops": "Stops",
-            "anyStops": "Any Stops",
-            "nonStopOnly": "Non-stop only",
-            "upToOneStop": "Up to 1 stop",
-            "fareType": "Fare Type",
-            "refundableFares": "Refundable fares",
-            "refundableFaresDescription": "Fares that allow cancellation with a refund",
-            "provider": "Provider",
-            "airlines": "Airlines",
-            "branded": "Branded",
-            "ndc": "NDC"
-        },
-        "priceAlert": {
-            "trackPrice": "Track price",
-            "signInRequired": "Sign in to set price alerts",
-            "enabled": "Alert on! We'll email you when prices drop.",
-            "remove": "Remove price alert",
-            "emailWhenDrops": "Get email when price drops",
-            "loading": "Loading...",
-            "active": "Alert active",
-            "removed": "Alert removed",
-            "failed": "Failed to set alert"
-        },
-        "book": {
-            "title": "Book Flight | CheapestGo",
-            "loading": "Loading booking..."
-        }
-    },
-    "auth": {
-        "signIn": {
-            "title": "Sign in to CheapestGo",
-            "emailLabel": "Email address",
-            "emailPlaceholder": "you@example.com",
-            "continueWithEmail": "Continue with email",
-            "continueWithGoogle": "Continue with Google",
-            "continueWithApple": "Continue with Apple",
-            "orDivider": "or",
-            "terms": "By signing in you agree to our {terms} and {privacy}.",
-            "termsLink": "Terms",
-            "privacyLink": "Privacy"
-        }
-    },
-    "errors": {
-        "generic": "Something went wrong. Please try again.",
-        "notFound": "Page not found.",
-        "searchFailed": "Search failed. Check your connection and try again.",
-        "auth": {
-            "title": "Authentication Error",
-            "description": "There was an error processing your authentication request. This could happen if the link expired or was already used.",
-            "signInAgain": "Try signing in again",
-            "goHome": "Go to homepage"
-        }
-    },
-    "pwa": {
-        "installPrompt": {
-            "title": "Get the CheapestGo app",
-            "body": "Add to your home screen for faster access.",
-            "install": "Install",
-            "dismiss": "Not now"
-        }
-    },
-    "footer": {
-        "tagline": "Engineered for the discerning traveler.",
-        "taglinePrecision": "Precision data. Zero compromise.",
-        "poweredBy": "Powered by Duffel & TravelgateX",
-        "module": "Module",
-        "flights": "Flights",
-        "hotels": "Hotels",
-        "cars": "Cars",
-        "company": "Company",
-        "aboutUs": "About Us",
-        "enterprise": "Enterprise",
-        "support": "Support",
-        "network": "Network",
-        "flightsApi": "Flights API",
-        "paymentGateway": "Payment Gateway",
-        "copyright": "Â© 2026 JTP Partners. All rights reserved.",
-        "allRightsReserved": "Partners. All rights reserved.",
-        "terms": "Terms",
-        "privacy": "Privacy",
-        "cookies": "Cookies",
-        "contact": "Contact",
-        "copyrightMinimal": "CheapestGo Â© 2026",
-        "termsMinimal": "Terms & Conditions",
-        "privacyMinimal": "Privacy Policy",
-        "cookiesMinimal": "Cookie preferences",
-        "contactMinimal": "Contact us",
-        "reportBug": "Report a Bug"
-    },
-    "appBanner": {
-        "badge": "Mobile App",
-        "title": "Travel smarter with our app",
-        "subtitle": "Get exclusive app-only deals, instant notifications, and manage your trips on the go.",
-        "downloads": "Downloads",
-        "rating": "App Rating",
-        "savings": "Extra Savings",
-        "installBtn": "Install App",
-        "downloadBtn": "Download App",
-        "learnMore": "Learn More"
-    },
-    "search": {
-        "validation": {
-            "selectField": "Please select {field}",
-            "allHotelFieldsRequired": "All fields are required to search for hotels",
-            "fieldList": "{fields} and {last}",
-            "listSeparator": ", ",
-            "fields": {
-                "destination": "destination",
-                "checkInDate": "check-in date",
-                "checkOutDate": "check-out date"
-            }
-        }
-    },
-    "deals": {
-        "popularRoute": "Popular Route",
-        "searchFlights": "Search Flights",
-        "all": "All",
-        "oneWay": "One Way",
-        "roundTrip": "Round Trip",
-        "headerDefault": "Exclusive Deals & Offers",
-        "headerPersonalized": "Flight Deals from {city}",
-        "subtitleDefault": "Low fares on popular routes",
-        "subtitlePersonalized": "Low fares departing from {city}",
-        "allDealsCount": "All {count} deals",
-        "collapse": "Collapse â†‘",
-        "pageTitle": "Exclusive Deals & Offers",
-        "pageSubtitle": "Handpicked limited-time travel deals. Prices are updated frequently and may change. Book early to secure the best rates.",
-        "noDealsTitle": "No active deals found",
-        "noDealsDescription": "Check back soon for new exclusive travel offers.",
-        "backButton": "Back to Home"
-    },
-    "hotels": {
-        "ratings": {
-            "exceptional": "Exceptional",
-            "superb": "Superb",
-            "excellent": "Excellent",
-            "veryGood": "Very Good",
-            "good": "Good",
-            "average": "Average",
-            "fair": "Fair",
-            "poor": "Poor",
-            "pleasant": "Pleasant"
-        },
-        "fromPrice": "From {price}",
-        "perNight": "/night",
-        "pricesMayVary": "prices may vary",
-        "bookNow": "Book Now",
-        "guestFavorite": "Guest Favorite",
-        "headerDefault": "Top Hotel Deals",
-        "headerPersonalized": "Hotel Deals in {country}",
-        "subtitleDefault": "Handpicked stays at unbeatable prices",
-        "subtitlePersonalized": "Top-rated stays in {country} Â· updated daily",
-        "allHotelsCount": "All {count} hotels",
-        "searchPage": {
-            "title": "Search Hotels & Stays | CheapestGo",
-            "description": "Find and book the cheapest hotels, apartments, and unique stays worldwide. Compare prices and discover your perfect accommodation on CheapestGo."
-        },
-        "searchResults": {
-            "sort": {
-                "recommended": "Recommended",
-                "cheapest": "Cheapest",
-                "topRated": "Top Rated",
-                "mostReviewed": "Most Reviewed",
-                "priceHighToLow": "Price: High to Low"
-            },
-            "checkingAvailability": "Checking availabilityâ€¦",
-            "loadingMore": "Loading more hotels",
-            "found": "found",
-            "foundCount": "{count} found",
-            "searching": "Searching hotelsâ€¦",
-            "searchingInDestination": "Searching hotels in {destination}",
-            "searchFailed": "Search failed. Please try again.",
-            "searchUnavailable": "Search unavailable",
-            "refreshPage": "Something went wrong. Try refreshing the page.",
-            "noHotelsFound": "No hotels found",
-            "noHotelsFoundIn": "No hotels found in {destination}",
-            "noPropertiesFound": "No properties found",
-            "supplierUnavailable": "Our supplier may not cover this destination yet. Try different dates, adjust your filters, or search a nearby city.",
-            "supplierUnavailableShort": "Our current supplier may not cover this destination yet. Try different dates or a nearby city.",
-            "tryDifferentDates": "Try different dates or a nearby city.",
-            "allResultsLoaded": "All {count} results loaded",
-            "loadMoreShowing": "Load More Â· showing {shown} of {total}",
-            "hotelsFound": "{count} hotels found",
-            "hotelsCount": "{count} hotels",
-            "staysIn": "Stays in {destination}",
-            "allProperties": "All properties",
-            "propertiesFound": "{count} properties found",
-            "pricesMayChange": "Prices may change based on availability.",
-            "map": "Map",
-            "discovery": {
-                "all": "All Discovery",
-                "restaurant": "Dining",
-                "attraction": "Attractions & Parks",
-                "grocery": "Groceries",
-                "medical": "Hospitals & Health",
-                "transit": "Transit"
-            },
-            "showMoreRemaining": "Show more ({count} remaining)",
-            "allResultsShown": "All {count} results shown",
-            "filteredCount": "{filtered} of {total}",
-            "noHotelsAvailable": "No hotels available",
-            "noHotelsAvailableIn": "No hotels available in {destination}"
-        },
-        "mapSearch": {
-            "placeholder": "Search location on map..."
-        },
-        "mapView": {
-            "findingHotels": "Finding hotels",
-            "findingHotelsIn": "Finding hotels in {destination}",
-            "comparingRates": "Comparing room rates across 200+ hotelsâ€¦",
-            "checkIn": "Check-in",
-            "checkOut": "Check-out",
-            "nights": "nights",
-            "guests": "Guests",
-            "search": "Search",
-            "searchFallback": "Search",
-            "back": "Back",
-            "filters": "Filters",
-            "list": "List",
-            "pricePerNight": "{min} â€“ {max} /night",
-            "swipeToBrowse": "Swipe to browse",
-            "cancellation": "Cancellation",
-            "any": "Any",
-            "clearFilters": "Clear filters",
-            "filterOptions": {
-                "propertyType": "Property Type",
-                "mealPlan": "Meal Plan",
-                "propertyTypes": {
-                    "hotel": "Hotel",
-                    "apartment": "Apartment",
-                    "resort": "Resort",
-                    "villa": "Villa"
-                },
-                "boardTypes": {
-                    "roomOnly": "Room Only",
-                    "breakfast": "Breakfast Included",
-                    "halfBoard": "Half Board",
-                    "fullBoard": "Full Board",
-                    "allInclusive": "All Inclusive"
-                }
-            },
-            "mapDetails": {
-                "title": "Map details",
-                "explore": "Explore",
-                "transit": "Transit",
-                "traffic": "Traffic",
-                "biking": "Biking",
-                "terrain": "Terrain",
-                "mapType": "Map type",
-                "default-3d": "Default 3D",
-                "default": "Default",
-                "satellite": "Satellite",
-                "labels": "Labels"
-            }
-        },
-        "mobileSearch": {
-            "title": "Search Hotels",
-            "where": "Where",
-            "whereQuestion": "Where?",
-            "searchCityHotel": "Search city or hotel",
-            "checkIn": "Check-in",
-            "checkInQuestion": "When&apos;s your check-in?",
-            "checkOut": "Check-out",
-            "checkOutQuestion": "When&apos;s your check-out?",
-            "addDates": "Add dates",
-            "who": "Who",
-            "whoQuestion": "Who&apos;s coming?",
-            "numberOfGuests": "Number of guests",
-            "clearAll": "Clear all",
-            "search": "Search"
-        },
-        "poiPopup": {
-            "viewOnGoogleMaps": "View on Google Maps",
-            "fromProperty": "from property",
-            "fromHotel": "from hotel",
-            "mFromProperty": "m from property",
-            "kmFromProperty": "km from property",
-            "mFromHotel": "m from hotel",
-            "kmFromHotel": "km from hotel"
-        },
-        "filters": {
-            "activeFilters": "Active Filters:",
-            "reset": "Reset",
-            "searchByPropertyName": "Search by property name",
-            "propertyType": "Property Type",
-            "mealPlan": "Meal Plan",
-            "amenities": "Amenities",
-            "strictAmenitiesDescription": "When enabled, only shows hotels with every selected amenity",
-            "filterBy": "Filter by",
-            "searchPlaceholder": "e.g. Marriott",
-            "starRating": "Star rating",
-            "starCount": "{count, plural, one {# star} other {# stars}}",
-            "guestRating": "Guest rating",
-            "minimumReviews": "Minimum reviews",
-            "roomFeatures": "Room Features",
-            "cancellation": "Cancellation",
-            "any": "Any",
-            "freeCancellationOnly": "Free cancellation only",
-            "mustHaveAllAmenities": "Must have ALL selected amenities",
-            "filters": "Filters",
-            "showPlaces": "Show places",
-            "propertyTypes": {
-                "hotel": "Hotel",
-                "apartment": "Apartment",
-                "resort": "Resort",
-                "villa": "Villa"
-            },
-            "boardTypes": {
-                "roomOnly": "Room Only",
-                "breakfast": "Breakfast Included",
-                "halfBoard": "Half Board",
-                "fullBoard": "Full Board",
-                "allInclusive": "All Inclusive"
-            }
-        },
-        "card": {
-            "freeCancellation": "Free cancellation",
-            "freeCancelShort": "Free cancel",
-            "reviews": "{count} reviews",
-            "perNight": "/night",
-            "viewDeal": "View Deal"
-        },
-        "propertyDatePicker": {
-            "checkIn": "Check-in",
-            "checkOut": "Check-out",
-            "addDate": "Add date"
-        },
-        "collapse": "Collapse â†‘"
-    },
-    "topCities": {
-        "headerMain": "Top Cities",
-        "headerHighlight": "Worldwide",
-        "subtitle": "Most visited destinations Â· find hotels instantly",
-        "exploreHotels": "Explore Hotels"
-    },
-    "topDestinations": {
-        "headerMain": "Top Destinations",
-        "headerHighlight": "Worldwide",
-        "subtitle": "Iconic experiences from every corner of the globe",
-        "findHotels": "Find Hotels"
-    },
-    "guestFavorites": {
-        "headerMain": "Guest",
-        "headerHighlight": "Favorites",
-        "subtitle": "Top-rated hotels loved by travellers Â· updated daily",
-        "allFavoritesCount": "All {count} favorites",
-        "collapse": "Collapse â†‘"
-    },
-    "seo": {
-        "orgDescription": "CheapestGo is a modern travel booking platform helping travelers find the cheapest flights and hotels worldwide.",
-        "faq": {
-            "q1": "How does CheapestGo find cheap flights?",
-            "a1": "CheapestGo searches across multiple airlines and global distribution systems to surface the lowest available fares in real time, letting you compare and book in one place.",
-            "q2": "Can I book both flights and hotels on CheapestGo?",
-            "a2": "Yes. CheapestGo supports booking flights, hotels, apartments, and unique stays â€” all from a single platform.",
-            "q3": "Is CheapestGo free to use?",
-            "a3": "Yes, searching and comparing prices on CheapestGo is completely free. You only pay when you book.",
-            "q4": "What currencies does CheapestGo support?",
-            "a4": "CheapestGo supports multiple currencies and automatically converts prices based on your preference so you can always see costs in your local currency."
-        }
-    },
-    "ai": {
-        "prompts": {
-            "bali": "Find me a beachfront resort in Bali for 2 adults, Feb 14-21...",
-            "tokyo": "Luxury hotel in Tokyo under $200/night with pool...",
-            "cebu": "Weekend getaway in Cebu for a couple, next month...",
-            "manila": "Family resort near Manila, 2 adults 2 kids..."
-        }
-    },
-    "account": {
-        "title": "Account Settings | CheapestGo",
-        "backToHome": "Back to home",
-        "sidebar": {
-            "greeting": "Hi, {name}",
-            "membershipTier": "Blue",
-            "pointsValue": "Points value",
-            "pointsAmount": "â‚± 0.00",
-            "viewRewardsActivity": "View rewards activity",
-            "promoTitle": "Get trip inspiration and offers",
-            "promoSubtitle": "Receive deals, tips, and insights from CheapestGo",
-            "getEmails": "Get emails",
-            "signOut": "Sign out",
-            "partnerInfo": "Your account works across all partner sites"
-        },
-        "nav": {
-            "profile": {
-                "title": "Profile",
-                "description": "View and edit your personal details"
-            },
-            "communications": {
-                "title": "Communications",
-                "description": "Control which notifications you get"
-            },
-            "security": {
-                "title": "Security",
-                "description": "Update your password"
-            },
-            "help": {
-                "title": "Help and feedback",
-                "description": "Get customer support"
-            }
-        },
-        "profile": {
-            "heading": "Profile Information",
-            "subheading": "Manage your personal information",
-            "fullName": "Full Name",
-            "emailAddress": "Email Address",
-            "emailCannotChange": "Email cannot be changed",
-            "edit": "Edit",
-            "firstName": "First Name",
-            "lastName": "Last Name",
-            "save": "Save",
-            "saving": "Saving...",
-            "cancel": "Cancel",
-            "updateSuccess": "Profile updated successfully",
-            "updateError": "Failed to update profile",
-            "fillAllFields": "Please fill in all fields"
-        },
-        "security": {
-            "heading": "Security Settings",
-            "subheading": "Manage your password and account security",
-            "changePassword": "Change Password",
-            "currentPassword": "Current Password",
-            "newPassword": "New Password",
-            "newPasswordHint": "Minimum 6 characters",
-            "confirmPassword": "Confirm New Password",
-            "updatePassword": "Update Password",
-            "updating": "Updating...",
-            "accountEmail": "Account Email",
-            "accountEmailSubtitle": "Your account email address",
-            "emailCannotChange": "Email cannot be changed",
-            "passwordUpdateSuccess": "Password updated successfully",
-            "passwordUpdateError": "Failed to update password",
-            "fillAllPasswordFields": "Please fill in all password fields",
-            "passwordTooShort": "New password must be at least 6 characters",
-            "passwordsDoNotMatch": "New passwords do not match"
-        },
-        "communications": {
-            "heading": "Communication Preferences",
-            "subheading": "Control which notifications and emails you receive",
-            "emailNotifications": "Email Notifications",
-            "emailNotificationsDesc": "Receive booking confirmations and updates",
-            "tripReminders": "Trip Reminders",
-            "tripRemindersDesc": "Get reminders before your upcoming trips",
-            "marketingEmails": "Marketing Emails",
-            "marketingEmailsDesc": "Receive deals, promotions, and travel tips",
-            "savePreferences": "Save Preferences",
-            "preferencesSaved": "Preferences saved"
-        },
-        "help": {
-            "heading": "Help & Support",
-            "subheading": "Get help with your account and bookings",
-            "emailSupport": "Email Support",
-            "emailSupportAddress": "support@cheapestgo.com",
-            "liveChat": "Live Chat",
-            "liveChatDesc": "Chat with our support team",
-            "faqTitle": "Frequently Asked Questions",
-            "faq1": "How do I cancel or modify my booking?",
-            "faq2": "When will I receive my booking confirmation?",
-            "faq3": "How do I request a refund?",
-            "faq4": "What payment methods are accepted?"
-        },
-        "sectionHeader": {
-            "edit": "Edit"
-        }
-    },
-    "checkout": {
-        "title": "Checkout | CheapestGo",
-        "secureYourBooking": "Secure your booking",
-        "completeYourBooking": "Complete your booking",
-        "chooseYourDates": "Choose your dates",
-        "pickDatesDescription": "Pick check-in and check-out to continue.",
-        "searchAvailableRooms": "Search available rooms â†’",
-        "continue": "Continue",
-        "goBack": "â† Go back",
-        "modifyBooking": "Modify booking",
-        "signInToComplete": "Sign in to complete your booking",
-        "signInBannerDesc": "You'll receive booking confirmation and updates via email.",
-        "signIn": "Sign In",
-        "bookingErrorTitle": "Booking error",
-        "goBackBtn": "Go back",
-        "retry": "Retry",
-        "duplicateBookingTitle": "You already have a booking at {hotel} for overlapping dates.",
-        "duplicateBookingDesc": "Cancel your existing booking first, or go back and keep it.",
-        "viewExistingBooking": "View existing booking",
-        "keepExistingBooking": "Keep existing booking",
-        "backToBookingDetails": "Back to booking details",
-        "loadingPaymentForm": "Loading payment form...",
-        "confirmingBooking": "Confirming your booking",
-        "verifyingPayment": "Verifying payment...",
-        "securingReservation": "Securing your reservation...",
-        "confirmingWithHotel": "Confirming with the hotel...",
-        "finalizingDetails": "Finalizing booking details...",
-        "dontClosePage": "Please don't close this page",
-        "checkIn": "Check-in",
-        "checkOut": "Check-out",
-        "selectYourDates": "Select your dates",
-        "back": "Back",
-        "validation": {
-            "fixHighlighted": "Please fix the highlighted fields before continuing.",
-            "sessionExpired": "Booking session expired. Please go back and select the room again.",
-            "priceVerifying": "Price is still being verified â€” please wait a moment and try again.",
-            "invalidPrice": "Invalid booking price. Please retry.",
-            "paymentSetupFailed": "Payment setup failed",
-            "requiresAuth": "Authentication required",
-            "sessionExpiredCharge": "Your session expired during payment. Your card was charged â€” please contact support with payment reference: {id}",
-            "bookingFailed": "Booking confirmation failed: {message}. Your payment will be automatically refunded."
-        },
-        "summary": {
-            "checkInAndOut": "Check-in & Check-out",
-            "edit": "Edit",
-            "checkInLabel": "Check-in",
-            "checkOutLabel": "Check-out",
-            "updateDates": "Update dates",
-            "night": "night",
-            "nights": "nights",
-            "yourRoom": "Your Room",
-            "adult": "Adult",
-            "adults": "Adults",
-            "child": "Child",
-            "children": "Children",
-            "calculatingPerNight": "Calculated per night...",
-            "averagePerNight": "average per night",
-            "roomConfirmed": "Room Confirmed",
-            "priceDetails": "Price details",
-            "roomNights": "1 room Ã— {nights} {count}",
-            "taxesAndFees": "Taxes and fees",
-            "promoCode": "Promo: {code}",
-            "total": "Total",
-            "youSave": "You save {amount} with this promo"
-        },
-        "rating": {
-            "exceptional": "Exceptional",
-            "fabulous": "Fabulous",
-            "veryGood": "Very Good",
-            "good": "Good",
-            "average": "Average",
-            "pleasant": "Pleasant"
-        },
-        "success": {
-            "bookingConfirmed": "Booking Confirmed! ðŸŽ‰",
-            "reservationComplete": "Your reservation at <strong>{name}</strong> is complete.",
-            "bookingId": "Booking ID",
-            "stayDuration": "Stay Duration",
-            "confirmationSentTo": "Confirmation sent to",
-            "sent": "Sent",
-            "flightHotelBundle": "Flight + Hotel Bundle",
-            "bundleDiscountApplied": "Bundle discount applied",
-            "saved": "{amount} saved",
-            "bundleDeal": "✦ Bundle Deal",
-            "saveUpTo": "Save up to 8%",
-            "needFlight": "Need a flight to {destination}?",
-            "bookFlightBundle": "Book your flight now and get a bundle discount on your total.",
-            "searchFlightsAndBundle": "Search flights & bundle",
-            "viewMyTrips": "View My Trips",
-            "returnToHome": "Return to Home",
-            "checkEmail": "Check your email for booking details and updates"
-        },
-        "bookingFor": {
-            "whoIsBooking": "Who is the booking for?",
-            "myself": "Myself",
-            "someoneElse": "Someone else",
-            "guestFirstName": "Guest First Name *",
-            "guestLastName": "Guest Last Name *"
-        },
-        "cancellation": {
-            "freeCancellation": "Free cancellation available â€” see deadlines below",
-            "nonRefundable": "Non-refundable â€” this booking cannot be cancelled for a refund",
-            "title": "Cancellation Policy",
-            "description": "How much will it cost to cancel the rooms?",
-            "cancelBy": "Cancel by",
-            "cancelAfter": "Cancel after",
-            "freeCancellationLabel": "Free Cancellation",
-            "fullRefund": "(Full refund)",
-            "refund": "{amount} Refund",
-            "footer": "Cancellation costs are based on the total booking value. All dates and times are mentioned in GMT.",
-            "noShowPenalty": "No-Show Penalty: {amount} if you don’t check in without cancelling.",
-            "earlyDepartureFee": "Early Departure Fee: {amount} if you check out before your scheduled date."
-        },
-        "payment": {
-            "paymentInformation": "Payment Information",
-            "card": "Card",
-            "cardNumber": "Card number",
-            "mmYY": "MM / YY",
-            "securityCode": "Security code",
-            "country": "Country",
-            "payeeFirstName": "Payee First Name",
-            "payeeLastName": "Payee Last Name",
-            "securedMessage": "Your payment information is secured.",
-            "countries": {
-                "PH": "Philippines",
-                "SG": "Singapore",
-                "MY": "Malaysia",
-                "ID": "Indonesia",
-                "TH": "Thailand",
-                "VN": "Vietnam",
-                "KR": "South Korea",
-                "JP": "Japan",
-                "US": "United States"
-            }
-        },
-        "specialRequests": {
-            "title": "Any special requests?",
-            "placeholder": "The property will do its best to arrange it."
-        },
-        "userDetails": {
-            "title": "Your details",
-            "firstName": "First Name *",
-            "lastName": "Last Name *",
-            "email": "Email *",
-            "phone": "Phone *",
-            "travelingForWork": "Traveling for work?",
-            "yes": "Yes",
-            "no": "No",
-            "firstNamePlaceholder": "First name",
-            "lastNamePlaceholder": "Last name",
-            "emailPlaceholder": "Email",
-            "phonePlaceholder": "Number"
-        },
-        "voucher": {
-            "promoCode": "Promo code",
-            "havePromoCode": "Have a promo code?",
-            "enterPromoCode": "ENTER PROMO CODE",
-            "apply": "Apply",
-            "removeVoucher": "Remove voucher",
-            "off": "OFF",
-            "saved": "{amount} saved",
-            "failedToValidate": "Failed to validate voucher. Please try again."
-        },
-        "promos": {
-            "availablePromos": "Available promos",
-            "loadingPromos": "Loading available promos...",
-            "availableForBooking": "Available promos for this booking",
-            "newUser": "New User",
-            "location": "Location",
-            "hotelDeal": "Hotel Deal",
-            "seasonal": "Seasonal",
-            "promo": "Promo",
-            "off": "off",
-            "minAmount": "Min. {amount}",
-            "upTo": "Up to {amount}",
-            "until": "Until {date}",
-            "applied": "Applied",
-            "apply": "Apply",
-            "failedToApply": "Failed to apply promo. Please try again."
-        },
-        "submit": {
-            "processingBooking": "Processing Your Booking...",
-            "verifyingRoom": "Verifying Room...",
-            "verifyingPrice": "Verifying Price...",
-            "goBackDifferentHotel": "Go back & choose a different hotel",
-            "goBackReselect": "Go back & reselect room",
-            "verificationFailed": "Verification failed â€” see error above",
-            "signInToComplete": "Sign In to Complete Booking",
-            "continueToPayment": "Continue to Payment • {amount}",
-            "waitingMessage": "Please wait while we confirm your reservation with the hotel...",
-            "waitingWarning": "This may take up to 30 seconds. Do not close this page.",
-            "hotelUnavailable": "Hotel temporarily unavailable",
-            "hotelUnavailableDesc": "This hotel cannot be booked right now. Please go back and choose a different hotel.",
-            "sessionExpired": "Room session expired",
-            "sessionExpiredDesc": "Your room hold has expired. Go back and reselect the room to get a fresh session â€” you can pick the same room again."
-        },
-        "stripe": {
-            "completePayment": "Complete Payment",
-            "loadError": "Failed to load the payment form. Please refresh and try again.",
-            "payNow": "Pay Now",
-            "unexpectedError": "An unexpected error occurred.",
-            "processing": "Payment is processing..."
-        }
-    },
-    "flightBook": {
-        "farePolicy": {
-            "freeCancellation": "Free cancellation",
-            "refundableFee": "Refundable (fee: {fee})",
-            "refundableFeesMayApply": "Refundable (fees may apply)",
-            "nonRefundable": "Non-refundable",
-            "policyUpdated": "<strong>Fare policy updated.</strong> The refundability of this fare has changed since you selected it. Please review before proceeding.",
-            "title": "Fare Policy",
-            "airlineConfirmed": "✓ Airline confirmed",
-            "changesAllowed": "Changes allowed",
-            "finalRules": "Final fare rules confirmed by airline during booking.",
-            "indicativeOnly": "Indicative only — final policy confirmed at payment stage."
-        },
-        "offerExpiry": {
-            "expired": "This offer has expired — please search again.",
-            "expiresIn": "Offer expires in {time} — complete your booking before time runs out."
-        },
-        "ancillaryExpired": {
-            "title": "Not available for this offer",
-            "description": "This fare is no longer available for ancillary services. You can still proceed with your booking — seats and bags can be managed directly with the airline."
-        },
-        "bookingSteps": [
-            "Verifying payment...",
-            "Securing your seat...",
-            "Confirming with the airline...",
-            "Finalizing booking details..."
-        ],
-        "confirmingBooking": "Confirming your booking",
-        "dontClosePage": "Please don't close this page",
-        "error": {
-            "flightUnavailable": "Flight Unavailable",
-            "bookingFailed": "Booking Failed",
-            "defaultMessage": "Your booking could not be completed.",
-            "notCharged": "Your card has <strong>not</strong> been charged. Please try a different flight or date.",
-            "notChargedShort": "Please try a different flight or date.",
-            "tryAgain": "Try Again",
-            "searchAgain": "Search Again",
-            "goBack": "Go Back",
-            "bookingFailedDefault": "Booking failed. Please try again."
-        },
-        "success": {
-            "bookingConfirmed": "Booking Confirmed! 🎉",
-            "bundleSuccess": "Your flight has been successfully added to your bundle.",
-            "flightSuccess": "Your flight has been booked successfully.",
-            "pnr": "PNR",
-            "bookingId": "Booking ID",
-            "route": "Route",
-            "total": "Total",
-            "bundleDiscountApplied": "Bundle discount applied",
-            "eTickets": "E-Tickets",
-            "whatsNext": "What's next",
-            "emailInfo": "Your e-ticket and booking confirmation will be emailed to you within a few minutes.",
-            "checkInInfo": "Online check-in typically opens 24–48 hours before departure. Visit the airline's website and use your PNR {pnr} to check in.",
-            "boardingPassInfo": "Your boarding pass will be issued at check-in. You can download it from the airline's app or website after checking in.",
-            "bundleDealBadge": "✦ BUNDLE DEAL",
-            "addHotel": "Add a hotel to complete your trip",
-            "addHotelDesc": "Book your stay in {destination} and save with our flight + hotel bundle rate",
-            "bookSeparately": "Book separately",
-            "standardRate": "Standard rate",
-            "addToThisTrip": "Add to this trip",
-            "bundleSavings": "Bundle savings",
-            "findHotels": "Find Hotels in {destination}",
-            "viewMyTrips": "View My Trips",
-            "returnToHome": "Return to Home"
-        },
-        "header": {
-            "roundTrip": "Round trip to {name} ({code})",
-            "oneWay": "Booking to {name} ({code})"
-        },
-        "totalPrice": "total price",
-        "seatsRemaining": {
-            "onlyLeft": "Only {count} seat left!",
-            "onlyLeftPlural": "Only {count} seats left!",
-            "leftPlural": "{count} seats left",
-            "available": "{count} seats available"
+            "selectDate": "Select date",
+            "year": "Year"
         },
         "dealBanner": {
             "dealApplied": "{discount} deal applied",
-            "perPerson": "/ person",
             "departs": "Departs {date}",
+            "perPerson": "/ person",
             "returns": "Returns {date}"
-        },
-        "passenger": {
-            "title": "Passenger {number}",
-            "adult": "Adult",
-            "child": "Child",
-            "infant": "Infant",
-            "remove": "Remove",
-            "firstName": "First Name *",
-            "lastName": "Last Name *",
-            "gender": "Gender *",
-            "birthdate": "Birthdate *",
-            "nationality": "Nationality *",
-            "passport": "Passport Number *",
-            "passportExpiry": "Passport Expiry Date *",
-            "addPassenger": "+ Add Passenger"
-        },
-        "genderOptions": {
-            "male": "Male",
-            "female": "Female"
-        },
-        "contact": {
-            "title": "Contact Information",
-            "email": "Email Address *",
-            "phone": "Phone Number *"
-        },
-        "address": {
-            "title": "Billing Address",
-            "addressLine": "Address Line *",
-            "city": "City *",
-            "postalCode": "Postal Code *",
-            "country": "Country *"
-        },
-        "bags": {
-            "title": "Extra Bags",
-            "added": "{count} bag added · +{price}",
-            "addedPlural": "{count} bags added · +{price}",
-            "optional": "Optional — add checked or carry-on bags",
-            "refreshing": "Refreshing offer…",
-            "carryOn": "Carry-on bag",
-            "checked": "Checked bag",
-            "weight": "up to {weight} kg",
-            "free": "Free",
-            "upgradeTotal": "Bag upgrade total",
-            "loading": "Loading bag options…",
-            "notAvailable": "Bag upgrades not available",
-            "errorDetail": "Could not load bag options: {error}",
-            "notSupported": "Extra bag selection isn't supported for this flight."
-        },
-        "seats": {
-            "title": "Seat Selection",
-            "selected": "{count} seat selected · +{price}",
-            "selectedPlural": "{count} seats selected · +{price}",
-            "optional": "Optional — pick your seat on the cabin map",
-            "seatUpgrade": "Seat upgrade:",
-            "seatLabel": "Seat {designator}",
-            "tapToSelect": "Tap a seat to select it",
-            "selectingFor": "Selecting for {name}",
-            "seatChosen": "· Seat {designator} chosen",
-            "tapSeatBelow": "· tap a seat below",
-            "seatsCount": "{selected}/{total} seats",
-            "legend": {
-                "free": "Free",
-                "paid": "Paid",
-                "taken": "Taken",
-                "selected": "Selected",
-                "extraLegroom": "Extra legroom",
-                "exitRow": "Exit row"
-            },
-            "clear": "Clear",
-            "done": "Done",
-            "skip": "Skip",
-            "loading": "Loading seat map…",
-            "notAvailable": "Seat map not available",
-            "errorDetail": "Could not load seat map: {error}",
-            "notSupported": "This airline doesn't support seat selection for this flight through our booking system.",
-            "extraLegroomTooltip": "✦ Extra legroom",
-            "exitRowTooltip": "⚠ Exit row"
-        },
-        "priceChange": {
-            "title": "Fare price has changed",
-            "description": "This flight is now {newPrice} (was {oldPrice}). Do you want to continue at the new price?",
-            "accept": "Accept new price & continue",
-            "searchAgain": "Search again"
-        },
-        "duplicate": {
-            "title": "You already have a flight booked on this day",
-            "description": "An active booking was found departing {route} on {date}. Cancel the existing booking first, or go back.",
-            "viewExisting": "View existing booking",
-            "keepExisting": "Keep existing booking"
-        },
-        "orderSummary": {
-            "title": "Order Summary",
-            "nonstop": "Nonstop",
-            "stops": "{count} stop(s)",
-            "economy": "Economy",
-            "passenger": "{count} passenger",
-            "passengerPlural": "{count} passengers",
-            "baseFare": "Base fare",
-            "seatSelection": "Seat selection",
-            "extraBags": "Extra bags",
-            "total": "Total"
-        },
-        "submitBtn": {
-            "processing": "Processing Booking...",
-            "confirm": "Confirm Booking · {price}"
         },
         "dealGate": {
             "dealUnavailable": "Deal no longer available",
-            "tryAgain": "Try Again",
+            "noFlightsFound": "No flights found for this deal. It may have expired.",
             "searchAll": "Search All Flights",
-            "securingDeal": "Securing your deal",
             "searchMessages": [
                 "Searching for available flights…",
                 "Checking seat availability…",
                 "Locking in the best price…",
                 "Almost there…"
             ],
-            "noFlightsFound": "No flights found for this deal. It may have expired.",
-            "somethingWrong": "Something went wrong. Please try again."
+            "securingDeal": "Securing your deal",
+            "somethingWrong": "Something went wrong. Please try again.",
+            "tryAgain": "Try Again"
+        },
+        "dontClosePage": "Please don't close this page",
+        "duplicate": {
+            "description": "An active booking was found departing {route} on {date}. Cancel the existing booking first, or go back.",
+            "keepExisting": "Keep existing booking",
+            "title": "You already have a flight booked on this day",
+            "viewExisting": "View existing booking"
+        },
+        "error": {
+            "bookingFailed": "Booking Failed",
+            "bookingFailedDefault": "Booking failed. Please try again.",
+            "defaultMessage": "Your booking could not be completed.",
+            "flightUnavailable": "Flight Unavailable",
+            "goBack": "Go Back",
+            "notCharged": "Your card has <strong>not</strong> been charged. Please try a different flight or date.",
+            "notChargedShort": "Please try a different flight or date.",
+            "searchAgain": "Search Again",
+            "tryAgain": "Try Again"
+        },
+        "fareConditions": {
+            "allowedFee": "Allowed · {fee} fee",
+            "allowedFeeMayApply": "Allowed (fee may apply)",
+            "changeAfter": "Change after departure",
+            "changeBefore": "Change before departure",
+            "disclaimer": "Conditions are per passenger and subject to airline policy. Penalties apply per ticket.",
+            "free": "Free",
+            "fullyRefundable": "Fully refundable",
+            "nonRefundable": "Non-refundable",
+            "notAllowed": "Not allowed",
+            "partialRefund": "Partial refund",
+            "refundAfter": "Refund after departure",
+            "refundBefore": "Refund before departure",
+            "title": "Fare Conditions"
+        },
+        "farePolicy": {
+            "airlineConfirmed": "✓ Airline confirmed",
+            "changesAllowed": "Changes allowed",
+            "finalRules": "Final fare rules confirmed by airline during booking.",
+            "freeCancellation": "Free cancellation",
+            "indicativeOnly": "Indicative only — final policy confirmed at payment stage.",
+            "nonRefundable": "Non-refundable",
+            "policyUpdated": "<strong>Fare policy updated.</strong> The refundability of this fare has changed since you selected it. Please review before proceeding.",
+            "refundableFee": "Refundable (fee: {fee})",
+            "refundableFeesMayApply": "Refundable (fees may apply)",
+            "title": "Fare Policy"
         },
         "fareRules": {
-            "title": "Fare Rules",
+            "error": "Could not load fare rules",
             "noRules": "No rule text provided by airline.",
-            "viewOnWebsite": "View fare rules on airline website →",
             "routeLabel": "Route {number}",
             "rule": "rule",
             "rules": "rules",
-            "error": "Could not load fare rules"
+            "title": "Fare Rules",
+            "viewOnWebsite": "View fare rules on airline website →"
         },
-        "fareConditions": {
-            "title": "Fare Conditions",
-            "fullyRefundable": "Fully refundable",
-            "nonRefundable": "Non-refundable",
-            "partialRefund": "Partial refund",
-            "changeBefore": "Change before departure",
-            "changeAfter": "Change after departure",
-            "refundBefore": "Refund before departure",
-            "refundAfter": "Refund after departure",
-            "notAllowed": "Not allowed",
-            "allowedFeeMayApply": "Allowed (fee may apply)",
-            "free": "Free",
-            "allowedFee": "Allowed · {fee} fee",
-            "disclaimer": "Conditions are per passenger and subject to airline policy. Penalties apply per ticket."
+        "genderOptions": {
+            "female": "Female",
+            "male": "Male"
+        },
+        "header": {
+            "oneWay": "Booking to {name} ({code})",
+            "roundTrip": "Round trip to {name} ({code})"
+        },
+        "offerExpiry": {
+            "expired": "This offer has expired — please search again.",
+            "expiresIn": "Offer expires in {time} — complete your booking before time runs out."
+        },
+        "orderSummary": {
+            "baseFare": "Base fare",
+            "economy": "Economy",
+            "extraBags": "Extra bags",
+            "nonstop": "Nonstop",
+            "passenger": "{count} passenger",
+            "passengerPlural": "{count} passengers",
+            "seatSelection": "Seat selection",
+            "stops": "{count} stop(s)",
+            "title": "Order Summary",
+            "total": "Total"
+        },
+        "passenger": {
+            "addPassenger": "+ Add Passenger",
+            "adult": "Adult",
+            "birthdate": "Birthdate *",
+            "child": "Child",
+            "firstName": "First Name *",
+            "gender": "Gender *",
+            "infant": "Infant",
+            "lastName": "Last Name *",
+            "nationality": "Nationality *",
+            "passport": "Passport Number *",
+            "passportExpiry": "Passport Expiry Date *",
+            "remove": "Remove",
+            "title": "Passenger {number}"
         },
         "priceCalendar": {
-            "exploreRoundTrip": "Explore prices by date (Round-trip)",
-            "exploreOneWay": "Explore prices by date (One-way)",
             "checkingPrices": "Checking prices…",
-            "loading": "Loading…",
-            "fetchingLive": "Fetching live prices…",
-            "from": "From {price}",
-            "tipTitle": "Tip:",
-            "tipDescription": "These are real fares for nearby dates from this provider. Click any date to instantly search flights on that day.",
             "clickToSearch": "Click to search this date",
             "clickToSearchWithPrice": "{price} — click to search",
             "datesFound": "{count} dates with prices found",
-            "searchingBestPrices": "Searching for the best prices…",
-            "updatingMonth": "Updating month…",
-            "searchDates": "Search all {count} dates for {month}",
             "days": [
                 "Su",
                 "Mo",
@@ -1194,6 +693,11 @@
                 "Fr",
                 "Sa"
             ],
+            "exploreOneWay": "Explore prices by date (One-way)",
+            "exploreRoundTrip": "Explore prices by date (Round-trip)",
+            "fetchingLive": "Fetching live prices…",
+            "from": "From {price}",
+            "loading": "Loading…",
             "months": [
                 "January",
                 "February",
@@ -1207,14 +711,528 @@
                 "October",
                 "November",
                 "December"
-            ]
+            ],
+            "searchDates": "Search all {count} dates for {month}",
+            "searchingBestPrices": "Searching for the best prices…",
+            "tipDescription": "These are real fares for nearby dates from this provider. Click any date to instantly search flights on that day.",
+            "tipTitle": "Tip:",
+            "updatingMonth": "Updating month…"
         },
-        "datePicker": {
-            "selectDate": "Select date",
-            "month": "Month",
-            "year": "Year",
-            "cancel": "Cancel",
+        "priceChange": {
+            "accept": "Accept new price & continue",
+            "description": "This flight is now {newPrice} (was {oldPrice}). Do you want to continue at the new price?",
+            "searchAgain": "Search again",
+            "title": "Fare price has changed"
+        },
+        "seats": {
+            "clear": "Clear",
+            "done": "Done",
+            "errorDetail": "Could not load seat map: {error}",
+            "exitRowTooltip": "⚠ Exit row",
+            "extraLegroomTooltip": "✦ Extra legroom",
+            "legend": {
+                "exitRow": "Exit row",
+                "extraLegroom": "Extra legroom",
+                "free": "Free",
+                "paid": "Paid",
+                "selected": "Selected",
+                "taken": "Taken"
+            },
+            "loading": "Loading seat map…",
+            "notAvailable": "Seat map not available",
+            "notSupported": "This airline doesn't support seat selection for this flight through our booking system.",
+            "optional": "Optional — pick your seat on the cabin map",
+            "seatChosen": "· Seat {designator} chosen",
+            "seatLabel": "Seat {designator}",
+            "seatUpgrade": "Seat upgrade:",
+            "seatsCount": "{selected}/{total} seats",
+            "selected": "{count} seat selected · +{price}",
+            "selectedPlural": "{count} seats selected · +{price}",
+            "selectingFor": "Selecting for {name}",
+            "skip": "Skip",
+            "tapSeatBelow": "· tap a seat below",
+            "tapToSelect": "Tap a seat to select it",
+            "title": "Seat Selection"
+        },
+        "seatsRemaining": {
+            "available": "{count} seats available",
+            "leftPlural": "{count} seats left",
+            "onlyLeft": "Only {count} seat left!",
+            "onlyLeftPlural": "Only {count} seats left!"
+        },
+        "submitBtn": {
+            "confirm": "Confirm Booking · {price}",
+            "processing": "Processing Booking..."
+        },
+        "success": {
+            "addHotel": "Add a hotel to complete your trip",
+            "addHotelDesc": "Book your stay in {destination} and save with our flight + hotel bundle rate",
+            "addToThisTrip": "Add to this trip",
+            "boardingPassInfo": "Your boarding pass will be issued at check-in. You can download it from the airline's app or website after checking in.",
+            "bookSeparately": "Book separately",
+            "bookingConfirmed": "Booking Confirmed! 🎉",
+            "bookingId": "Booking ID",
+            "bundleDealBadge": "✦ BUNDLE DEAL",
+            "bundleDiscountApplied": "Bundle discount applied",
+            "bundleSavings": "Bundle savings",
+            "bundleSuccess": "Your flight has been successfully added to your bundle.",
+            "checkInInfo": "Online check-in typically opens 24–48 hours before departure. Visit the airline's website and use your PNR {pnr} to check in.",
+            "eTickets": "E-Tickets",
+            "emailInfo": "Your e-ticket and booking confirmation will be emailed to you within a few minutes.",
+            "findHotels": "Find Hotels in {destination}",
+            "flightSuccess": "Your flight has been booked successfully.",
+            "pnr": "PNR",
+            "returnToHome": "Return to Home",
+            "route": "Route",
+            "standardRate": "Standard rate",
+            "total": "Total",
+            "viewMyTrips": "View My Trips",
+            "whatsNext": "What's next"
+        },
+        "totalPrice": "total price"
+    },
+    "flights": {
+        "book": {
+            "loading": "Loading booking...",
+            "title": "Book Flight | CheapestGo"
+        },
+        "card": {
+            "availableFareOptions": "Available Fare Options",
+            "bagsCount": "{count} bag(s)",
+            "bestValue": "Best value",
+            "brandsAvailable": "{count} brands available",
+            "compareOptions": "Compare {count} options",
+            "currentlySelected": "Currently Selected",
+            "direct": "Direct",
+            "freeCancellation": "Free cancellation",
+            "hideDetails": "Hide details",
+            "includesTaxesFees": "includes taxes & fees",
+            "legLabel": "Leg {number}",
+            "moreSegments": "+ {count} more",
+            "noBag": "No bag",
+            "nonRefundable": "Non-refundable",
+            "nonstop": "Nonstop",
+            "onlySeatsLeft": "Only {count} left!",
+            "option": "Option",
+            "outbound": "Outbound",
+            "perPerson": "per person",
+            "perPersonShort": "/person",
+            "refundableFee": "Refundable (est. fee: {fee})",
+            "refundableFeesMayApply": "Refundable (fees may apply)",
+            "return": "Return",
+            "seatsAvailable": "{count} seats available",
+            "seatsLeft": "{count} seats left",
             "select": "Select",
+            "selectFare": "Select {fare}",
+            "showAllSegments": "Show all segments",
+            "standard": "Standard",
+            "stop": "stop",
+            "stopCount": "{count} stop",
+            "stopCountShort": "{count} stop(s)",
+            "stops": "stops",
+            "stopsCount": "{count} stops",
+            "thisFare": "this",
+            "viewDeal": "View deal"
+        },
+        "filtersPanel": {
+            "airlines": "Airlines",
+            "anyStops": "Any Stops",
+            "branded": "Branded",
+            "cheapestFirst": "Cheapest First",
+            "earliestDeparture": "Earliest Departure",
+            "fareType": "Fare Type",
+            "fastestFirst": "Fastest First",
+            "ndc": "NDC",
+            "nonStopOnly": "Non-stop only",
+            "provider": "Provider",
+            "refundableFares": "Refundable fares",
+            "refundableFaresDescription": "Fares that allow cancellation with a refund",
+            "sortBy": "Sort By",
+            "stops": "Stops",
+            "upToOneStop": "Up to 1 stop"
+        },
+        "priceAlert": {
+            "active": "Alert active",
+            "emailWhenDrops": "Get email when price drops",
+            "enabled": "Alert on! We'll email you when prices drop.",
+            "failed": "Failed to set alert",
+            "loading": "Loading...",
+            "remove": "Remove price alert",
+            "removed": "Alert removed",
+            "signInRequired": "Sign in to set price alerts",
+            "trackPrice": "Track price"
+        },
+        "results": {
+            "allSeen": "You've seen all {count} available flights. Happy travels!",
+            "checkingProviders": "Checking multiple providers",
+            "discoveringMore": "Discovering more options ({shown} of {total})",
+            "duration": "Duration",
+            "empty": "No flights found for these dates.",
+            "filters": "Filters",
+            "loading": "Finding the best faresâ€¦",
+            "noFlightsDefaultMessage": "No flights found. Try adjusting your filters or search for different dates.",
+            "noFlightsTitle": "No flights found",
+            "price": "Price",
+            "result": "{count, plural, one {result} other {results}}",
+            "searchFailedTitle": "Search Failed",
+            "searchingFlights": "Searching flights...",
+            "sortBy": "Sort by",
+            "stops": {
+                "any": "Any",
+                "direct": "Direct",
+                "oneStop": "1 stop",
+                "twoPlus": "2+ stops"
+            },
+            "tryAgain": "Try Again"
+        },
+        "search": {
+            "adult": "{count} adult",
+            "adult_plural": "{count} adults",
+            "fetchingProviders": "Fetching from providers...",
+            "newSearch": "New Search",
+            "providersSlow": "Flight providers are responding slowly. Hang tight, we're still looking for the best fares.",
+            "providersSlowDescription": "Flight providers are slow to respond right now. Please try again or adjust your search.",
+            "sources": "Sources:",
+            "stillSearching": "Still searching...",
+            "takingLonger": "Search is taking longer than usual",
+            "total_count": "({count} total)",
+            "tryAgain": "Try Again"
+        },
+        "validation": {
+            "fields": {
+                "returnDate": "return date",
+                "returnDestinationAirport": "return destination airport",
+                "returnOriginAirport": "return origin airport",
+                "segmentDate": "segment {index} date",
+                "segmentDestinationAirport": "segment {index} destination airport",
+                "segmentOriginAirport": "segment {index} origin airport"
+            },
+            "missingInformation": "Missing information",
+            "selectField": "Please select {field}"
+        }
+    },
+    "footer": {
+        "aboutUs": "About Us",
+        "allRightsReserved": "Partners. All rights reserved.",
+        "cars": "Cars",
+        "company": "Company",
+        "contact": "Contact",
+        "contactMinimal": "Contact us",
+        "cookies": "Cookies",
+        "cookiesMinimal": "Cookie preferences",
+        "copyright": "Â© 2026 JTP Partners. All rights reserved.",
+        "copyrightMinimal": "CheapestGo Â© 2026",
+        "enterprise": "Enterprise",
+        "flights": "Flights",
+        "flightsApi": "Flights API",
+        "hotels": "Hotels",
+        "module": "Module",
+        "network": "Network",
+        "paymentGateway": "Payment Gateway",
+        "poweredBy": "Powered by Duffel & TravelgateX",
+        "privacy": "Privacy",
+        "privacyMinimal": "Privacy Policy",
+        "reportBug": "Report a Bug",
+        "support": "Support",
+        "tagline": "Engineered for the discerning traveler.",
+        "taglinePrecision": "Precision data. Zero compromise.",
+        "terms": "Terms",
+        "termsMinimal": "Terms & Conditions"
+    },
+    "guestFavorites": {
+        "allFavoritesCount": "All {count} favorites",
+        "collapse": "Collapse â†‘",
+        "headerHighlight": "Favorites",
+        "headerMain": "Guest",
+        "subtitle": "Top-rated hotels loved by travellers Â· updated daily"
+    },
+    "hotels": {
+        "allHotelsCount": "All {count} hotels",
+        "bookNow": "Book Now",
+        "card": {
+            "freeCancelShort": "Free cancel",
+            "freeCancellation": "Free cancellation",
+            "perNight": "/night",
+            "reviews": "{count} reviews",
+            "viewDeal": "View Deal"
+        },
+        "collapse": "Collapse â†‘",
+        "filters": {
+            "activeFilters": "Active Filters:",
+            "amenities": "Amenities",
+            "any": "Any",
+            "boardTypes": {
+                "allInclusive": "All Inclusive",
+                "breakfast": "Breakfast Included",
+                "fullBoard": "Full Board",
+                "halfBoard": "Half Board",
+                "roomOnly": "Room Only"
+            },
+            "cancellation": "Cancellation",
+            "filterBy": "Filter by",
+            "filters": "Filters",
+            "freeCancellationOnly": "Free cancellation only",
+            "guestRating": "Guest rating",
+            "mealPlan": "Meal Plan",
+            "minimumReviews": "Minimum reviews",
+            "mustHaveAllAmenities": "Must have ALL selected amenities",
+            "propertyType": "Property Type",
+            "propertyTypes": {
+                "apartment": "Apartment",
+                "hotel": "Hotel",
+                "resort": "Resort",
+                "villa": "Villa"
+            },
+            "reset": "Reset",
+            "roomFeatures": "Room Features",
+            "searchByPropertyName": "Search by property name",
+            "searchPlaceholder": "e.g. Marriott",
+            "showPlaces": "Show places",
+            "starCount": "{count, plural, one {# star} other {# stars}}",
+            "starRating": "Star rating",
+            "strictAmenitiesDescription": "When enabled, only shows hotels with every selected amenity"
+        },
+        "fromPrice": "From {price}",
+        "guestFavorite": "Guest Favorite",
+        "headerDefault": "Top Hotel Deals",
+        "headerPersonalized": "Hotel Deals in {country}",
+        "mapSearch": {
+            "placeholder": "Search location on map..."
+        },
+        "mapView": {
+            "any": "Any",
+            "back": "Back",
+            "cancellation": "Cancellation",
+            "checkIn": "Check-in",
+            "checkOut": "Check-out",
+            "clearFilters": "Clear filters",
+            "comparingRates": "Comparing room rates across 200+ hotelsâ€¦",
+            "filterOptions": {
+                "boardTypes": {
+                    "allInclusive": "All Inclusive",
+                    "breakfast": "Breakfast Included",
+                    "fullBoard": "Full Board",
+                    "halfBoard": "Half Board",
+                    "roomOnly": "Room Only"
+                },
+                "mealPlan": "Meal Plan",
+                "propertyType": "Property Type",
+                "propertyTypes": {
+                    "apartment": "Apartment",
+                    "hotel": "Hotel",
+                    "resort": "Resort",
+                    "villa": "Villa"
+                }
+            },
+            "filters": "Filters",
+            "findingHotels": "Finding hotels",
+            "findingHotelsIn": "Finding hotels in {destination}",
+            "guests": "Guests",
+            "list": "List",
+            "mapDetails": {
+                "biking": "Biking",
+                "default": "Default",
+                "default-3d": "Default 3D",
+                "explore": "Explore",
+                "labels": "Labels",
+                "mapType": "Map type",
+                "satellite": "Satellite",
+                "terrain": "Terrain",
+                "title": "Map details",
+                "traffic": "Traffic",
+                "transit": "Transit"
+            },
+            "nights": "nights",
+            "pricePerNight": "{min} â€“ {max} /night",
+            "search": "Search",
+            "searchFallback": "Search",
+            "swipeToBrowse": "Swipe to browse"
+        },
+        "mobileSearch": {
+            "addDates": "Add dates",
+            "checkIn": "Check-in",
+            "checkInQuestion": "When&apos;s your check-in?",
+            "checkOut": "Check-out",
+            "checkOutQuestion": "When&apos;s your check-out?",
+            "clearAll": "Clear all",
+            "numberOfGuests": "Number of guests",
+            "search": "Search",
+            "searchCityHotel": "Search city or hotel",
+            "title": "Search Hotels",
+            "where": "Where",
+            "whereQuestion": "Where?",
+            "who": "Who",
+            "whoQuestion": "Who&apos;s coming?"
+        },
+        "perNight": "/night",
+        "poiPopup": {
+            "fromHotel": "from hotel",
+            "fromProperty": "from property",
+            "kmFromHotel": "km from hotel",
+            "kmFromProperty": "km from property",
+            "mFromHotel": "m from hotel",
+            "mFromProperty": "m from property",
+            "viewOnGoogleMaps": "View on Google Maps"
+        },
+        "pricesMayVary": "prices may vary",
+        "propertyDatePicker": {
+            "addDate": "Add date",
+            "checkIn": "Check-in",
+            "checkOut": "Check-out"
+        },
+        "ratings": {
+            "average": "Average",
+            "excellent": "Excellent",
+            "exceptional": "Exceptional",
+            "fair": "Fair",
+            "good": "Good",
+            "pleasant": "Pleasant",
+            "poor": "Poor",
+            "superb": "Superb",
+            "veryGood": "Very Good"
+        },
+        "searchPage": {
+            "description": "Find and book the cheapest hotels, apartments, and unique stays worldwide. Compare prices and discover your perfect accommodation on CheapestGo.",
+            "title": "Search Hotels & Stays | CheapestGo"
+        },
+        "searchResults": {
+            "allProperties": "All properties",
+            "allResultsLoaded": "All {count} results loaded",
+            "allResultsShown": "All {count} results shown",
+            "checkingAvailability": "Checking availabilityâ€¦",
+            "discovery": {
+                "all": "All Discovery",
+                "attraction": "Attractions & Parks",
+                "grocery": "Groceries",
+                "medical": "Hospitals & Health",
+                "restaurant": "Dining",
+                "transit": "Transit"
+            },
+            "filteredCount": "{filtered} of {total}",
+            "found": "found",
+            "foundCount": "{count} found",
+            "hotelsCount": "{count} hotels",
+            "hotelsFound": "{count} hotels found",
+            "loadMoreShowing": "Load More Â· showing {shown} of {total}",
+            "loadingMore": "Loading more hotels",
+            "map": "Map",
+            "noHotelsAvailable": "No hotels available",
+            "noHotelsAvailableIn": "No hotels available in {destination}",
+            "noHotelsFound": "No hotels found",
+            "noHotelsFoundIn": "No hotels found in {destination}",
+            "noPropertiesFound": "No properties found",
+            "pricesMayChange": "Prices may change based on availability.",
+            "propertiesFound": "{count} properties found",
+            "refreshPage": "Something went wrong. Try refreshing the page.",
+            "searchFailed": "Search failed. Please try again.",
+            "searchUnavailable": "Search unavailable",
+            "searching": "Searching hotelsâ€¦",
+            "searchingInDestination": "Searching hotels in {destination}",
+            "showMoreRemaining": "Show more ({count} remaining)",
+            "sort": {
+                "cheapest": "Cheapest",
+                "mostReviewed": "Most Reviewed",
+                "priceHighToLow": "Price: High to Low",
+                "recommended": "Recommended",
+                "topRated": "Top Rated"
+            },
+            "staysIn": "Stays in {destination}",
+            "supplierUnavailable": "Our supplier may not cover this destination yet. Try different dates, adjust your filters, or search a nearby city.",
+            "supplierUnavailableShort": "Our current supplier may not cover this destination yet. Try different dates or a nearby city.",
+            "tryDifferentDates": "Try different dates or a nearby city."
+        },
+        "subtitleDefault": "Handpicked stays at unbeatable prices",
+        "subtitlePersonalized": "Top-rated stays in {country} Â· updated daily"
+    },
+    "invoice": {
+        "amount": "Amount",
+        "billedTo": "Billed to",
+        "bookingDetails": "Booking Details",
+        "bookingRef": "Booking Ref",
+        "date": "Date",
+        "description": "Description",
+        "flight": "Flight",
+        "hotel": "Hotel",
+        "hotelPartner": "Hotel Partner",
+        "issued": "Issued: {date}",
+        "passengers": "Passengers",
+        "payment": "Payment",
+        "paymentMethod": "Stripe (Card)",
+        "provider": "Provider",
+        "receipt": "RECEIPT",
+        "route": "Route",
+        "thankYou": "Thank you for booking with CheapestGo. For support, contact",
+        "totalPaid": "Total Paid",
+        "type": "Type",
+        "yourTravelPartner": "Your Travel Partner"
+    },
+    "landing": {
+        "hero": {
+            "cta": "Search flights",
+            "monoSubtext": "Ask anything. Book everything.",
+            "subtitle": "The operating system for the modern voyager.",
+            "title": "Flights at the lowest price",
+            "titleLine1": "Precision Travel.",
+            "titleLine2": "Machined for You."
+        },
+        "howItWorksSteps": {
+            "book": "Book your trip",
+            "bookNext": "in three simple steps.",
+            "bookStep": {
+                "description": "Secure your trip in minutes with safe, encrypted checkout. Instant confirmation every time.",
+                "title": "Book"
+            },
+            "compareStep": {
+                "description": "Browse real-time prices across airlines and hotels. Filter by price, rating, or amenities.",
+                "title": "Compare"
+            },
+            "howItWorks": "How It Works",
+            "search": {
+                "description": "Enter your destination, dates, and traveler count to find the best flights and hotels.",
+                "title": "Search"
+            }
+        },
+        "recentlyViewed": {
+            "flight": "Flight",
+            "from": "from",
+            "recentlySearched": "Recently searched",
+            "showLess": "Show less",
+            "stay": "Stay",
+            "subtitle": "Pick up where you left off",
+            "title": "Continue Your Search",
+            "viewAll": "View all"
+        },
+        "search": {
+            "addGuests": "Add guests",
+            "adultAge": "Age 12+",
+            "adults": "Adults",
+            "aiDevelopment": "AI Search is under development. Stay tuned!",
+            "aiGreeting": "How can I help you this morning?",
+            "anyWeek": "Any week",
+            "anywhere": "Anywhere",
+            "askAi": "Ask AI",
+            "bundle": {
+                "hotelBooked": "Hotel booked!",
+                "instructions": "Enter your {from} and {to} airports, pick your dates, then hit Search to bundle and save up to 8%."
+            },
+            "cabinClass": {
+                "business": "Business",
+                "economy": "Economy",
+                "first": "First",
+                "premiumEconomy": "Premium economy"
+            },
+            "cabinClassLabel": "Cabin Class",
+            "calendar": "Calendar",
+            "checkIn": "Check-in",
+            "checkOut": "Check-out",
+            "childAge": "Age 2-11",
+            "childLabel": "Child {index}: {age} yrs",
+            "children": "Children",
+            "childrenAges": "Ages 0 to 17",
+            "cities": "Cities",
+            "clearAll": "Clear all",
+            "comingSoon": "Coming Soon",
+            "countries": "Countries",
             "days": [
                 "S",
                 "M",
@@ -1224,6 +1242,27 @@
                 "F",
                 "S"
             ],
+            "depart": "Depart",
+            "done": "Done",
+            "findDeals": "Find the best deals",
+            "findingFlights": "Finding flightsâ€¦",
+            "flexOptions": [
+                "Exact dates",
+                "± 1 day",
+                "± 2 days",
+                "± 3 days",
+                "± 7 days"
+            ],
+            "flexibleDates": "Flexible dates",
+            "from": "From",
+            "guest": "{count} Guest",
+            "guestPlural": "{count} Guests",
+            "guests": "{count} guest",
+            "guestsPlural": "{count} guests",
+            "guestsRooms": "Guests & Rooms",
+            "infantAge": "Under 2 (lap)",
+            "infants": "Infants",
+            "month": "Month",
             "months": [
                 "January",
                 "February",
@@ -1237,139 +1276,587 @@
                 "October",
                 "November",
                 "December"
-            ]
-        },
-        "backToDetails": "Back to Details",
-        "countries": {
-            "KR": "South Korea",
-            "PH": "Philippines",
-            "US": "United States",
-            "JP": "Japan",
-            "CN": "China",
-            "GB": "United Kingdom",
-            "AU": "Australia",
-            "CA": "Canada",
-            "DE": "Germany",
-            "FR": "France",
-            "SG": "Singapore",
-            "TH": "Thailand",
-            "VN": "Vietnam",
-            "IN": "India",
-            "MY": "Malaysia"
+            ],
+            "noAirportsFound": "No airports found for \"{query}\"",
+            "noResults": "No results found",
+            "passengers": "Passengers",
+            "placeholder": {
+                "airport": "City or airport",
+                "date": "Add date"
+            },
+            "recentSearches": "Recent Searches",
+            "results": "Results",
+            "return": "Return",
+            "rooms": "Rooms",
+            "roomsNote": "1 room per booking. Book separately for more.",
+            "searchDestination": "Search destination",
+            "searchDestinationsPlaceholder": "Search destinations...",
+            "searchFlightsHeader": "Search Flights",
+            "searchMode": {
+                "aiSearch": "AI Search",
+                "flights": "Flights",
+                "stays": "Stays"
+            },
+            "searching": "Searching...",
+            "selectDate": "Select date",
+            "submit": "Search",
+            "to": "To",
+            "travelers": "Travelers",
+            "tripType": {
+                "multiCity": "Multi-city",
+                "oneWay": "One way",
+                "roundTrip": "Round trip"
+            },
+            "typeToSearch": "Type city name or airport code...",
+            "typeToSearchPrompt": "Type a city or airport code to search",
+            "whenTravel": "When do you want to travel?",
+            "whereTo": "Where to?",
+            "year": "Year",
+            "yearsOld": "{age} years old"
         }
     },
-    "destinations": {
-        "title": "Hotels in {city}, {country} – Cheapest Rates | CheapestGo",
-        "description": "Find and book the cheapest hotels in {city}, {country}. Compare prices and get the best deals on CheapestGo.",
-        "hotelsFrom": "Hotels from {price} / night",
-        "findHotelsIn": "Find hotels in {city}",
-        "browseHotels": "Browse the cheapest available hotels in {city}, {country} and book with confidence.",
-        "searchHotels": "Search Hotels in {city}"
-    },
-    "property": {
-        "bundleActive": "Bundle Discount Active",
-        "bundleApplied": "Bundle discount applied — you're saving {percent}% on this hotel",
-        "savePercent": "SAVE {percent}%",
-        "propertyNotFound": "Property not found. (ID: {id})",
-        "breadcrumbHome": "Home",
-        "breadcrumbStaysIn": "Stays in {city}"
-    },
-    "trips": {
-        "title": "My Trips | CheapestGo",
-        "myTrips": "My Trips",
-        "viewReceipt": "View Receipt",
-        "noSegmentDetails": "No segment details available.",
-        "status": {
-            "pending": "Pending",
-            "confirmed": "Confirmed",
-            "completed": "Completed",
-            "cancelled": "Cancelled",
-            "refunded": "Refunded",
-            "refundFailed": "Refund Failed",
-            "processing": "Processing",
-            "booked": "Booked",
-            "ticketing": "Ticketing",
-            "ticketed": "Confirmed",
-            "failed": "Failed",
-            "cancelPending": "Cancellation Pending",
-            "cancelFailed": "Cancel Failed",
-            "refundPending": "Refund Pending",
-            "cancelledProviderMissing": "Cancelled"
-        },
-        "sections": {
-            "stayDetails": "Stay Details",
-            "guestInformation": "Guest Information",
-            "cancellationPolicy": "Cancellation Policy",
-            "payment": "Payment",
-            "itinerary": "Itinerary",
-            "passengers": "Passengers"
-        },
-        "labels": {
-            "checkIn": "Check-in",
-            "checkOut": "Check-out",
-            "duration": "Duration",
-            "room": "Room",
-            "guests": "Guests",
-            "specialRequests": "Special Requests",
-            "name": "Name",
-            "email": "Email",
-            "totalPaid": "Total Paid",
-            "paymentMethod": "Payment Method",
-            "bookedOn": "Booked On",
-            "provider": "Provider",
-            "freeCancellation": "Free cancellation available",
-            "nonRefundable": "Non-refundable",
-            "freeCancelUntil": "Free cancellation until",
-            "afterDatePenalty": "After {date}: penalty of {amount}",
-            "policyNotAvailable": "Cancellation policy details not available."
-        }
-    },
-    "invoice": {
-        "receipt": "RECEIPT",
-        "yourTravelPartner": "Your Travel Partner",
-        "issued": "Issued: {date}",
-        "billedTo": "Billed to",
-        "bookingDetails": "Booking Details",
-        "totalPaid": "Total Paid",
-        "bookingRef": "Booking Ref",
-        "type": "Type",
-        "provider": "Provider",
-        "payment": "Payment",
-        "paymentMethod": "Stripe (Card)",
-        "thankYou": "Thank you for booking with CheapestGo. For support, contact",
-        "flight": "Flight",
-        "route": "Route",
-        "date": "Date",
-        "description": "Description",
-        "amount": "Amount",
-        "passengers": "Passengers",
-        "hotel": "Hotel",
-        "hotelPartner": "Hotel Partner"
+    "languagePicker": {
+        "cn": "ä¸­æ–‡",
+        "en": "English",
+        "ja": "æ—¥æœ¬èªž",
+        "ko": "í•œêµ­ì–´",
+        "label": "Select language"
     },
     "legal": {
         "cookiePolicy": {
-            "title": "Cookie Policy — CheapestGo",
             "description": "How CheapestGo uses cookies and similar tracking technologies.",
+            "pageSubtitle": "How we use cookies and similar technologies on CheapestGo.",
             "pageTitle": "Cookie Policy",
-            "pageSubtitle": "How we use cookies and similar technologies on CheapestGo."
+            "title": "Cookie Policy — CheapestGo"
         },
         "privacyPolicy": {
-            "title": "Privacy Policy — CheapestGo",
             "description": "How CheapestGo collects, uses, and protects your personal information.",
+            "pageSubtitle": "How we collect, use, and protect your personal information.",
             "pageTitle": "Privacy Policy",
-            "pageSubtitle": "How we collect, use, and protect your personal information."
+            "title": "Privacy Policy — CheapestGo"
         },
         "refundPolicy": {
-            "title": "Refund & Cancellation Policy — CheapestGo",
             "description": "Understand how cancellations, refunds, and amendments work on CheapestGo.",
+            "pageSubtitle": "Everything you need to know about cancellations, refunds, and booking changes.",
             "pageTitle": "Refund & Cancellation Policy",
-            "pageSubtitle": "Everything you need to know about cancellations, refunds, and booking changes."
+            "title": "Refund & Cancellation Policy — CheapestGo"
         },
         "termsOfService": {
-            "title": "Terms of Service — CheapestGo",
             "description": "The terms and conditions governing your use of CheapestGo.",
+            "pageSubtitle": "Please read these terms carefully before using CheapestGo.",
             "pageTitle": "Terms of Service",
-            "pageSubtitle": "Please read these terms carefully before using CheapestGo."
+            "title": "Terms of Service — CheapestGo"
+        }
+    },
+    "nav": {
+        "account": "Account",
+        "accountSettings": "Account Settings",
+        "accountWorks": "Your account works across CheapestGo and all partner sites",
+        "createAccount": "Create an account",
+        "home": "Home",
+        "membersSave": "Members save 10% or more",
+        "membersSaveSubtitle": "on select stays when signed in",
+        "myTrips": "My trips",
+        "openApp": "Open app",
+        "profile": "Profile",
+        "signIn": "Sign in",
+        "signOut": "Sign out",
+        "support": "Support",
+        "trips": "Trips"
+    },
+    "popularDestinations": {
+        "subtitle": "Explore top spots across Asia-Pacific â€” search flights and hotels in seconds.",
+        "title": "Popular Destinations"
+    },
+    "property": {
+        "addressNotAvailable": "Address not available",
+        "bookingWidget": {
+            "amenities": "Amenities",
+            "bookThisRoom": "Book This Room",
+            "description": "Description",
+            "guests": "{count} guests",
+            "roomDetails": "Room Details",
+            "selectedRoom": "Selected Room"
+        },
+        "breadcrumbHome": "Home",
+        "breadcrumbStaysIn": "Stays in {city}",
+        "bundleActive": "Bundle Discount Active",
+        "bundleApplied": "Bundle discount applied — you're saving {percent}% on this hotel",
+        "faq": {
+            "checkInAnswer": "Check-in time is {time}",
+            "checkInQuestion": "What time is check-in at this property?",
+            "checkOutAnswer": "Check-out time is {time}",
+            "checkOutQuestion": "What are the check-out times?",
+            "fallbackCancellationAnswer": "Cancellation policies vary by rate. Please check the room options above for specific cancellation terms before booking.",
+            "fallbackCancellationQuestion": "What is the cancellation policy at {name}?",
+            "fallbackModificationAnswer": "You can manage your booking through the confirmation email you receive after booking. For urgent changes, contact the property directly.",
+            "fallbackModificationQuestion": "How do I modify or cancel my reservation?",
+            "fallbackPaymentAnswer": "Most major credit and debit cards are accepted. Contact the property directly to confirm accepted payment methods.",
+            "fallbackPaymentQuestion": "Does {name} accept credit cards?",
+            "importantQuestion": "Is there anything important I should know before booking?",
+            "parkingAnswer": "Yes, the property offers {facility}.",
+            "parkingQuestion": "Does {name} have parking?",
+            "poolAnswer": "Yes, the property has {facility}.",
+            "poolQuestion": "Does {name} have a pool?",
+            "restaurantAnswer": "Yes, the property has an on-site restaurant.",
+            "restaurantQuestion": "Is there a restaurant at {name}?",
+            "title": "Frequently asked questions",
+            "wifiAnswer": "Yes, WiFi is available at the property.",
+            "wifiQuestion": "Is WiFi available at {name}?"
+        },
+        "locationLabel": "Location",
+        "locationTitle": "Where you'll be",
+        "mobileCta": {
+            "checkRoomRates": "Check room rates",
+            "from": "From",
+            "perNight": "/night",
+            "viewRooms": "View Rooms"
+        },
+        "propertyNotFound": "Property not found. (ID: {id})",
+        "rooms": {
+            "availableRooms": "Available Rooms ({count})",
+            "choose": "Choose",
+            "chooseRoom": "Choose room",
+            "filterAll": "All",
+            "filterNonRefundable": "Non-refundable",
+            "filterRefundable": "Refundable",
+            "freeCancellation": "Free cancellation",
+            "freeCancellationTick": "✓ Free cancellation",
+            "includesTaxes": "(1 night, 1 Room incl. taxes)",
+            "noMeals": "No meals included",
+            "noNonRefundableRooms": "No non-refundable rooms available.",
+            "noRefundableRooms": "No refundable rooms available.",
+            "noRooms": "No rooms available for the selected dates.",
+            "nonRefundable": "Non-refundable",
+            "nonRefundablePill": "Non-Refundable",
+            "pageOf": "Page {current} of {total}",
+            "perNight": "/night",
+            "rateOptions": "{count} rate options",
+            "reserve": "Reserve",
+            "roomOnly": "Room only",
+            "showingRooms": "Showing {start}–{end} of {total} rooms",
+            "sleeps": "Sleeps {count}",
+            "standardRoom": "Standard Room",
+            "total": "total",
+            "viewHotelPhotos": "View hotel photos",
+            "viewRoomPhotos": "View room photos"
+        },
+        "savePercent": "SAVE {percent}%",
+        "weather": {
+            "feelsLike": "Feels like",
+            "forecast": "Forecast",
+            "humidity": "Humidity",
+            "nextHours": "Next hours",
+            "poweredBy": "Powered by Google Weather",
+            "today": "Today",
+            "tomorrow": "Tomorrow",
+            "uv": {
+                "extreme": "Extreme",
+                "high": "High",
+                "low": "Low",
+                "moderate": "Moderate",
+                "veryHigh": "Very High"
+            },
+            "wind": "Wind"
+        }
+    },
+    "propertyGallery": {
+        "alt": {
+            "galleryView": "Gallery view {number}",
+            "mainPropertyView": "Main property view",
+            "propertyView": "Property view",
+            "propertyViewNumbered": "Property view {number}",
+            "thumbnail": "Thumbnail {number}",
+            "view": "View {number}"
+        },
+        "moreInfo": "More Info",
+        "morePhotos": "+{count} photos",
+        "noImages": "No images available",
+        "showAllPhotos": "Show all photos",
+        "viewPhoto": "View photo"
+    },
+    "propertyNav": {
+        "amenities": "Amenities",
+        "location": "Location",
+        "overview": "Overview",
+        "policies": "Policies",
+        "reviews": "Reviews",
+        "rooms": "Rooms"
+    },
+    "propertyOverview": {
+        "aboutProperty": "About this property",
+        "cleaningSafety": {
+            "description": "This property has extensive hygiene measures in place, including contactless check-in and enhanced cleaning protocols.",
+            "title": "Cleaning and safety practices"
+        },
+        "noReviewsYet": "No reviews yet",
+        "popularAmenities": "Popular amenities",
+        "readMore": "Read more",
+        "seeAllAmenities": "See all {count} amenities",
+        "showLess": "Show less",
+        "showLessAmenities": "Show less amenities",
+        "verifiedReview": "{count} verified review",
+        "verifiedReviewCount": "{count, plural, one {# verified review} other {# verified reviews}}",
+        "verifiedReviews": "{count} verified reviews"
+    },
+    "pwa": {
+        "installPrompt": {
+            "body": "Add to your home screen for faster access.",
+            "dismiss": "Not now",
+            "install": "Install",
+            "title": "Get the CheapestGo app"
+        }
+    },
+    "reviewsSection": {
+        "aggregatedNote": "Guest score is based on aggregated ratings.",
+        "aggregatedScore": "Aggregated guest score",
+        "anonymous": "Anonymous",
+        "basedOnReview": "Based on {count} review",
+        "basedOnReviews": "Based on {count} reviews",
+        "guestReviews": "Guest reviews",
+        "loadMore": "Load more reviews",
+        "noReviews": "No individual reviews available.",
+        "noReviewsAvailable": "No reviews available",
+        "showAllReviews": "Show all {count} reviews",
+        "showLess": "Show Less",
+        "showMore": "Show More",
+        "showingCount": "Showing {shown} of {total} reviews",
+        "sort": {
+            "highestRated": "Highest rated",
+            "lowestRated": "Lowest rated",
+            "newestFirst": "Newest first"
+        },
+        "travelerTypes": {
+            "business": "Business",
+            "couple": "Couple",
+            "family": "Family",
+            "friendsGroup": "Friends/Group",
+            "solo": "Solo"
+        },
+        "verifiedReviewCount": "{count, plural, one {# verified review} other {# verified reviews}}",
+        "whoStaysHere": "Who stays here"
+    },
+    "search": {
+        "results": {
+            "activeFilters": "Active Filters:",
+            "amenitiesSuffix": "{count} amenities",
+            "anyWeek": "Any week",
+            "anywhere": "Anywhere",
+            "boardTypes": {
+                "AI": "All Inclusive",
+                "BB": "Breakfast",
+                "FB": "Full Board",
+                "HB": "Half Board",
+                "RO": "Room Only"
+            },
+            "freeCancellation": "Free cancellation",
+            "guestCount": "{count} {count, plural, one {guest} other {guests}}",
+            "namePrefix": "Name: {name}",
+            "otherCities": "Other cities:",
+            "ratingPrefix": "Rating {rating}+",
+            "reviewsSuffix": "{count}+ reviews",
+            "showingHotelsIn": "Showing hotels in",
+            "starSuffix": "{stars} stars",
+            "whereTo": "Where to?"
+        },
+        "validation": {
+            "allHotelFieldsRequired": "All fields are required to search for hotels",
+            "fieldList": "{fields} and {last}",
+            "fields": {
+                "checkInDate": "check-in date",
+                "checkOutDate": "check-out date",
+                "destination": "destination"
+            },
+            "listSeparator": ", ",
+            "selectField": "Please select {field}"
+        }
+    },
+    "seo": {
+        "faq": {
+            "a1": "CheapestGo searches across multiple airlines and global distribution systems to surface the lowest available fares in real time, letting you compare and book in one place.",
+            "a2": "Yes. CheapestGo supports booking flights, hotels, apartments, and unique stays â€” all from a single platform.",
+            "a3": "Yes, searching and comparing prices on CheapestGo is completely free. You only pay when you book.",
+            "a4": "CheapestGo supports multiple currencies and automatically converts prices based on your preference so you can always see costs in your local currency.",
+            "q1": "How does CheapestGo find cheap flights?",
+            "q2": "Can I book both flights and hotels on CheapestGo?",
+            "q3": "Is CheapestGo free to use?",
+            "q4": "What currencies does CheapestGo support?"
+        },
+        "orgDescription": "CheapestGo is a modern travel booking platform helping travelers find the cheapest flights and hotels worldwide."
+    },
+    "theme": {
+        "contextError": "useTheme must be used within a ThemeProvider",
+        "switchToDark": "Switch to dark mode",
+        "switchToLight": "Switch to light mode"
+    },
+    "topCities": {
+        "exploreHotels": "Explore Hotels",
+        "headerHighlight": "Worldwide",
+        "headerMain": "Top Cities",
+        "subtitle": "Most visited destinations Â· find hotels instantly"
+    },
+    "topDestinations": {
+        "findHotels": "Find Hotels",
+        "headerHighlight": "Worldwide",
+        "headerMain": "Top Destinations",
+        "subtitle": "Iconic experiences from every corner of the globe"
+    },
+    "trips": {
+        "bookingCard": {
+            "actions": {
+                "cancel": "Cancel",
+                "details": "Details",
+                "map": "Map",
+                "modify": "Modify",
+                "receipt": "Receipt",
+                "retryRefund": "Retry refund"
+            },
+            "adult": "{count} adult",
+            "adults": "{count} adults",
+            "cancelled": "Cancelled",
+            "child": "{count} child",
+            "children": "{count} children",
+            "night": "{count} night",
+            "nights": "{count} nights",
+            "policyBadges": {
+                "freeCancellation": "Free cancellation",
+                "nonRefundable": "Non-refundable",
+                "partialRefund": "Partial refund"
+            },
+            "ratings": {
+                "excellent": "Excellent",
+                "exceptional": "Exceptional",
+                "good": "Good",
+                "pleasant": "Pleasant",
+                "veryGood": "Very Good"
+            },
+            "reviews": "{count} reviews",
+            "total": "total",
+            "tripCompleted": "Trip completed"
+        },
+        "cancellationModal": {
+            "bookingId": "Booking ID: {id}",
+            "cancelBooking": "Cancel Booking",
+            "cancelling": "Cancelling...",
+            "close": "Close",
+            "keepBooking": "Keep Booking",
+            "loadingPolicy": "Loading cancellation policy...",
+            "policyTimeline": "Cancellation Policy Timeline",
+            "retryRefund": "Retry Refund",
+            "retryRefundTitle": "Retry Refund",
+            "retrying": "Retrying...",
+            "title": "Cancel Booking",
+            "tryAgain": "Try again",
+            "unableToLoadPolicy": "Unable to load policy"
+        },
+        "cancellationPolicies": {
+            "before": "Before: ",
+            "cancellationFee": "Cancellation fee: {amount}",
+            "earlyDepartureDescription": "{amount} fee applies if you check out before your scheduled date.",
+            "earlyDepartureFee": "Early Departure Fee",
+            "importantNotes": "Important Notes",
+            "noPolicy": "No specific cancellation policy available. Standard terms apply.",
+            "noShowDescription": "{amount} will be charged if you don't check in without cancelling.",
+            "noShowPenalty": "No-Show Penalty",
+            "passed": "Passed: "
+        },
+        "emptyState": {
+            "allTitle": "No trips yet",
+            "otherDesc": "Start exploring and book your first trip",
+            "pastTitle": "No past trips",
+            "upcomingDesc": "Time to plan your next adventure!",
+            "upcomingTitle": "No upcoming trips"
+        },
+        "exploreDestinations": "Explore destinations",
+        "flightBookingCard": {
+            "addBookingNote": "Add Booking Note",
+            "airlineBookingDetails": "Airline booking details",
+            "airlineDetails": "Airline details",
+            "amErrors": {
+                "cancelFailed": "Cancellation failed. Please contact support.",
+                "duffelCannotCancel": "This booking cannot be cancelled online. Please contact us at crm@cheapestgo.com to request a manual cancellation.",
+                "mystiflyCannotCancel": "This ticketed booking cannot be cancelled via API. Please email crm@myfarebox.com to request cancellation.",
+                "networkError": "Network error. Please try again."
+            },
+            "assignedSeats": "Assigned Seats",
+            "bookingNotes": "Booking Notes",
+            "cancel": "Cancel",
+            "cancelBooking": "Cancel Booking",
+            "cancelModal": {
+                "baseFareNonRefundable": "The base fare is non-refundable — only taxes and fees are returned.",
+                "cancelling": "Cancelling…",
+                "cannotCancelOnline": "This booking cannot be cancelled online. Please contact support.",
+                "cannotUndo": "This action cannot be undone.",
+                "checkingRefund": "Checking with airline for live refund amount…",
+                "confirmCancel": "Yes, Cancel Booking",
+                "estimatedPenalty": "Estimated airline penalty: {amount}",
+                "fareRulesNonRefundable": "The fare rules indicate this ticket is non-refundable.",
+                "keepBooking": "Keep Booking",
+                "loading": "Loading…",
+                "networkError": "Network error fetching cancellation quote.",
+                "noQuote": "Could not fetch cancellation quote from airline.",
+                "noRefund": "No refund — this fare is non-refundable per airline policy.",
+                "penaltiesDeducted": "Cancellation penalties set by the airline will be deducted.",
+                "pnr": "PNR: {pnr}",
+                "refundEligibility": "Refund eligibility and amounts are strictly determined by the airline's fare rules.",
+                "refundPolicy": "Refund Policy:",
+                "refundTiming": "If a refund is issued, it typically takes 5–10 business days.",
+                "taxesRefund": "Taxes & fees refund: {amount}",
+                "title": "Cancel Booking?",
+                "willReceive": "You will receive {amount} back.",
+                "zeroRefund": "You will receive $0 back if you cancel."
+            },
+            "cancellationFailed": "Cancellation failed",
+            "changeFlight": "Change flight",
+            "couldNotLoadTripDetails": "Could not load trip details",
+            "details": "Details",
+            "eTicket": "E-TKT",
+            "fareBadges": {
+                "changeable": "Changeable",
+                "checkingFarePolicy": "Checking fare policy…",
+                "fareRulesNonRefundable": "Fare rules: Non-refundable",
+                "freeCancellation": "Free cancellation",
+                "nonRefundable": "Non-refundable",
+                "refundable": "Refundable"
+            },
+            "flightBooking": "Flight Booking",
+            "hideChangeFlight": "Hide change flight",
+            "hideDetails": "Hide details",
+            "hideRefundQuote": "Hide refund quote",
+            "hideVoidQuote": "Hide void quote",
+            "issuedTickets": "Issued Tickets",
+            "loadingTripDetails": "Loading airline details…",
+            "networkError": "Network error. Please try again.",
+            "noRefund": "No refund issued",
+            "nonstop": "Nonstop",
+            "noteAdded": "Note added successfully.",
+            "notePlaceholder": "Enter a note for this booking…",
+            "originTo": "{origin} to {destination}",
+            "passenger": "{count} passenger",
+            "passengers": "{count} passengers",
+            "pax": "{count} pax",
+            "penaltyApplied": "Penalty applied: {amount}",
+            "pnr": "PNR",
+            "receipt": "Receipt",
+            "refundFailed": "Refund failed",
+            "refundNotAvailable": "Refund not available",
+            "refundNotAvailablePolicy": "Refund not available (airline policy)",
+            "refundQuote": "Refund quote",
+            "retry": "Retry",
+            "save": "Save",
+            "seat": "SEAT",
+            "stateChips": {
+                "awaitingConfirmation": "Awaiting Confirmation",
+                "cancelFailed": "Cancel failed — retry below",
+                "cancelStuck": "Cancellation stuck — retry below",
+                "cancelled": "Cancelled",
+                "contactSupport": "Contact support to cancel",
+                "emailToCancel": "Email crm@myfarebox.com to cancel",
+                "flightCompleted": "Flight completed",
+                "refundFailed": "Refund Failed",
+                "refundProcessing": "Refund processing",
+                "refunded": "Refunded",
+                "supplierNotFound": "Supplier record not found",
+                "upcomingFlight": "Upcoming Flight"
+            },
+            "stop": "{count} stop",
+            "stops": "{count} stops",
+            "successBanners": {
+                "cancelled": "Booking cancelled successfully.",
+                "refundProcessed": "Booking cancelled. Refund has been processed.",
+                "refundProcessing": "Booking cancelled. Refund is being processed — check back shortly."
+            },
+            "totalPaid": "Total paid",
+            "totalRefund": "Total Refund",
+            "tripTypes": {
+                "multiCity": "Multi-city",
+                "oneWay": "One-way",
+                "roundTrip": "Round-trip"
+            },
+            "voidNotAvailable": "Void not available",
+            "voidNotAvailablePolicy": "Void not available (airline policy)",
+            "voidQuote": "Void quote"
+        },
+        "labels": {
+            "afterDatePenalty": "After {date}: penalty of {amount}",
+            "bookedOn": "Booked On",
+            "checkIn": "Check-in",
+            "checkOut": "Check-out",
+            "duration": "Duration",
+            "email": "Email",
+            "freeCancelUntil": "Free cancellation until",
+            "freeCancellation": "Free cancellation available",
+            "guests": "Guests",
+            "name": "Name",
+            "nonRefundable": "Non-refundable",
+            "paymentMethod": "Payment Method",
+            "policyNotAvailable": "Cancellation policy details not available.",
+            "provider": "Provider",
+            "room": "Room",
+            "specialRequests": "Special Requests",
+            "totalPaid": "Total Paid"
+        },
+        "modificationModal": {
+            "discard": "Discard",
+            "email": "Email",
+            "emailPlaceholder": "email@example.com",
+            "firstName": "First Name",
+            "firstNamePlaceholder": "First name",
+            "infoBanner": "You can update the booking holder's name, email, and special requests.",
+            "lastName": "Last Name",
+            "lastNamePlaceholder": "Last name",
+            "optional": "(optional)",
+            "remarksPlaceholder": "e.g., Late check-in, extra pillows...",
+            "saveChanges": "Save Changes",
+            "saving": "Saving...",
+            "specialRequests": "Special Requests",
+            "title": "Modify Booking"
+        },
+        "myTrips": "My Trips",
+        "noSegmentDetails": "No segment details available.",
+        "sections": {
+            "cancellationPolicy": "Cancellation Policy",
+            "guestInformation": "Guest Information",
+            "itinerary": "Itinerary",
+            "passengers": "Passengers",
+            "payment": "Payment",
+            "stayDetails": "Stay Details"
+        },
+        "status": {
+            "booked": "Booked",
+            "cancelFailed": "Cancel Failed",
+            "cancelPending": "Cancellation Pending",
+            "cancelled": "Cancelled",
+            "cancelledProviderMissing": "Cancelled",
+            "completed": "Completed",
+            "confirmed": "Confirmed",
+            "failed": "Failed",
+            "pending": "Pending",
+            "processing": "Processing",
+            "refundFailed": "Refund Failed",
+            "refundPending": "Refund Pending",
+            "refunded": "Refunded",
+            "ticketed": "Confirmed",
+            "ticketing": "Ticketing",
+            "unknown": "Unknown"
+        },
+        "subtitle": "View and manage your bookings",
+        "tabs": {
+            "all": "All",
+            "past": "Past",
+            "upcoming": "Upcoming",
+            "wishlist": "Wishlist"
+        },
+        "title": "My Trips | CheapestGo",
+        "viewMore": "View more ({count} remaining)",
+        "viewReceipt": "View Receipt",
+        "wishlist": {
+            "emptyDesc": "Tap the heart icon on any flight or hotel to save it here.",
+            "emptyTitle": "No saved trips yet",
+            "perPerson": "per person",
+            "removeFromWishlist": "Remove from wishlist",
+            "savedOn": "Saved {date}",
+            "searchAgain": "Search again"
         }
     }
 }

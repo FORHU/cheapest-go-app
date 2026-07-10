@@ -3,6 +3,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import { X, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import type { BookingRecord } from '@/services/booking.service';
 import { formatCurrency } from '@/lib/utils';
@@ -28,6 +29,7 @@ interface CancellationModalProps {
 }
 
 export default function CancellationModal({ booking, isOpen, onClose, onCancelled }: CancellationModalProps) {
+    const t = useTranslations('trips');
     const isRefundRetry = booking.status === 'cancelled_refund_failed';
     const userCurrency = useUserCurrency();
     const [mounted, setMounted] = useState(false);
@@ -129,7 +131,7 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                     <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
                                 </div>
                                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                                    {isRefundRetry ? 'Retry Refund' : 'Cancel Booking'}
+                                    {isRefundRetry ? t('cancellationModal.retryRefundTitle') : t('cancellationModal.title')}
                                 </h2>
                             </div>
                             <button
@@ -146,14 +148,14 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                 <div className="flex flex-col items-center justify-center py-12">
                                     <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
                                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                                        Loading cancellation policy...
+                                        {t('cancellationModal.loadingPolicy')}
                                     </p>
                                 </div>
                             ) : error && !hasCachedPolicy ? (
                                 <div className="text-center py-8">
                                     <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
                                     <p className="text-slate-900 dark:text-white font-medium mb-2">
-                                        Unable to load policy
+                                        {t('cancellationModal.unableToLoadPolicy')}
                                     </p>
                                     <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                                         {error}
@@ -162,7 +164,7 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                         onClick={() => refetch()}
                                         className="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline"
                                     >
-                                        Try again
+                                        {t('cancellationModal.tryAgain')}
                                     </button>
                                 </div>
                             ) : (
@@ -177,7 +179,7 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                         </p>
                                         <div className="flex items-center justify-between text-sm">
                                             <span className="text-slate-500 dark:text-slate-400">
-                                                Booking ID: {booking.booking_id}
+                                                {t('cancellationModal.bookingId', { id: booking.booking_id })}
                                             </span>
                                             <span className="font-semibold text-slate-900 dark:text-white">
                                                 {formatCurrency(
@@ -209,7 +211,7 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                     {/* Cancellation Policies */}
                                     <div className="mb-5">
                                         <h4 className="font-medium text-slate-900 dark:text-white mb-3">
-                                            Cancellation Policy Timeline
+                                            {t('cancellationModal.policyTimeline')}
                                         </h4>
                                         <CancellationPolicies
                                             policies={cancellationPolicies?.cancelPolicyInfos}
@@ -230,7 +232,7 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                 disabled={cancelMutation.isPending}
                                 className="flex-1 py-3 px-4 text-slate-700 dark:text-slate-300 font-medium rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
                             >
-                                {isRefundRetry ? 'Close' : 'Keep Booking'}
+                                {isRefundRetry ? t('cancellationModal.close') : t('cancellationModal.keepBooking')}
                             </button>
                             <button
                                 onClick={handleCancel}
@@ -240,10 +242,10 @@ export default function CancellationModal({ booking, isOpen, onClose, onCancelle
                                 {cancelMutation.isPending ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                        {isRefundRetry ? 'Retrying...' : 'Cancelling...'}
+                                        {isRefundRetry ? t('cancellationModal.retrying') : t('cancellationModal.cancelling')}
                                     </>
                                 ) : (
-                                    isRefundRetry ? 'Retry Refund' : 'Cancel Booking'
+                                    isRefundRetry ? t('cancellationModal.retryRefund') : t('cancellationModal.cancelBooking')
                                 )}
                             </button>
                         </div>
