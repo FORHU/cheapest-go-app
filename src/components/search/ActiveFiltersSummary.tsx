@@ -2,17 +2,15 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import type { SearchFilters } from '@/stores/searchStore';
 
 interface ActiveFiltersSummaryProps {
     filters: SearchFilters;
 }
 
-const BOARD_LABELS: Record<string, string> = {
-    RO: 'Room Only', BB: 'Breakfast', HB: 'Half Board', FB: 'Full Board', AI: 'All Inclusive',
-};
-
 export const ActiveFiltersSummary = ({ filters }: ActiveFiltersSummaryProps) => {
+    const t = useTranslations('search');
     const { hotelName, starRating, minRating, minReviewsCount, facilities, propertyTypes, boardTypes, refundable } = filters;
     const hasActiveFilters = hotelName || starRating.length > 0 || minRating > 0 ||
         minReviewsCount > 0 || facilities.length > 0 ||
@@ -32,16 +30,16 @@ export const ActiveFiltersSummary = ({ filters }: ActiveFiltersSummaryProps) => 
             animate={{ opacity: 1, y: 0 }}
             className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
         >
-            <p className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-2">Active Filters:</p>
+            <p className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-2">{t('results.activeFilters')}</p>
             <div className="flex flex-wrap gap-1">
-                {hotelName && chip(`Name: ${hotelName}`, 'name')}
-                {starRating.length > 0 && chip(`${starRating.join(', ')} stars`, 'stars')}
-                {minRating > 0 && chip(`Rating ${minRating}+`, 'rating')}
-                {minReviewsCount > 0 && chip(`${minReviewsCount}+ reviews`, 'reviews')}
-                {facilities.length > 0 && chip(`${facilities.length} amenities`, 'amenities')}
-                {propertyTypes.map(t => chip(t.charAt(0).toUpperCase() + t.slice(1), `pt-${t}`))}
-                {boardTypes.map(c => chip(BOARD_LABELS[c] ?? c, `bt-${c}`))}
-                {refundable === true && chip('Free cancellation', 'refundable')}
+                {hotelName && chip(t('results.namePrefix', { name: hotelName }), 'name')}
+                {starRating.length > 0 && chip(t('results.starSuffix', { stars: starRating.join(', ') }), 'stars')}
+                {minRating > 0 && chip(t('results.ratingPrefix', { rating: minRating }), 'rating')}
+                {minReviewsCount > 0 && chip(t('results.reviewsSuffix', { count: minReviewsCount }), 'reviews')}
+                {facilities.length > 0 && chip(t('results.amenitiesSuffix', { count: facilities.length }), 'amenities')}
+                {propertyTypes.map(propType => chip(propType.charAt(0).toUpperCase() + propType.slice(1), `pt-${propType}`))}
+                {boardTypes.map(c => chip(t(`results.boardTypes.${c}`) || c, `bt-${c}`))}
+                {refundable === true && chip(t('results.freeCancellation'), 'refundable')}
             </div>
         </motion.div>
     );
