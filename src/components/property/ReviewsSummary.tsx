@@ -10,6 +10,7 @@ interface ReviewsSummaryProps {
 
 export default function ReviewsSummary({ averageRating: rawRating, totalCount }: ReviewsSummaryProps) {
     const t = useTranslations('propertyOverview');
+    const tRatings = useTranslations('hotels.ratings');
     const averageRating = Number(rawRating) || 0;
     if (totalCount === 0) {
         return (
@@ -29,7 +30,7 @@ export default function ReviewsSummary({ averageRating: rawRating, totalCount }:
             {/* Rating info */}
             <div className="flex flex-col">
                 <span className="font-semibold text-slate-900 dark:text-white text-sm">
-                    {t(`hotels.ratings.${getRatingLabel(averageRating)}`)}
+                    {tRatings(getRatingLabel(averageRating))}
                 </span>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                     {t('verifiedReviewCount', { count: totalCount })}

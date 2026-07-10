@@ -1077,11 +1077,26 @@
         "pricesMayVary": "prices may vary",
         "propertyDatePicker": {
             "addDate": "Add date",
+            "adult": "adult",
+            "adults": "adults",
+            "adultsLabel": "Adults",
+            "checkAvailability": "Check availability",
             "checkIn": "Check-in",
-            "checkOut": "Check-out"
+            "checkOut": "Check-out",
+            "child": "child",
+            "childrenAges": "Ages 0–17",
+            "childrenLabel": "Children",
+            "children": "children",
+            "done": "Done",
+            "guests": "Guests",
+            "searching": "Searching…",
+            "selectCheckIn": "Select check-in date",
+            "selectCheckOut": "Select check-out date",
+            "yourStay": "Your Stay"
         },
         "ratings": {
             "average": "Average",
+            "belowAverage": "Below Average",
             "excellent": "Excellent",
             "exceptional": "Exceptional",
             "fair": "Fair",

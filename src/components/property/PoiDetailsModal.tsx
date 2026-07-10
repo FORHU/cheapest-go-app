@@ -453,9 +453,8 @@ export function PoiDetailsModal({ isOpen, onClose, poi }: PoiDetailsModalProps) 
                                 </div>
                             </div>
                         ) : isStub ? (
-                            <div className="flex flex-col items-center justify-center py-8 gap-3">
+                            <div className="flex items-center justify-center py-8">
                                 <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                                <p className="text-xs font-medium text-slate-500">Loading reviews...</p>
                             </div>
                         ) : !hasUserReviews ? (
                             <div className="text-center py-8">

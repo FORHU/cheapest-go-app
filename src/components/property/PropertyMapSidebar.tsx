@@ -8,11 +8,7 @@ const PropertyMapSidebarContent = dynamic(
     {
         ssr: false,
         loading: () => (
-            <div className="h-full w-full flex flex-col rounded-xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-white/10 relative bg-slate-50 dark:bg-slate-900 animate-pulse">
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="text-sm text-slate-500 font-medium">Loading map...</div>
-                </div>
-            </div>
+            <div className="h-full w-full rounded-xl overflow-hidden shadow-sm border border-slate-200/60 dark:border-white/10 bg-slate-100 dark:bg-slate-800 animate-pulse" />
         ),
     }
 );

@@ -142,12 +142,12 @@ export function getReviewerInitials(name: string): string {
 }
 
 export function getRatingLabel(score: number): string {
-    if (score >= 9) return 'Exceptional';
-    if (score >= 8) return 'Excellent';
-    if (score >= 7) return 'Very Good';
-    if (score >= 6) return 'Good';
-    if (score >= 5) return 'Average';
-    return 'Below Average';
+    if (score >= 9) return 'exceptional';
+    if (score >= 8) return 'excellent';
+    if (score >= 7) return 'veryGood';
+    if (score >= 6) return 'good';
+    if (score >= 5) return 'average';
+    return 'belowAverage';
 }
 
 export function getRatingColor(score: number): string {
