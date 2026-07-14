@@ -926,6 +926,7 @@
         "flights": "Flights",
         "flightsApi": "Flights API",
         "hotels": "Hotels",
+        "legal": "Legal",
         "module": "Module",
         "network": "Network",
         "paymentGateway": "Payment Gateway",
@@ -1359,6 +1360,24 @@
             "pageSubtitle": "Everything you need to know about cancellations, refunds, and booking changes.",
             "pageTitle": "Refund & Cancellation Policy",
             "title": "Refund & Cancellation Policy — CheapestGo"
+        },
+        "termsGate": {
+            "title": "Before you start",
+            "subtitle": "Please review and accept our terms to continue using CheapestGo.",
+            "points": [
+                "You must be at least 18 and able to enter a binding contract.",
+                "CheapestGo is an intermediary — your booking contract is with the hotel, airline, or package provider, not with us.",
+                "We apply a transparent 12% service markup, already included in the price you see. There are no hidden fees.",
+                "Prices and availability are not guaranteed until payment is processed and you receive a confirmation email.",
+                "Cancellations and refunds follow the supplier's policy and our Refund & Cancellation Policy.",
+                "Payments are processed by Stripe. We never store your card details.",
+                "Disputes are resolved by binding arbitration in New York, and you waive the right to join a class action."
+            ],
+            "termsLink": "Terms of Service",
+            "privacyLink": "Privacy Policy",
+            "opensInNewTab": "Opens in a new tab — you won't lose your place.",
+            "checkboxLabel": "I have read and agree to the Terms of Service and Privacy Policy.",
+            "acceptButton": "Accept and continue"
         },
         "termsOfService": {
             "description": "The terms and conditions governing your use of CheapestGo.",

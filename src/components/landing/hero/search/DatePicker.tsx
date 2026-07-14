@@ -73,12 +73,17 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent | TouchEvent) => {
             const target = e.target as Node;
-            const trigger = ref.current?.parentElement?.querySelector('[data-datepicker-trigger]');
-            const isInsideTrigger = trigger?.contains(target);
-            const isOutside = ref.current && !ref.current.contains(target) && !isInsideTrigger;
-            if (isOutside && document.contains(target)) {
-                onClose();
-            }
+            if (!document.contains(target)) return;
+
+            // A layout that mounts both a mobile and a desktop copy (SearchMapView)
+            // has two pickers open for the same dropdown id — one of them CSS-hidden.
+            // Match against every picker panel/trigger in the document, not just this
+            // instance's own subtree, or the hidden copy treats a click inside the
+            // visible one as an outside click and closes the dropdown mid-selection.
+            const el = target instanceof Element ? target : target.parentElement;
+            if (el?.closest('[data-datepicker-panel]') || el?.closest('[data-datepicker-trigger]')) return;
+
+            onClose();
         };
 
         if (isOpen) {
@@ -177,6 +182,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
             {isOpen && (
                 <motion.div
                     ref={ref}
+                    data-datepicker-panel
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}

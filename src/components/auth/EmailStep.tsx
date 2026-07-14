@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { Mail, ArrowRight, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
@@ -195,8 +196,16 @@ const EmailStep: React.FC = () => {
 
             <p className="text-xs text-center text-slate-500 dark:text-slate-400">
                 {t.rich('emailStep.terms', {
-                    terms: (chunks) => <a href="#" className="text-blue-600 hover:underline">{chunks}</a>,
-                    privacy: (chunks) => <a href="#" className="text-blue-600 hover:underline">{chunks}</a>,
+                    terms: (chunks) => (
+                        <Link href="/terms-of-service" target="_blank" className="text-blue-600 hover:underline">
+                            {chunks}
+                        </Link>
+                    ),
+                    privacy: (chunks) => (
+                        <Link href="/privacy-policy" target="_blank" className="text-blue-600 hover:underline">
+                            {chunks}
+                        </Link>
+                    ),
                 })}
             </p>
         </div>
