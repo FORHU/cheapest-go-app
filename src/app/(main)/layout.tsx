@@ -1,5 +1,6 @@
 import { Header, Footer } from '@/components/landing';
 import { VoiceAssistant } from '@/components/voice/VoiceAssistant';
+import { TermsGate } from '@/components/legal/TermsGate';
 
 export default function MainLayout({
   children,
@@ -14,6 +15,7 @@ export default function MainLayout({
       </main>
       <Footer />
       <VoiceAssistant />
+      <TermsGate />
     </>
   );
 }

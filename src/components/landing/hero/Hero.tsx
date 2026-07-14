@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useRef } from 'react';
-import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TiltCard } from '@/components/ui';
 import HeroHeadline from './HeroHeadline';
 import AISearchBar from './AISearchBar';
@@ -9,7 +9,6 @@ import AISuggestionChips from './AISuggestionChips';
 import { useSearchMode } from '@/stores/searchStore';
 
 const Hero = () => {
-    const prefersReducedMotion = useReducedMotion();
     const suggestionHandlerRef = useRef<((prompt: string) => void) | null>(null);
     const searchMode = useSearchMode();
 
@@ -31,21 +30,12 @@ const Hero = () => {
                 <HeroHeadline />
             </div>
 
-            {/* AI Search Bar — floating with bobbing animation */}
-            <motion.div
-                initial={false}
-                animate={{ y: 0, opacity: 1 }}
-                className="w-full relative z-10 px-4"
-            >
-                <motion.div
-                    animate={{ y: prefersReducedMotion ? 0 : [0, -10, 0] }}
-                    transition={{ duration: 6, repeat: prefersReducedMotion ? 0 : Infinity, ease: "easeInOut" }}
-                >
-                    <TiltCard className="w-full">
-                        <AISearchBar onSuggestionReady={handleSuggestionReady} />
-                    </TiltCard>
-                </motion.div>
-            </motion.div>
+            {/* AI Search Bar */}
+            <div className="w-full relative z-10 px-4">
+                <TiltCard className="w-full">
+                    <AISearchBar onSuggestionReady={handleSuggestionReady} />
+                </TiltCard>
+            </div>
 
             {/* Suggestion Chips — only visible when AI search tab is active */}
             <AnimatePresence>

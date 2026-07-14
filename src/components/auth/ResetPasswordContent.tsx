@@ -13,6 +13,7 @@ export function ResetPasswordContent() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
 
@@ -134,6 +135,7 @@ export function ResetPasswordContent() {
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
+                                        aria-label={showPassword ? t('actions.hidePassword') : t('actions.showPassword')}
                                         className="absolute inset-y-0 right-0 pr-3 flex items-center"
                                     >
                                         {showPassword ? (
@@ -174,14 +176,26 @@ export function ResetPasswordContent() {
                                         <Lock className="h-5 w-5 text-slate-400" />
                                     </div>
                                     <input
-                                        type={showPassword ? 'text' : 'password'}
+                                        type={showConfirmPassword ? 'text' : 'password'}
                                         id="confirmPassword"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         placeholder={t('resetPassword.confirmPasswordPlaceholder')}
-                                        className="w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                        className="w-full pl-10 pr-12 py-3 border border-slate-200 dark:border-white/10 rounded-lg bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                                         disabled={isLoading}
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        aria-label={showConfirmPassword ? t('actions.hidePassword') : t('actions.showPassword')}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                    >
+                                        {showConfirmPassword ? (
+                                            <EyeOff className="h-5 w-5 text-slate-400 hover:text-slate-600" />
+                                        ) : (
+                                            <Eye className="h-5 w-5 text-slate-400 hover:text-slate-600" />
+                                        )}
+                                    </button>
                                 </div>
                             </div>
 
