@@ -739,8 +739,10 @@ export async function adminCancelAwaitingTicket(bookingId: string): Promise<Reco
                     });
                     stripeRefundId = canceledIntent.id; // Store the intent ID as the reference
                 } else if (intent.status === 'succeeded') {
-                    // Payment was fully captured, we need to issue a refund
-                    const refundAmountCents = Math.round(refundAmount * 100);
+                    // Payment was fully captured, we need to issue a refund.
+                    // Use intent.amount (what the customer actually paid, including markup)
+                    // not total_price (supplier cost) — they differ by the platform markup.
+                    const refundAmountCents = intent.amount;
                     const stripeRefund = await stripe.refunds.create({
                         payment_intent: paymentIntentId,
                         amount: refundAmountCents,

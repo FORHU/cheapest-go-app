@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from '@/lib/server/auth';
 import { createAdminClient } from '@/utils/postgres/admin';
 import { sendFlightBookingConfirmationEmail, sendFlightAwaitingTicketEmail } from '@/lib/server/email';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { createNotification } from '@/lib/server/admin/notify';
 import { z } from 'zod';
 
 export const maxDuration = 60;
@@ -196,6 +197,12 @@ export async function POST(req: NextRequest) {
                 fireBookingEmail(supabase, sessionId, bookingData, provider)
                     .catch(e => console.error('[/confirm] Email error:', e));
             }
+
+            createNotification(
+                'Flight booked via confirm fallback',
+                `Booking ${bookingData.bookingId} (PNR: ${bookingData.pnr}) completed via confirm fallback — Stripe webhook did not fire in time for session ${sessionId}.`,
+                'booking'
+            );
 
             return NextResponse.json({
                 success: true,

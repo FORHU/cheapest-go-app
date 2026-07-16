@@ -1010,8 +1010,10 @@ export async function runTgxSearch(params: TgxSearchParams) {
     const promise = _runTgxSearch(params)
         .then(result => {
             if (ttl > 0) {
-                const hotelCount = Array.isArray(result?.data) ? result.data.length : 0;
-                if (hotelCount > 0) {
+                // City search: result.data is an array; single-hotel: result.data is an object with roomTypes
+                const hasCityResults = Array.isArray(result?.data) && result.data.length > 0;
+                const hasHotelRooms  = !Array.isArray(result?.data) && Array.isArray(result?.data?.roomTypes);
+                if (hasCityResults || hasHotelRooms) {
                     setHotelSearchCache(key, result, ttl).catch(() => {});
                 }
             }

@@ -87,9 +87,11 @@ export async function POST(req: NextRequest) {
             if (booking.ticket_time_limit) {
                 isExpired = now > new Date(booking.ticket_time_limit);
             } else {
-                // Fallback: expired after 1 hour of creation
+                // Fallback: expired after 24 hours of creation.
+                // 1 hour was too aggressive — airline ticketing can legitimately take longer,
+                // and Duffel's awaiting_ticket is normally resolved within minutes anyway.
                 const createdTime = new Date(booking.created_at).getTime();
-                isExpired = (now.getTime() - createdTime) > 60 * 60 * 1000;
+                isExpired = (now.getTime() - createdTime) > 24 * 60 * 60 * 1000;
             }
 
             if (currentStatus === 'awaiting_ticket' && isExpired) {
