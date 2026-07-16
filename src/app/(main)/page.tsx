@@ -6,7 +6,6 @@ import { Hero } from "@/components/landing/hero";
 import { RecentlyViewed, YourRecentSearches, TopCitiesSection, TopDestinationsSection } from "@/components/landing/sections";
 import { PopularDestinationsSection } from "@/components/landing/sections/PopularDestinationsSection";
 import { HowItWorksSection } from "@/components/landing/sections/HowItWorksSection";
-import { AppBanner } from "@/components/landing/layout";
 import {
   SectionSkeleton,
   DealsSectionStream,
@@ -67,7 +66,6 @@ export default async function Home() {
         </div>
       </div>
 
-      <AppBanner />
     </main>
   );
 }

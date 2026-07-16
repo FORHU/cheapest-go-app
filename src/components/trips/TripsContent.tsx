@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Plane, Luggage, ArrowRight, Heart, ExternalLink, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 import { useUser, useAuthLoading } from '@/stores/authStore';
 import type { BookingRecord, FlightBookingRecord } from '@/services/booking.service';
 import BookingCard from './BookingCard';
@@ -93,8 +94,20 @@ export function TripsContent({ initialData }: TripsContentProps) {
   }, [activeTab]);
 
   const removeSaved = async (id: string) => {
-    await fetch(`/api/saved-trips/${id}`, { method: 'DELETE' });
+    // Optimistic: drop it from the list immediately so the UI feels instant,
+    // then reconcile with the server. Previously this awaited the round-trip
+    // before removing anything, so the row lingered for the whole request
+    // (worst on a cold dev route compile) with no feedback.
+    const snapshot = savedTrips;
     setSavedTrips(prev => prev.filter(t => t.id !== id));
+    try {
+      const res = await fetch(`/api/saved-trips/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+    } catch (err) {
+      console.error('[TripsContent] removeSaved failed:', err);
+      setSavedTrips(snapshot); // revert
+      toast.error(t('wishlist.removeError'));
+    }
   };
 
   const counts = {
@@ -243,11 +256,23 @@ export function TripsContent({ initialData }: TripsContentProps) {
               <div className="space-y-2.5">
                 {savedTrips.map(trip => (
                   <div key={trip.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 hover:border-slate-300 dark:hover:border-slate-600 transition-colors group">
-                    {/* Type icon */}
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${trip.type === 'flight' ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-amber-50 dark:bg-amber-900/30'}`}>
+                    {/* Thumbnail — the saved image, with the type icon as a
+                        fallback behind it (shows through if there's no image or
+                        it fails to load). */}
+                    <div className={`w-12 h-12 rounded-lg overflow-hidden shrink-0 relative flex items-center justify-center ${trip.type === 'flight' ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-amber-50 dark:bg-amber-900/30'}`}>
                       {trip.type === 'flight'
                         ? <Plane size={16} className="text-blue-600 dark:text-blue-400" />
                         : <Luggage size={16} className="text-amber-600 dark:text-amber-400" />}
+                      {trip.image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={trip.image_url}
+                          alt={trip.title}
+                          loading="lazy"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      )}
                     </div>
 
                     {/* Info */}
