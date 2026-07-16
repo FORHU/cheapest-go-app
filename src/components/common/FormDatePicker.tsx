@@ -19,6 +19,33 @@ interface FormDatePickerProps {
     customTrigger?: React.ReactNode;
 }
 
+/**
+ * Re-place an already-selected date into a new year/month, keeping the day
+ * (clamped to the target month's length) and respecting min/max. Returns a
+ * YYYY-MM-DD string. Exported for testing.
+ */
+export function dateForMonthYear(
+    selected: Date,
+    year: number,
+    month: number,
+    minDate?: Date,
+    maxDate?: Date,
+): string {
+    const daysInTarget = new Date(year, month + 1, 0).getDate();
+    const day = Math.min(selected.getDate(), daysInTarget);
+    let next = new Date(year, month, day);
+    if (minDate && next < minDate) {
+        next = new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
+    }
+    if (maxDate && next > maxDate) {
+        next = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
+    }
+    const y = next.getFullYear();
+    const m = String(next.getMonth() + 1).padStart(2, '0');
+    const dd = String(next.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+}
+
 export const FormDatePicker: React.FC<FormDatePickerProps> = ({
     value,
     onChange,
@@ -82,6 +109,16 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
     const handleNextMonth = (e: React.MouseEvent) => {
         e.stopPropagation();
         setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    };
+
+    // Navigate the visible month/year AND, when a date is already selected, keep
+    // the committed value in sync. Previously only clicking a day called onChange,
+    // so changing just the year (or month) of an existing date was silently lost.
+    const goToMonthYear = (year: number, month: number) => {
+        setCurrentMonth(new Date(year, month, 1));
+        if (selectedDate) {
+            onChange(dateForMonthYear(selectedDate, year, month, minDate, maxDate));
+        }
     };
 
     const renderCalendar = () => {
@@ -188,7 +225,7 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
                                         setYearInput(val);
                                         const y = parseInt(val);
                                         if (!isNaN(y) && y > 1900 && y < 2100) {
-                                            setCurrentMonth(new Date(y, currentMonth.getMonth(), 1));
+                                            goToMonthYear(y, currentMonth.getMonth());
                                         }
                                     }}
                                     onBlur={() => {
@@ -236,7 +273,7 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
                                             key={m}
                                             type="button"
                                             onClick={() => {
-                                                setCurrentMonth(new Date(currentMonth.getFullYear(), i, 1));
+                                                goToMonthYear(currentMonth.getFullYear(), i);
                                                 setView('calendar');
                                             }}
                                             className={cn(
@@ -263,7 +300,7 @@ export const FormDatePicker: React.FC<FormDatePickerProps> = ({
                                             key={y}
                                             type="button"
                                             onClick={() => {
-                                                setCurrentMonth(new Date(y, currentMonth.getMonth(), 1));
+                                                goToMonthYear(y, currentMonth.getMonth());
                                                 setView('calendar');
                                             }}
                                             className={cn(

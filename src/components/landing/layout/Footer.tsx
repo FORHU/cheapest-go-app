@@ -35,7 +35,7 @@ const StandardFooter = () => {
           <div className="flex flex-col gap-2 lg:gap-4">
             <span className="text-slate-900 dark:text-white font-bold font-display uppercase tracking-wider text-[9px] lg:text-xs">{t('company')}</span>
             <div className="flex flex-col gap-1.5 lg:gap-3">
-              <a href="#" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('aboutUs')}</a>
+              <a href="/about" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('aboutUs')}</a>
               <a href="#" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('enterprise')}</a>
               <a href="#" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('support')}</a>
             </div>

@@ -14,6 +14,7 @@ import {
     NameFields,
     AuthFooter,
 } from '@/components/login';
+import { TermsAcceptanceCheckbox } from '@/components/legal/TermsAcceptanceCheckbox';
 
 import { GlobalSparkle } from '@/components/ui/GlobalSparkle';
 
@@ -44,9 +45,15 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
     } = useLoginForm({ isAdminMode: isAdmin });
 
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (mode === 'signup' && !agreedToTerms) {
+            setErrors({ terms: 'Please accept the Terms & Conditions and Privacy Policy to continue.' });
+            return;
+        }
 
         if (mode === 'signup' && password !== confirmPassword) {
             setErrors({ confirmPassword: 'Passwords do not match' });
@@ -114,12 +121,13 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
             setErrors({ general: error?.message || 'Authentication failed. Please try again.' });
             toast.error(error?.message || 'Authentication failed');
         }
-    }, [email, password, confirmPassword, firstName, lastName, mode, register, login, setErrors, setAuthStep, setMode, isAdmin]);
+    }, [email, password, confirmPassword, agreedToTerms, firstName, lastName, mode, register, login, setErrors, setAuthStep, setMode, isAdmin]);
 
     const handleToggleMode = useCallback(() => {
         setMode(mode === 'signin' ? 'signup' : 'signin');
         setErrors({});
         setConfirmPassword('');
+        setAgreedToTerms(false);
     }, [mode, setMode, setErrors]);
 
     const clearError = useCallback((field: string) => () => {
@@ -211,10 +219,22 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
                                     </div>
                                 )}
 
+                                {mode === 'signup' && (
+                                    <TermsAcceptanceCheckbox
+                                        checked={agreedToTerms}
+                                        onChange={(v) => {
+                                            setAgreedToTerms(v);
+                                            if (v && errors.terms) clearError('terms')();
+                                        }}
+                                        error={errors.terms}
+                                        disabled={isLoading}
+                                    />
+                                )}
+
                                 <button
                                     type="submit"
-                                    disabled={isLoading}
-                                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors disabled:opacity-50"
+                                    disabled={isLoading || (mode === 'signup' && !agreedToTerms)}
+                                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {isLoading ? (
                                         <div className="h-5 w-5 mx-auto border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Lock, Bell, Loader2, Check, Eye, EyeOff, HelpCircle, MessageCircle, Mail } from 'lucide-react';
 import type { User as UserType } from '@/types/auth';
 import { useAuthStore } from '@/stores/authStore';
+import { clientFetch } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 
@@ -34,11 +35,53 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
     const [emailNotifications, setEmailNotifications] = useState(true);
     const [marketingEmails, setMarketingEmails] = useState(false);
     const [tripReminders, setTripReminders] = useState(true);
+    const [prefsSaving, setPrefsSaving] = useState(false);
 
     useEffect(() => {
         setFirstName(user.firstName || '');
         setLastName(user.lastName || '');
     }, [user]);
+
+    // Load saved notification preferences so they persist across navigation
+    // (previously these reset to defaults every mount and the Save button was a
+    // no-op, so nothing survived a trip to the homepage and back).
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await clientFetch('/api/preferences');
+                if (!res.ok) return;
+                const { preferences } = await res.json();
+                if (cancelled || !preferences) return;
+                if (typeof preferences.emailNotifications === 'boolean') setEmailNotifications(preferences.emailNotifications);
+                if (typeof preferences.marketingEmails === 'boolean') setMarketingEmails(preferences.marketingEmails);
+                if (typeof preferences.tripReminders === 'boolean') setTripReminders(preferences.tripReminders);
+            } catch {
+                // keep defaults
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    const handleSavePreferences = async () => {
+        setPrefsSaving(true);
+        try {
+            const res = await clientFetch('/api/preferences', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ emailNotifications, marketingEmails, tripReminders }),
+            });
+            if (!res.ok) {
+                const j = await res.json().catch(() => ({}));
+                throw new Error(j.error || t('communications.preferencesSaveError'));
+            }
+            toast.success(t('communications.preferencesSaved'));
+        } catch (e: any) {
+            toast.error(e?.message || t('communications.preferencesSaveError'));
+        } finally {
+            setPrefsSaving(false);
+        }
+    };
 
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -273,11 +316,21 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
 
                     <div className="mt-8">
                         <button
-                            onClick={() => toast.success(t('communications.preferencesSaved'))}
-                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                            onClick={handleSavePreferences}
+                            disabled={prefsSaving}
+                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
                         >
-                            <Check className="w-4 h-4" />
-                            {t('communications.savePreferences')}
+                            {prefsSaving ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    {t('communications.saving')}
+                                </>
+                            ) : (
+                                <>
+                                    <Check className="w-4 h-4" />
+                                    {t('communications.savePreferences')}
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>

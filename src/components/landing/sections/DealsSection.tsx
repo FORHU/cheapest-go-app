@@ -4,8 +4,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart } from 'lucide-react';
 import SectionHeader from './SectionHeader';
+import SaveButton from '@/components/common/SaveButton';
 import { type Deal } from '@/types';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { useTranslations } from 'next-intl';
@@ -112,8 +112,6 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
   const bookingUrl = buildBookingUrl(deal);
   const cabinLabel = t(CABIN_KEYS[deal.cabinClass || 'economy'] || 'landing.search.cabinClass.economy');
 
-  const [isSaved, setIsSaved] = useState(false);
-
   return (
     <motion.div
       initial={index === 0 ? false : { opacity: 0, x: 40 }}
@@ -147,16 +145,19 @@ const DealCardImpl: React.FC<DealCardProps> = ({ deal, index, variant = 'carouse
             </span>
           </div>
 
-          {/* Bookmark button — top right */}
-          <button
-            onClick={e => { e.stopPropagation(); setIsSaved(v => !v); }}
-            className="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer"
-            aria-label="Save deal"
-          >
-            <Heart
-              className={`w-3.5 h-3.5 transition-colors ${isSaved ? 'text-red-400 fill-red-400' : 'text-white'}`}
+          {/* Wishlist button — top right (persists to /api/saved-trips) */}
+          <div className="absolute top-2.5 right-2.5 z-10">
+            <SaveButton
+              type="flight"
+              title={deal.title}
+              subtitle={deal.subtitle}
+              price={deal.salePrice}
+              currency={deal.currency || 'USD'}
+              imageUrl={imageUrl}
+              deepLink={bookingUrl}
+              size="sm"
             />
-          </button>
+          </div>
         </div>
 
         {/* ── Card body ───────────────────────────────────────── */}

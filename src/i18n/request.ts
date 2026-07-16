@@ -21,8 +21,9 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial
 
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();
-  const locale = cookieStore.get('locale')?.value ?? 'en';
-  const validLocale = locales.includes(locale) ? locale : 'en';
+  // Default to Korean when the visitor has no explicit locale cookie.
+  const locale = cookieStore.get('locale')?.value ?? 'ko';
+  const validLocale = locales.includes(locale) ? locale : 'ko';
 
   const enMessages = (await import(`../locales/en.json`)).default;
 
