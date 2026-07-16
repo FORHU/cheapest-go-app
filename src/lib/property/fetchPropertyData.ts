@@ -271,6 +271,193 @@ function isTGXOrETGId(id: string): boolean {
     return /^\d+$/.test(id) || /^[A-Z]{2}\d+$/.test(id);
 }
 
+/** Look up what source populated this hotel in hotel_content. */
+async function getHotelContentSource(id: string): Promise<string | null> {
+    try {
+        const sql = getSqlAdmin();
+        const rows = await sql`SELECT content_source FROM hotel_content WHERE hotel_id = ${id} LIMIT 1`;
+        return (rows[0]?.content_source as string) ?? null;
+    } catch {
+        return null;
+    }
+}
+
+function getEtgToken(): string {
+    const keyId  = process.env.ETG_KEY_ID  ?? '';
+    const apiKey = process.env.ETG_API_KEY ?? '';
+    return Buffer.from(`${keyId}:${apiKey}`).toString('base64');
+}
+
+/** Resolve a city name to an ETG region_id (same logic as search.ts). */
+async function getEtgRegionIdForCity(city: string, country?: string): Promise<number | null> {
+    try {
+        const token = getEtgToken();
+        const query = city.split(',')[0].trim();
+        const abort = new AbortController();
+        const t = setTimeout(() => abort.abort(), 5_000);
+        const res = await fetch('https://api.worldota.net/api/b2b/v3/search/multicomplete/', {
+            method: 'POST',
+            headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, language: 'en' }),
+            signal: abort.signal,
+        });
+        clearTimeout(t);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const regions: any[] = data?.data?.regions ?? [];
+        const iso = country && /^[A-Za-z]{2}$/.test(country) ? country.toUpperCase() : null;
+        const q = query.toLowerCase();
+        const match =
+            regions.find((r: any) => r?.type === 'City' && typeof r.name === 'string' && r.name.toLowerCase().startsWith(q) && (!iso || r.country_code === iso)) ??
+            regions.find((r: any) => r?.type === 'City' && typeof r.name === 'string' && r.name.toLowerCase().startsWith(q));
+        return match?.id ?? null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Fetch single-hotel availability from ETG B2B for hotels that came from the ETG
+ * fallback path (content_source = 'etg'). ETG IDs are not recognized by TGX/OTV,
+ * so we search ETG's serp/region/ endpoint for the hotel's city and filter by ID.
+ */
+async function fetchETGPropertyData(
+    id: string,
+    searchParams: SearchParamsInput
+): Promise<FetchPropertyResult> {
+    try {
+        if (!process.env.ETG_KEY_ID || !process.env.ETG_API_KEY) {
+            return { property: null, fetchedDetails: null, preBookResult: null };
+        }
+        const defaults = getDefaultDates();
+        let checkIn  = sanitizeDate(searchParams.checkIn  as string) || defaults.checkIn;
+        let checkOut = sanitizeDate(searchParams.checkOut as string) || defaults.checkOut;
+        if (checkIn <= formatDateForApi(new Date())) { checkIn = defaults.checkIn; if (checkOut <= checkIn) checkOut = defaults.checkOut; }
+
+        // Pull static content from hotel_content (needed for city → region_id lookup)
+        const sql = getSqlAdmin();
+        const rows = await sql`
+            SELECT name, images, star_rating, lat, lng, address, city, country,
+                   description, amenities, review_rating, review_count
+            FROM hotel_content WHERE hotel_id = ${id} LIMIT 1
+        `;
+        const db = rows[0];
+        const city    = (db?.city    as string) || '';
+        const country = (db?.country as string) || '';
+
+        // Resolve city → ETG region_id, then run serp/region/ and filter to this hotel
+        let etgRates: any[] = [];
+        if (city) {
+            const regionId = await getEtgRegionIdForCity(city, country);
+            if (regionId) {
+                const token = getEtgToken();
+                const abort = new AbortController();
+                const t = setTimeout(() => abort.abort(), 20_000);
+                const res = await fetch('https://api.worldota.net/api/b2b/v3/search/serp/region/', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Basic ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        region_id: regionId,
+                        checkin:   checkIn,
+                        checkout:  checkOut,
+                        guests:    [{ adults: Number(searchParams.adults || 2) }],
+                        currency:  'USD',
+                        language:  'en',
+                        residency: 'us',
+                    }),
+                    signal: abort.signal,
+                });
+                clearTimeout(t);
+                if (res.ok) {
+                    const json = await res.json();
+                    const hotels: any[] = json?.data?.hotels ?? [];
+                    const target = hotels.find((h: any) => h.id === id);
+                    etgRates = target?.rates ?? [];
+                    console.log(`[fetchETGPropertyData] ETG region ${regionId} for "${city}" → ${hotels.length} hotels, target found: ${!!target}`);
+                } else {
+                    console.warn(`[fetchETGPropertyData] ETG serp/region ${res.status} for region ${regionId}`);
+                }
+            } else {
+                console.warn(`[fetchETGPropertyData] No ETG region_id for city "${city}"`);
+            }
+        }
+
+        const images: string[] = Array.isArray(db?.images) ? db.images : [];
+        const property: PropertyData = {
+            id,
+            name:        (db?.name as string) || id,
+            location:    [db?.address, city, country].filter(Boolean).join(', '),
+            description: (db?.description as string) || '',
+            rating:      Number(db?.review_rating ?? 0),
+            reviews:     Number(db?.review_count ?? 0),
+            price:       0,
+            currency:    'USD',
+            image:       images[0] || '',
+            images,
+            amenities:   [],
+            badges:      [],
+            type:        'hotel',
+            coordinates: { lat: Number(db?.lat ?? 0), lng: Number(db?.lng ?? 0) },
+        };
+
+        // Map ETG rates → roomTypes shape expected by RoomList
+        const roomTypes = etgRates.map((rate: any) => {
+            const pt      = rate?.payment_options?.payment_types?.[0];
+            const price   = parseFloat(pt?.show_amount ?? pt?.amount ?? '0');
+            const currency = pt?.show_currency_code ?? pt?.currency_code ?? 'USD';
+            const refundable = !!(rate?.no_show_time);
+            return {
+                offerId:      `ETG:${id}:${rate?.match_hash ?? Math.random()}`,
+                roomName:     rate?.room_name || rate?.meal || 'Room',
+                boardCode:    rate?.meal || 'RO',
+                price,
+                net:          price,
+                gross:        price,
+                currency,
+                refundable,
+                refundableTag: refundable ? 'REFUNDABLE' : 'NON_REFUNDABLE',
+                cancelPolicy:  null,
+                rates: [{
+                    retailRate: {
+                        total: [{ amount: price, currency }],
+                        currency,
+                    },
+                    refundableTag: refundable ? 'REFUNDABLE' : 'NON_REFUNDABLE',
+                    cancellationPolicies: [],
+                    _etg: { matchHash: rate?.match_hash, meal: rate?.meal },
+                }],
+            };
+        }).filter(r => r.price > 0)
+          .sort((a, b) => a.price - b.price);
+
+        const fetchedDetails = {
+            hotelId:      id,
+            name:         (db?.name as string) || id,
+            roomTypes,
+            images,
+            image:        images[0] ?? '',
+            lat:          Number(db?.lat ?? 0),
+            lng:          Number(db?.lng ?? 0),
+            coordinates:  { lat: Number(db?.lat ?? 0), lng: Number(db?.lng ?? 0) },
+            address:      (db?.address as string) ?? '',
+            city,
+            country,
+            description:  (db?.description as string) ?? '',
+            amenities:    [],
+            starRating:   Number(db?.star_rating ?? 0),
+            reviewRating: Number(db?.review_rating ?? 0),
+            reviewCount:  Number(db?.review_count ?? 0),
+            currency:     'USD',
+            provider:     'etg',
+        };
+
+        return { property, fetchedDetails, preBookResult: null };
+    } catch (err) {
+        console.error('[fetchETGPropertyData]', err instanceof Error ? err.message : err);
+        return { property: null, fetchedDetails: null, preBookResult: null };
+    }
+}
+
 /**
  * Fetch a TGX/ETG hotel using the travelgatex-search edge function's
  * single-hotel detail mode (hotelCode param → returns plain JSON, not NDJSON).
@@ -348,8 +535,14 @@ export const fetchPropertyData = cache(async (
     }
     let preBookResult = null;
 
-    // 1. TGX/ETG hotel — go directly to TGX, skip LiteAPI entirely (LiteAPI is dropped)
+    // 1. TGX/ETG hotel — route based on which provider sourced this hotel.
+    //    ETG hotels use ETG IDs (not recognized by TGX/OTV) → must use ETG's own availability API.
+    //    OTV hotels use OTV codes → use TGX.
     if (isTGXOrETGId(id)) {
+        const source = await getHotelContentSource(id);
+        if (source === 'etg') {
+            return fetchETGPropertyData(id, searchParams);
+        }
         return fetchTGXPropertyData(id, searchParams);
     }
 
