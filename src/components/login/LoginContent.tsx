@@ -114,7 +114,7 @@ export function LoginContent({ isAdmin = false }: LoginContentProps) {
             setErrors({ general: error?.message || 'Authentication failed. Please try again.' });
             toast.error(error?.message || 'Authentication failed');
         }
-    }, [email, password, firstName, lastName, mode, register, login, setErrors, setAuthStep, setMode, isAdmin]);
+    }, [email, password, confirmPassword, firstName, lastName, mode, register, login, setErrors, setAuthStep, setMode, isAdmin]);
 
     const handleToggleMode = useCallback(() => {
         setMode(mode === 'signin' ? 'signup' : 'signin');

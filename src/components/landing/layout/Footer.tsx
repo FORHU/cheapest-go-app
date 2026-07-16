@@ -23,7 +23,7 @@ const StandardFooter = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 lg:gap-16 text-[10px] lg:text-sm w-full lg:w-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 lg:gap-16 text-[10px] lg:text-sm w-full lg:w-auto">
           <div className="flex flex-col gap-2 lg:gap-4">
             <span className="text-slate-900 dark:text-white font-bold font-display uppercase tracking-wider text-[9px] lg:text-xs">{t('module')}</span>
             <div className="flex flex-col gap-1.5 lg:gap-3">
@@ -40,7 +40,7 @@ const StandardFooter = () => {
               <a href="#" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('support')}</a>
             </div>
           </div>
-          <div className="flex flex-col gap-2 lg:gap-4 col-span-2 sm:col-span-1">
+          <div className="flex flex-col gap-2 lg:gap-4">
             <span className="text-slate-900 dark:text-white font-bold font-display uppercase tracking-wider text-[9px] lg:text-xs">{t('network')}</span>
             <div className="flex flex-col gap-1.5 lg:gap-3">
               <div className="flex items-center gap-2 text-slate-500 font-medium">
@@ -51,18 +51,21 @@ const StandardFooter = () => {
               </div>
             </div>
           </div>
+          <div className="flex flex-col gap-2 lg:gap-4">
+            <span className="text-slate-900 dark:text-white font-bold font-display uppercase tracking-wider text-[9px] lg:text-xs">{t('legal')}</span>
+            <div className="flex flex-col gap-1.5 lg:gap-3">
+              <a href="/terms-of-service" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('terms')}</a>
+              <a href="/privacy-policy" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('privacy')}</a>
+              <a href="/cookie-policy" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('cookies')}</a>
+              <a href="mailto:support@cheapestgo.com" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('contact')}</a>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Legal bottom bar — full width */}
-      <div className="border-t border-slate-100 dark:border-white/5 px-5 py-6 lg:py-4 flex flex-col lg:flex-row items-center justify-between gap-4 text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">
-                    <span className="order-2 lg:order-1 opacity-70">&copy; 2026 JTP {t('allRightsReserved')}</span>
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 order-1 lg:order-2">
-          <a href="/terms-of-service" className="hover:text-indigo-500 transition-colors">{t('terms')}</a>
-          <a href="/privacy-policy" className="hover:text-indigo-500 transition-colors">{t('privacy')}</a>
-          <a href="/cookie-policy" className="hover:text-indigo-500 transition-colors">{t('cookies')}</a>
-          <a href="mailto:support@cheapestgo.com" className="hover:text-indigo-500 transition-colors">{t('contact')}</a>
-        </div>
+      {/* Legal bottom bar — links now live in the Legal column above */}
+      <div className="border-t border-slate-100 dark:border-white/5 px-5 py-6 lg:py-4 flex items-center justify-center lg:justify-start text-[10px] lg:text-xs text-slate-400 dark:text-slate-500">
+        <span className="opacity-70">&copy; 2026 JTP {t('allRightsReserved')}</span>
       </div>
     </footer>
   );
