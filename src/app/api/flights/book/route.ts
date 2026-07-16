@@ -326,10 +326,18 @@ export async function POST(req: NextRequest) {
             if (!isSandbox) {
                 try {
                     const { getDuffelBalances, getAvailableBalance } = await import('@/lib/server/flights/duffel-balance');
-                    const balances = await getDuffelBalances(duffelToken);
-                    const offerCurrency = (flight as any).currency ?? 'USD';
-                    const offerTotal = parseFloat((flight as any).price ?? '0');
-                    const available = getAvailableBalance(balances, offerCurrency);
+                    // Use rawOffer for currency/amount — these are in Duffel's native currency (USD/GBP).
+                    // (flight as any).currency/.price may carry the user's display currency, causing false blocks.
+                    const offerCurrency = rawOffer.total_currency ?? 'USD';
+                    const offerTotal = parseFloat(rawOffer.total_amount ?? '0');
+                    // Check cached balance first; force a live fetch if balance is within 2× the ticket
+                    // cost — the 5-min cache can be stale after rapid concurrent bookings.
+                    let balances = await getDuffelBalances(duffelToken);
+                    let available = getAvailableBalance(balances, offerCurrency);
+                    if (available < offerTotal * 2) {
+                        balances = await getDuffelBalances(duffelToken, true);
+                        available = getAvailableBalance(balances, offerCurrency);
+                    }
                     if (available < offerTotal) {
                         console.error(`[/book] Duffel balance insufficient: ${available} ${offerCurrency} < ${offerTotal}`);
                         return NextResponse.json(
@@ -338,7 +346,7 @@ export async function POST(req: NextRequest) {
                         );
                     }
                 } catch (balErr: any) {
-                    // Non-fatal — log and proceed. A Duffel API error here should not block the booking.
+                    // Non-fatal — log and proceed. Duffel's order API is the hard enforcement point.
                     console.warn('[/book] Duffel balance check failed (non-fatal):', balErr.message);
                 }
             }
@@ -793,24 +801,31 @@ export async function POST(req: NextRequest) {
                 console.error(`[/book] Duffel pre-order failed: status=${status} code=${code} msg="${rawErrMsg}" request_id=${requestId}`);
 
                 const isPhoneErr = /phone_number/i.test(rawErrMsg);
-                const isExpiredErr = status === 422 || /expired|no longer available|select another offer/i.test(rawErrMsg);
-                const isSeatErr = /seat|service.*unavailable|no longer.*available.*service/i.test(rawErrMsg) && !isExpiredErr;
+                const isBalanceErr = code === 'insufficient_balance' || /insufficient.*balance|balance.*insufficient/i.test(rawErrMsg);
+                // isBalanceErr must be checked before isExpiredErr — both produce 422, but the cause and
+                // user-facing message are different. A balance error is a platform issue, not a fare issue.
+                const isExpiredErr = !isBalanceErr && (status === 422 || /expired|no longer available|select another offer/i.test(rawErrMsg));
+                const isSeatErr = /seat|service.*unavailable|no longer.*available.*service/i.test(rawErrMsg) && !isExpiredErr && !isBalanceErr;
                 const isSupplierOutage = status >= 500;
 
                 let errorCode: string | null = null;
                 if (isPhoneErr) errorCode = 'phone_number_invalid';
+                else if (isBalanceErr) errorCode = 'balance_insufficient';
                 else if (isExpiredErr) errorCode = 'flight_unavailable';
                 else if (isSeatErr) errorCode = 'seats_unavailable';
                 else if (isSupplierOutage) errorCode = 'supplier_outage';
 
                 let httpStatus = 400;
-                if (isExpiredErr) httpStatus = 409;
-                if (isSupplierOutage) httpStatus = 502;
+                if (isBalanceErr) httpStatus = 503;
+                else if (isExpiredErr) httpStatus = 409;
+                else if (isSupplierOutage) httpStatus = 502;
 
                 return NextResponse.json({
                     success: false,
                     errorCode,
-                    error: errorCode ? undefined : (rawErrMsg || 'Flight booking failed. Please try again.'),
+                    error: isBalanceErr
+                        ? 'Flight booking is temporarily unavailable. Please try again shortly.'
+                        : errorCode ? undefined : (rawErrMsg || 'Flight booking failed. Please try again.'),
                     requestId,
                 }, { status: httpStatus });
             }
@@ -903,12 +918,15 @@ export async function POST(req: NextRequest) {
         // in the edge function and eliminates any race/auth issues).
         const supabase = createAdminClient();
 
-        // Step 3a: Critical — PI id + status only. Must not fail.
+        // Step 3a: Critical — PI id + status + Duffel order ID. Must not fail.
+        // Including duffel_pre_order_id here (not just Step 3b) ensures the cleanup cron
+        // can find and cancel the order even if Step 3b never runs due to an early return.
         const { error: sessionUpdateError } = await supabase
             .from('booking_sessions')
             .update({
                 payment_intent_id: paymentIntent.id,
                 status: 'payment_initiated',
+                ...(duffelPreOrder ? { duffel_pre_order_id: duffelPreOrder.orderId } : {}),
             })
             .eq('id', sessionId);
 

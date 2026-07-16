@@ -12,6 +12,7 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { stripe } from '@/lib/stripe/server';
 import { sendFlightCancellationEmail, sendFlightCancellationRefundEmail } from '@/lib/server/email';
 import { checkCsrf } from '@/lib/server/csrf';
+import { createNotification } from '@/lib/server/admin/notify';
 
 /**
  * POST /api/flights/cancel-booking
@@ -293,6 +294,17 @@ export async function POST(req: NextRequest) {
             })
             .eq('id', bookingId);
 
+        // Alert ops when Duffel's refund_to is non-standard (arc_bsp_cash, voucher, etc.).
+        // We still issue the Stripe refund immediately — customer always gets their money back.
+        // The notification lets ops track the airline-side recovery and flag financial exposure.
+        if (refundTo && refundTo !== 'balance') {
+            createNotification(
+                `Duffel refund_to: ${refundTo}`,
+                `Flight booking ${bookingId} (PNR: ${booking.pnr}) cancelled with refund_to=${refundTo}. Stripe refund of ${refundAmount} ${refundCurrency} issued — verify airline-side recovery manually.`,
+                'booking'
+            );
+        }
+
         // ── Step 7: Trigger Stripe refund ─────────────────────────────
         // Rule: Stripe failure transitions booking to refund_failed.
         // refund_failed → refund_pending (admin retry via dashboard).
@@ -448,11 +460,21 @@ export async function POST(req: NextRequest) {
             console.log(`[cancel-booking] Non-refundable ticket detected (refundAmount=0). Updating status to cancelled.`);
             await supabase
                 .from('flight_bookings')
-                .update({ 
+                .update({
                     status: 'cancelled',
                     cancellation_log: [...(booking.cancellation_log ?? []), logEntry, cancelLog]
                 })
                 .eq('id', bookingId);
+
+            // 0 refund + 0 penalty is ambiguous — Duffel gave no clear reason (possible voucher-only
+            // outcome without refund_to: 'voucher'). Flag for manual review so ops can decide.
+            if (penaltyAmount === 0 && paymentIntentId) {
+                createNotification(
+                    'Flight cancelled: zero refund and zero penalty',
+                    `Booking ${bookingId} (PNR: ${booking.pnr}) was cancelled with refund_amount=0 and penalty_amount=0 from ${isMystifly ? 'Mystifly' : 'Duffel'}. No Stripe refund issued — verify if customer is owed a refund or airline voucher.`,
+                    'booking'
+                );
+            }
         }
 
         const durationMs = Date.now() - startMs;
