@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { PlaneTakeoff } from 'lucide-react';
 import { AuthMode } from './types';
 
@@ -23,12 +24,24 @@ export function AuthFooter({ mode, onToggleMode }: AuthFooterProps) {
                 </button>
             </p>
 
-            {/* Terms */}
+            {/* Terms — open in a new tab so a half-filled signup form isn't lost */}
             <p className="mt-4 text-xs text-center text-slate-500 dark:text-slate-400">
                 By continuing, you agree to our{' '}
-                <a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Terms & Conditions</a>
+                <Link
+                    href="/terms-of-service"
+                    target="_blank"
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                    Terms &amp; Conditions
+                </Link>
                 {' '}and{' '}
-                <a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">Privacy Statement</a>
+                <Link
+                    href="/privacy-policy"
+                    target="_blank"
+                    className="text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                    Privacy Statement
+                </Link>
             </p>
 
             {/* Partner Logos */}
