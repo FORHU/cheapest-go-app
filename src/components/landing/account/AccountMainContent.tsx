@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Lock, Bell, Loader2, Check, Eye, EyeOff, HelpCircle, MessageCircle, Mail } from 'lucide-react';
 import type { User as UserType } from '@/types/auth';
 import { useAuthStore } from '@/stores/authStore';
+import { clientFetch } from '@/lib/api/client';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 
@@ -39,6 +40,49 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
         setFirstName(user.firstName || '');
         setLastName(user.lastName || '');
     }, [user]);
+
+    // Load saved notification preferences so they persist across navigation
+    // (previously these reset to defaults every mount and the Save button was a
+    // no-op, so nothing survived a trip to the homepage and back).
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await clientFetch('/api/preferences');
+                if (!res.ok) return;
+                const { preferences } = await res.json();
+                if (cancelled || !preferences) return;
+                if (typeof preferences.emailNotifications === 'boolean') setEmailNotifications(preferences.emailNotifications);
+                if (typeof preferences.marketingEmails === 'boolean') setMarketingEmails(preferences.marketingEmails);
+                if (typeof preferences.tripReminders === 'boolean') setTripReminders(preferences.tripReminders);
+            } catch {
+                // keep defaults
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    // Notification toggles auto-save the moment they're flipped — optimistic,
+    // reverting the switch if the request fails.
+    const updatePreference = async (
+        key: 'emailNotifications' | 'marketingEmails' | 'tripReminders',
+        value: boolean,
+        setLocal: (v: boolean) => void,
+    ) => {
+        setLocal(value);
+        try {
+            const res = await clientFetch('/api/preferences', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [key]: value }),
+            });
+            if (!res.ok) throw new Error();
+            toast.success(t('communications.preferencesSaved'));
+        } catch {
+            setLocal(!value); // revert on failure
+            toast.error(t('communications.preferencesSaveError'));
+        }
+    };
 
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -225,11 +269,11 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                 <input
                                     type="checkbox"
                                     checked={emailNotifications}
-                                    onChange={(e) => setEmailNotifications(e.target.checked)}
+                                    onChange={(e) => updatePreference('emailNotifications', e.target.checked, setEmailNotifications)}
                                     className="sr-only"
                                 />
-                                <div className={`w-11 h-6 rounded-full transition-colors ${emailNotifications ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
-                                    <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${emailNotifications ? 'translate-x-5' : 'translate-x-0.5'} mt-0.5`} />
+                                <div className={`flex items-center w-11 h-6 rounded-full px-0.5 transition-colors ${emailNotifications ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                                    <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${emailNotifications ? 'translate-x-5' : 'translate-x-0'}`} />
                                 </div>
                             </div>
                         </label>
@@ -243,11 +287,11 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                 <input
                                     type="checkbox"
                                     checked={tripReminders}
-                                    onChange={(e) => setTripReminders(e.target.checked)}
+                                    onChange={(e) => updatePreference('tripReminders', e.target.checked, setTripReminders)}
                                     className="sr-only"
                                 />
-                                <div className={`w-11 h-6 rounded-full transition-colors ${tripReminders ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
-                                    <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${tripReminders ? 'translate-x-5' : 'translate-x-0.5'} mt-0.5`} />
+                                <div className={`flex items-center w-11 h-6 rounded-full px-0.5 transition-colors ${tripReminders ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                                    <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${tripReminders ? 'translate-x-5' : 'translate-x-0'}`} />
                                 </div>
                             </div>
                         </label>
@@ -261,24 +305,14 @@ export const AccountMainContent: React.FC<AccountMainContentProps> = ({ user, ac
                                 <input
                                     type="checkbox"
                                     checked={marketingEmails}
-                                    onChange={(e) => setMarketingEmails(e.target.checked)}
+                                    onChange={(e) => updatePreference('marketingEmails', e.target.checked, setMarketingEmails)}
                                     className="sr-only"
                                 />
-                                <div className={`w-11 h-6 rounded-full transition-colors ${marketingEmails ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
-                                    <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${marketingEmails ? 'translate-x-5' : 'translate-x-0.5'} mt-0.5`} />
+                                <div className={`flex items-center w-11 h-6 rounded-full px-0.5 transition-colors ${marketingEmails ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                                    <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${marketingEmails ? 'translate-x-5' : 'translate-x-0'}`} />
                                 </div>
                             </div>
                         </label>
-                    </div>
-
-                    <div className="mt-8">
-                        <button
-                            onClick={() => toast.success(t('communications.preferencesSaved'))}
-                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
-                        >
-                            <Check className="w-4 h-4" />
-                            {t('communications.savePreferences')}
-                        </button>
                     </div>
                 </div>
             </div>
