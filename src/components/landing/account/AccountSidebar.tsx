@@ -6,6 +6,8 @@ import type { User } from '@/types/auth';
 import { AccountSidebarItem } from './AccountSidebarItem';
 import { LogOut } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useUserCurrency } from '@/stores/searchStore';
+import { getCurrencySymbol } from '@/lib/currency';
 
 interface AccountSidebarProps {
     user: User;
@@ -32,6 +34,14 @@ export const AccountSidebar: React.FC<AccountSidebarProps> = ({
     const [showPointsInfo, setShowPointsInfo] = useState(false);
     const pointsInfoId = useId();
     const pointsInfoRef = useRef<HTMLDivElement>(null);
+
+    // Points value uses the currency selected in the navbar. Gate on mount so the
+    // server render (store default) and first client render match before the
+    // persisted currency is applied — avoids a hydration mismatch.
+    const userCurrency = useUserCurrency();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const pointsSymbol = getCurrencySymbol(mounted ? userCurrency : 'KRW');
 
     // Close the points tooltip on outside click / Escape.
     useEffect(() => {
@@ -97,7 +107,7 @@ export const AccountSidebar: React.FC<AccountSidebarProps> = ({
                             )}
                         </div>
                     </div>
-                    <p className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white">{t('sidebar.pointsAmount')}</p>
+                    <p className="text-[clamp(1.125rem,4vw,1.5rem)] font-bold text-slate-900 dark:text-white">{pointsSymbol} 0.00</p>
                 </div>
 
                 <button className="w-full text-sm text-blue-600 dark:text-blue-400 hover:underline text-left flex items-center justify-between py-2">

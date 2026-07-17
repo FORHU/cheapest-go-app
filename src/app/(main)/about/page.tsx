@@ -53,7 +53,7 @@ const values = [
     },
 ];
 
-const partners = ['Duffel', 'Mystifly', 'TravelgateX', 'ONDA', 'Rakuten', 'Stripe'];
+const partners = ['Duffel', 'TravelgateX', 'Stripe'];
 
 export default function AboutUsPage() {
     return (
