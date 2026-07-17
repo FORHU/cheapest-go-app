@@ -14,6 +14,7 @@ import { useUserCurrency, useSearchStore, useSearchFilters, useDates, useActiveD
 import { DatePicker } from '@/components/landing/hero/search/DatePicker';
 import CurrencySelector from '@/components/common/CurrencySelector';
 import { useTranslations, useLocale } from 'next-intl';
+import { hasValidCoords, dedupeByProximity } from './mappableUtils';
 
 const SearchMapContainer = dynamic(
     () => import('../mapbox/SearchMapContainer').then(m => ({ default: m.SearchMapContainer })),
@@ -49,6 +50,7 @@ function matchesBoardType(hotelBoardTypes: string[], selected: string[]): boolea
         });
     });
 }
+
 
 
 
@@ -452,58 +454,19 @@ function SearchMapView({
     const activeFilterCount = propertyTypes.length + boardTypes.length + (refundable !== null ? 1 : 0);
 
     // ── Map Pins ─────────────────────────────────────────────
-    // Use allMappable (fast coord-only list) if provided, otherwise fall back to allProperties.
-    // allMappable is used for map pins only; sortedProperties drives the list.
-    const mappableProperties = useMemo<MappableProperty[]>(() => {
-        // Use allProperties (full priced set) for pins; allMappable is only a fallback for
-        // the brief window before the done event arrives.
-        const source = allProperties.length > 0 ? allProperties : allMappable;
-        const filtered = source
-            .filter(
-                (p: any): p is MappableProperty =>
-                    p.coordinates != null &&
-                    typeof p.coordinates.lat === 'number' &&
-                    typeof p.coordinates.lng === 'number' &&
-                    p.coordinates.lat !== 0 &&
-                    p.coordinates.lng !== 0
-            )
-            .map((p: any) => ({
-                ...p,
-                id: p.id || p.hotelId,
-                location: p.location || '',
-                image: p.image || '',
-                rating: p.rating || 0,
-                reviews: p.reviews || 0,
-                price: p.price || 0,
-                currency: p.currency || 'USD',
-            }));
-
-        // Deduplicate by proximity — TGX and ETG can both return the same hotel.
-        // If two pins are within ~100m (0.001°), keep the lower-price entry.
-        const PROX_DEG = 0.001;
-        const unique: MappableProperty[] = [];
-        for (const pin of filtered) {
-            const dupeIdx = unique.findIndex(
-                u =>
-                    Math.abs(u.coordinates.lat - pin.coordinates.lat) < PROX_DEG &&
-                    Math.abs(u.coordinates.lng - pin.coordinates.lng) < PROX_DEG
-            );
-            if (dupeIdx !== -1) {
-                if (pin.price < unique[dupeIdx].price) unique[dupeIdx] = pin;
-            } else {
-                unique.push(pin);
-            }
-        }
-        return unique;
-    }, [allMappable, allProperties]);
+    // `mappableProperties` is defined just after `sortedProperties` below — the
+    // pins are derived from the exact same filtered, de-duplicated list, so the
+    // marker count always matches the list count.
 
     // Apply client-side filters + sort to ALL loaded properties (includes Load More results)
     const sortedProperties = useMemo(() => {
         // Raw hotel codes from OTV look like 'yello_hotel' or 'cebu_hilltop_hotel' — all lowercase,
         // digits, and underscores with no spaces. Exclude them until ETG enrichment populates real names.
         const isRawCode = (name: string) => /^[a-z0-9_]+$/.test(name) && name.includes('_');
+        // Exclude hotels without real coordinates — they can't be placed on the
+        // map, so they shouldn't appear in the results list either.
         let list = allProperties.filter((p: any) =>
-            p.name && !isRawCode(p.name) && p.price > 0 && !(p as any).priceLoading
+            p.name && !isRawCode(p.name) && p.price > 0 && !(p as any).priceLoading && hasValidCoords(p)
         );
 
         if (propertyTypes.length > 0) {
@@ -520,6 +483,10 @@ function SearchMapView({
             list = list.filter((p: any) => p.refundableTag === 'RFN');
         }
 
+        // Collapse same-location duplicates so the list shows each hotel once —
+        // and so the map pins, derived from this list, match the list count.
+        list = dedupeByProximity(list);
+
         if (sortBy === 'price-low') list.sort((a: any, b: any) => a.price - b.price);
         else if (sortBy === 'price-high') list.sort((a: any, b: any) => b.price - a.price);
         else if (sortBy === 'rating') list.sort((a: any, b: any) => b.rating - a.rating);
@@ -531,6 +498,24 @@ function SearchMapView({
 
         return list;
     }, [allProperties, sortBy, propertyTypes, boardTypes, refundable]);
+
+    // Map pins are the exact same set as the list — already coordinate-filtered
+    // and de-duplicated — normalized to the shape the map expects. Deriving them
+    // from `sortedProperties` guarantees the marker count equals the list count.
+    const mappableProperties = useMemo<MappableProperty[]>(
+        () =>
+            sortedProperties.map((p: any) => ({
+                ...p,
+                id: p.id || p.hotelId,
+                location: p.location || '',
+                image: p.image || '',
+                rating: p.rating || 0,
+                reviews: p.reviews || 0,
+                price: p.price || 0,
+                currency: p.currency || 'USD',
+            })),
+        [sortedProperties],
+    );
 
     // Client-side display pagination — all hotels are already in sortedProperties from streaming
     const canLoadMore = displayCount < sortedProperties.length;
@@ -778,7 +763,7 @@ function SearchMapView({
                         {/* Property count pill */}
                         <span className="hidden sm:inline px-2.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-semibold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 whitespace-nowrap">
                             {activeFilterCount > 0
-                                ? tr('filteredCount', { filtered: sortedProperties.length, total: allProperties.filter((p: any) => p.name && (p.price > 0 || (p as any).priceLoading)).length })
+                                ? tr('filteredCount', { filtered: sortedProperties.length, total: allProperties.filter((p: any) => p.name && (p.price > 0 || (p as any).priceLoading) && hasValidCoords(p)).length })
                                 : tr('hotelsCount', { count: sortedProperties.length })
                             }
                         </span>

@@ -91,6 +91,9 @@ describe('LoginContent — signup password confirmation', () => {
         fireEvent.change(passwordInput, { target: { value: PASSWORD } });
         fireEvent.change(confirmInput, { target: { value: PASSWORD } });
 
+        // Terms acceptance now gates submission.
+        fireEvent.click(screen.getByRole('checkbox'));
+
         fireEvent.click(screen.getByRole('button', { name: /^create account$/i }));
 
         await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
@@ -106,6 +109,9 @@ describe('LoginContent — signup password confirmation', () => {
         fireEvent.change(screen.getByPlaceholderText('Re-enter your password'), {
             target: { value: 'something-else' },
         });
+
+        // Accept terms so submission reaches the password-match check.
+        fireEvent.click(screen.getByRole('checkbox'));
 
         fireEvent.click(screen.getByRole('button', { name: /^create account$/i }));
 

@@ -4,8 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Heart } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { type WeekendDeal } from '@/types';
+import SaveButton from '@/components/common/SaveButton';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
 import { useDragScroll } from '@/hooks/useDragScroll';
@@ -61,14 +62,16 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
     : Math.round(deal.salePrice || 0);
 
   const dates = getNextWeekend();
-  const [isSaved, setIsSaved] = useState(false);
 
   const imageUrl = deal.image || (deal.hotelCode ? `/api/hotel-photo?hotelCode=${encodeURIComponent(deal.hotelCode)}` : '');
 
+  const hotelId = deal.hotelCode ?? String(deal.id);
+  const slug = buildPropertySlug(deal.name, hotelId);
+  // Stable link for the wishlist (no volatile date params, so it dedupes cleanly).
+  const deepLink = `/property/${slug}`;
+
   function navigate() {
-    const hotelId = deal.hotelCode ?? String(deal.id);
     setDates(new Date(dates.checkIn), new Date(dates.checkOut));
-    const slug = buildPropertySlug(deal.name, hotelId);
     const params = new URLSearchParams({
       checkIn: dates.checkIn,
       checkOut: dates.checkOut,
@@ -111,14 +114,18 @@ const FavoriteCardImpl: React.FC<FavoriteCardProps> = ({ deal, index, variant = 
             <span className="text-[10px] font-semibold leading-none">{tc('guestFavorite')}</span>
           </div>
 
-          {/* Bookmark */}
-          <button
-            onClick={e => { e.stopPropagation(); setIsSaved(v => !v); }}
-            className="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer"
-            aria-label="Save"
-          >
-            <Heart className={`w-3.5 h-3.5 transition-colors ${isSaved ? 'text-red-400 fill-red-400' : 'text-white'}`} />
-          </button>
+          {/* Wishlist button (persists to /api/saved-trips) */}
+          <div className="absolute top-2.5 right-2.5 z-10">
+            <SaveButton
+              type="hotel"
+              title={deal.name}
+              price={deal.salePrice}
+              currency={deal.currency || 'USD'}
+              imageUrl={imageUrl}
+              deepLink={deepLink}
+              size="sm"
+            />
+          </div>
 
           {/* Price overlay */}
           <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 pt-8">

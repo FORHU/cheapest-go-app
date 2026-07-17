@@ -3,16 +3,15 @@
 import React, { Suspense, useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Moon, Sun, Download, ChevronDown } from 'lucide-react';
+import { Moon, Sun, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserCurrency, useUserCountry, useSearchActions } from '@/stores/searchStore';
-import { usePWAInstall } from '@/contexts/PWAInstallContext';
 import { useAuthStore } from '@/stores/authStore';
 import SignInDropdown from '../../auth/SignInDropdown';
 import CurrencySelector, { CURRENCIES } from '@/components/common/CurrencySelector';
 import { cn } from '@/utils/cn';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,7 +64,10 @@ const HeaderContent = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  const [locale, setLocale] = useState<Locale>('en');
+  // Seed from the server-resolved locale (Korean by default, or the visitor's
+  // chosen language) so the selector matches the rendered content — no flash.
+  const activeLocale = useLocale() as Locale;
+  const [locale, setLocale] = useState<Locale>(activeLocale);
   const t = useTranslations('nav');
 
   useEffect(() => {
@@ -80,8 +82,6 @@ const HeaderContent = () => {
   const userCountry = useUserCountry();
   const { setUserCurrency, setUserCountry } = useSearchActions();
   const { user } = useAuthStore();
-
-  const { triggerInstall } = usePWAInstall();
 
   const handleLocaleSelect = (next: Locale) => {
     if (next === locale) return;
@@ -109,12 +109,6 @@ const HeaderContent = () => {
 
           {/* Navigation Items (Visible on all screens) */}
           <nav className="flex items-center gap-1 sm:gap-2">
-            {/* Open App Button (Compact on mobile) */}
-            <button onClick={triggerInstall} className="flex items-center gap-1 px-2 sm:px-2.5 py-1 text-[10px] sm:text-xs font-normal text-blue-600 dark:text-blue-400 border border-blue-600/20 dark:border-blue-400/20 rounded-full hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors shrink-0">
-              <Download size={12} />
-              <span className="hidden sm:inline">{t('openApp')}</span>
-            </button>
-
             {/* Language selector — hidden when locale is locked via NEXT_PUBLIC_LOCALE */}
             {!LOCKED_LOCALE && (
             <DropdownMenu>

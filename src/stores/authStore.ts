@@ -178,17 +178,17 @@ export const useAuthStore = create<AuthState>((set, get) => {
         updateProfile: (data) => {
             profileSchema.parse(data);
             return withLoading(async () => {
-                await apiFetch('/api/preferences', {
+                const res = await apiFetch('/api/account/profile', {
                     firstName: data.firstName,
                     lastName: data.lastName,
-                });
+                }, 'PATCH');
                 const { user } = get();
                 if (user) {
                     set({
                         user: {
                             ...user,
-                            firstName: data.firstName ?? user.firstName,
-                            lastName: data.lastName ?? user.lastName,
+                            firstName: res?.user?.firstName ?? data.firstName ?? user.firstName,
+                            lastName: res?.user?.lastName ?? data.lastName ?? user.lastName,
                         },
                     });
                 }
@@ -198,11 +198,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         updatePassword: (currentPassword, newPassword) => {
             updatePasswordSchema.parse({ currentPassword, newPassword });
             return withLoading(async () => {
-                const { user } = get();
-                if (!user?.email) throw new Error("No user logged in");
-                // Verify current password by attempting login
-                await apiFetch('/api/auth/login', { email: user.email, password: currentPassword });
-                await apiFetch('/api/auth/reset-password', { token: '__current__', password: newPassword }, 'PUT');
+                await apiFetch('/api/account/password', { currentPassword, newPassword }, 'PATCH');
             });
         },
 

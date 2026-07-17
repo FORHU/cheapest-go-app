@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart } from 'lucide-react';
+import SaveButton from '@/components/common/SaveButton';
 import { type WeekendDeal } from '@/types';
 import { convertCurrency, getCurrencySymbol } from '@/lib/currency';
 import { useUserCurrency } from '@/stores/searchStore';
@@ -130,10 +130,13 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
     : Math.round(deal.originalPrice || 0);
 
   const dates = getNextWeekend();
+  const hotelId = deal.hotelCode ?? String(deal.id);
+  const slug = buildPropertySlug(deal.name, hotelId);
+  // Stable link for the wishlist (no volatile date params, so it dedupes cleanly).
+  const deepLink = `/property/${slug}`;
+
   function navigate() {
-    const hotelId = deal.hotelCode ?? String(deal.id);
     setDates(new Date(dates.checkIn), new Date(dates.checkOut));
-    const slug = buildPropertySlug(deal.name, hotelId);
     const params = new URLSearchParams({
       checkIn:  dates.checkIn,
       checkOut: dates.checkOut,
@@ -144,8 +147,6 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
 
 
   const imageUrl = deal.image || (deal.hotelCode ? `/api/hotel-photo?hotelCode=${encodeURIComponent(deal.hotelCode)}` : '');
-
-  const [isSaved, setIsSaved] = useState(false);
 
   return (
     <motion.div
@@ -170,16 +171,18 @@ const HotelDealCardImpl: React.FC<HotelDealCardProps> = ({ deal, index, variant 
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/75" />
 
-          {/* Bookmark button — top right */}
-          <button
-            onClick={e => { e.stopPropagation(); setIsSaved(v => !v); }}
-            className="absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors cursor-pointer"
-            aria-label="Save deal"
-          >
-            <Heart
-              className={`w-3.5 h-3.5 transition-colors ${isSaved ? 'text-red-400 fill-red-400' : 'text-white'}`}
+          {/* Wishlist button — top right (persists to /api/saved-trips) */}
+          <div className="absolute top-2.5 right-2.5 z-10">
+            <SaveButton
+              type="hotel"
+              title={deal.name}
+              price={deal.salePrice}
+              currency={deal.currency || 'USD'}
+              imageUrl={imageUrl}
+              deepLink={deepLink}
+              size="sm"
             />
-          </button>
+          </div>
 
           {/* Price overlay — bottom of image */}
           <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 pt-8">
