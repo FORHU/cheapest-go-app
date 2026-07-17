@@ -4,9 +4,9 @@ export async function tryGooglePlaces(name: string, lat: string, lng: string, pl
     const key = env.GOOGLE_PLACES_API_KEY;
     if (!key) return null;
 
-    const findPhotoInCandidate = async (candidate: any) => {
+    const fetchDetails = async (candidate: any) => {
         let photoUrl = null;
-        let reviews = [];
+        let reviews: any[] = [];
         let details = {};
 
         if (candidate?.place_id) {
@@ -36,12 +36,24 @@ export async function tryGooglePlaces(name: string, lat: string, lng: string, pl
             photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${candidate.photos[0].photo_reference}&key=${key}`;
         }
 
-        return { photoUrl, reviews, ...details, name: candidate.name, vicinity: candidate.vicinity || candidate.formatted_address };
+        return { photoUrl, reviews, ...details, place_id: candidate.place_id, name: candidate.name, vicinity: candidate.vicinity || candidate.formatted_address };
+    };
+
+    // Try candidates one at a time — return as soon as one has a photo or reviews.
+    // This avoids firing 3 parallel Place Details calls and discarding 2.
+    const trySequential = async (candidates: any[], ratings: any[]) => {
+        for (let i = 0; i < candidates.length; i++) {
+            const res = await fetchDetails(candidates[i]);
+            if (res.photoUrl || res.reviews.length > 0) {
+                return { rating: ratings[i]?.rating ?? null, userRatingsTotal: ratings[i]?.user_ratings_total ?? null, ...res };
+            }
+        }
+        return null;
     };
 
     try {
         if (placeId) {
-            const result = await findPhotoInCandidate({ place_id: placeId, name });
+            const result = await fetchDetails({ place_id: placeId, name });
             if (result) return { ...result, rating: null, userRatingsTotal: null };
         }
 
@@ -52,45 +64,13 @@ export async function tryGooglePlaces(name: string, lat: string, lng: string, pl
 
         if (nearbyData.status === 'OK') {
             const results = nearbyData.results || [];
-            const candidateResults = await Promise.all(results.slice(0, 3).map((c: any) => findPhotoInCandidate(c)));
-            for (let i = 0; i < candidateResults.length; i++) {
-                const res = candidateResults[i];
-                if (res.photoUrl || res.reviews.length > 0) {
-                    return { rating: results[i].rating, userRatingsTotal: results[i].user_ratings_total, ...res };
-                }
-            }
+            const found = await trySequential(results.slice(0, 3), results);
+            if (found) return found;
         } else if (nearbyData.status === 'REQUEST_DENIED') {
             console.error(`[poi-google] Nearby Search DENIED for "${name}". Check Places API is enabled and billing is active.`);
         }
 
-        // Text search — broader fallback
-        const searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(name)}&location=${lat},${lng}&radius=3000&key=${key}`;
-        const searchRes = await fetch(searchUrl, { next: { revalidate: 3600 } });
-        const searchData = await searchRes.json();
-
-        if (searchData.status === 'OK') {
-            const results = searchData.results || [];
-            const candidateResults = await Promise.all(results.slice(0, 3).map((c: any) => findPhotoInCandidate(c)));
-            for (let i = 0; i < candidateResults.length; i++) {
-                const res = candidateResults[i];
-                if (res.photoUrl || res.reviews.length > 0) {
-                    return { rating: results[i].rating, userRatingsTotal: results[i].user_ratings_total, ...res };
-                }
-            }
-
-            const best = results[0];
-            return {
-                photoUrl: null,
-                rating: best.rating,
-                userRatingsTotal: best.user_ratings_total,
-                vicinity: best.formatted_address || best.vicinity,
-                reviews: [],
-            };
-        } else if (searchData.status === 'REQUEST_DENIED') {
-            console.error(`[poi-google] Text Search DENIED for "${name}". Check API Key restrictions in Google Cloud Console.`);
-        }
-
-        console.warn(`[poi-google] No photo found for "${name}" (Status: ${searchData.status}/${nearbyData.status})`);
+        console.warn(`[poi-google] No result from Nearby Search for "${name}" (status: ${nearbyData.status})`);
     } catch (err) {
         console.error('[poi-google] Error:', err);
     }
