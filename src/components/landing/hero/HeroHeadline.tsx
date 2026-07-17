@@ -26,7 +26,7 @@ const HeroHeadline: React.FC = () => {
 
     return (
         <>
-            <VersionBadge />
+            <VersionBadge label={t('smartPriceTracking')} />
 
             <motion.div
                 variants={containerVariants}

@@ -1199,6 +1199,7 @@
         "hero": {
             "cta": "Search flights",
             "monoSubtext": "Ask anything. Book everything.",
+            "smartPriceTracking": "Smart Price Tracking",
             "subtitle": "The operating system for the modern voyager.",
             "title": "Flights at the lowest price",
             "titleLine1": "Precision Travel.",
