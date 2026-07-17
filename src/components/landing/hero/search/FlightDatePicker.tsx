@@ -21,12 +21,13 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     date,
     onChange,
     label,
-    description = "Select Date",
+    description,
     isOpen,
     onToggle,
     minDate
 }) => {
     const t = useTranslations('landing.search');
+    const resolvedDescription = description ?? t('selectDate');
     const MONTHS = t.raw('months') as string[];
     const DAYS = t.raw('days') as string[];
     const ref = useRef<HTMLDivElement>(null);
@@ -87,7 +88,7 @@ export const FlightDatePicker: React.FC<FlightDatePickerProps> = ({
     };
 
     const formatDate = (d: Date | null) => {
-        if (!d) return <span className="text-slate-400 font-normal">{description}</span>;
+        if (!d) return <span className="text-slate-400 font-normal">{resolvedDescription}</span>;
         return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     };
 

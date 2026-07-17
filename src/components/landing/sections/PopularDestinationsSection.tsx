@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { POPULAR_DESTINATIONS } from '@/lib/constants/destinations';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { useTranslations } from 'next-intl';
@@ -10,15 +11,37 @@ export function PopularDestinationsSection() {
     const { ref, dragProps } = useDragScroll<HTMLDivElement>();
     const t = useTranslations('popularDestinations');
 
+    const scroll = (dir: 'left' | 'right') => {
+        ref.current?.scrollBy({ left: dir === 'left' ? -480 : 480, behavior: 'smooth' });
+    };
+
     return (
         <section className="w-full py-8 md:py-12">
-            <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
-                <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-1">
-                    {t('title')}
-                </h2>
-                <p className="text-slate-500 dark:text-slate-400 mb-5 text-sm md:text-base">
-                    {t('subtitle')}
-                </p>
+            <div className="max-w-[1400px] mx-auto px-4 sm:px-6 flex items-start justify-between mb-5">
+                <div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-1">
+                        {t('title')}
+                    </h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base">
+                        {t('subtitle')}
+                    </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 mt-1">
+                    <button
+                        onClick={() => scroll('left')}
+                        className="p-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
+                        aria-label="Scroll left"
+                    >
+                        <ChevronLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                    </button>
+                    <button
+                        onClick={() => scroll('right')}
+                        className="p-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors"
+                        aria-label="Scroll right"
+                    >
+                        <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                    </button>
+                </div>
             </div>
 
             <div

@@ -85,10 +85,10 @@
             "getEmails": "メールを受け取る",
             "greeting": "こんにちは、{name}さん",
             "membershipTier": "ブルー",
-            "partnerInfo": "アカウントはCheapestGoおよびすべてのパートナーサイトで使用できます",
+            "partnerInfo": "アカウントは{brand}およびすべてのパートナーサイトで使用できます",
             "pointsAmount": "₱ 0.00",
             "pointsValue": "ポイント価値",
-            "promoSubtitle": "CheapestGoのお得情報、ヒント、インサイトを受け取る",
+            "promoSubtitle": "{brand}のお得情報、ヒント、インサイトを受け取る",
             "promoTitle": "旅のインスピレーションとオファーを受け取る",
             "signOut": "サインアウト",
             "viewRewardsActivity": "リワード活動を見る"
@@ -124,7 +124,7 @@
             "privacyLink": "プライバシーポリシー",
             "terms": "ログインすることで{terms}と{privacy}に同意したものとみなされます。",
             "termsLink": "利用規約",
-            "title": "CheapestGo にログイン"
+            "title": "{brand} にログイン"
         }
     },
     "checkout": {
@@ -293,12 +293,17 @@
             "youSave": "このプロモで{amount}お得",
             "yourRoom": "客室"
         },
-        "title": "チェックアウト | CheapestGo",
+        "title": "チェックアウト | {brand}",
         "userDetails": {
+            "age": "年齢 *",
+            "agePlaceholder": "0–17",
+            "childN": "子供 {n}",
             "email": "メールアドレス *",
             "emailPlaceholder": "メールアドレス",
             "firstName": "名 *",
             "firstNamePlaceholder": "名",
+            "guest1": "ゲスト 1（ご本人）",
+            "guestN": "ゲスト {n}",
             "lastName": "姓 *",
             "lastNamePlaceholder": "姓",
             "no": "いいえ",
@@ -788,7 +793,7 @@
         "cookies": "クッキー",
         "cookiesMinimal": "Cookie 設定",
         "copyright": "© 2026 JTP Partners. All rights reserved.",
-        "copyrightMinimal": "CheapestGo © 2026",
+        "copyrightMinimal": "{brand} © 2026",
         "enterprise": "法人向け",
         "flights": "フライト",
         "flightsApi": "フライト API",
@@ -977,8 +982,8 @@
             "veryGood": "とても良い"
         },
         "searchPage": {
-            "description": "世界中のホテル、アパート、ユニークな宿泊施設を最安値で検索・予約。CheapestGoで価格を比較し、理想の滞在先を見つけましょう。",
-            "title": "ホテル・宿泊施設検索 | CheapestGo"
+            "description": "世界中のホテル、アパート、ユニークな宿泊施設を最安値で検索・予約。{brand}で価格を比較し、理想の滞在先を見つけましょう。",
+            "title": "ホテル・宿泊施設検索 | {brand}"
         },
         "searchResults": {
             "allProperties": "すべての宿泊施設",
@@ -1005,6 +1010,7 @@
             "noHotelsAvailableIn": "{destination}で利用可能なホテルはありません",
             "noHotelsFound": "ホテルが見つかりません",
             "noHotelsFoundIn": "{destination}のホテルが見つかりません",
+            "noPlacesFound": "このエリアには場所がありません",
             "noPropertiesFound": "宿泊施設が見つかりません",
             "pricesMayChange": "料金は空室状況により変動する場合があります。",
             "propertiesFound": "{count}件の宿泊施設が見つかりました",
@@ -1035,6 +1041,7 @@
             "monoSubtext": "何でも尋ねて、すべてを予約。",
             "subtitle": "現代の旅行者のためのオペレーティングシステム。",
             "title": "最安値の航空券",
+            "smartPriceTracking": "スマート価格追跡",
             "titleLine1": "精密な旅。",
             "titleLine2": "あなた専用に設計。"
         },
@@ -1160,6 +1167,7 @@
                 "flights": "フライト",
                 "stays": "宿泊"
             },
+            "searchAirport": "空港を検索...",
             "searching": "検索中...",
             "selectDate": "選択",
             "submit": "検索",
@@ -1187,7 +1195,7 @@
     "nav": {
         "account": "アカウント",
         "accountSettings": "アカウント設定",
-        "accountWorks": "アカウントはCheapestGoおよびすべてのパートナーサイトで利用できます",
+        "accountWorks": "アカウントは{brand}およびすべてのパートナーサイトで利用できます",
         "createAccount": "アカウントを作成",
         "home": "ホーム",
         "membersSave": "会員は10%以上割引",
@@ -1246,7 +1254,7 @@
             "body": "ホーム画面に追加すると、より素早くアクセスできます。",
             "dismiss": "後で",
             "install": "インストール",
-            "title": "CheapestGo アプリを入手"
+            "title": "{brand} アプリを入手"
         }
     },
     "search": {
@@ -1264,16 +1272,18 @@
     },
     "seo": {
         "faq": {
-            "a1": "CheapestGo は複数の航空会社とグローバル流通システムを検索し、リアルタイムで最安値を探して一か所で比較・予約できます。",
-            "a2": "はい。CheapestGo では航空券、ホテル、アパート、ユニークな宿泊施設をすべて一つのプラットフォームで予約できます。",
+            "a1": "{brand} は複数の航空会社とグローバル流通システムを検索し、リアルタイムで最安値を探して一か所で比較・予約できます。",
+            "a2": "はい。{brand} では航空券、ホテル、アパート、ユニークな宿泊施設をすべて一つのプラットフォームで予約できます。",
             "a3": "はい、価格の検索と比較は完全無料です。費用が発生するのは予約時のみです。",
-            "a4": "CheapestGo は複数の通貨に対応しており、設定に基づいて自動的に価格を換算し、いつでも現地通貨で確認できます。",
-            "q1": "CheapestGo はどうやって安い航空券を見つけますか？",
-            "q2": "CheapestGo で航空券とホテルの両方を予約できますか？",
-            "q3": "CheapestGo は無料で使えますか？",
-            "q4": "CheapestGo はどの通貨に対応していますか？"
+            "a4": "{brand} は複数の通貨に対応しており、設定に基づいて自動的に価格を換算し、いつでも現地通貨で確認できます。",
+            "q1": "{brand} はどうやって安い航空券を見つけますか？",
+            "q2": "{brand} で航空券とホテルの両方を予約できますか？",
+            "q3": "{brand} は無料で使えますか？",
+            "q4": "{brand} はどの通貨に対応していますか？"
         },
-        "orgDescription": "CheapestGo は、世界中で最安値の航空券とホテルを見つける現代的な旅行予約プラットフォームです。"
+        "orgDescription": "{brand} は、世界中で最安値の航空券とホテルを見つける現代的な旅行予約プラットフォームです。",
+        "siteDescription": "世界中の最高の旅行プランを見つけましょう。{brand}と一緒に航空券やホテルを簡単に計画し、費用を節約して世界を旅しましょう。",
+        "siteTagline": "世界の旅を発見・予約しよう"
     },
     "theme": {
         "contextError": "useThemeはThemeProvider内で使用する必要があります",

@@ -1168,6 +1168,7 @@
                 "flights": "항공편",
                 "stays": "숙소"
             },
+            "searchAirport": "공항 검색...",
             "searching": "검색 중...",
             "selectDate": "날짜 선택",
             "submit": "검색",
@@ -1280,7 +1281,9 @@
             "q3": "{brand}는 무료로 사용할 수 있나요?",
             "q4": "{brand}는 어떤 통화를 지원하나요?"
         },
-        "orgDescription": "{brand}는 전 세계 최저가 항공권과 호텔을 찾는 현대적인 여행 예약 플랫폼입니다."
+        "orgDescription": "{brand}는 전 세계 최저가 항공권과 호텔을 찾는 현대적인 여행 예약 플랫폼입니다.",
+        "siteDescription": "전 세계 최고의 여행 상품을 발견하세요. {brand}와 함께 항공편과 호텔을 쉽게 계획하고, 비용을 절약하며, 세계를 여행하세요.",
+        "siteTagline": "전 세계 여행을 발견하고 예약하세요"
     },
     "theme": {
         "contextError": "useTheme은 ThemeProvider 안에서 사용해야 합니다",
