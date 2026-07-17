@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/utils/env';
+import { getCached, setCache } from '@/lib/server/poi-cache';
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -8,6 +9,16 @@ export async function GET(req: NextRequest) {
 
     if (!googleKey) {
         return NextResponse.json({ error: 'Google API key not configured' }, { status: 500 });
+    }
+
+    const cityKey = `gplaces|${city.toLowerCase().trim()}`;
+
+    const cached = await getCached(cityKey);
+    if (cached) {
+        try {
+            const parsed = typeof cached === 'string' ? JSON.parse(cached) : cached;
+            return NextResponse.json(parsed);
+        } catch { /* fall through */ }
     }
 
     try {
@@ -39,7 +50,10 @@ export async function GET(req: NextRequest) {
             )
         );
 
-        return NextResponse.json({ lat, lng, places: results.flat() });
+        const payload = { lat, lng, places: results.flat() };
+        await setCache(cityKey, JSON.stringify(payload));
+
+        return NextResponse.json(payload);
     } catch (error) {
         console.error('[places] Error:', error);
         return NextResponse.json({ error: 'Failed to fetch nearby places' }, { status: 500 });

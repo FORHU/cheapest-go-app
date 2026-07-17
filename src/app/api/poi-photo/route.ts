@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
 
     const roundedLat = parseFloat(lat).toFixed(4);
     const roundedLng = parseFloat(lng).toFixed(4);
-    const cacheKey = `${name}|${roundedLat}|${roundedLng}|v11`;
+    const cacheKey = placeId ? `poi|${placeId}` : `${name}|${roundedLat}|${roundedLng}|v11`;
 
     // Serve from cache
     const cached = await getCached(cacheKey);
@@ -189,6 +189,12 @@ async function buildMetadata(
             nameEn: googleResult.name,
             source: googlePhotoOk ? 'google' : 'none',
         });
+
+        // If this was a Mapbox POI (no placeId passed in) but Google resolved one via search,
+        // also write a poi|{place_id} cache entry so future lookups skip the search entirely.
+        if (!placeId && googleResult.place_id) {
+            await setCache(`poi|${googleResult.place_id}`, JSON.stringify(meta));
+        }
     }
 
     // Default opening hours for always-open venue types

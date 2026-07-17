@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { env } from '@/utils/env';
 import { rateLimit } from '@/lib/server/rate-limit';
+import { getCached, setCache } from '@/lib/server/poi-cache';
 
 /**
  * Google Places Discovery API — finds nearby POIs by type.
@@ -41,6 +42,21 @@ export async function GET(req: NextRequest) {
 
     if (!lat || !lng) {
         return NextResponse.json({ features: [], error: 'Missing lat/lng' }, { status: 400 });
+    }
+
+    // Round to 2dp (~1km grid cell) so nearby map pans share the same cache entry
+    const latKey = parseFloat(lat).toFixed(2);
+    const lngKey = parseFloat(lng).toFixed(2);
+    const cacheKey = `discover|${latKey}|${lngKey}|${category}|${radius}`;
+
+    const cached = await getCached(cacheKey);
+    if (cached) {
+        try {
+            const parsed = typeof cached === 'string' ? JSON.parse(cached) : cached;
+            return NextResponse.json(parsed, {
+                headers: { 'X-Cache': 'HIT' },
+            });
+        } catch { /* fall through to live fetch */ }
     }
 
     try {
@@ -95,7 +111,12 @@ export async function GET(req: NextRequest) {
             })
             .slice(0, 25);
 
-        return NextResponse.json({ features });
+        const payload = { features };
+        await setCache(cacheKey, JSON.stringify(payload));
+
+        return NextResponse.json(payload, {
+            headers: { 'X-Cache': 'MISS' },
+        });
     } catch (err) {
         console.error('[places/discover] Error:', err);
         return NextResponse.json({ features: [], error: 'Discovery failed' }, { status: 200 });
