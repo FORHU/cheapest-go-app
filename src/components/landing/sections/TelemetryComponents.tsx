@@ -12,14 +12,14 @@ export const StatusBadge = () => (
     </div>
 );
 
-export const VersionBadge = () => (
+export const VersionBadge = ({ label = 'Smart Price Tracking' }: { label?: string }) => (
     <motion.div
         initial={false}
         animate={{ opacity: 1, y: 0 }}
         className="mb-6 inline-flex items-center gap-2 px-3 py-1 rounded-full border dark:border-obsidian-accent/20 border-alabaster-accent/20 dark:bg-obsidian-accent/5 bg-alabaster-accent/5 shadow-sm"
     >
         <Activity className="w-3 h-3 dark:text-obsidian-accent text-alabaster-accent" />
-        <span className="text-xs font-display font-semibold dark:text-obsidian-accent text-alabaster-accent tracking-widest uppercase">Smart Price Tracking</span>
+        <span className="text-xs font-display font-semibold dark:text-obsidian-accent text-alabaster-accent tracking-widest uppercase">{label}</span>
     </motion.div>
 );
 
