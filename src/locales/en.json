@@ -1327,6 +1327,7 @@
                 "flights": "Flights",
                 "stays": "Stays"
             },
+            "searchAirport": "Search airport...",
             "searching": "Searching...",
             "selectDate": "Select date",
             "submit": "Search",
@@ -1630,7 +1631,9 @@
             "q3": "Is CheapestGo free to use?",
             "q4": "What currencies does CheapestGo support?"
         },
-        "orgDescription": "CheapestGo is a modern travel booking platform helping travelers find the cheapest flights and hotels worldwide."
+        "orgDescription": "CheapestGo is a modern travel booking platform helping travelers find the cheapest flights and hotels worldwide.",
+        "siteDescription": "Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with {brand} - your modern travel OS.",
+        "siteTagline": "Discover and Book Your Next Global Journey"
     },
     "theme": {
         "contextError": "useTheme must be used within a ThemeProvider",

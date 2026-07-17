@@ -4,6 +4,7 @@ import React from 'react';
 import { AirportAutocomplete } from '@/components/inputs/AirportAutocomplete';
 import { Destination } from '@/stores/searchStore';
 import type { Airport } from '@/lib/airports';
+import { useTranslations } from 'next-intl';
 
 interface FlightLocationPickerProps {
     value: Destination | null;
@@ -45,11 +46,13 @@ export const FlightLocationPicker: React.FC<FlightLocationPickerProps> = ({
     value,
     onChange,
     label,
-    placeholder = "Search airport...",
+    placeholder,
     isOpen,
     onToggle,
     excludeId,
 }) => {
+    const t = useTranslations('landing.search');
+    const resolvedPlaceholder = placeholder ?? t('searchAirport');
     const airportValue = React.useMemo(() => {
         return destinationToAirport(value);
     }, [value]);
@@ -68,7 +71,7 @@ export const FlightLocationPicker: React.FC<FlightLocationPickerProps> = ({
             value={airportValue}
             onChange={handleAirportChange}
             label={label}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             isOpen={isOpen}
             onToggle={onToggle}
             excludeIata={excludeId}

@@ -114,7 +114,7 @@ export const FlightTravelersPicker: React.FC<FlightTravelersPickerProps> = ({
                         {t('travelers')}
                     </label>
                     <div className="text-ui-value truncate pr-6">
-                        {totalPassengers} {totalPassengers === 1 ? 'Guest' : 'Guests'}
+                        {totalPassengers === 1 ? t('guest', { count: 1 }) : t('guestPlural', { count: totalPassengers })}
                         <span className="text-slate-400 font-normal mx-1">•</span>
                         <span className="text-fluid-3xs font-medium capitalize text-slate-500 dark:text-slate-400">
                             {cabinClass.replace('_', ' ')}

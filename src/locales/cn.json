@@ -85,10 +85,10 @@
             "getEmails": "订阅邮件",
             "greeting": "您好, {name}",
             "membershipTier": "蓝色",
-            "partnerInfo": "您的账户可在 CheapestGo 及所有合作网站使用",
+            "partnerInfo": "您的账户可在 {brand} 及所有合作网站使用",
             "pointsAmount": "₱ 0.00",
             "pointsValue": "积分价值",
-            "promoSubtitle": "接收 CheapestGo 的优惠、小贴士和见解",
+            "promoSubtitle": "接收 {brand} 的优惠、小贴士和见解",
             "promoTitle": "获取旅行灵感和优惠",
             "signOut": "退出登录",
             "viewRewardsActivity": "查看奖励活动"
@@ -124,7 +124,7 @@
             "privacyLink": "隐私政策",
             "terms": "登录即表示您同意我们的{terms}和{privacy}。",
             "termsLink": "服务条款",
-            "title": "登录 CheapestGo"
+            "title": "登录 {brand}"
         }
     },
     "checkout": {
@@ -293,12 +293,17 @@
             "youSave": "使用此优惠节省{amount}",
             "yourRoom": "您的房间"
         },
-        "title": "结算 | CheapestGo",
+        "title": "结算 | {brand}",
         "userDetails": {
+            "age": "年龄 *",
+            "agePlaceholder": "0–17",
+            "childN": "儿童 {n}",
             "email": "邮箱 *",
             "emailPlaceholder": "邮箱",
             "firstName": "名字 *",
             "firstNamePlaceholder": "名字",
+            "guest1": "房客 1（本人）",
+            "guestN": "房客 {n}",
             "lastName": "姓氏 *",
             "lastNamePlaceholder": "姓氏",
             "no": "否",
@@ -790,7 +795,7 @@
         "cookies": "Cookie 政策",
         "cookiesMinimal": "Cookie 设置",
         "copyright": "© 2026 JTP Partners. 保留所有权利。",
-        "copyrightMinimal": "CheapestGo © 2026",
+        "copyrightMinimal": "{brand} © 2026",
         "enterprise": "企业服务",
         "flights": "航班",
         "flightsApi": "航班 API",
@@ -980,8 +985,8 @@
             "veryGood": "非常好"
         },
         "searchPage": {
-            "description": "在全球范围内查找并预订最便宜的酒店、公寓和特色住宿。在 CheapestGo 比较价格，发现理想住处。",
-            "title": "搜索酒店与住宿 | CheapestGo"
+            "description": "在全球范围内查找并预订最便宜的酒店、公寓和特色住宿。在 {brand} 比较价格，发现理想住处。",
+            "title": "搜索酒店与住宿 | {brand}"
         },
         "searchResults": {
             "allProperties": "所有住宿",
@@ -1008,6 +1013,7 @@
             "noHotelsAvailableIn": "{destination} 暂无可订酒店",
             "noHotelsFound": "未找到酒店",
             "noHotelsFoundIn": "未找到 {destination} 的酒店",
+            "noPlacesFound": "该地区没有找到地点",
             "noPropertiesFound": "未找到住宿",
             "pricesMayChange": "价格可能会根据可订情况变化。",
             "propertiesFound": "找到 {count} 个住宿",
@@ -1038,6 +1044,7 @@
             "monoSubtext": "随意提问，一键预订。",
             "subtitle": "现代旅客的出行操作系统。",
             "title": "全网最低价机票",
+            "smartPriceTracking": "智能价格追踪",
             "titleLine1": "精准旅行。",
             "titleLine2": "为您精雕细琢。"
         },
@@ -1163,6 +1170,7 @@
                 "flights": "航班",
                 "stays": "住宿"
             },
+            "searchAirport": "搜索机场...",
             "searching": "搜索中...",
             "selectDate": "选择日期",
             "submit": "搜索",
@@ -1190,7 +1198,7 @@
     "nav": {
         "account": "账户",
         "accountSettings": "账户设置",
-        "accountWorks": "您的账户可在CheapestGo及所有合作站点使用",
+        "accountWorks": "您的账户可在{brand}及所有合作站点使用",
         "createAccount": "创建账户",
         "home": "首页",
         "membersSave": "会员可省夐10%或更多",
@@ -1249,7 +1257,7 @@
             "body": "添加到主屏幕，访问更快捷。",
             "dismiss": "暂不",
             "install": "安装",
-            "title": "获取 CheapestGo 应用"
+            "title": "获取 {brand} 应用"
         }
     },
     "search": {
@@ -1267,16 +1275,18 @@
     },
     "seo": {
         "faq": {
-            "a1": "CheapestGo 搜索多家航空公司和全球分销系统，实时找出最低票价，让您在一个地方比较和预订。",
-            "a2": "可以。CheapestGo 支持预订机票、酒店、公寓和特色住宿，全部在一个平台完成。",
-            "a3": "是的，在 CheapestGo 上搜索和比较价格完全免费，只有在预订时才需要付款。",
-            "a4": "CheapestGo 支持多种货币，并根据您的偏好自动换算价格，让您随时以本地货币查看费用。",
-            "q1": "CheapestGo 如何找到便宜机票？",
-            "q2": "我可以在 CheapestGo 上同时预订机票和酒店吗？",
-            "q3": "CheapestGo 免费使用吗？",
-            "q4": "CheapestGo 支持哪些货币？"
+            "a1": "{brand} 搜索多家航空公司和全球分销系统，实时找出最低票价，让您在一个地方比较和预订。",
+            "a2": "可以。{brand} 支持预订机票、酒店、公寓和特色住宿，全部在一个平台完成。",
+            "a3": "是的，在 {brand} 上搜索和比较价格完全免费，只有在预订时才需要付款。",
+            "a4": "{brand} 支持多种货币，并根据您的偏好自动换算价格，让您随时以本地货币查看费用。",
+            "q1": "{brand} 如何找到便宜机票？",
+            "q2": "我可以在 {brand} 上同时预订机票和酒店吗？",
+            "q3": "{brand} 免费使用吗？",
+            "q4": "{brand} 支持哪些货币？"
         },
-        "orgDescription": "CheapestGo 是一个现代旅行预订平台，帮助旅行者在全球范围内找到最便宜的机票和酒店。"
+        "orgDescription": "{brand} 是一个现代旅行预订平台，帮助旅行者在全球范围内找到最便宜的机票和酒店。",
+        "siteDescription": "在全球范围内发现最优惠的旅行套餐。与 {brand} 一起轻松规划航班和酒店，节省开支，开启环球之旅。",
+        "siteTagline": "发现并预订您的环球之旅"
     },
     "theme": {
         "contextError": "useTheme 必须在 ThemeProvider 内使用",

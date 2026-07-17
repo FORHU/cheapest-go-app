@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata, Viewport } from 'next';
 import { Inter, Inter_Tight, JetBrains_Mono } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages, getLocale } from 'next-intl/server';
+import { getMessages, getLocale, getTranslations } from 'next-intl/server';
 import Script from 'next/script';
 import './globals.css';
 import { ThemeProvider } from '@/components/context/ThemeContext';
@@ -26,55 +26,60 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mon
 const SITE_URL = env.SITE_URL;
 const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 const BRAND_FAVICON = process.env.NEXT_PUBLIC_BRAND_FAVICON ?? '/Fav_Icon_Light.png';
-const BRAND_TITLE = `${BRAND_NAME} | Discover and Book Your Next Global Journey`;
-const BRAND_DESCRIPTION = `Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with ${BRAND_NAME} - your modern travel OS.`;
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
 };
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: BRAND_TITLE,
-  description: BRAND_DESCRIPTION,
-  icons: {
-    icon: BRAND_FAVICON,
-    apple: BRAND_FAVICON,
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: BRAND_NAME,
-  },
-  openGraph: {
-    title: BRAND_TITLE,
-    description: BRAND_DESCRIPTION,
-    url: SITE_URL,
-    siteName: BRAND_NAME,
-    images: [
-      {
-        url: `${SITE_URL}/Web_Logo_Light.png`,
-        width: 1200,
-        height: 630,
-        alt: `${BRAND_NAME} - Ultimate Travel Booking Platform`,
-      },
-    ],
-    locale: 'en_US',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: BRAND_TITLE,
-    description: BRAND_DESCRIPTION,
-    images: [`${SITE_URL}/Web_Logo_Light.png`],
-  },
-  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && {
-    verification: {
-      google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('seo');
+  const tagline = t('siteTagline');
+  const description = t('siteDescription', { brand: BRAND_NAME });
+  const title = `${BRAND_NAME} | ${tagline}`;
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title,
+    description,
+    icons: {
+      icon: BRAND_FAVICON,
+      apple: BRAND_FAVICON,
     },
-  }),
-};
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'black-translucent',
+      title: BRAND_NAME,
+    },
+    openGraph: {
+      title,
+      description,
+      url: SITE_URL,
+      siteName: BRAND_NAME,
+      images: [
+        {
+          url: `${SITE_URL}/Web_Logo_Light.png`,
+          width: 1200,
+          height: 630,
+          alt: `${BRAND_NAME} - Ultimate Travel Booking Platform`,
+        },
+      ],
+      locale: 'en_US',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [`${SITE_URL}/Web_Logo_Light.png`],
+    },
+    ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && {
+      verification: {
+        google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+      },
+    }),
+  };
+}
 
 export default async function RootLayout({
   children,
