@@ -413,7 +413,12 @@
             "phonePlaceholder": "Number",
             "title": "Your details",
             "travelingForWork": "Traveling for work?",
-            "yes": "Yes"
+            "yes": "Yes",
+            "guest1": "GUEST 1 (YOU)",
+            "guestN": "GUEST {n}",
+            "childN": "CHILD {n}",
+            "age": "Age *",
+            "agePlaceholder": "0–17"
         },
         "validation": {
             "bookingFailed": "Booking confirmation failed: {message}. Your payment will be automatically refunded.",
@@ -1140,6 +1145,7 @@
             "noHotelsAvailableIn": "No hotels available in {destination}",
             "noHotelsFound": "No hotels found",
             "noHotelsFoundIn": "No hotels found in {destination}",
+            "noPlacesFound": "No places found in this area",
             "noPropertiesFound": "No properties found",
             "pricesMayChange": "Prices may change based on availability.",
             "propertiesFound": "{count} properties found",

@@ -48,7 +48,7 @@ export function UserDetailsForm({
 
             {/* Guest 1 — primary contact */}
             {adults > 1 && (
-                <p className="text-[10px] lg:text-xs font-bold uppercase text-blue-600 mb-1.5 lg:mb-2">Guest 1 (You)</p>
+                <p className="text-[10px] lg:text-xs font-bold uppercase text-blue-600 mb-1.5 lg:mb-2">{t('userDetails.guest1')}</p>
             )}
             <div className="grid grid-cols-2 gap-2.5 lg:gap-4">
                 <div>
@@ -147,27 +147,27 @@ export function UserDetailsForm({
                 const guest = additionalGuests[i] ?? { firstName: '', lastName: '' };
                 return (
                     <div key={i} className="mt-3 lg:mt-5 pt-3 lg:pt-5 border-t border-slate-100 dark:border-white/5">
-                        <p className="text-[10px] lg:text-xs font-bold uppercase text-blue-600 mb-1.5 lg:mb-2">Guest {i + 2}</p>
+                        <p className="text-[10px] lg:text-xs font-bold uppercase text-blue-600 mb-1.5 lg:mb-2">{t('userDetails.guestN', { n: i + 2 })}</p>
                         <div className="grid grid-cols-2 gap-2.5 lg:gap-4">
                             <div>
-                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">First Name *</label>
+                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">{t('userDetails.firstName')}</label>
                                 <input
                                     value={guest.firstName}
                                     onChange={e => onGuestChange?.(i, 'firstName', e.target.value)}
                                     type="text"
                                     className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`guest_${i}_firstName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
-                                    placeholder="First name"
+                                    placeholder={t('userDetails.firstNamePlaceholder')}
                                 />
                                 <FieldError message={errors[`guest_${i}_firstName`]} />
                             </div>
                             <div>
-                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">Last Name *</label>
+                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">{t('userDetails.lastName')}</label>
                                 <input
                                     value={guest.lastName}
                                     onChange={e => onGuestChange?.(i, 'lastName', e.target.value)}
                                     type="text"
                                     className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`guest_${i}_lastName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
-                                    placeholder="Last name"
+                                    placeholder={t('userDetails.lastNamePlaceholder')}
                                 />
                                 <FieldError message={errors[`guest_${i}_lastName`]} />
                             </div>
@@ -181,32 +181,32 @@ export function UserDetailsForm({
                 const child = childGuests[i] ?? { firstName: '', lastName: '', age: '' };
                 return (
                     <div key={`child-${i}`} className="mt-3 lg:mt-5 pt-3 lg:pt-5 border-t border-slate-100 dark:border-white/5">
-                        <p className="text-[10px] lg:text-xs font-bold uppercase text-amber-600 mb-1.5 lg:mb-2">Child {i + 1}</p>
+                        <p className="text-[10px] lg:text-xs font-bold uppercase text-amber-600 mb-1.5 lg:mb-2">{t('userDetails.childN', { n: i + 1 })}</p>
                         <div className="grid grid-cols-2 gap-2.5 lg:gap-4">
                             <div>
-                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">First Name *</label>
+                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">{t('userDetails.firstName')}</label>
                                 <input
                                     value={child.firstName}
                                     onChange={e => onChildChange?.(i, 'firstName', e.target.value)}
                                     type="text"
                                     className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`child_${i}_firstName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
-                                    placeholder="First name"
+                                    placeholder={t('userDetails.firstNamePlaceholder')}
                                 />
                                 <FieldError message={errors[`child_${i}_firstName`]} />
                             </div>
                             <div>
-                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">Last Name *</label>
+                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">{t('userDetails.lastName')}</label>
                                 <input
                                     value={child.lastName}
                                     onChange={e => onChildChange?.(i, 'lastName', e.target.value)}
                                     type="text"
                                     className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`child_${i}_lastName`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
-                                    placeholder="Last name"
+                                    placeholder={t('userDetails.lastNamePlaceholder')}
                                 />
                                 <FieldError message={errors[`child_${i}_lastName`]} />
                             </div>
                             <div>
-                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">Age *</label>
+                                <label className="block text-[9px] lg:text-xs font-bold uppercase text-slate-500 mb-0.5 lg:mb-1">{t('userDetails.age')}</label>
                                 <input
                                     value={child.age}
                                     onChange={e => onChildChange?.(i, 'age', e.target.value)}
@@ -214,7 +214,7 @@ export function UserDetailsForm({
                                     min="0"
                                     max="17"
                                     className={`w-full min-w-0 px-2 py-1.5 lg:p-3 text-[11px] lg:text-sm rounded lg:rounded-lg border bg-slate-50 dark:bg-white/5 outline-none focus:border-blue-500 ${errors[`child_${i}_age`] ? 'border-red-400' : 'border-slate-200 dark:border-white/10'}`}
-                                    placeholder="0–17"
+                                    placeholder={t('userDetails.agePlaceholder')}
                                 />
                                 <FieldError message={errors[`child_${i}_age`]} />
                             </div>

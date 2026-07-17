@@ -7,9 +7,10 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata() {
     const t = await getTranslations('hotels.searchPage');
+    const brandName = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
     return {
-        title: t('title'),
-        description: t('description'),
+        title: t('title', { brand: brandName }),
+        description: t('description', { brand: brandName }),
         robots: { index: false, follow: false },
         alternates: { canonical: '/search' },
     };

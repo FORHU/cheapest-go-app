@@ -12,6 +12,8 @@ import RegisterStep from './RegisterStep';
 import VerifyEmailStep from './VerifyEmailStep';
 import ForgotPasswordStep from './ForgotPasswordStep';
 
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+
 const AuthModal: React.FC = () => {
     const t = useTranslations('nav');
     const ta = useTranslations('auth');
@@ -115,7 +117,7 @@ const AuthModal: React.FC = () => {
                         {/* Partner Logos Footer */}
                         <div className="border-t border-slate-100 dark:border-white/5 py-3 px-6 shrink-0">
                             <p className="text-xs text-center text-slate-400 dark:text-slate-500">
-                                {t('accountWorks')}
+                                {t('accountWorks', { brand: BRAND_NAME })}
                             </p>
                         </div>
                     </motion.div>

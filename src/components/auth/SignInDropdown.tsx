@@ -27,6 +27,8 @@ interface SignInDropdownProps {
     onToggleOpen?: (open: boolean) => void;
 }
 
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+
 const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', collapsible = false, onNavigate, onToggleOpen }) => {
     const { user, logout } = useAuthStore();
     const t = useTranslations('nav');
@@ -247,7 +249,7 @@ const SignInDropdown: React.FC<SignInDropdownProps> = ({ variant = 'dropdown', c
                             {/* Info */}
                             <div className="border-t border-slate-100 dark:border-white/5 p-4">
                                 <p className="text-[clamp(0.6875rem,1.25vw,0.75rem)] text-slate-500 dark:text-slate-400 text-center">
-                                    {t('accountWorks')}
+                                    {t('accountWorks', { brand: BRAND_NAME })}
                                 </p>
                             </div>
                         </motion.div>

@@ -45,6 +45,8 @@ const LOCALES = ['en', 'ko', 'cn', 'ja'] as const;
 type Locale = (typeof LOCALES)[number];
 
 const LOCALE_COOKIE = 'locale';
+const LOCKED_LOCALE = process.env.NEXT_PUBLIC_LOCALE;
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 
 function getLocaleCookie(): Locale | undefined {
   if (typeof document === 'undefined') return undefined;
@@ -99,7 +101,9 @@ const HeaderContent = () => {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
             <h1 className="text-base sm:text-lg md:text-xl text-slate-900 dark:text-white font-display font-bold tracking-tight truncate max-w-[120px] sm:max-w-none">
-              Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span>
+              {BRAND_NAME === 'CheapestGo'
+                ? <>Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
+                : BRAND_NAME}
             </h1>
           </Link>
 
@@ -111,7 +115,8 @@ const HeaderContent = () => {
               <span className="hidden sm:inline">{t('openApp')}</span>
             </button>
 
-            {/* Language selector */}
+            {/* Language selector — hidden when locale is locked via NEXT_PUBLIC_LOCALE */}
+            {!LOCKED_LOCALE && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -140,9 +145,10 @@ const HeaderContent = () => {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
 
-            {/* Currency selector */}
-            <CurrencySelector variant="header" className="shrink-0" />
+            {/* Currency selector — hidden when locale is locked (brand has a fixed currency) */}
+            {!LOCKED_LOCALE && <CurrencySelector variant="header" className="shrink-0" />}
 
             {/* Trips */}
             <Link href="/trips" className="flex items-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-normal text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors shrink-0">
