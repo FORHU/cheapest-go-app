@@ -239,7 +239,7 @@ async function handleMystifly(ctx: {
         INSERT INTO flight_bookings (
             user_id, session_id, provider, pnr, status,
             payment_intent_id, confirmed_price, confirmed_currency,
-            raw_provider_response
+            raw_provider_response, source_brand
         ) VALUES (
             ${session.user_id},
             ${sessionId},
@@ -249,7 +249,8 @@ async function handleMystifly(ctx: {
             ${paymentIntentId || null},
             ${confirmedPrice},
             ${confirmedCurrency},
-            ${JSON.stringify(bookData)}
+            ${JSON.stringify(bookData)},
+            ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'}
         )
         RETURNING id
     `;
@@ -331,7 +332,7 @@ async function handleDuffel(ctx: {
             payment_intent_id, confirmed_price, confirmed_currency,
             charged_price, supplier_cost,
             duffel_order_id, ticket_numbers,
-            fare_policy, trip_type
+            fare_policy, trip_type, source_brand
         ) VALUES (
             ${session.user_id},
             ${sessionId},
@@ -348,7 +349,8 @@ async function handleDuffel(ctx: {
             ${preOrderId},
             ${JSON.stringify(preOrderTickets)},
             ${farePolicy ? sql.json(farePolicy) : null},
-            ${tripType}
+            ${tripType},
+            ${process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'}
         )
         RETURNING id
     `;

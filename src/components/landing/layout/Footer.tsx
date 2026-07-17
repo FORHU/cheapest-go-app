@@ -5,6 +5,9 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { PlaneTakeoff } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_EMAIL = process.env.NEXT_PUBLIC_BRAND_EMAIL ?? 'support@cheapestgo.com';
+
 const StandardFooter = () => {
   const t = useTranslations('footer');
   return (
@@ -15,7 +18,7 @@ const StandardFooter = () => {
             <div className="p-1.5 bg-slate-100 dark:bg-white/5 rounded-lg lg:bg-transparent lg:p-0">
               <PlaneTakeoff className="w-4 h-4 lg:w-6 lg:h-6 text-indigo-500 lg:text-slate-400" />
             </div>
-            <span className="text-slate-900 dark:text-white font-display font-bold text-[15px] lg:text-xl tracking-tight">CheapestGo</span>
+            <span className="text-slate-900 dark:text-white font-display font-bold text-[15px] lg:text-xl tracking-tight">{BRAND_NAME}</span>
           </div>
           <p className="text-slate-500 dark:text-slate-400 text-[10px] lg:text-sm max-w-xs leading-relaxed opacity-80 lg:opacity-100">
             {t('tagline')} <br className="hidden lg:block" />{t('taglinePrecision')}
@@ -57,7 +60,7 @@ const StandardFooter = () => {
               <a href="/terms-of-service" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('terms')}</a>
               <a href="/privacy-policy" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('privacy')}</a>
               <a href="/cookie-policy" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('cookies')}</a>
-              <a href="mailto:support@cheapestgo.com" className="text-slate-500 hover:text-indigo-500 transition-colors">{t('contact')}</a>
+              <a href={`mailto:${BRAND_EMAIL}`} className="text-slate-500 hover:text-indigo-500 transition-colors">{t('contact')}</a>
             </div>
           </div>
         </div>
@@ -77,14 +80,14 @@ const MinimalFooter = () => {
     <footer className="w-full border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
       <div className="max-w-[1400px] mx-auto px-5 lg:px-6 h-auto py-2.5 lg:h-12 lg:py-0 landscape:py-2 flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-0 text-[11px] lg:text-xs text-slate-500 dark:text-slate-400">
                         <div className="flex items-center gap-6">
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">&copy; 2026 CheapestGo. {t('allRightsReserved')}</span>
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">&copy; 2026 {BRAND_NAME}. {t('allRightsReserved')}</span>
                         </div>
 
         <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-[9px] lg:text-xs lg:gap-6">
           <a href="/terms-of-service" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">{t('termsMinimal')}</a>
           <a href="/privacy-policy" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">{t('privacyMinimal')}</a>
           <a href="/cookie-policy" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">{t('cookiesMinimal')}</a>
-          <a href="mailto:support@cheapestgo.com" className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">{t('contactMinimal')}</a>
+          <a href={`mailto:${BRAND_EMAIL}`} className="hover:text-slate-900 dark:hover:text-slate-200 transition-colors underline-offset-2 hover:underline">{t('contactMinimal')}</a>
         </div>
 
         <button className="flex items-center gap-1.5 px-3 py-1 text-[10px] lg:text-xs font-medium border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">

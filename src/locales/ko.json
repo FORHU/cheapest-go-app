@@ -85,10 +85,10 @@
             "getEmails": "이메일 받기",
             "greeting": "안녕하세요, {name}",
             "membershipTier": "블루",
-            "partnerInfo": "계정은 CheapestGo 및 모든 파트너 사이트에서 사용 가능합니다",
+            "partnerInfo": "계정은 {brand} 및 모든 파트너 사이트에서 사용 가능합니다",
             "pointsAmount": "₱ 0.00",
             "pointsValue": "포인트 가치",
-            "promoSubtitle": "CheapestGo의 특가, 팁, 인사이트를 받아보세요",
+            "promoSubtitle": "{brand}의 특가, 팁, 인사이트를 받아보세요",
             "promoTitle": "여행 영감과 혜택 받기",
             "signOut": "로그아웃",
             "viewRewardsActivity": "리워드 활동 보기"
@@ -124,7 +124,7 @@
             "privacyLink": "개인정보처리방침",
             "terms": "로그인 시 {terms} 및 {privacy}에 동의하게 됩니다.",
             "termsLink": "이용약관",
-            "title": "CheapestGo 로그인"
+            "title": "{brand} 로그인"
         }
     },
     "checkout": {
@@ -293,7 +293,7 @@
             "youSave": "이 프로모션으로 {amount} 절약",
             "yourRoom": "객실"
         },
-        "title": "결제 | CheapestGo",
+        "title": "결제 | {brand}",
         "userDetails": {
             "email": "이메일 *",
             "emailPlaceholder": "이메일",
@@ -306,7 +306,12 @@
             "phonePlaceholder": "번호",
             "title": "내 정보",
             "travelingForWork": "출장인가요?",
-            "yes": "예"
+            "yes": "예",
+            "guest1": "게스트 1 (본인)",
+            "guestN": "게스트 {n}",
+            "childN": "아동 {n}",
+            "age": "나이 *",
+            "agePlaceholder": "0–17"
         },
         "validation": {
             "bookingFailed": "예약 확인 실패: {message}. 결제가 자동으로 환불됩니다.",
@@ -789,7 +794,7 @@
         "cookies": "쿠키",
         "cookiesMinimal": "쿠키 설정",
         "copyright": "© 2026 JTP Partners. All rights reserved.",
-        "copyrightMinimal": "CheapestGo © 2026",
+        "copyrightMinimal": "{brand} © 2026",
         "enterprise": "기업 제휴",
         "flights": "항공편",
         "flightsApi": "항공편 API",
@@ -978,8 +983,8 @@
             "veryGood": "훌륭함"
         },
         "searchPage": {
-            "description": "전 세계 호텔, 아파트, 특별한 숙소를 최저가로 찾아 예약하세요. CheapestGo에서 가격을 비교하고 완벽한 숙소를 발견하세요.",
-            "title": "호텔 및 숙소 검색 | CheapestGo"
+            "description": "전 세계 호텔, 아파트, 특별한 숙소를 최저가로 찾아 예약하세요. {brand}에서 가격을 비교하고 완벽한 숙소를 발견하세요.",
+            "title": "호텔 및 숙소 검색 | {brand}"
         },
         "searchResults": {
             "allProperties": "전체 숙소",
@@ -1006,6 +1011,7 @@
             "noHotelsAvailableIn": "{destination}에 예약 가능한 호텔이 없습니다",
             "noHotelsFound": "호텔을 찾을 수 없습니다",
             "noHotelsFoundIn": "{destination}에서 호텔을 찾을 수 없습니다",
+            "noPlacesFound": "이 지역에 장소가 없습니다",
             "noPropertiesFound": "숙소를 찾을 수 없습니다",
             "pricesMayChange": "가격은 예약 가능 여부에 따라 변경될 수 있습니다.",
             "propertiesFound": "{count}개 숙소 찾음",
@@ -1188,7 +1194,7 @@
     "nav": {
         "account": "계정",
         "accountSettings": "계정 설정",
-        "accountWorks": "계정은 CheapestGo 및 모든 파트너 사이트에서 사용 가능합니다",
+        "accountWorks": "계정은 {brand} 및 모든 파트너 사이트에서 사용 가능합니다",
         "createAccount": "계정 만들기",
         "home": "홈",
         "membersSave": "회원은 10% 이상 절약",
@@ -1247,7 +1253,7 @@
             "body": "홈 화면에 추가하면 더 빠르게 이용할 수 있습니다.",
             "dismiss": "나중에",
             "install": "설치",
-            "title": "CheapestGo 앱 받기"
+            "title": "{brand} 앱 받기"
         }
     },
     "search": {
@@ -1264,16 +1270,16 @@
     },
     "seo": {
         "faq": {
-            "a1": "CheapestGo는 여러 항공사와 글로벌 유통 시스템을 검색해 실시간으로 최저가를 찾아 한 곳에서 비교하고 예약할 수 있게 합니다.",
-            "a2": "네. CheapestGo는 항공권, 호텔, 아파트, 독특한 숙소까지 하나의 플랫폼에서 예약할 수 있습니다.",
+            "a1": "{brand}는 여러 항공사와 글로벌 유통 시스템을 검색해 실시간으로 최저가를 찾아 한 곳에서 비교하고 예약할 수 있게 합니다.",
+            "a2": "네. {brand}는 항공권, 호텔, 아파트, 독특한 숙소까지 하나의 플랫폼에서 예약할 수 있습니다.",
             "a3": "네, 가격 검색과 비교는 완전히 무료입니다. 예약할 때만 비용이 발생합니다.",
-            "a4": "CheapestGo는 다양한 통화를 지원하며 설정에 따라 자동으로 가격을 변환해 현지 통화로 확인할 수 있습니다.",
-            "q1": "CheapestGo는 어떻게 저렴한 항공권을 찾나요?",
-            "q2": "CheapestGo에서 항공권과 호텔을 모두 예약할 수 있나요?",
-            "q3": "CheapestGo는 무료로 사용할 수 있나요?",
-            "q4": "CheapestGo는 어떤 통화를 지원하나요?"
+            "a4": "{brand}는 다양한 통화를 지원하며 설정에 따라 자동으로 가격을 변환해 현지 통화로 확인할 수 있습니다.",
+            "q1": "{brand}는 어떻게 저렴한 항공권을 찾나요?",
+            "q2": "{brand}에서 항공권과 호텔을 모두 예약할 수 있나요?",
+            "q3": "{brand}는 무료로 사용할 수 있나요?",
+            "q4": "{brand}는 어떤 통화를 지원하나요?"
         },
-        "orgDescription": "CheapestGo는 전 세계 최저가 항공권과 호텔을 찾는 현대적인 여행 예약 플랫폼입니다."
+        "orgDescription": "{brand}는 전 세계 최저가 항공권과 호텔을 찾는 현대적인 여행 예약 플랫폼입니다."
     },
     "theme": {
         "contextError": "useTheme은 ThemeProvider 안에서 사용해야 합니다",

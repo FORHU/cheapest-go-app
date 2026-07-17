@@ -24,6 +24,10 @@ const interTight = Inter_Tight({ subsets: ['latin'], variable: '--font-display' 
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'optional' });
 
 const SITE_URL = env.SITE_URL;
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_FAVICON = process.env.NEXT_PUBLIC_BRAND_FAVICON ?? '/Fav_Icon_Light.png';
+const BRAND_TITLE = `${BRAND_NAME} | Discover and Book Your Next Global Journey`;
+const BRAND_DESCRIPTION = `Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with ${BRAND_NAME} - your modern travel OS.`;
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -32,28 +36,28 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'CheapestGo | Discover and Book Your Next Global Journey',
-  description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
+  title: BRAND_TITLE,
+  description: BRAND_DESCRIPTION,
   icons: {
-    icon: '/Fav_Icon_Light.png',
-    apple: '/Fav_Icon_Light.png',
+    icon: BRAND_FAVICON,
+    apple: BRAND_FAVICON,
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'CheapestGo',
+    title: BRAND_NAME,
   },
   openGraph: {
-    title: 'CheapestGo | Discover and Book Your Next Global Journey',
-    description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
+    title: BRAND_TITLE,
+    description: BRAND_DESCRIPTION,
     url: SITE_URL,
-    siteName: 'CheapestGo',
+    siteName: BRAND_NAME,
     images: [
       {
         url: `${SITE_URL}/Web_Logo_Light.png`,
         width: 1200,
         height: 630,
-        alt: 'CheapestGo - Ultimate Travel Booking Platform',
+        alt: `${BRAND_NAME} - Ultimate Travel Booking Platform`,
       },
     ],
     locale: 'en_US',
@@ -61,8 +65,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CheapestGo | Discover and Book Your Next Global Journey',
-    description: 'Discover the best travel deals globally. Plan your flights and hotels easily, save money, and start exploring the world with CheapestGo - your modern travel OS.',
+    title: BRAND_TITLE,
+    description: BRAND_DESCRIPTION,
     images: [`${SITE_URL}/Web_Logo_Light.png`],
   },
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && {

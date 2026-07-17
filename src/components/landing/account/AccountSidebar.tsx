@@ -20,6 +20,8 @@ interface AccountSidebarProps {
     }>;
 }
 
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+
 export const AccountSidebar: React.FC<AccountSidebarProps> = ({
     user,
     activeSection,
@@ -71,7 +73,7 @@ export const AccountSidebar: React.FC<AccountSidebarProps> = ({
                     </div>
                     <div>
                         <p className="font-medium text-slate-900 dark:text-white text-sm">{t('sidebar.promoTitle')}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{t('sidebar.promoSubtitle')}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{t('sidebar.promoSubtitle', { brand: BRAND_NAME })}</p>
                     </div>
                 </div>
                 <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
@@ -105,7 +107,7 @@ export const AccountSidebar: React.FC<AccountSidebarProps> = ({
             {/* Partner Info */}
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-white/10">
                 <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
-                    {t('sidebar.partnerInfo')}
+                    {t('sidebar.partnerInfo', { brand: BRAND_NAME })}
                 </p>
             </div>
         </div>

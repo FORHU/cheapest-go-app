@@ -4,8 +4,11 @@ import { env } from "@/utils/env";
 // ─── Sending addresses ────────────────────────────────────────────────
 // Verified domain: mail.cheapestgo.com (Resend, ap-northeast-1)
 // Change these two constants if the sending domain ever changes.
-export const FROM_NOREPLY = 'CheapestGo <no-reply@mail.cheapestgo.com>';
-export const FROM_ALERTS  = 'CheapestGo Alerts <alerts@mail.cheapestgo.com>';
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+const BRAND_EMAIL = process.env.NEXT_PUBLIC_BRAND_EMAIL ?? 'no-reply@mail.cheapestgo.com';
+
+export const FROM_NOREPLY = `${BRAND_NAME} <${BRAND_EMAIL}>`;
+export const FROM_ALERTS  = `${BRAND_NAME} Alerts <${BRAND_EMAIL}>`;
 
 // ─── HTML Escaping (prevent XSS in email templates) ─────────────────
 
@@ -239,7 +242,7 @@ export async function sendBookingConfirmationEmail(
 
     <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
         <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-            This email was sent by CheapestGo<br>
+            This email was sent by ${BRAND_NAME}<br>
             &copy; ${new Date().getFullYear()} All rights reserved
         </p>
     </div>
@@ -425,7 +428,7 @@ export async function sendHotelCancellationEmail(
     <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">If you have any questions, please contact our support team.</p>
   </div>
   <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
   </div>
 </body>
 </html>`;
@@ -519,7 +522,7 @@ export async function sendHotelAmendmentEmail(
     </div>
   </div>
   <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
   </div>
 </body>
 </html>`;
@@ -725,7 +728,7 @@ export async function sendFlightBookingConfirmationEmail(
 
     <div style="background: #f9fafb; padding: 20px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
         <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-            This email was sent by CheapestGo<br>
+            This email was sent by ${BRAND_NAME}<br>
             &copy; ${new Date().getFullYear()} All rights reserved
         </p>
     </div>
@@ -870,7 +873,7 @@ export async function sendFlightAwaitingTicketEmail(
         </div>
     </div>
     <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
     </div>
 </body>
 </html>`;
@@ -989,7 +992,7 @@ export async function sendFlightRefundEmail(
         <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">We apologize for the inconvenience. You're welcome to search for alternative flights at any time.</p>
     </div>
     <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+        <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
     </div>
 </body>
 </html>`;
@@ -1135,7 +1138,7 @@ export async function sendFlightCancellationEmail(
     <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">If you have any questions about your cancellation or refund, please contact our support team.</p>
   </div>
   <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
   </div>
 </body>
 </html>`;
@@ -1246,10 +1249,10 @@ export async function sendFlightCancellationRefundEmail(
       </p>
     </div>
 
-    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing CheapestGo. We hope to serve you again soon.</p>
+    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing ${BRAND_NAME}. We hope to serve you again soon.</p>
   </div>
   <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
   </div>
 </body>
 </html>`;
@@ -1378,10 +1381,10 @@ export async function sendHotelRefundEmail(params: SendHotelRefundEmailParams): 
       </p>
     </div>
 
-    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing CheapestGo. We hope to see you again soon.</p>
+    <p style="margin:20px 0 0 0;color:#6b7280;font-size:14px;">Thank you for choosing ${BRAND_NAME}. We hope to see you again soon.</p>
   </div>
   <div style="background:#f9fafb;padding:20px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;text-align:center;">
-    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by CheapestGo<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
+    <p style="margin:0;color:#9ca3af;font-size:12px;">This email was sent by ${BRAND_NAME}<br>&copy; ${new Date().getFullYear()} All rights reserved</p>
   </div>
 </body>
 </html>`;
@@ -1463,7 +1466,7 @@ export async function sendPriceAlertConfirmationEmail(params: PriceAlertConfirma
   </div>
 </div>
 <div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">
-  &copy; ${new Date().getFullYear()} CheapestGo. All rights reserved.
+  &copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.
 </div>
 </body></html>`;
 

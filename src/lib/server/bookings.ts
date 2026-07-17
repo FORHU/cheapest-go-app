@@ -296,6 +296,7 @@ export async function confirmAndSaveTgxBooking(
     voucher_code: params.voucherCode ?? null,
     discount_amount: params.discountAmount ?? 0,
     policy_type: policyType,
+    source_brand: process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo',
   };
 
   try {

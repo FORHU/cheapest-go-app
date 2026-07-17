@@ -7,8 +7,9 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
     const t = await getTranslations('checkout');
+    const brandName = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
     return {
-        title: t('title'),
+        title: t('title', { brand: brandName }),
         robots: { index: false, follow: false },
     };
 }
