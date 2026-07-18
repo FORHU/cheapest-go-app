@@ -2,6 +2,7 @@ import { createAdminClient } from '@/utils/postgres/admin';
 import { getStripe } from '@/lib/stripe/server';
 import { env } from '@/utils/env';
 import type { ProviderIntegrationsData, DuffelAirline, TravelgateXHotelBooking, TravelgateXApiLog } from '@/types/admin';
+import { applyBrandFilter } from './brand-filter';
 
 // ── Stripe ──────────────────────────────────────────────
 
@@ -372,8 +373,8 @@ async function fetchMystiflyData(): Promise<ProviderIntegrationsData['mystifly']
     try {
         const supabase = createAdminClient();
         const [unifiedCount, legacyCount] = await Promise.all([
-            supabase.from('unified_bookings').select('*', { count: 'exact', head: true }).eq('provider', 'mystifly'),
-            supabase.from('flight_bookings').select('*', { count: 'exact', head: true }).eq('provider', 'mystifly'),
+            applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact', head: true })).eq('provider', 'mystifly'),
+            applyBrandFilter(supabase.from('flight_bookings').select('*', { count: 'exact', head: true })).eq('provider', 'mystifly'),
         ]);
 
         return {
@@ -458,9 +459,7 @@ async function fetchTravelgateXData(): Promise<ProviderIntegrationsData['travelg
 
         // Run Supabase queries and TGX health check concurrently
         const [bookingsRes, apiLogsRes, healthResult] = await Promise.all([
-            supabase
-                .from('unified_bookings')
-                .select('*', { count: 'exact' })
+            applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact' }))
                 .eq('type', 'hotel')
                 .in('provider', ['OTV', 'travelgatex', 'travelgate'])
                 .order('created_at', { ascending: false })
