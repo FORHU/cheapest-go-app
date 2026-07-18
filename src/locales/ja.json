@@ -127,6 +127,30 @@
             "title": "{brand} にログイン"
         }
     },
+    "bookingDestination": {
+        "confirmed": "予約完了",
+        "emailed": "確認メールを送信しました",
+        "myTrips": "マイトリップ",
+        "noBooking": "表示できる予約がありません。マイトリップに移動します…",
+        "goToTrips": "マイトリップへ",
+        "clocks": {
+            "ariaTrigger": "目的地の現地時間",
+            "title": "現地時間",
+            "home": "出発地",
+            "destination": "目的地",
+            "diffSame": "出発地と同じ時刻",
+            "diffAhead": "出発地より{hours, plural, other {#時間}}進んでいます",
+            "diffBehind": "出発地より{hours, plural, other {#時間}}遅れています"
+        },
+        "currency": {
+            "ariaLabel": "通貨コンバーター",
+            "title": "通貨コンバーター",
+            "swap": "通貨を入れ替える",
+            "liveRates": "リアルタイムレート",
+            "updating": "更新中…",
+            "rate": "1 {from} = {rate} {to}"
+        }
+    },
     "checkout": {
         "back": "戻る",
         "backToBookingDetails": "予約詳細に戻る",
@@ -268,7 +292,8 @@
             "searchFlightsAndBundle": "フライト & バンドルを検索",
             "sent": "送信済み",
             "stayDuration": "滞在期間",
-            "viewMyTrips": "マイトリップを見る"
+            "viewMyTrips": "マイトリップを見る",
+            "openingDestination": "目的地ページを開いています…"
         },
         "summary": {
             "adult": "名",

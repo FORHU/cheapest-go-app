@@ -237,6 +237,30 @@
             "title": "Check your email"
         }
     },
+    "bookingDestination": {
+        "confirmed": "Booking confirmed",
+        "emailed": "Confirmation sent to your email",
+        "myTrips": "My Trips",
+        "noBooking": "No active booking to explore. Taking you to your trips…",
+        "goToTrips": "Go to My Trips",
+        "clocks": {
+            "ariaTrigger": "Local time at your destination",
+            "title": "Local time",
+            "home": "Home",
+            "destination": "Destination",
+            "diffSame": "Same time as home",
+            "diffAhead": "{hours, plural, =1 {1 hour} other {# hours}} ahead of home",
+            "diffBehind": "{hours, plural, =1 {1 hour} other {# hours}} behind home"
+        },
+        "currency": {
+            "ariaLabel": "Currency converter",
+            "title": "Currency converter",
+            "swap": "Swap currencies",
+            "liveRates": "Live rates",
+            "updating": "Updating…",
+            "rate": "1 {from} = {rate} {to}"
+        }
+    },
     "checkout": {
         "back": "Back",
         "backToBookingDetails": "Back to booking details",
@@ -378,7 +402,8 @@
             "searchFlightsAndBundle": "Search flights & bundle",
             "sent": "Sent",
             "stayDuration": "Stay Duration",
-            "viewMyTrips": "View My Trips"
+            "viewMyTrips": "View My Trips",
+            "openingDestination": "Opening your destination…"
         },
         "summary": {
             "adult": "Adult",

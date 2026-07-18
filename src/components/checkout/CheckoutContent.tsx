@@ -31,7 +31,6 @@ import AuthModal from '@/components/auth/AuthModal';
 import { validateCheckoutForm, buildGuestPayload, buildHolderPayload } from '@/lib/server/checkout';
 import { buildPropertySlug } from '@/lib/utils';
 import {
-    BookingSuccess,
     UserDetailsForm,
     SpecialRequestsSection,
     BookingSummary,
@@ -100,7 +99,6 @@ export function CheckoutContent() {
         selectedCurrency,
         isSuccess,
         setIsSuccess,
-        emailSent,
         setEmailSent,
         formErrors,
         setFormErrors,
@@ -464,6 +462,15 @@ export function CheckoutContent() {
         }
     }, [showSuccess]);
 
+    // Once the booking is confirmed, go straight to the destination map page.
+    // The booking (property, dates, id) is persisted in the booking store, so
+    // the destination page reads everything it needs from there.
+    useEffect(() => {
+        if (showSuccess) {
+            router.replace('/booking/destination');
+        }
+    }, [showSuccess, router]);
+
     // Guard state for missing-dates picker — must be declared before any early returns
     const [guardCheckIn, setGuardCheckIn] = useState('');
     const [guardCheckOut, setGuardCheckOut] = useState('');
@@ -604,21 +611,16 @@ export function CheckoutContent() {
     }
 
     if (showSuccess) {
-        // savings = 3% of base price; base = bundlePrice / 1.12, so savings = totalPrice * 3/112
-        const bundleSavings = bundleFlightId && totalPrice ? Math.round(totalPrice * 3 / 112 * 100) / 100 : undefined;
+        // Booking confirmed — redirecting to the destination map page (see effect above).
         return (
-            <BookingSuccess
-                propertyName={property?.name || "Grand Sierra Pines"}
-                bookingId={bookingId}
-                checkIn={checkIn}
-                checkOut={checkOut}
-                email={formData.email}
-                emailSent={emailSent}
-                bundleFlightId={bundleFlightId}
-                bundleSavings={bundleSavings}
-                currency={selectedCurrency}
-                hotelDestination={property?.city}
-            />
+            <main className="min-h-screen flex items-center justify-center px-4">
+                <div className="flex flex-col items-center gap-4 text-center">
+                    <div className="w-14 h-14 rounded-full border-4 border-emerald-100 dark:border-emerald-900 border-t-emerald-500 animate-spin" />
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                        {t('success.openingDestination')}
+                    </p>
+                </div>
+            </main>
         );
     }
 
