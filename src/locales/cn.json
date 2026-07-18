@@ -127,6 +127,30 @@
             "title": "登录 {brand}"
         }
     },
+    "bookingDestination": {
+        "confirmed": "预订已确认",
+        "emailed": "确认信息已发送至您的邮箱",
+        "myTrips": "我的行程",
+        "noBooking": "没有可查看的预订，正在前往我的行程…",
+        "goToTrips": "前往我的行程",
+        "clocks": {
+            "ariaTrigger": "目的地当地时间",
+            "title": "当地时间",
+            "home": "出发地",
+            "destination": "目的地",
+            "diffSame": "与出发地时间相同",
+            "diffAhead": "比出发地快 {hours, plural, other {# 小时}}",
+            "diffBehind": "比出发地慢 {hours, plural, other {# 小时}}"
+        },
+        "currency": {
+            "ariaLabel": "货币转换器",
+            "title": "货币转换器",
+            "swap": "交换货币",
+            "liveRates": "实时汇率",
+            "updating": "更新中…",
+            "rate": "1 {from} = {rate} {to}"
+        }
+    },
     "checkout": {
         "back": "返回",
         "backToBookingDetails": "返回预订详情",
@@ -268,7 +292,8 @@
             "searchFlightsAndBundle": "搜索航班 & 套餐",
             "sent": "已发送",
             "stayDuration": "入住时长",
-            "viewMyTrips": "查看我的行程"
+            "viewMyTrips": "查看我的行程",
+            "openingDestination": "正在打开目的地页面…"
         },
         "summary": {
             "adult": "位成人",

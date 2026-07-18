@@ -127,6 +127,30 @@
             "title": "{brand} 로그인"
         }
     },
+    "bookingDestination": {
+        "confirmed": "예약 완료",
+        "emailed": "확인 메일이 이메일로 전송되었습니다",
+        "myTrips": "내 여행",
+        "noBooking": "둘러볼 예약이 없습니다. 내 여행으로 이동합니다…",
+        "goToTrips": "내 여행으로 이동",
+        "clocks": {
+            "ariaTrigger": "목적지 현지 시간",
+            "title": "현지 시간",
+            "home": "출발지",
+            "destination": "목적지",
+            "diffSame": "출발지와 동일한 시간",
+            "diffAhead": "출발지보다 {hours, plural, other {#시간}} 빠름",
+            "diffBehind": "출발지보다 {hours, plural, other {#시간}} 느림"
+        },
+        "currency": {
+            "ariaLabel": "환율 변환기",
+            "title": "환율 변환기",
+            "swap": "통화 교체",
+            "liveRates": "실시간 환율",
+            "updating": "업데이트 중…",
+            "rate": "1 {from} = {rate} {to}"
+        }
+    },
     "checkout": {
         "back": "뒤로",
         "backToBookingDetails": "예약 상세로 돌아가기",
@@ -268,7 +292,8 @@
             "searchFlightsAndBundle": "항공편 & 번들 검색",
             "sent": "발송됨",
             "stayDuration": "숙박 기간",
-            "viewMyTrips": "내 여행 보기"
+            "viewMyTrips": "내 여행 보기",
+            "openingDestination": "목적지 페이지로 이동 중…"
         },
         "summary": {
             "adult": "명",
@@ -1360,7 +1385,7 @@
             "noMeals": "식사 미포함",
             "noNonRefundableRooms": "환불 불가 객실이 없습니다.",
             "noRefundableRooms": "환불 가능한 객실이 없습니다.",
-            "changeDates": "날짜 변경", 
+            "changeDates": "날짜 변경",
             "noRooms": "선택한 날짜에 이용 가능한 객실이 없습니다.",
             "nonRefundable": "환불 불가",
             "nonRefundablePill": "환불 불가",
