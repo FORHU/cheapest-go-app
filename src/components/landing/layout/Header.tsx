@@ -103,6 +103,8 @@ const HeaderContent = () => {
             <h1 className="text-base sm:text-lg md:text-xl text-slate-900 dark:text-white font-display font-bold tracking-tight truncate max-w-[120px] sm:max-w-none">
               {BRAND_NAME === 'CheapestGo'
                 ? <>Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
+                : BRAND_NAME === 'GeoMeego'
+                ? <>Geo<span className="text-alabaster-accent dark:text-obsidian-accent">Meego</span></>
                 : BRAND_NAME}
             </h1>
           </Link>
