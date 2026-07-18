@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { fetchAirlinesData } from './providers';
+import { applyBrandFilter } from './brand-filter';
 
 export interface SupplierRecord {
     id: string;
@@ -17,9 +18,9 @@ export async function getSuppliersList(): Promise<SupplierRecord[]> {
     const supabase = createAdminClient();
 
     const [unified, legacy, airlines] = await Promise.all([
-        supabase.from('unified_bookings').select('type, provider, total_price, currency, status, metadata, created_at'),
-        supabase.from('bookings').select('property_name, total_price, currency, status, created_at'),
-        fetchAirlinesData()
+        applyBrandFilter(supabase.from('unified_bookings').select('type, provider, total_price, currency, status, metadata, created_at')),
+        applyBrandFilter(supabase.from('bookings').select('property_name, total_price, currency, status, created_at')),
+        fetchAirlinesData(),
     ]);
 
     const thirtyDaysAgo = new Date();
