@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/utils/postgres/admin';
+import { applyBrandFilter } from './brand-filter';
 
 export interface SearchResult {
     id: string;
@@ -26,7 +27,7 @@ export async function searchAdmin(query: string): Promise<SearchResponse> {
     const pattern = `%${q}%`;
 
     const [bookings, customers, users] = await Promise.all([
-        searchBookings(supabase, pattern, q),
+        searchBookings(supabase, pattern, q), // brand-filtered inside
         searchCustomers(supabase, pattern),
         searchUsers(supabase, pattern),
     ]);
@@ -39,21 +40,15 @@ async function searchBookings(supabase: ReturnType<typeof createAdminClient>, pa
 
     // unified_bookings — search by external_id (booking ref) and provider
     const [unifiedRes, legacyHotelRes, legacyFlightRes] = await Promise.all([
-        supabase
-            .from('unified_bookings')
-            .select('id, external_id, type, provider, status, total_price, currency, metadata, created_at')
+        applyBrandFilter(supabase.from('unified_bookings').select('id, external_id, type, provider, status, total_price, currency, metadata, created_at'))
             .or(`external_id.ilike.${pattern}`)
             .order('created_at', { ascending: false })
             .limit(5),
-        supabase
-            .from('bookings')
-            .select('id, booking_id, status, total_price, currency, holder_first_name, holder_last_name, holder_email, created_at')
+        applyBrandFilter(supabase.from('bookings').select('id, booking_id, status, total_price, currency, holder_first_name, holder_last_name, holder_email, created_at'))
             .or(`booking_id.ilike.${pattern},holder_first_name.ilike.${pattern},holder_last_name.ilike.${pattern},holder_email.ilike.${pattern}`)
             .order('created_at', { ascending: false })
             .limit(5),
-        supabase
-            .from('flight_bookings')
-            .select('id, pnr, provider, status, total_price, currency, created_at')
+        applyBrandFilter(supabase.from('flight_bookings').select('id, pnr, provider, status, total_price, currency, created_at'))
             .or(`pnr.ilike.${pattern}`)
             .order('created_at', { ascending: false })
             .limit(5),
