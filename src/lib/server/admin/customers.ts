@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/utils/postgres/admin';
 import { Customer } from '@/types/admin';
+import { applyBrandFilter } from './brand-filter';
 
 export async function getCustomersList(): Promise<Customer[]> {
     const supabase = createAdminClient();
@@ -17,9 +18,9 @@ export async function getCustomersList(): Promise<Customer[]> {
     // For hotels, we want holder names as fallback
     // For flights, we need to join with passengers
     const [unified, hotels, flights] = await Promise.all([
-        supabase.from('unified_bookings').select('user_id, total_price, created_at, status, metadata'),
-        supabase.from('bookings').select('user_id, total_price, created_at, status, holder_first_name, holder_last_name'),
-        supabase.from('flight_bookings').select('id, user_id, total_price, created_at, status')
+        applyBrandFilter(supabase.from('unified_bookings').select('user_id, total_price, created_at, status, metadata')),
+        applyBrandFilter(supabase.from('bookings').select('user_id, total_price, created_at, status, holder_first_name, holder_last_name')),
+        applyBrandFilter(supabase.from('flight_bookings').select('id, user_id, total_price, created_at, status')),
     ]);
 
     // Fetch passengers for these flights to get names

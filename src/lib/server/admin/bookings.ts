@@ -3,6 +3,7 @@ import { Booking } from '@/types/admin';
 import { checkRefundability } from './recovery';
 import { enrichBookingFinances } from '@/lib/pricing';
 import { EXCHANGE_RATES } from '@/lib/currency';
+import { applyBrandFilter, ADMIN_BRAND } from './brand-filter';
 
 export interface BookingsListParams {
     page?: number;
@@ -41,10 +42,10 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
 
     const supabase = createAdminClient();
 
-    // 1. Build queries for each table
-    const unifiedQuery = supabase.from('unified_bookings').select('*', { count: 'exact' });
-    const legacyHotelQuery = supabase.from('bookings').select('*', { count: 'exact' });
-    const legacyFlightQuery = supabase.from('flight_bookings').select('*, booking_sessions(contact)', { count: 'exact' });
+    // 1. Build queries for each table — scoped to current brand
+    const unifiedQuery = applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact' }));
+    const legacyHotelQuery = applyBrandFilter(supabase.from('bookings').select('*', { count: 'exact' }));
+    const legacyFlightQuery = applyBrandFilter(supabase.from('flight_bookings').select('*, booking_sessions(contact)', { count: 'exact' }));
 
     // 2. Apply Type Filter
     if (type !== 'all') {
@@ -239,7 +240,7 @@ export async function getBookingsList(params: BookingsListParams = {}): Promise<
     // ── Revenue stats: use RPC for the total (avoids 1000-row limit) ─────────
     // The JS-side loop below is only used as a fallback if the RPC fails.
     const phpRate = 1 / EXCHANGE_RATES['PHP'];
-    const { data: rpcStats, error: rpcError } = await supabase.rpc('get_revenue_stats', { php_rate: phpRate });
+    const { data: rpcStats, error: rpcError } = await supabase.rpc('get_revenue_stats', { php_rate: phpRate, p_brand: ADMIN_BRAND });
 
     let stats: { totalRevenue: number; totalProfit: number; totalMarkup: number; totalStripeFees: number };
 

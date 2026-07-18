@@ -3,13 +3,14 @@ import { EXCHANGE_RATES } from '@/lib/currency';
 import { DashboardStats, AnalyticsData, SupplierBreakdown, RecentActivity, AdvancedAnalyticsData, RevenueTrend, ConversionFunnel, RouteMetric, DashboardData, ApiLogRow } from '@/types/admin';
 import { getProviderIntegrations } from './providers';
 import { getAdminSettings } from './settings';
+import { applyBrandFilter, ADMIN_BRAND } from './brand-filter';
 
 // ─── Revenue RPC helper ────────────────────────────────────────────────────
 // Runs aggregation in Postgres — never hits JS-side row limits.
 // Both the dashboard and revenue page call this so they always match.
 async function fetchRevenueStats(supabase: ReturnType<typeof createAdminClient>) {
     const phpRate = 1 / EXCHANGE_RATES['PHP']; // e.g. 55.556
-    const { data, error } = await supabase.rpc('get_revenue_stats', { php_rate: phpRate });
+    const { data, error } = await supabase.rpc('get_revenue_stats', { php_rate: phpRate, p_brand: ADMIN_BRAND });
     if (error) {
         console.error('[fetchRevenueStats] RPC error:', error.message);
         return null;
@@ -40,17 +41,17 @@ export async function getDashboardData(): Promise<DashboardData> {
         unifiedCancelled, hotelCancelled, flightCancelled,
         revenueStats
     ] = await Promise.all([
-        supabase.from('unified_bookings').select('*', { count: 'exact', head: true }),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }),
-        supabase.from('flight_bookings').select('*', { count: 'exact', head: true }),
+        applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact', head: true })),
+        applyBrandFilter(supabase.from('bookings').select('*', { count: 'exact', head: true })),
+        applyBrandFilter(supabase.from('flight_bookings').select('*', { count: 'exact', head: true })),
 
-        supabase.from('unified_bookings').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('flight_bookings').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact', head: true })).eq('status', 'pending'),
+        applyBrandFilter(supabase.from('bookings').select('*', { count: 'exact', head: true })).eq('status', 'pending'),
+        applyBrandFilter(supabase.from('flight_bookings').select('*', { count: 'exact', head: true })).eq('status', 'pending'),
 
-        supabase.from('unified_bookings').select('*', { count: 'exact', head: true }).in('status', ['cancelled', 'refunded']),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }).in('status', ['cancelled', 'refunded']),
-        supabase.from('flight_bookings').select('*', { count: 'exact', head: true }).in('status', ['cancelled', 'refunded']),
+        applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact', head: true })).in('status', ['cancelled', 'refunded']),
+        applyBrandFilter(supabase.from('bookings').select('*', { count: 'exact', head: true })).in('status', ['cancelled', 'refunded']),
+        applyBrandFilter(supabase.from('flight_bookings').select('*', { count: 'exact', head: true })).in('status', ['cancelled', 'refunded']),
 
         // ── RPC: single source of truth for all revenue figures ───────────────
         fetchRevenueStats(supabase),
@@ -68,9 +69,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const [unifiedAnalytics, hotelAnalytics, flightAnalytics] = await Promise.all([
-        supabase.from('unified_bookings').select('created_at').gte('created_at', sevenDaysAgo.toISOString()),
-        supabase.from('bookings').select('created_at').gte('created_at', sevenDaysAgo.toISOString()),
-        supabase.from('flight_bookings').select('created_at').gte('created_at', sevenDaysAgo.toISOString()),
+        applyBrandFilter(supabase.from('unified_bookings').select('created_at')).gte('created_at', sevenDaysAgo.toISOString()),
+        applyBrandFilter(supabase.from('bookings').select('created_at')).gte('created_at', sevenDaysAgo.toISOString()),
+        applyBrandFilter(supabase.from('flight_bookings').select('created_at')).gte('created_at', sevenDaysAgo.toISOString()),
     ]);
 
     const allDates = [
@@ -107,9 +108,9 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     // ── 3. Supplier breakdown ─────────────────────────────────────────────────
     const [unifiedTypes, legacyHotels, legacyFlights] = await Promise.all([
-        supabase.from('unified_bookings').select('type'),
-        supabase.from('bookings').select('id'),
-        supabase.from('flight_bookings').select('id'),
+        applyBrandFilter(supabase.from('unified_bookings').select('type')),
+        applyBrandFilter(supabase.from('bookings').select('id')),
+        applyBrandFilter(supabase.from('flight_bookings').select('id')),
     ]);
 
     const hotelCount  = (unifiedTypes.data?.filter((b: any) => b.type === 'hotel').length || 0) + (legacyHotels.data?.length || 0);
@@ -124,9 +125,9 @@ export async function getDashboardData(): Promise<DashboardData> {
 
     // ── 4. Recent activity (last 5 across all tables) ─────────────────────────
     const [unifiedRecent, hotelRecent, flightRecent] = await Promise.all([
-        supabase.from('unified_bookings').select('id, type, status, total_price, created_at, metadata').order('created_at', { ascending: false }).limit(5),
-        supabase.from('bookings').select('id, property_name, status, total_price, created_at, holder_first_name, holder_last_name').order('created_at', { ascending: false }).limit(5),
-        supabase.from('flight_bookings').select('id, provider, status, total_price, created_at, user_id').order('created_at', { ascending: false }).limit(5),
+        applyBrandFilter(supabase.from('unified_bookings').select('id, type, status, total_price, created_at, metadata')).order('created_at', { ascending: false }).limit(5),
+        applyBrandFilter(supabase.from('bookings').select('id, property_name, status, total_price, created_at, holder_first_name, holder_last_name')).order('created_at', { ascending: false }).limit(5),
+        applyBrandFilter(supabase.from('flight_bookings').select('id, provider, status, total_price, created_at, user_id')).order('created_at', { ascending: false }).limit(5),
     ]);
 
     const flightBookingIds = flightRecent.data?.map((b: any) => b.id) || [];
@@ -186,9 +187,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     // These still fetch rows but are bounded to confirmed bookings only
     // and used only for chart/route display — not the revenue stat card.
     const [unifiedTrend, hotelTrend, flightTrend, flightSegments, quotesRes, searchesRes] = await Promise.all([
-        supabase.from('unified_bookings').select('total_price, created_at, type, metadata, currency').in('status', ['confirmed', 'ticketed', 'awaiting_ticket', 'booked']),
-        supabase.from('bookings').select('total_price, created_at, property_name, currency').in('status', ['confirmed', 'ticketed', 'awaiting_ticket']),
-        supabase.from('flight_bookings').select('id, total_price, charged_price, created_at').in('status', ['booked', 'ticketed', 'awaiting_ticket']),
+        applyBrandFilter(supabase.from('unified_bookings').select('total_price, created_at, type, metadata, currency')).in('status', ['confirmed', 'ticketed', 'awaiting_ticket', 'booked']),
+        applyBrandFilter(supabase.from('bookings').select('total_price, created_at, property_name, currency')).in('status', ['confirmed', 'ticketed', 'awaiting_ticket']),
+        applyBrandFilter(supabase.from('flight_bookings').select('id, total_price, charged_price, created_at')).in('status', ['booked', 'ticketed', 'awaiting_ticket']),
         supabase.from('flight_segments').select('booking_id, destination'),
         supabase.from('booking_sessions').select('*', { count: 'exact', head: true }),
         supabase.from('flight_searches').select('*', { count: 'exact', head: true }),
@@ -258,8 +259,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     // ── 7. Rate metrics (refund/fail/pending %) ───────────────────────────────
     // Use count queries to avoid row limit issues
     const [refundRes, failedRes] = await Promise.all([
-        supabase.from('unified_bookings').select('*', { count: 'exact', head: true }).in('status', ['refunded']),
-        supabase.from('unified_bookings').select('*', { count: 'exact', head: true }).in('status', ['failed', 'cancelled']),
+        applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact', head: true })).in('status', ['refunded']),
+        applyBrandFilter(supabase.from('unified_bookings').select('*', { count: 'exact', head: true })).in('status', ['failed', 'cancelled']),
     ]);
 
     const unifiedTotalCount = unifiedTotal.count || 1;

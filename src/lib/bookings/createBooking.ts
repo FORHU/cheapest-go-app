@@ -26,6 +26,7 @@ export interface UnifiedBooking {
     markup_amount: number;
     profit: number;
     currency: string;
+    source_brand: string | null;
     metadata: Record<string, unknown>;
     created_at: string;
     updated_at: string;
@@ -211,6 +212,7 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
             markup_amount: input.markupAmount ?? 0,
             profit: (input.markupAmount ?? 0) || (input.totalPrice - (input.supplierCost ?? input.totalPrice)),
             currency: input.currency.toUpperCase(),
+            source_brand: process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo',
             metadata: input.metadata,
         };
 
