@@ -376,7 +376,7 @@ export function BookingDetailsDialog({ booking, onClose }: BookingDetailsDialogP
                             </div>
                             {(booking as any).isEstimated && (
                                 <p className="text-[9px] text-slate-400 italic">
-                                    * Supplier cost estimated using {booking.type === 'bundle' || booking.type === 'hotel_bundle' ? '15%' : booking.type === 'flight' ? '8%' : '12%'} standard markup policy.
+                                    * Supplier cost estimated — markup currently disabled (0%).
                                 </p>
                             )}
                         </div>

@@ -26,6 +26,7 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mon
 const SITE_URL = env.SITE_URL;
 const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 const BRAND_FAVICON = process.env.NEXT_PUBLIC_BRAND_FAVICON ?? '/Fav_Icon_Light.png';
+const BRAND_LOGO = process.env.NEXT_PUBLIC_BRAND_LOGO ?? '/Web_Logo_Light.png';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -58,7 +59,7 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: BRAND_NAME,
       images: [
         {
-          url: `${SITE_URL}/Web_Logo_Light.png`,
+          url: `${SITE_URL}${BRAND_LOGO}`,
           width: 1200,
           height: 630,
           alt: `${BRAND_NAME} - Ultimate Travel Booking Platform`,
@@ -71,7 +72,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: 'summary_large_image',
       title,
       description,
-      images: [`${SITE_URL}/Web_Logo_Light.png`],
+      images: [`${SITE_URL}${BRAND_LOGO}`],
     },
     ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && {
       verification: {
