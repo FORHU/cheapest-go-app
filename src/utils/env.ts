@@ -50,10 +50,9 @@ export const env = {
     ONDA_SECRET_KEY: process.env.ONDA_SECRET_KEY,
 
     // Markup pricing (see src/lib/pricing.ts for full documentation)
-    // FLIGHT_MARKUP_PERCENTAGE: 8%  — keep low; flights are price-transparent vs Google Flights
-    // HOTEL_MARKUP_PERCENTAGE:  15% — OTA standard; hotel prices are opaque across platforms
-    FLIGHT_MARKUP_PERCENTAGE: process.env.FLIGHT_MARKUP_PERCENTAGE || '0.08',
-    HOTEL_MARKUP_PERCENTAGE: process.env.HOTEL_MARKUP_PERCENTAGE || '0.15',
+    // Markup disabled — restore to 0.08 (flights) / 0.15 (hotels) when client is ready to charge
+    FLIGHT_MARKUP_PERCENTAGE: process.env.FLIGHT_MARKUP_PERCENTAGE || '0',
+    HOTEL_MARKUP_PERCENTAGE: process.env.HOTEL_MARKUP_PERCENTAGE || '0',
     // TravelgateX
     TRAVELGATE_API_KEY: process.env.TRAVELGATEX_API_KEY || process.env.TRAVELGATE_API_KEY,
     TRAVELGATE_CODE: process.env.TRAVELGATEX_CODE || process.env.TRAVELGATE_CODE,

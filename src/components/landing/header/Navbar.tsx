@@ -68,11 +68,11 @@ const HeaderContent = () => {
           {/* Logo */}
           <Link href="/" className="flex items-center hover:opacity-80 transition-opacity shrink-0">
             <Image
-              src="/Web_Logo_Transparent.png"
-              alt="CheapestGo"
+              src={process.env.NEXT_PUBLIC_BRAND_LOGO ?? '/Web_Logo_Transparent.png'}
+              alt={process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo'}
               width={140}
               height={36}
-              className="h-7 md:h-9 w-auto object-contain dark:brightness-[1.15]"
+              className="h-7 md:h-9 w-auto object-contain dark:brightness-[1.15] rounded-lg"
               priority
             />
           </Link>

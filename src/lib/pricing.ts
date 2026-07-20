@@ -68,14 +68,14 @@
 
 // ── Default rates (overridable via env) ─────────────────────────────────────
 
-/** 8% — flights are price-transparent; must stay competitive vs Google Flights */
-export const FLIGHT_MARKUP = parseMarkupEnv('FLIGHT_MARKUP_PERCENTAGE', 0.08);
+/** 0% — markup disabled; restore to 0.08 when client is ready to charge */
+export const FLIGHT_MARKUP = parseMarkupEnv('FLIGHT_MARKUP_PERCENTAGE', 0);
 
-/** 15% — OTA industry standard for hotels (Agoda: 15-20%, Booking.com: 15-25%) */
-export const HOTEL_MARKUP = parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0.15);
+/** 0% — markup disabled; restore to 0.15 when client is ready to charge */
+export const HOTEL_MARKUP = parseMarkupEnv('HOTEL_MARKUP_PERCENTAGE', 0);
 
-/** 12% — blended rate for flight+hotel bundles */
-export const BUNDLE_MARKUP = parseMarkupEnv('BUNDLE_MARKUP_PERCENTAGE', 0.12);
+/** 0% — markup disabled; restore to 0.12 when client is ready to charge */
+export const BUNDLE_MARKUP = parseMarkupEnv('BUNDLE_MARKUP_PERCENTAGE', 0);
 
 // Log effective rates once at module load so they appear in Vercel/server startup logs.
 // Makes misconfiguration immediately visible without needing to trace a booking.
