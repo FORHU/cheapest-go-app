@@ -1378,7 +1378,6 @@
             "points": [
                 "You must be at least 18 and able to enter a binding contract.",
                 "CheapestGo is an intermediary — your booking contract is with the hotel, airline, or package provider, not with us.",
-                "We apply a transparent 12% service markup, already included in the price you see. There are no hidden fees.",
                 "Prices and availability are not guaranteed until payment is processed and you receive a confirmation email.",
                 "Cancellations and refunds follow the supplier's policy and our Refund & Cancellation Policy.",
                 "Payments are processed by Stripe. We never store your card details.",
@@ -1395,6 +1394,412 @@
             "pageSubtitle": "Please read these terms carefully before using CheapestGo.",
             "pageTitle": "Terms of Service",
             "title": "Terms of Service — CheapestGo"
+        },
+        "layout": {
+            "breadcrumb": "CheapestGo · Legal",
+            "effective": "Effective:",
+            "lastUpdated": "Last updated:",
+            "disclaimer": {
+                "label": "Note:",
+                "body": "This document is provided for informational purposes. CheapestGo recommends consulting a qualified attorney to review these terms for your specific jurisdiction before publishing to production."
+            },
+            "contents": "Contents",
+            "contact": {
+                "heading": "Questions about this document?",
+                "contactLine": "Contact us at",
+                "address": "JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · United States"
+            }
+        },
+        "content": {
+            "terms": {
+                "acceptance": {
+                    "title": "Acceptance of Terms",
+                    "body": "By accessing or using the CheapestGo website and services (the \"Platform\"), you agree to be bound by these Terms of Service (\"Terms\") and all applicable laws and regulations. If you do not agree to these Terms, you may not use the Platform. CheapestGo is operated by JTP Partners, 30 Wall Street, 8th Floor, New York, NY 10005, United States. These Terms constitute a legally binding agreement between you and CheapestGo."
+                },
+                "eligibility": {
+                    "title": "Eligibility",
+                    "intro": "To use CheapestGo, you must:",
+                    "items": [
+                        "Be at least 18 years of age",
+                        "Have the legal capacity to enter into a binding contract",
+                        "Not be prohibited from using the Platform under applicable laws",
+                        "Provide accurate, current, and complete information when creating an account or making a booking"
+                    ]
+                },
+                "accountRegistration": {
+                    "title": "Account Registration",
+                    "intro": "To access certain features of the Platform, you may need to create an account. You agree to:",
+                    "items": [
+                        "Provide accurate and truthful information during registration",
+                        "Keep your login credentials confidential and not share them with third parties",
+                        "Notify us immediately of any unauthorized use of your account",
+                        "Be responsible for all activity that occurs under your account"
+                    ],
+                    "note": "CheapestGo reserves the right to suspend or terminate accounts that violate these Terms or that are inactive for an extended period."
+                },
+                "bookingProcess": {
+                    "title": "Booking Process and Confirmation",
+                    "intro": "When you make a booking through CheapestGo, you are entering into a contract with the travel supplier (hotel, airline, or package provider), not with CheapestGo. CheapestGo acts as an intermediary facilitating the booking.",
+                    "items": [
+                        { "label": "Booking confirmation", "text": "A booking is confirmed only when you receive a written confirmation email from CheapestGo with a booking reference number." },
+                        { "label": "Accuracy", "text": "You are responsible for ensuring all booking details (dates, guest names, room type) are correct before confirming payment." },
+                        { "label": "Supplier terms", "text": "Your booking is subject to the terms and conditions of the individual travel supplier, including their cancellation and no-show policies." },
+                        { "label": "Availability", "text": "Prices and availability are not guaranteed until payment is successfully processed and a confirmation is issued." }
+                    ]
+                },
+                "pricing": {
+                    "title": "Pricing and Payments",
+                    "items": [
+                        { "label": "Pricing", "text": "Prices displayed are sourced directly from our travel partners and reflect current wholesale rates. There are no hidden platform fees." },
+                        { "label": "Currency", "text": "Prices are displayed in the currency of your choosing. Currency conversion rates are provided for reference and may vary at time of payment." },
+                        { "label": "Payment processing", "text": "All payments are processed securely by Stripe, Inc. By making a payment, you also agree to Stripe's terms of service. CheapestGo does not store your card details." },
+                        { "label": "Taxes and fees", "text": "Displayed prices include applicable service fees. Local taxes or tourism fees charged directly by the hotel at check-in are not included unless stated otherwise." },
+                        { "label": "Price changes", "text": "Prices are subject to change until payment is completed. We are not liable for price fluctuations prior to booking confirmation." }
+                    ]
+                },
+                "cancellations": {
+                    "title": "Cancellations and Refunds",
+                    "textBefore": "Cancellations and refunds are governed by our",
+                    "refundLinkText": "Refund & Cancellation Policy",
+                    "textAfter": ", which is incorporated into these Terms by reference. Please review it carefully before making a booking, as policies vary by hotel and rate type."
+                },
+                "prohibitedConduct": {
+                    "title": "Prohibited Conduct",
+                    "intro": "You agree not to:",
+                    "items": [
+                        "Use the Platform for any unlawful purpose or in violation of any regulations",
+                        "Make fraudulent bookings, use stolen payment credentials, or engage in chargebacks in bad faith",
+                        "Attempt to reverse-engineer, scrape, or extract data from the Platform",
+                        "Use automated bots or scripts to access or interact with the Platform",
+                        "Resell or redistribute bookings for commercial purposes without our written consent",
+                        "Post false or misleading information, reviews, or impersonate any person or entity",
+                        "Interfere with the security, integrity, or performance of the Platform",
+                        "Harass, threaten, or harm other users or CheapestGo staff"
+                    ]
+                },
+                "intellectualProperty": {
+                    "title": "Intellectual Property",
+                    "body": "All content on the CheapestGo Platform — including logos, text, graphics, software, and design — is the property of CheapestGo or its licensors and is protected by applicable intellectual property laws. You may not reproduce, distribute, or create derivative works from our content without prior written consent. Hotel and flight images and descriptions are provided by our partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten) and respective suppliers under license."
+                },
+                "disclaimers": {
+                    "title": "Disclaimers",
+                    "intro": "CheapestGo provides its services on an \"as is\" and \"as available\" basis. We do not guarantee that:",
+                    "items": [
+                        "The Platform will be uninterrupted, error-free, or free of viruses",
+                        "Hotel descriptions, photos, or amenity lists are fully accurate (these are provided by suppliers)",
+                        "Prices displayed will always be the lowest available in the market",
+                        "All bookings will be honored by the travel supplier in the event of supplier insolvency or overbooking"
+                    ],
+                    "note": "CheapestGo is not responsible for the acts, errors, omissions, representations, warranties, or negligence of any travel supplier."
+                },
+                "liability": {
+                    "title": "Limitation of Liability",
+                    "body": "To the maximum extent permitted by applicable law, CheapestGo, its officers, directors, employees, and affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or goodwill, arising out of or in connection with your use of the Platform or any booking made through it. Our total aggregate liability to you for any claim arising out of these Terms shall not exceed the total amount paid by you for the booking giving rise to the claim."
+                },
+                "indemnification": {
+                    "title": "Indemnification",
+                    "body": "You agree to indemnify, defend, and hold harmless CheapestGo and JTP Partners from and against any claims, liabilities, damages, losses, and expenses (including legal fees) arising out of or in any way connected with your use of the Platform, your violation of these Terms, or your violation of any rights of another person."
+                },
+                "governingLaw": {
+                    "title": "Governing Law and Dispute Resolution",
+                    "para1": "These Terms are governed by the laws of the State of New York, United States, without regard to its conflict of law provisions.",
+                    "para2": "Any dispute arising from or relating to these Terms or your use of CheapestGo shall first be attempted to be resolved through good-faith negotiation. If unresolved within 30 days, disputes shall be submitted to binding arbitration in New York City, New York, under the rules of the American Arbitration Association (AAA). You waive any right to participate in a class action lawsuit or class-wide arbitration."
+                },
+                "changes": {
+                    "title": "Changes to These Terms",
+                    "body": "CheapestGo reserves the right to modify these Terms at any time. We will notify registered users of material changes via email and by posting an updated version on the Platform with a revised \"Last Updated\" date. Your continued use of the Platform after changes take effect constitutes your acceptance of the revised Terms."
+                },
+                "contact": {
+                    "title": "Contact",
+                    "intro": "For questions about these Terms:",
+                    "email": "📧 support@cheapestgo.com",
+                    "address": "🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
+                }
+            },
+            "privacy": {
+                "whoWeAre": {
+                    "title": "Who We Are",
+                    "para1": "CheapestGo (\"we,\" \"us,\" or \"our\") is an online travel agency operated by JTP Partners, located at 30 Wall Street, 8th Floor, New York, NY 10005, United States. We provide hotel booking, flight package, and travel deal services primarily to travelers in Southeast Asia through our website and mobile platform.",
+                    "para2Before": "For questions regarding this Privacy Policy, contact us at",
+                    "para2After": "."
+                },
+                "informationWeCollect": {
+                    "title": "Information We Collect",
+                    "directLabel": "Information you provide directly:",
+                    "directItems": [
+                        "Name, email address, phone number, and date of birth when creating an account or making a booking",
+                        "Billing address and payment information (processed securely by Stripe — we do not store card numbers)",
+                        "Travel preferences, search history, and past booking details",
+                        "Communications you send us via email or support channels"
+                    ],
+                    "autoLabel": "Information collected automatically:",
+                    "autoItems": [
+                        "IP address, browser type, operating system, and device identifiers",
+                        "Pages visited, time spent on pages, links clicked, and referral URLs",
+                        "Cookies, web beacons, and similar tracking technologies (see our Cookie Policy)",
+                        "Location data (country/region level) derived from your IP address"
+                    ],
+                    "thirdPartyLabel": "Information from third parties:",
+                    "thirdPartyItems": [
+                        "Travel availability and pricing data from our partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten)",
+                        "Payment confirmation and fraud signals from Stripe",
+                        "Analytics data from service providers we use to improve our platform"
+                    ]
+                },
+                "howWeUse": {
+                    "title": "How We Use Your Information",
+                    "items": [
+                        "To process and confirm your travel bookings and send booking confirmations",
+                        "To process payments and prevent fraud through Stripe",
+                        "To create and manage your CheapestGo account",
+                        "To send transactional emails (booking confirmations, receipts, itinerary updates)",
+                        "To send promotional emails and deal alerts — only with your consent, and you may opt out at any time",
+                        "To improve our platform, personalize content, and analyze usage patterns",
+                        "To comply with legal obligations and enforce our Terms of Service",
+                        "To respond to your inquiries and provide customer support"
+                    ]
+                },
+                "howWeShare": {
+                    "title": "How We Share Your Information",
+                    "intro": "We do not sell your personal information. We share your data only in the following circumstances:",
+                    "items": [
+                        { "label": "Hotels and travel suppliers", "text": "Your name, contact details, and booking information are shared with hotels and suppliers to fulfill your reservation." },
+                        { "label": "Stripe", "text": "Payment information is processed by Stripe, Inc. Stripe's privacy policy governs how they handle your payment data. See", "linkText": "stripe.com/privacy", "linkHref": "https://stripe.com/privacy" },
+                        { "label": "Travel Partners (Duffel, Mystifly, TravelgateX, ONDA, Rakuten)", "text": "Search queries and booking details are processed through our partner APIs to retrieve availability and pricing." },
+                        { "label": "Supabase", "text": "Our database infrastructure is hosted on Supabase. Data is stored with encryption at rest and in transit." },
+                        { "label": "Legal requirements", "text": "We may disclose information when required by law, court order, or to protect the rights, property, or safety of CheapestGo or others." }
+                    ]
+                },
+                "cookies": {
+                    "title": "Cookies and Tracking Technologies",
+                    "textBefore": "We use cookies and similar technologies to operate our platform and improve your experience. Please see our",
+                    "linkText": "Cookie Policy",
+                    "textAfter": "for full details on what cookies we use and how to manage your preferences."
+                },
+                "dataRetention": {
+                    "title": "Data Retention",
+                    "intro": "We retain your personal data for as long as necessary to:",
+                    "items": [
+                        "Maintain your account and provide our services",
+                        "Comply with legal, tax, and accounting obligations (typically 7 years for financial records)",
+                        "Resolve disputes and enforce our agreements"
+                    ],
+                    "note": "When you delete your account, we will delete or anonymize your personal data within 90 days, except where retention is required by law."
+                },
+                "internationalTransfers": {
+                    "title": "International Data Transfers",
+                    "body": "CheapestGo is headquartered in the United States. When you use our services from Southeast Asia or other regions, your data is transferred to and processed in the United States. We ensure appropriate safeguards are in place for international transfers, including standard contractual clauses where required under applicable law (including GDPR and the Philippine Data Privacy Act of 2012, Republic Act No. 10173)."
+                },
+                "yourRights": {
+                    "title": "Your Rights and Choices",
+                    "intro": "Depending on your jurisdiction, you may have the following rights:",
+                    "items": [
+                        { "label": "Access", "text": "Request a copy of the personal data we hold about you" },
+                        { "label": "Correction", "text": "Request correction of inaccurate or incomplete data" },
+                        { "label": "Deletion", "text": "Request deletion of your personal data (\"right to be forgotten\")" },
+                        { "label": "Portability", "text": "Receive your data in a structured, machine-readable format" },
+                        { "label": "Opt-out", "text": "Unsubscribe from marketing emails at any time using the link in our emails" },
+                        { "label": "Withdraw consent", "text": "Where processing is based on consent, you may withdraw it at any time" }
+                    ],
+                    "emailBefore": "To exercise any of these rights, email us at",
+                    "emailAfter": ". We will respond within 30 days."
+                },
+                "childrensPrivacy": {
+                    "title": "Children's Privacy",
+                    "body": "CheapestGo is not intended for children under the age of 18. We do not knowingly collect personal information from children. If you believe we have inadvertently collected information from a child, please contact us immediately at support@cheapestgo.com and we will delete such information promptly."
+                },
+                "security": {
+                    "title": "Security",
+                    "body": "We implement industry-standard technical and organizational measures to protect your personal data, including encryption in transit (TLS/HTTPS), encryption at rest, access controls, and regular security reviews. Payment data is handled exclusively by Stripe, which is PCI DSS compliant. However, no method of transmission over the internet is completely secure, and we cannot guarantee absolute security."
+                },
+                "changes": {
+                    "title": "Changes to This Policy",
+                    "body": "We may update this Privacy Policy from time to time. When we make material changes, we will notify you by email (if you have an account) or by posting a prominent notice on our website. Your continued use of CheapestGo after the effective date of the revised policy constitutes your acceptance of the changes."
+                },
+                "contact": {
+                    "title": "Contact Us",
+                    "intro": "For privacy-related inquiries, requests, or complaints:",
+                    "email": "📧 support@cheapestgo.com",
+                    "address": "🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
+                }
+            },
+            "refund": {
+                "overview": {
+                    "title": "Overview",
+                    "body": "CheapestGo acts as an intermediary between you and travel suppliers (hotels, airlines, and package providers). Cancellation and refund rights are primarily governed by the individual supplier's policies, which vary by property, rate type, and booking dates. This policy explains how we facilitate cancellations and refunds on your behalf."
+                },
+                "cancellationTypes": {
+                    "title": "Hotel Cancellation Types",
+                    "intro": "When you book a hotel through CheapestGo, you will see one of the following rate types:",
+                    "free": {
+                        "heading": "Free Cancellation",
+                        "body": "You may cancel at no charge before the deadline specified at booking. The exact deadline (e.g., \"Free cancellation until 48 hours before check-in\") is shown on the booking page and in your confirmation email."
+                    },
+                    "partial": {
+                        "heading": "Partially Refundable",
+                        "body": "A partial refund applies depending on when you cancel relative to the check-in date. The penalty amount and cutoff dates are displayed before you confirm payment."
+                    },
+                    "nonRefundable": {
+                        "heading": "Non-Refundable",
+                        "body": "No refund is provided if you cancel. These rates are typically lower in price and are clearly labeled \"Non-refundable\" before checkout."
+                    }
+                },
+                "howToCancel": {
+                    "title": "How to Cancel a Booking",
+                    "intro": "To cancel a booking:",
+                    "steps": [
+                        "Log in to your CheapestGo account and go to My Bookings.",
+                        "Select the booking you wish to cancel and click Cancel Booking.",
+                        "Review the cancellation policy and any applicable fees shown on screen.",
+                        "Confirm the cancellation. You will receive a cancellation confirmation email."
+                    ],
+                    "emailBefore": "Alternatively, contact us at",
+                    "emailAfter": "with your booking reference number and we will process the cancellation within 1 business day."
+                },
+                "processing": {
+                    "title": "Refund Processing",
+                    "items": [
+                        { "label": "Eligible refunds", "text": "are processed back to the original payment method (credit/debit card or GrabPay) used at checkout via Stripe." },
+                        { "label": "Processing time", "text": "Once we initiate the refund, it typically takes 5–10 business days to appear on your statement, depending on your bank or card issuer." },
+                        { "label": "CheapestGo service fee", "text": "Any applicable platform service fees are non-refundable unless the cancellation is due to a supplier error or CheapestGo system fault." },
+                        { "label": "Stripe processing fees", "text": "Payment processing fees charged by Stripe are non-refundable by CheapestGo, in line with Stripe's standard policy." },
+                        { "label": "Currency", "text": "Refunds are issued in the same currency as the original payment. Exchange rate differences at the time of refund are not our responsibility." }
+                    ]
+                },
+                "noShows": {
+                    "title": "No-Shows",
+                    "body": "If you fail to check in on the scheduled arrival date without cancelling in advance, the booking will be treated as a no-show. No-show policies vary by hotel — most hotels will charge the full booking amount. CheapestGo cannot override hotel no-show policies. We strongly recommend cancelling ahead of time if your plans change."
+                },
+                "amendments": {
+                    "title": "Booking Amendments",
+                    "intro": "Date changes, room type changes, and guest name corrections are subject to hotel availability and supplier policies. To request an amendment:",
+                    "steps": [
+                        "Contact us at support@cheapestgo.com with your booking reference",
+                        "Specify the change you need and the reason",
+                        "We will check availability with the supplier and confirm if the amendment is possible"
+                    ],
+                    "noteLabel": "Note:",
+                    "noteText": "Amendments may result in a price difference (additional charge or credit) and may not always be possible without cancelling and rebooking. We cannot guarantee that amendment requests will be accommodated."
+                },
+                "supplierCancellations": {
+                    "title": "Supplier Cancellations and Force Majeure",
+                    "intro": "In rare cases, a hotel or travel supplier may cancel your booking due to overbooking, closure, natural disaster, or force majeure events. If this occurs:",
+                    "items": [
+                        "CheapestGo will notify you as soon as we are informed by the supplier",
+                        "We will process a full refund of the amount paid to CheapestGo, including our service fee",
+                        "We will assist you in finding alternative accommodation where possible, though we cannot guarantee a replacement"
+                    ],
+                    "note": "CheapestGo is not liable for losses arising from supplier cancellations, including transportation costs, additional hotel nights booked elsewhere, or consequential losses. We recommend purchasing travel insurance to cover such events."
+                },
+                "disputes": {
+                    "title": "Disputes and Chargebacks",
+                    "body": "If you have a concern about a charge, please contact us at support@cheapestgo.com before initiating a chargeback with your bank. Most issues can be resolved quickly. Chargebacks initiated without first contacting CheapestGo may result in account suspension. CheapestGo reserves the right to contest chargebacks that are made in bad faith or that do not comply with our cancellation policy."
+                },
+                "flightPackages": {
+                    "title": "Flight Packages",
+                    "body": "For all-inclusive flight + hotel packages, cancellation terms depend on both the hotel and airline components. Airline tickets are generally non-refundable or carry significant cancellation fees. The specific terms for your package will be shown during checkout and in your confirmation email. If you need to cancel a package, contact us immediately at support@cheapestgo.com for guidance."
+                },
+                "contact": {
+                    "title": "Contact for Refund Requests",
+                    "intro": "For all refund and cancellation queries, please have your booking reference number ready and reach us at:",
+                    "email": "📧 support@cheapestgo.com",
+                    "address": "🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA",
+                    "outro": "We aim to respond to all refund requests within 1–2 business days."
+                }
+            },
+            "cookie": {
+                "whatAreCookies": {
+                    "title": "What Are Cookies?",
+                    "body": "Cookies are small text files placed on your device when you visit a website. They are widely used to make websites work efficiently, to remember your preferences, and to provide information to website operators. Similar technologies include web beacons, pixels, local storage, and session storage, all of which we refer to collectively as \"cookies\" in this policy."
+                },
+                "whyWeUse": {
+                    "title": "Why We Use Cookies",
+                    "intro": "CheapestGo uses cookies to:",
+                    "items": [
+                        "Keep you signed in and maintain your session securely",
+                        "Remember your preferences (currency, language, dark/light mode)",
+                        "Save your recent searches and viewed properties",
+                        "Prevent fraud and protect the security of your account",
+                        "Measure performance and understand how visitors use our platform",
+                        "Personalize content and show relevant deals and recommendations"
+                    ]
+                },
+                "types": {
+                    "title": "Types of Cookies We Use",
+                    "categories": [
+                        {
+                            "heading": "Strictly Necessary Cookies",
+                            "body": "These cookies are essential for the Platform to function. They enable core features such as authentication, session management, security tokens, and payment processing. You cannot opt out of these cookies as they are required for the service to operate.",
+                            "items": [
+                                "supabase-auth-token — authentication session",
+                                "__stripe_mid / __stripe_sid — Stripe fraud prevention"
+                            ]
+                        },
+                        {
+                            "heading": "Functional Cookies",
+                            "body": "These cookies remember your choices and personalize your experience. Disabling them may reduce functionality.",
+                            "items": [
+                                "Currency preference (e.g., KRW, USD, PHP)",
+                                "Theme preference (dark or light mode)",
+                                "Recently viewed hotels and search history"
+                            ]
+                        },
+                        {
+                            "heading": "Analytics Cookies",
+                            "body": "These help us understand how visitors interact with the Platform — which pages are most visited, where users drop off, and how we can improve the experience. Data is aggregated and anonymized where possible.",
+                            "items": [
+                                "Page view tracking and session duration",
+                                "Click-through rates on deals and search results",
+                                "Error logging and performance monitoring"
+                            ]
+                        },
+                        {
+                            "heading": "Marketing Cookies",
+                            "body": "We may use these to show you relevant travel deals on our Platform. We do not currently serve third-party advertising. If this changes, we will update this policy and request your consent."
+                        }
+                    ]
+                },
+                "thirdParty": {
+                    "title": "Third-Party Cookies",
+                    "intro": "Some cookies are set by third-party services that appear on our pages:",
+                    "stripeBefore": "sets cookies for fraud detection and payment session management. See",
+                    "stripeLinkText": "Stripe's Privacy Policy",
+                    "supabaseText": "sets authentication cookies to manage your login session on our database infrastructure.",
+                    "outro": "We have no control over third-party cookies. Please review the respective privacy policies of these providers for more information."
+                },
+                "duration": {
+                    "title": "Cookie Duration",
+                    "intro": "Cookies on CheapestGo are either:",
+                    "items": [
+                        { "label": "Session cookies", "text": "deleted automatically when you close your browser. Used for login sessions and temporary state." },
+                        { "label": "Persistent cookies", "text": "remain on your device for a set period (typically 30 days to 1 year). Used for preferences and analytics." }
+                    ]
+                },
+                "managing": {
+                    "title": "Managing Your Cookie Preferences",
+                    "intro": "You can control cookies in several ways:",
+                    "items": [
+                        { "label": "Browser settings", "text": "Most browsers allow you to refuse or delete cookies via their settings (usually under Privacy or Security). Note that disabling strictly necessary cookies will break core functionality such as login and checkout." },
+                        { "label": "Cookie banner", "text": "When you first visit CheapestGo, you may be presented with a cookie consent banner where you can accept or decline non-essential cookies." },
+                        { "label": "Opt-out tools", "text": "For analytics, you can use browser extensions such as the Google Analytics Opt-out Browser Add-on where applicable." }
+                    ],
+                    "note": "Adjusting your cookie settings may affect the functionality of the Platform. Essential cookies cannot be disabled without impacting your ability to use CheapestGo."
+                },
+                "doNotTrack": {
+                    "title": "Do Not Track",
+                    "body": "Some browsers send a \"Do Not Track\" (DNT) signal. CheapestGo does not currently respond to DNT signals, as there is no universal standard for how websites should react to them. We continue to evaluate this area as standards evolve."
+                },
+                "changes": {
+                    "title": "Changes to This Cookie Policy",
+                    "body": "We may update this Cookie Policy from time to time to reflect changes in technology, regulation, or our use of cookies. When we make material changes, we will update the \"Last Updated\" date at the top of this page. Continued use of the Platform after changes are posted constitutes your acceptance of the revised policy."
+                },
+                "contact": {
+                    "title": "Contact",
+                    "intro": "For questions about our use of cookies:",
+                    "email": "📧 support@cheapestgo.com",
+                    "address": "🏢 JTP Partners · 30 Wall Street, 8th Floor · New York, NY 10005 · USA"
+                }
+            }
         }
     },
     "nav": {

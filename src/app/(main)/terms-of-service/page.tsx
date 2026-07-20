@@ -1,6 +1,6 @@
 import { LegalLayout } from '@/components/landing/layout/LegalLayout';
 import {
-  termsSections,
+  getTermsSections,
   LEGAL_EFFECTIVE_DATE,
   LEGAL_LAST_UPDATED,
 } from '@/components/legal/content/legalSections';
@@ -13,14 +13,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function TermsOfServicePage() {
-  const t = await getTranslations('legal.termsOfService');
+  const tMeta = await getTranslations('legal.termsOfService');
+  const t = await getTranslations('legal');
   return (
     <LegalLayout
-      title={t('pageTitle')}
-      subtitle={t('pageSubtitle')}
+      title={tMeta('pageTitle')}
+      subtitle={tMeta('pageSubtitle')}
       effectiveDate={LEGAL_EFFECTIVE_DATE}
       lastUpdated={LEGAL_LAST_UPDATED}
-      sections={termsSections}
+      sections={getTermsSections(t)}
     />
   );
 }

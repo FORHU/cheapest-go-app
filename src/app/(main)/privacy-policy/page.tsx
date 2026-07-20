@@ -1,6 +1,6 @@
 import { LegalLayout } from '@/components/landing/layout/LegalLayout';
 import {
-  privacySections,
+  getPrivacySections,
   LEGAL_EFFECTIVE_DATE,
   LEGAL_LAST_UPDATED,
 } from '@/components/legal/content/legalSections';
@@ -13,14 +13,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PrivacyPolicyPage() {
-  const t = await getTranslations('legal.privacyPolicy');
+  const tMeta = await getTranslations('legal.privacyPolicy');
+  const t = await getTranslations('legal');
   return (
     <LegalLayout
-      title={t('pageTitle')}
-      subtitle={t('pageSubtitle')}
+      title={tMeta('pageTitle')}
+      subtitle={tMeta('pageSubtitle')}
       effectiveDate={LEGAL_EFFECTIVE_DATE}
       lastUpdated={LEGAL_LAST_UPDATED}
-      sections={privacySections}
+      sections={getPrivacySections(t)}
     />
   );
 }
