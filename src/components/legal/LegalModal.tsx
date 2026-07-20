@@ -2,13 +2,13 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import {
-    termsSections,
-    privacySections,
+    getTermsSections,
+    getPrivacySections,
     LEGAL_EFFECTIVE_DATE,
     LEGAL_LAST_UPDATED,
-    type LegalSection,
 } from './content/legalSections';
 
 export type LegalDoc = 'terms' | 'privacy';
@@ -18,11 +18,6 @@ interface LegalModalProps {
     doc: LegalDoc;
     onOpenChange: (open: boolean) => void;
 }
-
-const DOC_META: Record<LegalDoc, { title: string; sections: LegalSection[] }> = {
-    terms: { title: 'Terms & Conditions', sections: termsSections },
-    privacy: { title: 'Privacy Policy', sections: privacySections },
-};
 
 // How close to the bottom (px) counts as "read to the end". A few pixels of
 // slack absorbs sub-pixel rounding so the gate reliably opens.
@@ -38,7 +33,9 @@ const BOTTOM_THRESHOLD = 16;
  * through onOpenChange, which is gated on `reachedBottom` here.
  */
 export function LegalModal({ open, doc, onOpenChange }: LegalModalProps) {
-    const { title, sections } = DOC_META[doc];
+    const t = useTranslations('legal');
+    const sections = doc === 'terms' ? getTermsSections(t) : getPrivacySections(t);
+    const title = doc === 'terms' ? t('termsOfService.pageTitle') : t('privacyPolicy.pageTitle');
 
     const bodyRef = useRef<HTMLDivElement>(null);
     const [reachedBottom, setReachedBottom] = useState(false);
