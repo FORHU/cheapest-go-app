@@ -44,7 +44,7 @@ export const env = {
 
 
     // Site
-    SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://k-travel-booking.vercel.app',
+    SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://cheapestgo.com',
 
     //Onda
     ONDA_SECRET_KEY: process.env.ONDA_SECRET_KEY,

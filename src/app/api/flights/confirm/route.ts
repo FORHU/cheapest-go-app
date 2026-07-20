@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
         const bookingAbort = new AbortController();
-        const bookingTimeout = setTimeout(() => bookingAbort.abort(), 55_000); // 55s — under Vercel's 60s limit
+        const bookingTimeout = setTimeout(() => bookingAbort.abort(), 120_000); // 2 min — AWS has no 60s function limit
 
         let bookingRes: Response;
         try {
