@@ -179,7 +179,9 @@ export function useFlightBooking() {
     useEffect(() => {
         const raw = sessionStorage.getItem('selectedFlight');
         if (!raw) {
-            router.replace('/');
+            // No offer to book — back to flight search rather than the landing
+            // page, so the user is one step from re-picking, not at square one.
+            router.replace('/flights/search');
             return;
         }
 
@@ -192,7 +194,7 @@ export function useFlightBooking() {
             }
         } catch {
             sessionStorage.removeItem('selectedFlight');
-            router.replace('/');
+            router.replace('/flights/search');
             return;
         }
 

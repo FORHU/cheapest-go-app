@@ -25,7 +25,17 @@ async function callInternalRoute(path: string, body: object) {
     });
     if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw new Error(`${path} returned ${res.status}: ${text.slice(0, 200)}`);
+        // Prefer the route's structured `error` field so callers (and ultimately users)
+        // see the real cause (e.g. "insufficient_b2b_balance") instead of the raw
+        // "<path> returned <status>: {…}" envelope.
+        let message = text.slice(0, 200);
+        try {
+            const parsed = JSON.parse(text);
+            if (parsed?.error) message = String(parsed.error);
+        } catch {
+            // Non-JSON body — keep the raw text slice.
+        }
+        throw new Error(message);
     }
     return res.json();
 }

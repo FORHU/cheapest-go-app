@@ -32,7 +32,9 @@ const MOCK_WEATHER = {
     hourly: Array.from({ length: 12 }, (_, i) => ({
         time: new Date(Date.now() + i * 3600000).toISOString(),
         hour: (new Date().getHours() + i) % 24,
-        temp: 20 + Math.sin(i / 2) * 5,
+        // Rounded to match the live Google path, which Math.round()s every
+        // temperature — without this the widget rendered "22.397127693021016°".
+        temp: Math.round(20 + Math.sin(i / 2) * 5),
         iconUrl: 'https://www.gstatic.com/images/icons/material/apps/weather/2x/partly_cloudy_day_dark_48dp.png',
         description: 'Partly Cloudy',
         precipChance: 10,
@@ -43,8 +45,11 @@ const MOCK_WEATHER = {
         tempMin: 18 - i,
         iconUrl: 'https://www.gstatic.com/images/icons/material/apps/weather/2x/partly_cloudy_day_dark_48dp.png',
         description: 'Mostly Sunny',
-        sunrise: '06:00',
-        sunset: '19:00',
+        // Full ISO timestamps — the live Google path returns these, and the widget
+        // parses with `new Date(...)`. Bare "06:00" produced an Invalid Date, which
+        // rendered literally as "Invalid Date" in the UI.
+        sunrise: new Date(new Date(Date.now() + i * 86400000).setHours(6, 0, 0, 0)).toISOString(),
+        sunset: new Date(new Date(Date.now() + i * 86400000).setHours(19, 0, 0, 0)).toISOString(),
         uvIndex: 6,
         precipChance: 5,
     })),

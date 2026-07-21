@@ -139,19 +139,37 @@ export async function POST(req: NextRequest) {
 
         // Booking failed — refund Stripe payment if captured
         if (!result.providerConfirmed && body.paymentIntentId) {
+            // Supplier-side balance/credit exhaustion is a platform issue, not a fault of
+            // this booking — it silently blocks ALL hotel bookings until the TravelgateX
+            // B2B wallet is topped up. Alert ops and show the customer a neutral message
+            // instead of the raw provider code.
+            const isBalanceErr = /insufficient_b2b_balance|b2b_balance|insufficient.*balance/i.test(result.error || '');
+            if (isBalanceErr) {
+                console.error('[confirm] CRITICAL: TravelgateX B2B balance exhausted — hotel bookings will keep failing until topped up.');
+                createNotification(
+                    'CRITICAL: TravelgateX B2B balance exhausted',
+                    `Hotel booking failed with "${result.error}" for ${user.email}. All hotel bookings will fail until the TravelgateX B2B balance is topped up. PaymentIntent: ${body.paymentIntentId}.`,
+                    'booking'
+                );
+            }
+            const baseError = isBalanceErr
+                ? 'Hotel booking is temporarily unavailable'
+                : (result.error || 'Booking failed');
+            const failureCode = isBalanceErr ? 'balance_insufficient' : 'booking_failed_refunded';
             try {
                 const refund = await stripe.refunds.create({ payment_intent: body.paymentIntentId });
                 console.log(`[confirm] Auto-refunded ${refund.id} for failed booking`);
                 return Response.json({
                     success: false,
-                    errorCode: 'booking_failed_refunded',
-                    error: (result.error || 'Booking failed') + '. Your payment has been automatically refunded.',
+                    errorCode: failureCode,
+                    error: baseError + '. Your payment has been automatically refunded.',
                 });
             } catch (refundErr: any) {
                 console.error('[confirm] Refund failed:', refundErr.message);
                 return Response.json({
                     success: false,
-                    error: (result.error || 'Booking failed') + '. Please contact support for a refund.',
+                    errorCode: failureCode,
+                    error: baseError + '. Please contact support for a refund.',
                 });
             }
         }

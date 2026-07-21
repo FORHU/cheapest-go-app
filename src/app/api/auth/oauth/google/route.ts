@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { RETURN_TO_COOKIE, RETURN_TO_PARAM, safeReturnTo } from '@/lib/auth/returnTo';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,22 @@ export async function GET(req: Request) {
         maxAge:   600,
         path:     '/',
     });
+
+    // Google only round-trips `state`, so the page the user came from rides
+    // along in its own cookie and is read back in /auth/callback.
+    const returnTo = safeReturnTo(new URL(req.url).searchParams.get(RETURN_TO_PARAM));
+    if (returnTo !== '/') {
+        cookieStore.set(RETURN_TO_COOKIE, returnTo, {
+            httpOnly: true,
+            secure:   process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge:   600,
+            path:     '/',
+        });
+    } else {
+        // Clear any stale value from an earlier abandoned attempt.
+        cookieStore.delete(RETURN_TO_COOKIE);
+    }
 
     return NextResponse.redirect(
         `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`

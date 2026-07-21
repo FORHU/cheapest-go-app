@@ -61,9 +61,20 @@ vi.mock('@/hooks', () => ({
     },
 }));
 
+import { NextIntlClientProvider } from 'next-intl';
 import { LoginContent } from '@/components/login/LoginContent';
+import messages from '@/locales/en.json';
 
 const PASSWORD = '2-9-12-12-25-Bb';
+
+/** The auth form reads its copy from next-intl; assertions below use the en strings. */
+function Wrapper({ children }: { children: React.ReactNode }) {
+    return (
+        <NextIntlClientProvider locale="en" messages={messages}>
+            {children}
+        </NextIntlClientProvider>
+    );
+}
 
 describe('Terms acceptance is scoped to account creation', () => {
     beforeEach(() => {
@@ -73,7 +84,7 @@ describe('Terms acceptance is scoped to account creation', () => {
 
     it('shows the terms checkbox and gates the button on signup', () => {
         hoisted.state.mode = 'signup';
-        render(<LoginContent />);
+        render(<LoginContent />, { wrapper: Wrapper });
 
         expect(screen.getByRole('checkbox')).toBeInTheDocument();
         expect(screen.getByText('Terms & Conditions')).toBeInTheDocument();
@@ -82,7 +93,7 @@ describe('Terms acceptance is scoped to account creation', () => {
 
     it('has no terms checkbox on sign-in and does not gate sign-in', async () => {
         hoisted.state.mode = 'signin';
-        render(<LoginContent />);
+        render(<LoginContent />, { wrapper: Wrapper });
 
         // No acceptance UI at all.
         expect(screen.queryByRole('checkbox')).toBeNull();
