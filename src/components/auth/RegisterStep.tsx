@@ -11,8 +11,6 @@ import { Input, Button } from '@/components/ui';
 import { PasswordRequirements } from './PasswordRequirements';
 import { registerSchema } from '@/lib/schemas/auth';
 
-const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
-
 const RegisterStep: React.FC = () => {
     const t = useTranslations('auth');
     const { email, setAuthStep, register, isLoading, login } = useAuthStore();
@@ -193,10 +191,6 @@ const RegisterStep: React.FC = () => {
                         {t('actions.signIn')}
                     </button>
                 </p>
-            </div>
-
-            <div className="pt-4 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
-                <span>{BRAND_NAME}</span>
             </div>
         </div>
     );
