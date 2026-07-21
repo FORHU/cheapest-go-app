@@ -112,6 +112,7 @@ jobs:
           V_MYSTIFLY_BASE_URL: ${{ secrets.MYSTIFLY_BASE_URL }}
           V_MYSTIFLY_PASSWORD: ${{ secrets.MYSTIFLY_PASSWORD }}
           V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
+          V_NEXT_PUBLIC_BRAND_NAME: GeomeeGo
         run: |
           printf '%s\n' \
             "DATABASE_URL=$V_DATABASE_URL" \
@@ -160,6 +161,7 @@ jobs:
             "MYSTIFLY_BASE_URL=$V_MYSTIFLY_BASE_URL" \
             "MYSTIFLY_PASSWORD=$V_MYSTIFLY_PASSWORD" \
             "MYSTIFLY_USERNAME=$V_MYSTIFLY_USERNAME" \
+            "NEXT_PUBLIC_BRAND_NAME=$V_NEXT_PUBLIC_BRAND_NAME" \
           | ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER_GEOMEEGO }}@${{ secrets.EC2_HOST_GEOMEEGO }} \
               "cat > ~/.env.geomeego && chmod 600 ~/.env.geomeego"
 

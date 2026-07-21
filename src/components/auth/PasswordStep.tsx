@@ -8,6 +8,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { Input, Button } from '@/components/ui';
 import { loginSchema } from '@/lib/schemas/auth';
 
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+
 const PasswordStep: React.FC = () => {
     const t = useTranslations('auth');
     const { email, setAuthStep, login, isLoading } = useAuthStore();
@@ -121,7 +123,7 @@ const PasswordStep: React.FC = () => {
             </p>
 
             <div className="pt-4 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
-                <span>CheapestGo</span>
+                <span>{BRAND_NAME}</span>
                 <span>•</span>
                 <span>Hotels.com</span>
                 <span>•</span>
