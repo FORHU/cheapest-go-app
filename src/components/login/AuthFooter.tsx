@@ -37,10 +37,6 @@ export function AuthFooter({ mode, onToggleMode }: AuthFooterProps) {
                     <PlaneTakeoff className="h-4 w-4" />
                     {BRAND_NAME}
                 </span>
-                <span>•</span>
-                <span>Hotels.com</span>
-                <span>•</span>
-                <span>Vrbo</span>
             </div>
         </>
     );
