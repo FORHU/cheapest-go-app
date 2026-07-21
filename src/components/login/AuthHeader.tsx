@@ -10,6 +10,8 @@ interface AuthHeaderProps {
     onBack?: () => void;
 }
 
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+
 export function AuthHeader({ title, subtitle, onBack }: AuthHeaderProps) {
     return (
         <>
@@ -28,7 +30,11 @@ export function AuthHeader({ title, subtitle, onBack }: AuthHeaderProps) {
                     <PlaneTakeoff className="text-white dark:text-obsidian-accent w-6 h-6" />
                 </div>
                 <h1 className="text-slate-900 dark:text-white font-display font-bold text-xl tracking-tight">
-                    Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span>
+                    {BRAND_NAME === 'CheapestGo'
+                        ? <>Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
+                        : BRAND_NAME === 'GeomeeGo'
+                        ? <>Geomee<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
+                        : BRAND_NAME}
                 </h1>
             </Link>
 
