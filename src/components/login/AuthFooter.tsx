@@ -10,6 +10,8 @@ interface AuthFooterProps {
     onToggleMode: () => void;
 }
 
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
+
 export function AuthFooter({ mode, onToggleMode }: AuthFooterProps) {
     const t = useTranslations('auth');
 
@@ -33,7 +35,7 @@ export function AuthFooter({ mode, onToggleMode }: AuthFooterProps) {
             <div className="mt-6 flex items-center justify-center gap-4 text-sm text-slate-400 dark:text-slate-500">
                 <span className="flex items-center gap-1.5">
                     <PlaneTakeoff className="h-4 w-4" />
-                    CheapestGo
+                    {BRAND_NAME}
                 </span>
                 <span>•</span>
                 <span>Hotels.com</span>
