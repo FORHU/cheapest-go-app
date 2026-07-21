@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar, ChevronDown } from 'lucide-react';
 import { useSearchStore, useDates, useActiveDropdown } from '@/stores/searchStore';
 import { cn } from '@/lib/utils';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 
 interface DatePickerProps {
@@ -19,6 +19,7 @@ interface DatePickerProps {
 
 export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDone, initialCheckOutMode, triggerDropdown }) => {
     const t = useTranslations('landing.search');
+    const locale = useLocale();
     const MONTHS = t.raw('months') as string[];
     const DAYS = t.raw('days') as string[];
     const flexOptions = t.raw('flexOptions') as string[];
@@ -174,7 +175,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ inline, forceOpen, onDon
 
     const formatDate = (date: Date | null) => {
         if (!date) return t('selectDate');
-        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
     };
 
     return (
