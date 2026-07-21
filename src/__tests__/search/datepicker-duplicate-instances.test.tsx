@@ -25,6 +25,7 @@ vi.mock('next-intl', () => ({
         };
         return t;
     },
+    useLocale: () => 'en',
 }));
 
 import { DatePicker } from '@/components/landing/hero/search/DatePicker';
