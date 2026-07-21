@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { PlaneTakeoff, ArrowLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
+import { ArrowLeft, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/stores/authStore';
 import { usePasswordValidation } from '@/hooks';
+
+const BRAND_NAME = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'CheapestGo';
 
 export function ResetPasswordContent() {
     const t = useTranslations('auth');
@@ -90,11 +92,12 @@ export function ResetPasswordContent() {
                     {/* Logo */}
                     <div className="flex justify-center mb-8">
                         <Link href="/" className="flex items-center gap-3">
-                            <div className="size-12 flex items-center justify-center bg-slate-900 dark:bg-white/5 rounded-xl shadow-sm border border-transparent dark:border-white/10">
-                                <PlaneTakeoff className="text-white dark:text-obsidian-accent w-7 h-7" />
-                            </div>
                             <h1 className="text-slate-900 dark:text-white font-display font-bold text-2xl tracking-tight">
-                                Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span>
+                                {BRAND_NAME === 'CheapestGo'
+                                    ? <>Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
+                                    : BRAND_NAME === 'GeomeeGo'
+                                    ? <>Geomee<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
+                                    : BRAND_NAME}
                             </h1>
                         </Link>
                     </div>
