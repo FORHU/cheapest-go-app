@@ -414,17 +414,21 @@ export const useSearchStore = create<SearchState>()(
                 searchMode: state.searchMode,
                 flightState: state.flightState,
             }) as SearchState,
-            // Bump version to migrate existing users from PHP to KRW default
-            version: 1,
+            version: 2,
             migrate: (persisted: any, version: number) => {
                 if (version === 0) {
-                    // Migrate old PHP default → KRW
                     if (persisted.userCurrency === 'PHP') {
                         persisted.userCurrency = 'KRW';
                     }
                     if (persisted.userCountry === 'PH') {
                         persisted.userCountry = 'KR';
                     }
+                }
+                if (version <= 1) {
+                    // Reset to the build-time default so brand-specific defaults take effect
+                    // (e.g. existing GeomeeGo visitors who accidentally got USD get migrated to KRW)
+                    persisted.userCurrency = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY ?? 'USD';
+                    persisted.userCountry = process.env.NEXT_PUBLIC_DEFAULT_COUNTRY ?? 'US';
                 }
                 return persisted;
             },

@@ -45,6 +45,8 @@ jobs:
           docker build \
             --build-arg NEXT_PUBLIC_BRAND_NAME="GeomeeGo" \
             --build-arg NEXT_PUBLIC_LOCALE="ko" \
+            --build-arg NEXT_PUBLIC_DEFAULT_CURRENCY="KRW" \
+            --build-arg NEXT_PUBLIC_DEFAULT_COUNTRY="KR" \
             --build-arg NEXT_PUBLIC_SITE_URL="${{ secrets.NEXT_PUBLIC_SITE_URL_GEOMEEGO }}" \
             --build-arg NEXT_PUBLIC_BRAND_EMAIL="${{ secrets.NEXT_PUBLIC_BRAND_EMAIL_GEOMEEGO }}" \
             --build-arg NEXT_PUBLIC_BRAND_FAVICON="${{ secrets.NEXT_PUBLIC_BRAND_FAVICON_GEOMEEGO }}" \
@@ -113,6 +115,8 @@ jobs:
           V_MYSTIFLY_PASSWORD: ${{ secrets.MYSTIFLY_PASSWORD }}
           V_MYSTIFLY_USERNAME: ${{ secrets.MYSTIFLY_USERNAME }}
           V_NEXT_PUBLIC_BRAND_NAME: GeomeeGo
+          V_NEXT_PUBLIC_DEFAULT_CURRENCY: KRW
+          V_NEXT_PUBLIC_DEFAULT_COUNTRY: KR
         run: |
           printf '%s\n' \
             "DATABASE_URL=$V_DATABASE_URL" \
@@ -162,6 +166,8 @@ jobs:
             "MYSTIFLY_PASSWORD=$V_MYSTIFLY_PASSWORD" \
             "MYSTIFLY_USERNAME=$V_MYSTIFLY_USERNAME" \
             "NEXT_PUBLIC_BRAND_NAME=$V_NEXT_PUBLIC_BRAND_NAME" \
+            "NEXT_PUBLIC_DEFAULT_CURRENCY=$V_NEXT_PUBLIC_DEFAULT_CURRENCY" \
+            "NEXT_PUBLIC_DEFAULT_COUNTRY=$V_NEXT_PUBLIC_DEFAULT_COUNTRY" \
           | ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER_GEOMEEGO }}@${{ secrets.EC2_HOST_GEOMEEGO }} \
               "cat > ~/.env.geomeego && chmod 600 ~/.env.geomeego"
 
