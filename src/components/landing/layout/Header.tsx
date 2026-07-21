@@ -104,7 +104,7 @@ const HeaderContent = () => {
               {BRAND_NAME === 'CheapestGo'
                 ? <>Cheapest<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
                 : BRAND_NAME === 'GeomeeGo'
-                ? <>Geome<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
+                ? <>Geomee<span className="text-alabaster-accent dark:text-obsidian-accent">Go</span></>
                 : BRAND_NAME}
             </h1>
           </Link>
